@@ -92,6 +92,8 @@ public:
    void init();
    void wipe_database();
 
+   template<typename Queue, typename Entry> void queue(Queue& queue, const Entry& e);
+
    bool configured{false};
    bool wipe_database_on_startup{false};
    uint32_t start_block_num = 0;
@@ -102,7 +104,8 @@ public:
    mongocxx::client mongo_conn;
    mongocxx::collection accounts;
 
-   size_t queue_size = 0;
+   size_t max_queue_size = 0;
+   int queue_sleep_time = 0;
    size_t abi_cache_size = 0;
    std::deque<chain::transaction_metadata_ptr> transaction_metadata_queue;
    std::deque<chain::transaction_metadata_ptr> transaction_metadata_process_queue;
@@ -155,12 +158,12 @@ public:
    static const std::string account_controls_col;
 };
 
-const action_name mongo_db_plugin_impl::newaccount = N(newaccount);
-const action_name mongo_db_plugin_impl::setabi = N(setabi);
-const action_name mongo_db_plugin_impl::updateauth = N(updateauth);
-const action_name mongo_db_plugin_impl::deleteauth = N(deleteauth);
-const permission_name mongo_db_plugin_impl::owner = N(owner);
-const permission_name mongo_db_plugin_impl::active = N(active);
+const action_name mongo_db_plugin_impl::newaccount = chain::newaccount::get_name();
+const action_name mongo_db_plugin_impl::setabi = chain::setabi::get_name();
+const action_name mongo_db_plugin_impl::updateauth = chain::updateauth::get_name();
+const action_name mongo_db_plugin_impl::deleteauth = chain::deleteauth::get_name();
+const permission_name mongo_db_plugin_impl::owner = chain::config::owner_name;
+const permission_name mongo_db_plugin_impl::active = chain::config::active_name;
 
 const std::string mongo_db_plugin_impl::block_states_col = "block_states";
 const std::string mongo_db_plugin_impl::blocks_col = "blocks";
@@ -171,36 +174,29 @@ const std::string mongo_db_plugin_impl::accounts_col = "accounts";
 const std::string mongo_db_plugin_impl::pub_keys_col = "pub_keys";
 const std::string mongo_db_plugin_impl::account_controls_col = "account_controls";
 
-namespace {
-
 template<typename Queue, typename Entry>
-void queue(boost::mutex& mtx, boost::condition_variable& condition, Queue& queue, const Entry& e, size_t queue_size) {
-   int sleep_time = 100;
-   size_t last_queue_size = 0;
-   boost::mutex::scoped_lock lock(mtx);
-   if (queue.size() > queue_size) {
+void mongo_db_plugin_impl::queue( Queue& queue, const Entry& e ) {
+   boost::mutex::scoped_lock lock( mtx );
+   auto queue_size = queue.size();
+   if( queue_size > max_queue_size ) {
       lock.unlock();
       condition.notify_one();
-      if (last_queue_size < queue.size()) {
-         sleep_time += 100;
-      } else {
-         sleep_time -= 100;
-         if (sleep_time < 0) sleep_time = 100;
-      }
-      last_queue_size = queue.size();
-      boost::this_thread::sleep_for(boost::chrono::milliseconds(sleep_time));
+      queue_sleep_time += 100;
+      wlog("queue size: ${q}", ("q", queue_size));
+      boost::this_thread::sleep_for( boost::chrono::milliseconds( queue_sleep_time ));
       lock.lock();
+   } else {
+      queue_sleep_time -= 100;
+      if( queue_sleep_time < 0 ) queue_sleep_time = 0;
    }
-   queue.emplace_back(e);
+   queue.emplace_back( e );
    lock.unlock();
    condition.notify_one();
 }
 
-}
-
 void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metadata_ptr& t ) {
    try {
-      queue( mtx, condition, transaction_metadata_queue, t, queue_size );
+      queue( transaction_metadata_queue, t );
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_transaction ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -212,7 +208,7 @@ void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metada
 
 void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_ptr& t ) {
    try {
-      queue( mtx, condition, transaction_trace_queue, t, queue_size );
+      queue( transaction_trace_queue, t );
    } catch (fc::exception& e) {
       elog("FC Exception while applied_transaction ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -224,7 +220,7 @@ void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_p
 
 void mongo_db_plugin_impl::applied_irreversible_block( const chain::block_state_ptr& bs ) {
    try {
-      queue( mtx, condition, irreversible_block_state_queue, bs, queue_size );
+      queue( irreversible_block_state_queue, bs );
    } catch (fc::exception& e) {
       elog("FC Exception while applied_irreversible_block ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -236,7 +232,7 @@ void mongo_db_plugin_impl::applied_irreversible_block( const chain::block_state_
 
 void mongo_db_plugin_impl::accepted_block( const chain::block_state_ptr& bs ) {
    try {
-      queue( mtx, condition, block_state_queue, bs, queue_size );
+      queue( block_state_queue, bs );
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_block ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -282,13 +278,7 @@ void mongo_db_plugin_impl::consume_blocks() {
 
          lock.unlock();
 
-         // warn if queue size greater than 75%
-         if( transaction_metadata_size > (queue_size * 0.75) ||
-             transaction_trace_size > (queue_size * 0.75) ||
-             block_state_size > (queue_size * 0.75) ||
-             irreversible_block_size > (queue_size * 0.75)) {
-            wlog("queue size: ${q}", ("q", transaction_metadata_size + transaction_trace_size + block_state_size + irreversible_block_size));
-         } else if (done) {
+         if (done) {
             ilog("draining queue, size: ${q}", ("q", transaction_metadata_size + transaction_trace_size + block_state_size + irreversible_block_size));
          }
 
@@ -976,28 +966,35 @@ void mongo_db_plugin_impl::add_pub_keys( const vector<chain::key_weight>& keys, 
                                          const permission_name& permission, const std::chrono::milliseconds& now )
 {
    using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
    using namespace bsoncxx::types;
 
    if( keys.empty()) return;
 
    auto pub_keys = mongo_conn[db_name][pub_keys_col];
 
-   mongocxx::bulk_write bulk_pub_keys = pub_keys.create_bulk_write();
+   mongocxx::bulk_write bulk = pub_keys.create_bulk_write();
 
    for( const auto& pub_key_weight : keys ) {
-      auto doc = bsoncxx::builder::basic::document();
+      auto find_doc = bsoncxx::builder::basic::document();
+      auto update_doc = bsoncxx::builder::basic::document();
 
-      doc.append( kvp( "account", name.to_string()),
-                  kvp( "public_key", pub_key_weight.key.operator string()),
-                  kvp( "permission", permission.to_string()),
-                  kvp( "createdAt", b_date{now} ));
+      find_doc.append( kvp( "account", name.to_string()),
+                       kvp( "public_key", pub_key_weight.key.operator string()),
+                       kvp( "permission", permission.to_string()) );
 
-      mongocxx::model::insert_one insert_op{doc.view()};
-      bulk_pub_keys.append( insert_op );
+      update_doc.append( bsoncxx::builder::concatenate_doc{find_doc.view()} );
+      update_doc.append( kvp( "createdAt", b_date{now} ));
+
+      auto update = make_document( kvp( "$set", update_doc.view() ) );
+
+      mongocxx::model::update_one insert_op{find_doc.view(), update_doc.view()};
+      insert_op.upsert(true);
+      bulk.append( insert_op );
    }
 
    try {
-      if( !bulk_pub_keys.execute()) {
+      if( !bulk.execute()) {
          EOS_ASSERT( false, chain::mongo_db_insert_fail,
                      "Bulk pub_keys insert failed for account: ${a}, permission: ${p}",
                      ("a", name)( "p", permission ));
@@ -1032,6 +1029,7 @@ void mongo_db_plugin_impl::add_account_control( const vector<chain::permission_l
                                                 const std::chrono::milliseconds& now )
 {
    using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
    using namespace bsoncxx::types;
 
    if( controlling_accounts.empty()) return;
@@ -1041,14 +1039,19 @@ void mongo_db_plugin_impl::add_account_control( const vector<chain::permission_l
    mongocxx::bulk_write bulk = account_controls.create_bulk_write();
 
    for( const auto& controlling_account : controlling_accounts ) {
-      auto doc = bsoncxx::builder::basic::document();
+      auto find_doc = bsoncxx::builder::basic::document();
+      auto update_doc = bsoncxx::builder::basic::document();
 
-      doc.append( kvp( "controlled_account", name.to_string()),
-                  kvp( "controlled_permission", permission.to_string()),
-                  kvp( "controlling_account", controlling_account.permission.actor.to_string()),
-                  kvp( "createdAt", b_date{now} ));
+      find_doc.append( kvp( "controlled_account", name.to_string()),
+                       kvp( "controlled_permission", permission.to_string()),
+                       kvp( "controlling_account", controlling_account.permission.actor.to_string()) );
+      update_doc.append( bsoncxx::builder::concatenate_doc{find_doc.view()} );
+      update_doc.append( kvp( "createdAt", b_date{now} ));
 
-      mongocxx::model::insert_one insert_op{doc.view()};
+      auto update = make_document( kvp( "$set", update_doc.view() ) );
+
+      mongocxx::model::update_one insert_op{find_doc.view(), update_doc.view()};
+      insert_op.upsert(true);
       bulk.append( insert_op );
    }
 
@@ -1083,6 +1086,31 @@ void mongo_db_plugin_impl::remove_account_control( const account_name& name, con
    }
 }
 
+namespace {
+
+void create_account( mongocxx::collection& accounts, const name& name, std::chrono::milliseconds& now ) {
+   using namespace bsoncxx::types;
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+
+   mongocxx::options::update update_opts{};
+   update_opts.upsert( true );
+
+   const string name_str = name.to_string();
+   auto update = make_document(
+         kvp( "$set", make_document( kvp( "name", name_str),
+                                     kvp( "createdAt", b_date{now} ))));
+   try {
+      if( !accounts.update_one( make_document( kvp( "name", name_str )), update.view(), update_opts )) {
+         EOS_ASSERT( false, chain::mongo_db_update_fail, "Failed to insert account ${n}", ("n", name));
+      }
+   } catch (...) {
+      handle_mongo_exception( "create_account", __LINE__ );
+   }
+}
+
+}
+
 void mongo_db_plugin_impl::update_account(const chain::action& act)
 {
    using bsoncxx::builder::basic::kvp;
@@ -1093,17 +1121,12 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
       return;
 
    try {
-
       if( act.name == newaccount ) {
          std::chrono::milliseconds now = std::chrono::duration_cast<std::chrono::milliseconds>(
                std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
          auto newacc = act.data_as<chain::newaccount>();
 
-         // create new account
-         if( !accounts.insert_one( make_document( kvp( "name", newacc.name.to_string()),
-                                                  kvp( "createdAt", b_date{now} )))) {
-            elog( "Failed to insert account ${n}", ("n", newacc.name));
-         }
+         create_account( accounts, newacc.name, now );
 
          add_pub_keys( newacc.owner.keys, newacc.name, owner, now );
          add_account_control( newacc.owner.accounts, newacc.name, owner, now );
@@ -1133,10 +1156,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
 
          auto from_account = find_account( accounts, setabi.account );
          if( !from_account ) {
-            if( !accounts.insert_one( make_document( kvp( "name", setabi.account.to_string()),
-                                                     kvp( "createdAt", b_date{now} )))) {
-               elog( "Failed to insert account ${n}", ("n", setabi.account));
-            }
+            create_account( accounts, setabi.account, now );
             from_account = find_account( accounts, setabi.account );
          }
          if( from_account ) {
@@ -1295,7 +1315,7 @@ mongo_db_plugin::~mongo_db_plugin()
 void mongo_db_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
    cfg.add_options()
-         ("mongodb-queue-size,q", bpo::value<uint32_t>()->default_value(256),
+         ("mongodb-queue-size,q", bpo::value<uint32_t>()->default_value(1024),
          "The target queue size between nodeos and MongoDB plugin thread.")
          ("mongodb-abi-cache-size", bpo::value<uint32_t>()->default_value(2048),
           "The maximum size of the abi cache for serializing data.")
@@ -1334,7 +1354,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          my->abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
 
          if( options.count( "mongodb-queue-size" )) {
-            my->queue_size = options.at( "mongodb-queue-size" ).as<uint32_t>();
+            my->max_queue_size = options.at( "mongodb-queue-size" ).as<uint32_t>();
          }
          if( options.count( "mongodb-abi-cache-size" )) {
             my->abi_cache_size = options.at( "mongodb-abi-cache-size" ).as<uint32_t>();
