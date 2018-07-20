@@ -80,9 +80,9 @@ namespace eosio {
 
       uint64_t primary_key()const { return supply.symbol.name(); }
 
-      extended_asset convert_to_exchange( connector& c, extended_asset in, bool allow_zero ); 
-      extended_asset convert_from_exchange( connector& c, extended_asset in, bool allow_zero );
-      extended_asset convert( extended_asset from, extended_symbol to, bool allow_zero = false );
+      extended_asset convert_to_exchange( connector& c, extended_asset in, bool allow_zero, bool charge_fee ); 
+      extended_asset convert_from_exchange( connector& c, extended_asset in, bool allow_zero, bool charge_fee );
+      extended_asset convert( extended_asset from, extended_symbol to, bool allow_zero = false, bool charge_fee = true );
 
       bool requires_margin_call( const exchange_state::connector& con, const extended_symbol& collateral_symbol )const;
       bool requires_margin_call()const;

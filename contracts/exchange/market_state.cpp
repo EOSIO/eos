@@ -39,14 +39,24 @@ namespace eosio {
       auto obj = *pos;
       charge_interest( c, obj, now() );
       auto receipt = exstate.convert( obj.collateral, obj.borrowed.get_extended_symbol() );
-      eosio_assert( receipt.amount >= obj.borrowed.amount, "programmer error: insufficient collateral to cover" );/// VERY BAD, SHOULD NOT HAPPEN
-      auto change_debt = receipt - obj.borrowed;
 
-      auto change_collat = exstate.convert( change_debt, obj.collateral.get_extended_symbol() );
+      if( receipt.amount >= obj.borrowed.amount ) {
+         auto change_debt = receipt - obj.borrowed;
 
-      _accounts.adjust_balance( obj.owner, change_collat, "margin_call" );
+         // If this conversion charges a fee, then it causes the value of collateral in other margins
+         // to fall more than requires_margin_call predicts. That pevents the calls from covering the loans.
+         auto change_collat = exstate.convert( change_debt, obj.collateral.get_extended_symbol(), true, false );
 
-      c.peer_margin.total_lent.amount -= obj.borrowed.amount;
+         _accounts.adjust_balance( obj.owner, change_collat, "margin_call" );
+      } else {
+         // This can happen from accumulated rounding error. requires_margin_call checks against a single conversion, which
+         // can be different from the sum of individual conversions.
+         auto loss = obj.borrowed - receipt;
+         print("margin_call loss=", loss, " borrowed=", obj.borrowed, " receipt=", receipt, "\n");
+         c.peer_margin.total_lendable -= loss;
+      }
+
+      c.peer_margin.total_lent -= obj.borrowed;
       price_idx.erase(pos);
 
       pos = price_idx.begin();
