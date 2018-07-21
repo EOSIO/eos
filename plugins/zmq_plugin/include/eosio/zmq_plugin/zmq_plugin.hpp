@@ -1,6 +1,7 @@
 /**
  *  @file
  *  @copyright defined in eos/LICENSE.txt
+ *  @author cc32d9 <cc32d9@gmail.com>
  */
 #pragma once
 #include <appbase/application.hpp>

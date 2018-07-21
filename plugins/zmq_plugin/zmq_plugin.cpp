@@ -1,6 +1,7 @@
 /**
  *  @file
  *  @copyright defined in eos/LICENSE.txt
+ *  @author cc32d9 <cc32d9@gmail.com>
  */
 #include <eosio/zmq_plugin/zmq_plugin.hpp>
 #include <string>
