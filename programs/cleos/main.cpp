@@ -214,10 +214,8 @@ fc::variant call( const std::string& url,
                   const std::string& path,
                   const T& v ) {
    try {
-      eosio::client::http::connection_param *cp = new eosio::client::http::connection_param(context, parse_url(url) + path,
-              no_verify ? false : true, headers);
-
-      return eosio::client::http::do_http_call( *cp, fc::variant(v), print_request, print_response );
+      auto sp = std::make_unique<eosio::client::http::connection_param>(context, parse_url(url) + path, no_verify ? false : true, headers);
+      return eosio::client::http::do_http_call(*sp, fc::variant(v), print_request, print_response );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
