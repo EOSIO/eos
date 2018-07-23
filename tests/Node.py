@@ -991,6 +991,23 @@ class Node(object):
         self.killed=True
         return True
 
+    def verifyAlive(self):
+        if Utils.Debug: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
+        if self.killed or self.pid is None:
+            return False
+
+        try:
+            os.kill(self.pid, 0)
+        except ProcessLookupError as ex:
+            # mark node as killed
+            self.pid=None
+            self.killed=True
+            return False
+        except PermissionError as ex:
+            return True
+        else:
+            return True
+
     # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
     def relaunch(self, nodeId, chainArg, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None):
