@@ -556,7 +556,16 @@ authority parse_json_authority(const std::string& authorityJsonOrFile) {
    } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON '${data}'", ("data",authorityJsonOrFile))
 }
 
-authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
+void authority_risk_check( const authority& auth ) {
+   decltype(auth.threshold) max_key_weight = 0;
+   for( const auto& k : auth.keys ) {
+      if (k.weight > max_key_weight) max_key_weight = k.weight;
+   }
+   EOS_ASSERT(max_key_weight > 0, authority_type_exception, "Risk check failed: No key in authority. Transferring ownership of the account to itself or another user may lock the account out!");
+   EOS_ASSERT(max_key_weight >= auth.threshold, authority_type_exception, "Risk check failed: No single key can satisfy the permission. Multisig maybe required to sign the transaction!");
+}
+
+authority parse_json_authority_or_key(const std::string& authorityJsonOrFile, bool checkrisk) {
    if (boost::istarts_with(authorityJsonOrFile, "EOS") || boost::istarts_with(authorityJsonOrFile, "PUB_R1")) {
       try {
          return authority(public_key_type(authorityJsonOrFile));
@@ -564,6 +573,7 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
    } else {
       auto result = parse_json_authority(authorityJsonOrFile);
       EOS_ASSERT( eosio::chain::validate(result), authority_type_exception, "Authority failed validation! ensure that keys, accounts, and waits are sorted and that the threshold is valid and satisfiable!");
+      if (checkrisk) authority_risk_check(result);
       return result;
    }
 }
@@ -609,6 +619,7 @@ struct set_account_permission_subcommand {
    string permissionStr;
    string authorityJsonOrFile;
    string parentStr;
+   bool force = false;
 
    set_account_permission_subcommand(CLI::App* accountCmd) {
       auto permissions = accountCmd->add_subcommand("permission", localized("set parameters dealing with account permissions"));
@@ -616,6 +627,7 @@ struct set_account_permission_subcommand {
       permissions->add_option("permission", permissionStr, localized("The permission name to set/delete an authority for"))->required();
       permissions->add_option("authority", authorityJsonOrFile, localized("[delete] NULL, [create/update] public key, JSON string, or filename defining the authority"))->required();
       permissions->add_option("parent", parentStr, localized("[create] The permission name of this parents permission (Defaults to: \"Active\")"));
+      permissions->add_flag("--force", force, localized("Bypass authority risk check. This might results in locking the account out."));
 
       add_standard_transaction_options(permissions, "account@active");
 
@@ -627,7 +639,7 @@ struct set_account_permission_subcommand {
          if (is_delete) {
             send_actions({create_deleteauth(account, permission)});
          } else {
-            authority auth = parse_json_authority_or_key(authorityJsonOrFile);
+            authority auth = parse_json_authority_or_key(authorityJsonOrFile, !force);
 
             name parent;
             if (parentStr.size() == 0 && permissionStr != "owner") {
