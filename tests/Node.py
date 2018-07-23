@@ -1,3 +1,4 @@
+import copy
 import decimal
 import subprocess
 import time
@@ -990,9 +991,26 @@ class Node(object):
         self.killed=True
         return True
 
+    def verifyAlive(self):
+        if Utils.Debug: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
+        if self.killed or self.pid is None:
+            return False
+
+        try:
+            os.kill(self.pid, 0)
+        except ProcessLookupError as ex:
+            # mark node as killed
+            self.pid=None
+            self.killed=True
+            return False
+        except PermissionError as ex:
+            return True
+        else:
+            return True
+
     # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
-    def relaunch(self, nodeId, chainArg, newChain=False, timeout=Utils.systemWaitTimeout):
+    def relaunch(self, nodeId, chainArg, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1001,8 +1019,10 @@ class Node(object):
 
         cmdArr=[]
         myCmd=self.cmd
+        toAddOrSwap=copy.deepcopy(addOrSwapFlags) if addOrSwapFlags is not None else {} 
         if not newChain:
             skip=False
+            swapValue=None
             for i in self.cmd.split():
                 Utils.Print("\"%s\"" % (i))
                 if skip:
@@ -1012,7 +1032,19 @@ class Node(object):
                     skip=True
                     continue
 
-                cmdArr.append(i)
+                if swapValue is None:
+                    cmdArr.append(i)
+                else:
+                    cmdArr.append(swapValue)
+                    swapValue=None
+
+                if i in toAddOrSwap:
+                    swapValue=toAddOrSwap[i]
+                    del toAddOrSwap[i]
+            for k,v in toAddOrSwap.items():
+                cmdArr.append(k)
+                cmdArr.append(v)
+
             myCmd=" ".join(cmdArr)
 
         dataDir="var/lib/node_%02d" % (nodeId)
@@ -1044,5 +1076,6 @@ class Node(object):
             self.pid=None
             return False
 
+        self.cmd=cmd
         self.killed=False
         return True
