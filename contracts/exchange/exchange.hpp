@@ -103,7 +103,7 @@ namespace eosio {
                            block_timestamp_type  expiration ///< time at which this order is no longer valid 
                        );
 
-         void deferred( symbol_type market_symbol );
+         void continuation( symbol_type market_symbol, int max_ops );
 
          void on( const upmargin& b );
          void on( const covermargin& b );

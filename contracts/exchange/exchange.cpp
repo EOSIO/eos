@@ -21,7 +21,7 @@ namespace eosio {
    void exchange::marketorder( account_name seller, symbol_type market_symbol, extended_asset sell, extended_symbol receive ) {
       require_auth( seller );
       market_state market( _this_contract, market_symbol, _accounts, _excurrencies );
-      eosio_assert( !market.exstate.need_deferred, "market is busy" );
+      eosio_assert( !market.exstate.need_continuation, "market is busy" );
       market.market_order( seller, sell, receive );
       market.save();
    }
@@ -35,7 +35,7 @@ namespace eosio {
       eosio_assert( b.delta_collateral.is_valid(), "invalid collateral delta" );
 
       market_state market( _this_contract, b.market, _accounts, _excurrencies );
-      eosio_assert( !market.exstate.need_deferred, "market is busy" );
+      eosio_assert( !market.exstate.need_continuation, "market is busy" );
 
       eosio_assert( b.delta_borrow.amount != 0 || b.delta_collateral.amount != 0, "no effect" );
       eosio_assert( b.delta_borrow.get_extended_symbol() != b.delta_collateral.get_extended_symbol(), "invalid args" );
@@ -65,7 +65,7 @@ namespace eosio {
       eosio_assert( c.cover_amount.amount > 0, "cover amount must be positive" );
 
       market_state market( _this_contract, c.market, _accounts, _excurrencies );
-      eosio_assert( !market.exstate.need_deferred, "market is busy" );
+      eosio_assert( !market.exstate.need_continuation, "market is busy" );
 
       market.cover_margin( c.borrower, c.cover_amount);
 
@@ -147,7 +147,7 @@ namespace eosio {
       eosio_assert( quantity.amount > 0, "must lend a positive amount" );
 
       market_state m( _this_contract, market, _accounts, _excurrencies );
-      eosio_assert( !m.exstate.need_deferred, "market is busy" );
+      eosio_assert( !m.exstate.need_continuation, "market is busy" );
       m.lend( lender, quantity );
       m.save();
    }
@@ -157,7 +157,7 @@ namespace eosio {
       eosio_assert( interest_shares > 0, "must unlend a positive amount" );
 
       market_state m( _this_contract, market, _accounts, _excurrencies );
-      eosio_assert( !m.exstate.need_deferred, "market is busy" );
+      eosio_assert( !m.exstate.need_continuation, "market is busy" );
       m.unlend( lender, interest_shares, interest_symbol );
       m.save();
    }
@@ -177,9 +177,9 @@ namespace eosio {
       }
    }
 
-   void exchange::deferred( symbol_type market_symbol ) {
+   void exchange::continuation( symbol_type market_symbol, int max_ops ) {
       market_state market( _this_contract, market_symbol, _accounts, _excurrencies );
-      market.deferred();
+      market.continuation( max_ops );
       market.save();
    }
 
@@ -197,7 +197,7 @@ namespace eosio {
 
       auto& thiscontract = *this;
       switch( act ) {
-         EOSIO_API( exchange, (createx)(withdraw)(marketorder)(deferred)(lend)(unlend) )
+         EOSIO_API( exchange, (createx)(withdraw)(marketorder)(continuation)(lend)(unlend) )
       };
 
       switch( act ) {

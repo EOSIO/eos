@@ -3,6 +3,7 @@
 #include <boost/math/special_functions/relative_difference.hpp>
 
 static const uint32_t sec_per_year = 60 * 60 * 24 * 365;
+static const int default_max_ops = 1000; // todo
 
 namespace eosio {
 
@@ -82,12 +83,12 @@ namespace eosio {
       margin.interest_reserve.amount = 0;
    }
 
-   void market_state::charge_yearly_interest( exchange_state::connector& c, margins& marginstable ) {
+   void market_state::charge_yearly_interest( exchange_state::connector& c, margins& marginstable, int& remaining_ops ) {
       uint32_t now = ::now();
       auto time_idx = marginstable.get_index<N(interesttime)>();
       while( true ) {
          auto it = time_idx.begin();
-         if( it == time_idx.end() || now < it->interest_start_time.utc_seconds + sec_per_year )
+         if( it == time_idx.end() || now < it->interest_start_time.utc_seconds + sec_per_year || --remaining_ops < 0 )
             break;
          time_idx.modify( it, 0, [&](auto& margin){
             charge_interest( c, margin, margin.interest_start_time.utc_seconds + sec_per_year );
@@ -96,7 +97,7 @@ namespace eosio {
       }
    }
 
-   extended_asset market_state::market_order( extended_asset sell, extended_symbol receive_symbol ) {
+   bool market_state::market_order( extended_asset sell, extended_symbol receive_symbol, int& remaining_ops, extended_asset& result ) {
       eosio_assert( sell.is_valid(), "invalid sell amount" );
       eosio_assert( sell.amount > 0, "sell amount must be positive" );
       eosio_assert( sell.get_extended_symbol() != receive_symbol, "invalid conversion" );
@@ -115,12 +116,14 @@ namespace eosio {
          up_margins = &base_margins;
       }
 
-      charge_yearly_interest( *up, *up_margins );
+      charge_yearly_interest( *up, *up_margins, remaining_ops );
 
       auto temp = this->exstate;
       auto output = temp.convert( sell, receive_symbol );
 
       while( temp.requires_margin_call(*up, down->balance.get_extended_symbol()) ) {
+         if( --remaining_ops < 0 )
+            return false;
          this->margin_call( *up, *up_margins );
          temp = this->exstate;
          output = temp.convert( sell, receive_symbol );
@@ -135,15 +138,22 @@ namespace eosio {
                                         .memo = string("") } );
       }
 
-      return output;
+      result = output;
+      return true;
    }
 
    void market_state::market_order( account_name seller, extended_asset sell, extended_symbol receive_symbol ) {
-      auto output = market_order( sell, receive_symbol );
-      print( name{seller}, "   ", sell, "  =>  ", output, "\n" );
-      _accounts.adjust_balance( seller, -sell, "sold" );
-      _accounts.adjust_balance( seller, output, "received" );
-      schedule_deferred();
+      int remaining_ops = default_max_ops;
+      extended_asset output;
+
+      if( market_order( sell, receive_symbol, remaining_ops, output ) ) {
+         print( name{seller}, "   ", sell, "  =>  ", output, "\n" );
+         _accounts.adjust_balance( seller, -sell, "sold" );
+         _accounts.adjust_balance( seller, output, "received" );
+         schedule_continuation();
+      } else {
+         schedule_market_continuation( seller, sell, receive_symbol );
+      }
    }
 
    void market_state::lend( account_name lender, const extended_asset& quantity ) {
@@ -254,7 +264,7 @@ namespace eosio {
       } else {
          c.peer_margin.least_collateralized = std::numeric_limits<double>::max();
       }
-      schedule_deferred();
+      schedule_continuation();
    }
 
    void market_state::update_margin( account_name borrower, const extended_asset& delta_debt, extended_asset& delta_col )
@@ -271,7 +281,8 @@ namespace eosio {
    void market_state::adjust_margin( account_name borrower, margins& m, exchange_state::connector& c,
                                      const extended_asset& delta_debt, extended_asset& delta_col )
    {
-      charge_yearly_interest( c, m );
+      int remaining_ops = std::numeric_limits<int>::max();
+      charge_yearly_interest( c, m, remaining_ops );
 
       auto now = ::now();
       auto existing = m.find( borrower );
@@ -321,41 +332,63 @@ namespace eosio {
       } else {
          c.peer_margin.least_collateralized = std::numeric_limits<double>::max();
       }
-      schedule_deferred();
+      schedule_continuation();
    }
 
-   void market_state::schedule_deferred() {
-      if( exstate.base.peer_margin.collected_interest.amount > 0 || exstate.quote.peer_margin.collected_interest.amount > 0 ) {
-         exstate.need_deferred = true;
+   void market_state::schedule_market_continuation( account_name seller, extended_asset sell, extended_symbol receive_symbol ) {
+      print( "schedule market_order continuation ", name{seller}, " ", sell, " => ", receive_symbol, "\n" );
+      exstate.active_market_continuation.active = true;
+      exstate.active_market_continuation.seller = seller;
+      exstate.active_market_continuation.sell = sell;
+      exstate.active_market_continuation.receive_symbol = receive_symbol;
+      schedule_continuation();
+   }
+
+   void market_state::schedule_continuation() {
+      if( exstate.base.peer_margin.collected_interest.amount > 0 || exstate.quote.peer_margin.collected_interest.amount > 0 || exstate.active_market_continuation.active ) {
+         exstate.need_continuation = true;
          transaction t;
          t.ref_block_num = (uint16_t)tapos_block_num();
          t.ref_block_prefix = (uint32_t)tapos_block_prefix();
          t.actions.push_back(
             eosio::action{
                eosio::permission_level{_this_contract, N(active)},
-               _this_contract, N(deferred), std::make_tuple(market_symbol)});
+               _this_contract, N(continuation), std::make_tuple(market_symbol, default_max_ops)});
          t.send(marketid, _this_contract, true);
       } else {
-         exstate.need_deferred = false;
+         exstate.need_continuation = false;
       }
    }
 
-   void market_state::deferred() {
-      charge_yearly_interest( exstate.base, base_margins );
-      charge_yearly_interest( exstate.quote, quote_margins );
+   void market_state::continuation( int max_ops ) {
+      exstate.need_continuation = false;
+      int remaining_ops = max_ops;
+      if( exstate.active_market_continuation.active ) {
+         print( "handle continued market_order ", name{exstate.active_market_continuation.seller}, " ", exstate.active_market_continuation.sell, " => ", exstate.active_market_continuation.receive_symbol, "\n" );
+         exstate.active_market_continuation.active = false;
+         market_order( exstate.active_market_continuation.seller, exstate.active_market_continuation.sell, exstate.active_market_continuation.receive_symbol );
+         return;
+      }
+
+      charge_yearly_interest( exstate.base, base_margins, remaining_ops );
+      charge_yearly_interest( exstate.quote, quote_margins, remaining_ops );
       if( exstate.base.peer_margin.collected_interest.amount > 0 ) {
-         exstate.base.peer_margin.total_lendable += market_state::market_order(
-            exstate.base.peer_margin.collected_interest, 
-            {exstate.base.peer_margin.total_lendable.symbol, exstate.base.peer_margin.total_lendable.contract} );
-         exstate.base.peer_margin.collected_interest.amount = 0;
+         auto to = extended_symbol{exstate.base.peer_margin.total_lendable.symbol, exstate.base.peer_margin.total_lendable.contract};
+         extended_asset output;
+         if( market_state::market_order( exstate.base.peer_margin.collected_interest, to, remaining_ops, output ) ) {
+            exstate.base.peer_margin.total_lendable += output;
+            exstate.base.peer_margin.collected_interest.amount = 0;
+         }
       }
       if( exstate.quote.peer_margin.collected_interest.amount > 0 ) {
-         exstate.quote.peer_margin.total_lendable += market_state::market_order(
-            exstate.quote.peer_margin.collected_interest, 
-            {exstate.quote.peer_margin.total_lendable.symbol, exstate.quote.peer_margin.total_lendable.contract} );
-         exstate.quote.peer_margin.collected_interest.amount = 0;
+         auto to = extended_symbol{exstate.quote.peer_margin.total_lendable.symbol, exstate.quote.peer_margin.total_lendable.contract};
+         extended_asset output;
+         if( market_state::market_order( exstate.quote.peer_margin.collected_interest, to, remaining_ops, output ) ) {
+            exstate.quote.peer_margin.total_lendable += output;
+            exstate.quote.peer_margin.collected_interest.amount = 0;
+         }
       }
-      schedule_deferred();
+      schedule_continuation();
    }
 
    void market_state::save() {

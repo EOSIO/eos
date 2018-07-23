@@ -56,7 +56,16 @@ struct exchange_state {
    extended_asset    supply;
    double            fee = 0;
    double            interest_rate = 0;
-   bool              need_deferred = false;
+   bool              need_continuation = false;
+
+   struct market_continuation {
+      bool              active = false;
+      account_name      seller = 0;
+      extended_asset    sell;
+      extended_symbol   receive_symbol;
+   };
+
+   market_continuation active_market_continuation;
 
    struct connector {
       extended_asset balance;
@@ -68,8 +77,9 @@ struct exchange_state {
    connector quote;
 };
 
+FC_REFLECT( exchange_state::market_continuation, (active)(seller)(sell)(receive_symbol) );
 FC_REFLECT( exchange_state::connector, (balance)(weight)(peer_margin) );
-FC_REFLECT( exchange_state, (manager)(supply)(fee)(interest_rate)(need_deferred)(base)(quote) );
+FC_REFLECT( exchange_state, (manager)(supply)(fee)(interest_rate)(need_continuation)(active_market_continuation)(base)(quote) );
 
 class exchange_tester : public TESTER {
    public:
@@ -256,9 +266,10 @@ class exchange_tester : public TESTER {
          );
       }
 
-      auto deferred( name contract, name signer, const symbol& market ) {
-         return push_action( contract, signer, N(deferred), mutable_variant_object()
+      auto continuation( name contract, name signer, const symbol& market, int32_t max_ops ) {
+         return push_action( contract, signer, N(continuation), mutable_variant_object()
             ("market", market)
+            ("max_ops", max_ops)
          );
       }
 
@@ -715,7 +726,7 @@ BOOST_AUTO_TEST_CASE( interest ) try {
    t.produce_block();
    t.produce_block( fc::milliseconds(msec_per_year) );
    t.produce_block();
-   t.deferred( N(exchange), N(trader1), symbol(2,"HIINT") );
+   t.continuation( N(exchange), N(trader1), symbol(2,"HIINT"), 20 );
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(50.00 USD));
    t.check_exchange_balance(N(exchange), N(exchange), N(borrower4), A(7.91 BTC));
    BOOST_REQUIRE_EQUAL(A(0.00 BTC), t.get_market_state(N(exchange), symbol(2,"HIINT")).quote.peer_margin.total_lent.quantity);

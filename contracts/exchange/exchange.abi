@@ -133,10 +133,11 @@
         {"name":"supply", "type":"uint64"}
       ]
     },{
-     "name": "deferred",
+     "name": "continuation",
      "base": "",
      "fields": [
-        {"name":"market", "type":"symbol"}
+        {"name":"market", "type":"symbol"},
+        {"name":"max_ops", "type":"int32"}
      ]
     }
   ],
@@ -151,7 +152,7 @@
     { "name": "upmargin", "type": "upmargin", "ricardian_contract": "" },
     { "name": "covermargin", "type": "covermargin", "ricardian_contract": "" },
     { "name": "create", "type": "create", "ricardian_contract": "" }
-    { "name": "deferred", "type": "deferred", "ricardian_contract": "" }
+    { "name": "continuation", "type": "continuation", "ricardian_contract": "" }
   ],
   "tables": [{
       "name": "account",

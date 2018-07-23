@@ -17,6 +17,9 @@ namespace eosio {
            eosio_assert( delta.amount >= 0, "overdrawn balance 1" );
          });
       } else {
+         // Caution: don't add code which removes entries from exaccounts or exaccounts_cache. It will
+         //          cause failures in margin calls, continuations, and other actions which deposit funds,
+         //          since they will attempt to increase owner's ram usage without owner's authority.
          table->second->modify( useraccounts, 0, [&]( auto& exa ) {
            const auto& b = exa.balances[delta.get_extended_symbol()] += delta.amount;
            eosio_assert( b >= 0, "overdrawn balance 2" );
