@@ -2251,14 +2251,29 @@ int main( int argc, char** argv ) {
    wallet->require_subcommand();
    // create wallet
    string wallet_name = "default";
+   string password_file;
+   bool print_console = false;
    auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"), false);
    createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
-   createWallet->set_callback([&wallet_name] {
+   createWallet->add_option("-f,--file", password_file, localized("Name of file to write wallet password output to. (Must be set, unless \"--console\" is passed"));
+   createWallet->add_flag( "--to-console", print_console, localized("Print password to console."));
+   createWallet->set_callback([&wallet_name, &password_file, &print_console] {
+      if (password_file.empty() && !print_console) {
+         std::cerr << "ERROR: Either indicate a file using \"--file\" or pass \"--console\"" << std::endl;
+         return;
+      }
+
       const auto& v = call(wallet_url, wallet_create, wallet_name);
       std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
       std::cout << localized("Save password to use in the future to unlock this wallet.") << std::endl;
       std::cout << localized("Without password imported keys will not be retrievable.") << std::endl;
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
+      if (print_console) {
+         std::cout << fc::json::to_pretty_string(v) << std::endl;
+      } else {
+         std::cerr << localized("saving password to ${filename}", ("filename", password_file)) << std::endl;
+         std::ofstream out( password_file.c_str() );
+         out << fc::json::to_pretty_string(v);
+      }
    });
 
    // open wallet
