@@ -88,7 +88,7 @@ void actions_table::add(chain::action action, chain::transaction_id_type transac
         return; // no ABI no party. Should we still store it?
     }
 
-    static const fc::microseconds abi_serializer_max_time;
+    static const fc::microseconds abi_serializer_max_time(1000000); // 1 second
     abis.set_abi(abi, abi_serializer_max_time);
 
     auto abi_data = abis.binary_to_variant(abis.get_action_type(action.name), action.data, abi_serializer_max_time);
