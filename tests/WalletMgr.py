@@ -53,7 +53,7 @@ class WalletMgr(object):
             if Utils.Debug: Utils.Print("Wallet \"%s\" already exists. Returning same." % name)
             return wallet
         p = re.compile(r'\n\"(\w+)\"\n', re.MULTILINE)
-        cmd="%s %s wallet create --name %s" % (Utils.EosClientPath, self.endpointArgs, name)
+        cmd="%s %s wallet create --name %s --to-console" % (Utils.EosClientPath, self.endpointArgs, name)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         retStr=Utils.checkOutput(cmd.split())
         #Utils.Print("create: %s" % (retStr))
