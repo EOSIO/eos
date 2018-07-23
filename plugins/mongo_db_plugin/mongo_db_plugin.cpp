@@ -245,7 +245,6 @@ void mongo_db_plugin_impl::accepted_block( const chain::block_state_ptr& bs ) {
 void mongo_db_plugin_impl::consume_blocks() {
    try {
       while (true) {
-         ilog( "consume_blocks" );
          boost::mutex::scoped_lock lock(mtx);
          while ( transaction_metadata_queue.empty() &&
                  transaction_trace_queue.empty() &&
@@ -293,7 +292,8 @@ void mongo_db_plugin_impl::consume_blocks() {
          }
          auto time = fc::time_point::now() - start_time;
          auto per = size > 0 ? time.count()/size : 0;
-         ilog( "process_accepted_transaction, time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
+         if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
+            ilog( "process_accepted_transaction, time per: ${p}, size: ${s}, time: ${t}", ("s", size)( "t", time )( "p", per ));
 
          start_time = fc::time_point::now();
          size = transaction_trace_process_queue.size();
@@ -304,7 +304,8 @@ void mongo_db_plugin_impl::consume_blocks() {
          }
          time = fc::time_point::now() - start_time;
          per = size > 0 ? time.count()/size : 0;
-         ilog( "process_applied_transaction,  time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
+         if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
+            ilog( "process_applied_transaction,  time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
 
          // process blocks
          start_time = fc::time_point::now();
@@ -316,7 +317,8 @@ void mongo_db_plugin_impl::consume_blocks() {
          }
          time = fc::time_point::now() - start_time;
          per = size > 0 ? time.count()/size : 0;
-         ilog( "process_accepted_block,       time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
+         if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
+            ilog( "process_accepted_block,       time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
 
          // process irreversible blocks
          start_time = fc::time_point::now();
@@ -328,7 +330,8 @@ void mongo_db_plugin_impl::consume_blocks() {
          }
          time = fc::time_point::now() - start_time;
          per = size > 0 ? time.count()/size : 0;
-         ilog( "process_irreversible_block,   time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
+         if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
+            ilog( "process_irreversible_block,   time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
 
          if( transaction_metadata_size == 0 &&
              transaction_trace_size == 0 &&
@@ -354,12 +357,6 @@ auto find_account( mongocxx::collection& accounts, const account_name& name ) {
    using bsoncxx::builder::basic::make_document;
    using bsoncxx::builder::basic::kvp;
    return accounts.find_one( make_document( kvp( "name", name.to_string())));
-}
-
-auto find_transaction( mongocxx::collection& trans, const string& id ) {
-   using bsoncxx::builder::basic::make_document;
-   using bsoncxx::builder::basic::kvp;
-   return trans.find_one( make_document( kvp( "trx_id", id )));
 }
 
 auto find_block( mongocxx::collection& blocks, const string& id ) {
@@ -774,6 +771,8 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
    update_opts.upsert( true );
 
    auto block_num = bs->block_num;
+   if( block_num % 1000 == 0 )
+      ilog( "block_num: ${b}", ("b", block_num) );
    const auto block_id = bs->id;
    const auto block_id_str = block_id.str();
    const auto prev_block_id_str = bs->block->previous.str();
@@ -865,7 +864,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    const auto block_num = bs->block->block_num();
 
    // genesis block 1 is not signaled to accepted_block
-   if (block_num < 2) return;
+//   if (block_num < 2) return;
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
@@ -893,7 +892,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
       string trx_id_str;
       if( receipt.trx.contains<packed_transaction>()) {
          const auto& pt = receipt.trx.get<packed_transaction>();
-         // get id via get_raw_transaction() as packed_transaction.id() mutates inernal transaction state
+         // get id via get_raw_transaction() as packed_transaction.id() mutates internal transaction state
          const auto& raw = pt.get_raw_transaction();
          const auto& id = fc::raw::unpack<transaction>(raw).id();
          trx_id_str = id.str();
@@ -902,18 +901,15 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
          trx_id_str = id.str();
       }
 
-      auto ir_trans = find_transaction(trans, trx_id_str);
+      auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
+                                                                   kvp( "block_id", block_id_str ),
+                                                                   kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ),
+                                                                   kvp( "updatedAt", b_date{now} ))));
 
-      if (ir_trans) {
-         auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
-                                                                      kvp( "block_id", block_id_str),
-                                                                      kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ),
-                                                                      kvp( "updatedAt", b_date{now}))));
-
-         mongocxx::model::update_one update_op{ make_document(kvp("_id", ir_trans->view()["_id"].get_oid())), update_doc.view()};
-         bulk.append(update_op);
-         transactions_in_block = true;
-      }
+      mongocxx::model::update_one update_op{make_document( kvp( "trx_id", trx_id_str )), update_doc.view()};
+      update_op.upsert( true );
+      bulk.append( update_op );
+      transactions_in_block = true;
    }
 
    if( transactions_in_block ) {
