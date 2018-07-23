@@ -191,6 +191,13 @@
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
+			"Debian GNU/Linux")
+				FILE=${PWD}/scripts/eosio_build_ubuntu.sh
+				CXX_COMPILER=clang++-4.0
+				C_COMPILER=clang-4.0
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
+			;;
 			*)
 				printf "\\n\\tUnsupported Linux Distribution. Exiting now.\\n\\n"
 				exit 1
@@ -198,7 +205,6 @@
 
 		export BOOST_ROOT="${HOME}/opt/boost"
 		OPENSSL_ROOT_DIR=/usr/include/openssl
-		WASM_ROOT="${HOME}/opt/wasm"
 	fi
 
 	if [ "$ARCH" == "Darwin" ]; then
@@ -207,8 +213,13 @@
 		C_COMPILER=clang
 		MONGOD_CONF=/usr/local/etc/mongod.conf
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
-		WASM_ROOT=/usr/local/wasm
 	fi
+   
+   ${PWD}/scripts/clean_old_install.sh
+   if [ $? -ne 0 ]; then
+      printf "\n\tError occurred while trying to remove old installation!\n\n"
+      exit -1
+   fi
 
 	. "$FILE"
 
@@ -238,7 +249,7 @@
 	if ! "${CMAKE}" -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
 		-DCMAKE_C_COMPILER="${C_COMPILER}" -DWASM_ROOT="${WASM_ROOT}" -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
 		-DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
-		-DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" ..
+		-DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" -DCMAKE_INSTALL_PREFIX="/usr/local/eosio" ..
 	then
 		printf "\\n\\t>>>>>>>>>>>>>>>>>>>> CMAKE building EOSIO has exited with the above error.\\n\\n"
 		exit -1

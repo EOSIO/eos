@@ -66,17 +66,20 @@ class WalletMgr(object):
         self.wallets[name] = wallet
 
         if accounts:
-            for account in accounts:
-                Utils.Print("Importing keys for account %s into wallet %s." % (account.name, wallet.name))
-                if not self.importKey(account, wallet):
-                    Utils.Print("ERROR: Failed to import key for account %s" % (account.name))
-                    return False
+            self.importKeys(accounts,wallet)
 
         return wallet
 
-    def importKey(self, account, wallet):
+    def importKeys(self, accounts, wallet, ignoreDupKeyWarning=False):
+        for account in accounts:
+            Utils.Print("Importing keys for account %s into wallet %s." % (account.name, wallet.name))
+            if not self.importKey(account, wallet, ignoreDupKeyWarning):
+                Utils.Print("ERROR: Failed to import key for account %s" % (account.name))
+                return False
+
+    def importKey(self, account, wallet, ignoreDupKeyWarning=False):
         warningMsg="Key already in wallet"
-        cmd="%s %s wallet import --name %s %s" % (
+        cmd="%s %s wallet import --name %s --private-key %s" % (
             Utils.EosClientPath, self.endpointArgs, wallet.name, account.ownerPrivateKey)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
@@ -84,7 +87,8 @@ class WalletMgr(object):
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             if warningMsg in msg:
-                Utils.Print("WARNING: This key is already imported into the wallet.")
+                if not ignoreDupKeyWarning:
+                    Utils.Print("WARNING: This key is already imported into the wallet.")
             else:
                 Utils.Print("ERROR: Failed to import account owner key %s. %s" % (account.ownerPrivateKey, msg))
                 return False
@@ -92,7 +96,7 @@ class WalletMgr(object):
         if account.activePrivateKey is None:
             Utils.Print("WARNING: Active private key is not defined for account \"%s\"" % (account.name))
         else:
-            cmd="%s %s wallet import --name %s %s" % (
+            cmd="%s %s wallet import --name %s  --private-key %s" % (
                 Utils.EosClientPath, self.endpointArgs, wallet.name, account.activePrivateKey)
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             try:
@@ -100,7 +104,8 @@ class WalletMgr(object):
             except subprocess.CalledProcessError as ex:
                 msg=ex.output.decode("utf-8")
                 if warningMsg in msg:
-                    Utils.Print("WARNING: This key is already imported into the wallet.")
+                    if not ignoreDupKeyWarning:
+                        Utils.Print("WARNING: This key is already imported into the wallet.")
                 else:
                     Utils.Print("ERROR: Failed to import account active key %s. %s" %
                                 (account.activePrivateKey, msg))

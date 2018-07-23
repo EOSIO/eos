@@ -41,14 +41,11 @@ class Utils:
     SigTermTag="term"
 
     systemWaitTimeout=90
-
-    # mongoSyncTime: nodeos mongodb plugin seems to sync with a 10-15 seconds delay. This will inject
-    #  a wait period before the 2nd DB check (if first check fails)
-    mongoSyncTime=25
+    irreversibleTimeout=60
 
     @staticmethod
-    def setMongoSyncTime(syncTime):
-        Utils.mongoSyncTime=syncTime
+    def setIrreversibleTimeout(timeout):
+        Utils.irreversibleTimeout=timeout
 
     @staticmethod
     def setSystemWaitTimeout(timeout):
@@ -138,13 +135,13 @@ class Utils:
     def runCmdArrReturnJson(cmdArr, trace=False, silentErrors=True):
         retStr=Utils.checkOutput(cmdArr)
         jStr=Utils.filterJsonObject(retStr)
-        if trace: Utils.Print ("RAW > %s"% (retStr))
-        if trace: Utils.Print ("JSON> %s"% (jStr))
+        if trace: Utils.Print ("RAW > %s" % (retStr))
+        if trace: Utils.Print ("JSON> %s" % (jStr))
         if not jStr:
             msg="Received empty JSON response"
             if not silentErrors:
                 Utils.Print ("ERROR: "+ msg)
-                Utils.Print ("RAW > %s"% retStr)
+                Utils.Print ("RAW > %s" % retStr)
             raise TypeError(msg)
 
         try:
@@ -152,14 +149,14 @@ class Utils:
             return jsonData
         except json.decoder.JSONDecodeError as ex:
             Utils.Print (ex)
-            Utils.Print ("RAW > %s"% retStr)
-            Utils.Print ("JSON> %s"% jStr)
+            Utils.Print ("RAW > %s" % retStr)
+            Utils.Print ("JSON> %s" % jStr)
             raise
 
     @staticmethod
     def runCmdReturnStr(cmd, trace=False):
         retStr=Utils.checkOutput(cmd.split())
-        if trace: Utils.Print ("RAW > %s"% (retStr))
+        if trace: Utils.Print ("RAW > %s" % (retStr))
         return retStr
 
     @staticmethod

@@ -121,6 +121,9 @@ public:
    /// @return The public key of the created key
    string create_key(const std::string& name, const std::string& key_type);
 
+   /// Takes ownership of a wallet to use
+   void own_and_use_wallet(const string& name, std::unique_ptr<wallet_api>&& wallet);
+
 private:
    /// Verify timeout has not occurred and reset timeout if not.
    /// Calls lock_all() if timeout has passed.

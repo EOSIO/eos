@@ -52,7 +52,9 @@ namespace eosio { namespace chain {
             path                     blocks_dir             =  chain::config::default_blocks_dir_name;
             path                     state_dir              =  chain::config::default_state_dir_name;
             uint64_t                 state_size             =  chain::config::default_state_size;
+            uint64_t                 state_guard_size       =  chain::config::default_state_guard_size;
             uint64_t                 reversible_cache_size  =  chain::config::default_reversible_cache_size;
+            uint64_t                 reversible_guard_size  =  chain::config::default_reversible_guard_size;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
             bool                     contracts_console      =  false;
@@ -61,6 +63,8 @@ namespace eosio { namespace chain {
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
 
             db_read_mode             read_mode    = db_read_mode::SPECULATIVE;
+
+            flat_set<account_name>   resource_greylist;
          };
 
          enum class block_status {
@@ -178,11 +182,16 @@ namespace eosio { namespace chain {
          void check_key_list( const public_key_type& key )const;
          bool is_producing_block()const;
 
-
+         void add_resource_greylist(const account_name &name);
+         void remove_resource_greylist(const account_name &name);
+         bool is_resource_greylisted(const account_name &name) const;
+         const flat_set<account_name> &get_resource_greylist() const;
 
          void validate_referenced_accounts( const transaction& t )const;
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
+         void validate_db_available_size() const;
+         void validate_reversible_available_size() const;
 
          bool is_known_unexpired_transaction( const transaction_id_type& id) const;
 
@@ -196,6 +205,9 @@ namespace eosio { namespace chain {
 
          db_read_mode get_read_mode()const;
 
+         void set_subjective_cpu_leeway(fc::microseconds leeway);
+
+         signal<void(const signed_block_ptr&)>         pre_accepted_block;
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
          signal<void(const block_state_ptr&)>          irreversible_block;
@@ -218,22 +230,24 @@ namespace eosio { namespace chain {
          wasm_interface& get_wasm_interface();
 
 
-         optional<abi_serializer> get_abi_serializer( account_name n )const {
+         optional<abi_serializer> get_abi_serializer( account_name n, const fc::microseconds& max_serialization_time )const {
             if( n.good() ) {
                try {
                   const auto& a = get_account( n );
                   abi_def abi;
                   if( abi_serializer::to_abi( a.abi, abi ))
-                     return abi_serializer( abi );
+                     return abi_serializer( abi, max_serialization_time );
                } FC_CAPTURE_AND_LOG((n))
             }
             return optional<abi_serializer>();
          }
 
          template<typename T>
-         fc::variant to_variant_with_abi( const T& obj ) {
+         fc::variant to_variant_with_abi( const T& obj, const fc::microseconds& max_serialization_time ) {
             fc::variant pretty_output;
-            abi_serializer::to_variant( obj, pretty_output, [&]( account_name n ){ return get_abi_serializer( n ); });
+            abi_serializer::to_variant( obj, pretty_output,
+                                        [&]( account_name n ){ return get_abi_serializer( n, max_serialization_time ); },
+                                        max_serialization_time);
             return pretty_output;
          }
 
@@ -259,4 +273,5 @@ FC_REFLECT( eosio::chain::controller::config,
             (contracts_console)
             (genesis)
             (wasm_runtime)
+            (resource_greylist)
           )

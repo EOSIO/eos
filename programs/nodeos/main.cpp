@@ -6,7 +6,7 @@
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
-#include <eosio/history_plugin.hpp>
+#include <eosio/history_plugin/history_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/utilities/common.hpp>
@@ -86,7 +86,8 @@ enum return_codes {
    BAD_ALLOC         = 1,
    DATABASE_DIRTY    = 2,
    FIXED_REVERSIBLE  = 3,
-   EXTRACTED_GENESIS = 4
+   EXTRACTED_GENESIS = 4,
+   NODE_MANAGEMENT_SUCCESS = 5
 };
 
 int main(int argc, char** argv)
@@ -109,6 +110,8 @@ int main(int argc, char** argv)
       return EXTRACTED_GENESIS;
    } catch( const fixed_reversible_db_exception& e ) {
       return FIXED_REVERSIBLE;
+   } catch( const node_management_success& e ) {
+      return NODE_MANAGEMENT_SUCCESS;
    } catch( const fc::exception& e ) {
       if( e.code() == fc::std_exception_code ) {
          if( e.top_message().find( "database dirty flag set" ) != std::string::npos ) {
@@ -119,7 +122,7 @@ int main(int argc, char** argv)
             return DATABASE_DIRTY;
          }
       }
-      elog("${e}", ("e",e.to_detail_string()));
+      elog( "${e}", ("e", e.to_detail_string()));
       return OTHER_FAIL;
    } catch( const boost::interprocess::bad_alloc& e ) {
       elog("bad alloc");
