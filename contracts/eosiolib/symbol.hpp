@@ -215,6 +215,10 @@ namespace eosio {
         return std::tie( a.value, a.contract ) != std::tie( b.value, b.contract );
       }
 
+      friend bool operator < ( const extended_symbol& a, const extended_symbol& b ) {
+        return std::tie( a.value, a.contract ) < std::tie( b.value, b.contract );
+      }
+
       EOSLIB_SERIALIZE( extended_symbol, (value)(contract) )
    };
 

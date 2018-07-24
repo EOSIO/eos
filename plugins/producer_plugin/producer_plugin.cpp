@@ -769,9 +769,11 @@ producer_plugin::greylist_params producer_plugin::get_greylist() const {
 
 optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name) const {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   const auto& hbs = chain.head_block_state();
+   const auto& active_schedule = hbs->active_schedule.producers;
+
    const auto& pbs = chain.pending_block_state();
-   const auto& active_schedule = pbs->active_schedule.producers;
-   const auto& hbt = pbs->header.timestamp;
+   const auto& pbt = pbs->header.timestamp;
 
    // determine if this producer is in the active schedule and if so, where
    auto itr = std::find_if(active_schedule.begin(), active_schedule.end(), [&](const auto& asp){ return asp.producer_name == producer_name; });
@@ -798,7 +800,7 @@ optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const a
    }
 
    // this producers next opportuity to produce is the next time its slot arrives after or at the calculated minimum
-   uint32_t minimum_slot = hbt.slot + minimum_offset;
+   uint32_t minimum_slot = pbt.slot + minimum_offset;
    size_t minimum_slot_producer_index = (minimum_slot % (active_schedule.size() * config::producer_repetitions)) / config::producer_repetitions;
    if ( producer_index == minimum_slot_producer_index ) {
       // this is the producer for the minimum slot, go with that
