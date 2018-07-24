@@ -18,16 +18,17 @@ struct integration_test : public eosio::contract {
                   uint64_t     num ) {
          require_auth( from );
          eosio_assert( is_account( to ), "to account does not exist");
+         eosio_assert( num < std::numeric_limits<size_t>::max(), "num to large");
          payloads data ( _self, from );
          uint64_t key = 0;
          const uint64_t num_keys = 5;
          while (data.find( key ) != data.end()) {
             key += num_keys;
          }
-         for (uint64_t i = 0; i < num_keys; ++i) {
+         for (size_t i = 0; i < num_keys; ++i) {
             data.emplace(from, [&]( auto& g ) {
                g.key = key + i;
-               g.data = vector<uint64_t>(num, 5);
+               g.data = vector<uint64_t>( static_cast<size_t>(num), 5);
             });
          }
       }
