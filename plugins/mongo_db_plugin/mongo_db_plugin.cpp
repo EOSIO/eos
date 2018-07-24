@@ -181,12 +181,13 @@ void mongo_db_plugin_impl::queue( Queue& queue, const Entry& e ) {
    if( queue_size > max_queue_size ) {
       lock.unlock();
       condition.notify_one();
-      queue_sleep_time += 100;
-      wlog("queue size: ${q}", ("q", queue_size));
+      queue_sleep_time += 10;
+      if( queue_sleep_time > 1000 )
+         wlog("queue size: ${q}", ("q", queue_size));
       boost::this_thread::sleep_for( boost::chrono::milliseconds( queue_sleep_time ));
       lock.lock();
    } else {
-      queue_sleep_time -= 100;
+      queue_sleep_time -= 10;
       if( queue_sleep_time < 0 ) queue_sleep_time = 0;
    }
    queue.emplace_back( e );
@@ -362,7 +363,10 @@ auto find_account( mongocxx::collection& accounts, const account_name& name ) {
 auto find_block( mongocxx::collection& blocks, const string& id ) {
    using bsoncxx::builder::basic::make_document;
    using bsoncxx::builder::basic::kvp;
-   return blocks.find_one( make_document( kvp( "block_id", id )));
+
+   mongocxx::options::find options;
+   options.projection( make_document( kvp( "_id", 1 )) ); // only return _id
+   return blocks.find_one( make_document( kvp( "block_id", id )), options);
 }
 
 void handle_mongo_exception( const std::string& desc, int line_num ) {
@@ -862,9 +866,6 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    const auto block_id = bs->block->id();
    const auto block_id_str = block_id.str();
    const auto block_num = bs->block->block_num();
-
-   // genesis block 1 is not signaled to accepted_block
-//   if (block_num < 2) return;
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
