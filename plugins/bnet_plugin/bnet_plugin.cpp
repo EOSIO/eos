@@ -253,12 +253,9 @@ namespace eosio {
            >
         > transaction_status_index;
 
-        auto get_status( block_id_type id ) {
-           return _block_status.find( id );
-        }
-
         block_status_index        _block_status;
         transaction_status_index  _transaction_status;
+        const uint32_t            _max_block_status_range = 2048; // limit tracked block_status known_by_peer
 
         public_key_type    _local_peer_id;
         uint32_t           _local_lib             = 0;
@@ -650,13 +647,20 @@ namespace eosio {
         void mark_block_known_by_peer( block_id_type id) {
             auto itr = _block_status.find(id);
             if( itr == _block_status.end() ) {
-               _block_status.insert( block_status(id, true, false) );
+               // optimization to avoid sending blocks to nodes that already know about them
+               // to avoid unbounded memory growth limit number tracked
+               auto min_block_num = std::min( _local_lib, _last_sent_block_num );
+               auto max_block_num = min_block_num + _max_block_status_range;
+               auto block_num = block_header::num_from_id(id);
+               if(block_num > min_block_num && block_num < max_block_num)
+                  _block_status.insert( block_status(id, true, false) );
             } else {
                _block_status.modify( itr, [&]( auto& item ) {
                  item.known_by_peer = true;
                });
             }
         }
+
         void mark_block_recv_from_peer( block_id_type id ) {
             auto itr = _block_status.find(id);
             if( itr == _block_status.end() ) {
