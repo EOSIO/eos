@@ -1699,8 +1699,8 @@ int main( int argc, char** argv ) {
       }
    });
    create_key->add_flag( "--r1", r1, "Generate a key using the R1 curve (iPhone), instead of the K1 curve (Bitcoin)"  );
-   create_key->add_option("-f,--file", key_file, localized("Name of file to write wallet password output to. (Must be set, unless \"--to-console\" is passed"));
-   create_key->add_flag( "--to-console", print_console, localized("Print password to console."));
+   create_key->add_option("-f,--file", key_file, localized("Name of file to write private/public key output to. (Must be set, unless \"--to-console\" is passed"));
+   create_key->add_flag( "--to-console", print_console, localized("Print private/public keys to console."));
 
    // create account
    auto createAccount = create_account_subcommand( create, true /*simple*/ );
