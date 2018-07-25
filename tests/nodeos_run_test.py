@@ -202,8 +202,6 @@ try:
         errorExit("FAILURE - wallet keys did not include %s" % (noMatch), raw=True)
 
     node=cluster.getNode(0)
-    if node is None:
-        errorExit("Cluster in bad state, received None node")
 
     Print("Validating accounts before user accounts creation")
     cluster.validateAccounts(None)

@@ -277,9 +277,6 @@ def myTest(transWillEnterBlock):
 
         node=cluster.getNode(0)
         node2=cluster.getNode(1)
-        if node is None or node2 is None:
-            error("Cluster in bad state, received None node")
-            return False
 
         defproduceraAccount=testUtils.Cluster.defproduceraAccount
 

@@ -78,8 +78,6 @@ try:
         errorExit("Failed to stand up eos cluster.")
 
     node=cluster.getNode(0)
-    if node is None:
-        errorExit("Cluster in bad state, received None node")
 
     Print("Kill cluster nodes.")
     cluster.killall(allInstances=killAll)

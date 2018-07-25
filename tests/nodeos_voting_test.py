@@ -250,17 +250,9 @@ try:
             trans=node.regproducer(cluster.defProducerAccounts[prod], "http::/mysite.com", 0, waitForTransBlock=False, exitOnError=True)
 
     node0=cluster.getNode(0)
-    if node0 is None:
-        errorExit("Cluster in bad state, received None node")
     node1=cluster.getNode(1)
-    if node1 is None:
-        errorExit("Cluster in bad state, received None node")
     node2=cluster.getNode(2)
-    if node2 is None:
-        errorExit("Cluster in bad state, received None node")
     node3=cluster.getNode(3)
-    if node3 is None:
-        errorExit("Cluster in bad state, received None node")
 
     node=node0
     # create accounts via eosio as otherwise a bid is needed
