@@ -7,14 +7,20 @@ import re
 import datetime
 import json
 
-from enum import Enum
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
 from testUtils import Account
 
-class ReturnType(Enum):
-    raw  = 1
-    json = 2
+class ReturnType:
+
+    def __init__(self, type):
+        self.type=type
+
+    def __str__(self):
+        return self.type
+
+setattr(ReturnType, "raw", ReturnType("raw"))
+setattr(ReturnType, "json", ReturnType("json"))
 
 # pylint: disable=too-many-public-methods
 class Node(object):
