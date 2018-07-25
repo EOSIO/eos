@@ -2364,6 +2364,16 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefa), N(bob) ),
                             fc::exception, fc_assert_exception_message_is( not_closed_message ) );
 
+   // place system's top bid on account "a"
+   bidname( "alice",  "a", core_from_string("1000.0000") );
+   // auction for account "a" is closed but account is not yet created
+   produce_block( fc::hours(48) );
+   // place system's top bid for account "b"
+   bidname( "bob",  "b", core_from_string("1500.0000") );
+   // auction for account "b" is closed and account "b" can be created before account "a" is created
+   produce_block( fc::hours(48) );
+   create_account_with_resources( N(b), N(bob) );
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( vote_producers_in_and_out, eosio_system_tester ) try {
