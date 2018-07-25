@@ -711,9 +711,6 @@ class Cluster(object):
 
         try:
             ignWallet=walletMgr.create("ignition")
-            if ignWallet is None:
-                Utils.Print("ERROR: Failed to create ignition wallet.")
-                return False
 
             eosioName="eosio"
             eosioKeys=producerKeys[eosioName]

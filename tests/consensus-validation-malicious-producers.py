@@ -265,9 +265,6 @@ def myTest(transWillEnterBlock):
         testWalletName="test"
         Print("Creating wallet \"%s\"." % (testWalletName))
         testWallet=walletMgr.create(testWalletName)
-        if testWallet is None:
-            error("Failed to create wallet %s." % (testWalletName))
-            return False
 
         for account in accounts:
             Print("Importing keys for account %s into wallet %s." % (account.name, testWallet.name))

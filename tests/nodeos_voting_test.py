@@ -234,9 +234,6 @@ try:
         errorExit("Failed to stand up eos walletd.")
 
     testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount,accounts[0],accounts[1],accounts[2],accounts[3],accounts[4]])
-    if testWallet is None:
-        Utils.cmdError("eos wallet create")
-        errorExit("Failed to create wallet %s." % (testWalletName))
 
     for _, account in cluster.defProducerAccounts.items():
         walletMgr.importKey(account, testWallet, ignoreDupKeyWarning=True)

@@ -114,9 +114,6 @@ try:
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
     testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount,cluster.defproduceraAccount,cluster.defproducerbAccount])
-    if testWallet is None:
-        cmdError("eos wallet create")
-        errorExit("Failed to create wallet %s." % (testWalletName))
 
     Print("Wallet \"%s\" password=%s." % (testWalletName, testWallet.password.encode("utf-8")))
 
@@ -129,9 +126,6 @@ try:
     defproduceraWalletName="defproducera"
     Print("Creating wallet \"%s\"." % (defproduceraWalletName))
     defproduceraWallet=walletMgr.create(defproduceraWalletName)
-    if defproduceraWallet is None:
-        cmdError("eos wallet create")
-        errorExit("Failed to create wallet %s." % (defproduceraWalletName))
 
     Print("Wallet \"%s\" password=%s." % (defproduceraWalletName, defproduceraWallet.password.encode("utf-8")))
 

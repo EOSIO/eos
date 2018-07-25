@@ -83,8 +83,6 @@ try:
     walletName="MyWallet"
     Print("Creating wallet %s if one doesn't already exist." % walletName)
     wallet=walletMgr.create(walletName, [cluster.eosioAccount,cluster.defproduceraAccount,cluster.defproducerbAccount])
-    if wallet is None:
-        errorExit("Failed to create wallet %s" % (walletName))
 
     Print ("Populate wallet with %d accounts." % (accountsCount))
     if not cluster.populateWallet(accountsCount, wallet):
