@@ -184,7 +184,7 @@ errorExit=Utils.errorExit
 
 from core_symbol import CORE_SYMBOL
 
-args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"})
+args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run","--p2p-plugin"})
 Utils.Debug=args.v
 totalNodes=4
 cluster=Cluster(walletd=True)
@@ -193,6 +193,7 @@ keepLogs=args.keep_logs
 dontKill=args.leave_running
 prodCount=args.prod_count
 killAll=args.clean_run
+p2pPlugin=args.p2p_plugin
 
 walletMgr=WalletMgr(True)
 testSuccessful=False
@@ -208,7 +209,7 @@ try:
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
     Print("Stand up cluster")
-    if cluster.launch(prodCount=prodCount, onlyBios=False, dontKill=dontKill, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes*21) is False:
+    if cluster.launch(prodCount=prodCount, onlyBios=False, dontKill=dontKill, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes*21, p2pPlugin=p2pPlugin) is False:
         Utils.cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
 
