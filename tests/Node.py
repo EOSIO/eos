@@ -546,7 +546,7 @@ class Node(object):
         return ret
 
     # Trasfer funds. Returns "transfer" json return object
-    def transferFunds(self, source, destination, amountStr, memo="memo", force=False, waitForTransBlock=False):
+    def transferFunds(self, source, destination, amountStr, memo="memo", force=False, waitForTransBlock=False, exitOnError=True):
         assert isinstance(amountStr, str)
         assert(source)
         assert(isinstance(source, Account))
@@ -568,11 +568,19 @@ class Node(object):
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during funds transfer. %s" % (msg))
+            if exitOnError:
+                Utils.cmdError("could not transfer \"%s\" from %s to %s" % (amountStr, source, destination))
+                errorExit("Failed to transfer \"%s\" from %s to %s" % (amountStr, source, destination))
             return None
 
-        assert(trans)
+        if trans is None:
+            Utils.cmdError("could not transfer \"%s\" from %s to %s" % (amountStr, source, destination))
+            errorExit("Failed to transfer \"%s\" from %s to %s" % (amountStr, source, destination))
         transId=Node.getTransId(trans)
         if waitForTransBlock and not self.waitForTransInBlock(transId):
+            if exitOnError:
+                Utils.cmdError("could not find transfer with transId=%s in block" % (transId))
+                errorExit("Failed to find transfer with transId=%s in block" % (transId))
             return None
 
         return trans

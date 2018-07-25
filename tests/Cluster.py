@@ -460,7 +460,6 @@ class Cluster(object):
         Utils.Print("Transfer %s units from account %s to %s on eos server port %d" % (
             transferAmountStr, fromm.name, to.name, node.port))
         trans=node.transferFunds(fromm, to, transferAmountStr)
-        assert(trans)
         transId=Node.getTransId(trans)
         if transId is None:
             return False
