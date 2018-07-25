@@ -15,7 +15,7 @@ if [ -d "/usr/local/eosio" ]; then
       case $yn in
          [Yy]* )
             if [ "$(id -u)" -ne 0 ]; then
-               printf "\n\tThis requires sudo, please run ./scripts/clean_old_install.sh with sudo\n\n"
+               printf "\n\tThis requires sudo, please run ./eosio_uninstall.sh with sudo\n\n"
                exit -1
             fi
 
