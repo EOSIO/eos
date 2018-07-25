@@ -220,10 +220,7 @@ try:
 
     transferAmount="97.5321 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (transferAmount, defproduceraAccount.name, testeraAccount.name))
-    if node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer") is None:
-        cmdError("%s transfer" % (ClientName))
-        errorExit("Failed to transfer funds %d from account %s to %s" % (
-            transferAmount, defproduceraAccount.name, testeraAccount.name))
+    node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer")
 
     expectedAmount=transferAmount
     Print("Verify transfer, Expected: %s" % (expectedAmount))
@@ -235,10 +232,7 @@ try:
     transferAmount="0.0100 {0}".format(CORE_SYMBOL)
     Print("Force transfer funds %s from account %s to %s" % (
         transferAmount, defproduceraAccount.name, testeraAccount.name))
-    if node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", force=True) is None:
-        cmdError("%s transfer" % (ClientName))
-        errorExit("Failed to force transfer funds %d from account %s to %s" % (
-            transferAmount, defproduceraAccount.name, testeraAccount.name))
+    node.transferFunds(defproduceraAccount, testeraAccount, transferAmount, "test transfer", force=True)
 
     expectedAmount="97.5421 {0}".format(CORE_SYMBOL)
     Print("Verify transfer, Expected: %s" % (expectedAmount))
@@ -265,10 +259,6 @@ try:
     Print("Transfer funds %s from account %s to %s" % (
         transferAmount, testeraAccount.name, currencyAccount.name))
     trans=node.transferFunds(testeraAccount, currencyAccount, transferAmount, "test transfer a->b")
-    if trans is None:
-        cmdError("%s transfer" % (ClientName))
-        errorExit("Failed to transfer funds %d from account %s to %s" % (
-            transferAmount, testeraAccount.name, currencyAccount.name))
     transId=Node.getTransId(trans)
 
     expectedAmount="98.0311 {0}".format(CORE_SYMBOL) # 5000 initial deposit
