@@ -1,0 +1,96 @@
+cmake_minimum_required( VERSION 3.5 )
+
+include(EosioTesterCommon)
+
+find_library(libtester eosio_testing @CMAKE_INSTALL_FULL_LIBDIR@)
+find_library(libchain eosio_chain @CMAKE_INSTALL_FULL_LIBDIR@)
+if ( "${CMAKE_BUILD_TYPE}" EQUAL "Debug" )
+   find_library(libfc fc_debug @CMAKE_INSTALL_FULL_LIBDIR@)
+else()
+   find_library(libfc fc @CMAKE_INSTALL_FULL_LIBDIR@)
+endif()
+
+find_library(libbinaryen binaryen @CMAKE_INSTALL_FULL_LIBDIR@)
+find_library(libwasm WASM @CMAKE_INSTALL_FULL_LIBDIR@)
+find_library(libwast WAST @CMAKE_INSTALL_FULL_LIBDIR@)
+find_library(libir IR     @CMAKE_INSTALL_FULL_LIBDIR@)
+find_library(libplatform Platform @CMAKE_INSTALL_FULL_LIBDIR@)
+find_library(liblogging Logging @CMAKE_INSTALL_FULL_LIBDIR@)
+find_library(libruntime Runtime @CMAKE_INSTALL_FULL_LIBDIR@)
+find_library(libsoftfloat softfloat @CMAKE_INSTALL_FULL_LIBDIR@)
+find_library(liboscrypto crypto @OPENSSL_ROOT_DIR@/lib)
+find_library(libosssl ssl @OPENSSL_ROOT_DIR@/lib)
+find_library(libchainbase chainbase @CMAKE_INSTALL_FULL_LIBDIR@)
+find_library(libbuiltins builtins @CMAKE_INSTALL_FULL_LIBDIR@)
+find_library(libsecp256k1 secp256k1 @Secp256k1_ROOT_DIR@/lib)
+
+macro(add_eosio_test test_name)
+   add_executable( ${test_name} ${ARGN} )
+   target_link_libraries( ${test_name} 
+       ${LLVM} 
+       ${libtester}    
+       ${libchain} 
+       ${libfc} 
+       ${libbinaryen} 
+       ${libwast} 
+       ${libwasm} 
+       ${libruntime} 
+       ${libplatform} 
+       ${libir} 
+       ${libsoftfloat} 
+       ${liboscrypto} 
+       ${libosssl} 
+       ${liblogging} 
+       ${libchainbase} 
+       ${libbuiltins} 
+       ${libsecp256k1} 
+
+       LLVMX86Disassembler
+       LLVMX86AsmParser
+       LLVMX86AsmPrinter
+       LLVMX86CodeGen
+
+       LLVMSelectionDAG
+
+       LLVMDebugInfoDWARF
+       LLVMAsmPrinter
+       LLVMMCParser
+       LLVMX86Info
+
+       LLVMOrcJIT
+       LLVMExecutionEngine
+
+       LLVMCodeGen
+       LLVMScalarOpts
+       LLVMTransformUtils
+
+       LLVMipo
+       LLVMAnalysis
+       LLVMTarget
+       LLVMMC
+       LLVMCore
+       LLVMSupport
+       ${Boost_FILESYSTEM_LIBRARY}
+       ${Boost_SYSTEM_LIBRARY}
+       ${Boost_CHRONO_LIBRARY}
+       ${Boost_IOSTREAMS_LIBRARY}
+       ${Boost_DATE_TIME_LIBRARY}
+       ${PLATFORM_SPECIFIC_LIBS}
+      )
+
+   target_include_directories( ${test_name} PUBLIC
+                               ${Boost_INCLUDE_DIRS}
+                               @OPENSSL_INCLUDE_DIR@
+                               @CMAKE_INSTALL_PREFIX@
+                               @CMAKE_INSTALL_FULL_INCLUDEDIR@ 
+                               @CMAKE_INSTALL_FULL_INCLUDEDIR@/eosio/wasm-jit/Include
+                               @CMAKE_INSTALL_FULL_INCLUDEDIR@/eosio/softfloat/include
+                               ${CMAKE_CURRENT_BINARY_DIR}/include )
+                            #
+   #Manually run unit_test for all supported runtimes
+   #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
+   add_test(NAME ${test_name}_binaryen COMMAND ${test_name}
+    --report_level=detailed --color_output -- --binaryen)
+   add_test(NAME ${test_name}_wavm COMMAND ${test_name}
+    --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
+endmacro()
