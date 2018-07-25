@@ -442,16 +442,20 @@ class Node(object):
         else:
             return self.getEosAccountFromDb(name, exitOnError=exitOnError)
 
-    def getEosAccountFromDb(self, name):
+    def getEosAccountFromDb(self, name, exitOnError=False):
         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
         subcommand='db.accounts.findOne({"name" : "%s"})' % (name)
         if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
         try:
-            trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
+            trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand, exitOnError=exitOnError)
             return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during get account from db. %s" % (msg))
+            if exitOnError:
+                Utils.cmdError("Exception during get account from db for %s. %s" % (name, msg))
+                errorExit("Failed during get account from db for %s. %s" % (name, msg))
+
+            Utils.Print("ERROR: Exception during get account from db for %s. %s" % (name, msg))
             return None
 
     def getTable(self, contract, scope, table, exitOnError=False):
