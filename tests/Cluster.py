@@ -244,7 +244,7 @@ class Cluster(object):
         node.setWalletEndpointArgs(self.walletEndpointArgs)
         if Utils.Debug: Utils.Print("Node: %s", str(node))
 
-        node.checkPulse()
+        node.checkPulse(exitOnError=True)
         self.nodes=[node]
 
         if defproduceraPrvtKey is not None:
@@ -284,7 +284,7 @@ class Cluster(object):
             node.setWalletEndpointArgs(self.walletEndpointArgs)
             if Utils.Debug: Utils.Print("Node:", node)
 
-            node.checkPulse()
+            node.checkPulse(exitOnError=True)
             nodes.append(node)
 
         self.nodes=nodes
@@ -313,7 +313,6 @@ class Cluster(object):
             for node in nodes:
                 try:
                     if (not node.killed) and (not node.isBlockPresent(targetBlockNum)):
-                    #if (not node.killed) and (not node.isBlockFinalized(targetBlockNum)):
                         return False
                 except (TypeError) as _:
                     # This can happen if client connects before server is listening
@@ -430,7 +429,13 @@ class Cluster(object):
         self.accounts=accounts
         return True
 
-    def getNode(self, nodeId=0):
+    def getNode(self, nodeId=0, exitOnError=True):
+        if exitOnError and nodeId >= len(self.nodes):
+            Utils.cmdError("cluster never created node %d" % (nodeId))
+            errorExit("Failed to retrieve node %d" % (nodeId))
+        if exitOnError and self.nodes[nodeId] is None:
+            Utils.cmdError("cluster has None value for node %d" % (nodeId))
+            errorExit("Failed to retrieve node %d" % (nodeId))
         return self.nodes[nodeId]
 
     def getNodes(self):
@@ -455,7 +460,6 @@ class Cluster(object):
         Utils.Print("Transfer %s units from account %s to %s on eos server port %d" % (
             transferAmountStr, fromm.name, to.name, node.port))
         trans=node.transferFunds(fromm, to, transferAmountStr)
-        assert(trans)
         transId=Node.getTransId(trans)
         if transId is None:
             return False
@@ -571,8 +575,7 @@ class Cluster(object):
         """create account, verify account and return transaction id"""
         assert(len(self.nodes) > 0)
         node=self.nodes[0]
-        trans=node.createInitializeAccount(account, creator, stakedDeposit, stakeNet=stakeNet, stakeCPU=stakeCPU, buyRAM=buyRAM)
-        assert(trans)
+        trans=node.createInitializeAccount(account, creator, stakedDeposit, stakeNet=stakeNet, stakeCPU=stakeCPU, buyRAM=buyRAM, exitOnError=True)
         assert(node.verifyAccount(account))
         return trans
 
@@ -589,7 +592,7 @@ class Cluster(object):
     #         return transId
     #     return None
 
-    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=100):
+    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=100, exitOnError=False):
         assert(len(self.nodes) > 0)
         node=self.nodes[0]
         trans=node.createInitializeAccount(account, creatorAccount, stakedDeposit, waitForTransBlock, stakeNet=stakeNet, stakeCPU=stakeCPU, buyRAM=buyRAM)
@@ -707,9 +710,6 @@ class Cluster(object):
 
         try:
             ignWallet=walletMgr.create("ignition")
-            if ignWallet is None:
-                Utils.Print("ERROR: Failed to create ignition wallet.")
-                return False
 
             eosioName="eosio"
             eosioKeys=producerKeys[eosioName]
@@ -807,7 +807,7 @@ class Cluster(object):
                     return False
 
                 # wait for block production handover (essentially a block produced by anyone but eosio).
-                lam = lambda: biosNode.getInfo()["head_block_producer"] != "eosio"
+                lam = lambda: biosNode.getInfo(exitOnError=True)["head_block_producer"] != "eosio"
                 ret=Utils.waitForBool(lam)
                 if not ret:
                     Utils.Print("ERROR: Block production handover failed.")

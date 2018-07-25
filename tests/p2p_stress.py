@@ -34,7 +34,7 @@ class StressNetwork:
         ta.name = self.randAcctName()
         acc1 = copy.copy(ta)
         print("creating new account %s" % (ta.name))
-        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=True)
+        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=True, exitOnError=True)
         trid = node.getTransId(tr)
         if trid is None:
             return ([], "", 0.0, "failed to create account")
@@ -43,7 +43,7 @@ class StressNetwork:
         ta.name = self.randAcctName()
         acc2 = copy.copy(ta)
         print("creating new account %s" % (ta.name))
-        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=True)
+        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=True, exitOnError=True)
         trid = node.getTransId(tr)
         if trid is None:
             return ([], "", 0.0, "failed to create account")

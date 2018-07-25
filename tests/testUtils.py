@@ -6,6 +6,7 @@ import inspect
 import json
 import shlex
 from sys import stdout
+import traceback
 
 ###########################################################################################
 class Utils:
@@ -81,15 +82,13 @@ class Utils:
     @staticmethod
     def errorExit(msg="", raw=False, errorCode=1):
         Utils.Print("ERROR:" if not raw else "", msg)
+        traceback.print_stack(limit=-1)
         exit(errorCode)
 
     @staticmethod
-    def cmdError(name, cmdCode=0, exitNow=False):
+    def cmdError(name, cmdCode=0):
         msg="FAILURE - %s%s" % (name, ("" if cmdCode == 0 else (" returned error code %d" % cmdCode)))
-        if exitNow:
-            Utils.errorExit(msg, True)
-        else:
-            Utils.Print(msg)
+        Utils.Print(msg)
 
     @staticmethod
     def waitForObj(lam, timeout=None):

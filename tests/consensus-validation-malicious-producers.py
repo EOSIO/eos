@@ -21,6 +21,7 @@ import shutil
 
 
 Print=testUtils.Utils.Print
+errorExit=Utils.errorExit
 
 StagedNodeInfo=namedtuple("StagedNodeInfo", "config logging")
 
@@ -192,11 +193,6 @@ def stageScenario(stagedNodeInfos):
 def cleanStaging():
     os.path.exists(stagingDir) and shutil.rmtree(stagingDir)
 
-
-def errorExit(msg="", errorCode=1):
-    Print("ERROR:", msg)
-    exit(errorCode)
-
 def error(msg="", errorCode=1):
     Print("ERROR:", msg)
 
@@ -269,9 +265,6 @@ def myTest(transWillEnterBlock):
         testWalletName="test"
         Print("Creating wallet \"%s\"." % (testWalletName))
         testWallet=walletMgr.create(testWalletName)
-        if testWallet is None:
-            error("Failed to create wallet %s." % (testWalletName))
-            return False
 
         for account in accounts:
             Print("Importing keys for account %s into wallet %s." % (account.name, testWallet.name))
@@ -281,9 +274,6 @@ def myTest(transWillEnterBlock):
 
         node=cluster.getNode(0)
         node2=cluster.getNode(1)
-        if node is None or node2 is None:
-            error("Cluster in bad state, received None node")
-            return False
 
         defproduceraAccount=testUtils.Cluster.defproduceraAccount
 
@@ -338,14 +328,14 @@ def myTest(transWillEnterBlock):
                 return False
 
             Print("Get details for transaction %s" % (transId))
-            transaction=node2.getTransaction(transId)
+            transaction=node2.getTransaction(transId, exitOnError=True)
             signature=transaction["transaction"]["signatures"][0]
 
             blockNum=int(transaction["transaction"]["ref_block_num"])
             blockNum += 1
             Print("Our transaction is in block %d" % (blockNum))
 
-            block=node2.getBlock(blockNum)
+            block=node2.getBlock(blockNum, exitOnError=True)
             cycles=block["cycles"]
             if len(cycles) > 0:
                 blockTransSignature=cycles[0][0]["user_input"][0]["signatures"][0]
