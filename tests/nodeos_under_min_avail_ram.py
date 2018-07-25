@@ -113,17 +113,9 @@ try:
 
     nodes=[]
     nodes.append(cluster.getNode(0))
-    if nodes[0] is None:
-        errorExit("Cluster in bad state, received None node")
     nodes.append(cluster.getNode(1))
-    if nodes[1] is None:
-        errorExit("Cluster in bad state, received None node")
     nodes.append(cluster.getNode(2))
-    if nodes[2] is None:
-        errorExit("Cluster in bad state, received None node")
     nodes.append(cluster.getNode(3))
-    if nodes[3] is None:
-        errorExit("Cluster in bad state, received None node")
 
 
     for account in accounts:

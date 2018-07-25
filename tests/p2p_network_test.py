@@ -137,8 +137,6 @@ if not walletMgr.importKey(defproduceraAccount, defproduceraWallet):
      errorExit("Failed to import key for account %s" % (defproduceraAccount.name))
 
 node0=cluster.getNode(0)
-if node0 is None:
-    errorExit("cluster in bad state, received None node")
 
 # eosio should have the same key as defproducera
 eosio = copy.copy(defproduceraAccount)
@@ -146,7 +144,7 @@ eosio.name = "eosio"
 
 Print("Info of each node:")
 for i in range(len(hosts)):
-    node = cluster.getNode(0)
+    node = node0
     cmd="%s %s get info" % (testUtils.Utils.EosClientPath, node.endpointArgs)
     trans = node.runCmdReturnJson(cmd)
     Print("host %s: %s" % (hosts[i], trans))
