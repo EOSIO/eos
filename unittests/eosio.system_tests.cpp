@@ -2372,7 +2372,7 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
    bidname( "bob",  "b", core_from_string("1500.0000") );
    // auction for account "b" is closed and account "b" can be created before account "a" is created
    produce_block( fc::hours(48) );
-   create_account_with_resources( N(bob), N(b) );
+   create_account_with_resources( N(b), N(bob) );
 
 } FC_LOG_AND_RETHROW()
 
