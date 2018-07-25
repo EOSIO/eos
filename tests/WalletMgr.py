@@ -47,7 +47,7 @@ class WalletMgr(object):
         time.sleep(1)
         return True
 
-    def create(self, name, accounts=None):
+    def create(self, name, accounts=None, exitOnError=True):
         wallet=self.wallets.get(name)
         if wallet is not None:
             if Utils.Debug: Utils.Print("Wallet \"%s\" already exists. Returning same." % name)
@@ -59,6 +59,10 @@ class WalletMgr(object):
         #Utils.Print("create: %s" % (retStr))
         m=p.search(retStr)
         if m is None:
+            if exitOnError:
+                Utils.cmdError("could not create wallet %s" % (name))
+                errorExit("Failed  to create wallet %s" % (name))
+
             Utils.Print("ERROR: wallet password parser failure")
             return None
         p=m.group(1)
