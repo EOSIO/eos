@@ -24,6 +24,7 @@ namespace fc { class variant; }
 namespace eosio {
    using chain::controller;
    using std::unique_ptr;
+   using std::pair;
    using namespace appbase;
    using chain::name;
    using chain::uint128_t;
@@ -33,6 +34,7 @@ namespace eosio {
    using chain::asset;
    using chain::authority;
    using chain::account_name;
+   using chain::action_name;
    using chain::abi_def;
    using chain::abi_serializer;
 
@@ -453,6 +455,18 @@ public:
       return result;
    }
 
+   using get_whitelist_blacklist_params = empty;
+
+   struct get_whitelist_blacklist_results {
+      flat_set<account_name>   actor_whitelist;
+      flat_set<account_name>   actor_blacklist;
+      flat_set<account_name>   contract_whitelist;
+      flat_set<account_name>   contract_blacklist;
+      flat_set< pair<account_name, action_name> > action_blacklist;
+      flat_set<public_key_type> key_blacklist;
+   };
+   get_whitelist_blacklist_results get_whitelist_blacklist(const get_whitelist_blacklist_params&) const;
+
    friend struct resolver_factory<read_only>;
 };
 
@@ -478,6 +492,17 @@ public:
    using push_transactions_params  = vector<push_transaction_params>;
    using push_transactions_results = vector<push_transaction_results>;
    void push_transactions(const push_transactions_params& params, chain::plugin_interface::next_function<push_transactions_results> next);
+
+   struct set_whitelist_blacklist_params {
+      optional< flat_set<account_name> > actor_whitelist;
+      optional< flat_set<account_name> > actor_blacklist;
+      optional< flat_set<account_name> > contract_whitelist;
+      optional< flat_set<account_name> > contract_blacklist;
+      optional< flat_set< pair<account_name, action_name> > > action_blacklist;
+      optional< flat_set<public_key_type> > key_blacklist;
+   };   
+   using set_whitelist_blacklist_results = empty;
+   set_whitelist_blacklist_results set_whitelist_blacklist(const set_whitelist_blacklist_params& params) const;
 
    friend resolver_factory<read_write>;
 };
@@ -581,3 +606,6 @@ FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
+
+FC_REFLECT( eosio::chain_apis::read_only::get_whitelist_blacklist_results, (actor_whitelist)(actor_blacklist)(contract_whitelist)(contract_blacklist)(action_blacklist)(key_blacklist) )
+FC_REFLECT( eosio::chain_apis::read_write::set_whitelist_blacklist_params, (actor_whitelist)(actor_blacklist)(contract_whitelist)(contract_blacklist)(action_blacklist)(key_blacklist) )

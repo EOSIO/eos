@@ -1309,6 +1309,27 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
    return vo;
 }
 
+read_only::get_whitelist_blacklist_results read_only::get_whitelist_blacklist(const read_only::get_whitelist_blacklist_params& params) const {
+   return {
+      db.get_actor_whitelist(),
+      db.get_actor_blacklist(),
+      db.get_contract_whitelist(),
+      db.get_contract_blacklist(),
+      db.get_action_blacklist(),
+      db.get_key_blacklist()
+   };
+}
+
+read_write::set_whitelist_blacklist_results read_write::set_whitelist_blacklist(const read_write::set_whitelist_blacklist_params& params) const {
+      if(params.actor_whitelist.valid()) db.set_actor_whitelist(*params.actor_whitelist);
+      if(params.actor_blacklist.valid()) db.set_actor_blacklist(*params.actor_blacklist);
+      if(params.contract_whitelist.valid()) db.set_contract_whitelist(*params.contract_whitelist);
+      if(params.contract_blacklist.valid()) db.set_contract_blacklist(*params.contract_blacklist);
+      if(params.action_blacklist.valid()) db.set_action_blacklist(*params.action_blacklist);
+      if(params.key_blacklist.valid()) db.set_key_blacklist(*params.key_blacklist);
+      return set_whitelist_blacklist_results{};
+}
+
 void read_write::push_block(const read_write::push_block_params& params, next_function<read_write::push_block_results> next) {
    try {
       app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(params));
