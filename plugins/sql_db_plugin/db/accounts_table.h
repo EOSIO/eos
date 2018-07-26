@@ -6,6 +6,8 @@
 
 namespace eosio {
 
+using std::string;
+
 class accounts_table
 {
 public:
@@ -13,6 +15,8 @@ public:
 
     void drop();
     void create();
+    void add(string name);
+    bool exist(string name);
 
 private:
     std::shared_ptr<soci::session> m_session;
