@@ -82,6 +82,10 @@ void producer_api_plugin::plugin_startup() {
             INVOKE_V_R(producer, remove_greylist_accounts, producer_plugin::greylist_params), 201), 
        CALL(producer, producer, get_greylist,
             INVOKE_R_V(producer, get_greylist), 201),                 
+       CALL(producer, producer, get_whitelist_blacklist,
+            INVOKE_R_V(producer, get_whitelist_blacklist), 201),
+       CALL(producer, producer, set_whitelist_blacklist, 
+            INVOKE_V_R(producer, set_whitelist_blacklist, producer_plugin::whitelist_blacklist), 201),   
    });
 }
 

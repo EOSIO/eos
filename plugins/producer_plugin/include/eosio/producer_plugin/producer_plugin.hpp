@@ -26,6 +26,15 @@ public:
       fc::optional<int32_t> subjective_cpu_leeway_us;
    };
 
+   struct whitelist_blacklist {
+      fc::optional< flat_set<account_name> > actor_whitelist;
+      fc::optional< flat_set<account_name> > actor_blacklist;
+      fc::optional< flat_set<account_name> > contract_whitelist;
+      fc::optional< flat_set<account_name> > contract_blacklist;
+      fc::optional< flat_set< std::pair<account_name, action_name> > > action_blacklist;
+      fc::optional< flat_set<public_key_type> > key_blacklist;
+   };
+
    struct greylist_params {
       std::vector<account_name> accounts;
    };
@@ -55,6 +64,10 @@ public:
    void remove_greylist_accounts(const greylist_params& params);
    greylist_params get_greylist() const;
 
+   whitelist_blacklist get_whitelist_blacklist() const;
+   void set_whitelist_blacklist(const whitelist_blacklist& params);
+   
+
    signal<void(const chain::producer_confirmation&)> confirmed_block;
 private:
    std::shared_ptr<class producer_plugin_impl> my;
@@ -64,4 +77,6 @@ private:
 
 FC_REFLECT(eosio::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age)(produce_time_offset_us)(last_block_time_offset_us)(subjective_cpu_leeway_us));
 FC_REFLECT(eosio::producer_plugin::greylist_params, (accounts));
+FC_REFLECT(eosio::producer_plugin::whitelist_blacklist, (actor_whitelist)(actor_blacklist)(contract_whitelist)(contract_blacklist)(action_blacklist)(key_blacklist) )
+
 
