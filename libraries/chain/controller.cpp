@@ -464,14 +464,14 @@ struct controller_impl {
       return fc::make_scoped_exit( std::move(callback) );
    }
 
-   transaction_trace_ptr apply_onerror( const generated_transaction_object& gto,
+   transaction_trace_ptr apply_onerror( const generated_transaction& gtrx,
                                         fc::time_point deadline,
                                         fc::time_point start,
                                         uint32_t billed_cpu_time_us) {
       signed_transaction etrx;
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
-      etrx.actions.emplace_back( vector<permission_level>{{gto.sender, config::active_name}},
-                                 onerror( gto.sender_id, gto.packed_trx.data(), gto.packed_trx.size() ) );
+      etrx.actions.emplace_back( vector<permission_level>{{gtrx.sender, config::active_name}},
+                                 onerror( gtrx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() ) );
       etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
       etrx.set_reference_block( self.head_block_id() );
 
@@ -481,13 +481,13 @@ struct controller_impl {
       transaction_trace_ptr trace = trx_context.trace;
       try {
          trx_context.init_for_implicit_trx();
-         trx_context.published = gto.published;
+         trx_context.published = gtrx.published;
          trx_context.trace->action_traces.emplace_back();
-         trx_context.dispatch_action( trx_context.trace->action_traces.back(), etrx.actions.back(), gto.sender );
+         trx_context.dispatch_action( trx_context.trace->action_traces.back(), etrx.actions.back(), gtrx.sender );
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
          auto restore = make_block_restore_point();
-         trace->receipt = push_receipt( gto.trx_id, transaction_receipt::soft_fail,
+         trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::soft_fail,
                                         trx_context.billed_cpu_time_us, trace->net_usage );
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
@@ -539,19 +539,27 @@ struct controller_impl {
    transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, uint32_t billed_cpu_time_us )
    { try {
       auto undo_session = db.start_undo_session(true);
-      fc::datastream<const char*> ds( gto.packed_trx.data(), gto.packed_trx.size() );
+      auto gtrx = generated_transaction(gto);
 
-      auto remove_retained_state = fc::make_scoped_exit([&, this](){
-         remove_scheduled_transaction(gto);
-      });
+      // remove the generated transaction object after making a copy
+      // this will ensure that anything which affects the GTO multi-index-container will not invalidate
+      // data we need to successfully retire this transaction.
+      //
+      // IF the transaction FAILs in a subjective way, `undo_session` should expire without being squashed
+      // resulting in the GTO being restored and available for a future block to retire.
+      remove_scheduled_transaction(gto);
 
-      EOS_ASSERT( gto.delay_until <= self.pending_block_time(), transaction_exception, "this transaction isn't ready",
-                 ("gto.delay_until",gto.delay_until)("pbt",self.pending_block_time())          );
-      if( gto.expiration < self.pending_block_time() ) {
+      fc::datastream<const char*> ds( gtrx.packed_trx.data(), gtrx.packed_trx.size() );
+
+      EOS_ASSERT( gtrx.delay_until <= self.pending_block_time(), transaction_exception, "this transaction isn't ready",
+                 ("gtrx.delay_until",gtrx.delay_until)("pbt",self.pending_block_time())          );
+
+
+      if( gtrx.expiration < self.pending_block_time() ) {
          auto trace = std::make_shared<transaction_trace>();
-         trace->id = gto.trx_id;
+         trace->id = gtrx.trx_id;
          trace->scheduled = false;
-         trace->receipt = push_receipt( gto.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
+         trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
          undo_session.squash();
          return trace;
       }
@@ -564,20 +572,20 @@ struct controller_impl {
       });
       in_trx_requiring_checks = true;
 
-      transaction_context trx_context( self, dtrx, gto.trx_id );
+      transaction_context trx_context( self, dtrx, gtrx.trx_id );
       trx_context.deadline = deadline;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       transaction_trace_ptr trace = trx_context.trace;
       flat_set<account_name>  bill_to_accounts;
       try {
-         trx_context.init_for_deferred_trx( gto.published );
+         trx_context.init_for_deferred_trx( gtrx.published );
          bill_to_accounts = trx_context.bill_to_accounts;
          trx_context.exec();
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
          auto restore = make_block_restore_point();
 
-         trace->receipt = push_receipt( gto.trx_id,
+         trace->receipt = push_receipt( gtrx.trx_id,
                                         transaction_receipt::executed,
                                         trx_context.billed_cpu_time_us,
                                         trace->net_usage );
@@ -599,10 +607,10 @@ struct controller_impl {
 
       // Only soft or hard failure logic below:
 
-      if( gto.sender != account_name() && !failure_is_subjective(*trace->except)) {
+      if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
          dlog("${detail}", ("detail", trace->except->to_detail_string()));
-         auto error_trace = apply_onerror( gto, deadline, trx_context.start, trx_context.billed_cpu_time_us );
+         auto error_trace = apply_onerror( gtrx, deadline, trx_context.start, trx_context.billed_cpu_time_us );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
          if( !trace->except_ptr ) {
@@ -618,12 +626,8 @@ struct controller_impl {
       resource_limits.add_transaction_usage( bill_to_accounts, trx_context.billed_cpu_time_us, 0,
                                              block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
 
-      if (failure_is_subjective(*trace->except)) {
-         // this is a subjective failure, don't remove the retained state so it can be
-         // retried at a later time and don't include any artifact of the transaction in the pending block
-         remove_retained_state.cancel();
-      } else {
-         trace->receipt = push_receipt(gto.trx_id, transaction_receipt::hard_fail, trx_context.billed_cpu_time_us, 0);
+      if (!failure_is_subjective(*trace->except)) {
+         trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, trx_context.billed_cpu_time_us, 0);
          emit( self.applied_transaction, trace );
          undo_session.squash();
       }
