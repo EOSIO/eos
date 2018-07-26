@@ -220,7 +220,7 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! "${TEMP_DIR}"/boost_1_67_0/b2 install
+		if ! "${TEMP_DIR}"/boost_1_67_0/b2 -j"${CPU_CORE}" install
 		then
 			printf "\\n\\tInstallation of boost libraries failed. 1\\n"
 			printf "\\tExiting now.\\n\\n"
