@@ -8,5 +8,3 @@ add_subdirectory( appbase )
 add_subdirectory( chain )
 add_subdirectory( testing )
 add_subdirectory( abi_generator )
-
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/softfloat/source/include DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/eosio/softfloat)
