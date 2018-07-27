@@ -117,6 +117,7 @@ class TestHelper(object):
         else:
             Utils.Print("Test failed.")
         if not testSuccessful and dumpErrorDetails:
+            cluster.reportStatus()
             cluster.dumpErrorDetails()
             if walletMgr:
                 walletMgr.dumpErrorDetails()

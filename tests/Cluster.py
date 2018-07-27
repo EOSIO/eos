@@ -1116,3 +1116,9 @@ class Cluster(object):
 
         return True
 
+    def reportStatus(self):
+        if hasattr(self, "biosNode") and self.biosNode is not None:
+            self.biosNode.reportStatus()
+        if hasattr(self, "nodes"): 
+            for node in self.nodes:
+                node.reportStatus()

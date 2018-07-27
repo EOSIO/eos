@@ -39,6 +39,9 @@ class Node(object):
         self.mongoDb=mongoDb
         self.endpointArgs="--url http://%s:%d" % (self.host, self.port)
         self.mongoEndpointArgs=""
+        self.infoValid=None
+        self.lastRetrievedHeadBlockNum=None
+        self.lastRetrievedLIB=None
         if self.enableMongo:
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
@@ -897,7 +900,14 @@ class Node(object):
 
     def getInfo(self, silentErrors=False, exitOnError=False):
         cmdDesc = "get info"
-        return self.processCmd(cmdDesc, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError)
+        info=self.processCmd(cmdDesc, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError)
+        if info is None:
+            self.infoValid=False
+        else:
+            self.infoValid=True
+            self.lastRetrievedHeadBlockNum=int(info["head_block_num"])
+            self.lastRetrievedLIB=int(info["last_irreversible_block_num"])
+        return info
 
     def getBlockFromDb(self, idx):
         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
@@ -969,8 +979,8 @@ class Node(object):
         self.killed=True
         return True
 
-    def verifyAlive(self):
-        if Utils.Debug: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
+    def verifyAlive(self, silent=False):
+        if not silent and Utils.Debug: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
         if self.killed or self.pid is None:
             return False
 
@@ -1056,3 +1066,15 @@ class Node(object):
         self.cmd=cmd
         self.killed=False
         return True
+
+    def reportStatus(self):
+        Utils.Print("Node State:")
+        Utils.Print(" cmd   : %s" % (self.cmd))
+        self.verifyAlive(silent=True)
+        Utils.Print(" killed: %s" % (self.killed))
+        Utils.Print(" host  : %s" % (self.host))
+        Utils.Print(" port  : %s" % (self.port))
+        Utils.Print(" pid   : %s" % (self.pid))
+        status="last getInfo returned None" if not self.infoValid else "at last call to getInfo"
+        Utils.Print(" hbn   : %s (%s)" % (self.lastRetrievedHeadBlockNum, status))
+        Utils.Print(" lib   : %s (%s)" % (self.lastRetrievedLIB, status))
