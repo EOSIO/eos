@@ -594,8 +594,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    };
 
    if( start_block_reached ) {
-      trans_doc.append( kvp( "trx_id", trx_id_str ),
-                        kvp( "irreversible", b_bool{false} ));
+      trans_doc.append( kvp( "trx_id", trx_id_str ) );
 
       string signing_keys_json;
       if( t->signing_keys.valid()) {
@@ -821,9 +820,8 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
 
    auto blocks = mongo_conn[db_name][blocks_col];
    auto block_doc = bsoncxx::builder::basic::document{};
-   block_doc.append(kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ),
-                    kvp( "block_id", block_id_str ),
-                    kvp( "irreversible", b_bool{false} ));
+   block_doc.append( kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ),
+                     kvp( "block_id", block_id_str ) );
 
    auto v = to_variant_with_abi( *bs->block );
    json = fc::json::to_string( v );
