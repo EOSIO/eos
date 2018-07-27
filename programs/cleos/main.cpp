@@ -1095,6 +1095,23 @@ struct get_schedule_subcommand {
    }
 };
 
+struct get_transaction_id_subcommand {
+   string trx_to_check;
+
+   get_transaction_id_subcommand(CLI::App* actionRoot) {
+      auto get_transaction_id = actionRoot->add_subcommand("transaction_id", localized("Get transaction id given transaction object"));
+      get_transaction_id->add_option("transaction", trx_to_check, localized("The JSON string or filename defining the transaction which transaction id we want to retrieve"))->required();
+
+      get_transaction_id->set_callback([&] {
+         try {
+            auto trx_var = json_from_file_or_string(trx_to_check);
+            auto trx = trx_var.as<transaction>();
+            std::cout << string(trx.id()) << std::endl;
+         } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_check))
+      });
+   }
+};
+
 struct delegate_bandwidth_subcommand {
    string from_str;
    string receiver_str;
@@ -2030,7 +2047,8 @@ int main( int argc, char** argv ) {
    });
 
    auto getSchedule = get_schedule_subcommand{get};
-
+   auto getTransactionId = get_transaction_id_subcommand{get};
+   
    /*
    auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"), false);
    getTransactions->add_option("account_name", account_name, localized("name of account to query on"))->required();
