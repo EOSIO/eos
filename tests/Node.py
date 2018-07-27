@@ -244,16 +244,28 @@ class Node(object):
         return finalized
 
     # pylint: disable=too-many-branches
-    def getTransaction(self, transId, silentErrors=False, exitOnError=False):
+    def getTransaction(self, transId, silentErrors=False, exitOnError=False, delayedRetry=True):
+        firstExitOnError=not delayedRetry and exitOnError
         if not self.enableMongo:
             cmdDesc="get transaction"
             cmd="%s %s" % (cmdDesc, transId)
             msg="(transaction id=%s)" % (transId);
+            trans=self.processCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=firstExitOnError, exitMsg=msg)
+            if trans is not None or not delayedRetry:
+                return trans
+
+            # delay long enough to ensure
+            if Utils.Debug: Utils.Print("Could not find transaction with id %s, delay and retry" % (transId))
+            time.sleep(1)
             return self.processCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
         else:
-            return self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=exitOnError)
+            trans=self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=firstExitOnError)
+            if trans is not None or not delayedRetry:
+                return trans
 
-        return None
+            if Utils.Debug: Utils.Print("Could not find transaction with id %s in mongodb, delay and retry" % (transId))
+            time.sleep(3)
+            return self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=firstExitOnError)
 
     def getTransactionMdb(self, transId, silentErrors=False, exitOnError=False):
         """Get transaction from MongoDB. Since DB only contains finalized blocks, transactions can take a while to appear in DB."""
@@ -309,11 +321,11 @@ class Node(object):
 
         return False
 
-    def getBlockIdByTransId(self, transId):
+    def getBlockIdByTransId(self, transId, delayedRetry=True):
         """Given a transaction Id (string), will return block id (int) containing the transaction"""
         assert(transId)
         assert(isinstance(transId, str))
-        trans=self.getTransaction(transId, exitOnError=True)
+        trans=self.getTransaction(transId, exitOnError=True, delayedRetry=delayedRetry)
 
         refBlockNum=None
         key=""
