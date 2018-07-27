@@ -1600,6 +1600,10 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
    return result;
 }
 
+read_only::get_transaction_id_result read_only::get_transaction_id( const read_only::get_transaction_id_params& params)const {
+   return params.id();
+}
+
 
 } // namespace chain_apis
 } // namespace eosio
