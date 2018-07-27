@@ -110,6 +110,8 @@ class TestHelper(object):
         assert(isinstance(cleanRun, bool))
         assert(isinstance(dumpErrorDetails, bool))
 
+        Utils.ShuttingDown=True
+
         if testSuccessful:
             Utils.Print("Test succeeded.")
         else:

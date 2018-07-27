@@ -23,6 +23,7 @@ class Utils:
 
     EosLauncherPath="programs/eosio-launcher/eosio-launcher"
     MongoPath="mongo"
+    ShuttingDown=False
 
     @staticmethod
     def Print(*args, **kwargs):
@@ -81,6 +82,9 @@ class Utils:
 
     @staticmethod
     def errorExit(msg="", raw=False, errorCode=1):
+        if Utils.ShuttingDown:
+            Utils.Print("ERROR:" if not raw else "", " errorExit called during shutdown, ignoring.  msg=", msg)
+            return
         Utils.Print("ERROR:" if not raw else "", msg)
         traceback.print_stack(limit=-1)
         exit(errorCode)
