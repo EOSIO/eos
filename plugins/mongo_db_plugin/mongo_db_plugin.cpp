@@ -563,8 +563,8 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    auto process_action = [&](const std::string& trx_id_str, const chain::action& act, bbb::array& act_array, bool cfa) -> auto {
       auto act_doc = bsoncxx::builder::basic::document();
       if( start_block_reached ) {
-         act_doc.append( kvp( "action_num", b_int32{act_num} ),
-                         kvp( "trx_id", trx_id_str ));
+         act_doc.append( kvp( "trx_id", trx_id_str ),
+                         kvp( "action_num", b_int32{act_num} ) );
          act_doc.append( kvp( "cfa", b_bool{cfa} ));
          act_doc.append( kvp( "account", act.account.to_string()));
          act_doc.append( kvp( "name", act.name.to_string()));
@@ -585,8 +585,11 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       if( start_block_reached ) {
          add_data( act_doc, act );
          act_array.append( act_doc );
-         mongocxx::model::insert_one insert_op{act_doc.view()};
-         bulk_actions.append( insert_op );
+         mongocxx::model::update_one update_op{make_document( kvp( "trx_id", trx_id_str ),
+                                                              kvp( "action_num", b_int32{act_num} ) ),
+                                               make_document( kvp( "$set", act_doc.view() ) )};
+         update_op.upsert( true );
+         bulk_actions.append( update_op );
          actions_to_write = true;
       }
       ++act_num;
@@ -642,7 +645,6 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    }
 
    if( start_block_reached ) {
-      act_num = 0;
       if( !trx.context_free_actions.empty()) {
          bsoncxx::builder::basic::array action_array;
          for( const auto& cfa : trx.context_free_actions ) {
@@ -708,7 +710,10 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       trans_doc.append( kvp( "createdAt", b_date{now} ));
 
       try {
-         if( !trans.insert_one( trans_doc.view())) {
+         mongocxx::options::update update_opts{};
+         update_opts.upsert( true );
+         if( !trans.update_one( make_document( kvp( "trx_id", trx_id_str ) ),
+                                make_document( kvp( "$set", trans_doc.view() ) ), update_opts ) ) {
             EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert trans ${id}", ("id", trx_id));
          }
       } catch(...) {
@@ -1287,7 +1292,7 @@ void mongo_db_plugin_impl::init() {
 
          // actions indexes
          auto actions = mongo_conn[db_name][actions_col];
-         actions.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
+         actions.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1, "action_num" : 1 })xxx" ));
 
          // pub_keys indexes
          auto pub_keys = mongo_conn[db_name][pub_keys_col];
