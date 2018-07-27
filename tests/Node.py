@@ -407,10 +407,7 @@ class Node(object):
             trans = self.transferFunds(creatorAccount, account, Node.currencyIntToStr(stakedDeposit, CORE_SYMBOL), "init")
             transId=Node.getTransId(trans)
 
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, exitOnError=False):
         """Create account and return creation transactions. Return transaction json object.
@@ -427,10 +424,7 @@ class Node(object):
             trans = self.transferFunds(creatorAccount, account, "%0.04f %s" % (stakedDeposit/10000, CORE_SYMBOL), "init")
             transId=Node.getTransId(trans)
 
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     def getEosAccount(self, name, exitOnError=False):
         assert(isinstance(name, str))
@@ -586,14 +580,8 @@ class Node(object):
         if trans is None:
             Utils.cmdError("could not transfer \"%s\" from %s to %s" % (amountStr, source, destination))
             errorExit("Failed to transfer \"%s\" from %s to %s" % (amountStr, source, destination))
-        transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            if exitOnError:
-                Utils.cmdError("could not find transfer with transId=%s in block" % (transId))
-                errorExit("Failed to find transfer with transId=%s in block" % (transId))
-            return None
 
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     @staticmethod
     def currencyStrToInt(balanceStr):
@@ -782,10 +770,7 @@ class Node(object):
             return None
 
         Node.validateTransaction(trans)
-        transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=False)
 
     def getTableRows(self, contract, scope, table):
         jsonData=self.getTable(contract, scope, table)
@@ -834,10 +819,7 @@ class Node(object):
         cmd="%s -j %s %s %s %s" % (cmdDesc, account, code, pType, requirement)
         trans=self.processCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError)
 
-        transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     def delegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, transferTo=False, waitForTransBlock=False, exitOnError=False):
         if toAccount is None:
@@ -850,10 +832,7 @@ class Node(object):
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
         trans=self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
-        transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     def regproducer(self, producer, url, location, waitForTransBlock=False, exitOnError=False):
         cmdDesc="system regproducer"
@@ -862,10 +841,7 @@ class Node(object):
         msg="producer=%s" % (producer.name);
         trans=self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
-        transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     def vote(self, account, producers, waitForTransBlock=False, exitOnError=False):
         cmdDesc = "system voteproducer prods"
@@ -874,10 +850,7 @@ class Node(object):
         msg="account=%s, producers=[ %s ]" % (account.name, ", ".join(producers));
         trans=self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
-        transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     def processCmd(self, cmd, cmdDesc, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
         assert(isinstance(returnType, ReturnType))
@@ -908,6 +881,18 @@ class Node(object):
             Utils.cmdError("could not %s - %s" % (cmdDesc,exitMsg))
             errorExit("Failed to %s" % (cmdDesc))
 
+        return trans
+
+    def waitForTransBlockIfNeeded(self, trans, waitForTransBlock, exitOnError=False):
+        if not waitForTransBlock:
+            return trans
+
+        transId=Node.getTransId(trans)
+        if not self.waitForTransInBlock(transId):
+            if exitOnError:
+                Utils.cmdError("transaction with id %s never made it to a block" % (transId))
+                errorExit("Failed to find transaction with id %s in a block before timeout" % (transId))
+            return None
         return trans
 
     def getInfo(self, silentErrors=False, exitOnError=False):
