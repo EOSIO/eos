@@ -1831,7 +1831,7 @@ int main( int argc, char** argv ) {
                          localized("Index number, 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc.\n"
                                    "\t\t\t\tNumber or name of index can be specified, e.g. 'secondary' or '2'."));
    getTable->add_option( "--key-type", key_type,
-                         localized("The key type of --index, primary only supports (i64), all others support (i64, i128, i256, float64, float128).\n"
+                         localized("The key type of --index, primary only supports (i64), all others support (i64, i128, i256, float64, float128, sha256).\n"
                                    "\t\t\t\tSpecial type 'name' indicates an account name."));
 
    getTable->set_callback([&] {
