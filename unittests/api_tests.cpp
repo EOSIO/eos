@@ -1016,10 +1016,10 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {} );
       BOOST_CHECK(!trace);
-      produce_block( fc::seconds(2) );
+      produce_block( fc::seconds(3) );
 
       //check that it gets executed afterwards
-      BOOST_CHECK(trace);
+      BOOST_REQUIRE(trace);
 
       //confirm printed message
       BOOST_TEST(!trace->action_traces.empty());
@@ -1045,7 +1045,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
          control->push_scheduled_transaction(trx, fc::time_point::maximum());
       }
       BOOST_CHECK_EQUAL(1, count);
-      BOOST_CHECK(trace);
+      BOOST_REQUIRE(trace);
       BOOST_CHECK_EQUAL( 1, trace->action_traces.size() );
       c.disconnect();
    }
@@ -1084,7 +1084,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction_success", {});
-      produce_block( fc::seconds(2) );
+      produce_block( fc::seconds(3) );
       BOOST_CHECK(!trace);
       c.disconnect();
    }
@@ -1098,7 +1098,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 
    produce_blocks(10);
 
-{
+   {
    // Trigger a tx which in turn sends a deferred tx with payer != receiver
    // Payer is alice in this case, this tx should fail since we don't have the authorization of alice
    dtt_action dtt_act1;
