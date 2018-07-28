@@ -563,25 +563,18 @@ struct controller_impl {
       signed_transaction dtrx;
       fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
       transaction_metadata_ptr trx = std::make_shared<transaction_metadata>( dtrx );
+      trx->accepted = true;
+      trx->scheduled = true;
 
       transaction_trace_ptr trace;
-      auto emit_on_exit = fc::make_scoped_exit( [&trace, &trx, this]() {
-         if( trx ) {
-            trx->accepted = true;
-            trx->scheduled = true;
-            emit( self.accepted_transaction, trx );
-         }
-         if( trace ) {
-            emit( self.applied_transaction, trace );
-         }
-      } );
-
       if( gtrx.expiration < self.pending_block_time() ) {
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
          trace->scheduled = true;
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
          undo_session.squash();
+         emit( self.accepted_transaction, trx );
+         emit( self.applied_transaction, trace );
          return trace;
       }
 
@@ -612,7 +605,11 @@ struct controller_impl {
 
          trx_context.squash();
          undo_session.squash();
+
          restore.cancel();
+
+         emit( self.accepted_transaction, trx );
+         emit( self.applied_transaction, trace );
          return trace;
       } catch( const fc::exception& e ) {
          trace->except = e;
@@ -631,6 +628,8 @@ struct controller_impl {
          trace = error_trace;
          if( !trace->except_ptr ) {
             undo_session.squash();
+            emit( self.accepted_transaction, trx );
+            emit( self.applied_transaction, trace );
             return trace;
          }
       }
@@ -647,6 +646,8 @@ struct controller_impl {
          undo_session.squash();
       }
 
+      emit( self.accepted_transaction, trx );
+      emit( self.applied_transaction, trace );
       return trace;
    } FC_CAPTURE_AND_RETHROW() } /// push_scheduled_transaction
 
