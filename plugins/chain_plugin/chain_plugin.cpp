@@ -28,7 +28,6 @@
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
-#include <fc/crypto/hex.hpp>
 #include <signal.h>
 
 namespace eosio {
@@ -1031,7 +1030,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
          });
       }
       else if (p.key_type == "sha256") {
-          return get_table_rows_by_seckey<index256_index, checksum256_type>(p, abi, [&p](const checksum256_type& v)->key256_t {
+          return get_table_rows_by_seckey<index256_index, checksum256_type>(p, abi, [](const checksum256_type& v)->key256_t {
               key256_t k;
               k[0] = ((uint128_t *)&v._hash)[0];
               k[1] = ((uint128_t *)&v._hash)[1];
