@@ -35,7 +35,7 @@ if [ -d "/usr/local/include/eosio" ]; then
             libbuiltins)
             pushd lib &> /dev/null
             for lib in ${libraries[@]}; do
-               rm ${lib}.a ${lib}.dylib &> /dev/null
+               rm ${lib}.a ${lib}.dylib ${lib}.so &> /dev/null
             done
             popd &> /dev/null
 
