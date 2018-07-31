@@ -136,7 +136,7 @@
 
 	if [ $COUNT -gt 1 ]; then
 		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
-		printf "\\n\\t%s\\n\\n" "${DISPLAY}"
+		printf "\\n\\t${DISPLAY}\\n\\n"
 		echo "Do you wish to install these packages?"
 		select yn in "Yes" "No"; do
 			case $yn in
