@@ -1814,7 +1814,6 @@ int main( int argc, char** argv ) {
    string lower;
    string upper;
    string table_key;
-   string index_by_str;
    string find_by_str;
    string key_type;
    bool binary = false;
@@ -1836,7 +1835,6 @@ int main( int argc, char** argv ) {
                          localized("The key type of --index, primary only supports (i64), all others support (i64, i128, i256, float64, float128).\n"
                                    "\t\t\t\tSpecial type 'name' indicates an account name."));
    getTable->add_option( "--findbystr", find_by_str, localized("find by string") );
-   getTable->add_option( "--indexbystr", index_by_str, localized("when you want index by string,you must set true") );
 
    getTable->set_callback([&] {
       auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
@@ -1845,7 +1843,6 @@ int main( int argc, char** argv ) {
                          ("table",table)
                          ("table_key",table_key) // not used
                          ("find_by_str",find_by_str)
-                         ("index_by_str",index_by_str)
                          ("lower_bound",lower)
                          ("upper_bound",upper)
                          ("limit",limit)
