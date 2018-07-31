@@ -828,10 +828,10 @@ struct controller_impl {
 
 
 
-   void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback, bool trust  ) {
+   void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback  ) {
       auto p = pending->_pending_block_state;
 
-      p->sign( signer_callback, false); //trust );
+      p->sign( signer_callback );
 
       static_cast<signed_block_header&>(*p->block) = p->header;
    } /// sign_block
@@ -877,7 +877,12 @@ struct controller_impl {
          }
 
          finalize_block();
-         sign_block( [&]( const auto& ){ return b->producer_signature; }, false ); //trust );
+
+         // we can always trust this signature because,
+         //   - prior to apply_block, we call fork_db.add which does a signature check IFF the block is untrusted
+         //   - OTHERWISE the block is trusted and therefore we trust that the signature is valid
+         // Also, as ::sign_block does not lazily calculate the digest of the block, we can just short-circuit to save cycles
+         pending->_pending_block_state->header.producer_signature = b->producer_signature;
 
          // this is implied by the signature passing
          //FC_ASSERT( b->id() == pending->_pending_block_state->block->id(),
@@ -1274,7 +1279,7 @@ void controller::finalize_block() {
 }
 
 void controller::sign_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
-   my->sign_block( signer_callback, false /* don't trust */);
+   my->sign_block( signer_callback );
 }
 
 void controller::commit_block() {
