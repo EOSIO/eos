@@ -47,18 +47,22 @@ class WalletMgr(object):
         time.sleep(1)
         return True
 
-    def create(self, name, accounts=None):
+    def create(self, name, accounts=None, exitOnError=True):
         wallet=self.wallets.get(name)
         if wallet is not None:
             if Utils.Debug: Utils.Print("Wallet \"%s\" already exists. Returning same." % name)
             return wallet
         p = re.compile(r'\n\"(\w+)\"\n', re.MULTILINE)
-        cmd="%s %s wallet create --name %s" % (Utils.EosClientPath, self.endpointArgs, name)
+        cmd="%s %s wallet create --name %s --to-console" % (Utils.EosClientPath, self.endpointArgs, name)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         retStr=Utils.checkOutput(cmd.split())
         #Utils.Print("create: %s" % (retStr))
         m=p.search(retStr)
         if m is None:
+            if exitOnError:
+                Utils.cmdError("could not create wallet %s" % (name))
+                errorExit("Failed  to create wallet %s" % (name))
+
             Utils.Print("ERROR: wallet password parser failure")
             return None
         p=m.group(1)

@@ -110,11 +110,14 @@ class TestHelper(object):
         assert(isinstance(cleanRun, bool))
         assert(isinstance(dumpErrorDetails, bool))
 
+        Utils.ShuttingDown=True
+
         if testSuccessful:
             Utils.Print("Test succeeded.")
         else:
             Utils.Print("Test failed.")
         if not testSuccessful and dumpErrorDetails:
+            cluster.reportStatus()
             cluster.dumpErrorDetails()
             if walletMgr:
                 walletMgr.dumpErrorDetails()
