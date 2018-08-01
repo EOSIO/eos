@@ -30,7 +30,7 @@ class Utils:
         stackDepth=len(inspect.stack())-2
         s=' '*stackDepth
         stdout.write(s)
-        print(*args, **kwargs)
+        print(*args, **kwargs, flush=True)
 
     SyncStrategy=namedtuple("ChainSyncStrategy", "name id arg")
 

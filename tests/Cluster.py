@@ -1116,6 +1116,13 @@ class Cluster(object):
 
         return True
 
+    def getInfos(self, silentErrors=False, exitOnError=False):
+        infos=[]
+        for node in self.nodes:
+            infos.append(node.getInfo(silentErrors=silentErrors, exitOnError=exitOnError))
+
+        return infos
+
     def reportStatus(self):
         if hasattr(self, "biosNode") and self.biosNode is not None:
             self.biosNode.reportStatus()

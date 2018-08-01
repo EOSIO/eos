@@ -81,7 +81,7 @@ try:
     maxRAMFlag="--chain-state-db-size-mb"
     maxRAMValue=1010
     extraNodeosArgs=" %s %d %s %d " % (minRAMFlag, minRAMValue, maxRAMFlag, maxRAMValue)
-    if cluster.launch(onlyBios=False, dontKill=dontKill, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes*21, extraNodeosArgs=extraNodeosArgs) is False:
+    if cluster.launch(onlyBios=False, dontKill=dontKill, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes, extraNodeosArgs=extraNodeosArgs) is False:
         Utils.cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
 
@@ -200,24 +200,29 @@ try:
     numNodes=len(nodes)
     maxRAMValue+=2
     currentMinimumMaxRAM=maxRAMValue
+    enabledStaleProduction=False
     for i in range(numNodes):
         addOrSwapFlags[maxRAMFlag]=str(maxRAMValue)
-        if i==numNodes-1:
-            addOrSwapFlags["--enable-stale-production"]=""   # just enable stale production for the first node
+        #addOrSwapFlags["--max-irreversible-block-age"]=str(-1)
         nodeIndex=numNodes-i-1
+        if not enabledStaleProduction:
+            addOrSwapFlags["--enable-stale-production"]=""   # just enable stale production for the first node
+            enabledStaleProduction=True
         if not nodes[nodeIndex].relaunch(nodeIndex, "", newChain=False, addOrSwapFlags=addOrSwapFlags):
             Utils.cmdError("Failed to restart node0 with new capacity %s" % (maxRAMValue))
             errorExit("Failure - Node should have restarted")
         addOrSwapFlags={}
         maxRAMValue=currentMinimumMaxRAM+30
 
-    time.sleep(10)
+    time.sleep(20)
     for i in range(numNodes):
         if not nodes[i].verifyAlive():
             Utils.cmdError("Node %d should be alive" % (i))
             errorExit("Failure - All Nodes should be alive")
 
+    # get all the nodes to get info, so reported status (on error) reflects their current state
     Print("push more actions to %s contract" % (contract))
+    cluster.getInfos()
     action="store"
     keepProcessing=True
     count=0
@@ -278,6 +283,7 @@ try:
             Utils.cmdError("All Nodes should be alive")
             errorExit("Failure - All Nodes should be alive")
 
+    time.sleep(20)
     Print("Send 1 more action to every node")
     numAmount+=1
     for fromIndexOffset in range(namedAccounts.numAccounts):
