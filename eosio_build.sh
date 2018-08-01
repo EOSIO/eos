@@ -27,7 +27,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# https://github.com/EOSIO/eos/blob/master/LICENSE.txt
+# https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
 
 	CWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -52,7 +52,7 @@
 	DISK_MIN=20
 	DOXYGEN=false
 	ENABLE_COVERAGE_TESTING=false
-	CORE_SYMBOL_NAME="SYS"
+	CORE_SYMBOL_NAME="EOS"
 	TEMP_DIR="/tmp"
 	TIME_BEGIN=$( date -u +%s )
 	VERSION=1.2
