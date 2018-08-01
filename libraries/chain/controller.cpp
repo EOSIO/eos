@@ -28,10 +28,10 @@ using resource_limits::resource_limits_manager;
 
 
 struct pending_state {
-   pending_state( database::session&& s )
+   pending_state( optional<database::session>&& s )
    :_db_session( move(s) ){}
 
-   database::session                  _db_session;
+   optional<database::session>        _db_session;
 
    block_state_ptr                    _pending_block_state;
 
@@ -40,7 +40,7 @@ struct pending_state {
    controller::block_status           _block_status = controller::block_status::incomplete;
 
    void push() {
-      _db_session.push();
+      if (_db_session) _db_session->push();
    }
 };
 
@@ -57,7 +57,8 @@ struct controller_impl {
    authorization_manager          authorization;
    controller::config             conf;
    chain_id_type                  chain_id;
-   bool                           replaying = false;
+   bool                           replaying= false;
+   optional<fc::time_point>       replay_head_time;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
    optional<fc::microseconds>     subjective_cpu_leeway;
@@ -211,8 +212,10 @@ struct controller_impl {
          initialize_fork_db(); // set head to genesis state
 
          auto end = blog.read_head();
+         auto end_time = end->timestamp.to_time_point();
          if( end && end->block_num() > 1 ) {
             replaying = true;
+            replay_head_time = end_time;
             ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
 
             auto start = fc::time_point::now();
@@ -224,6 +227,10 @@ struct controller_impl {
             }
             std::cerr<< "\n";
             ilog( "${n} blocks replayed", ("n", head->block_num) );
+
+            // the irreverible log is played without undo sessions enabled, so we need to sync the
+            // revision ordinal to the appropriate expected value here.
+            db.set_revision(head->block_num);
 
             int rev = 0;
             while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
@@ -237,6 +244,7 @@ struct controller_impl {
                   ("n", head->block_num)("duration", (end-start).count()/1000000)
                   ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
             replaying = false;
+            replay_head_time.reset();
 
          } else if( !end ) {
             blog.reset_to_genesis( conf.genesis, head->block );
@@ -547,7 +555,9 @@ struct controller_impl {
 
    transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false )
    { try {
-      auto undo_session = db.start_undo_session(true);
+      optional<database::session> undo_session;
+      if ( !self.skip_db_sessions() ) undo_session = db.start_undo_session(true);
+
       auto gtrx = generated_transaction(gto);
 
       // remove the generated transaction object after making a copy
@@ -577,7 +587,7 @@ struct controller_impl {
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
-         undo_session.squash();
+         if (undo_session) undo_session->squash();
          return trace;
       }
 
@@ -612,7 +622,7 @@ struct controller_impl {
          emit( self.applied_transaction, trace );
 
          trx_context.squash();
-         undo_session.squash();
+         if (undo_session) undo_session->squash();
 
          restore.cancel();
 
@@ -623,7 +633,7 @@ struct controller_impl {
          trace->except_ptr = std::current_exception();
          trace->elapsed = fc::time_point::now() - trx_context.start;
       }
-      trx_context.undo_session.undo();
+      trx_context.undo();
 
       // Only subjective OR soft OR hard failure logic below:
 
@@ -636,7 +646,7 @@ struct controller_impl {
          if( !trace->except_ptr ) {
             emit( self.accepted_transaction, trx );
             emit( self.applied_transaction, trace );
-            undo_session.squash();
+            if (undo_session) undo_session->squash();
             return trace;
          }
          trace->elapsed = fc::time_point::now() - trx_context.start;
@@ -674,12 +684,10 @@ struct controller_impl {
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
 
-         undo_session.squash();
+         if (undo_session) undo_session->squash();
       } else {
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
-
-         undo_session.undo();
       }
 
       return trace;
@@ -729,9 +737,11 @@ struct controller_impl {
                trx_context.init_for_implicit_trx();
                trx_context.can_subjectively_fail = false;
             } else {
+               bool skip_recording = replay_head_time && (time_point(trx->trx.expiration) <= *replay_head_time);
                trx_context.init_for_input_trx( trx->packed_trx.get_unprunable_size(),
                                                trx->packed_trx.get_prunable_size(),
-                                               trx->trx.signatures.size());
+                                               trx->trx.signatures.size(),
+                                               skip_recording);
             }
 
             if( trx_context.can_subjectively_fail && pending->_block_status == controller::block_status::incomplete ) {
@@ -815,14 +825,19 @@ struct controller_impl {
    void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s ) {
       EOS_ASSERT( !pending, block_validate_exception, "pending block is not available" );
 
-      EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
-                ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
-
       auto guard_pending = fc::make_scoped_exit([this](){
          pending.reset();
       });
 
-      pending = db.start_undo_session(true);
+      bool skip_db_sessions = !conf.force_all_checks && (s == controller::block_status::irreversible);
+      if (!skip_db_sessions) {
+         EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
+                     ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
+
+         pending.emplace(db.start_undo_session(true));
+      } else {
+         pending.emplace(optional<database::session>());
+      }
 
       pending->_block_status = s;
 
@@ -1592,8 +1607,16 @@ optional<producer_schedule_type> controller::proposed_producers()const {
    return gpo.proposed_schedule;
 }
 
-bool controller::skip_auth_check()const {
+bool controller::skip_auth_check() const {
    return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
+}
+
+bool controller::skip_db_sessions() const {
+   return !my->conf.force_all_checks && my->pending && !my->in_trx_requiring_checks && my->pending->_block_status == block_status::irreversible;
+}
+
+bool controller::skip_trx_checks() const {
+   return !my->conf.force_all_checks  &&my->pending && !my->in_trx_requiring_checks && (my->pending->_block_status == block_status::irreversible || my->pending->_block_status == block_status::validated);
 }
 
 bool controller::contracts_console()const {
