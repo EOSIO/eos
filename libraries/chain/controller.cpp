@@ -3,6 +3,7 @@
 
 #include <eosio/chain/block_log.hpp>
 #include <eosio/chain/fork_database.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/block_summary_object.hpp>
@@ -1307,6 +1308,48 @@ transaction_trace_ptr controller::push_scheduled_transaction( const transaction_
 {
    validate_db_available_size();
    return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us );
+}
+
+const flat_set<account_name>& controller::get_actor_whitelist() const {
+   return my->conf.actor_whitelist;
+}
+const flat_set<account_name>& controller::get_actor_blacklist() const {
+   return my->conf.actor_blacklist;
+}
+const flat_set<account_name>& controller::get_contract_whitelist() const {
+   return my->conf.contract_whitelist;
+}
+const flat_set<account_name>& controller::get_contract_blacklist() const {
+   return my->conf.contract_blacklist;
+}
+const flat_set< pair<account_name, action_name> >& controller::get_action_blacklist() const {
+   return my->conf.action_blacklist;
+}
+const flat_set<public_key_type>& controller::get_key_blacklist() const {
+   return my->conf.key_blacklist;
+}
+
+void controller::set_actor_whitelist( const flat_set<account_name>& new_actor_whitelist ) {
+   my->conf.actor_whitelist = new_actor_whitelist;
+}
+void controller::set_actor_blacklist( const flat_set<account_name>& new_actor_blacklist ) {
+   my->conf.actor_blacklist = new_actor_blacklist;
+}
+void controller::set_contract_whitelist( const flat_set<account_name>& new_contract_whitelist ) {
+   my->conf.contract_whitelist = new_contract_whitelist;
+}
+void controller::set_contract_blacklist( const flat_set<account_name>& new_contract_blacklist ) {
+   my->conf.contract_blacklist = new_contract_blacklist;
+}
+void controller::set_action_blacklist( const flat_set< pair<account_name, action_name> >& new_action_blacklist ) {
+   for (auto& act: new_action_blacklist) {
+      EOS_ASSERT(act.first != account_name(), name_type_exception, "Action blacklist - contract name should not be empty");
+      EOS_ASSERT(act.second != action_name(), action_type_exception, "Action blacklist - action name should not be empty");
+   }
+   my->conf.action_blacklist = new_action_blacklist;
+}
+void controller::set_key_blacklist( const flat_set<public_key_type>& new_key_blacklist ) {
+   my->conf.key_blacklist = new_key_blacklist;
 }
 
 uint32_t controller::head_block_num()const {

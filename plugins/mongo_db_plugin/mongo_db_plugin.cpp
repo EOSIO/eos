@@ -73,8 +73,26 @@ public:
    void process_irreversible_block(const chain::block_state_ptr&);
    void _process_irreversible_block(const chain::block_state_ptr&);
 
+   optional<abi_serializer> get_abi_serializer( account_name n );
+   template<typename T> fc::variant to_variant_with_abi( const T& obj );
+
+   void purge_abi_cache();
+
+   void add_data(bsoncxx::builder::basic::document& act_doc, const chain::action& act);
+   void update_account(const chain::action& act);
+
+   void add_pub_keys( const vector<chain::key_weight>& keys, const account_name& name,
+                      const permission_name& permission, const std::chrono::milliseconds& now );
+   void remove_pub_keys( const account_name& name, const permission_name& permission );
+   void add_account_control( const vector<chain::permission_level_weight>& controlling_accounts,
+                             const account_name& name, const permission_name& permission,
+                             const std::chrono::milliseconds& now );
+   void remove_account_control( const account_name& name, const permission_name& permission );
+
    void init();
    void wipe_database();
+
+   template<typename Queue, typename Entry> void queue(Queue& queue, const Entry& e);
 
    bool configured{false};
    bool wipe_database_on_startup{false};
@@ -86,7 +104,9 @@ public:
    mongocxx::client mongo_conn;
    mongocxx::collection accounts;
 
-   size_t queue_size = 0;
+   size_t max_queue_size = 0;
+   int queue_sleep_time = 0;
+   size_t abi_cache_size = 0;
    std::deque<chain::transaction_metadata_ptr> transaction_metadata_queue;
    std::deque<chain::transaction_metadata_ptr> transaction_metadata_process_queue;
    std::deque<chain::transaction_trace_ptr> transaction_trace_queue;
@@ -103,8 +123,30 @@ public:
    fc::optional<chain::chain_id_type> chain_id;
    fc::microseconds abi_serializer_max_time;
 
-   static const account_name newaccount;
-   static const account_name setabi;
+   struct by_account;
+   struct by_last_access;
+
+   struct abi_cache {
+      account_name                     account;
+      fc::time_point                   last_accessed;
+      fc::optional<abi_serializer>     serializer;
+   };
+
+   typedef boost::multi_index_container<abi_cache,
+         indexed_by<
+               ordered_unique< tag<by_account>,  member<abi_cache,account_name,&abi_cache::account> >,
+               ordered_non_unique< tag<by_last_access>,  member<abi_cache,fc::time_point,&abi_cache::last_accessed> >
+         >
+   > abi_cache_index_t;
+
+   abi_cache_index_t abi_cache_index;
+
+   static const action_name newaccount;
+   static const action_name setabi;
+   static const action_name updateauth;
+   static const action_name deleteauth;
+   static const permission_name owner;
+   static const permission_name active;
 
    static const std::string block_states_col;
    static const std::string blocks_col;
@@ -112,10 +154,16 @@ public:
    static const std::string trans_traces_col;
    static const std::string actions_col;
    static const std::string accounts_col;
+   static const std::string pub_keys_col;
+   static const std::string account_controls_col;
 };
 
-const account_name mongo_db_plugin_impl::newaccount = "newaccount";
-const account_name mongo_db_plugin_impl::setabi = "setabi";
+const action_name mongo_db_plugin_impl::newaccount = chain::newaccount::get_name();
+const action_name mongo_db_plugin_impl::setabi = chain::setabi::get_name();
+const action_name mongo_db_plugin_impl::updateauth = chain::updateauth::get_name();
+const action_name mongo_db_plugin_impl::deleteauth = chain::deleteauth::get_name();
+const permission_name mongo_db_plugin_impl::owner = chain::config::owner_name;
+const permission_name mongo_db_plugin_impl::active = chain::config::active_name;
 
 const std::string mongo_db_plugin_impl::block_states_col = "block_states";
 const std::string mongo_db_plugin_impl::blocks_col = "blocks";
@@ -123,37 +171,33 @@ const std::string mongo_db_plugin_impl::trans_col = "transactions";
 const std::string mongo_db_plugin_impl::trans_traces_col = "transaction_traces";
 const std::string mongo_db_plugin_impl::actions_col = "actions";
 const std::string mongo_db_plugin_impl::accounts_col = "accounts";
-
-namespace {
+const std::string mongo_db_plugin_impl::pub_keys_col = "pub_keys";
+const std::string mongo_db_plugin_impl::account_controls_col = "account_controls";
 
 template<typename Queue, typename Entry>
-void queue(boost::mutex& mtx, boost::condition_variable& condition, Queue& queue, const Entry& e, size_t queue_size) {
-   int sleep_time = 100;
-   size_t last_queue_size = 0;
-   boost::mutex::scoped_lock lock(mtx);
-   if (queue.size() > queue_size) {
+void mongo_db_plugin_impl::queue( Queue& queue, const Entry& e ) {
+   boost::mutex::scoped_lock lock( mtx );
+   auto queue_size = queue.size();
+   if( queue_size > max_queue_size ) {
       lock.unlock();
       condition.notify_one();
-      if (last_queue_size < queue.size()) {
-         sleep_time += 100;
-      } else {
-         sleep_time -= 100;
-         if (sleep_time < 0) sleep_time = 100;
-      }
-      last_queue_size = queue.size();
-      boost::this_thread::sleep_for(boost::chrono::milliseconds(sleep_time));
+      queue_sleep_time += 10;
+      if( queue_sleep_time > 1000 )
+         wlog("queue size: ${q}", ("q", queue_size));
+      boost::this_thread::sleep_for( boost::chrono::milliseconds( queue_sleep_time ));
       lock.lock();
+   } else {
+      queue_sleep_time -= 10;
+      if( queue_sleep_time < 0 ) queue_sleep_time = 0;
    }
-   queue.emplace_back(e);
+   queue.emplace_back( e );
    lock.unlock();
    condition.notify_one();
 }
 
-}
-
 void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metadata_ptr& t ) {
    try {
-      queue( mtx, condition, transaction_metadata_queue, t, queue_size );
+      queue( transaction_metadata_queue, t );
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_transaction ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -165,7 +209,7 @@ void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metada
 
 void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_ptr& t ) {
    try {
-      queue( mtx, condition, transaction_trace_queue, t, queue_size );
+      queue( transaction_trace_queue, t );
    } catch (fc::exception& e) {
       elog("FC Exception while applied_transaction ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -177,7 +221,7 @@ void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_p
 
 void mongo_db_plugin_impl::applied_irreversible_block( const chain::block_state_ptr& bs ) {
    try {
-      queue( mtx, condition, irreversible_block_state_queue, bs, queue_size );
+      queue( irreversible_block_state_queue, bs );
    } catch (fc::exception& e) {
       elog("FC Exception while applied_irreversible_block ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -189,7 +233,7 @@ void mongo_db_plugin_impl::applied_irreversible_block( const chain::block_state_
 
 void mongo_db_plugin_impl::accepted_block( const chain::block_state_ptr& bs ) {
    try {
-      queue( mtx, condition, block_state_queue, bs, queue_size );
+      queue( block_state_queue, bs );
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_block ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -235,42 +279,60 @@ void mongo_db_plugin_impl::consume_blocks() {
 
          lock.unlock();
 
-         // warn if queue size greater than 75%
-         if( transaction_metadata_size > (queue_size * 0.75) ||
-             transaction_trace_size > (queue_size * 0.75) ||
-             block_state_size > (queue_size * 0.75) ||
-             irreversible_block_size > (queue_size * 0.75)) {
-            wlog("queue size: ${q}", ("q", transaction_metadata_size + transaction_trace_size + block_state_size + irreversible_block_size));
-         } else if (done) {
+         if (done) {
             ilog("draining queue, size: ${q}", ("q", transaction_metadata_size + transaction_trace_size + block_state_size + irreversible_block_size));
          }
 
          // process transactions
+         auto start_time = fc::time_point::now();
+         auto size = transaction_metadata_process_queue.size();
          while (!transaction_metadata_process_queue.empty()) {
             const auto& t = transaction_metadata_process_queue.front();
             process_accepted_transaction(t);
             transaction_metadata_process_queue.pop_front();
          }
+         auto time = fc::time_point::now() - start_time;
+         auto per = size > 0 ? time.count()/size : 0;
+         if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
+            ilog( "process_accepted_transaction, time per: ${p}, size: ${s}, time: ${t}", ("s", size)( "t", time )( "p", per ));
 
+         start_time = fc::time_point::now();
+         size = transaction_trace_process_queue.size();
          while (!transaction_trace_process_queue.empty()) {
             const auto& t = transaction_trace_process_queue.front();
             process_applied_transaction(t);
             transaction_trace_process_queue.pop_front();
          }
+         time = fc::time_point::now() - start_time;
+         per = size > 0 ? time.count()/size : 0;
+         if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
+            ilog( "process_applied_transaction,  time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
 
          // process blocks
+         start_time = fc::time_point::now();
+         size = block_state_process_queue.size();
          while (!block_state_process_queue.empty()) {
             const auto& bs = block_state_process_queue.front();
             process_accepted_block( bs );
             block_state_process_queue.pop_front();
          }
+         time = fc::time_point::now() - start_time;
+         per = size > 0 ? time.count()/size : 0;
+         if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
+            ilog( "process_accepted_block,       time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
 
          // process irreversible blocks
+         start_time = fc::time_point::now();
+         size = irreversible_block_state_process_queue.size();
          while (!irreversible_block_state_process_queue.empty()) {
             const auto& bs = irreversible_block_state_process_queue.front();
             process_irreversible_block(bs);
             irreversible_block_state_process_queue.pop_front();
          }
+         time = fc::time_point::now() - start_time;
+         per = size > 0 ? time.count()/size : 0;
+         if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
+            ilog( "process_irreversible_block,   time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
 
          if( transaction_metadata_size == 0 &&
              transaction_trace_size == 0 &&
@@ -292,56 +354,20 @@ void mongo_db_plugin_impl::consume_blocks() {
 
 namespace {
 
-   auto find_account(mongocxx::collection& accounts, const account_name& name) {
-      using bsoncxx::builder::basic::make_document;
-      using bsoncxx::builder::basic::kvp;
-      return accounts.find_one( make_document( kvp( "name", name.to_string())));
-   }
+auto find_account( mongocxx::collection& accounts, const account_name& name ) {
+   using bsoncxx::builder::basic::make_document;
+   using bsoncxx::builder::basic::kvp;
+   return accounts.find_one( make_document( kvp( "name", name.to_string())));
+}
 
-   auto find_transaction(mongocxx::collection& trans, const string& id) {
-      using bsoncxx::builder::basic::make_document;
-      using bsoncxx::builder::basic::kvp;
-      return trans.find_one( make_document( kvp( "trx_id", id )));
-   }
+auto find_block( mongocxx::collection& blocks, const string& id ) {
+   using bsoncxx::builder::basic::make_document;
+   using bsoncxx::builder::basic::kvp;
 
-   auto find_block(mongocxx::collection& blocks, const string& id) {
-      using bsoncxx::builder::basic::make_document;
-      using bsoncxx::builder::basic::kvp;
-      return blocks.find_one( make_document( kvp( "block_id", id )));
-   }
-
-   optional<abi_serializer> get_abi_serializer( account_name n, mongocxx::collection& accounts, const fc::microseconds& abi_serializer_max_time ) {
-      using bsoncxx::builder::basic::kvp;
-      using bsoncxx::builder::basic::make_document;
-      if( n.good()) {
-         try {
-            auto account = accounts.find_one( make_document( kvp("name", n.to_string())) );
-            if(account) {
-               auto view = account->view();
-               abi_def abi;
-               if( view.find( "abi" ) != view.end()) {
-                  try {
-                     abi = fc::json::from_string( bsoncxx::to_json( view["abi"].get_document())).as<abi_def>();
-                  } catch (...) {
-                     ilog( "Unable to convert account abi to abi_def for ${n}", ( "n", n ));
-                     return optional<abi_serializer>();
-                  }
-                  return abi_serializer( abi, abi_serializer_max_time );
-               }
-            }
-         } FC_CAPTURE_AND_LOG((n))
-      }
-      return optional<abi_serializer>();
-   }
-
-   template<typename T>
-   fc::variant to_variant_with_abi( const T& obj, mongocxx::collection& accounts, const fc::microseconds& abi_serializer_max_time  ) {
-      fc::variant pretty_output;
-      abi_serializer::to_variant( obj, pretty_output,
-                                  [&]( account_name n ) { return get_abi_serializer( n, accounts, abi_serializer_max_time ); },
-                                  abi_serializer_max_time );
-      return pretty_output;
-   }
+   mongocxx::options::find options;
+   options.projection( make_document( kvp( "_id", 1 )) ); // only return _id
+   return blocks.find_one( make_document( kvp( "block_id", id )), options);
+}
 
 void handle_mongo_exception( const std::string& desc, int line_num ) {
    bool shutdown = true;
@@ -385,132 +411,68 @@ void handle_mongo_exception( const std::string& desc, int line_num ) {
    }
 }
 
-   void update_account(mongocxx::collection& accounts, const chain::action& act) {
-      using bsoncxx::builder::basic::kvp;
-      using bsoncxx::builder::basic::make_document;
-      using namespace bsoncxx::types;
+} // anonymous namespace
 
-      if (act.account != chain::config::system_account_name)
-         return;
+void mongo_db_plugin_impl::purge_abi_cache() {
+   if( abi_cache_index.size() < abi_cache_size ) return;
 
-      try {
-         if( act.name == mongo_db_plugin_impl::newaccount ) {
-            auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-                  std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
-            auto newaccount = act.data_as<chain::newaccount>();
-
-            // create new account
-            if( !accounts.insert_one( make_document( kvp( "name", newaccount.name.to_string()),
-                                                     kvp( "createdAt", b_date{now} )))) {
-               elog( "Failed to insert account ${n}", ("n", newaccount.name));
-            }
-
-         } else if( act.name == mongo_db_plugin_impl::setabi ) {
-            auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-                  std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
-            auto setabi = act.data_as<chain::setabi>();
-            auto from_account = find_account( accounts, setabi.account );
-            if( !from_account ) {
-               if( !accounts.insert_one( make_document( kvp( "name", setabi.account.to_string()),
-                                                        kvp( "createdAt", b_date{now} )))) {
-                  elog( "Failed to insert account ${n}", ("n", setabi.account));
-               }
-               from_account = find_account( accounts, setabi.account );
-            }
-            if( from_account ) {
-               const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
-               const string json_str = fc::json::to_string( abi_def );
-
-               try{
-                  auto update_from = make_document(
-                        kvp( "$set", make_document( kvp( "abi", bsoncxx::from_json( json_str )),
-                                                    kvp( "updatedAt", b_date{now} ))));
-
-                  try {
-                     if( !accounts.update_one( make_document( kvp( "_id", from_account->view()["_id"].get_oid())),
-                                               update_from.view())) {
-                        EOS_ASSERT( false, chain::mongo_db_update_fail, "Failed to udpdate account ${n}", ("n", setabi.account));
-                     }
-                  } catch( ... ) {
-                     handle_mongo_exception( "account update", __LINE__ );
-                  }
-               } catch( bsoncxx::exception& e ) {
-                  elog( "Unable to convert abi JSON to MongoDB JSON: ${e}", ("e", e.what()));
-                  elog( "  JSON: ${j}", ("j", json_str));
-               }
-            }
-         }
-      } catch( fc::exception& e ) {
-         // if unable to unpack native type, skip account creation
-      }
+   // remove the oldest (smallest) last accessed
+   auto& idx = abi_cache_index.get<by_last_access>();
+   auto itr = idx.begin();
+   if( itr != idx.end() ) {
+      idx.erase( itr );
    }
-
-void add_data( bsoncxx::builder::basic::document& act_doc, mongocxx::collection& accounts, const chain::action& act, const fc::microseconds& abi_serializer_max_time ) {
-   using bsoncxx::builder::basic::kvp;
-   using bsoncxx::builder::basic::make_document;
-   try {
-      if( act.account == chain::config::system_account_name ) {
-         if( act.name == mongo_db_plugin_impl::setabi ) {
-            auto setabi = act.data_as<chain::setabi>();
-            try {
-               const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
-               const string json_str = fc::json::to_string( abi_def );
-
-               act_doc.append(
-                     kvp( "data", make_document( kvp( "account", setabi.account.to_string()),
-                                                 kvp( "abi_def", bsoncxx::from_json( json_str )))));
-               return;
-            } catch( bsoncxx::exception& ) {
-               // better error handling below
-            } catch( fc::exception& e ) {
-               ilog( "Unable to convert action abi_def to json for ${n}", ("n", setabi.account.to_string()));
-            }
-         }
-      }
-      auto account = find_account( accounts, act.account );
-      if( account ) {
-         auto from_account = *account;
-         abi_def abi;
-         if( from_account.view().find( "abi" ) != from_account.view().end()) {
-            try {
-               abi = fc::json::from_string( bsoncxx::to_json( from_account.view()["abi"].get_document())).as<abi_def>();
-            } catch( ... ) {
-               ilog( "Unable to convert account abi to abi_def for ${s}::${n}", ("s", act.account)( "n", act.name ));
-            }
-         }
-         string json;
-         try {
-            abi_serializer abis;
-            abis.set_abi( abi, abi_serializer_max_time );
-            auto v = abis.binary_to_variant( abis.get_action_type( act.name ), act.data, abi_serializer_max_time );
-            json = fc::json::to_string( v );
-
-            const auto& value = bsoncxx::from_json( json );
-            act_doc.append( kvp( "data", value ));
-            return;
-         } catch( bsoncxx::exception& e ) {
-            ilog( "Unable to convert EOS JSON to MongoDB JSON: ${e}", ("e", e.what()));
-            ilog( "  EOS JSON: ${j}", ("j", json));
-            ilog( "  Storing data has hex." );
-         }
-      }
-   } catch( std::exception& e ) {
-      ilog( "Unable to convert action.data to ABI: ${s}::${n}, std what: ${e}",
-            ("s", act.account)( "n", act.name )( "e", e.what()));
-   } catch (fc::exception& e) {
-      if (act.name != "onblock") { // eosio::onblock not in original eosio.system abi
-         ilog( "Unable to convert action.data to ABI: ${s}::${n}, fc exception: ${e}",
-               ("s", act.account)( "n", act.name )( "e", e.to_detail_string()));
-      }
-   } catch( ... ) {
-      ilog( "Unable to convert action.data to ABI: ${s}::${n}, unknown exception",
-            ("s", act.account)( "n", act.name ));
-   }
-   // if anything went wrong just store raw hex_data
-   act_doc.append( kvp( "hex_data", fc::variant( act.data ).as_string()));
 }
 
-} // anonymous namespace
+optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name n ) {
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+   if( n.good()) {
+      try {
+
+         auto itr = abi_cache_index.find( n );
+         if( itr != abi_cache_index.end() ) {
+            abi_cache_index.modify( itr, []( auto& entry ) {
+               entry.last_accessed = fc::time_point::now();
+            });
+
+            return itr->serializer;
+         }
+
+         auto account = accounts.find_one( make_document( kvp("name", n.to_string())) );
+         if(account) {
+            auto view = account->view();
+            abi_def abi;
+            if( view.find( "abi" ) != view.end()) {
+               try {
+                  abi = fc::json::from_string( bsoncxx::to_json( view["abi"].get_document())).as<abi_def>();
+               } catch (...) {
+                  ilog( "Unable to convert account abi to abi_def for ${n}", ( "n", n ));
+                  return optional<abi_serializer>();
+               }
+
+               purge_abi_cache(); // make room if necessary
+               abi_cache entry;
+               entry.account = n;
+               entry.last_accessed = fc::time_point::now();
+               entry.serializer.emplace( abi, abi_serializer_max_time );
+               abi_cache_index.insert( entry );
+               return entry.serializer;
+            }
+         }
+      } FC_CAPTURE_AND_LOG((n))
+   }
+   return optional<abi_serializer>();
+}
+
+template<typename T>
+fc::variant mongo_db_plugin_impl::to_variant_with_abi( const T& obj ) {
+   fc::variant pretty_output;
+   abi_serializer::to_variant( obj, pretty_output,
+                               [&]( account_name n ) { return get_abi_serializer( n ); },
+                               abi_serializer_max_time );
+   return pretty_output;
+}
 
 void mongo_db_plugin_impl::process_accepted_transaction( const chain::transaction_metadata_ptr& t ) {
    try {
@@ -616,12 +578,12 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
          } ));
       }
       try {
-         update_account( accounts, act );
+         update_account( act );
       } catch (...) {
-         ilog( "Unable to update account for ${s}::${n}", ("s", act.account)( "n", act.name ));
+         handle_mongo_exception( "update_account", __LINE__ );
       }
       if( start_block_reached ) {
-         add_data( act_doc, accounts, act, abi_serializer_max_time );
+         add_data( act_doc, act );
          act_array.append( act_doc );
          mongocxx::model::insert_one insert_op{act_doc.view()};
          bulk_actions.append( insert_op );
@@ -776,7 +738,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
-   auto v = to_variant_with_abi( *t, accounts, abi_serializer_max_time );
+   auto v = to_variant_with_abi( *t );
    string json = fc::json::to_string( v );
    try {
       const auto& value = bsoncxx::from_json( json );
@@ -813,6 +775,8 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
    update_opts.upsert( true );
 
    auto block_num = bs->block_num;
+   if( block_num % 1000 == 0 )
+      ilog( "block_num: ${b}", ("b", block_num) );
    const auto block_id = bs->id;
    const auto block_id_str = block_id.str();
    const auto prev_block_id_str = bs->block->previous.str();
@@ -861,7 +825,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
                     kvp( "block_id", block_id_str ),
                     kvp( "irreversible", b_bool{false} ));
 
-   auto v = to_variant_with_abi( *bs->block, accounts, abi_serializer_max_time );
+   auto v = to_variant_with_abi( *bs->block );
    json = fc::json::to_string( v );
    try {
       const auto& value = bsoncxx::from_json( json );
@@ -896,15 +860,12 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    using bsoncxx::builder::basic::make_document;
    using bsoncxx::builder::basic::kvp;
 
-   auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
-   auto trans = mongo_conn[db_name][trans_col]; // Transactions
+   auto blocks = mongo_conn[db_name][blocks_col];
+   auto trans = mongo_conn[db_name][trans_col];
 
    const auto block_id = bs->block->id();
    const auto block_id_str = block_id.str();
    const auto block_num = bs->block->block_num();
-
-   // genesis block 1 is not signaled to accepted_block
-   if (block_num < 2) return;
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
@@ -932,7 +893,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
       string trx_id_str;
       if( receipt.trx.contains<packed_transaction>()) {
          const auto& pt = receipt.trx.get<packed_transaction>();
-         // get id via get_raw_transaction() as packed_transaction.id() mutates inernal transaction state
+         // get id via get_raw_transaction() as packed_transaction.id() mutates internal transaction state
          const auto& raw = pt.get_raw_transaction();
          const auto& id = fc::raw::unpack<transaction>(raw).id();
          trx_id_str = id.str();
@@ -941,18 +902,15 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
          trx_id_str = id.str();
       }
 
-      auto ir_trans = find_transaction(trans, trx_id_str);
+      auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
+                                                                   kvp( "block_id", block_id_str ),
+                                                                   kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ),
+                                                                   kvp( "updatedAt", b_date{now} ))));
 
-      if (ir_trans) {
-         auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
-                                                                      kvp( "block_id", block_id_str),
-                                                                      kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ),
-                                                                      kvp( "updatedAt", b_date{now}))));
-
-         mongocxx::model::update_one update_op{ make_document(kvp("_id", ir_trans->view()["_id"].get_oid())), update_doc.view()};
-         bulk.append(update_op);
-         transactions_in_block = true;
-      }
+      mongocxx::model::update_one update_op{make_document( kvp( "trx_id", trx_id_str )), update_doc.view()};
+      update_op.upsert( true );
+      bulk.append( update_op );
+      transactions_in_block = true;
    }
 
    if( transactions_in_block ) {
@@ -963,6 +921,283 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
       } catch(...) {
          handle_mongo_exception("bulk transaction insert", __LINE__);
       }
+   }
+}
+
+void mongo_db_plugin_impl::add_data( bsoncxx::builder::basic::document& act_doc, const chain::action& act )
+{
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+   try {
+      if( act.account == chain::config::system_account_name ) {
+         if( act.name == mongo_db_plugin_impl::setabi ) {
+            auto setabi = act.data_as<chain::setabi>();
+            try {
+               const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
+               const string json_str = fc::json::to_string( abi_def );
+
+               act_doc.append(
+                     kvp( "data", make_document( kvp( "account", setabi.account.to_string()),
+                                                 kvp( "abi_def", bsoncxx::from_json( json_str )))));
+               return;
+            } catch( bsoncxx::exception& ) {
+               // better error handling below
+            } catch( fc::exception& e ) {
+               ilog( "Unable to convert action abi_def to json for ${n}", ("n", setabi.account.to_string()));
+            }
+         }
+      }
+      auto serializer = get_abi_serializer( act.account );
+      if( serializer.valid() ) {
+         string json;
+         try {
+            auto v = serializer->binary_to_variant( serializer->get_action_type( act.name ), act.data, abi_serializer_max_time );
+            json = fc::json::to_string( v );
+
+            const auto& value = bsoncxx::from_json( json );
+            act_doc.append( kvp( "data", value ));
+            return;
+         } catch( bsoncxx::exception& e ) {
+            ilog( "Unable to convert EOS JSON to MongoDB JSON: ${e}", ("e", e.what()));
+            ilog( "  EOS JSON: ${j}", ("j", json));
+            ilog( "  Storing data has hex." );
+         }
+      }
+   } catch( std::exception& e ) {
+      ilog( "Unable to convert action.data to ABI: ${s}::${n}, std what: ${e}",
+            ("s", act.account)( "n", act.name )( "e", e.what()));
+   } catch (fc::exception& e) {
+      if (act.name != "onblock") { // eosio::onblock not in original eosio.system abi
+         ilog( "Unable to convert action.data to ABI: ${s}::${n}, fc exception: ${e}",
+               ("s", act.account)( "n", act.name )( "e", e.to_detail_string()));
+      }
+   } catch( ... ) {
+      ilog( "Unable to convert action.data to ABI: ${s}::${n}, unknown exception",
+            ("s", act.account)( "n", act.name ));
+   }
+   // if anything went wrong just store raw hex_data
+   act_doc.append( kvp( "hex_data", fc::variant( act.data ).as_string()));
+}
+
+
+void mongo_db_plugin_impl::add_pub_keys( const vector<chain::key_weight>& keys, const account_name& name,
+                                         const permission_name& permission, const std::chrono::milliseconds& now )
+{
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+   using namespace bsoncxx::types;
+
+   if( keys.empty()) return;
+
+   auto pub_keys = mongo_conn[db_name][pub_keys_col];
+
+   mongocxx::bulk_write bulk = pub_keys.create_bulk_write();
+
+   for( const auto& pub_key_weight : keys ) {
+      auto find_doc = bsoncxx::builder::basic::document();
+
+      find_doc.append( kvp( "account", name.to_string()),
+                       kvp( "public_key", pub_key_weight.key.operator string()),
+                       kvp( "permission", permission.to_string()) );
+
+      auto update_doc = make_document( kvp( "$set", make_document( bsoncxx::builder::concatenate_doc{find_doc.view()},
+                                                                   kvp( "createdAt", b_date{now} ))));
+
+      mongocxx::model::update_one insert_op{find_doc.view(), update_doc.view()};
+      insert_op.upsert(true);
+      bulk.append( insert_op );
+   }
+
+   try {
+      if( !bulk.execute()) {
+         EOS_ASSERT( false, chain::mongo_db_insert_fail,
+                     "Bulk pub_keys insert failed for account: ${a}, permission: ${p}",
+                     ("a", name)( "p", permission ));
+      }
+   } catch (...) {
+      handle_mongo_exception( "pub_keys insert", __LINE__ );
+   }
+}
+
+void mongo_db_plugin_impl::remove_pub_keys( const account_name& name, const permission_name& permission )
+{
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+
+   auto pub_keys = mongo_conn[db_name][pub_keys_col];
+
+   try {
+      auto result = pub_keys.delete_many( make_document( kvp( "account", name.to_string()),
+                                                         kvp( "permission", permission.to_string())));
+      if( !result ) {
+         EOS_ASSERT( false, chain::mongo_db_update_fail,
+                     "pub_keys delete failed for account: ${a}, permission: ${p}",
+                     ("a", name)( "p", permission ));
+      }
+   } catch (...) {
+      handle_mongo_exception( "pub_keys delete", __LINE__ );
+   }
+}
+
+void mongo_db_plugin_impl::add_account_control( const vector<chain::permission_level_weight>& controlling_accounts,
+                                                const account_name& name, const permission_name& permission,
+                                                const std::chrono::milliseconds& now )
+{
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+   using namespace bsoncxx::types;
+
+   if( controlling_accounts.empty()) return;
+
+   auto account_controls = mongo_conn[db_name][account_controls_col];
+
+   mongocxx::bulk_write bulk = account_controls.create_bulk_write();
+
+   for( const auto& controlling_account : controlling_accounts ) {
+      auto find_doc = bsoncxx::builder::basic::document();
+
+      find_doc.append( kvp( "controlled_account", name.to_string()),
+                       kvp( "controlled_permission", permission.to_string()),
+                       kvp( "controlling_account", controlling_account.permission.actor.to_string()) );
+
+      auto update_doc = make_document( kvp( "$set", make_document( bsoncxx::builder::concatenate_doc{find_doc.view()},
+                                                                   kvp( "createdAt", b_date{now} ))));
+
+
+      mongocxx::model::update_one insert_op{find_doc.view(), update_doc.view()};
+      insert_op.upsert(true);
+      bulk.append( insert_op );
+   }
+
+   try {
+      if( !bulk.execute()) {
+         EOS_ASSERT( false, chain::mongo_db_insert_fail,
+                     "Bulk account_controls insert failed for account: ${a}, permission: ${p}",
+                     ("a", name)( "p", permission ));
+      }
+   } catch (...) {
+      handle_mongo_exception( "account_controls insert", __LINE__ );
+   }
+}
+
+void mongo_db_plugin_impl::remove_account_control( const account_name& name, const permission_name& permission )
+{
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+
+   auto account_controls = mongo_conn[db_name][account_controls_col];
+
+   try {
+      auto result = account_controls.delete_many( make_document( kvp( "controlled_account", name.to_string()),
+                                                                 kvp( "controlled_permission", permission.to_string())));
+      if( !result ) {
+         EOS_ASSERT( false, chain::mongo_db_update_fail,
+                     "account_controls delete failed for account: ${a}, permission: ${p}",
+                     ("a", name)( "p", permission ));
+      }
+   } catch (...) {
+      handle_mongo_exception( "account_controls delete", __LINE__ );
+   }
+}
+
+namespace {
+
+void create_account( mongocxx::collection& accounts, const name& name, std::chrono::milliseconds& now ) {
+   using namespace bsoncxx::types;
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+
+   mongocxx::options::update update_opts{};
+   update_opts.upsert( true );
+
+   const string name_str = name.to_string();
+   auto update = make_document(
+         kvp( "$set", make_document( kvp( "name", name_str),
+                                     kvp( "createdAt", b_date{now} ))));
+   try {
+      if( !accounts.update_one( make_document( kvp( "name", name_str )), update.view(), update_opts )) {
+         EOS_ASSERT( false, chain::mongo_db_update_fail, "Failed to insert account ${n}", ("n", name));
+      }
+   } catch (...) {
+      handle_mongo_exception( "create_account", __LINE__ );
+   }
+}
+
+}
+
+void mongo_db_plugin_impl::update_account(const chain::action& act)
+{
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+   using namespace bsoncxx::types;
+
+   if (act.account != chain::config::system_account_name)
+      return;
+
+   try {
+      if( act.name == newaccount ) {
+         std::chrono::milliseconds now = std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
+         auto newacc = act.data_as<chain::newaccount>();
+
+         create_account( accounts, newacc.name, now );
+
+         add_pub_keys( newacc.owner.keys, newacc.name, owner, now );
+         add_account_control( newacc.owner.accounts, newacc.name, owner, now );
+         add_pub_keys( newacc.active.keys, newacc.name, active, now );
+         add_account_control( newacc.active.accounts, newacc.name, active, now );
+
+      } else if( act.name == updateauth ) {
+         auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
+         const auto update = act.data_as<chain::updateauth>();
+         remove_pub_keys(update.account, update.permission);
+         remove_account_control(update.account, update.permission);
+         add_pub_keys(update.auth.keys, update.account, update.permission, now);
+         add_account_control(update.auth.accounts, update.account, update.permission, now);
+
+      } else if( act.name == deleteauth ) {
+         const auto del = act.data_as<chain::deleteauth>();
+         remove_pub_keys( del.account, del.permission );
+         remove_account_control(del.account, del.permission);
+
+      } else if( act.name == setabi ) {
+         auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
+         auto setabi = act.data_as<chain::setabi>();
+
+         abi_cache_index.erase( setabi.account );
+
+         auto from_account = find_account( accounts, setabi.account );
+         if( !from_account ) {
+            create_account( accounts, setabi.account, now );
+            from_account = find_account( accounts, setabi.account );
+         }
+         if( from_account ) {
+            const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
+            const string json_str = fc::json::to_string( abi_def );
+
+            try{
+               auto update_from = make_document(
+                     kvp( "$set", make_document( kvp( "abi", bsoncxx::from_json( json_str )),
+                                                 kvp( "updatedAt", b_date{now} ))));
+
+               try {
+                  if( !accounts.update_one( make_document( kvp( "_id", from_account->view()["_id"].get_oid())),
+                                            update_from.view())) {
+                     EOS_ASSERT( false, chain::mongo_db_update_fail, "Failed to udpdate account ${n}", ("n", setabi.account));
+                  }
+               } catch( ... ) {
+                  handle_mongo_exception( "account update", __LINE__ );
+               }
+            } catch( bsoncxx::exception& e ) {
+               elog( "Unable to convert abi JSON to MongoDB JSON: ${e}", ("e", e.what()));
+               elog( "  JSON: ${j}", ("j", json_str));
+            }
+         }
+      }
+   } catch( fc::exception& e ) {
+      // if unable to unpack native type, skip account creation
    }
 }
 
@@ -995,6 +1230,8 @@ void mongo_db_plugin_impl::wipe_database() {
    auto trans_traces = mongo_conn[db_name][trans_traces_col];
    auto actions = mongo_conn[db_name][actions_col];
    accounts = mongo_conn[db_name][accounts_col];
+   auto pub_keys = mongo_conn[db_name][pub_keys_col];
+   auto account_controls = mongo_conn[db_name][account_controls_col];
 
    block_states.drop();
    blocks.drop();
@@ -1002,6 +1239,8 @@ void mongo_db_plugin_impl::wipe_database() {
    trans_traces.drop();
    actions.drop();
    accounts.drop();
+   pub_keys.drop();
+   account_controls.drop();
 }
 
 void mongo_db_plugin_impl::init() {
@@ -1030,7 +1269,7 @@ void mongo_db_plugin_impl::init() {
 
       try {
          // blocks indexes
-         auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
+         auto blocks = mongo_conn[db_name][blocks_col];
          blocks.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
          blocks.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
 
@@ -1042,11 +1281,26 @@ void mongo_db_plugin_impl::init() {
          accounts.create_index( bsoncxx::from_json( R"xxx({ "name" : 1 })xxx" ));
 
          // transactions indexes
-         auto trans = mongo_conn[db_name][trans_col]; // Transactions
+         auto trans = mongo_conn[db_name][trans_col];
          trans.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
 
+         auto trans_trace = mongo_conn[db_name][trans_traces_col];
+         trans_trace.create_index( bsoncxx::from_json( R"xxx({ "id" : 1 })xxx" ));
+
+         // actions indexes
          auto actions = mongo_conn[db_name][actions_col];
          actions.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
+
+         // pub_keys indexes
+         auto pub_keys = mongo_conn[db_name][pub_keys_col];
+         pub_keys.create_index( bsoncxx::from_json( R"xxx({ "account" : 1, "permission" : 1 })xxx" ));
+         pub_keys.create_index( bsoncxx::from_json( R"xxx({ "public_key" : 1 })xxx" ));
+
+         // account_controls indexes
+         auto account_controls = mongo_conn[db_name][account_controls_col];
+         account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlled_account" : 1, "controlled_permission" : 1 })xxx" ));
+         account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlling_account" : 1 })xxx" ));
+
       } catch(...) {
          handle_mongo_exception("create indexes", __LINE__);
       }
@@ -1075,8 +1329,10 @@ mongo_db_plugin::~mongo_db_plugin()
 void mongo_db_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
    cfg.add_options()
-         ("mongodb-queue-size,q", bpo::value<uint32_t>()->default_value(256),
+         ("mongodb-queue-size,q", bpo::value<uint32_t>()->default_value(1024),
          "The target queue size between nodeos and MongoDB plugin thread.")
+         ("mongodb-abi-cache-size", bpo::value<uint32_t>()->default_value(2048),
+          "The maximum size of the abi cache for serializing data.")
          ("mongodb-wipe", bpo::bool_switch()->default_value(false),
          "Required with --replay-blockchain, --hard-replay-blockchain, or --delete-all-blocks to wipe mongo db."
          "This option required to prevent accidental wipe of mongo db.")
@@ -1112,7 +1368,11 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          my->abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
 
          if( options.count( "mongodb-queue-size" )) {
-            my->queue_size = options.at( "mongodb-queue-size" ).as<uint32_t>();
+            my->max_queue_size = options.at( "mongodb-queue-size" ).as<uint32_t>();
+         }
+         if( options.count( "mongodb-abi-cache-size" )) {
+            my->abi_cache_size = options.at( "mongodb-abi-cache-size" ).as<uint32_t>();
+            EOS_ASSERT( my->abi_cache_size > 0, chain::plugin_config_exception, "mongodb-abi-cache-size > 0 required" );
          }
          if( options.count( "mongodb-block-start" )) {
             my->start_block_num = options.at( "mongodb-block-start" ).as<uint32_t>();
