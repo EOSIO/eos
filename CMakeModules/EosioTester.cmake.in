@@ -63,24 +63,24 @@ find_library(libsecp256k1 secp256k1 @Secp256k1_ROOT_DIR@/lib)
 
 macro(add_eosio_test test_name)
    add_executable( ${test_name} ${ARGN} )
-   target_link_libraries( ${test_name} 
-       ${LLVM} 
-       ${libtester}    
-       ${libchain} 
-       ${libfc} 
-       ${libbinaryen} 
-       ${libwast} 
-       ${libwasm} 
-       ${libruntime} 
-       ${libplatform} 
-       ${libir} 
-       ${libsoftfloat} 
-       ${liboscrypto} 
-       ${libosssl} 
-       ${liblogging} 
-       ${libchainbase} 
-       ${libbuiltins} 
-       ${libsecp256k1} 
+   target_link_libraries( ${test_name}
+       ${LLVM}
+       ${libtester}
+       ${libchain}
+       ${libfc}
+       ${libbinaryen}
+       ${libwast}
+       ${libwasm}
+       ${libruntime}
+       ${libplatform}
+       ${libir}
+       ${libsoftfloat}
+       ${liboscrypto}
+       ${libosssl}
+       ${liblogging}
+       ${libchainbase}
+       ${libbuiltins}
+       ${libsecp256k1}
 
        LLVMX86Disassembler
        LLVMX86AsmParser
@@ -120,11 +120,9 @@ macro(add_eosio_test test_name)
                                ${Boost_INCLUDE_DIRS}
                                @OPENSSL_INCLUDE_DIR@
                                @CMAKE_INSTALL_PREFIX@
-                               @CMAKE_INSTALL_FULL_INCLUDEDIR@ 
-                               @CMAKE_INSTALL_FULL_INCLUDEDIR@/eosio
-                               @CMAKE_INSTALL_FULL_INCLUDEDIR@/eosio/wasm-jit/Include
-                               @CMAKE_INSTALL_FULL_INCLUDEDIR@/eosio/softfloat/include
-                               ${CMAKE_CURRENT_BINARY_DIR}/include )
+                               @CMAKE_INSTALL_FULL_INCLUDEDIR@
+                               @CMAKE_INSTALL_FULL_INCLUDEDIR@/wasm-jit
+                               @CMAKE_INSTALL_FULL_INCLUDEDIR@/softfloat )
 
    #Manually run unit_test for all supported runtimes
    #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose

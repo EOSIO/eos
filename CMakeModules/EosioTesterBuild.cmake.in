@@ -63,24 +63,24 @@ find_library(libsecp256k1 secp256k1 @Secp256k1_ROOT_DIR@/lib)
 
 macro(add_eosio_test test_name)
    add_executable( ${test_name} ${ARGN} )
-   target_link_libraries( ${test_name} 
-       ${LLVM} 
-       ${libtester}    
-       ${libchain} 
-       ${libfc} 
-       ${libbinaryen} 
-       ${libwast} 
-       ${libwasm} 
-       ${libruntime} 
-       ${libplatform} 
-       ${libir} 
-       ${libsoftfloat} 
-       ${liboscrypto} 
-       ${libosssl} 
-       ${liblogging} 
-       ${libchainbase} 
-       ${libbuiltins} 
-       ${libsecp256k1} 
+   target_link_libraries( ${test_name}
+       ${LLVM}
+       ${libtester}
+       ${libchain}
+       ${libfc}
+       ${libbinaryen}
+       ${libwast}
+       ${libwasm}
+       ${libruntime}
+       ${libplatform}
+       ${libir}
+       ${libsoftfloat}
+       ${liboscrypto}
+       ${libosssl}
+       ${liblogging}
+       ${libchainbase}
+       ${libbuiltins}
+       ${libsecp256k1}
 
        LLVMX86Disassembler
        LLVMX86AsmParser
@@ -122,13 +122,10 @@ macro(add_eosio_test test_name)
                                @CMAKE_BINARY_DIR@/libraries/chain/include
                                @CMAKE_SOURCE_DIR@/libraries/fc/include
                                @CMAKE_SOURCE_DIR@/libraries/softfloat/source/include
-                               @CMAKE_SOURCE_DIR@/libraries/softfloat/build/Linux-x86_64-GCC
-                               @CMAKE_SOURCE_DIR@/libraries/softfloat/source/8086-SSE
+                               @CMAKE_SOURCE_DIR@/libraries/appbase/include
                                @CMAKE_SOURCE_DIR@/libraries/chainbase/include
-                               @CMAKE_SOURCE_DIR@/libraries/builtins
                                @CMAKE_SOURCE_DIR@/libraries/testing/include
-                               @CMAKE_SOURCE_DIR@/libraries/wasm-jit/Include
-                               ${CMAKE_CURRENT_BINARY_DIR}/include )
+                               @CMAKE_SOURCE_DIR@/libraries/wasm-jit/Include )
                             #
    #Manually run unit_test for all supported runtimes
    #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
