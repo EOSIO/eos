@@ -529,6 +529,7 @@ struct abi_gen_helper {
   bool generate_abi(const char* source, const char* abi, bool opt_sfs=false) {
 
     std::string include_param = std::string("-I") + eosiolib_path;
+    std::string core_sym_include_param = std::string("-I") + core_symbol_path;
     std::string pfr_include_param = std::string("-I") + pfr_include_path;
     std::string boost_include_param = std::string("-I") + boost_include_path;
     std::string stdcpp_include_param = std::string("-I") + eosiolib_path + "/libc++/upstream/include";
@@ -542,7 +543,7 @@ struct abi_gen_helper {
     auto extra_args = std::vector<std::string>{"-fparse-all-comments", "--std=c++14", "--target=wasm32", "-ffreestanding", "-nostdlib",
       "-nostdlibinc", "-fno-threadsafe-statics", "-fno-rtti",  "-fno-exceptions",
       include_param, boost_include_param, stdcpp_include_param,
-      stdc_include_param, pfr_include_param };
+      stdc_include_param, pfr_include_param, core_sym_include_param };
 
     bool res = runToolOnCodeWithArgs(
       new find_eosio_abi_macro_action(contract, actions, ""),
