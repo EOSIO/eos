@@ -231,7 +231,7 @@ struct controller_impl {
             std::cerr<< "\n";
             ilog( "${n} reversible blocks replayed", ("n",rev) );
             auto end = fc::time_point::now();
-            ilog( "replayed ${n} blocks in seconds, ${mspb} ms/block",
+            ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
                   ("n", head->block_num)("duration", (end-start).count()/1000000)
                   ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
             std::cerr<< "\n";
