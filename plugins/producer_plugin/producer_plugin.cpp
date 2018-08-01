@@ -118,6 +118,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       boost::program_options::variables_map _options;
       bool     _production_enabled                 = false;
+      bool     _stale_production_window_open       = false;
       bool     _pause_production                   = false;
       uint32_t _production_skip_flags              = 0; //eosio::chain::skip_nothing;
 
@@ -661,6 +662,7 @@ void producer_plugin::plugin_startup()
       my->_irreversible_block_time = fc::time_point::maximum();
    }
 
+   my->_stale_production_window_open = my->_production_enabled;
    if (!my->_producers.empty()) {
       ilog("Launching block production for ${n} producers at ${time}.", ("n", my->_producers.size())("time",fc::time_point::now()));
 
@@ -914,8 +916,13 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
 
    if (_pending_block_mode == pending_block_mode::speculating) {
       auto head_block_age = now - chain.head_block_time();
-      if (head_block_age > fc::seconds(5))
-         return start_block_result::waiting;
+      if (head_block_age > fc::seconds(5)) {
+         if (!_stale_production_window_open)
+            return start_block_result::waiting;
+      } else {
+         // once we are not behind, then the stale production window is no longer needed
+         _stale_production_window_open = false;
+      }
    }
 
    try {
