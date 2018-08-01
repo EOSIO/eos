@@ -27,7 +27,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# https://github.com/EOSIO/eos/blob/master/LICENSE.txt
+# https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
 
 	CWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
