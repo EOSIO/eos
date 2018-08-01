@@ -518,22 +518,21 @@ namespace eosio {
         void on_accepted_block_header( const block_state_ptr& s ) {
            verify_strand_in_this_thread(_strand, __func__, __LINE__);
           // ilog( "accepted block header ${n}", ("n",s->block_num) );
+           const auto& id = s->id;
+
            if( fc::time_point::now() - s->block->timestamp  < fc::seconds(6) ) {
            //   ilog( "queue notice to peer that we have this block so hopefully they don't send it to us" );
-              auto itr = _block_status.find(s->id);
+              auto itr = _block_status.find( id );
               if( !_remote_request_irreversible_only && ( itr == _block_status.end() || !itr->received_from_peer ) ) {
-                 _block_header_notices.insert(s->id);
+                 _block_header_notices.insert( id );
+              }
+              if( itr == _block_status.end() ) {
+                 _block_status.insert( block_status(id, false, false) );
               }
            }
 
            //idump((_block_status.size())(_transaction_status.size()));
-           auto id = s->id;
            //ilog( "accepted block ${n}", ("n",s->block_num) );
-
-           auto itr = _block_status.find( id );
-           if( itr == _block_status.end() ) {
-              itr = _block_status.insert( block_status(id, false, false) ).first;
-           }
 
            _local_head_block_id = id;
            _local_head_block_num = block_header::num_from_id(id);
@@ -550,8 +549,8 @@ namespace eosio {
             */
            for( const auto& receipt : s->block->transactions ) {
               if( receipt.trx.which() == 1 ) {
-                 auto id = receipt.trx.get<packed_transaction>().id();
-                 auto itr = _transaction_status.find( id );
+                 const auto tid = receipt.trx.get<packed_transaction>().id();
+                 auto itr = _transaction_status.find( tid );
                  if( itr != _transaction_status.end() )
                     _transaction_status.erase(itr);
               }
@@ -644,35 +643,23 @@ namespace eosio {
                                           std::placeholders::_2 ) ) );
         } FC_LOG_AND_RETHROW() }
 
-        void mark_block_known_by_peer( block_id_type id) {
-            auto itr = _block_status.find(id);
-            if( itr == _block_status.end() ) {
-               // optimization to avoid sending blocks to nodes that already know about them
-               // to avoid unbounded memory growth limit number tracked
-               auto min_block_num = std::min( _local_lib, _last_sent_block_num );
-               auto max_block_num = min_block_num + _max_block_status_range;
-               auto block_num = block_header::num_from_id(id);
-               if(block_num > min_block_num && block_num < max_block_num)
-                  _block_status.insert( block_status(id, true, false) );
-            } else {
-               _block_status.modify( itr, [&]( auto& item ) {
-                 item.known_by_peer = true;
-               });
-            }
+        void mark_block_status( const block_id_type& id, bool known_by_peer, bool recv_from_peer ) {
+           auto itr = _block_status.find(id);
+           if( itr == _block_status.end() ) {
+              // optimization to avoid sending blocks to nodes that already know about them
+              // to avoid unbounded memory growth limit number tracked
+              const auto min_block_num = std::min( _local_lib, _last_sent_block_num );
+              const auto max_block_num = min_block_num + _max_block_status_range;
+              const auto block_num = block_header::num_from_id( id );
+              if( block_num > min_block_num && block_num < max_block_num && _block_status.size() < _max_block_status_range )
+                 _block_status.insert( block_status( id, known_by_peer, recv_from_peer ) );
+           } else {
+              _block_status.modify( itr, [&]( auto& item ) {
+                 item.known_by_peer = known_by_peer;
+                 if (recv_from_peer) item.received_from_peer = true;
+              });
+           }
         }
-
-        void mark_block_recv_from_peer( block_id_type id ) {
-            auto itr = _block_status.find(id);
-            if( itr == _block_status.end() ) {
-               _block_status.insert( block_status(id, true, true) );
-            } else {
-               _block_status.modify( itr, [&]( auto& item ) {
-                 item.known_by_peer = true;
-                 item.received_from_peer = true;
-               });
-            }
-        }
-
 
         /**
          *  This method will determine whether there is a message in the
@@ -819,7 +806,7 @@ namespace eosio {
                return;
             }
 
-            mark_block_known_by_peer( next_id );
+            mark_block_status( next_id, true, false );
 
             _last_sent_block_id  = next_id;
             _last_sent_block_num = nextblock->block_num();
@@ -930,7 +917,7 @@ namespace eosio {
             );
         }
 
-     void on_message( const bnet_message& msg, fc::datastream<const char*>& ds ) {
+        void on_message( const bnet_message& msg, fc::datastream<const char*>& ds ) {
            try {
               switch( msg.which() ) {
                  case bnet_message::tag<hello>::value:
@@ -967,11 +954,11 @@ namespace eosio {
            peer_ilog(this, "received block_notice");
            for( const auto& id : notice.block_ids ) {
               status( "received notice " + std::to_string( block_header::num_from_id(id) ) );
-              mark_block_known_by_peer( id );
+              mark_block_status( id, true, false );
            }
         }
 
-     void on( const hello& hi, fc::datastream<const char*>& ds );
+        void on( const hello& hi, fc::datastream<const char*>& ds );
 
         void on( const ping& p ) {
            peer_ilog(this, "received ping");
@@ -1009,7 +996,7 @@ namespace eosio {
            status( "received block " + std::to_string(b->block_num()) );
            //ilog( "recv block ${n}", ("n", b->block_num()) );
            auto id = b->id();
-           mark_block_recv_from_peer( id );
+           mark_block_status( id, true, true );
 
            app().get_channel<incoming::channels::block>().publish(b);
 
@@ -1526,7 +1513,7 @@ namespace eosio {
       _remote_lib            = hi.last_irr_block_num;
 
       for( const auto& id : hi.pending_block_ids )
-         mark_block_known_by_peer( id );
+         mark_block_status( id, true, false );
 
       check_for_redundant_connection();
 

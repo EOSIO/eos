@@ -573,6 +573,7 @@ struct controller_impl {
       in_trx_requiring_checks = true;
 
       transaction_context trx_context( self, dtrx, gtrx.trx_id );
+      trx_context.leeway = fc::microseconds(0); // avoid stealing cpu resource
       trx_context.deadline = deadline;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       transaction_trace_ptr trace = trx_context.trace;
@@ -761,7 +762,7 @@ struct controller_impl {
    void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s ) {
       EOS_ASSERT( !pending, block_validate_exception, "pending block is not available" );
 
-      EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block", 
+      EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                 ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
       auto guard_pending = fc::make_scoped_exit([this](){
