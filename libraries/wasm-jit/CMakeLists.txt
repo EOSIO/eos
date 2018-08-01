@@ -21,7 +21,7 @@ include_directories(${WAVM_INCLUDE_DIR})
 
 	# Disable RTTI
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
-	
+
 	# Ensure that even static libraries are relocatable so they can be linked into a .so
 #	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 
@@ -76,4 +76,4 @@ add_subdirectory(Source/WASM)
 add_subdirectory(Source/WAST)
 
 #add_subdirectory(Test/spec)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Include DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/eosio/wasm-jit/)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Include/ DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/wasm-jit)
