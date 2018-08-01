@@ -297,15 +297,3 @@
    printf "\\tEOSIO resources: https://eos.io/resources/\\n"
    printf "\\tEOSIO Stack Exchange: https://eosio.stackexchange.com\\n"
    printf "\\tEOSIO wiki: https://github.com/EOSIO/eos/wiki\\n\\n\\n"
-
-   if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
-      # Build EOSIO package
-
-      if ! make -j${CPU_CORE} VERBOSE=0 package
-      then
-         printf "\\n\\t>>>>>>>>>>>>>>>>>>>> MAKE building EOSIO package has exited with the above error.\\n\\n"
-         exit -1
-      fi
-
-      printf "\\n\\t>>>>>>>>>>>>>>>>>>>> EOSIO package has been successfully built.\\n\\n"
-   fi
