@@ -878,15 +878,20 @@ struct controller_impl {
 
          finalize_block();
 
+         // this implicitly asserts that all header fields (less the signature) are identical
+         EOS_ASSERT(b->id() == pending->_pending_block_state->header.id(),
+                   block_validate_exception, "Block ID does not match",
+                   ("producer_block_id",b->id())("validator_block_id",pending->_pending_block_state->header.id()));
+
+         // We need to fill out the pending block state's block because that gets serialized in the reversible block log
+         // in the future we can optimize this by serializing the original and not the copy
+
          // we can always trust this signature because,
          //   - prior to apply_block, we call fork_db.add which does a signature check IFF the block is untrusted
          //   - OTHERWISE the block is trusted and therefore we trust that the signature is valid
          // Also, as ::sign_block does not lazily calculate the digest of the block, we can just short-circuit to save cycles
          pending->_pending_block_state->header.producer_signature = b->producer_signature;
-
-         // this is implied by the signature passing
-         //FC_ASSERT( b->id() == pending->_pending_block_state->block->id(),
-         //           "applying block didn't produce expected block id" );
+         static_cast<signed_block_header&>(*pending->_pending_block_state->block) =  pending->_pending_block_state->header;
 
          commit_block(false);
          return;
