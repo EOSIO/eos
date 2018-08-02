@@ -254,12 +254,12 @@ namespace eosio { namespace chain {
       auto now = fc::time_point::now();
       trace->elapsed = now - start;
 
-      if( billed_cpu_time_us == 0 ) {
+      if( !explicit_billed_cpu_time ) {
          const auto& cfg = control.get_global_properties().configuration;
          billed_cpu_time_us = std::max( (now - pseudo_start).count(), static_cast<int64_t>(cfg.min_transaction_cpu_usage) );
       }
 
-      validate_cpu_usage_to_bill( billed_cpu_time_us );
+      validate_cpu_usage_to_bill( billed_cpu_time_us, !explicit_billed_cpu_time );
 
       rl.add_transaction_usage( bill_to_accounts, static_cast<uint64_t>(billed_cpu_time_us), net_usage,
                                 block_timestamp_type(control.pending_block_time()).slot ); // Should never fail
