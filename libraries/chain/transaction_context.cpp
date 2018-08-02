@@ -70,7 +70,7 @@ namespace eosio { namespace chain {
          }
       }
 
-      if( explicit_billed_cpu_time || billed_cpu_time_us > 0 )
+      if( billed_cpu_time_us > 0 ) // could also call on explicit_billed_cpu_time but it would be redundant
          validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
 
       // Record accounts to be billed for network and CPU usage
