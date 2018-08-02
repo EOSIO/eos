@@ -1316,13 +1316,13 @@ void controller::push_confirmation( const header_confirmation& c ) {
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
    validate_db_available_size();
-   return my->push_transaction(trx, deadline, false, billed_cpu_time_us);
+   return my->push_transaction(trx, deadline, false, billed_cpu_time_us, billed_cpu_time_us > 0 );
 }
 
 transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us )
 {
    validate_db_available_size();
-   return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us );
+   return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
 }
 
 uint32_t controller::head_block_num()const {
