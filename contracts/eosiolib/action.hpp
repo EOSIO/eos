@@ -48,10 +48,12 @@ namespace eosio {
    T unpack_action_data() {
       constexpr size_t max_stack_buffer_size = 512;
       size_t size = action_data_size();
-      char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+      const bool heap_allocation = max_stack_buffer_size < size;
+      char* buffer = (char*)( heap_allocation ? malloc(size) : alloca(size) );
       read_action_data( buffer, size );
       auto res = unpack<T>( buffer, size );
-      if ( max_stack_buffer_size < size ) {
+      // Free allocated memory 
+      if ( heap_allocation ) {
          free(buffer);
       }
       return res;
