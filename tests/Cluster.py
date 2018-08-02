@@ -18,6 +18,7 @@ import errno
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
 from testUtils import Account
+from Node import BlockType
 from Node import Node
 from WalletMgr import WalletMgr
 
@@ -308,25 +309,27 @@ class Cluster(object):
         """manually set nodes, alternative to explicit launch"""
         self.nodes=nodes
 
-    def waitOnClusterSync(self, timeout=None):
+    def waitOnClusterSync(self, timeout=None, blockType=BlockType.head):
         """Get head block on node 0, then ensure the block is present on every cluster node."""
         assert(self.nodes)
         assert(len(self.nodes) > 0)
-        targetHeadBlockNum=self.nodes[0].getHeadBlockNum() #get root nodes head block num
-        if Utils.Debug: Utils.Print("Head block number on root node: %d" % (targetHeadBlockNum))
-        if targetHeadBlockNum == -1:
+        node=self.nodes[0]
+        targetBlockNum=node.getBlockNum(blockType) #retrieve node 0's head or irrevercible block number 
+        if Utils.Debug:
+            Utils.Print("%s block number on root node: %d" % (blockType.type, targetBlockNum))
+        if targetBlockNum == -1:
             return False
 
-        return self.waitOnClusterBlockNumSync(targetHeadBlockNum, timeout)
+        return self.waitOnClusterBlockNumSync(targetBlockNum, timeout)
 
-    def waitOnClusterBlockNumSync(self, targetBlockNum, timeout=None):
+    def waitOnClusterBlockNumSync(self, targetBlockNum, timeout=None, blockType=BlockType.head):
         """Wait for all nodes to have targetBlockNum finalized."""
         assert(self.nodes)
 
-        def doNodesHaveBlockNum(nodes, targetBlockNum):
+        def doNodesHaveBlockNum(nodes, targetBlockNum, blockType):
             for node in nodes:
                 try:
-                    if (not node.killed) and (not node.isBlockPresent(targetBlockNum)):
+                    if (not node.killed) and (not node.isBlockPresent(targetBlockNum, blockType=blockType)):
                         return False
                 except (TypeError) as _:
                     # This can happen if client connects before server is listening
@@ -334,7 +337,7 @@ class Cluster(object):
 
             return True
 
-        lam = lambda: doNodesHaveBlockNum(self.nodes, targetBlockNum)
+        lam = lambda: doNodesHaveBlockNum(self.nodes, targetBlockNum, blockType)
         ret=Utils.waitForBool(lam, timeout)
         return ret
 

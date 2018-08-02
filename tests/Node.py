@@ -11,6 +11,12 @@ from core_symbol import CORE_SYMBOL
 from testUtils import Utils
 from testUtils import Account
 
+def addEnum(enumClassType, type):
+    setattr(enumClassType, type, enumClassType(type))
+
+def unhandledEnumType(type):
+    raise RuntimeError("No case defined for type=%s" % (type.type))
+
 class ReturnType:
 
     def __init__(self, type):
@@ -19,8 +25,19 @@ class ReturnType:
     def __str__(self):
         return self.type
 
-setattr(ReturnType, "raw", ReturnType("raw"))
-setattr(ReturnType, "json", ReturnType("json"))
+addEnum(ReturnType, "raw")
+addEnum(ReturnType, "json")
+
+class BlockType:
+
+    def __init__(self, type):
+        self.type=type
+
+    def __str__(self):
+        return self.type
+
+addEnum(BlockType, "head")
+addEnum(BlockType, "lib")
 
 # pylint: disable=too-many-public-methods
 class Node(object):
@@ -209,43 +226,38 @@ class Node(object):
 
         return None
 
-    def isBlockPresent(self, blockNum):
-        """Does node have head_block_num >= blockNum"""
+    def isBlockPresent(self, blockNum, blockType=BlockType.head):
+        """Does node have head_block_num/last_irreversible_block_num >= blockNum"""
         assert isinstance(blockNum, int)
+        assert isinstance(blockType, BlockType)
         assert (blockNum > 0)
 
         info=self.getInfo(silentErrors=True, exitOnError=True)
         node_block_num=0
         try:
-            node_block_num=int(info["head_block_num"])
+            if blockType==BlockType.head:
+                node_block_num=int(info["head_block_num"])
+            elif blockType==BlockType.lib:
+                node_block_num=int(info["last_irreversible_block_num"])
+            else:
+                unhandledEnumType(blockType)
+
         except (TypeError, KeyError) as _:
-            Utils.Print("Failure in get info parsing. %s" % (info))
+            Utils.Print("Failure in get info parsing %s block. %s" % (blockType.type, info))
             raise
 
-        return True if blockNum <= node_block_num else False
+        present = True if blockNum <= node_block_num else False
+        if Utils.Debug and blockType==BlockType.lib:
+            decorator=""
+            if present:
+                decorator="is not "
+            Utils.Print("Block %d is %sfinalized." % (blockNum, decorator))
+
+        return present
 
     def isBlockFinalized(self, blockNum):
         """Is blockNum finalized"""
-        assert(blockNum)
-        assert isinstance(blockNum, int)
-        assert (blockNum > 0)
-
-        info=self.getInfo(silentErrors=True, exitOnError=True)
-        node_block_num=0
-        try:
-            node_block_num=int(info["last_irreversible_block_num"])
-        except (TypeError, KeyError) as _:
-            Utils.Print("Failure in get info parsing. %s" % (info))
-            raise
-
-        finalized  = True if blockNum <= node_block_num else False
-        if Utils.Debug:
-            if finalized:
-                Utils.Print("Block %d is finalized." % (blockNum))
-            else:
-                Utils.Print("Block %d is not yet finalized." % (blockNum))
-
-        return finalized
+        return self.isBlockPresent(blockNum, blockType=BlockType.lib)
 
     # pylint: disable=too-many-branches
     def getTransaction(self, transId, silentErrors=False, exitOnError=False, delayedRetry=True):
@@ -411,7 +423,7 @@ class Node(object):
             return False
 
         assert(isinstance(blockId, int))
-        return self.isBlockFinalized(blockId)
+        return self.isBlockPresent(blockId, blockType=BlockType.lib)
 
 
     # Create & initialize account and return creation transactions. Return transaction json object
@@ -971,6 +983,15 @@ class Node(object):
                 blockNum=block["block_num"]
                 return blockNum
         return None
+
+    def getBlockNum(self, blockType):
+        assert isinstance(blockType, BlockType)
+        if blockType==BlockType.head:
+            return self.getHeadBlockNum()
+        elif blockType==BlockType.lib:
+            return self.getIrreversibleBlockNum()
+        else:
+            unhandledEnumType(blockType)
 
     def kill(self, killSignal):
         if Utils.Debug: Utils.Print("Killing node: %s" % (self.cmd))
