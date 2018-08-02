@@ -115,7 +115,7 @@ namespace eosio { namespace chain {
       billing_timer_duration_limit = _deadline - start;
 
       // Check if deadline is limited by caller-set deadline (only change deadline if billed_cpu_time_us is not set)
-      if( explicit_billed_cpu_time || billed_cpu_time_us > 0 || deadline < _deadline ) {
+      if( explicit_billed_cpu_time || deadline < _deadline ) {
          _deadline = deadline;
          deadline_exception_code = deadline_exception::code_value;
       } else {
@@ -295,7 +295,7 @@ namespace eosio { namespace chain {
       auto now = fc::time_point::now();
       if( BOOST_UNLIKELY( now > _deadline ) ) {
          // edump((now-start)(now-pseudo_start));
-         if( billed_cpu_time_us > 0 || deadline_exception_code == deadline_exception::code_value ) {
+         if( explicit_billed_cpu_time || deadline_exception_code == deadline_exception::code_value ) {
             EOS_THROW( deadline_exception, "deadline exceeded", ("now", now)("deadline", _deadline)("start", start) );
          } else if( deadline_exception_code == block_cpu_usage_exceeded::code_value ) {
             EOS_THROW( block_cpu_usage_exceeded,
@@ -316,7 +316,7 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::pause_billing_timer() {
-      if( explicit_billed_cpu_time || billed_cpu_time_us > 0 || pseudo_start == fc::time_point() ) return; // either irrelevant or already paused
+      if( explicit_billed_cpu_time || pseudo_start == fc::time_point() ) return; // either irrelevant or already paused
 
       auto now = fc::time_point::now();
       billed_time = now - pseudo_start;
@@ -325,7 +325,7 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::resume_billing_timer() {
-      if( explicit_billed_cpu_time || billed_cpu_time_us > 0 || pseudo_start != fc::time_point() ) return; // either irrelevant or already running
+      if( explicit_billed_cpu_time || pseudo_start != fc::time_point() ) return; // either irrelevant or already running
 
       auto now = fc::time_point::now();
       pseudo_start = now - billed_time;
