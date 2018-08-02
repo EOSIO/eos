@@ -174,9 +174,9 @@ namespace eosio {
        */
       asset& operator*=( int64_t a ) {
          eosio_assert( a == 0 || (amount * a) / a == amount, "multiplication overflow or underflow" );
+         amount *= a;
          eosio_assert( -max_amount <= amount, "multiplication underflow" );
          eosio_assert( amount <= max_amount,  "multiplication overflow" );
-         amount *= a;
          return *this;
       }
 
