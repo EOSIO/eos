@@ -39,6 +39,8 @@ namespace eosio { namespace chain {
 
          void add_ram_usage( account_name account, int64_t ram_delta );
 
+         uint32_t update_billed_cpu_time( fc::time_point now );
+
       private:
 
          friend struct controller_impl;

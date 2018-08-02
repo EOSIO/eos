@@ -467,6 +467,7 @@ struct controller_impl {
    transaction_trace_ptr apply_onerror( const generated_transaction& gtrx,
                                         fc::time_point deadline,
                                         fc::time_point start,
+                                        uint32_t& cpu_time_to_bill_us, // only set on failure
                                         uint32_t billed_cpu_time_us,
                                         bool explicit_billed_cpu_time = false ) {
       signed_transaction etrx;
@@ -499,6 +500,7 @@ struct controller_impl {
          restore.cancel();
          return trace;
       } catch( const fc::exception& e ) {
+         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
          trace->except = e;
          trace->except_ptr = std::current_exception();
       }
@@ -574,6 +576,8 @@ struct controller_impl {
       });
       in_trx_requiring_checks = true;
 
+      uint32_t cpu_time_to_bill_us = billed_cpu_time_us;
+
       transaction_context trx_context( self, dtrx, gtrx.trx_id );
       trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
       trx_context.deadline = deadline;
@@ -603,6 +607,7 @@ struct controller_impl {
          restore.cancel();
          return trace;
       } catch( const fc::exception& e ) {
+         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
          trace->except = e;
          trace->except_ptr = std::current_exception();
          trace->elapsed = fc::time_point::now() - trx_context.start;
@@ -614,7 +619,7 @@ struct controller_impl {
       if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
          dlog("${detail}", ("detail", trace->except->to_detail_string()));
-         auto error_trace = apply_onerror( gtrx, deadline, trx_context.start, trx_context.billed_cpu_time_us, explicit_billed_cpu_time );
+         auto error_trace = apply_onerror( gtrx, deadline, trx_context.start, cpu_time_to_bill_us, billed_cpu_time_us, explicit_billed_cpu_time );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
          if( !trace->except_ptr ) {
@@ -627,11 +632,13 @@ struct controller_impl {
 
       trace->elapsed = fc::time_point::now() - trx_context.start;
 
-      resource_limits.add_transaction_usage( bill_to_accounts, trx_context.billed_cpu_time_us, 0,
-                                             block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
-
       if (!failure_is_subjective(*trace->except)) {
-         trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, trx_context.billed_cpu_time_us, 0);
+         cpu_time_to_bill_us = static_cast<uint32_t>( std::min( static_cast<int64_t>(cpu_time_to_bill_us),  trx_context.objective_duration_limit.count() ) );
+
+         resource_limits.add_transaction_usage( bill_to_accounts, cpu_time_to_bill_us, 0,
+                                                block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
+
+         trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
          emit( self.applied_transaction, trace );
          undo_session.squash();
       }
