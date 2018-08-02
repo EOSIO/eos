@@ -467,7 +467,8 @@ struct controller_impl {
    transaction_trace_ptr apply_onerror( const generated_transaction& gtrx,
                                         fc::time_point deadline,
                                         fc::time_point start,
-                                        uint32_t billed_cpu_time_us) {
+                                        uint32_t billed_cpu_time_us,
+                                        bool from_block                    ) {
       signed_transaction etrx;
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
       etrx.actions.emplace_back( vector<permission_level>{{gtrx.sender, config::active_name}},
@@ -477,6 +478,7 @@ struct controller_impl {
 
       transaction_context trx_context( self, etrx, etrx.id(), start );
       trx_context.deadline = deadline;
+      trx_context.explicit_billed_cpu_time = from_block;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       transaction_trace_ptr trace = trx_context.trace;
       try {
@@ -612,7 +614,7 @@ struct controller_impl {
       if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
          dlog("${detail}", ("detail", trace->except->to_detail_string()));
-         auto error_trace = apply_onerror( gtrx, deadline, trx_context.start, trx_context.billed_cpu_time_us );
+         auto error_trace = apply_onerror( gtrx, deadline, trx_context.start, trx_context.billed_cpu_time_us, from_block );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
          if( !trace->except_ptr ) {
