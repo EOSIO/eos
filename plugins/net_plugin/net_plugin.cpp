@@ -751,12 +751,7 @@ namespace eosio {
       initialize();
    }
 
-   connection::~connection() {
-      if(peer_addr.empty())
-         wlog( "released connection from client" );
-      else
-         wlog( "released connection to server at ${addr}", ("addr", peer_addr) );
-   }
+   connection::~connection() {}
 
    void connection::initialize() {
       auto *rnd = node_id.data();
@@ -2669,27 +2664,18 @@ namespace eosio {
 
    void net_plugin_impl::connection_monitor( ) {
       start_conn_timer();
-      vector <connection_ptr> discards;
-      num_clients = 0;
-      for( auto &c : connections ) {
-         if( !c->socket->is_open() && !c->connecting) {
-            if( c->peer_addr.length() > 0) {
-               connect(c);
+      auto it = connections.begin();
+      while(it != connections.end()) {
+         if( !(*it)->socket->is_open() && !(*it)->connecting) {
+            if( (*it)->peer_addr.length() > 0) {
+               connect(*it);
             }
             else {
-               discards.push_back( c);
-            }
-         } else {
-            if( c->socket->is_open() && c->peer_addr.empty()) {
-               num_clients++;
+               it = connections.erase(it);
+               continue;
             }
          }
-      }
-      if( discards.size( ) ) {
-         for( auto &c : discards) {
-            connections.erase( c );
-            c.reset();
-         }
+         ++it;
       }
    }
 
