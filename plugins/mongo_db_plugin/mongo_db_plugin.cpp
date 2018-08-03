@@ -155,7 +155,6 @@ public:
    static const std::string blocks_col;
    static const std::string trans_col;
    static const std::string trans_traces_col;
-   static const std::string actions_col;
    static const std::string action_traces_col;
    static const std::string accounts_col;
    static const std::string pub_keys_col;
@@ -173,7 +172,6 @@ const std::string mongo_db_plugin_impl::block_states_col = "block_states";
 const std::string mongo_db_plugin_impl::blocks_col = "blocks";
 const std::string mongo_db_plugin_impl::trans_col = "transactions";
 const std::string mongo_db_plugin_impl::trans_traces_col = "transaction_traces";
-const std::string mongo_db_plugin_impl::actions_col = "actions";
 const std::string mongo_db_plugin_impl::action_traces_col = "action_traces";
 const std::string mongo_db_plugin_impl::accounts_col = "accounts";
 const std::string mongo_db_plugin_impl::pub_keys_col = "pub_keys";
@@ -547,194 +545,164 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    namespace bbb = bsoncxx::builder::basic;
 
    auto trans = mongo_conn[db_name][trans_col];
-   auto actions = mongo_conn[db_name][actions_col];
    accounts = mongo_conn[db_name][accounts_col];
    auto trans_doc = bsoncxx::builder::basic::document{};
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
 
    const auto trx_id = t->id;
    const auto trx_id_str = trx_id.str();
    const auto& trx = t->trx;
    const chain::transaction_header& trx_header = trx;
 
-   bool actions_to_write = false;
-   mongocxx::options::bulk_write bulk_opts;
-   bulk_opts.ordered(false);
-   mongocxx::bulk_write bulk_actions = actions.create_bulk_write(bulk_opts);
-
    int32_t act_num = 0;
-   auto process_action = [&](const std::string& trx_id_str, const chain::action& act, bbb::array& act_array, bool cfa) -> auto {
+   auto process_action = [&]( const std::string& trx_id_str, const chain::action& act, bbb::array& act_array,
+                              bool cfa ) -> auto {
       auto act_doc = bsoncxx::builder::basic::document();
-      if( start_block_reached ) {
-         act_doc.append( kvp( "trx_id", trx_id_str ),
-                         kvp( "action_num", b_int32{act_num} ) );
-         act_doc.append( kvp( "cfa", b_bool{cfa} ));
-         act_doc.append( kvp( "account", act.account.to_string()));
-         act_doc.append( kvp( "name", act.name.to_string()));
-         act_doc.append( kvp( "authorization", [&act]( bsoncxx::builder::basic::sub_array subarr ) {
-            for( const auto& auth : act.authorization ) {
-               subarr.append( [&auth]( bsoncxx::builder::basic::sub_document subdoc ) {
-                  subdoc.append( kvp( "actor", auth.actor.to_string()),
-                                 kvp( "permission", auth.permission.to_string()));
-               } );
-            }
-         } ));
-      }
-      try {
-         update_account( act );
-      } catch (...) {
-         handle_mongo_exception( "update_account", __LINE__ );
-      }
-      if( start_block_reached ) {
-         add_data( act_doc, act );
-         act_array.append( act_doc );
-         mongocxx::model::update_one update_op{make_document( kvp( "trx_id", trx_id_str ),
-                                                              kvp( "action_num", b_int32{act_num} ) ),
-                                               make_document( kvp( "$set", act_doc.view() ) )};
-         update_op.upsert( true );
-         bulk_actions.append( update_op );
-         actions_to_write = true;
-      }
+      act_doc.append( kvp( "trx_id", trx_id_str ),
+                      kvp( "action_num", b_int32{act_num} ) );
+      act_doc.append( kvp( "cfa", b_bool{cfa} ) );
+      act_doc.append( kvp( "account", act.account.to_string() ) );
+      act_doc.append( kvp( "name", act.name.to_string() ) );
+      act_doc.append( kvp( "authorization", [&act]( bsoncxx::builder::basic::sub_array subarr ) {
+         for( const auto& auth : act.authorization ) {
+            subarr.append( [&auth]( bsoncxx::builder::basic::sub_document subdoc ) {
+               subdoc.append( kvp( "actor", auth.actor.to_string() ),
+                              kvp( "permission", auth.permission.to_string() ) );
+            } );
+         }
+      } ) );
+      add_data( act_doc, act );
+      act_array.append( act_doc );
       ++act_num;
       return act_num;
    };
 
-   if( start_block_reached ) {
-      trans_doc.append( kvp( "trx_id", trx_id_str ) );
+   trans_doc.append( kvp( "trx_id", trx_id_str ) );
 
-      string signing_keys_json;
-      if( t->signing_keys.valid()) {
-         signing_keys_json = fc::json::to_string( t->signing_keys->second );
-      } else {
-         auto signing_keys = trx.get_signature_keys( *chain_id, false, false );
-         if( !signing_keys.empty()) {
-            signing_keys_json = fc::json::to_string( signing_keys );
-         }
+   string signing_keys_json;
+   if( t->signing_keys.valid() ) {
+      signing_keys_json = fc::json::to_string( t->signing_keys->second );
+   } else {
+      auto signing_keys = trx.get_signature_keys( *chain_id, false, false );
+      if( !signing_keys.empty() ) {
+         signing_keys_json = fc::json::to_string( signing_keys );
       }
-      string trx_header_json = fc::json::to_string( trx_header );
+   }
+   string trx_header_json = fc::json::to_string( trx_header );
 
+   try {
+      const auto& trx_header_value = bsoncxx::from_json( trx_header_json );
+      trans_doc.append( kvp( "transaction_header", trx_header_value ) );
+   } catch( bsoncxx::exception& ) {
       try {
+         trx_header_json = fc::prune_invalid_utf8( trx_header_json );
          const auto& trx_header_value = bsoncxx::from_json( trx_header_json );
-         trans_doc.append( kvp( "transaction_header", trx_header_value ));
-      } catch( bsoncxx::exception& ) {
-         try {
-            trx_header_json = fc::prune_invalid_utf8( trx_header_json );
-            const auto& trx_header_value = bsoncxx::from_json( trx_header_json );
-            trans_doc.append( kvp( "transaction_header", trx_header_value ));
-            trans_doc.append( kvp( "non-utf8-purged", b_bool{true}));
-         } catch( bsoncxx::exception& e ) {
-            elog( "Unable to convert transaction header JSON to MongoDB JSON: ${e}", ("e", e.what()));
-            elog( "  JSON: ${j}", ("j", trx_header_json));
-         }
+         trans_doc.append( kvp( "transaction_header", trx_header_value ) );
+         trans_doc.append( kvp( "non-utf8-purged", b_bool{true} ) );
+      } catch( bsoncxx::exception& e ) {
+         elog( "Unable to convert transaction header JSON to MongoDB JSON: ${e}", ("e", e.what()) );
+         elog( "  JSON: ${j}", ("j", trx_header_json) );
       }
-      if( !signing_keys_json.empty()) {
-         try {
-            const auto& keys_value = bsoncxx::from_json( signing_keys_json );
-            trans_doc.append( kvp( "signing_keys", keys_value ));
-         } catch( bsoncxx::exception& e ) {
-            // should never fail, so don't attempt to remove invalid utf8
-            elog( "Unable to convert signing keys JSON to MongoDB JSON: ${e}", ("e", e.what()));
-            elog( "  JSON: ${j}", ("j", signing_keys_json));
-         }
+   }
+   if( !signing_keys_json.empty() ) {
+      try {
+         const auto& keys_value = bsoncxx::from_json( signing_keys_json );
+         trans_doc.append( kvp( "signing_keys", keys_value ) );
+      } catch( bsoncxx::exception& e ) {
+         // should never fail, so don't attempt to remove invalid utf8
+         elog( "Unable to convert signing keys JSON to MongoDB JSON: ${e}", ("e", e.what()) );
+         elog( "  JSON: ${j}", ("j", signing_keys_json) );
       }
    }
 
-   if( !trx.actions.empty()) {
+   if( !trx.actions.empty() ) {
       bsoncxx::builder::basic::array action_array;
       for( const auto& act : trx.actions ) {
          process_action( trx_id_str, act, action_array, false );
       }
-      trans_doc.append( kvp( "actions", action_array ));
+      trans_doc.append( kvp( "actions", action_array ) );
    }
 
-   if( start_block_reached ) {
-      if( !trx.context_free_actions.empty()) {
-         bsoncxx::builder::basic::array action_array;
-         for( const auto& cfa : trx.context_free_actions ) {
-            process_action( trx_id_str, cfa, action_array, true );
-         }
-         trans_doc.append( kvp( "context_free_actions", action_array ));
+   if( !trx.context_free_actions.empty() ) {
+      bsoncxx::builder::basic::array action_array;
+      for( const auto& cfa : trx.context_free_actions ) {
+         process_action( trx_id_str, cfa, action_array, true );
       }
+      trans_doc.append( kvp( "context_free_actions", action_array ) );
+   }
 
-      string trx_extensions_json = fc::json::to_string( trx.transaction_extensions );
-      string trx_signatures_json = fc::json::to_string( trx.signatures );
-      string trx_context_free_data_json = fc::json::to_string( trx.context_free_data );
+   string trx_extensions_json = fc::json::to_string( trx.transaction_extensions );
+   string trx_signatures_json = fc::json::to_string( trx.signatures );
+   string trx_context_free_data_json = fc::json::to_string( trx.context_free_data );
 
-      try {
-         if( !trx_extensions_json.empty()) {
-            try {
-               const auto& trx_extensions_value = bsoncxx::from_json( trx_extensions_json );
-               trans_doc.append( kvp( "transaction_extensions", trx_extensions_value ));
-            } catch( bsoncxx::exception& ) {
-               static_assert( sizeof(std::remove_pointer<decltype(b_binary::bytes)>::type) == sizeof(std::string::value_type), "string type not storable as b_binary" );
-               trans_doc.append( kvp( "transaction_extensions",
-                                      b_binary{bsoncxx::binary_sub_type::k_binary,
-                                               static_cast<uint32_t>(trx_extensions_json.size()),
-                                               reinterpret_cast<const u_int8_t*>(trx_extensions_json.data())} ));
-            }
-         } else {
-            trans_doc.append( kvp( "transaction_extensions", make_array()));
-         }
-
-         if( !trx_signatures_json.empty()) {
-            // signatures contain only utf8
-            const auto& trx_signatures_value = bsoncxx::from_json( trx_signatures_json );
-            trans_doc.append( kvp( "signatures", trx_signatures_value ));
-         } else {
-            trans_doc.append( kvp( "signatures", make_array()));
-         }
-
-         if( !trx_context_free_data_json.empty()) {
-            try {
-               const auto& trx_context_free_data_value = bsoncxx::from_json( trx_context_free_data_json );
-               trans_doc.append( kvp( "context_free_data", trx_context_free_data_value ));
-            } catch( bsoncxx::exception& ) {
-               static_assert( sizeof(std::remove_pointer<decltype(b_binary::bytes)>::type) ==
-                              sizeof(std::remove_pointer<decltype(trx.context_free_data[0].data())>::type), "context_free_data not storable as b_binary" );
-               bsoncxx::builder::basic::array data_array;
-               for (auto& cfd : trx.context_free_data) {
-                  data_array.append(
-                        b_binary{bsoncxx::binary_sub_type::k_binary,
-                                 static_cast<uint32_t>(cfd.size()),
-                                 reinterpret_cast<const u_int8_t*>(cfd.data())} );
-               }
-               trans_doc.append( kvp( "context_free_data", data_array.view() ));
-            }
-         } else {
-            trans_doc.append( kvp( "context_free_data", make_array()));
-         }
-      } catch( std::exception& e ) {
-         elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
-         elog( "  JSON: ${j}", ("j", trx_extensions_json));
-         elog( "  JSON: ${j}", ("j", trx_signatures_json));
-         elog( "  JSON: ${j}", ("j", trx_context_free_data_json));
-      }
-
-      trans_doc.append( kvp( "createdAt", b_date{now} ));
-
-      try {
-         mongocxx::options::update update_opts{};
-         update_opts.upsert( true );
-         if( !trans.update_one( make_document( kvp( "trx_id", trx_id_str ) ),
-                                make_document( kvp( "$set", trans_doc.view() ) ), update_opts ) ) {
-            EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert trans ${id}", ("id", trx_id));
-         }
-      } catch(...) {
-         handle_mongo_exception("trans insert", __LINE__);
-      }
-
-      if (actions_to_write) {
+   try {
+      if( !trx_extensions_json.empty() ) {
          try {
-            if( !bulk_actions.execute() ) {
-               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Bulk actions insert failed for transaction: ${id}", ("id", trx_id_str));
-            }
-         } catch(...) {
-            handle_mongo_exception("actions insert", __LINE__);
+            const auto& trx_extensions_value = bsoncxx::from_json( trx_extensions_json );
+            trans_doc.append( kvp( "transaction_extensions", trx_extensions_value ) );
+         } catch( bsoncxx::exception& ) {
+            static_assert(
+                  sizeof( std::remove_pointer<decltype( b_binary::bytes )>::type ) == sizeof( std::string::value_type ),
+                  "string type not storable as b_binary" );
+            trans_doc.append( kvp( "transaction_extensions",
+                                   b_binary{bsoncxx::binary_sub_type::k_binary,
+                                            static_cast<uint32_t>(trx_extensions_json.size()),
+                                            reinterpret_cast<const u_int8_t*>(trx_extensions_json.data())} ) );
          }
+      } else {
+         trans_doc.append( kvp( "transaction_extensions", make_array() ) );
       }
+
+      if( !trx_signatures_json.empty() ) {
+         // signatures contain only utf8
+         const auto& trx_signatures_value = bsoncxx::from_json( trx_signatures_json );
+         trans_doc.append( kvp( "signatures", trx_signatures_value ) );
+      } else {
+         trans_doc.append( kvp( "signatures", make_array() ) );
+      }
+
+      if( !trx_context_free_data_json.empty() ) {
+         try {
+            const auto& trx_context_free_data_value = bsoncxx::from_json( trx_context_free_data_json );
+            trans_doc.append( kvp( "context_free_data", trx_context_free_data_value ) );
+         } catch( bsoncxx::exception& ) {
+            static_assert( sizeof( std::remove_pointer<decltype( b_binary::bytes )>::type ) ==
+                           sizeof( std::remove_pointer<decltype( trx.context_free_data[0].data() )>::type ),
+                           "context_free_data not storable as b_binary" );
+            bsoncxx::builder::basic::array data_array;
+            for( auto& cfd : trx.context_free_data ) {
+               data_array.append(
+                     b_binary{bsoncxx::binary_sub_type::k_binary,
+                              static_cast<uint32_t>(cfd.size()),
+                              reinterpret_cast<const u_int8_t*>(cfd.data())} );
+            }
+            trans_doc.append( kvp( "context_free_data", data_array.view() ) );
+         }
+      } else {
+         trans_doc.append( kvp( "context_free_data", make_array() ) );
+      }
+   } catch( std::exception& e ) {
+      elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()) );
+      elog( "  JSON: ${j}", ("j", trx_extensions_json) );
+      elog( "  JSON: ${j}", ("j", trx_signatures_json) );
+      elog( "  JSON: ${j}", ("j", trx_context_free_data_json) );
    }
+
+   trans_doc.append( kvp( "createdAt", b_date{now} ) );
+
+   try {
+      mongocxx::options::update update_opts{};
+      update_opts.upsert( true );
+      if( !trans.update_one( make_document( kvp( "trx_id", trx_id_str ) ),
+                             make_document( kvp( "$set", trans_doc.view() ) ), update_opts ) ) {
+         EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert trans ${id}", ("id", trx_id) );
+      }
+   } catch( ... ) {
+      handle_mongo_exception( "trans insert", __LINE__ );
+   }
+
 }
 
 void
@@ -1036,6 +1004,7 @@ void mongo_db_plugin_impl::add_data( bsoncxx::builder::basic::document& act_doc,
 
             const auto& value = bsoncxx::from_json( json );
             act_doc.append( kvp( "data", value ));
+            act_doc.append( kvp( "hex_data", fc::variant( act.data ).as_string()));
             return;
          } catch( bsoncxx::exception& e ) {
             ilog( "Unable to convert EOS JSON to MongoDB JSON: ${e}", ("e", e.what()));
@@ -1308,7 +1277,7 @@ void mongo_db_plugin_impl::wipe_database() {
    auto blocks = mongo_conn[db_name][blocks_col];
    auto trans = mongo_conn[db_name][trans_col];
    auto trans_traces = mongo_conn[db_name][trans_traces_col];
-   auto actions = mongo_conn[db_name][actions_col];
+   auto action_traces = mongo_conn[db_name][action_traces_col];
    accounts = mongo_conn[db_name][accounts_col];
    auto pub_keys = mongo_conn[db_name][pub_keys_col];
    auto account_controls = mongo_conn[db_name][account_controls_col];
@@ -1317,7 +1286,7 @@ void mongo_db_plugin_impl::wipe_database() {
    blocks.drop();
    trans.drop();
    trans_traces.drop();
-   actions.drop();
+   action_traces.drop();
    accounts.drop();
    pub_keys.drop();
    account_controls.drop();
@@ -1367,13 +1336,9 @@ void mongo_db_plugin_impl::init() {
          auto trans_trace = mongo_conn[db_name][trans_traces_col];
          trans_trace.create_index( bsoncxx::from_json( R"xxx({ "id" : 1 })xxx" ));
 
-         // actions indexes
-         auto actions = mongo_conn[db_name][actions_col];
-         actions.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1, "action_num" : 1 })xxx" ));
-
          // action traces indexes
          auto action_traces = mongo_conn[db_name][action_traces_col];
-         action_traces.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1, "receipt.global_sequence" : 1 })xxx" ));
+         action_traces.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
 
          // pub_keys indexes
          auto pub_keys = mongo_conn[db_name][pub_keys_col];
