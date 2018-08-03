@@ -445,6 +445,7 @@ public:
             }
 
             if (++count == p.limit || fc::time_point::now() > end) {
+               ++itr;
                break;
             }
          }
