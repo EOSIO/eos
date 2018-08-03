@@ -1,8 +1,9 @@
 include(additionalPlugin)
 
 foreach(ADDITIONAL_PLUGIN_SOURCE_DIR ${EOSIO_ADDITIONAL_PLUGINS})
-    message(STATUS "[Additional Plugin] source dir: ${ADDITIONAL_PLUGIN_SOURCE_DIR}")
-    add_subdirectory(${ADDITIONAL_PLUGIN_SOURCE_DIR} ${CMAKE_BINARY_DIR}/additional_plugins/${ADDITIONAL_PLUGIN_SOURCE_DIR})
+    string(UUID PLUGIN_PATH NAMESPACE "00000000-0000-0000-0000-000000000000" NAME ${ADDITIONAL_PLUGIN_SOURCE_DIR} TYPE MD5)
+    message(STATUS "[Additional Plugin] source dir: ${ADDITIONAL_PLUGIN_SOURCE_DIR} => ${CMAKE_BINARY_DIR}/additional_plugins/${PLUGIN_PATH}")
+    add_subdirectory(${ADDITIONAL_PLUGIN_SOURCE_DIR} ${CMAKE_BINARY_DIR}/additional_plugins/${PLUGIN_PATH})
 endforeach()
 
 add_executable( nodeos main.cpp )
