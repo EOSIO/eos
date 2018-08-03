@@ -529,14 +529,14 @@ struct controller_impl {
              || (code == key_blacklist_exception::code_value);
    }
 
-   transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
+   transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us, bool from_block = false ) {
       const auto& idx = db.get_index<generated_transaction_multi_index,by_trx_id>();
       auto itr = idx.find( trxid );
       EOS_ASSERT( itr != idx.end(), unknown_transaction_exception, "unknown transaction" );
-      return push_scheduled_transaction( *itr, deadline, billed_cpu_time_us );
+      return push_scheduled_transaction( *itr, deadline, billed_cpu_time_us, from_block );
    }
 
-   transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, uint32_t billed_cpu_time_us )
+   transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, uint32_t billed_cpu_time_us, bool from_block = false )
    { try {
       auto undo_session = db.start_undo_session(true);
       auto gtrx = generated_transaction(gto);
@@ -573,8 +573,9 @@ struct controller_impl {
       in_trx_requiring_checks = true;
 
       transaction_context trx_context( self, dtrx, gtrx.trx_id );
-      trx_context.leeway = fc::microseconds(0); // avoid stealing cpu resource
+      trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
       trx_context.deadline = deadline;
+      trx_context.explicit_billed_cpu_time = from_block;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       transaction_trace_ptr trace = trx_context.trace;
       flat_set<account_name>  bill_to_accounts;
@@ -851,7 +852,7 @@ struct controller_impl {
                auto mtrx = std::make_shared<transaction_metadata>(pt);
                trace = push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us);
             } else if( receipt.trx.contains<transaction_id_type>() ) {
-               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us );
+               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else {
                EOS_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }

@@ -70,7 +70,7 @@ namespace eosio { namespace chain {
          }
       }
 
-      if( billed_cpu_time_us > 0 )
+      if( explicit_billed_cpu_time || billed_cpu_time_us > 0 )
          validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
 
       // Record accounts to be billed for network and CPU usage
@@ -115,7 +115,7 @@ namespace eosio { namespace chain {
       billing_timer_duration_limit = _deadline - start;
 
       // Check if deadline is limited by caller-set deadline (only change deadline if billed_cpu_time_us is not set)
-      if( billed_cpu_time_us > 0 || deadline < _deadline ) {
+      if( explicit_billed_cpu_time || billed_cpu_time_us > 0 || deadline < _deadline ) {
          _deadline = deadline;
          deadline_exception_code = deadline_exception::code_value;
       } else {
@@ -316,7 +316,7 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::pause_billing_timer() {
-      if( billed_cpu_time_us > 0 || pseudo_start == fc::time_point() ) return; // either irrelevant or already paused
+      if( explicit_billed_cpu_time || billed_cpu_time_us > 0 || pseudo_start == fc::time_point() ) return; // either irrelevant or already paused
 
       auto now = fc::time_point::now();
       billed_time = now - pseudo_start;
@@ -325,7 +325,7 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::resume_billing_timer() {
-      if( billed_cpu_time_us > 0 || pseudo_start != fc::time_point() ) return; // either irrelevant or already running
+      if( explicit_billed_cpu_time || billed_cpu_time_us > 0 || pseudo_start != fc::time_point() ) return; // either irrelevant or already running
 
       auto now = fc::time_point::now();
       pseudo_start = now - billed_time;
