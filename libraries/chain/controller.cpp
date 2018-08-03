@@ -612,7 +612,7 @@ struct controller_impl {
       }
       trx_context.undo_session.undo();
 
-      // Only soft or hard failure logic below:
+      // Only subjective OR soft OR hard failure logic below:
 
       if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
@@ -624,13 +624,14 @@ struct controller_impl {
             undo_session.squash();
             return trace;
          }
+         trace->elapsed = fc::time_point::now() - trx_context.start;
       }
 
-      // Only hard failure OR subjective failure logic below:
-
-      trace->elapsed = fc::time_point::now() - trx_context.start;
+      // Only subjective OR hard failure logic below:
 
       if (!failure_is_subjective(*trace->except)) {
+         // hard failure logic
+
          if( !explicit_billed_cpu_time ) {
             auto& rl = self.get_mutable_resource_limits_manager();
             rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
