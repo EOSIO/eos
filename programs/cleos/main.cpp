@@ -2238,7 +2238,7 @@ int main( int argc, char** argv ) {
          tx_force_unique = false;
       }
 
-      send_actions({create_transfer(con,sender, recipient, to_asset(amount), memo)});
+      send_actions({create_transfer(con, sender, recipient, to_asset(con, amount), memo)});
    });
 
    // Net subcommand
