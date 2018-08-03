@@ -157,6 +157,7 @@ auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
 bool   tx_force_unique = false;
 bool   tx_dont_broadcast = false;
+bool   tx_return_packed = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
 bool   print_request = false;
@@ -185,6 +186,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
    cmd->add_flag("-j,--json", tx_print_json, localized("print result as json"));
    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
+   cmd->add_flag("--return-packed", tx_return_packed, localized("used in conjunction with --dont-broadcast to get the packed transaction"));
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
 
    string msg = "An account and permission level to authorize, as in 'account@permission'";
@@ -301,7 +303,11 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    if (!tx_dont_broadcast) {
       return call(push_txn_func, packed_transaction(trx, compression));
    } else {
-      return fc::variant(trx);
+      if (!tx_return_packed) {
+        return fc::variant(trx);
+      } else {
+        return fc::variant(packed_transaction(trx, compression));
+      }
    }
 }
 
@@ -1741,6 +1747,47 @@ int main( int argc, char** argv ) {
    // create account
    auto createAccount = create_account_subcommand( create, true /*simple*/ );
 
+   // convert subcommand
+   auto convert = app.add_subcommand("convert", localized("Pack and unpack transactions"), false); // TODO also add converting action args based on abi from here ?
+   convert->require_subcommand();
+
+   // pack transaction
+   string plain_signed_transaction_json;
+   auto pack_transaction = convert->add_subcommand("pack_transaction", localized("from plain signed json to packed form"));
+   pack_transaction->add_option("transaction", plain_signed_transaction_json, localized("the plain signed json (string)"))->required();
+
+   pack_transaction->set_callback([&] {
+      fc::variant trx_var;
+      try {
+         trx_var = json_from_file_or_string(plain_signed_transaction_json);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse plain transaction JSON '${data}'", ("data", plain_signed_transaction_json))
+      signed_transaction trx = trx_var.as<signed_transaction>();
+
+      std::cout << fc::json::to_pretty_string(fc::variant(packed_transaction(trx, packed_transaction::none))) << std::endl;
+   });
+
+   // unpack transaction
+   string packed_transaction_json;
+   auto unpack_transaction = convert->add_subcommand("unpack_transaction", localized("from packed to plain signed json form"));
+   unpack_transaction->add_option("transaction", packed_transaction_json, localized("the packed transaction json (string containing packed_trx and optionally compression fields)"))->required();
+
+   unpack_transaction->set_callback([&] {
+      fc::variant trx_var;
+      try {
+         trx_var = json_from_file_or_string(packed_transaction_json);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse packed transaction JSON '${data}'", ("data", packed_transaction_json))
+      string trx_hex;
+      try {
+         trx_hex = trx_var["packed_trx"].as_string();
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Missing packed_trx field in provided JSON '${data}'", ("data", packed_transaction_json))
+      // TODO should I still copy the "signatures" and "context_free_data" fields from trx_var into below output trx ?
+      vector<char> trx_blob(trx_hex.size()/2);
+      fc::from_hex(trx_hex, trx_blob.data(), trx_blob.size());
+      transaction trx = fc::raw::unpack<transaction>(trx_blob);
+
+      std::cout << fc::json::to_pretty_string(fc::variant(trx)) << std::endl;
+   });
+
    // Get subcommand
    auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);
    get->require_subcommand();
@@ -2523,14 +2570,26 @@ int main( int argc, char** argv ) {
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
    trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
 
+   trxSubcommand->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout, essentially only validates)"));
+   trxSubcommand->add_flag("--return-packed", tx_return_packed, localized("used in conjunction with --dont-broadcast to get the packed transaction"));
+
    trxSubcommand->set_callback([&] {
       fc::variant trx_var;
       try {
          trx_var = json_from_file_or_string(trx_to_push);
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_push))
       signed_transaction trx = trx_var.as<signed_transaction>();
-      auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
-      std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
+
+      if (!tx_dont_broadcast) {
+          auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
+          std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
+      } else {
+          if (tx_return_packed) {
+              std::cout << fc::json::to_pretty_string(fc::variant(packed_transaction(trx, packed_transaction::none))) << std::endl;
+          } else {
+              std::cout << fc::json::to_pretty_string(fc::variant(trx)) << std::endl;
+          }
+      }
    });
 
 
