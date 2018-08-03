@@ -384,7 +384,7 @@ namespace eosio { namespace chain {
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
       }
 
-      return {account_net_limit, account_cpu_limit, greylisted};
+      return std::make_tuple(account_net_limit, account_cpu_limit, greylisted);
    }
 
    void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
