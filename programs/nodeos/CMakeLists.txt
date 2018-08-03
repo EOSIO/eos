@@ -1,10 +1,4 @@
-include(additionalPlugin)
 
-foreach(ADDITIONAL_PLUGIN_SOURCE_DIR ${EOSIO_ADDITIONAL_PLUGINS})
-    string(UUID ADDITIONAL_PLUGIN_SOURCE_DIR_MD5 NAMESPACE "00000000-0000-0000-0000-000000000000" NAME ${ADDITIONAL_PLUGIN_SOURCE_DIR} TYPE MD5)
-    message(STATUS "[Additional Plugin] source dir: ${ADDITIONAL_PLUGIN_SOURCE_DIR} => ${CMAKE_BINARY_DIR}/additional_plugins/${ADDITIONAL_PLUGIN_SOURCE_DIR_MD5}")
-    add_subdirectory(${ADDITIONAL_PLUGIN_SOURCE_DIR} ${CMAKE_BINARY_DIR}/additional_plugins/${ADDITIONAL_PLUGIN_SOURCE_DIR_MD5})
-endforeach()
 
 add_executable( nodeos main.cpp )
 if( UNIX AND NOT APPLE )
@@ -72,9 +66,7 @@ if(BUILD_MONGO_DB_PLUGIN)
   target_link_libraries( nodeos PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
 endif()
 
-foreach(ADDITIONAL_PLUGIN_TARGET ${ADDITIONAL_PLUGINS_TARGET})
-    target_link_libraries( nodeos PRIVATE -Wl,${whole_archive_flag} ${ADDITIONAL_PLUGIN_TARGET} -Wl,${no_whole_archive_flag} )
-endforeach()
+include(additionalPlugin)
 
 install( TARGETS
    nodeos
