@@ -1029,6 +1029,14 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
             return f128;
          });
       }
+      else if (p.key_type == "sha256") {
+          return get_table_rows_by_seckey<index256_index, checksum256_type>(p, abi, [](const checksum256_type& v)->key256_t {
+              key256_t k;
+              k[0] = ((uint128_t *)&v._hash)[0];
+              k[1] = ((uint128_t *)&v._hash)[1];
+              return k;
+          });
+      }
       EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: ${t}", ("t", p.key_type));
    }
 }

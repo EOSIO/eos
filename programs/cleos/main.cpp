@@ -338,6 +338,47 @@ void print_action( const fc::variant& at ) {
    }
 }
 
+bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
+   static unordered_map<account_name, std::vector<char> > abi_cache;
+   auto it = abi_cache.find( account );
+   if ( it == abi_cache.end() ) {
+      const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", account));
+      std::tie( it, std::ignore ) = abi_cache.emplace( account, result["abi"].as_blob().data );
+      //we also received result["wasm"], but we don't use it
+   }
+   const std::vector<char>& abi_v = it->second;
+
+   abi_def abi;
+   if( abi_serializer::to_abi(abi_v, abi) ) {
+      abi_serializer abis( abi, fc::seconds(10) );
+      auto action_type = abis.get_action_type(action);
+      FC_ASSERT(!action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)("contract", account));
+      return abis.variant_to_binary(action_type, action_args_var, fc::seconds(10));
+   } else {
+      FC_ASSERT(false, "No ABI found for ${contract}", ("contract", account));
+   }
+}
+
+fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::legacy_parser)
+{
+   regex r("^[ \t]*[\{\[]");
+   if ( !regex_search(file_or_str, r) && fc::is_regular_file(file_or_str) ) {
+      return fc::json::from_file(file_or_str, ptype);
+   } else {
+      return fc::json::from_string(file_or_str, ptype);
+   }
+}
+
+bytes json_or_file_to_bin( const account_name& account, const action_name& action, const string& data_or_filename ) {
+   fc::variant action_args_var;
+   if( !data_or_filename.empty() ) {
+      try {
+         action_args_var = json_from_file_or_string(data_or_filename, fc::json::relaxed_parser);
+      } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data", data_or_filename));
+   }
+   return variant_to_bin( account, action, action_args_var );
+}
+
 void print_action_tree( const fc::variant& action ) {
    print_action( action );
    const auto& inline_traces = action["inline_traces"].get_array();
@@ -427,14 +468,7 @@ chain::action create_newaccount(const name& creator, const name& newaccount, pub
 }
 
 chain::action create_action(const vector<permission_level>& authorization, const account_name& code, const action_name& act, const fc::variant& args) {
-   auto arg = fc::mutable_variant_object()
-      ("code", code)
-      ("action", act)
-      ("args", args);
-
-   auto result = call(json_to_bin_func, arg);
-   wdump((result)(arg));
-   return chain::action{authorization, code, act, result.get_object()["binargs"].as<bytes>()};
+   return chain::action{authorization, code, act, variant_to_bin(code, act, args)};
 }
 
 chain::action create_buyram(const name& creator, const name& newaccount, const asset& quantity) {
@@ -488,11 +522,9 @@ chain::action create_transfer(const string& contract, const name& sender, const 
       ("action", "transfer")
       ("args", transfer);
 
-   auto result = call(json_to_bin_func, args);
-
    return action {
       tx_permission.empty() ? vector<chain::permission_level>{{sender,config::active_name}} : get_account_permissions(tx_permission),
-      contract, "transfer", result.get_object()["binargs"].as<bytes>()
+      contract, "transfer", variant_to_bin( contract, N(transfer), transfer )
    };
 }
 
@@ -536,16 +568,6 @@ chain::action create_linkauth(const name& account, const name& code, const name&
 chain::action create_unlinkauth(const name& account, const name& code, const name& type) {
    return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
                    unlinkauth{account, code, type}};
-}
-
-fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::legacy_parser)
-{
-   regex r("^[ \t]*[\{\[]");
-   if ( !regex_search(file_or_str, r) && fc::is_regular_file(file_or_str) ) {
-      return fc::json::from_file(file_or_str, ptype);
-   } else {
-      return fc::json::from_string(file_or_str, ptype);
-   }
 }
 
 authority parse_json_authority(const std::string& authorityJsonOrFile) {
@@ -1837,7 +1859,7 @@ int main( int argc, char** argv ) {
                          localized("Index number, 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc.\n"
                                    "\t\t\t\tNumber or name of index can be specified, e.g. 'secondary' or '2'."));
    getTable->add_option( "--key-type", key_type,
-                         localized("The key type of --index, primary only supports (i64), all others support (i64, i128, i256, float64, float128).\n"
+                         localized("The key type of --index, primary only supports (i64), all others support (i64, i128, i256, float64, float128, sha256).\n"
                                    "\t\t\t\tSpecial type 'name' indicates an account name."));
 
    getTable->set_callback([&] {
@@ -2216,7 +2238,7 @@ int main( int argc, char** argv ) {
          tx_force_unique = false;
       }
 
-      send_actions({create_transfer(con,sender, recipient, to_asset(amount), memo)});
+      send_actions({create_transfer(con, sender, recipient, to_asset(con, amount), memo)});
    });
 
    // Net subcommand
@@ -2479,16 +2501,9 @@ int main( int argc, char** argv ) {
             action_args_var = json_from_file_or_string(data, fc::json::relaxed_parser);
          } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data", data))
       }
-
-      auto arg= fc::mutable_variant_object
-                ("code", contract_account)
-                ("action", action)
-                ("args", action_args_var);
-      auto result = call(json_to_bin_func, arg);
-
       auto accountPermissions = get_account_permissions(tx_permission);
 
-      send_actions({chain::action{accountPermissions, contract_account, action, result.get_object()["binargs"].as<bytes>()}});
+      send_actions({chain::action{accountPermissions, contract_account, action, variant_to_bin( contract_account, action, action_args_var ) }});
    });
 
    // push transaction
@@ -2568,15 +2583,7 @@ int main( int argc, char** argv ) {
          trx_var = json_from_file_or_string(proposed_transaction);
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",proposed_transaction))
       transaction proposed_trx = trx_var.as<transaction>();
-
-      auto arg = fc::mutable_variant_object()
-         ("code", proposed_contract)
-         ("action", proposed_action)
-         ("args", trx_var);
-
-      auto result = call(json_to_bin_func, arg);
-
-      bytes proposed_trx_serialized = result.get_object()["binargs"].as<bytes>();
+      bytes proposed_trx_serialized = variant_to_bin( proposed_contract, proposed_action, trx_var );
 
       vector<permission_level> reqperm;
       try {
@@ -2612,17 +2619,13 @@ int main( int argc, char** argv ) {
 
       fc::to_variant(trx, trx_var);
 
-      arg = fc::mutable_variant_object()
-         ("code", "eosio.msig")
-         ("action", "propose")
-         ("args", fc::mutable_variant_object()
-          ("proposer", proposer )
-          ("proposal_name", proposal_name)
-          ("requested", requested_perm_var)
-          ("trx", trx_var)
-         );
-      result = call(json_to_bin_func, arg);
-      send_actions({chain::action{accountPermissions, "eosio.msig", "propose", result.get_object()["binargs"].as<bytes>()}});
+      auto args = fc::mutable_variant_object()
+         ("proposer", proposer )
+         ("proposal_name", proposal_name)
+         ("requested", requested_perm_var)
+         ("trx", trx_var);
+
+      send_actions({chain::action{accountPermissions, "eosio.msig", "propose", variant_to_bin( N(eosio.msig), N(propose), args ) }});
    });
 
    //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
@@ -2668,17 +2671,13 @@ int main( int argc, char** argv ) {
          proposer = name(accountPermissions.at(0).actor).to_string();
       }
 
-      auto arg = fc::mutable_variant_object()
-         ("code", "eosio.msig")
-         ("action", "propose")
-         ("args", fc::mutable_variant_object()
-          ("proposer", proposer )
-          ("proposal_name", proposal_name)
-          ("requested", requested_perm_var)
-          ("trx", trx_var)
-         );
-      auto result = call(json_to_bin_func, arg);
-      send_actions({chain::action{accountPermissions, "eosio.msig", "propose", result.get_object()["binargs"].as<bytes>()}});
+      auto args = fc::mutable_variant_object()
+         ("proposer", proposer )
+         ("proposal_name", proposal_name)
+         ("requested", requested_perm_var)
+         ("trx", trx_var);
+
+      send_actions({chain::action{accountPermissions, "eosio.msig", "propose", variant_to_bin( N(eosio.msig), N(propose), args ) }});
    });
 
 
@@ -2728,17 +2727,13 @@ int main( int argc, char** argv ) {
       try {
          perm_var = json_from_file_or_string(perm);
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",perm))
-      auto arg = fc::mutable_variant_object()
-         ("code", "eosio.msig")
-         ("action", action)
-         ("args", fc::mutable_variant_object()
-          ("proposer", proposer)
-          ("proposal_name", proposal_name)
-          ("level", perm_var)
-         );
-      auto result = call(json_to_bin_func, arg);
+      auto args = fc::mutable_variant_object()
+         ("proposer", proposer)
+         ("proposal_name", proposal_name)
+         ("level", perm_var);
+
       auto accountPermissions = tx_permission.empty() ? vector<chain::permission_level>{{sender,config::active_name}} : get_account_permissions(tx_permission);
-      send_actions({chain::action{accountPermissions, "eosio.msig", action, result.get_object()["binargs"].as<bytes>()}});
+      send_actions({chain::action{accountPermissions, "eosio.msig", action, variant_to_bin( N(eosio.msig), action, args ) }});
    };
 
    // multisig approve
@@ -2776,16 +2771,12 @@ int main( int argc, char** argv ) {
       if (canceler.empty()) {
          canceler = name(accountPermissions.at(0).actor).to_string();
       }
-      auto arg = fc::mutable_variant_object()
-         ("code", "eosio.msig")
-         ("action", "cancel")
-         ("args", fc::mutable_variant_object()
-          ("proposer", proposer)
-          ("proposal_name", proposal_name)
-          ("canceler", canceler)
-         );
-      auto result = call(json_to_bin_func, arg);
-      send_actions({chain::action{accountPermissions, "eosio.msig", "cancel", result.get_object()["binargs"].as<bytes>()}});
+      auto args = fc::mutable_variant_object()
+         ("proposer", proposer)
+         ("proposal_name", proposal_name)
+         ("canceler", canceler);
+
+      send_actions({chain::action{accountPermissions, "eosio.msig", "cancel", variant_to_bin( N(eosio.msig), N(cancel), args ) }});
       }
    );
 
@@ -2809,17 +2800,12 @@ int main( int argc, char** argv ) {
          executer = name(accountPermissions.at(0).actor).to_string();
       }
 
-      auto arg = fc::mutable_variant_object()
-         ("code", "eosio.msig")
-         ("action", "exec")
-         ("args", fc::mutable_variant_object()
-          ("proposer", proposer )
-          ("proposal_name", proposal_name)
-          ("executer", executer)
-         );
-      auto result = call(json_to_bin_func, arg);
-      //std::cout << "Result: " << result << std::endl;
-      send_actions({chain::action{accountPermissions, "eosio.msig", "exec", result.get_object()["binargs"].as<bytes>()}});
+      auto args = fc::mutable_variant_object()
+         ("proposer", proposer )
+         ("proposal_name", proposal_name)
+         ("executer", executer);
+
+      send_actions({chain::action{accountPermissions, "eosio.msig", "exec", variant_to_bin( N(eosio.msig), N(exec), args ) }});
       }
    );
 
@@ -2846,15 +2832,11 @@ int main( int argc, char** argv ) {
          accountPermissions = vector<permission_level>{{executer, config::active_name}, {"eosio.sudo", config::active_name}};
       }
 
-      auto arg = fc::mutable_variant_object()
-         ("code", "eosio.sudo")
-         ("action", "exec")
-         ("args", fc::mutable_variant_object()
-            ("executer", executer )
-            ("trx", trx_var)
-         );
-      auto result = call(json_to_bin_func, arg);
-      send_actions({chain::action{accountPermissions, "eosio.sudo", "exec", result.get_object()["binargs"].as<bytes>()}});
+      auto args = fc::mutable_variant_object()
+         ("executer", executer )
+         ("trx", trx_var);
+
+      send_actions({chain::action{accountPermissions, "eosio.sudo", "exec", variant_to_bin( N(eosio.sudo), N(exec), args ) }});
    });
 
    // system subcommand

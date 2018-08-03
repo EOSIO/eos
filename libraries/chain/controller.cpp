@@ -3,6 +3,7 @@
 
 #include <eosio/chain/block_log.hpp>
 #include <eosio/chain/fork_database.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/block_summary_object.hpp>
@@ -232,8 +233,7 @@ struct controller_impl {
 
             ilog( "${n} reversible blocks replayed", ("n",rev) );
             auto end = fc::time_point::now();
-            ilog( "replayed ${n} blocks in ${s} seconds, ${mspb} ms/block",
-                  ("s", (end-start).count()/1000/1000                           )
+            ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
                   ("n", head->block_num)("duration", (end-start).count()/1000000)
                   ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
             replaying = false;
@@ -584,6 +584,7 @@ struct controller_impl {
       in_trx_requiring_checks = true;
 
       transaction_context trx_context( self, dtrx, gtrx.trx_id );
+      trx_context.leeway = fc::microseconds(0); // avoid stealing cpu resource
       trx_context.deadline = deadline;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       trace = trx_context.trace;
@@ -776,7 +777,7 @@ struct controller_impl {
    void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s ) {
       EOS_ASSERT( !pending, block_validate_exception, "pending block is not available" );
 
-      EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block", 
+      EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                 ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
       auto guard_pending = fc::make_scoped_exit([this](){
@@ -844,10 +845,10 @@ struct controller_impl {
 
 
 
-   void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback, bool trust  ) {
+   void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback  ) {
       auto p = pending->_pending_block_state;
 
-      p->sign( signer_callback, false); //trust );
+      p->sign( signer_callback );
 
       static_cast<signed_block_header&>(*p->block) = p->header;
    } /// sign_block
@@ -893,11 +894,21 @@ struct controller_impl {
          }
 
          finalize_block();
-         sign_block( [&]( const auto& ){ return b->producer_signature; }, false ); //trust );
 
-         // this is implied by the signature passing
-         //FC_ASSERT( b->id() == pending->_pending_block_state->block->id(),
-         //           "applying block didn't produce expected block id" );
+         // this implicitly asserts that all header fields (less the signature) are identical
+         EOS_ASSERT(b->id() == pending->_pending_block_state->header.id(),
+                   block_validate_exception, "Block ID does not match",
+                   ("producer_block_id",b->id())("validator_block_id",pending->_pending_block_state->header.id()));
+
+         // We need to fill out the pending block state's block because that gets serialized in the reversible block log
+         // in the future we can optimize this by serializing the original and not the copy
+
+         // we can always trust this signature because,
+         //   - prior to apply_block, we call fork_db.add which does a signature check IFF the block is untrusted
+         //   - OTHERWISE the block is trusted and therefore we trust that the signature is valid
+         // Also, as ::sign_block does not lazily calculate the digest of the block, we can just short-circuit to save cycles
+         pending->_pending_block_state->header.producer_signature = b->producer_signature;
+         static_cast<signed_block_header&>(*pending->_pending_block_state->block) =  pending->_pending_block_state->header;
 
          commit_block(false);
          return;
@@ -1290,7 +1301,7 @@ void controller::finalize_block() {
 }
 
 void controller::sign_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
-   my->sign_block( signer_callback, false /* don't trust */);
+   my->sign_block( signer_callback );
 }
 
 void controller::commit_block() {
@@ -1323,6 +1334,48 @@ transaction_trace_ptr controller::push_scheduled_transaction( const transaction_
 {
    validate_db_available_size();
    return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us );
+}
+
+const flat_set<account_name>& controller::get_actor_whitelist() const {
+   return my->conf.actor_whitelist;
+}
+const flat_set<account_name>& controller::get_actor_blacklist() const {
+   return my->conf.actor_blacklist;
+}
+const flat_set<account_name>& controller::get_contract_whitelist() const {
+   return my->conf.contract_whitelist;
+}
+const flat_set<account_name>& controller::get_contract_blacklist() const {
+   return my->conf.contract_blacklist;
+}
+const flat_set< pair<account_name, action_name> >& controller::get_action_blacklist() const {
+   return my->conf.action_blacklist;
+}
+const flat_set<public_key_type>& controller::get_key_blacklist() const {
+   return my->conf.key_blacklist;
+}
+
+void controller::set_actor_whitelist( const flat_set<account_name>& new_actor_whitelist ) {
+   my->conf.actor_whitelist = new_actor_whitelist;
+}
+void controller::set_actor_blacklist( const flat_set<account_name>& new_actor_blacklist ) {
+   my->conf.actor_blacklist = new_actor_blacklist;
+}
+void controller::set_contract_whitelist( const flat_set<account_name>& new_contract_whitelist ) {
+   my->conf.contract_whitelist = new_contract_whitelist;
+}
+void controller::set_contract_blacklist( const flat_set<account_name>& new_contract_blacklist ) {
+   my->conf.contract_blacklist = new_contract_blacklist;
+}
+void controller::set_action_blacklist( const flat_set< pair<account_name, action_name> >& new_action_blacklist ) {
+   for (auto& act: new_action_blacklist) {
+      EOS_ASSERT(act.first != account_name(), name_type_exception, "Action blacklist - contract name should not be empty");
+      EOS_ASSERT(act.second != action_name(), action_type_exception, "Action blacklist - action name should not be empty");
+   }
+   my->conf.action_blacklist = new_action_blacklist;
+}
+void controller::set_key_blacklist( const flat_set<public_key_type>& new_key_blacklist ) {
+   my->conf.key_blacklist = new_key_blacklist;
 }
 
 uint32_t controller::head_block_num()const {

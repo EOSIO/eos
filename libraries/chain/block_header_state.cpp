@@ -177,6 +177,7 @@ namespace eosio { namespace chain {
     result.header.producer_signature = h.producer_signature;
     result.id                        = result.header.id();
 
+    // ASSUMPTION FROM controller_impl::apply_block = all untrusted blocks will have their signatures pre-validated here
     if( !trust ) {
        EOS_ASSERT( result.block_signing_key == result.signee(), wrong_signing_key, "block not signed by expected key",
                   ("result.block_signing_key", result.block_signing_key)("signee", result.signee() ) );
@@ -225,12 +226,10 @@ namespace eosio { namespace chain {
      return digest_type::hash( std::make_pair(header_bmroot, pending_schedule_hash) );
   }
 
-  void block_header_state::sign( const std::function<signature_type(const digest_type&)>& signer, bool trust ) {
+  void block_header_state::sign( const std::function<signature_type(const digest_type&)>& signer ) {
      auto d = sig_digest();
      header.producer_signature = signer( d );
-     if( !trust ) {
-        EOS_ASSERT( block_signing_key == fc::crypto::public_key( header.producer_signature, d ), wrong_signing_key, "block is signed with unexpected key" );
-     }
+     EOS_ASSERT( block_signing_key == fc::crypto::public_key( header.producer_signature, d ), wrong_signing_key, "block is signed with unexpected key" );
   }
 
   public_key_type block_header_state::signee()const {

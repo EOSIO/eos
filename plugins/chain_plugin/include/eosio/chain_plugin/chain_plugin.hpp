@@ -24,6 +24,7 @@ namespace fc { class variant; }
 namespace eosio {
    using chain::controller;
    using std::unique_ptr;
+   using std::pair;
    using namespace appbase;
    using chain::name;
    using chain::uint128_t;
@@ -33,6 +34,7 @@ namespace eosio {
    using chain::asset;
    using chain::authority;
    using chain::account_name;
+   using chain::action_name;
    using chain::abi_def;
    using chain::abi_serializer;
 
@@ -443,6 +445,7 @@ public:
             }
 
             if (++count == p.limit || fc::time_point::now() > end) {
+               ++itr;
                break;
             }
          }

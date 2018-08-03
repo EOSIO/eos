@@ -39,6 +39,9 @@ class Node(object):
         self.mongoDb=mongoDb
         self.endpointArgs="--url http://%s:%d" % (self.host, self.port)
         self.mongoEndpointArgs=""
+        self.infoValid=None
+        self.lastRetrievedHeadBlockNum=None
+        self.lastRetrievedLIB=None
         if self.enableMongo:
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
@@ -241,16 +244,28 @@ class Node(object):
         return finalized
 
     # pylint: disable=too-many-branches
-    def getTransaction(self, transId, silentErrors=False, exitOnError=False):
+    def getTransaction(self, transId, silentErrors=False, exitOnError=False, delayedRetry=True):
+        firstExitOnError=not delayedRetry and exitOnError
         if not self.enableMongo:
             cmdDesc="get transaction"
             cmd="%s %s" % (cmdDesc, transId)
             msg="(transaction id=%s)" % (transId);
+            trans=self.processCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=firstExitOnError, exitMsg=msg)
+            if trans is not None or not delayedRetry:
+                return trans
+
+            # delay long enough to ensure
+            if Utils.Debug: Utils.Print("Could not find transaction with id %s, delay and retry" % (transId))
+            time.sleep(1)
             return self.processCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
         else:
-            return self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=exitOnError)
+            trans=self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=firstExitOnError)
+            if trans is not None or not delayedRetry:
+                return trans
 
-        return None
+            if Utils.Debug: Utils.Print("Could not find transaction with id %s in mongodb, delay and retry" % (transId))
+            time.sleep(3)
+            return self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=firstExitOnError)
 
     def getTransactionMdb(self, transId, silentErrors=False, exitOnError=False):
         """Get transaction from MongoDB. Since DB only contains finalized blocks, transactions can take a while to appear in DB."""
@@ -306,11 +321,11 @@ class Node(object):
 
         return False
 
-    def getBlockIdByTransId(self, transId):
+    def getBlockIdByTransId(self, transId, delayedRetry=True):
         """Given a transaction Id (string), will return block id (int) containing the transaction"""
         assert(transId)
         assert(isinstance(transId, str))
-        trans=self.getTransaction(transId, exitOnError=True)
+        trans=self.getTransaction(transId, exitOnError=True, delayedRetry=delayedRetry)
 
         refBlockNum=None
         key=""
@@ -407,10 +422,7 @@ class Node(object):
             trans = self.transferFunds(creatorAccount, account, Node.currencyIntToStr(stakedDeposit, CORE_SYMBOL), "init")
             transId=Node.getTransId(trans)
 
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, exitOnError=False):
         """Create account and return creation transactions. Return transaction json object.
@@ -427,10 +439,7 @@ class Node(object):
             trans = self.transferFunds(creatorAccount, account, "%0.04f %s" % (stakedDeposit/10000, CORE_SYMBOL), "init")
             transId=Node.getTransId(trans)
 
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     def getEosAccount(self, name, exitOnError=False):
         assert(isinstance(name, str))
@@ -586,14 +595,8 @@ class Node(object):
         if trans is None:
             Utils.cmdError("could not transfer \"%s\" from %s to %s" % (amountStr, source, destination))
             errorExit("Failed to transfer \"%s\" from %s to %s" % (amountStr, source, destination))
-        transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            if exitOnError:
-                Utils.cmdError("could not find transfer with transId=%s in block" % (transId))
-                errorExit("Failed to find transfer with transId=%s in block" % (transId))
-            return None
 
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     @staticmethod
     def currencyStrToInt(balanceStr):
@@ -782,10 +785,7 @@ class Node(object):
             return None
 
         Node.validateTransaction(trans)
-        transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=False)
 
     def getTableRows(self, contract, scope, table):
         jsonData=self.getTable(contract, scope, table)
@@ -834,10 +834,7 @@ class Node(object):
         cmd="%s -j %s %s %s %s" % (cmdDesc, account, code, pType, requirement)
         trans=self.processCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError)
 
-        transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     def delegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, transferTo=False, waitForTransBlock=False, exitOnError=False):
         if toAccount is None:
@@ -850,10 +847,7 @@ class Node(object):
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
         trans=self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
-        transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     def regproducer(self, producer, url, location, waitForTransBlock=False, exitOnError=False):
         cmdDesc="system regproducer"
@@ -862,10 +856,7 @@ class Node(object):
         msg="producer=%s" % (producer.name);
         trans=self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
-        transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     def vote(self, account, producers, waitForTransBlock=False, exitOnError=False):
         cmdDesc = "system voteproducer prods"
@@ -874,10 +865,7 @@ class Node(object):
         msg="account=%s, producers=[ %s ]" % (account.name, ", ".join(producers));
         trans=self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
-        transId=Node.getTransId(trans)
-        if waitForTransBlock and not self.waitForTransInBlock(transId):
-            return None
-        return trans
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
     def processCmd(self, cmd, cmdDesc, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
         assert(isinstance(returnType, ReturnType))
@@ -910,9 +898,28 @@ class Node(object):
 
         return trans
 
+    def waitForTransBlockIfNeeded(self, trans, waitForTransBlock, exitOnError=False):
+        if not waitForTransBlock:
+            return trans
+
+        transId=Node.getTransId(trans)
+        if not self.waitForTransInBlock(transId):
+            if exitOnError:
+                Utils.cmdError("transaction with id %s never made it to a block" % (transId))
+                errorExit("Failed to find transaction with id %s in a block before timeout" % (transId))
+            return None
+        return trans
+
     def getInfo(self, silentErrors=False, exitOnError=False):
         cmdDesc = "get info"
-        return self.processCmd(cmdDesc, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError)
+        info=self.processCmd(cmdDesc, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError)
+        if info is None:
+            self.infoValid=False
+        else:
+            self.infoValid=True
+            self.lastRetrievedHeadBlockNum=int(info["head_block_num"])
+            self.lastRetrievedLIB=int(info["last_irreversible_block_num"])
+        return info
 
     def getBlockFromDb(self, idx):
         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
@@ -984,8 +991,8 @@ class Node(object):
         self.killed=True
         return True
 
-    def verifyAlive(self):
-        if Utils.Debug: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
+    def verifyAlive(self, silent=False):
+        if not silent and Utils.Debug: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
         if self.killed or self.pid is None:
             return False
 
@@ -1071,3 +1078,15 @@ class Node(object):
         self.cmd=cmd
         self.killed=False
         return True
+
+    def reportStatus(self):
+        Utils.Print("Node State:")
+        Utils.Print(" cmd   : %s" % (self.cmd))
+        self.verifyAlive(silent=True)
+        Utils.Print(" killed: %s" % (self.killed))
+        Utils.Print(" host  : %s" % (self.host))
+        Utils.Print(" port  : %s" % (self.port))
+        Utils.Print(" pid   : %s" % (self.pid))
+        status="last getInfo returned None" if not self.infoValid else "at last call to getInfo"
+        Utils.Print(" hbn   : %s (%s)" % (self.lastRetrievedHeadBlockNum, status))
+        Utils.Print(" lib   : %s (%s)" % (self.lastRetrievedLIB, status))
