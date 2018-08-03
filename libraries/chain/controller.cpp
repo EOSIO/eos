@@ -619,7 +619,7 @@ struct controller_impl {
       if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
          dlog("${detail}", ("detail", trace->except->to_detail_string()));
-         auto error_trace = apply_onerror( gtrx, deadline, trx_context.start, cpu_time_to_bill_us, billed_cpu_time_us, explicit_billed_cpu_time );
+         auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start, cpu_time_to_bill_us, billed_cpu_time_us, explicit_billed_cpu_time );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
          if( !trace->except_ptr ) {
@@ -633,7 +633,9 @@ struct controller_impl {
       trace->elapsed = fc::time_point::now() - trx_context.start;
 
       if (!failure_is_subjective(*trace->except)) {
-         cpu_time_to_bill_us = static_cast<uint32_t>( std::min( static_cast<int64_t>(cpu_time_to_bill_us),  trx_context.objective_duration_limit.count() ) );
+         if( !explicit_billed_cpu_time ) {
+            cpu_time_to_bill_us = static_cast<uint32_t>( std::min( static_cast<int64_t>(cpu_time_to_bill_us),  trx_context.objective_duration_limit.count() ) );
+         }
 
          resource_limits.add_transaction_usage( bill_to_accounts, cpu_time_to_bill_us, 0,
                                                 block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
