@@ -293,28 +293,28 @@ void mongo_db_plugin_impl::consume_blocks() {
 
          // process transactions
          auto start_time = fc::time_point::now();
-         auto size = transaction_metadata_process_queue.size();
-         while (!transaction_metadata_process_queue.empty()) {
-            const auto& t = transaction_metadata_process_queue.front();
-            process_accepted_transaction(t);
-            transaction_metadata_process_queue.pop_front();
-         }
-         auto time = fc::time_point::now() - start_time;
-         auto per = size > 0 ? time.count()/size : 0;
-         if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
-            ilog( "process_accepted_transaction, time per: ${p}, size: ${s}, time: ${t}", ("s", size)( "t", time )( "p", per ));
-
-         start_time = fc::time_point::now();
-         size = transaction_trace_process_queue.size();
+         auto size = transaction_trace_process_queue.size();
          while (!transaction_trace_process_queue.empty()) {
             const auto& t = transaction_trace_process_queue.front();
             process_applied_transaction(t);
             transaction_trace_process_queue.pop_front();
          }
+         auto time = fc::time_point::now() - start_time;
+         auto per = size > 0 ? time.count()/size : 0;
+         if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
+            ilog( "process_applied_transaction,  time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
+
+         start_time = fc::time_point::now();
+         size = transaction_metadata_process_queue.size();
+         while (!transaction_metadata_process_queue.empty()) {
+            const auto& t = transaction_metadata_process_queue.front();
+            process_accepted_transaction(t);
+            transaction_metadata_process_queue.pop_front();
+         }
          time = fc::time_point::now() - start_time;
          per = size > 0 ? time.count()/size : 0;
          if( time > fc::microseconds(500000) ) // reduce logging, .5 secs
-            ilog( "process_applied_transaction,  time per: ${p}, size: ${s}, time: ${t}", ("s", size)("t", time)("p", per) );
+            ilog( "process_accepted_transaction, time per: ${p}, size: ${s}, time: ${t}", ("s", size)( "t", time )( "p", per ));
 
          // process blocks
          start_time = fc::time_point::now();
