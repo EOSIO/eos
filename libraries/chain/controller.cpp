@@ -584,10 +584,8 @@ struct controller_impl {
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       transaction_trace_ptr trace = trx_context.trace;
-      flat_set<account_name>  bill_to_accounts;
       try {
          trx_context.init_for_deferred_trx( gtrx.published );
-         bill_to_accounts = trx_context.bill_to_accounts;
          trx_context.exec();
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
@@ -634,10 +632,17 @@ struct controller_impl {
 
       if (!failure_is_subjective(*trace->except)) {
          if( !explicit_billed_cpu_time ) {
-            cpu_time_to_bill_us = static_cast<uint32_t>( std::min( static_cast<int64_t>(cpu_time_to_bill_us),  trx_context.objective_duration_limit.count() ) );
+            auto& rl = self.get_mutable_resource_limits_manager();
+            rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
+            int64_t account_cpu_limit = 0;
+            std::tie( std::ignore, account_cpu_limit, std::ignore ) = trx_context.max_bandwidth_billed_accounts_can_pay( true );
+
+            cpu_time_to_bill_us = static_cast<uint32_t>( std::min( std::min( static_cast<int64_t>(cpu_time_to_bill_us),
+                                                                             account_cpu_limit                          ),
+                                                                   trx_context.initial_objective_duration_limit.count()    ) );
          }
 
-         resource_limits.add_transaction_usage( bill_to_accounts, cpu_time_to_bill_us, 0,
+         resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0,
                                                 block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
 
          trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);

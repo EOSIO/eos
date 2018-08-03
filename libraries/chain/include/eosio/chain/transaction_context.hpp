@@ -41,6 +41,8 @@ namespace eosio { namespace chain {
 
          uint32_t update_billed_cpu_time( fc::time_point now );
 
+         std::tuple<int64_t, int64_t, bool> max_bandwidth_billed_accounts_can_pay( bool force_elastic_limits = false )const;
+
       private:
 
          friend struct controller_impl;
@@ -95,6 +97,7 @@ namespace eosio { namespace chain {
          uint64_t                      eager_net_limit = 0;
          uint64_t&                     net_usage; /// reference to trace->net_usage
 
+         fc::microseconds              initial_objective_duration_limit;
          fc::microseconds              objective_duration_limit;
          fc::time_point                _deadline = fc::time_point::maximum();
          int64_t                       deadline_exception_code = block_cpu_usage_exceeded::code_value;
