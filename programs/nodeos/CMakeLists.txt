@@ -1,5 +1,7 @@
+include(additionalPlugin)
+
 foreach(ADDITIONAL_PLUGIN_SOURCE_DIR ${EOSIO_ADDITIONAL_PLUGINS})
-    message(STATUS "Additional plugin source dir: ${ADDITIONAL_PLUGIN_SOURCE_DIR}")
+    message(STATUS "[Additional Plugin] source dir: ${ADDITIONAL_PLUGIN_SOURCE_DIR}")
     add_subdirectory(${ADDITIONAL_PLUGIN_SOURCE_DIR} ${CMAKE_BINARY_DIR}/additional_plugins/${ADDITIONAL_PLUGIN_SOURCE_DIR})
 endforeach()
 
@@ -65,14 +67,13 @@ target_link_libraries( nodeos
         PRIVATE chain_plugin http_plugin producer_plugin http_client_plugin
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
-foreach(ADDITIONAL_PLUGIN_TARGET ${ADDITIONAL_PLUGINS_TARGET})
-    message(STATUS "Additional plugin target: ${ADDITIONAL_PLUGIN_TARGET}")
-    target_link_libraries( nodeos PRIVATE -Wl,${whole_archive_flag} ${ADDITIONAL_PLUGIN_TARGET} -Wl,${no_whole_archive_flag} )
-endforeach()
-
 if(BUILD_MONGO_DB_PLUGIN)
   target_link_libraries( nodeos PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
 endif()
+
+foreach(ADDITIONAL_PLUGIN_TARGET ${ADDITIONAL_PLUGINS_TARGET})
+    target_link_libraries( nodeos PRIVATE -Wl,${whole_archive_flag} ${ADDITIONAL_PLUGIN_TARGET} -Wl,${no_whole_archive_flag} )
+endforeach()
 
 install( TARGETS
    nodeos
