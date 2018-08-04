@@ -79,7 +79,7 @@ public:
    void purge_abi_cache();
 
    void add_action_trace( mongocxx::bulk_write& bulk_action_traces, const chain::action_trace& atrace,
-                          const std::chrono::milliseconds& now );
+                          bool executed, const std::chrono::milliseconds& now );
 
    void add_data(bsoncxx::builder::basic::document& act_doc, const chain::action& act);
    void update_account(const chain::action& act);
@@ -707,12 +707,12 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
 
 void
 mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces, const chain::action_trace& atrace,
-                                        const std::chrono::milliseconds& now )
+                                        bool executed, const std::chrono::milliseconds& now )
 {
    using namespace bsoncxx::types;
    using bsoncxx::builder::basic::kvp;
 
-   if( atrace.receipt.receiver == chain::config::system_account_name ) {
+   if( executed && atrace.receipt.receiver == chain::config::system_account_name ) {
       update_account( atrace.act );
    }
 
@@ -743,7 +743,7 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
    }
 
    for( const auto& iline_atrace : atrace.inline_traces ) {
-      add_action_trace( bulk_action_traces, iline_atrace, now );
+      add_action_trace( bulk_action_traces, iline_atrace, executed, now );
    }
 }
 
@@ -763,10 +763,11 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
    bulk_opts.ordered(false);
    mongocxx::bulk_write bulk_action_traces = action_traces.create_bulk_write(bulk_opts);
    bool write_atraces = false;
+   bool executed = t->receipt.valid() && t->receipt->status == chain::transaction_receipt_header::executed;
 
    for( const auto& atrace : t->action_traces ) {
       try {
-         add_action_trace( bulk_action_traces, atrace, now );
+         add_action_trace( bulk_action_traces, atrace, executed, now );
          write_atraces = true;
       } catch(...) {
          handle_mongo_exception("add action traces", __LINE__);
