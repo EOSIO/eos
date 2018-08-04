@@ -463,7 +463,37 @@ optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name 
                abi_cache entry;
                entry.account = n;
                entry.last_accessed = fc::time_point::now();
-               entry.serializer.emplace( abi, abi_serializer_max_time );
+               abi_serializer abis;
+               if( n == chain::config::system_account_name ) {
+                  // redefine eosio setabi.abi from bytes to abi_def
+                  // Done so that abi is stored as abi_def in mongo instead of as bytes
+                  auto itr = std::find_if( abi.structs.begin(), abi.structs.end(),
+                                           []( const auto& s ) { return s.name == "setabi"; } );
+                  if( itr != abi.structs.end() ) {
+                     auto itr2 = std::find_if( itr->fields.begin(), itr->fields.end(),
+                                               []( const auto& f ) { return f.name == "abi"; } );
+                     if( itr2 != itr->fields.end() ) {
+                        if( itr2->type == "bytes" ) {
+                           itr2->type = "abi_def";
+                           // unpack setabi.abi as abi_def instead of as bytes
+                           abis.add_specialized_unpack_pack( "abi_def",
+                                 std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
+                                       []( fc::datastream<const char*>& stream, bool is_array, bool is_optional ) -> fc::variant {
+                                          EOS_ASSERT( !is_array && !is_optional, chain::mongo_db_exception, "unexpected abi_def");
+                                          chain::bytes temp;
+                                          fc::raw::unpack( stream, temp );
+                                          return fc::variant( fc::raw::unpack<abi_def>( temp ) );
+                                       },
+                                       []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional ) {
+                                          EOS_ASSERT( false, chain::mongo_db_exception, "never called" );
+                                       }
+                                 ) );
+                        }
+                     }
+                  }
+               }
+               abis.set_abi( abi, abi_serializer_max_time );
+               entry.serializer.emplace( std::move( abis ) );
                abi_cache_index.insert( entry );
                return entry.serializer;
             }
@@ -718,7 +748,7 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
 
    if( start_block_reached ) {
       auto action_traces_doc = bsoncxx::builder::basic::document{};
-      const auto& base = static_cast<const chain::base_action_trace&>(atrace); // without inline action traces
+      const chain::base_action_trace& base = atrace; // without inline action traces
 
       auto v = to_variant_with_abi( base );
       string json = fc::json::to_string( v );
@@ -1218,13 +1248,13 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
 
          abi_cache_index.erase( setabi.account );
 
-         auto from_account = find_account( accounts, setabi.account );
-         if( !from_account ) {
+         auto account = find_account( accounts, setabi.account );
+         if( !account ) {
             create_account( accounts, setabi.account, now );
-            from_account = find_account( accounts, setabi.account );
+            account = find_account( accounts, setabi.account );
          }
-         if( from_account ) {
-            const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
+         if( account ) {
+            abi_def abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
             const string json_str = fc::json::to_string( abi_def );
 
             try{
@@ -1233,7 +1263,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
                                                  kvp( "updatedAt", b_date{now} ))));
 
                try {
-                  if( !accounts.update_one( make_document( kvp( "_id", from_account->view()["_id"].get_oid())),
+                  if( !accounts.update_one( make_document( kvp( "_id", account->view()["_id"].get_oid())),
                                             update_from.view())) {
                      EOS_ASSERT( false, chain::mongo_db_update_fail, "Failed to udpdate account ${n}", ("n", setabi.account));
                   }
