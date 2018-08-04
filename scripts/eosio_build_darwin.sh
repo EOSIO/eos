@@ -216,7 +216,7 @@
 			done
 		fi
 		printf "\\tInstalling boost libraries.\\n"
-		if ! "${BREW}" install boost
+		if ! "${BREW}" install https://raw.githubusercontent.com/Homebrew/homebrew-core/f946d12e295c8a27519b73cc810d06593270a07f/Formula/boost.rb
 		then
 			printf "\\tUnable to install boost 1.67 libraries at this time. 0\\n"
 			printf "\\tExiting now.\\n\\n"
