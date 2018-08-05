@@ -63,8 +63,8 @@ struct filter_entry {
    }
 };
 
-abi_serializer eosio_abis;
-abi_serializer eosiotoken_abis;
+std::vector<std::pair<name, abi_serializer>> vec_abi = std::vector<std::pair<name, abi_serializer>>();
+bool cache_abis = false;
 
 class mongo_db_plugin_impl {
 public:
@@ -352,10 +352,11 @@ namespace {
       using bsoncxx::builder::basic::kvp;
       using bsoncxx::builder::basic::make_document;
       if( n.good()) {
-        if (n == N(eosio)) {
-          return eosio_abis;
-        } else if (n == N(eosio.token)) {
-          return eosiotoken_abis;
+        if (cache_abis)  {
+          auto it = std::find_if( vec_abi.begin(), vec_abi.end(), [&](const std::pair<name, abi_serializer>& element){ return element.first == n; } );
+          if (it != vec_abi.end()) {
+            return (*it).second;
+          }
         }
 
         try {
@@ -370,7 +371,11 @@ namespace {
                      ilog( "Unable to convert account abi to abi_def for ${n}", ( "n", n ));
                      return optional<abi_serializer>();
                   }
-                  return abi_serializer( abi, abi_serializer_max_time );
+                  abi_serializer abis = abi_serializer( abi, abi_serializer_max_time );
+                  if (cache_abis) {
+                    vec_abi.push_back(std::make_pair(n, abis));
+                  }
+                  return abis;
                }
             }
          } FC_CAPTURE_AND_LOG((n))
@@ -500,11 +505,15 @@ void add_data( bsoncxx::builder::basic::document& act_doc, mongocxx::collection&
                const abi_def& abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
                const string json_str = fc::json::to_string( abi_def );
 
-               if (setabi.account == N(eosio)) {
-                 eosio_abis.set_abi( abi_def, abi_serializer_max_time );
-               }
-               if (setabi.account == N(eosio.token)) {
-                 eosiotoken_abis.set_abi( abi_def, abi_serializer_max_time );
+               abi_serializer abis = abi_serializer( abi_def, abi_serializer_max_time );
+
+               if (cache_abis) {
+                 auto it = std::find_if( vec_abi.begin(), vec_abi.end(), [&](const std::pair<name, abi_serializer>& element){ return element.first == setabi.account; } );
+                 if (it != vec_abi.end()) {
+                   *it = std::make_pair(setabi.account, abis);
+                 } else {
+                   vec_abi.push_back(std::make_pair(setabi.account, abis));
+                 }
                }
 
                act_doc.append(
@@ -519,33 +528,23 @@ void add_data( bsoncxx::builder::basic::document& act_doc, mongocxx::collection&
          }
       }
 
-      if (act.account == N(eosio)) {
-        string json;
-        try {
-           auto v = eosio_abis.binary_to_variant( eosio_abis.get_action_type( act.name ), act.data, abi_serializer_max_time );
-           json = fc::json::to_string( v );
+      if (cache_abis) {
+        auto it = std::find_if( vec_abi.begin(), vec_abi.end(), [&](const std::pair<name, abi_serializer>& element){ return element.first == act.account; } );
+        if (it != vec_abi.end()) {
+          abi_serializer abis = (*it).second;
+          string json;
+          try {
+             auto v = abis.binary_to_variant( abis.get_action_type( act.name ), act.data, abi_serializer_max_time );
+             json = fc::json::to_string( v );
 
-           const auto& value = bsoncxx::from_json( json );
-           act_doc.append( kvp( "data", value ));
-           return;
-        } catch( bsoncxx::exception& e ) {
-           ilog( "Unable to convert EOS JSON to MongoDB JSON: ${e}", ("e", e.what()));
-           ilog( "  EOS JSON: ${j}", ("j", json));
-           ilog( "  Storing data has hex." );
-        }
-      } else if (act.account == N(eosio.token)) {
-        string json;
-        try {
-           auto v = eosiotoken_abis.binary_to_variant( eosiotoken_abis.get_action_type( act.name ), act.data, abi_serializer_max_time );
-           json = fc::json::to_string( v );
-
-           const auto& value = bsoncxx::from_json( json );
-           act_doc.append( kvp( "data", value ));
-           return;
-        } catch( bsoncxx::exception& e ) {
-           ilog( "Unable to convert EOS JSON to MongoDB JSON: ${e}", ("e", e.what()));
-           ilog( "  EOS JSON: ${j}", ("j", json));
-           ilog( "  Storing data has hex." );
+             const auto& value = bsoncxx::from_json( json );
+             act_doc.append( kvp( "data", value ));
+             return;
+          } catch( bsoncxx::exception& e ) {
+             ilog( "Unable to convert EOS JSON to MongoDB JSON: ${e}", ("e", e.what()));
+             ilog( "  EOS JSON: ${j}", ("j", json));
+             ilog( "  Storing data has hex." );
+          }
         }
       }
 
@@ -564,6 +563,11 @@ void add_data( bsoncxx::builder::basic::document& act_doc, mongocxx::collection&
          try {
             abi_serializer abis;
             abis.set_abi( abi, abi_serializer_max_time );
+
+            if (cache_abis) {
+              vec_abi.push_back(std::make_pair(act.account, abis));
+            }
+
             auto v = abis.binary_to_variant( abis.get_action_type( act.name ), act.data, abi_serializer_max_time );
             json = fc::json::to_string( v );
 
@@ -1343,6 +1347,8 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
           "Enables storing raw tx traces (in addition to actions) in mongodb.")
          ("mongodb-store-act-via-txtraces", bpo::bool_switch()->default_value(false),
           "If true, changes mongodb to avoid accepted tx, and instead store actions via a hook into applied txs. This feature creates a much faster storage time, as accepted txs no longer have to be indexed again when they become irreversible. Effectively, this feature makes this plugin act more like the history plugin, increasing efficiency.")
+         ("mongodb-cache-abis", bpo::bool_switch()->default_value(false),
+          "Caches in memory all seen abi serializations. Enables much faster synchronization at the cost of memory.")
          ("mongodb-filter-on", bpo::value<vector<string>>()->composing(),
           "Mongodb: Track actions which match receiver:action:actor. Actor may be blank to include all. Receiver and Action may not be blank.")
          ("mongodb-filter-out", bpo::value<vector<string>>()->composing(),
@@ -1382,6 +1388,9 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          }
          if( options.count( "mongodb-store-act-via-txtraces" )) {
            my->store_actions_via_traces = options.at( "mongodb-store-act-via-txtraces" ).as<bool>();
+         }
+         if( options.count( "mongodb-cache-abis" )) {
+           cache_abis = options.at( "mongodb-cache-abis" ).as<bool>();
          }
 
          if( options.count( "mongodb-filter-on" )) {
