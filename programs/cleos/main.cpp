@@ -76,7 +76,6 @@ Options:
 #include <vector>
 #include <regex>
 #include <iostream>
-#include <typeinfo>
 #include <fc/crypto/hex.hpp>
 #include <fc/variant.hpp>
 #include <fc/io/datastream.hpp>
