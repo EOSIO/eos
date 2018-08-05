@@ -76,6 +76,7 @@ Options:
 #include <vector>
 #include <regex>
 #include <iostream>
+#include <typeinfo>
 #include <fc/crypto/hex.hpp>
 #include <fc/variant.hpp>
 #include <fc/io/datastream.hpp>
@@ -359,6 +360,27 @@ bytes variant_to_bin( const account_name& account, const action_name& action, co
       auto action_type = abis.get_action_type(action);
       FC_ASSERT(!action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)("contract", account));
       return abis.variant_to_binary(action_type, action_args_var, fc::seconds(10));
+   } else {
+      FC_ASSERT(false, "No ABI found for ${contract}", ("contract", account));
+   }
+}
+
+fc::variant bin_to_variant( const account_name& account, const action_name& action, const bytes& action_args) {
+   static unordered_map<account_name, std::vector<char> > abi_cache;
+   auto it = abi_cache.find( account );
+   if ( it == abi_cache.end() ) {
+      const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", account));
+      std::tie( it, std::ignore ) = abi_cache.emplace( account, result["abi"].as_blob().data );
+      //we also received result["wasm"], but we don't use it
+   }
+   const std::vector<char>& abi_v = it->second;
+
+   abi_def abi;
+   if( abi_serializer::to_abi(abi_v, abi) ) {
+      abi_serializer abis( abi, fc::seconds(10) );
+      auto action_type = abis.get_action_type(action);
+      FC_ASSERT(!action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)("contract", account));
+      return abis.binary_to_variant(action_type, action_args, fc::seconds(10));
    } else {
       FC_ASSERT(false, "No ABI found for ${contract}", ("contract", account));
    }
@@ -1753,24 +1775,23 @@ int main( int argc, char** argv ) {
 
    // pack transaction
    string plain_signed_transaction_json;
-   auto pack_transaction = convert->add_subcommand("pack_transaction", localized("from plain signed json to packed form"));
-   pack_transaction->add_option("transaction", plain_signed_transaction_json, localized("the plain signed json (string)"))->required();
-
+   auto pack_transaction = convert->add_subcommand("pack_transaction", localized("From plain signed json to packed form"));
+   pack_transaction->add_option("transaction", plain_signed_transaction_json, localized("The plain signed json (string)"))->required();
    pack_transaction->set_callback([&] {
       fc::variant trx_var;
       try {
          trx_var = json_from_file_or_string(plain_signed_transaction_json);
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse plain transaction JSON '${data}'", ("data", plain_signed_transaction_json))
       signed_transaction trx = trx_var.as<signed_transaction>();
-
       std::cout << fc::json::to_pretty_string(fc::variant(packed_transaction(trx, packed_transaction::none))) << std::endl;
    });
 
    // unpack transaction
    string packed_transaction_json;
-   auto unpack_transaction = convert->add_subcommand("unpack_transaction", localized("from packed to plain signed json form"));
-   unpack_transaction->add_option("transaction", packed_transaction_json, localized("the packed transaction json (string containing packed_trx and optionally compression fields)"))->required();
-
+   bool unpack_action_data_flag = false;
+   auto unpack_transaction = convert->add_subcommand("unpack_transaction", localized("From packed to plain signed json form"));
+   unpack_transaction->add_option("transaction", packed_transaction_json, localized("The packed transaction json (string containing packed_trx and optionally compression fields)"))->required();
+   unpack_transaction->add_flag("--unpack-action-data", unpack_action_data_flag, localized("Upack all action datas within transaction and only return those, needs interaction with nodeos"));
    unpack_transaction->set_callback([&] {
       fc::variant trx_var;
       try {
@@ -1780,12 +1801,52 @@ int main( int argc, char** argv ) {
       try {
          trx_hex = trx_var["packed_trx"].as_string();
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Missing packed_trx field in provided JSON '${data}'", ("data", packed_transaction_json))
-      // TODO should I still copy the "signatures" and "context_free_data" fields from trx_var into below output trx ?
-      vector<char> trx_blob(trx_hex.size()/2);
-      fc::from_hex(trx_hex, trx_blob.data(), trx_blob.size());
-      transaction trx = fc::raw::unpack<transaction>(trx_blob);
 
-      std::cout << fc::json::to_pretty_string(fc::variant(trx)) << std::endl;
+      std::vector<char> trx_blob(trx_hex.size()/2);
+      fc::from_hex(trx_hex, trx_blob.data(), trx_blob.size());
+      transaction unpacked_trx = fc::raw::unpack<transaction>(trx_blob);
+      // TODO would it be nice to put the unpacked_trx actions into the trx actions in a separate unpacked_data field  or somesuch ?
+      if (unpack_action_data_flag) {
+         for ( const auto& a : unpacked_trx.actions ) {
+            fc::variant unpacked_action_data = bin_to_variant(a.account, a.name, a.data);
+            std::cout << fc::json::to_pretty_string(unpacked_action_data) << std::endl;
+         }
+      } else {
+	 // TODO should the "sigantures" and "context_free_data" fields be copied from trx_var into the action field(s) ?
+         std::cout << fc::json::to_pretty_string(fc::variant(unpacked_trx)) << std::endl;
+      }
+   });
+
+   // pack action data
+   string unpacked_action_data_account_string;
+   string unpacked_action_data_name_string;
+   string unpacked_action_data_string;
+   auto pack_action_data = convert->add_subcommand("pack_action_data", localized("From json action data to packed form"));
+   pack_action_data->add_option("account", unpacked_action_data_account_string, localized("The name of the account that hosts the contract"))->required();
+   pack_action_data->add_option("name", unpacked_action_data_name_string, localized("The name of the function that's called by this action"))->required();
+   pack_action_data->add_option("unpacked_action_data", unpacked_action_data_string, localized("The action data expressed as json"))->required();
+   pack_action_data->set_callback([&] {
+      fc::variant unpacked_action_data_json;
+      try {
+         unpacked_action_data_json = json_from_file_or_string(unpacked_action_data_string);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse unpacked action data JSON")
+      bytes packed_action_data_string = variant_to_bin(unpacked_action_data_account_string, unpacked_action_data_name_string, unpacked_action_data_json);
+      std::cout << fc::to_hex(packed_action_data_string.data(), packed_action_data_string.size()) << std::endl;
+   });
+
+   // unpack action data
+   string packed_action_data_account_string;
+   string packed_action_data_name_string;
+   string packed_action_data_string;
+   auto unpack_action_data = convert->add_subcommand("unpack_action_data", localized("From packed to json action data form"));
+   unpack_action_data->add_option("account", packed_action_data_account_string, localized("The name of the account that hosts the contract"))->required();
+   unpack_action_data->add_option("name", packed_action_data_name_string, localized("The name of the function that's called by this action"))->required();
+   unpack_action_data->add_option("packed_action_data", packed_action_data_string, localized("The action data expressed as packed hex string"))->required();
+   unpack_action_data->set_callback([&] {
+      vector<char> packed_action_data_blob(packed_action_data_string.size()/2);
+      fc::from_hex(packed_action_data_string, packed_action_data_blob.data(), packed_action_data_blob.size());
+      fc::variant unpacked_action_data_json = bin_to_variant(packed_action_data_account_string, packed_action_data_name_string, packed_action_data_blob);
+      std::cout << fc::json::to_pretty_string(unpacked_action_data_json) << std::endl;
    });
 
    // Get subcommand
