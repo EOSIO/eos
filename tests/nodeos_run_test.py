@@ -275,7 +275,7 @@ try:
         if not enableMongo:
             assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
         else:
-            assert(actions["name"] == "transfer")
+            assert(actions["act"]["name"] == "transfer")
     except (AssertionError, TypeError, KeyError) as _:
         Print("Action validation failed. Actions: %s" % (actions))
         raise

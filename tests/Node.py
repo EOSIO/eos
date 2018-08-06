@@ -334,8 +334,8 @@ class Node(object):
                 key="[trx][trx][ref_block_num]"
                 refBlockNum=trans["trx"]["trx"]["ref_block_num"]
             else:
-                key="[transaction_header][ref_block_num]"
-                refBlockNum=trans["transaction_header"]["ref_block_num"]
+                key="[ref_block_num]"
+                refBlockNum=trans["ref_block_num"]
             refBlockNum=int(refBlockNum)+1
         except (TypeError, ValueError, KeyError) as _:
             Utils.Print("transaction%s not found. Transaction: %s" % (key, trans))
@@ -366,10 +366,10 @@ class Node(object):
 
         refBlockNum=None
         try:
-            refBlockNum=trans["transaction_header"]["ref_block_num"]
+            refBlockNum=trans["ref_block_num"]
             refBlockNum=int(refBlockNum)+1
         except (TypeError, ValueError, KeyError) as _:
-            Utils.Print("transaction[transaction_header][ref_block_num] not found. Transaction: %s" % (trans))
+            Utils.Print("transaction[ref_block_num] not found. Transaction: %s" % (trans))
             return None
 
         headBlockNum=self.getHeadBlockNum()
@@ -688,7 +688,7 @@ class Node(object):
         assert(isinstance(offset, int))
 
         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-        subcommand='db.actions.find({$or: [{"data.from":"%s"},{"data.to":"%s"}]}).sort({"_id":%d}).limit(%d)' % (account.name, account.name, pos, abs(offset))
+        subcommand='db.action_traces.find({$or: [{"act.data.from":"%s"},{"act.data.to":"%s"}]}).sort({"_id":%d}).limit(%d)' % (account.name, account.name, pos, abs(offset))
         if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
         try:
             actions=Node.runMongoCmdReturnJson(cmd.split(), subcommand, exitOnError=exitOnError)
