@@ -14,8 +14,10 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/plugin_interface.hpp>
+#include <eosio/chain/types.hpp>
 
 #include <boost/container/flat_set.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
 
 #include <fc/static_variant.hpp>
 
@@ -227,6 +229,7 @@ public:
       uint32_t    limit = 10;
       string      key_type;  // type of key specified by index_position
       string      index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
+      string      encode_type{"dec"}; //dec, hex , default=dec
     };
 
    struct get_table_rows_result {
@@ -481,6 +484,64 @@ public:
 
    friend resolver_factory<read_write>;
 };
+
+ //support for --key_types [sha256,ripemd160] and --encoding [dec/hex]
+ constexpr const char i64[]       = "i64";
+ constexpr const char i128[]      = "i128";
+ constexpr const char i256[]      = "i256";
+ constexpr const char float64[]   = "float64";
+ constexpr const char float128[]  = "float128";
+ constexpr const char sha256[]    = "sha256";
+ constexpr const char ripemd160[] = "ripemd160";
+ constexpr const char dec[]       = "dec";
+ constexpr const char hex[]       = "hex";
+
+
+ template<const char*key_type , const char *encoding=chain_apis::dec>
+ struct keytype_converter ;
+
+ template<>
+ struct keytype_converter<chain_apis::sha256, chain_apis::hex> {
+     using input_type = chain::checksum256_type;
+     using index_type = chain::index256_index;
+     static auto function() {
+        return [](const input_type& v) {
+            chain::key256_t k;
+            k[0] = ((uint128_t *)&v._hash)[0]; //0-127
+            k[1] = ((uint128_t *)&v._hash)[1]; //127-256
+            return k;
+        };
+     }
+ };
+
+ template<>
+ struct keytype_converter<chain_apis::ripemd160, chain_apis::hex> {
+     using input_type = chain::checksum160_type;
+     using index_type = chain::index256_index;
+     static auto function() {
+        return [](const input_type& v) {
+            chain::key256_t k;
+            k[0] = ((uint32_t *)&v._hash)[0]; //0-31
+            k[1] = ((uint128_t *)&v._hash)[1]; //32-160
+            return k;
+        };
+     }
+ };
+
+ template<>
+ struct keytype_converter<chain_apis::i256> {
+     using input_type = boost::multiprecision::uint256_t;
+     using index_type = chain::index256_index;
+     static auto function() {
+        return [](const input_type v) {
+            chain::key256_t k;
+            k[0] = ((uint128_t *)&v)[0]; //0-127
+            k[1] = ((uint128_t *)&v)[1]; //127-256
+            return k;
+        };
+     }
+ };
+
 } // namespace chain_apis
 
 class chain_plugin : public plugin<chain_plugin> {
@@ -547,7 +608,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_n
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
