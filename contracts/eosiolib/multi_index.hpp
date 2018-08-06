@@ -110,12 +110,6 @@ namespace _multi_index_detail {
    WRAP_SECONDARY_SIMPLE_TYPE(idx_long_double, long double)
    MAKE_TRAITS_FOR_ARITHMETIC_SECONDARY_KEY(long double)
 
-   WRAP_SECONDARY_ARRAY_TYPE(idx160, key160)
-   template<>
-   struct secondary_key_traits<key160> {
-      static constexpr key160 lowest() { return key160(); }
-   };
-
    WRAP_SECONDARY_ARRAY_TYPE(idx256, key256)
    template<>
    struct secondary_key_traits<key256> {
@@ -1410,7 +1404,7 @@ class multi_index
        *
        *  @tparam IndexName - the ID of the desired secondary index
        *
-       *  @return An index of the appropriate type: Primitive 64-bit unsigned integer key (idx64), Primitive 128-bit unsigned integer key (idx128), 128-bit fixed-size lexicographical key (idx128), 160-bit fixed-size lexicographical key (idx160),  256-bit fixed-size lexicographical key (idx256), Floating point key, Double precision floating point key, Long Double (quadruple) precision floating point key
+       *  @return An index of the appropriate type: Primitive 64-bit unsigned integer key (idx64), Primitive 128-bit unsigned integer key (idx128), 128-bit fixed-size lexicographical key (idx128), 256-bit fixed-size lexicographical key (idx256), Floating point key, Double precision floating point key, Long Double (quadruple) precision floating point key
        *
        *  Example:
        *
@@ -1474,7 +1468,7 @@ class multi_index
        *
        *  @tparam IndexName - the ID of the desired secondary index
        *
-       *  @return An index of the appropriate type: Primitive 64-bit unsigned integer key (idx64), Primitive 128-bit unsigned integer key (idx128), 128-bit fixed-size lexicographical key (idx128), 160-bit fixed-size lexicographical key (idx160), 256-bit fixed-size lexicographical key (idx256), Floating point key, Double precision floating point key, Long Double (quadruple) precision floating point key
+       *  @return An index of the appropriate type: Primitive 64-bit unsigned integer key (idx64), Primitive 128-bit unsigned integer key (idx128), 128-bit fixed-size lexicographical key (idx128), 256-bit fixed-size lexicographical key (idx256), Floating point key, Double precision floating point key, Long Double (quadruple) precision floating point key
        *
        *  Example:
        *

@@ -12,20 +12,20 @@
 
 namespace eosio {
 
-   template<size_t Size, typename T>
+   template<size_t Size>
    class fixed_key;
 
-   template<size_t Size,typename T>
-   bool operator==(const fixed_key<Size,T> &c1, const fixed_key<Size,T> &c2);
+   template<size_t Size>
+   bool operator==(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
-   template<size_t Size,typename T>
-   bool operator!=(const fixed_key<Size,T> &c1, const fixed_key<Size,T> &c2);
+   template<size_t Size>
+   bool operator!=(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
-   template<size_t Size,typename T>
-   bool operator>(const fixed_key<Size,T> &c1, const fixed_key<Size,T> &c2);
+   template<size_t Size>
+   bool operator>(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
-   template<size_t Size,typename T>
-   bool operator<(const fixed_key<Size,T> &c1, const fixed_key<Size,T> &c2);
+   template<size_t Size>
+   bool operator<(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
     /**
     *  @defgroup fixed_key Fixed Size Key
@@ -41,7 +41,7 @@ namespace eosio {
     *  @tparam Size - Size of the fixed_key object
     *  @ingroup types
     */
-   template<size_t Size, typename T=uint128_t>
+   template<size_t Size>
    class fixed_key {
       private:
 
@@ -50,7 +50,7 @@ namespace eosio {
          using all_true = std::is_same< bool_pack<bs..., true>, bool_pack<true, bs...> >;
 
          template<typename Word, size_t NumWords>
-         static void set_from_word_sequence(const std::array<Word, NumWords>& arr, fixed_key<Size,T>& key)
+         static void set_from_word_sequence(const std::array<Word, NumWords>& arr, fixed_key<Size>& key)
          {
             auto itr = key._data.begin();
             word_t temp_word = 0;
@@ -82,7 +82,7 @@ namespace eosio {
 
       public:
 
-         typedef T word_t;
+         typedef uint128_t word_t;
          
          /**
           * Get number of words contained in this fixed_key object. A word is defined to be 16 bytes in size
@@ -148,7 +148,7 @@ namespace eosio {
          */
          template<typename FirstWord, typename... Rest>
          static
-         fixed_key<Size,T>
+         fixed_key<Size>
          make_from_word_sequence(typename std::enable_if<std::is_integral<FirstWord>::value &&
                                                           !std::is_same<FirstWord, bool>::value &&
                                                           sizeof(FirstWord) <= sizeof(word_t) &&
@@ -160,7 +160,7 @@ namespace eosio {
                            "size of the backing word size is not divisible by the size of the words supplied as arguments" );
             static_assert( sizeof(FirstWord) * (1 + sizeof...(Rest)) <= Size, "too many words supplied to make_from_word_sequence" );
 
-            fixed_key<Size,T> key;
+            fixed_key<Size> key;
             set_from_word_sequence(std::array<FirstWord, 1+sizeof...(Rest)>{{ first_word, rest... }}, key);
             return key;
          }
@@ -221,13 +221,13 @@ namespace eosio {
          }
 
          // Comparison operators
-         friend bool operator== <>(const fixed_key<Size,T> &c1, const fixed_key<Size,T> &c2);
+         friend bool operator== <>(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
-         friend bool operator!= <>(const fixed_key<Size,T> &c1, const fixed_key<Size,T> &c2);
+         friend bool operator!= <>(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
-         friend bool operator> <>(const fixed_key<Size,T> &c1, const fixed_key<Size,T> &c2);
+         friend bool operator> <>(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
-         friend bool operator< <>(const fixed_key<Size,T> &c1, const fixed_key<Size,T> &c2);
+         friend bool operator< <>(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
       private:
 
@@ -242,8 +242,8 @@ namespace eosio {
     * @param c2 - Second fixed_key object to compare
     * @return if c1 == c2, return true, otherwise false
     */
-   template<size_t Size,typename T>
-   bool operator==(const fixed_key<Size,T> &c1, const fixed_key<Size,T> &c2) {
+   template<size_t Size>
+   bool operator==(const fixed_key<Size> &c1, const fixed_key<Size> &c2) {
       return c1._data == c2._data;
    }
 
@@ -255,8 +255,8 @@ namespace eosio {
     * @param c2 - Second fixed_key object to compare
     * @return if c1 != c2, return true, otherwise false
     */
-   template<size_t Size, typename T>
-   bool operator!=(const fixed_key<Size,T> &c1, const fixed_key<Size,T> &c2) {
+   template<size_t Size>
+   bool operator!=(const fixed_key<Size> &c1, const fixed_key<Size> &c2) {
       return c1._data != c2._data;
    }
 
@@ -268,8 +268,8 @@ namespace eosio {
     * @param c2 - Second fixed_key object to compare
     * @return if c1 > c2, return true, otherwise false
     */
-   template<size_t Size,typename T>
-   bool operator>(const fixed_key<Size,T>& c1, const fixed_key<Size,T>& c2) {
+   template<size_t Size>
+   bool operator>(const fixed_key<Size>& c1, const fixed_key<Size>& c2) {
       return c1._data > c2._data;
    }
 
@@ -281,12 +281,11 @@ namespace eosio {
     * @param c2 - Second fixed_key object to compare
     * @return if c1 < c2, return true, otherwise false
     */
-   template<size_t Size,typename T>
-   bool operator<(const fixed_key<Size,T> &c1, const fixed_key<Size,T> &c2) {
+   template<size_t Size>
+   bool operator<(const fixed_key<Size> &c1, const fixed_key<Size> &c2) {
       return c1._data < c2._data;
    }
    /// @} fixed_key
 
-   typedef fixed_key<20,uint32_t> key160;
    typedef fixed_key<32> key256;
 }

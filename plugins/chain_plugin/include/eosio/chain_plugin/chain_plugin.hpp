@@ -517,15 +517,12 @@ public:
  template<>
  struct keytype_converter<chain_apis::ripemd160, chain_apis::hex> {
      using input_type = chain::checksum160_type;
-     using index_type = chain::index160_index;
+     using index_type = chain::index256_index;
      static auto function() {
         return [](const input_type& v) {
-            chain::key160_t k;
-            k[0] = ((uint32_t *)&v._hash)[0];
-            k[1] = ((uint32_t *)&v._hash)[1];
-            k[2] = ((uint32_t *)&v._hash)[2];
-            k[3] = ((uint32_t *)&v._hash)[3];
-            k[4] = ((uint32_t *)&v._hash)[4];
+            chain::key256_t k;
+            k[0] = ((uint32_t *)&v._hash)[0]; //0-31
+            k[1] = ((uint128_t *)&v._hash)[1]; //32-160
             return k;
         };
      }

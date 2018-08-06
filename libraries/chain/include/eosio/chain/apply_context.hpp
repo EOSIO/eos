@@ -461,7 +461,6 @@ class apply_context {
       ,recurse_depth(depth)
       ,idx64(*this)
       ,idx128(*this)
-      ,idx160(*this)
       ,idx256(*this)
       ,idx_double(*this)
       ,idx_long_double(*this)
@@ -595,7 +594,6 @@ class apply_context {
 
       generic_index<index64_object>                                  idx64;
       generic_index<index128_object>                                 idx128;
-      generic_index<index160_object, uint32_t*, const uint32_t*>     idx160;
       generic_index<index256_object, uint128_t*, const uint128_t*>   idx256;
       generic_index<index_double_object>                             idx_double;
       generic_index<index_long_double_object>                        idx_long_double;
