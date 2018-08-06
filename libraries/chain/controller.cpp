@@ -517,7 +517,7 @@ struct controller_impl {
       db.remove( gto );
    }
 
-   bool failure_is_subjective( const fc::exception& e ) {
+   bool failure_is_subjective( const fc::exception& e ) const {
       auto code = e.code();
       return    (code == subjective_block_production_exception::code_value)
              || (code == block_net_usage_exceeded::code_value)
@@ -531,6 +531,12 @@ struct controller_impl {
              || (code == contract_blacklist_exception::code_value)
              || (code == action_blacklist_exception::code_value)
              || (code == key_blacklist_exception::code_value);
+   }
+
+   bool scheduled_failure_is_subjective( const fc::exception& e ) const {
+      auto code = e.code();
+      return    (code == tx_cpu_usage_exceeded::code_value)
+             || failure_is_subjective(e);
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false ) {
@@ -614,7 +620,7 @@ struct controller_impl {
 
       // Only subjective OR soft OR hard failure logic below:
 
-      if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
+      if( gtrx.sender != account_name() && !scheduled_failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
          dlog("${detail}", ("detail", trace->except->to_detail_string()));
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start, cpu_time_to_bill_us, billed_cpu_time_us, explicit_billed_cpu_time );
@@ -629,7 +635,7 @@ struct controller_impl {
 
       // Only subjective OR hard failure logic below:
 
-      if (!failure_is_subjective(*trace->except)) {
+      if (!scheduled_failure_is_subjective(*trace->except)) {
          // hard failure logic
 
          if( !explicit_billed_cpu_time ) {
