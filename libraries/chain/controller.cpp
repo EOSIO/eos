@@ -620,7 +620,7 @@ struct controller_impl {
 
       // Only subjective OR soft OR hard failure logic below:
 
-      if( gtrx.sender != account_name() && !scheduled_failure_is_subjective(*trace->except)) {
+      if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
          dlog("${detail}", ("detail", trace->except->to_detail_string()));
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start, cpu_time_to_bill_us, billed_cpu_time_us, explicit_billed_cpu_time );
@@ -635,7 +635,15 @@ struct controller_impl {
 
       // Only subjective OR hard failure logic below:
 
-      if (!scheduled_failure_is_subjective(*trace->except)) {
+      // subjectivity changes based on producing vs validating
+      bool subjective  = false;
+      if (explicit_billed_cpu_time) {
+         subjective = failure_is_subjective(*trace->except);
+      } else {
+         subjective = scheduled_failure_is_subjective(*trace->except);
+      }
+
+      if ( !subjective ) {
          // hard failure logic
 
          if( !explicit_billed_cpu_time ) {
