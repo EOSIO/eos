@@ -13,6 +13,7 @@
 #include <fc/utf8.hpp>
 #include <fc/variant.hpp>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/chrono.hpp>
 #include <boost/signals2/connection.hpp>
 #include <boost/thread/thread.hpp>
@@ -48,6 +49,18 @@ using chain::packed_transaction;
 
 static appbase::abstract_plugin& _mongo_db_plugin = app().register_plugin<mongo_db_plugin>();
 
+struct filter_entry {
+   name receiver;
+   name action;
+   name actor;
+   std::tuple<name, name, name> key() const {
+      return std::make_tuple(receiver, action, actor);
+   }
+   friend bool operator<( const filter_entry& a, const filter_entry& b ) {
+      return a.key() < b.key();
+   }
+};
+
 class mongo_db_plugin_impl {
 public:
    mongo_db_plugin_impl();
@@ -78,7 +91,7 @@ public:
 
    void purge_abi_cache();
 
-   void add_action_trace( mongocxx::bulk_write& bulk_action_traces, const chain::action_trace& atrace,
+   bool add_action_trace( mongocxx::bulk_write& bulk_action_traces, const chain::action_trace& atrace,
                           bool executed, const std::chrono::milliseconds& now );
 
    void update_account(const chain::action& act);
@@ -91,6 +104,9 @@ public:
                              const std::chrono::milliseconds& now );
    void remove_account_control( const account_name& name, const permission_name& permission );
 
+   /// @return true if act should be added to mongodb, false to skip it
+   bool filter_include( const chain::action& act ) const;
+
    void init();
    void wipe_database();
 
@@ -100,6 +116,10 @@ public:
    bool wipe_database_on_startup{false};
    uint32_t start_block_num = 0;
    std::atomic_bool start_block_reached{false};
+
+   bool filter_on_star = true;
+   std::set<filter_entry> filter_on;
+   std::set<filter_entry> filter_out;
 
    std::string db_name;
    mongocxx::instance mongo_inst;
@@ -175,6 +195,36 @@ const std::string mongo_db_plugin_impl::action_traces_col = "action_traces";
 const std::string mongo_db_plugin_impl::accounts_col = "accounts";
 const std::string mongo_db_plugin_impl::pub_keys_col = "pub_keys";
 const std::string mongo_db_plugin_impl::account_controls_col = "account_controls";
+
+bool mongo_db_plugin_impl::filter_include( const chain::action& act ) const {
+   bool include = false;
+   if( filter_on_star ) {
+      include = true;
+   }
+   if( filter_on.find( {act.account, act.name, 0} ) != filter_on.end() ) {
+      include = true;
+   }
+   for( const auto& a : act.authorization ) {
+      if( filter_on.find( {act.account, act.name, a.actor} ) != filter_on.end() ) {
+         include = true;
+      }
+   }
+
+   if( !include ) { return false; }
+
+   if( filter_out.find( {act.account, 0, 0} ) != filter_out.end() ) {
+      return false;
+   }
+   if( filter_out.find( {act.account, act.name, 0} ) != filter_out.end() ) {
+      return false;
+   }
+   for( const auto& a : act.authorization ) {
+      if( filter_out.find( {act.account, act.name, a.actor} ) != filter_out.end() ) {
+         return false;
+      }
+   }
+   return true;
+}
 
 template<typename Queue, typename Entry>
 void mongo_db_plugin_impl::queue( Queue& queue, const Entry& e ) {
@@ -643,7 +693,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
 
 }
 
-void
+bool
 mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces, const chain::action_trace& atrace,
                                         bool executed, const std::chrono::milliseconds& now )
 {
@@ -654,7 +704,8 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
       update_account( atrace.act );
    }
 
-   if( start_block_reached ) {
+   bool added = false;
+   if( start_block_reached && filter_include( atrace.act ) ) {
       auto action_traces_doc = bsoncxx::builder::basic::document{};
       const chain::base_action_trace& base = atrace; // without inline action traces
 
@@ -678,11 +729,14 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
 
       mongocxx::model::insert_one insert_op{action_traces_doc.view()};
       bulk_action_traces.append( insert_op );
+      added = true;
    }
 
    for( const auto& iline_atrace : atrace.inline_traces ) {
-      add_action_trace( bulk_action_traces, iline_atrace, executed, now );
+      added |= add_action_trace( bulk_action_traces, iline_atrace, executed, now );
    }
+
+   return added;
 }
 
 
@@ -705,14 +759,13 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
 
    for( const auto& atrace : t->action_traces ) {
       try {
-         add_action_trace( bulk_action_traces, atrace, executed, now );
-         write_atraces = true;
+         write_atraces |= add_action_trace( bulk_action_traces, atrace, executed, now );
       } catch(...) {
          handle_mongo_exception("add action traces", __LINE__);
       }
    }
 
-   if( write_atraces && start_block_reached ) {
+   if( write_atraces ) {
       try {
          if( !bulk_action_traces.execute() ) {
             EOS_ASSERT( false, chain::mongo_db_insert_fail, "Bulk action traces insert failed for transaction trace: ${id}", ("id", t->id));
@@ -1273,6 +1326,11 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
          "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
                " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI."
                " Example: mongodb://127.0.0.1:27017/EOS")
+         ("mongodb-filter-on", bpo::value<vector<string>>()->composing(),
+          "Mongodb: Track actions which match receiver:action:actor. Actor may be blank to include all. Receiver and Action may not be blank. Default is * include everything.")
+         ("mongodb-filter-out", bpo::value<vector<string>>()->composing(),
+          "Mongodb: Do not track actions which match receiver:action:actor. Action and Actor both blank excludes all from reciever. Actor blank excludes all from reciever:action. Receiver may not be blank.")
+
          ;
 }
 
@@ -1308,6 +1366,37 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          if( options.count( "mongodb-block-start" )) {
             my->start_block_num = options.at( "mongodb-block-start" ).as<uint32_t>();
          }
+         if( options.count( "mongodb-filter-on" )) {
+            auto fo = options.at( "mongodb-filter-on" ).as<vector<string>>();
+            for( auto& s : fo ) {
+               if( s == "*" ) {
+                  my->filter_on_star = true;
+                  break;
+               }
+               std::vector<std::string> v;
+               boost::split( v, s, boost::is_any_of( ":" ));
+               EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-on", ("s", s));
+               filter_entry fe{v[0], v[1], v[2]};
+               EOS_ASSERT( fe.receiver.value && fe.action.value, fc::invalid_arg_exception,
+                           "Invalid value ${s} for --mongodb-filter-on", ("s", s));
+               my->filter_on.insert( fe );
+            }
+         } else {
+            my->filter_on_star = true;
+         }
+         if( options.count( "mongodb-filter-out" )) {
+            auto fo = options.at( "mongodb-filter-out" ).as<vector<string>>();
+            for( auto& s : fo ) {
+               std::vector<std::string> v;
+               boost::split( v, s, boost::is_any_of( ":" ));
+               EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-out", ("s", s));
+               filter_entry fe{v[0], v[1], v[2]};
+               EOS_ASSERT( fe.receiver.value, fc::invalid_arg_exception,
+                           "Invalid value ${s} for --mongodb-filter-out", ("s", s));
+               my->filter_out.insert( fe );
+            }
+         }
+
          if( my->start_block_num == 0 ) {
             my->start_block_reached = true;
          }
