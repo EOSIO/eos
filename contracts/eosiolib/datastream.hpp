@@ -292,6 +292,36 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, public_key& pubkey
 }
 
 /**
+ *  Serialize a key160 into a stream
+ *
+ *  @brief Serialize a key160
+ *  @param ds - The stream to write
+ *  @param d - The value to serialize
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
+ */
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const key160& d) {
+  ds.write( (const char*)d.data(), d.size() );
+  return ds;
+}
+
+/**
+ *  Deserialize a key160 from a stream
+ *
+ *  @brief Deserialize a key160
+ *  @param ds - The stream to read
+ *  @param d - The destination for deserialized value
+ *  @tparam Stream - Type of datastream buffer
+ *  @return datastream<Stream>& - Reference to the datastream
+ */
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, key160& d) {
+  ds.read((char*)d.data(), d.size() );
+  return ds;
+}
+
+/**
  *  Serialize a key256 into a stream
  *
  *  @brief Serialize a key256

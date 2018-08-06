@@ -509,6 +509,153 @@ int32_t db_idx128_end(account_name code, account_name scope, table_name table);
 
 /**
   *
+  *  Store an association of a 160-bit secondary key to a primary key in a secondary 160-bit index table
+  *
+  *  @brief Store an association of a 160-bit secondary key to a primary key in a secondary 160-bit index table
+  *  @param scope - The scope where the table resides (implied to be within the code of the current receiver)
+  *  @param table - The table name
+  *  @param payer - The account that pays for the storage costs
+  *  @param id - The primary key to which to associate the secondary key
+  *  @param data - Pointer to the secondary key data stored as an array of 5 `uint32_t` integers
+  *  @param data_len - Must be set to 5
+  *  @return iterator to the newly created table row
+  *  @post new secondary key association between primary key `id` and the specified secondary key is created in the secondary 256-bit index table
+  */
+int32_t db_idx160_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint32_t* data, uint32_t data_len );
+
+/**
+  *
+  *  Update an association for a 160-bit secondary key to a primary key in a secondary 160-bit index table
+  *
+  *  @brief Update an association for a 160-bit secondary key to a primary key in a secondary 160-bit index table
+  *  @param iterator - The iterator to the table row containing the secondary key association to update
+  *  @param payer - The account that pays for the storage costs (use 0 to continue using current payer)
+  *  @param data - Pointer to the **new** secondary key data (which is stored as an array of 5 `uint32_t` integers) that will replace the existing one of the association
+  *  @param data_len - Must be set to 5
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the secondary key of the table row pointed to by `iterator` is replaced by the specified secondary key
+  */
+void db_idx160_update(int32_t iterator, account_name payer, const uint32_t* data, uint32_t data_len);
+
+/**
+  *
+  *  Remove a table row from a secondary 160-bit index table
+  *
+  *  @brief Remove a table row from a secondary 160-bit index table
+  *  @param iterator - Iterator to the table row to remove
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post the table row pointed to by `iterator` is removed and the associated storage costs are refunded to the payer
+  */
+void db_idx160_remove(int32_t iterator);
+
+/**
+  *
+  *  Find the table row following the referenced table row in a secondary 160-bit index table
+  *
+  *  @brief Find the table row following the referenced table row in a secondary 160-bit index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the next table row
+  *  @return iterator to the table row following the referenced table row (or the end iterator of the table if the referenced table row is the last one in the table)
+  *  @pre `iterator` points to an existing table row in the table
+  *  @post `*primary` will be replaced with the primary key of the table row following the referenced table row if it exists, otherwise `*primary` will be left untouched
+  */
+int32_t db_idx160_next(int32_t iterator, uint64_t* primary);
+
+/**
+  *
+  *  Find the table row preceding the referenced table row in a secondary 160-bit index table
+  *
+  *  @brief Find the table row preceding the referenced table row in a secondary 160-bit index table
+  *  @param iterator - The iterator to the referenced table row
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the previous table row
+  *  @return iterator to the table row preceding the referenced table row assuming one exists (it will return -1 if the referenced table row is the first one in the table)
+  *  @pre `iterator` points to an existing table row in the table or it is the end iterator of the table
+  *  @post `*primary` will be replaced with the primary key of the table row preceding the referenced table row if it exists, otherwise `*primary` will be left untouched
+  */
+int32_t db_idx160_previous(int32_t iterator, uint64_t* primary);
+
+/**
+  *
+  *  Find a table row in a secondary 256-bit index table by primary key
+  *
+  *  @brief Find a table row in a secondary 160-bit integer index table by primary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param data - Pointer to the an array of 5 `uint32_t` integers which will act as the buffer to hold the retrieved secondary key of the found table row
+  *  @param data_len - Must be set to 5
+  *  @param primary - The primary key of the table row to look up
+  *  @post If and only if the table row is found, the buffer pointed to by `data` will be filled with the secondary key of the found table row
+  *  @return iterator to the table row with a primary key equal to `id` or the end iterator of the table if the table row could not be found
+  */
+int32_t db_idx160_find_primary(account_name code, account_name scope, table_name table, uint32_t* data, uint32_t data_len, uint64_t primary);
+
+/**
+  *
+  *  Find a table row in a secondary 160-bit index table by secondary key
+  *
+  *  @brief Find a table row in a secondary 160-bit index table by secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param data - Pointer to the secondary key data (which is stored as an array of 5 `uint32_t` integers) used to lookup the table row
+  *  @param data_len - Must be set to 5
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the first table row with a secondary key equal to the specified secondary key or the end iterator of the table if the table row could not be found
+  */
+int32_t db_idx160_find_secondary(account_name code, account_name scope, table_name table, const uint32_t* data, uint32_t data_len, uint64_t* primary);
+
+/**
+  *
+  *  Find the table row in a secondary 160-bit index table that matches the lowerbound condition for a given secondary key
+  *  The table row that matches the lowerbound condition is the first table row in the table with the lowest secondary key that is >= the given key (uses lexicographical ordering on the 256-bit keys)
+  *
+  *  @brief Find the table row in a secondary 160-bit index table that matches the lowerbound condition for a given secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param data - Pointer to the secondary key data (which is stored as an array of 5 `uint32_t` integers) first used to determine the lowerbound and which is then replaced with the secondary key of the found table row
+  *  @param data_len - Must be set to 5
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, the buffer pointed to by `data` will be filled with the secondary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
+  */
+int32_t db_idx160_lowerbound(account_name code, account_name scope, table_name table, uint32_t* data, uint32_t data_len, uint64_t* primary);
+
+/**
+  *
+  *  Find the table row in a secondary 160-bit index table that matches the upperbound condition for a given secondary key
+  *  The table row that matches the upperbound condition is the first table row in the table with the lowest secondary key that is > the given key (uses lexicographical ordering on the 256-bit keys)
+  *
+  *  @brief Find the table row in a secondary 160-bit index table that matches the upperbound condition for a given secondary key
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @param data - Pointer to the secondary key data (which is stored as an array of 5 `uint32_t` integers) first used to determine the upperbound and which is then replaced with the secondary key of the found table row
+  *  @param data_len - Must be set to 2
+  *  @param primary - Pointer to a `uint64_t` variable which will have its value set to the primary key of the found table row
+  *  @post If and only if the table row is found, the buffer pointed to by `data` will be filled with the secondary key of the found table row
+  *  @post If and only if the table row is found, `*primary` will be replaced with the primary key of the found table row
+  *  @return iterator to the found table row or the end iterator of the table if the table row could not be found
+  */
+int32_t db_idx160_upperbound(account_name code, account_name scope, table_name table, uint32_t* data, uint32_t data_len, uint64_t* primary);
+
+/**
+  *
+  *  Get an end iterator representing just-past-the-end of the last table row of a secondary 160-bit index table
+  *
+  *  @brief Get an end iterator representing just-past-the-end of the last table row of a secondary 160-bit index table
+  *  @param code - The name of the owner of the table
+  *  @param scope - The scope where the table resides
+  *  @param table - The table name
+  *  @return end iterator of the table
+  */
+int32_t db_idx160_end(account_name code, account_name scope, table_name table);
+
+/**
+  *
   *  Store an association of a 256-bit secondary key to a primary key in a secondary 256-bit index table
   *
   *  @brief Store an association of a 256-bit secondary key to a primary key in a secondary 256-bit index table
@@ -578,7 +725,7 @@ int32_t db_idx256_previous(int32_t iterator, uint64_t* primary);
   *
   *  Find a table row in a secondary 256-bit index table by primary key
   *
-  *  @brief Find a table row in a secondary 128-bit integer index table by primary key
+  *  @brief Find a table row in a secondary 256-bit integer index table by primary key
   *  @param code - The name of the owner of the table
   *  @param scope - The scope where the table resides
   *  @param table - The table name

@@ -122,6 +122,7 @@ namespace eosio { namespace chain {
       key_value_object_type,
       index64_object_type,
       index128_object_type,
+      index160_object_type,
       index256_object_type,
       index_double_object_type,
       index_long_double_object_type,
@@ -191,6 +192,7 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (key_value_object_type)
                 (index64_object_type)
                 (index128_object_type)
+                (index160_object_type)
                 (index256_object_type)
                 (index_double_object_type)
                 (index_long_double_object_type)

@@ -286,6 +286,7 @@ struct controller_impl {
       db.add_index<key_value_index>();
       db.add_index<index64_index>();
       db.add_index<index128_index>();
+      db.add_index<index160_index>();
       db.add_index<index256_index>();
       db.add_index<index_double_index>();
       db.add_index<index_long_double_index>();
