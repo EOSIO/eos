@@ -1016,7 +1016,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {} );
       BOOST_CHECK(!trace);
-      produce_block( fc::seconds(3) );
+      produce_block( fc::seconds(2) );
 
       //check that it gets executed afterwards
       BOOST_REQUIRE(trace);
@@ -1084,7 +1084,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->scheduled) { trace = t; } } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
       CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction_success", {});
-      produce_block( fc::seconds(3) );
+      produce_block( fc::seconds(2) );
       BOOST_CHECK(!trace);
       c.disconnect();
    }
