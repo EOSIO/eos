@@ -171,7 +171,7 @@ namespace eosio {
       fc::sha256                    node_id;
 
       string                        user_agent_name;
-      chain_plugin*                 chain_plug;
+      chain_plugin*                 chain_plug = nullptr;
       int                           started_sessions = 0;
 
       node_transaction_index        local_txns;
@@ -649,7 +649,7 @@ namespace eosio {
       connection_ptr source;
       stages         state;
 
-      chain_plugin* chain_plug;
+      chain_plugin* chain_plug = nullptr;
 
       constexpr auto stage_str(stages s );
 
@@ -1255,6 +1255,7 @@ namespace eosio {
       ,state(in_sync)
    {
       chain_plug = app( ).find_plugin<chain_plugin>( );
+      EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, ""  );
    }
 
    constexpr auto sync_manager::stage_str(stages s ) {
@@ -2995,6 +2996,7 @@ namespace eosio {
          }
 
          my->chain_plug = app().find_plugin<chain_plugin>();
+         EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
          my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
          ilog( "my node_id is ${id}", ("id", my->node_id));
