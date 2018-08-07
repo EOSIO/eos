@@ -621,9 +621,9 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    trx.expiration = fc::time_point::now();
    trx.validate();
    BOOST_CHECK_EQUAL(0, trx.signatures.size());
-   ((const signed_transaction &)trx).sign( test.get_private_key( N(eosio), "active" ), test.control->get_chain_id());
+   ((const signed_transaction &)trx).sign( test.get_private_key( config::system_account_name, "active" ), test.control->get_chain_id());
    BOOST_CHECK_EQUAL(0, trx.signatures.size());
-   trx.sign( test.get_private_key( N(eosio), "active" ), test.control->get_chain_id()  );
+   trx.sign( test.get_private_key( config::system_account_name, "active" ), test.control->get_chain_id()  );
    BOOST_CHECK_EQUAL(1, trx.signatures.size());
    trx.validate();
 
