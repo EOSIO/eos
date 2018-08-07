@@ -173,7 +173,7 @@ namespace eosio {
        * @post The amount of this asset is multiplied by a
        */
       asset& operator*=( int64_t a ) {
-         uint128_t tmp = (uint128_t)amount * (uint128_t)a;
+         int128_t tmp = (int128_t)amount * (int128_t)a;
          eosio_assert( tmp <= max_amount, "multiplication overflow" );
          eosio_assert( tmp >= -max_amount, "multiplication underflow" );
          amount = (int64_t)tmp;
