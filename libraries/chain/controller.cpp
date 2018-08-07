@@ -517,7 +517,7 @@ struct controller_impl {
       db.remove( gto );
    }
 
-   bool failure_is_subjective( const fc::exception& e ) {
+   bool failure_is_subjective( const fc::exception& e ) const {
       auto code = e.code();
       return    (code == subjective_block_production_exception::code_value)
              || (code == block_net_usage_exceeded::code_value)
@@ -531,6 +531,12 @@ struct controller_impl {
              || (code == contract_blacklist_exception::code_value)
              || (code == action_blacklist_exception::code_value)
              || (code == key_blacklist_exception::code_value);
+   }
+
+   bool scheduled_failure_is_subjective( const fc::exception& e ) const {
+      auto code = e.code();
+      return    (code == tx_cpu_usage_exceeded::code_value)
+             || failure_is_subjective(e);
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false ) {
@@ -629,7 +635,15 @@ struct controller_impl {
 
       // Only subjective OR hard failure logic below:
 
-      if (!failure_is_subjective(*trace->except)) {
+      // subjectivity changes based on producing vs validating
+      bool subjective  = false;
+      if (explicit_billed_cpu_time) {
+         subjective = failure_is_subjective(*trace->except);
+      } else {
+         subjective = scheduled_failure_is_subjective(*trace->except);
+      }
+
+      if ( !subjective ) {
          // hard failure logic
 
          if( !explicit_billed_cpu_time ) {
