@@ -495,13 +495,6 @@ struct controller_impl {
                                         trx_context.billed_cpu_time_us, trace->net_usage );
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
-         auto onetrx = std::make_shared<transaction_metadata>( etrx );
-         onetrx->accepted = true;
-         onetrx->implicit = true;
-         emit( self.accepted_transaction, onetrx );
-
-         emit( self.applied_transaction, trace );
-
          trx_context.squash();
          restore.cancel();
          return trace;
@@ -576,9 +569,9 @@ struct controller_impl {
          trace->id = gtrx.trx_id;
          trace->scheduled = true;
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
-         undo_session.squash();
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
+         undo_session.squash();
          return trace;
       }
 
@@ -609,13 +602,14 @@ struct controller_impl {
 
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
+         emit( self.accepted_transaction, trx );
+         emit( self.applied_transaction, trace );
+
          trx_context.squash();
          undo_session.squash();
 
          restore.cancel();
 
-         emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, trace );
          return trace;
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
@@ -634,9 +628,9 @@ struct controller_impl {
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
          if( !trace->except_ptr ) {
-            undo_session.squash();
             emit( self.accepted_transaction, trx );
             emit( self.applied_transaction, trace );
+            undo_session.squash();
             return trace;
          }
          trace->elapsed = fc::time_point::now() - trx_context.start;
@@ -662,11 +656,18 @@ struct controller_impl {
                                                 block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
 
          trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
+
+         emit( self.accepted_transaction, trx );
+         emit( self.applied_transaction, trace );
+
          undo_session.squash();
+      } else {
+         emit( self.accepted_transaction, trx );
+         emit( self.applied_transaction, trace );
+
+         undo_session.undo();
       }
 
-      emit( self.accepted_transaction, trx );
-      emit( self.applied_transaction, trace );
       return trace;
    } FC_CAPTURE_AND_RETHROW() } /// push_scheduled_transaction
 
@@ -788,6 +789,9 @@ struct controller_impl {
          if (!failure_is_subjective(*trace->except)) {
             unapplied_transactions.erase( trx->signed_id );
          }
+
+         emit( self.accepted_transaction, trx );
+         emit( self.applied_transaction, trace );
 
          return trace;
       } FC_CAPTURE_AND_RETHROW((trace))
