@@ -9,3 +9,4 @@
 #include <eosiolib/multi_index.hpp>
 #include <eosiolib/dispatcher.hpp>
 #include <eosiolib/contract.hpp>
+#include <eosiolib/config.hpp>
