@@ -24,6 +24,9 @@
 
 #include <config.hpp>
 
+#include <deep_nested.abi.hpp>
+#include <large_nested.abi.hpp>
+
 using namespace eosio;
 using namespace chain;
 
@@ -3299,6 +3302,43 @@ BOOST_AUTO_TEST_CASE(abi_account_name_in_eosio_abi)
 } FC_LOG_AND_RETHROW() }
 
 
+// Unlimited array size during abi serialization can exhaust memory and crash the process
+BOOST_AUTO_TEST_CASE(abi_large_array)
+{
+   try {
+      const char* abi_str = R"=====(
+      {
+        "types": [],
+        "structs": [{
+           "name": "hi",
+           "base": "",
+           "fields": [
+           ]
+         }
+       ],
+       "actions": [{
+           "name": "hi",
+           "type": "hi[]",
+           "ricardian_contract": ""
+         }
+       ],
+       "tables": []
+      }
+      )=====";
+
+      abi_serializer abis( fc::json::from_string( abi_str ).as<abi_def>(), max_serialization_time );
+      // indicate a very large array, but don't actually provide a large array
+      // curl http://127.0.0.1:8888/v1/chain/abi_bin_to_json -X POST -d '{"code":"eosio", "action":"hi", "binargs":"ffffffff08"}'
+      bytes bin = {static_cast<char>(0xff),
+                   static_cast<char>(0xff),
+                   static_cast<char>(0xff),
+                   static_cast<char>(0xff),
+                   static_cast<char>(0x08)};
+      BOOST_CHECK_THROW( abis.binary_to_variant( "hi[]", bin, max_serialization_time );, fc::exception );
+
+   } FC_LOG_AND_RETHROW()
+}
+
 // Infinite recursion of abi_serializer is_type
 BOOST_AUTO_TEST_CASE(abi_is_type_recursion)
 {
@@ -3399,6 +3439,35 @@ BOOST_AUTO_TEST_CASE(abi_recursive_structs)
       auto bin = abis.variant_to_binary("hi", fc::json::from_string(hi_data), max_serialization_time);
       BOOST_CHECK_THROW( abis.binary_to_variant("hi", bin, max_serialization_time);, fc::exception );
 
+   } FC_LOG_AND_RETHROW()
+}
+
+// Infinite recursion of abi_serializer in struct definitions
+BOOST_AUTO_TEST_CASE(abi_very_deep_structs)
+{
+   try {
+      abi_serializer abis( fc::json::from_string( large_nested_abi ).as<abi_def>(), max_serialization_time );
+      string hi_data = "{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":{\"f1\":0}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}";
+      BOOST_CHECK_THROW( abis.variant_to_binary( "s98", fc::json::from_string( hi_data ), max_serialization_time ), fc::exception );
+   } FC_LOG_AND_RETHROW()
+}
+
+// Infinite recursion of abi_serializer in struct definitions
+BOOST_AUTO_TEST_CASE(abi_very_deep_structs_1ms)
+{
+   try {
+      BOOST_CHECK_THROW(
+            abi_serializer abis( fc::json::from_string( large_nested_abi ).as<abi_def>(), fc::microseconds( 1 ) ),
+            fc::exception );
+   } FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(abi_deep_structs_validate)
+{
+   try {
+      BOOST_CHECK_THROW(
+            abi_serializer abis( fc::json::from_string( deep_nested_abi ).as<abi_def>(), max_serialization_time ),
+            fc::exception );
    } FC_LOG_AND_RETHROW()
 }
 
