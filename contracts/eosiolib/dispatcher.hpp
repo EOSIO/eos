@@ -1,4 +1,5 @@
 #pragma once
+#include <eosiolib/config.hpp>
 #include <eosiolib/print.hpp>
 #include <eosiolib/action.hpp>
 
@@ -123,7 +124,7 @@ extern "C" { \
       auto self = receiver; \
       if( action == N(onerror)) { \
          /* onerror is only valid if it is for the "eosio" code account and authorized by "eosio"'s "active permission */ \
-         eosio_assert(code == N(eosio), "onerror action's are only valid from the \"eosio\" system account"); \
+         eosio_assert(code == eosio::cfg::system_account_name, "onerror action's are only valid from the \"eosio\" system account"); \
       } \
       if( code == self || action == N(onerror) ) { \
          TYPE thiscontract( self ); \

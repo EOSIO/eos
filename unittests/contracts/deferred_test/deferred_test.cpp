@@ -45,7 +45,7 @@ void apply_onerror(uint64_t receiver, const onerror& error ) {
 extern "C" {
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-      if( code == N(eosio) && action == N(onerror) ) {
+      if( code == cfg::system_account_name && action == N(onerror) ) {
          apply_onerror( receiver, onerror::from_current_action() );
       } else if( code == receiver ) {
          deferred_test thiscontract(receiver);
