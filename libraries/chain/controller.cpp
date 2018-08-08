@@ -872,7 +872,7 @@ struct controller_impl {
          pending.reset();
       });
 
-      bool skip_db_sessions = !conf.force_all_checks && (s == controller::block_status::irreversible);
+      bool skip_db_sessions = !conf.disable_replay_opts && (s == controller::block_status::irreversible);
       if (!skip_db_sessions) {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
@@ -1655,11 +1655,11 @@ bool controller::skip_auth_check() const {
 }
 
 bool controller::skip_db_sessions() const {
-   return !my->conf.force_all_checks && my->pending && !my->in_trx_requiring_checks && my->pending->_block_status == block_status::irreversible;
+   return !my->conf.disable_replay_opts && my->pending && !my->in_trx_requiring_checks && my->pending->_block_status == block_status::irreversible;
 }
 
 bool controller::skip_trx_checks() const {
-   return !my->conf.force_all_checks  &&my->pending && !my->in_trx_requiring_checks && (my->pending->_block_status == block_status::irreversible || my->pending->_block_status == block_status::validated);
+   return !my->conf.disable_replay_opts  &&my->pending && !my->in_trx_requiring_checks && (my->pending->_block_status == block_status::irreversible || my->pending->_block_status == block_status::validated);
 }
 
 bool controller::contracts_console()const {

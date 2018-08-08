@@ -57,6 +57,7 @@ namespace eosio { namespace chain {
             uint64_t                 reversible_guard_size  =  chain::config::default_reversible_guard_size;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
+            bool                     disable_replay_opts    =  false;
             bool                     contracts_console      =  false;
 
             genesis_state            genesis;
@@ -286,6 +287,7 @@ FC_REFLECT( eosio::chain::controller::config,
             (reversible_cache_size)
             (read_only)
             (force_all_checks)
+            (disable_replay_opts)
             (contracts_console)
             (genesis)
             (wasm_runtime)
