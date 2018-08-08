@@ -1,11 +1,11 @@
-add_executable( nodeos main.cpp )
+add_executable( ${NODE_EXECUTABLE_NAME} main.cpp )
 if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
 
 find_package( Gperftools QUIET )
 if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling nodeos with TCMalloc")
+    message( STATUS "Found gperftools; compiling ${NODE_EXECUTABLE_NAME} with TCMalloc")
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
@@ -28,7 +28,7 @@ endif()
 
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
-target_include_directories(nodeos PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(${NODE_EXECUTABLE_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 if(UNIX)
   if(APPLE)
@@ -43,7 +43,7 @@ else()
   set(no_whole_archive_flag "--no-whole-archive")
 endif()
 
-target_link_libraries( nodeos
+target_link_libraries( ${NODE_EXECUTABLE_NAME}
         PRIVATE appbase
         PRIVATE -Wl,${whole_archive_flag} login_plugin               -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} history_plugin             -Wl,${no_whole_archive_flag}
@@ -61,15 +61,15 @@ target_link_libraries( nodeos
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 if(TARGET sql_db_plugin)
-  target_link_libraries( nodeos PRIVATE -Wl,${whole_archive_flag} sql_db_plugin -Wl,${no_whole_archive_flag} )
+  target_link_libraries( ${NODE_EXECUTABLE_NAME} PRIVATE -Wl,${whole_archive_flag} sql_db_plugin -Wl,${no_whole_archive_flag} )
 endif()
 
 if(BUILD_MONGO_DB_PLUGIN)
-  target_link_libraries( nodeos PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
+  target_link_libraries( ${NODE_EXECUTABLE_NAME} PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
 endif()
 
 install( TARGETS
-   nodeos
+   ${NODE_EXECUTABLE_NAME}
 
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
    LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
@@ -96,4 +96,4 @@ install(DIRECTORY DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/eosio
                               WORLD_EXECUTE
 			)
 
-mas_sign(nodeos)
+mas_sign(${NODE_EXECUTABLE_NAME})
