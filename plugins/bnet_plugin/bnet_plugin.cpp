@@ -1190,7 +1190,7 @@ namespace eosio {
          }
 
          void on_accepted_transaction( transaction_metadata_ptr trx ) {
-            if( trx->trx.signatures.size() == 0 ) return;
+            if( trx->implicit || trx->scheduled ) return;
             for_each_session( [trx]( auto ses ){ ses->on_accepted_transaction( trx ); } );
          }
 

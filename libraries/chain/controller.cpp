@@ -222,6 +222,8 @@ struct controller_impl {
                   std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
                }
             }
+            std::cerr<< "\n";
+            ilog( "${n} blocks replayed", ("n", head->block_num) );
 
             int rev = 0;
             while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
@@ -229,13 +231,11 @@ struct controller_impl {
                self.push_block( obj->get_block(), controller::block_status::validated );
             }
 
-            std::cerr<< "\n";
             ilog( "${n} reversible blocks replayed", ("n",rev) );
             auto end = fc::time_point::now();
             ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
                   ("n", head->block_num)("duration", (end-start).count()/1000000)
                   ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
-            std::cerr<< "\n";
             replaying = false;
 
          } else if( !end ) {
@@ -495,8 +495,6 @@ struct controller_impl {
                                         trx_context.billed_cpu_time_us, trace->net_usage );
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
-         emit( self.applied_transaction, trace );
-
          trx_context.squash();
          restore.cancel();
          return trace;
@@ -565,18 +563,23 @@ struct controller_impl {
       EOS_ASSERT( gtrx.delay_until <= self.pending_block_time(), transaction_exception, "this transaction isn't ready",
                  ("gtrx.delay_until",gtrx.delay_until)("pbt",self.pending_block_time())          );
 
+      signed_transaction dtrx;
+      fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
+      transaction_metadata_ptr trx = std::make_shared<transaction_metadata>( dtrx );
+      trx->accepted = true;
+      trx->scheduled = true;
 
+      transaction_trace_ptr trace;
       if( gtrx.expiration < self.pending_block_time() ) {
-         auto trace = std::make_shared<transaction_trace>();
+         trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
-         trace->scheduled = false;
+         trace->scheduled = true;
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
+         emit( self.accepted_transaction, trx );
+         emit( self.applied_transaction, trace );
          undo_session.squash();
          return trace;
       }
-
-      signed_transaction dtrx;
-      fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
 
       auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
          in_trx_requiring_checks = old_value;
@@ -590,7 +593,7 @@ struct controller_impl {
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
-      transaction_trace_ptr trace = trx_context.trace;
+      trace = trx_context.trace;
       try {
          trx_context.init_for_deferred_trx( gtrx.published );
          trx_context.exec();
@@ -605,11 +608,14 @@ struct controller_impl {
 
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
+         emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
 
          trx_context.squash();
          undo_session.squash();
+
          restore.cancel();
+
          return trace;
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
@@ -628,6 +634,8 @@ struct controller_impl {
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
          if( !trace->except_ptr ) {
+            emit( self.accepted_transaction, trx );
+            emit( self.applied_transaction, trace );
             undo_session.squash();
             return trace;
          }
@@ -662,8 +670,16 @@ struct controller_impl {
                                                 block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
 
          trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
+
+         emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
+
          undo_session.squash();
+      } else {
+         emit( self.accepted_transaction, trx );
+         emit( self.applied_transaction, trace );
+
+         undo_session.undo();
       }
 
       return trace;
@@ -693,7 +709,6 @@ struct controller_impl {
     */
    transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx,
                                            fc::time_point deadline,
-                                           bool implicit,
                                            uint32_t billed_cpu_time_us,
                                            bool explicit_billed_cpu_time = false )
    {
@@ -710,7 +725,7 @@ struct controller_impl {
          trx_context.billed_cpu_time_us = billed_cpu_time_us;
          trace = trx_context.trace;
          try {
-            if( implicit ) {
+            if( trx->implicit ) {
                trx_context.init_for_implicit_trx();
                trx_context.can_subjectively_fail = false;
             } else {
@@ -726,7 +741,7 @@ struct controller_impl {
 
             trx_context.delay = fc::seconds(trx->trx.delay_sec);
 
-            if( !self.skip_auth_check() && !implicit ) {
+            if( !self.skip_auth_check() && !trx->implicit ) {
                authorization.check_authorization(
                        trx->trx.actions,
                        trx->recover_keys( chain_id ),
@@ -743,7 +758,7 @@ struct controller_impl {
 
             auto restore = make_block_restore_point();
 
-            if (!implicit) {
+            if (!trx->implicit) {
                transaction_receipt::status_enum s = (trx_context.delay == fc::seconds(0))
                                                     ? transaction_receipt::executed
                                                     : transaction_receipt::delayed;
@@ -761,8 +776,8 @@ struct controller_impl {
 
             // call the accept signal but only once for this transaction
             if (!trx->accepted) {
-               emit( self.accepted_transaction, trx);
                trx->accepted = true;
+               emit( self.accepted_transaction, trx);
             }
 
             emit(self.applied_transaction, trace);
@@ -776,7 +791,7 @@ struct controller_impl {
                trx_context.squash();
             }
 
-            if (!implicit) {
+            if (!trx->implicit) {
                unapplied_transactions.erase( trx->signed_id );
             }
             return trace;
@@ -788,6 +803,9 @@ struct controller_impl {
          if (!failure_is_subjective(*trace->except)) {
             unapplied_transactions.erase( trx->signed_id );
          }
+
+         emit( self.accepted_transaction, trx );
+         emit( self.applied_transaction, trace );
 
          return trace;
       } FC_CAPTURE_AND_RETHROW((trace))
@@ -841,11 +859,12 @@ struct controller_impl {
 
          try {
             auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
+            onbtrx->implicit = true;
             auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
                   in_trx_requiring_checks = old_value;
                });
             in_trx_requiring_checks = true;
-            push_transaction( onbtrx, fc::time_point::maximum(), true, self.get_global_properties().configuration.min_transaction_cpu_usage, true );
+            push_transaction( onbtrx, fc::time_point::maximum(), self.get_global_properties().configuration.min_transaction_cpu_usage, true );
          } catch( const boost::interprocess::bad_alloc& e  ) {
             elog( "on block transaction failed due to a bad allocation" );
             throw;
@@ -884,7 +903,7 @@ struct controller_impl {
             if( receipt.trx.contains<packed_transaction>() ) {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>(pt);
-               trace = push_transaction( mtrx, fc::time_point::maximum(), false, receipt.cpu_usage_us, true );
+               trace = push_transaction( mtrx, fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else if( receipt.trx.contains<transaction_id_type>() ) {
                trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else {
@@ -1346,7 +1365,8 @@ void controller::push_confirmation( const header_confirmation& c ) {
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
    validate_db_available_size();
-   return my->push_transaction(trx, deadline, false, billed_cpu_time_us, billed_cpu_time_us > 0 );
+   EOS_ASSERT( trx && !trx->implicit && !trx->scheduled, transaction_type_exception, "Implicit/Scheduled transaction not allowed" );
+   return my->push_transaction(trx, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
 }
 
 transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us )
