@@ -26,12 +26,54 @@ namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
 
+class maybe_session {
+   public:
+      maybe_session() = default;
+
+      maybe_session( maybe_session&& other)
+      :_session(move(other._session))
+      {
+      }
+
+      explicit maybe_session(database& db) {
+         _session = db.start_undo_session(true);
+      }
+
+      maybe_session(const maybe_session&) = delete;
+
+      void squash() {
+         if (_session)
+            _session->squash();
+      }
+
+      void undo() {
+         if (_session)
+            _session->undo();
+      }
+
+      void push() {
+         if (_session)
+            _session->push();
+      }
+
+      maybe_session& operator = ( maybe_session&& mv ) {
+         if (mv._session) {
+            _session = move(*mv._session);
+            mv._session.reset();
+         } else {
+            _session.reset();
+         }
+      };
+
+   private:
+      optional<database::session>     _session;
+};
 
 struct pending_state {
-   pending_state( optional<database::session>&& s )
+   pending_state( maybe_session&& s )
    :_db_session( move(s) ){}
 
-   optional<database::session>        _db_session;
+   maybe_session                      _db_session;
 
    block_state_ptr                    _pending_block_state;
 
@@ -40,7 +82,7 @@ struct pending_state {
    controller::block_status           _block_status = controller::block_status::incomplete;
 
    void push() {
-      if (_db_session) _db_session->push();
+      _db_session.push();
    }
 };
 
@@ -555,8 +597,9 @@ struct controller_impl {
 
    transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false )
    { try {
-      optional<database::session> undo_session;
-      if ( !self.skip_db_sessions() ) undo_session = db.start_undo_session(true);
+      maybe_session undo_session;
+      if ( !self.skip_db_sessions() )
+         undo_session = maybe_session(db);
 
       auto gtrx = generated_transaction(gto);
 
@@ -587,7 +630,7 @@ struct controller_impl {
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
-         if (undo_session) undo_session->squash();
+         undo_session.squash();
          return trace;
       }
 
@@ -622,7 +665,7 @@ struct controller_impl {
          emit( self.applied_transaction, trace );
 
          trx_context.squash();
-         if (undo_session) undo_session->squash();
+         undo_session.squash();
 
          restore.cancel();
 
@@ -646,7 +689,7 @@ struct controller_impl {
          if( !trace->except_ptr ) {
             emit( self.accepted_transaction, trx );
             emit( self.applied_transaction, trace );
-            if (undo_session) undo_session->squash();
+            undo_session.squash();
             return trace;
          }
          trace->elapsed = fc::time_point::now() - trx_context.start;
@@ -684,7 +727,7 @@ struct controller_impl {
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
 
-         if (undo_session) undo_session->squash();
+         undo_session.squash();
       } else {
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
@@ -834,9 +877,9 @@ struct controller_impl {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-         pending.emplace(db.start_undo_session(true));
+         pending.emplace(maybe_session(db));
       } else {
-         pending.emplace(optional<database::session>());
+         pending.emplace(maybe_session());
       }
 
       pending->_block_status = s;
