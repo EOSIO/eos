@@ -60,8 +60,7 @@ namespace {
       auto code = e.code();
       return (code == block_cpu_usage_exceeded::code_value) ||
              (code == block_net_usage_exceeded::code_value) ||
-             (code == deadline_exception::code_value && deadline_is_subjective) ||
-             (code == leeway_deadline_exception::code_value && deadline_is_subjective);
+             (code == deadline_exception::code_value && deadline_is_subjective);
    }
 }
 
