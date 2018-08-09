@@ -17,7 +17,6 @@ add_subdirectory(txn_test_gen_plugin)
 add_subdirectory(db_size_api_plugin)
 #add_subdirectory(faucet_testnet_plugin)
 add_subdirectory(mongo_db_plugin)
-#add_subdirectory(sql_db_plugin)
 add_subdirectory(login_plugin)
 
 # Forward variables to top level so packaging picks them up
