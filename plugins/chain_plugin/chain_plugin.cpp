@@ -48,7 +48,7 @@ std::ostream& operator<<(std::ostream& osm, eosio::chain::db_read_mode m) {
 }
 
 void validate(boost::any& v,
-              std::vector<std::string> const& values,
+              const std::vector<std::string>& values,
               eosio::chain::db_read_mode* /* target_type */,
               int)
 {
@@ -83,7 +83,7 @@ std::ostream& operator<<(std::ostream& osm, eosio::chain::validation_mode m) {
 }
 
 void validate(boost::any& v,
-              std::vector<std::string> const& values,
+              const std::vector<std::string>& values,
               eosio::chain::validation_mode* /* target_type */,
               int)
 {
