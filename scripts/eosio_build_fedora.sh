@@ -477,6 +477,18 @@
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
+		if ! cd "${TEMP_DIR}/llvm-compiler/llvm"
+		then
+			printf "\\n\\tUnable to enter directory %s/llvm-compiler/llvm.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! $(curl https://bugzilla.redhat.com/attachment.cgi?id=1389687 | git apply)
+		then
+			printf "\\n\\tUnable to apply patch https://bugzilla.redhat.com/attachment.cgi?id=1389687.\\n"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
 		if ! cd "${TEMP_DIR}/llvm-compiler/llvm/tools"
 		then
 			printf "\\n\\tUnable to enter directory %s/llvm-compiler/llvm/tools.\\n" "${TEMP_DIR}"
