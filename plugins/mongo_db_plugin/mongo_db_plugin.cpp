@@ -451,8 +451,7 @@ void handle_mongo_exception( const std::string& desc, int line_num ) {
          elog( "mongo exception, ${desc}, line ${line}, code ${code}, ${details}",
                ("desc", desc)( "line", line_num )( "code", e.code().value() )( "details", e.code().message() ));
          if (e.raw_server_error()) {
-            elog( "mongo exception, ${desc}, line ${line}, ${details}",
-                  ("desc", desc)( "line", line_num )( "details", bsoncxx::to_json(e.raw_server_error()->view())));
+            elog( "  raw_server_error: ${e}", ( "e", bsoncxx::to_json(e.raw_server_error()->view())));
          }
       } catch( mongocxx::exception& e) {
          elog( "mongo exception, ${desc}, line ${line}, code ${code}, ${what}",
