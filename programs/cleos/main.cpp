@@ -214,10 +214,8 @@ fc::variant call( const std::string& url,
                   const std::string& path,
                   const T& v ) {
    try {
-      eosio::client::http::connection_param *cp = new eosio::client::http::connection_param(context, parse_url(url) + path,
-              no_verify ? false : true, headers);
-
-      return eosio::client::http::do_http_call( *cp, fc::variant(v), print_request, print_response );
+      auto sp = std::make_unique<eosio::client::http::connection_param>(context, parse_url(url) + path, no_verify ? false : true, headers);
+      return eosio::client::http::do_http_call(*sp, fc::variant(v), print_request, print_response );
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
@@ -1074,9 +1072,9 @@ struct list_producers_subcommand {
          auto weight = result.total_producer_vote_weight;
          if ( !weight )
             weight = 1;
-         printf("%-13s %-54s %-59s %s\n", "Producer", "Producer key", "Url", "Scaled votes");
+         printf("%-13s %-57s %-59s %s\n", "Producer", "Producer key", "Url", "Scaled votes");
          for ( auto& row : result.rows )
-            printf("%-13.13s %-54.54s %-59.59s %1.4f\n",
+            printf("%-13.13s %-57.57s %-59.59s %1.4f\n",
                    row["owner"].as_string().c_str(),
                    row["producer_key"].as_string().c_str(),
                    row["url"].as_string().c_str(),
@@ -1698,23 +1696,31 @@ int main( int argc, char** argv ) {
    create->require_subcommand();
 
    bool r1 = false;
+   string key_file;
+   bool print_console = false;
    // create key
-   auto create_key = create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback( [&r1](){
-      if( r1 ) {
-         auto pk    = private_key_type::generate_r1();
-         auto privs = string(pk);
-         auto pubs  = string(pk.get_public_key());
+   auto create_key = create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback( [&r1, &key_file, &print_console](){
+      if (key_file.empty() && !print_console) {
+         std::cerr << "ERROR: Either indicate a file using \"--file\" or pass \"--to-console\"" << std::endl;
+         return;
+      }
+
+      auto pk    = r1 ? private_key_type::generate_r1() : private_key_type::generate();
+      auto privs = string(pk);
+      auto pubs  = string(pk.get_public_key());
+      if (print_console) {
          std::cout << localized("Private key: ${key}", ("key",  privs) ) << std::endl;
          std::cout << localized("Public key: ${key}", ("key", pubs ) ) << std::endl;
       } else {
-         auto pk    = private_key_type::generate();
-         auto privs = string(pk);
-         auto pubs  = string(pk.get_public_key());
-         std::cout << localized("Private key: ${key}", ("key",  privs) ) << std::endl;
-         std::cout << localized("Public key: ${key}", ("key", pubs ) ) << std::endl;
+         std::cerr << localized("saving keys to ${filename}", ("filename", key_file)) << std::endl;
+         std::ofstream out( key_file.c_str() );
+         out << localized("Private key: ${key}", ("key",  privs) ) << std::endl;
+         out << localized("Public key: ${key}", ("key", pubs ) ) << std::endl;
       }
    });
    create_key->add_flag( "--r1", r1, "Generate a key using the R1 curve (iPhone), instead of the K1 curve (Bitcoin)"  );
+   create_key->add_option("-f,--file", key_file, localized("Name of file to write private/public key output to. (Must be set, unless \"--to-console\" is passed"));
+   create_key->add_flag( "--to-console", print_console, localized("Print private/public keys to console."));
 
    // create account
    auto createAccount = create_account_subcommand( create, true /*simple*/ );
@@ -1853,7 +1859,7 @@ int main( int argc, char** argv ) {
                          localized("Index number, 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc.\n"
                                    "\t\t\t\tNumber or name of index can be specified, e.g. 'secondary' or '2'."));
    getTable->add_option( "--key-type", key_type,
-                         localized("The key type of --index, primary only supports (i64), all others support (i64, i128, i256, float64, float128).\n"
+                         localized("The key type of --index, primary only supports (i64), all others support (i64, i128, i256, float64, float128, sha256).\n"
                                    "\t\t\t\tSpecial type 'name' indicates an account name."));
 
    getTable->set_callback([&] {
@@ -2232,7 +2238,7 @@ int main( int argc, char** argv ) {
          tx_force_unique = false;
       }
 
-      send_actions({create_transfer(con,sender, recipient, to_asset(amount), memo)});
+      send_actions({create_transfer(con, sender, recipient, to_asset(con, amount), memo)});
    });
 
    // Net subcommand
@@ -2273,14 +2279,28 @@ int main( int argc, char** argv ) {
    wallet->require_subcommand();
    // create wallet
    string wallet_name = "default";
+   string password_file;
    auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"), false);
    createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
-   createWallet->set_callback([&wallet_name] {
+   createWallet->add_option("-f,--file", password_file, localized("Name of file to write wallet password output to. (Must be set, unless \"--to-console\" is passed"));
+   createWallet->add_flag( "--to-console", print_console, localized("Print password to console."));
+   createWallet->set_callback([&wallet_name, &password_file, &print_console] {
+      if (password_file.empty() && !print_console) {
+         std::cerr << "ERROR: Either indicate a file using \"--file\" or pass \"--to-console\"" << std::endl;
+         return;
+      }
+
       const auto& v = call(wallet_url, wallet_create, wallet_name);
       std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
       std::cout << localized("Save password to use in the future to unlock this wallet.") << std::endl;
       std::cout << localized("Without password imported keys will not be retrievable.") << std::endl;
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
+      if (print_console) {
+         std::cout << fc::json::to_pretty_string(v) << std::endl;
+      } else {
+         std::cerr << localized("saving password to ${filename}", ("filename", password_file)) << std::endl;
+         std::ofstream out( password_file.c_str() );
+         out << fc::json::to_pretty_string(v);
+      }
    });
 
    // open wallet

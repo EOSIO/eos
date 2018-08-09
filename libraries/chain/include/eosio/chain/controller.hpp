@@ -147,6 +147,20 @@ namespace eosio { namespace chain {
          const authorization_manager&          get_authorization_manager()const;
          authorization_manager&                get_mutable_authorization_manager();
 
+         const flat_set<account_name>&   get_actor_whitelist() const;
+         const flat_set<account_name>&   get_actor_blacklist() const;
+         const flat_set<account_name>&   get_contract_whitelist() const;
+         const flat_set<account_name>&   get_contract_blacklist() const;
+         const flat_set< pair<account_name, action_name> >& get_action_blacklist() const;
+         const flat_set<public_key_type>& get_key_blacklist() const;
+
+         void   set_actor_whitelist( const flat_set<account_name>& );
+         void   set_actor_blacklist( const flat_set<account_name>& );
+         void   set_contract_whitelist( const flat_set<account_name>& );
+         void   set_contract_blacklist( const flat_set<account_name>& );
+         void   set_action_blacklist( const flat_set< pair<account_name, action_name> >& );
+         void   set_key_blacklist( const flat_set<public_key_type>& );
+
          uint32_t             head_block_num()const;
          time_point           head_block_time()const;
          block_id_type        head_block_id()const;

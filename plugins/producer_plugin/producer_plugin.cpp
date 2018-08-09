@@ -60,8 +60,7 @@ namespace {
       auto code = e.code();
       return (code == block_cpu_usage_exceeded::code_value) ||
              (code == block_net_usage_exceeded::code_value) ||
-             (code == deadline_exception::code_value && deadline_is_subjective) ||
-             (code == leeway_deadline_exception::code_value && deadline_is_subjective);
+             (code == deadline_exception::code_value && deadline_is_subjective);
    }
 }
 
@@ -778,6 +777,29 @@ producer_plugin::greylist_params producer_plugin::get_greylist() const {
    }
    return result;
 }
+
+producer_plugin::whitelist_blacklist producer_plugin::get_whitelist_blacklist() const {
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   return {
+      chain.get_actor_whitelist(),
+      chain.get_actor_blacklist(),
+      chain.get_contract_whitelist(),
+      chain.get_contract_blacklist(),
+      chain.get_action_blacklist(),
+      chain.get_key_blacklist()
+   };
+}
+
+void producer_plugin::set_whitelist_blacklist(const producer_plugin::whitelist_blacklist& params) {
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   if(params.actor_whitelist.valid()) chain.set_actor_whitelist(*params.actor_whitelist);
+   if(params.actor_blacklist.valid()) chain.set_actor_blacklist(*params.actor_blacklist);
+   if(params.contract_whitelist.valid()) chain.set_contract_whitelist(*params.contract_whitelist);
+   if(params.contract_blacklist.valid()) chain.set_contract_blacklist(*params.contract_blacklist);
+   if(params.action_blacklist.valid()) chain.set_action_blacklist(*params.action_blacklist);
+   if(params.key_blacklist.valid()) chain.set_key_blacklist(*params.key_blacklist);
+}
+
 
 optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name) const {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();

@@ -1,0 +1,41 @@
+{
+   "version": "eosio::abi/1.0",
+   "types": [{
+      "new_type_name": "account_name",
+      "type": "name"
+   }],
+  "structs": [{
+      "name": "store",
+      "base": "",
+      "fields": [
+        {"name":"from", "type":"account_name"},
+        {"name":"to", "type":"account_name"},
+        {"name":"num", "type":"uint64"}
+      ]
+    },{
+     "name": "payload",
+     "base": "",
+     "fields": [
+        {"name":"key", "type":"uint64"},
+        {"name":"data", "type":"uint64[]"}
+     ]
+  }
+  ],
+  "actions": [{
+      "name": "store",
+      "type": "store",
+      "ricardian_contract": ""
+    }
+
+  ],
+  "tables": [{
+      "name": "payloads",
+      "type": "payload",
+      "index_type": "i64",
+      "key_names" : ["key"],
+      "key_types" : ["uint64"]
+    }
+  ],
+  "ricardian_clauses": [],
+  "abi_extensions": []
+}
