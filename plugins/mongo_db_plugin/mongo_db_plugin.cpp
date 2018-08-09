@@ -1343,15 +1343,15 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
          "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
                " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI."
                " Example: mongodb://127.0.0.1:27017/EOS")
-         ("mongodb-store-blocks", bpo::bool_switch()->default_value(true),
+         ("mongodb-store-blocks", bpo::value<bool>()->default_value(true),
           "Enables storing blocks in mongodb.")
-         ("mongodb-store-block-states", bpo::bool_switch()->default_value(true),
+         ("mongodb-store-block-states", bpo::value<bool>()->default_value(true),
           "Enables storing block state in mongodb.")
-         ("mongodb-store-transactions", bpo::bool_switch()->default_value(true),
+         ("mongodb-store-transactions", bpo::value<bool>()->default_value(true),
           "Enables storing transactions in mongodb.")
-         ("mongodb-store-transaction-traces", bpo::bool_switch()->default_value(true),
+         ("mongodb-store-transaction-traces", bpo::value<bool>()->default_value(true),
           "Enables storing transaction traces in mongodb.")
-         ("mongodb-store-action-traces", bpo::bool_switch()->default_value(true),
+         ("mongodb-store-action-traces", bpo::value<bool>()->default_value(true),
           "Enables storing action traces in mongodb.")
          ("mongodb-filter-on", bpo::value<vector<string>>()->composing(),
           "Mongodb: Track actions which match receiver:action:actor. Actor may be blank to include all. Receiver and Action may not be blank. Default is * include everything.")
