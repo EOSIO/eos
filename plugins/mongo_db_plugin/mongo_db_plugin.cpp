@@ -203,15 +203,14 @@ const std::string mongo_db_plugin_impl::account_controls_col = "account_controls
 
 bool mongo_db_plugin_impl::filter_include( const chain::action& act ) const {
    bool include = false;
-   if( filter_on_star ) {
+   if( filter_on_star || filter_on.find( {act.account, act.name, 0} ) != filter_on.end() ) {
       include = true;
-   }
-   if( filter_on.find( {act.account, act.name, 0} ) != filter_on.end() ) {
-      include = true;
-   }
-   for( const auto& a : act.authorization ) {
-      if( filter_on.find( {act.account, act.name, a.actor} ) != filter_on.end() ) {
-         include = true;
+   } else {
+      for( const auto& a : act.authorization ) {
+         if( filter_on.find( {act.account, act.name, a.actor} ) != filter_on.end() ) {
+            include = true;
+            break;
+         }
       }
    }
 
