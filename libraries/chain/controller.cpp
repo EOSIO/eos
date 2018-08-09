@@ -254,8 +254,8 @@ struct controller_impl {
          initialize_fork_db(); // set head to genesis state
 
          auto end = blog.read_head();
-         auto end_time = end->timestamp.to_time_point();
          if( end && end->block_num() > 1 ) {
+            auto end_time = end->timestamp.to_time_point();
             replaying = true;
             replay_head_time = end_time;
             ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
