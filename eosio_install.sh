@@ -100,8 +100,6 @@
    printf "\t| (____/\| (___) |/\____) |___) (___| (___) |\n"
    printf "\t(_______/(_______)\_______)\_______/(_______)\n${txtrst}"
 
-   printf "\\tTo verify your installation run the following commands:\\n"
-
    printf "\\tFor more information:\\n"
    printf "\\tEOSIO website: https://eos.io\\n"
    printf "\\tEOSIO Telegram channel @ https://t.me/EOSProject\\n"
