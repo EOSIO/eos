@@ -1652,15 +1652,34 @@ optional<producer_schedule_type> controller::proposed_producers()const {
 }
 
 bool controller::skip_auth_check() const {
-   return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
+   // replaying
+   bool consider_skipping = my->replaying;
+
+   // OR in light validation mode
+   consider_skipping = consider_skipping || my->conf.validation_mode == validation_mode::LIGHT;
+
+   return consider_skipping
+      && !my->conf.force_all_checks
+      && !my->in_trx_requiring_checks;
 }
 
 bool controller::skip_db_sessions() const {
-   return !my->conf.disable_replay_opts && my->pending && !my->in_trx_requiring_checks && my->pending->_block_status == block_status::irreversible;
+   bool consider_skipping = my->pending && my->pending->_block_status == block_status::irreversible;
+   return consider_skipping
+      && !my->conf.disable_replay_opts
+      && !my->in_trx_requiring_checks;
 }
 
 bool controller::skip_trx_checks() const {
-   return !my->conf.disable_replay_opts && my->pending && !my->in_trx_requiring_checks && (my->pending->_block_status == block_status::irreversible || my->pending->_block_status == block_status::validated);
+   // in a pending irreversible or previously validated block
+   bool consider_skipping = my->pending && ( my->pending->_block_status == block_status::irreversible || my->pending->_block_status == block_status::validated );
+
+   // OR in light validation mode
+   consider_skipping = consider_skipping || my->conf.validation_mode == validation_mode::LIGHT;
+
+   return consider_skipping
+      && !my->conf.disable_replay_opts
+      && !my->in_trx_requiring_checks;
 }
 
 bool controller::contracts_console()const {
@@ -1673,6 +1692,10 @@ chain_id_type controller::get_chain_id()const {
 
 db_read_mode controller::get_read_mode()const {
    return my->read_mode;
+}
+
+validation_mode controller::get_validation_mode()const {
+   return my->conf.validation_mode;
 }
 
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const

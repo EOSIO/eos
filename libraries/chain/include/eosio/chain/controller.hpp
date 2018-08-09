@@ -39,6 +39,11 @@ namespace eosio { namespace chain {
       IRREVERSIBLE
    };
 
+   enum class validation_mode {
+      FULL,
+      LIGHT
+   };
+
    class controller {
       public:
 
@@ -63,7 +68,8 @@ namespace eosio { namespace chain {
             genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
 
-            db_read_mode             read_mode    = db_read_mode::SPECULATIVE;
+            db_read_mode             read_mode              = db_read_mode::SPECULATIVE;
+            validation_mode          validation_mode        = validation_mode::FULL;
 
             flat_set<account_name>   resource_greylist;
          };
@@ -221,6 +227,7 @@ namespace eosio { namespace chain {
          chain_id_type get_chain_id()const;
 
          db_read_mode get_read_mode()const;
+         validation_mode get_validation_mode()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
 
