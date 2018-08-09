@@ -163,6 +163,7 @@ namespace eosio {
       boost::asio::steady_timer::duration   txn_exp_period;
       boost::asio::steady_timer::duration   resp_expected_period;
       boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
+      int                           max_cleanup_time_ms = 0;
 
       const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
 
@@ -229,12 +230,12 @@ namespace eosio {
       void handle_message( connection_ptr c, const signed_block &msg);
       void handle_message( connection_ptr c, const packed_transaction &msg);
 
-      void start_conn_timer( );
+      void start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection);
       void start_txn_timer( );
       void start_monitors( );
 
       void expire_txns( );
-      void connection_monitor( );
+      void connection_monitor(std::weak_ptr<connection> from_connection);
       /** \name Peer Timestamps
        *  Time message handling
        *  @{
@@ -2593,15 +2594,15 @@ namespace eosio {
       }
    }
 
-   void net_plugin_impl::start_conn_timer( ) {
-      connector_check->expires_from_now( connector_period);
-      connector_check->async_wait( [this](boost::system::error_code ec) {
+   void net_plugin_impl::start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection) {
+      connector_check->expires_from_now( du);
+      connector_check->async_wait( [this, from_connection](boost::system::error_code ec) {
             if( !ec) {
-               connection_monitor( );
+               connection_monitor(from_connection);
             }
             else {
                elog( "Error from connection check monitor: ${m}",( "m", ec.message()));
-               start_conn_timer( );
+               start_conn_timer( connector_period, std::weak_ptr<connection>());
             }
          });
    }
@@ -2637,7 +2638,7 @@ namespace eosio {
    void net_plugin_impl::start_monitors() {
       connector_check.reset(new boost::asio::steady_timer( app().get_io_service()));
       transaction_check.reset(new boost::asio::steady_timer( app().get_io_service()));
-      start_conn_timer();
+      start_conn_timer(connector_period, std::weak_ptr<connection>());
       start_txn_timer();
    }
 
@@ -2662,10 +2663,17 @@ namespace eosio {
       }
    }
 
-   void net_plugin_impl::connection_monitor( ) {
-      start_conn_timer();
-      auto it = connections.begin();
-      while(it != connections.end()) {
+   void net_plugin_impl::connection_monitor(std::weak_ptr<connection> from_connection) {
+      auto max_time = fc::time_point::now();
+      max_time += fc::milliseconds(max_cleanup_time_ms);
+      auto from = from_connection.lock();
+      auto it = (from ? connections.find(from) : connections.begin());
+      if (it == connections.end()) it = connections.begin();
+      while (it != connections.end()) {
+         if (fc::time_point::now() >= max_time) {
+            start_conn_timer(std::chrono::milliseconds(1), *it); // avoid exhausting
+            return;
+         }
          if( !(*it)->socket->is_open() && !(*it)->connecting) {
             if( (*it)->peer_addr.length() > 0) {
                connect(*it);
@@ -2677,6 +2685,7 @@ namespace eosio {
          }
          ++it;
       }
+      start_conn_timer(connector_period, std::weak_ptr<connection>());
    }
 
    void net_plugin_impl::close( connection_ptr c ) {
@@ -2878,6 +2887,7 @@ namespace eosio {
            "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
          ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
+         ( "max-cleanup-time-msec", bpo::value<int>()->default_value(10), "max connection cleanup time per cleanup call in millisec")
          ( "network-version-match", bpo::value<bool>()->default_value(false),
            "True to require exact match of peer network version.")
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
@@ -2912,6 +2922,7 @@ namespace eosio {
          my->dispatcher.reset( new dispatch_manager );
 
          my->connector_period = std::chrono::seconds( options.at( "connection-cleanup-period" ).as<int>());
+         my->max_cleanup_time_ms = options.at("max-cleanup-time-msec").as<int>();
          my->txn_exp_period = def_txn_expire_wait;
          my->resp_expected_period = def_resp_expected_wait;
          my->dispatcher->just_send_it_max = options.at( "max-implicit-request" ).as<uint32_t>();
