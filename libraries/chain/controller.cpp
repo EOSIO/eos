@@ -63,6 +63,8 @@ class maybe_session {
          } else {
             _session.reset();
          }
+
+         return *this;
       };
 
    private:
