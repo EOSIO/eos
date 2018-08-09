@@ -868,14 +868,15 @@ struct controller_impl {
 
 
    void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s ) {
-      EOS_ASSERT( !pending, block_validate_exception, "pending block is not available" );
+      EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
 
       auto guard_pending = fc::make_scoped_exit([this](){
          pending.reset();
       });
 
-      bool skip_db_sessions = !conf.disable_replay_opts && (s == controller::block_status::irreversible);
-      if (!skip_db_sessions) {
+      pending->_block_status = s;
+
+      if (!self.skip_db_sessions()) {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
@@ -883,8 +884,6 @@ struct controller_impl {
       } else {
          pending.emplace(maybe_session());
       }
-
-      pending->_block_status = s;
 
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
@@ -1661,7 +1660,7 @@ bool controller::skip_db_sessions() const {
 }
 
 bool controller::skip_trx_checks() const {
-   return !my->conf.disable_replay_opts  &&my->pending && !my->in_trx_requiring_checks && (my->pending->_block_status == block_status::irreversible || my->pending->_block_status == block_status::validated);
+   return !my->conf.disable_replay_opts && my->pending && !my->in_trx_requiring_checks && (my->pending->_block_status == block_status::irreversible || my->pending->_block_status == block_status::validated);
 }
 
 bool controller::contracts_console()const {
