@@ -884,9 +884,10 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       rm.get_virtual_block_cpu_limit(),
       rm.get_virtual_block_net_limit(),
       rm.get_block_cpu_limit(),
-      rm.get_block_net_limit()
+      rm.get_block_net_limit(),
       //std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string(),
-      //__builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0
+      //__builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0,
+      app().version_string(),
    };
 }
 
