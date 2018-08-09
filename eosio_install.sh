@@ -56,13 +56,13 @@
    install_symlinks() {
 		printf "\\n\\tInstalling EOSIO Binary Symlinks\\n\\n"
       create_symlink "cleos"
-      create_symlink "nodeos"
       create_symlink "eosio-abigen"
-      create_symlink "eosio-applesdemo"
       create_symlink "eosio-launcher"
       create_symlink "eosio-s2wasm"
       create_symlink "eosio-wast2wasm"
-      create_symlink "eosio-keosd"
+	  create_symlink "eosiocpp"
+	  create_symlink "keosd"
+      create_symlink "nodeos"
    }
 
 	if [ ! -d "${BUILD_DIR}" ]; then
