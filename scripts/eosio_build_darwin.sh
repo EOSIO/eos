@@ -72,7 +72,7 @@
 		printf "\\tDo you wish to install Home Brew?\\n"
 		select yn in "Yes" "No"; do
 			case "${yn}" in
-				[Yy]* ) 
+				[Yy]* )
 				"${XCODESELECT}" --install 2>/dev/null;
 				if ! "${RUBY}" -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 				then
@@ -91,7 +91,7 @@
 
 	printf "\\tHome Brew installation found @\\n"
 	printf "\\t%s\\n\\n" "${BREW}"
-	
+
 	COUNT=1
 	PERMISSION_GETTEXT=0
 	DISPLAY=""
@@ -121,9 +121,9 @@
 		DISPLAY="${DISPLAY}${COUNT}. ${name}\\n\\t"
 		printf "\\t\\t %s ${bldred}NOT${txtrst} found.\\n" "${name}"
 		(( COUNT++ ))
-	done < scripts/eosio_build_dep
+	done < "${SOURCE_DIR}/scripts/eosio_build_dep"
 	IFS="${var_ifs}"
-		
+
 	printf "\\tChecking Python3 ... "
 	if [  -z "$( python3 -c 'import sys; print(sys.version_info.major)' 2>/dev/null )" ]; then
 		DEP=$DEP"python@3 "
@@ -140,7 +140,7 @@
 		echo "Do you wish to install these packages?"
 		select yn in "Yes" "No"; do
 			case $yn in
-				[Yy]* ) 
+				[Yy]* )
 					if [ $PERMISSION_GETTEXT -eq 1 ]; then
 						sudo chown -R "$(whoami)" /usr/local/share
 					fi
@@ -170,11 +170,11 @@
 				* ) echo "Please type 1 for yes or 2 for no.";;
 			esac
 		done
-	else 
+	else
 		printf "\\n\\tNo required Home Brew dependencies to install.\\n"
 	fi
 
-		
+
 	printf "\\n\\tChecking boost library installation.\\n"
 	BVERSION=$( grep "#define BOOST_VERSION" "/usr/local/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
 	if [ "${BVERSION}" != "106700" ]; then
@@ -186,7 +186,7 @@
 				case $yn in
 					[Yy]* )
 						if "${BREW}" list | grep "boost"
-						then 
+						then
 							printf "\\tUninstalling Boost Version %s.\\n" "${BVERSION}"
 							if ! "${BREW}" uninstall --force boost
 							then
@@ -216,7 +216,7 @@
 			done
 		fi
 		printf "\\tInstalling boost libraries.\\n"
-		if ! "${BREW}" install boost
+		if ! "${BREW}" install https://raw.githubusercontent.com/Homebrew/homebrew-core/f946d12e295c8a27519b73cc810d06593270a07f/Formula/boost.rb
 		then
 			printf "\\tUnable to install boost 1.67 libraries at this time. 0\\n"
 			printf "\\tExiting now.\\n\\n"
@@ -237,7 +237,7 @@
 
 	printf "\\n\\tChecking MongoDB C++ driver installation.\\n"
 	MONGO_INSTALL=true
-	
+
     if [ -e "/usr/local/lib/libmongocxx-static.a" ]; then
 		MONGO_INSTALL=false
 		if ! version=$( grep "Version:" /usr/local/lib/pkgconfig/libmongocxx-static.pc | tr -s ' ' | awk '{print $2}' )
@@ -246,7 +246,7 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		
+
 		maj=$( echo "${version}" | cut -d'.' -f1 )
 		min=$( echo "${version}" | cut -d'.' -f2 )
 		if [ "${maj}" -gt 3 ]; then
@@ -451,7 +451,7 @@
 	else
 		printf "\\tsecp256k1 found at /usr/local/lib/.\\n"
 	fi
-  
+
 	printf "\\n\\tChecking LLVM with WASM support.\\n"
 	if [ ! -d /usr/local/wasm/bin ]; then
 		if ! cd "${TEMP_DIR}"

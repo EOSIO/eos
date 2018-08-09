@@ -84,22 +84,6 @@ namespace eosio {
       uint16_t        requests = 0; /// the number of "in flight" requests for this txn
    };
 
-   struct update_entry {
-      const packed_transaction &txn;
-      update_entry(const packed_transaction &msg) : txn(msg) {}
-
-      void operator() (node_transaction_state& nts) {
-         nts.packed_txn = txn;
-         net_message msg(txn);
-         uint32_t packsiz = fc::raw::pack_size(msg);
-         uint32_t bufsiz = packsiz + sizeof(packsiz);
-         nts.serialized_txn.resize(bufsiz);
-         fc::datastream<char*> ds( nts.serialized_txn.data(), bufsiz );
-         ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
-         fc::raw::pack( ds, msg );
-      }
-   };
-
    struct update_in_flight {
       int32_t incr;
       update_in_flight (int32_t delta) : incr (delta) {}
@@ -582,7 +566,6 @@ namespace eosio {
       void blk_send(const vector<block_id_type> &txn_lis);
       void stop_send();
 
-      void enqueue( transaction_id_type id );
       void enqueue( const net_message &msg, bool trigger_send = true );
       void cancel_sync(go_away_reason);
       void flush_queues();
@@ -666,13 +649,12 @@ namespace eosio {
       connection_ptr source;
       stages         state;
 
-      deque<block_id_type> _blocks;
-      chain_plugin * chain_plug;
+      chain_plugin* chain_plug;
 
       constexpr auto stage_str(stages s );
 
    public:
-      sync_manager(uint32_t span);
+      explicit sync_manager(uint32_t span);
       void set_state(stages s);
       bool sync_required();
       void send_handshakes();
@@ -690,13 +672,8 @@ namespace eosio {
 
    class dispatch_manager {
    public:
-      uint32_t just_send_it_max;
+      uint32_t just_send_it_max = 0;
 
-      struct block_request {
-         block_id_type id;
-         bool local_retry;
-      };
-      vector<block_request> req_blks;
       vector<transaction_id_type> req_trx;
 
       struct block_origin {
@@ -774,12 +751,7 @@ namespace eosio {
       initialize();
    }
 
-   connection::~connection() {
-      if(peer_addr.empty())
-         wlog( "released connection from client" );
-      else
-         wlog( "released connection to server at ${addr}", ("addr", peer_addr) );
-   }
+   connection::~connection() {}
 
    void connection::initialize() {
       auto *rnd = node_id.data();
@@ -1688,6 +1660,7 @@ namespace eosio {
       if (c &&
           c->last_req &&
           c->last_req->req_blocks.mode != none &&
+          !c->last_req->req_blocks.ids.empty() &&
           c->last_req->req_blocks.ids.back() == id) {
          c->last_req.reset();
       }
@@ -1797,6 +1770,7 @@ namespace eosio {
       if (c &&
           c->last_req &&
           c->last_req->req_trx.mode != none &&
+          !c->last_req->req_trx.ids.empty() &&
           c->last_req->req_trx.ids.back() == id) {
          c->last_req.reset();
       }
@@ -1868,7 +1842,6 @@ namespace eosio {
             if (!b) {
                send_req = true;
                req.req_blocks.ids.push_back( blkid );
-               req_blks.push_back( {blkid, generated} );
                entry.requested_time = fc::time_point::now();
             }
             c->add_peer_block(entry);
@@ -1894,11 +1867,11 @@ namespace eosio {
       transaction_id_type tid;
       block_id_type bid;
       bool is_txn = false;
-      if( c->last_req->req_trx.mode == normal ) {
+      if( c->last_req->req_trx.mode == normal && !c->last_req->req_trx.ids.empty() ) {
          is_txn = true;
          tid = c->last_req->req_trx.ids.back();
       }
-      else if( c->last_req->req_blocks.mode == normal ) {
+      else if( c->last_req->req_blocks.mode == normal && !c->last_req->req_blocks.ids.empty() ) {
          bid = c->last_req->req_blocks.ids.back();
       }
       else {
@@ -2691,27 +2664,18 @@ namespace eosio {
 
    void net_plugin_impl::connection_monitor( ) {
       start_conn_timer();
-      vector <connection_ptr> discards;
-      num_clients = 0;
-      for( auto &c : connections ) {
-         if( !c->socket->is_open() && !c->connecting) {
-            if( c->peer_addr.length() > 0) {
-               connect(c);
+      auto it = connections.begin();
+      while(it != connections.end()) {
+         if( !(*it)->socket->is_open() && !(*it)->connecting) {
+            if( (*it)->peer_addr.length() > 0) {
+               connect(*it);
             }
             else {
-               discards.push_back( c);
-            }
-         } else {
-            if( c->socket->is_open() && c->peer_addr.empty()) {
-               num_clients++;
+               it = connections.erase(it);
+               continue;
             }
          }
-      }
-      if( discards.size( ) ) {
-         for( auto &c : discards) {
-            connections.erase( c );
-            c.reset();
-         }
+         ++it;
       }
    }
 

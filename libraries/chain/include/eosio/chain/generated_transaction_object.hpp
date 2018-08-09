@@ -77,6 +77,34 @@ namespace eosio { namespace chain {
       >
    >;
 
+   class generated_transaction
+   {
+      public:
+         generated_transaction(const generated_transaction_object& gto)
+         :trx_id(gto.trx_id)
+         ,sender(gto.sender)
+         ,sender_id(gto.sender_id)
+         ,payer(gto.payer)
+         ,delay_until(gto.delay_until)
+         ,expiration(gto.expiration)
+         ,published(gto.published)
+         ,packed_trx(gto.packed_trx.begin(), gto.packed_trx.end())
+         {}
+
+         generated_transaction(const generated_transaction& gt) = default;
+         generated_transaction(generated_transaction&& gt) = default;
+
+         transaction_id_type           trx_id;
+         account_name                  sender;
+         uint128_t                     sender_id;
+         account_name                  payer;
+         time_point                    delay_until; /// this generated transaction will not be applied until the specified time
+         time_point                    expiration; /// this generated transaction will not be applied after this time
+         time_point                    published;
+         vector<char>                  packed_trx;
+
+   };
+
    namespace config {
       template<>
       struct billable_size<generated_transaction_object> {
