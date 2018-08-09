@@ -51,7 +51,7 @@ public:
    void applied_block(const chain::block_trace&);
    fc::variant transaction_to_variant(const packed_transaction& pretty_input) const;
 
-   chain_plugin* chain_plug;
+   chain_plugin* chain_plug = nullptr;
    static const int64_t DEFAULT_TRANSACTION_TIME_LIMIT;
    int64_t transactions_time_limit = DEFAULT_TRANSACTION_TIME_LIMIT;
    std::set<account_name> filter_on;
@@ -479,6 +479,7 @@ void account_history_plugin::plugin_initialize(const variables_map& options)
    }
 
    my->chain_plug = app().find_plugin<chain_plugin>();
+   EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
    my->chain_plug->chain_config().applied_block_callbacks.emplace_back(
             [&impl = my](const chain::block_trace& trace) {
                   impl->check_init_db();
