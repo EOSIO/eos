@@ -27,18 +27,12 @@ class ProducerToNode:
 
 def vote(node, account, producers):
     Print("Votes for %s" % (account.name))
-    trans=node.vote(account, producers, waitForTransBlock=False)
-    if trans is None:
-        Utils.cmdError("voting with %s" % (account.name))
-        errorExit("Failed to vote with account %s" % (account.name))
+    trans=node.vote(account, producers, waitForTransBlock=False, exitOnError=True)
     return trans
 
 def getBlockProducer(node, blockNum):
     node.waitForBlock(blockNum)
-    block=node.getBlock(blockNum)
-    if block is None:
-        Utils.cmdError("could not get block number %s" % (blockNum))
-        errorExit("Failed to get block")
+    block=node.getBlock(blockNum, exitOnError=True)
     blockProducer=block["producer"]
     if blockProducer is None:
         Utils.cmdError("could not get producer for block number %s" % (blockNum))
@@ -190,7 +184,7 @@ errorExit=Utils.errorExit
 
 from core_symbol import CORE_SYMBOL
 
-args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"})
+args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run","--p2p-plugin"})
 Utils.Debug=args.v
 totalNodes=4
 cluster=Cluster(walletd=True)
@@ -199,6 +193,7 @@ keepLogs=args.keep_logs
 dontKill=args.leave_running
 prodCount=args.prod_count
 killAll=args.clean_run
+p2pPlugin=args.p2p_plugin
 
 walletMgr=WalletMgr(True)
 testSuccessful=False
@@ -214,7 +209,7 @@ try:
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
     Print("Stand up cluster")
-    if cluster.launch(prodCount=prodCount, onlyBios=False, dontKill=dontKill, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes*21) is False:
+    if cluster.launch(prodCount=prodCount, onlyBios=False, dontKill=dontKill, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes*21, p2pPlugin=p2pPlugin) is False:
         Utils.cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
 
@@ -240,9 +235,6 @@ try:
         errorExit("Failed to stand up eos walletd.")
 
     testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount,accounts[0],accounts[1],accounts[2],accounts[3],accounts[4]])
-    if testWallet is None:
-        Utils.cmdError("eos wallet create")
-        errorExit("Failed to create wallet %s." % (testWalletName))
 
     for _, account in cluster.defProducerAccounts.items():
         walletMgr.importKey(account, testWallet, ignoreDupKeyWarning=True)
@@ -253,41 +245,22 @@ try:
         node=cluster.getNode(i)
         node.producers=Cluster.parseProducers(i)
         for prod in node.producers:
-            trans=node.regproducer(cluster.defProducerAccounts[prod], "http::/mysite.com", 0, waitForTransBlock=False)
-            if trans is None:
-                Utils.cmdError("registering producer %s" % (prod.name))
-                errorExit("Failed registering producer %s" % (prod.name))
+            trans=node.regproducer(cluster.defProducerAccounts[prod], "http::/mysite.com", 0, waitForTransBlock=False, exitOnError=True)
 
     node0=cluster.getNode(0)
-    if node0 is None:
-        errorExit("Cluster in bad state, received None node")
     node1=cluster.getNode(1)
-    if node1 is None:
-        errorExit("Cluster in bad state, received None node")
     node2=cluster.getNode(2)
-    if node2 is None:
-        errorExit("Cluster in bad state, received None node")
     node3=cluster.getNode(3)
-    if node3 is None:
-        errorExit("Cluster in bad state, received None node")
 
     node=node0
     # create accounts via eosio as otherwise a bid is needed
     for account in accounts:
         Print("Create new account %s via %s" % (account.name, cluster.eosioAccount.name))
-        trans=node.createInitializeAccount(account, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=False, stakeNet=1000, stakeCPU=1000, buyRAM=1000)
-        if trans is None:
-            Utils.cmdError("%s create account" % (account.name))
-            errorExit("Failed to create account %s" % (account.name))
+        trans=node.createInitializeAccount(account, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=False, stakeNet=1000, stakeCPU=1000, buyRAM=1000, exitOnError=True)
         transferAmount="100000000.0000 {0}".format(CORE_SYMBOL)
         Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
-        if node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer") is None:
-            errorExit("Failed to transfer funds %d from account %s to %s" % (
-                transferAmount, cluster.eosioAccount.name, account.name))
-        trans=node.delegatebw(account, 20000000.0000, 20000000.0000) 
-        if trans is None:
-            Utils.cmdError("delegate bandwidth for %s" % (account.name))
-            errorExit("Failed to delegate bandwidth for %s" % (account.name))
+        node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer")
+        trans=node.delegatebw(account, 20000000.0000, 20000000.0000, exitOnError=True)
 
     # containers for tracking producers
     prodsActive={}
