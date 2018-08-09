@@ -1652,8 +1652,8 @@ launcher_def::bounce (const string& node_numbers) {
       string node_num = node.name.substr( node.name.length() - 2 );
       string cmd = "cd " + host.eosio_home + "; "
                  + "export EOSIO_HOME=" + host.eosio_home + string("; ")
-                 + "export EOSIO_TN_NODE=" + node_num + "; "
-                 + "./scripts/eosio-tn_bounce.sh";
+                 + "export EOSIO_NODE=" + node_num + "; "
+                 + "./scripts/eosio-tn_bounce.sh " + eosd_extra_args;
       cout << "Bouncing " << node.name << endl;
       if (!do_ssh(cmd, host.host_name)) {
          cerr << "Unable to bounce " << node.name << endl;
@@ -1671,7 +1671,7 @@ launcher_def::down (const string& node_numbers) {
       string node_num = node.name.substr( node.name.length() - 2 );
       string cmd = "cd " + host.eosio_home + "; "
                  + "export EOSIO_HOME=" + host.eosio_home + "; "
-                 + "export EOSIO_TN_NODE=" + node_num + "; "
+                 + "export EOSIO_NODE=" + node_num + "; "
          + "export EOSIO_TN_RESTART_CONFIG_DIR=" + node.config_dir_name + "; "
                  + "./scripts/eosio-tn_down.sh";
       cout << "Taking down " << node.name << endl;

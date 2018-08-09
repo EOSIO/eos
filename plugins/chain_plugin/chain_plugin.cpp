@@ -884,9 +884,10 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       rm.get_virtual_block_cpu_limit(),
       rm.get_virtual_block_net_limit(),
       rm.get_block_cpu_limit(),
-      rm.get_block_net_limit()
+      rm.get_block_net_limit(),
       //std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string(),
-      //__builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0
+      //__builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0,
+      app().version_string(),
    };
 }
 
@@ -1028,6 +1029,14 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
             f64_to_f128M(f, &f128);
             return f128;
          });
+      }
+      else if (p.key_type == "sha256") {
+          return get_table_rows_by_seckey<index256_index, checksum256_type>(p, abi, [](const checksum256_type& v)->key256_t {
+              key256_t k;
+              k[0] = ((uint128_t *)&v._hash)[0];
+              k[1] = ((uint128_t *)&v._hash)[1];
+              return k;
+          });
       }
       EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: ${t}", ("t", p.key_type));
    }

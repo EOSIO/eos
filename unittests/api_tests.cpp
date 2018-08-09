@@ -1019,7 +1019,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       produce_block( fc::seconds(2) );
 
       //check that it gets executed afterwards
-      BOOST_CHECK(trace);
+      BOOST_REQUIRE(trace);
 
       //confirm printed message
       BOOST_TEST(!trace->action_traces.empty());
@@ -1045,7 +1045,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
          control->push_scheduled_transaction(trx, fc::time_point::maximum());
       }
       BOOST_CHECK_EQUAL(1, count);
-      BOOST_CHECK(trace);
+      BOOST_REQUIRE(trace);
       BOOST_CHECK_EQUAL( 1, trace->action_traces.size() );
       c.disconnect();
    }
@@ -1098,7 +1098,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 
    produce_blocks(10);
 
-{
+   {
    // Trigger a tx which in turn sends a deferred tx with payer != receiver
    // Payer is alice in this case, this tx should fail since we don't have the authorization of alice
    dtt_action dtt_act1;

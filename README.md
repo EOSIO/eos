@@ -35,17 +35,15 @@ EOSIO currently supports the following operating systems:
 6. Ubuntu 18.04
 7. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended)
 
-# Resources
-1. [eos.io website](https://eos.io)
-2. [EOSIO Blog](https://medium.com/eosio)
-3. [EOSIO Documentation Wiki](https://github.com/EOSIO/eos/wiki)
-4. [EOSIO API Documentation](https://eosio.github.io/eos/)
-5. [EOSIO Developer Portal](https://developers.eos.io)
-6. [EOSIO StackExchange for Q&A](https://eosio.stackexchange.com/)
-7. [Community Telegram Group](https://t.me/EOSProject)
-8. [Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
-9. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
-10. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
+## Resources
+1. [Website](https://eos.io)
+1. [Blog](https://medium.com/eosio)
+1. [Developer Portal](https://developers.eos.io)
+1. [StackExchange for Q&A](https://eosio.stackexchange.com/)
+1. [Community Telegram Group](https://t.me/EOSProject)
+1. [Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
+1. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
+1. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
 
 <a name="gettingstarted"></a>
 ## Getting Started
