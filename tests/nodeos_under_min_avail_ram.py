@@ -272,7 +272,7 @@ try:
     currentMinimumMaxRAM=maxRAMValue
     addOrSwapFlags[maxRAMFlag]=str(maxRAMValue)
     if not nodes[len(nodes)-1].relaunch(nodeIndex, "", newChain=False, addOrSwapFlags=addOrSwapFlags):
-        Utils.cmdError("Failed to restart node i with new capacity %s" % (numNodes-1, maxRAMValue))
+        Utils.cmdError("Failed to restart node %d with new capacity %s" % (numNodes-1, maxRAMValue))
         errorExit("Failure - Node should have restarted")
     addOrSwapFlags={}
 
