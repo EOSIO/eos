@@ -29,6 +29,8 @@ namespace eosio {
    using chain::name;
    using chain::uint128_t;
    using chain::public_key_type;
+   using chain::transaction;
+   using chain::transaction_id_type;
    using fc::optional;
    using boost::container::flat_set;
    using chain::asset;
@@ -206,6 +208,10 @@ public:
 
    get_required_keys_result get_required_keys( const get_required_keys_params& params)const;
 
+   using get_transaction_id_params = transaction;
+   using get_transaction_id_result = transaction_id_type;
+
+   get_transaction_id_result get_transaction_id( const get_transaction_id_params& params)const;
 
    struct get_block_params {
       string block_num_or_id;
