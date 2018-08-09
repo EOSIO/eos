@@ -514,6 +514,7 @@ public:
      }
  };
 
+ //key160 support with padding zeros in the end of key256
  template<>
  struct keytype_converter<chain_apis::ripemd160, chain_apis::hex> {
      using input_type = chain::checksum160_type;
@@ -521,8 +522,8 @@ public:
      static auto function() {
         return [](const input_type& v) {
             chain::key256_t k;
-            k[0] = ((uint32_t *)&v._hash)[0]; //0-31
-            k[1] = ((uint128_t *)&v._hash)[1]; //32-160
+            memset(k.data(), 0, sizeof(k));
+            memcpy(k.data(), v._hash, sizeof(v._hash));
             return k;
         };
      }
