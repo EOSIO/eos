@@ -554,7 +554,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
 
       if ( options.count("validation-mode") ) {
-         my->chain_config->validation_mode = options.at("validation-mode").as<validation_mode>();
+         my->chain_config->block_validation_mode = options.at("validation-mode").as<validation_mode>();
       }
 
       my->chain.emplace( *my->chain_config );

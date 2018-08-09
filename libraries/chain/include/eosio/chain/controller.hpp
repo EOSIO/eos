@@ -69,7 +69,7 @@ namespace eosio { namespace chain {
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
 
             db_read_mode             read_mode              = db_read_mode::SPECULATIVE;
-            validation_mode          validation_mode        = validation_mode::FULL;
+            validation_mode          block_validation_mode  = validation_mode::FULL;
 
             flat_set<account_name>   resource_greylist;
          };

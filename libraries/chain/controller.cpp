@@ -1656,7 +1656,7 @@ bool controller::skip_auth_check() const {
    bool consider_skipping = my->replaying;
 
    // OR in light validation mode
-   consider_skipping = consider_skipping || my->conf.validation_mode == validation_mode::LIGHT;
+   consider_skipping = consider_skipping || my->conf.block_validation_mode == validation_mode::LIGHT;
 
    return consider_skipping
       && !my->conf.force_all_checks
@@ -1675,7 +1675,7 @@ bool controller::skip_trx_checks() const {
    bool consider_skipping = my->pending && ( my->pending->_block_status == block_status::irreversible || my->pending->_block_status == block_status::validated );
 
    // OR in light validation mode
-   consider_skipping = consider_skipping || my->conf.validation_mode == validation_mode::LIGHT;
+   consider_skipping = consider_skipping || my->conf.block_validation_mode == validation_mode::LIGHT;
 
    return consider_skipping
       && !my->conf.disable_replay_opts
@@ -1695,7 +1695,7 @@ db_read_mode controller::get_read_mode()const {
 }
 
 validation_mode controller::get_validation_mode()const {
-   return my->conf.validation_mode;
+   return my->conf.block_validation_mode;
 }
 
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
