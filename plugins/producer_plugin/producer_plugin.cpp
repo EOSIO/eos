@@ -960,7 +960,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
 
       // attempt to play persisted transactions first
       bool exhausted = false;
-      auto unapplied_trxs = chain.get_unapplied_transactions();
 
       // remove all persisted transactions that have now expired
       auto& persisted_by_id = _persistent_transactions.get<by_id>();
@@ -970,67 +969,76 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
       }
 
       try {
-         for (auto itr = unapplied_trxs.begin(); itr != unapplied_trxs.end(); ++itr) {
-            const auto& trx = *itr;
-            if (persisted_by_id.find(trx->id) != persisted_by_id.end()) {
-               // this is a persisted transaction, push it into the block (even if we are speculating) with
-               // no deadline as it has already passed the subjective deadlines once and we want to represent
-               // the state of the chain including this transaction
-               try {
-                  chain.push_transaction(trx, fc::time_point::maximum());
-               } catch ( const guard_exception& e ) {
-                  app().get_plugin<chain_plugin>().handle_guard_exception(e);
-                  return start_block_result::failed;
-               } FC_LOG_AND_DROP();
-
-               // remove it from further consideration as it is applied
-               *itr = nullptr;
-            }
-         }
-
          size_t orig_pending_txn_size = _pending_incoming_transactions.size();
 
-         if (_pending_block_mode == pending_block_mode::producing) {
-            for (const auto& trx : unapplied_trxs) {
-               if (block_time <= fc::time_point::now()) exhausted = true;
-               if (exhausted) {
-                  break;
-               }
+         if (!persisted_by_expiry.empty() || _pending_block_mode == pending_block_mode::producing) {
+            auto unapplied_trxs = chain.get_unapplied_transactions();
 
-               if (!trx) {
-                  // nulled in the loop above, skip it
-                  continue;
-               }
+            if (!persisted_by_expiry.empty()) {
+               for (auto itr = unapplied_trxs.begin(); itr != unapplied_trxs.end(); ++itr) {
+                  const auto& trx = *itr;
+                  if (persisted_by_id.find(trx->id) != persisted_by_id.end()) {
+                     // this is a persisted transaction, push it into the block (even if we are speculating) with
+                     // no deadline as it has already passed the subjective deadlines once and we want to represent
+                     // the state of the chain including this transaction
+                     try {
+                        chain.push_transaction(trx, fc::time_point::maximum());
+                     } catch ( const guard_exception& e ) {
+                        app().get_plugin<chain_plugin>().handle_guard_exception(e);
+                        return start_block_result::failed;
+                     } FC_LOG_AND_DROP();
 
-               if (trx->packed_trx.expiration() < pbs->header.timestamp.to_time_point()) {
-                  // expired, drop it
-                  chain.drop_unapplied_transaction(trx);
-                  continue;
-               }
-
-               try {
-                  auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
-                  bool deadline_is_subjective = false;
-                  if (_max_transaction_time_ms < 0 || (_pending_block_mode == pending_block_mode::producing && block_time < deadline)) {
-                     deadline_is_subjective = true;
-                     deadline = block_time;
+                     // remove it from further consideration as it is applied
+                     *itr = nullptr;
                   }
-
-                  auto trace = chain.push_transaction(trx, deadline);
-                  if (trace->except) {
-                     if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
-                        exhausted = true;
-                     } else {
-                        // this failed our configured maximum transaction time, we don't want to replay it
-                        chain.drop_unapplied_transaction(trx);
-                     }
-                  }
-               } catch ( const guard_exception& e ) {
-                  app().get_plugin<chain_plugin>().handle_guard_exception(e);
-                  return start_block_result::failed;
-               } FC_LOG_AND_DROP();
+               }
             }
 
+            if (_pending_block_mode == pending_block_mode::producing) {
+               for (const auto& trx : unapplied_trxs) {
+                  if (block_time <= fc::time_point::now()) exhausted = true;
+                  if (exhausted) {
+                     break;
+                  }
+
+                  if (!trx) {
+                     // nulled in the loop above, skip it
+                     continue;
+                  }
+
+                  if (trx->packed_trx.expiration() < pbs->header.timestamp.to_time_point()) {
+                     // expired, drop it
+                     chain.drop_unapplied_transaction(trx);
+                     continue;
+                  }
+
+                  try {
+                     auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
+                     bool deadline_is_subjective = false;
+                     if (_max_transaction_time_ms < 0 || (_pending_block_mode == pending_block_mode::producing && block_time < deadline)) {
+                        deadline_is_subjective = true;
+                        deadline = block_time;
+                     }
+
+                     auto trace = chain.push_transaction(trx, deadline);
+                     if (trace->except) {
+                        if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
+                           exhausted = true;
+                        } else {
+                           // this failed our configured maximum transaction time, we don't want to replay it
+                           chain.drop_unapplied_transaction(trx);
+                        }
+                     }
+                  } catch ( const guard_exception& e ) {
+                     app().get_plugin<chain_plugin>().handle_guard_exception(e);
+                     return start_block_result::failed;
+                  } FC_LOG_AND_DROP();
+               }
+            }
+
+         }
+
+         if (_pending_block_mode == pending_block_mode::producing) {
             auto& blacklist_by_id = _blacklisted_transactions.get<by_id>();
             auto& blacklist_by_expiry = _blacklisted_transactions.get<by_expiry>();
             auto now = fc::time_point::now();
