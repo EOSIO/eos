@@ -763,9 +763,9 @@ void ensure_keosd_running(CLI::App* app) {
     // This extra check is necessary when running cleos like this: ./cleos ...
     if (binPath.filename_is_dot())
         binPath.remove_filename();
-    binPath.append("keosd"); // if cleos and keosd are in the same installation directory
+    binPath.append(key_store_executable_name); // if cleos and keosd are in the same installation directory
     if (!boost::filesystem::exists(binPath)) {
-        binPath.remove_filename().remove_filename().append("keosd").append("keosd");
+        binPath.remove_filename().remove_filename().append("keosd").append(key_store_executable_name);
     }
 
     const auto& lo_address = resolved_url.resolved_addresses.front();
