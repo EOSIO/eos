@@ -2163,7 +2163,7 @@ int main( int argc, char** argv ) {
       if( wasmPath.empty() )
          wasmPath = (cpath / (cpath.filename().generic_string()+".wasm")).generic_string();
       else
-         wastPath = (cpath / wastPath).generic_string();
+         wasmPath = (cpath / wasmPath).generic_string();
 
       std::cerr << localized(("Reading WASM from " + wasmPath + "...").c_str()) << std::endl;
       fc::read_file_contents(wasmPath, wast);
