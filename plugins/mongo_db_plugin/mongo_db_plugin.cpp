@@ -1409,6 +1409,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          }
          if( options.count( "mongodb-filter-on" )) {
             auto fo = options.at( "mongodb-filter-on" ).as<vector<string>>();
+            my->filter_on_star = false;
             for( auto& s : fo ) {
                if( s == "*" ) {
                   my->filter_on_star = true;
