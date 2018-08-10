@@ -114,7 +114,6 @@ Options:
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
 #include <IR/Validate.h>
-#include <WAST/WAST.h>
 #include <WASM/WASM.h>
 #include <Runtime/Runtime.h>
 
@@ -2133,23 +2132,23 @@ int main( int argc, char** argv ) {
    // set contract subcommand
    string account;
    string contractPath;
-   string wastPath;
+   string wasmPath;
    string abiPath;
    bool shouldSend = true;
    auto codeSubcommand = setSubcommand->add_subcommand("code", localized("Create or update the code on an account"));
    codeSubcommand->add_option("account", account, localized("The account to set code for"))->required();
-   codeSubcommand->add_option("code-file", wastPath, localized("The fullpath containing the contract WAST or WASM"))->required();
+   codeSubcommand->add_option("code-file", wasmPath, localized("The fullpath containing the contract WASM"))->required();
 
    auto abiSubcommand = setSubcommand->add_subcommand("abi", localized("Create or update the abi on an account"));
    abiSubcommand->add_option("account", account, localized("The account to set the ABI for"))->required();
-   abiSubcommand->add_option("abi-file", abiPath, localized("The fullpath containing the contract WAST or WASM"))->required();
+   abiSubcommand->add_option("abi-file", abiPath, localized("The fullpath containing the contract ABI"))->required();
 
    auto contractSubcommand = setSubcommand->add_subcommand("contract", localized("Create or update the contract on an account"));
    contractSubcommand->add_option("account", account, localized("The account to publish a contract for"))
                      ->required();
-   contractSubcommand->add_option("contract-dir", contractPath, localized("The path containing the .wast and .abi"))
+   contractSubcommand->add_option("contract-dir", contractPath, localized("The path containing the .wasm and .abi"))
                      ->required();
-   contractSubcommand->add_option("wast-file", wastPath, localized("The file containing the contract WAST or WASM relative to contract-dir"));
+   contractSubcommand->add_option("wasm-file", wasmPath, localized("The file containing the contract WASM relative to contract-dir"));
 //                     ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
 //                                ->check(CLI::ExistingFile);
@@ -2161,26 +2160,13 @@ int main( int argc, char** argv ) {
 
       if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
 
-      if( wastPath.empty() )
-      {
-         wastPath = (cpath / (cpath.filename().generic_string()+".wasm")).generic_string();
-         if (!fc::exists(wastPath))
-            wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
-      }
+      if( wasmPath.empty() )
+         wasmPath = (cpath / (cpath.filename().generic_string()+".wasm")).generic_string();
 
-      std::cerr << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
-      fc::read_file_contents(wastPath, wast);
-      EOS_ASSERT( !wast.empty(), wast_file_not_found, "no wast file found ${f}", ("f", wastPath) );
-      vector<uint8_t> wasm;
-      const string binary_wasm_header("\x00\x61\x73\x6d", 4);
-      if(wast.compare(0, 4, binary_wasm_header) == 0) {
-         std::cerr << localized("Using already assembled WASM...") << std::endl;
-         wasm = vector<uint8_t>(wast.begin(), wast.end());
-      }
-      else {
-         std::cerr << localized("Assembling WASM...") << std::endl;
-         wasm = wast_to_wasm(wast);
-      }
+      std::cerr << localized(("Reading WASM from " + wasmPath + "...").c_str()) << std::endl;
+      fc::read_file_contents(wasmPath, wast);
+      EOS_ASSERT( !wast.empty(), wast_file_not_found, "no wasm file found ${f}", ("f", wasmPath) );
+      vector<uint8_t> wasm = vector<uint8_t>(wast.begin(), wast.end());
 
       actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
       if ( shouldSend ) {
