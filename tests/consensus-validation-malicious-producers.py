@@ -288,8 +288,8 @@ def myTest(transWillEnterBlock):
             error("Failed to create account %s" % (currencyAccount.name))
             return False
 
-        wastFile="contracts/currency/currency.wast"
-        abiFile="contracts/currency/currency.abi"
+        wastFile="currency.wast"
+        abiFile="currency.abi"
         Print("Publish contract")
         trans=node.publishContract(currencyAccount.name, wastFile, abiFile, waitForTransBlock=True)
         if trans is None:
