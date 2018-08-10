@@ -48,7 +48,7 @@ std::ostream& operator<<(std::ostream& osm, eosio::chain::db_read_mode m) {
 }
 
 void validate(boost::any& v,
-              std::vector<std::string> const& values,
+              const std::vector<std::string>& values,
               eosio::chain::db_read_mode* /* target_type */,
               int)
 {
@@ -67,6 +67,39 @@ void validate(boost::any& v,
      v = boost::any(eosio::chain::db_read_mode::HEAD);
   } else if ( s == "irreversible" ) {
      v = boost::any(eosio::chain::db_read_mode::IRREVERSIBLE);
+  } else {
+     throw validation_error(validation_error::invalid_option_value);
+  }
+}
+
+std::ostream& operator<<(std::ostream& osm, eosio::chain::validation_mode m) {
+   if ( m == eosio::chain::validation_mode::FULL ) {
+      osm << "full";
+   } else if ( m == eosio::chain::validation_mode::LIGHT ) {
+      osm << "light";
+   }
+
+   return osm;
+}
+
+void validate(boost::any& v,
+              const std::vector<std::string>& values,
+              eosio::chain::validation_mode* /* target_type */,
+              int)
+{
+  using namespace boost::program_options;
+
+  // Make sure no previous assignment to 'v' was made.
+  validators::check_first_occurrence(v);
+
+  // Extract the first string from 'values'. If there is more than
+  // one string, it's an error, and exception will be thrown.
+  std::string const& s = validators::get_single_string(values);
+
+  if ( s == "full" ) {
+     v = boost::any(eosio::chain::validation_mode::FULL);
+  } else if ( s == "light" ) {
+     v = boost::any(eosio::chain::validation_mode::LIGHT);
   } else {
      throw validation_error(validation_error::invalid_option_value);
   }
@@ -202,6 +235,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
           "In \"head\" mode database contains changes done up to the current head block.\n")
           //"In \"irreversible\" mode database contains changes done up the current irreversible block.\n")
+         ("validation-mode", boost::program_options::value<eosio::chain::validation_mode>()->default_value(eosio::chain::validation_mode::FULL),
+          "Chain validation mode (\"full\" or \"light\").\n"
+          "In \"full\" mode all incoming blocks will be fully validated.\n"
+          "In \"light\" mode all incoming blocks headers will be fully validated; transactions in those validated blocks will be trusted \n")
          ;
 
 // TODO: rate limiting
@@ -225,6 +262,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "recovers reversible block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
           "do not skip any checks that can be skipped while replaying irreversible blocks")
+         ("disable-replay-opts", bpo::bool_switch()->default_value(false),
+          "disable optimizations that specifically target replay")
          ("replay-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain state database and replay all blocks")
          ("hard-replay-blockchain", bpo::bool_switch()->default_value(false),
@@ -359,6 +398,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->wasm_runtime = *my->wasm_runtime;
 
       my->chain_config->force_all_checks = options.at( "force-all-checks" ).as<bool>();
+      my->chain_config->disable_replay_opts = options.at( "disable-replay-opts" ).as<bool>();
       my->chain_config->contracts_console = options.at( "contracts-console" ).as<bool>();
 
       if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
@@ -511,6 +551,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if ( options.count("read-mode") ) {
          my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
          EOS_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported." );
+      }
+
+      if ( options.count("validation-mode") ) {
+         my->chain_config->block_validation_mode = options.at("validation-mode").as<validation_mode>();
       }
 
       my->chain.emplace( *my->chain_config );

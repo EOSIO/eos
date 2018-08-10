@@ -275,7 +275,7 @@ try:
         if not enableMongo:
             assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
         else:
-            assert(actions["name"] == "transfer")
+            assert(actions["act"]["name"] == "transfer")
     except (AssertionError, TypeError, KeyError) as _:
         Print("Action validation failed. Actions: %s" % (actions))
         raise
@@ -319,8 +319,8 @@ try:
         errorExit("FAILURE - get code currency1111 failed", raw=True)
 
     contractDir="contracts/eosio.token"
-    wastFile="contracts/eosio.token/eosio.token.wast"
-    abiFile="contracts/eosio.token/eosio.token.abi"
+    wastFile="eosio.token.wast"
+    abiFile="eosio.token.abi"
     Print("Publish contract")
     trans=node.publishContract(currencyAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
     if trans is None:
@@ -605,8 +605,8 @@ try:
     Print("upload exchange contract")
 
     contractDir="contracts/exchange"
-    wastFile="contracts/exchange/exchange.wast"
-    abiFile="contracts/exchange/exchange.abi"
+    wastFile="exchange.wast"
+    abiFile="exchange.abi"
     Print("Publish exchange contract")
     trans=node.publishContract(exchangeAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
     if trans is None:
@@ -614,8 +614,8 @@ try:
         errorExit("Failed to publish contract.")
 
     contractDir="contracts/simpledb"
-    wastFile="contracts/simpledb/simpledb.wast"
-    abiFile="contracts/simpledb/simpledb.abi"
+    wastFile="simpledb.wast"
+    abiFile="simpledb.abi"
     Print("Setting simpledb contract without simpledb account was causing core dump in %s." % (ClientName))
     Print("Verify %s generates an error, but does not core dump." % (ClientName))
     retMap=node.publishContract("simpledb", contractDir, wastFile, abiFile, shouldFail=True)

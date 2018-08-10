@@ -2162,6 +2162,8 @@ int main( int argc, char** argv ) {
 
       if( wasmPath.empty() )
          wasmPath = (cpath / (cpath.filename().generic_string()+".wasm")).generic_string();
+      else
+         wastPath = (cpath / wastPath).generic_string();
 
       std::cerr << localized(("Reading WASM from " + wasmPath + "...").c_str()) << std::endl;
       fc::read_file_contents(wasmPath, wast);
@@ -2179,9 +2181,10 @@ int main( int argc, char** argv ) {
       fc::path cpath(contractPath);
       if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
 
-      if( abiPath.empty() )
-      {
+      if( abiPath.empty() ) {
          abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
+      } else {
+         abiPath = (cpath / abiPath).generic_string();
       }
 
       EOS_ASSERT( fc::exists( abiPath ), abi_file_not_found, "no abi file found ${f}", ("f", abiPath)  );

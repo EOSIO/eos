@@ -294,7 +294,7 @@ namespace eosio { namespace chain {
       b->add_confirmation( c );
 
       if( b->bft_irreversible_blocknum < b->block_num &&
-         b->confirmations.size() > ((b->active_schedule.producers.size() * 2) / 3) ) {
+         b->confirmations.size() >= ((b->active_schedule.producers.size() * 2) / 3 + 1) ) {
          set_bft_irreversible( c.block_id );
       }
    }

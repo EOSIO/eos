@@ -55,6 +55,11 @@ namespace eosio { namespace chain {
       set_abi(abi, max_serialization_time);
    }
 
+   void abi_serializer::add_specialized_unpack_pack( const string& name,
+                                                     std::pair<abi_serializer::unpack_function, abi_serializer::pack_function> unpack_pack ) {
+      built_in_types[name] = std::move( unpack_pack );
+   }
+
    void abi_serializer::configure_built_in_types() {
 
       built_in_types.emplace("bool",                      pack_unpack<uint8_t>());
