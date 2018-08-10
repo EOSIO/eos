@@ -246,9 +246,9 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
      ("memo", "")
    );
 
-   transfer( N(eosio), N(alice), core_from_string("10000.0000"), "", N(eosio.token) );
-   transfer( N(eosio), N(bob),   core_from_string("10000.0000"), "", N(eosio.token) );
-   transfer( N(eosio), N(carol), core_from_string("10000.0000"), "", N(eosio.token) );
+   transfer( config::system_account_name, N(alice), core_from_string("10000.0000"), "", N(eosio.token) );
+   transfer( config::system_account_name, N(bob),   core_from_string("10000.0000"), "", N(eosio.token) );
+   transfer( config::system_account_name, N(carol), core_from_string("10000.0000"), "", N(eosio.token) );
 
    produce_block();
 

@@ -30,7 +30,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
    act.data = fc::raw::pack(act_data);
    // Re-sign the transaction
    signed_tx.signatures.clear();
-   signed_tx.sign(main.get_private_key(N(eosio), "active"), main.control->get_chain_id());
+   signed_tx.sign(main.get_private_key(config::system_account_name, "active"), main.control->get_chain_id());
    // Replace the valid transaction with the invalid transaction 
    auto invalid_packed_tx = packed_transaction(signed_tx);
    copy_b->transactions.back().trx = invalid_packed_tx;
@@ -38,7 +38,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
    // Re-sign the block
    auto header_bmroot = digest_type::hash( std::make_pair( copy_b->digest(), main.control->head_block_state()->blockroot_merkle.get_root() ) );
    auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, main.control->head_block_state()->pending_schedule_hash) );
-   copy_b->producer_signature = main.get_private_key(N(eosio), "active").sign(sig_digest);
+   copy_b->producer_signature = main.get_private_key(config::system_account_name, "active").sign(sig_digest);
 
    // Push block with invalid transaction to other chain
    tester validator;

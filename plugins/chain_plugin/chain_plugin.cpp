@@ -1103,7 +1103,7 @@ static fc::variant get_global_row( const database& db, const abi_def& abi, const
    const auto table_type = get_table_type(abi, N(global));
    EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
 
-   const auto* const table_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(eosio), N(eosio), N(global)));
+   const auto* const table_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(config::system_account_name, config::system_account_name, N(global)));
    EOS_ASSERT(table_id, chain::contract_table_query_exception, "Missing table global");
 
    const auto& kv_index = db.get_index<key_value_index, by_scope_primary>();
@@ -1116,7 +1116,7 @@ static fc::variant get_global_row( const database& db, const abi_def& abi, const
 }
 
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
-   const abi_def abi = eosio::chain_apis::get_abi(db, N(eosio));
+   const abi_def abi = eosio::chain_apis::get_abi(db, config::system_account_name);
    const auto table_type = get_table_type(abi, N(producers));
    const abi_serializer abis{ abi, abi_serializer_max_time };
    EOS_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
@@ -1125,8 +1125,10 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    const auto lower = name{p.lower_bound};
 
    static const uint8_t secondary_index_num = 0;
-   const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(eosio), N(eosio), N(producers)));
-   const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(N(eosio), N(eosio), N(producers) | secondary_index_num));
+   const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
+           boost::make_tuple(config::system_account_name, config::system_account_name, N(producers)));
+   const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
+           boost::make_tuple(config::system_account_name, config::system_account_name, N(producers) | secondary_index_num));
    EOS_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
 
    const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
@@ -1483,7 +1485,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       ++perm;
    }
 
-   const auto& code_account = db.db().get<account_object,by_name>( N(eosio) );
+   const auto& code_account = db.db().get<account_object,by_name>( config::system_account_name );
 
    abi_def abi;
    if( abi_serializer::to_abi(code_account.abi, abi) ) {

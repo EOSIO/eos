@@ -182,7 +182,7 @@ transaction_trace_ptr CallFunction(TESTER& test, T ac, const vector<char>& data,
 }
 
 #define CALL_TEST_FUNCTION(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
-#define CALL_TEST_FUNCTION_SYSTEM(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {N(eosio)} )
+#define CALL_TEST_FUNCTION_SYSTEM(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {config::system_account_name} )
 #define CALL_TEST_FUNCTION_SCOPE(_TESTER, CLS, MTH, DATA, ACCOUNT) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, ACCOUNT)
 #define CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION(_TESTER, CLS, MTH, DATA, EXC, EXC_MESSAGE) \
 BOOST_CHECK_EXCEPTION( \
@@ -576,7 +576,7 @@ BOOST_FIXTURE_TEST_CASE(cfa_stateful_api, TESTER)  try {
 	set_code( N(testapi), test_api_wast );
 
    account_name a = N(testapi2);
-   account_name creator = N(eosio);
+   account_name creator = config::system_account_name;
 
    signed_transaction trx;
 
@@ -606,7 +606,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_failed, TESTER)  try {
 	set_code( N(testapi), test_api_wast );
 
    account_name a = N(testapi2);
-   account_name creator = N(eosio);
+   account_name creator = config::system_account_name;
 
    signed_transaction trx;
 
@@ -642,7 +642,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
 	set_code( N(testapi), test_api_wast );
 
    account_name a = N(testapi2);
-   account_name creator = N(eosio);
+   account_name creator = config::system_account_name;
 
    signed_transaction trx;
 
