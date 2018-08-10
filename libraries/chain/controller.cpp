@@ -874,9 +874,7 @@ struct controller_impl {
          pending.reset();
       });
 
-      pending->_block_status = s;
-
-      if (!self.skip_db_sessions()) {
+      if (!self.skip_db_sessions(s)) {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
@@ -885,6 +883,7 @@ struct controller_impl {
          pending.emplace(maybe_session());
       }
 
+      pending->_block_status = s;
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
 
@@ -1663,11 +1662,19 @@ bool controller::skip_auth_check() const {
       && !my->in_trx_requiring_checks;
 }
 
-bool controller::skip_db_sessions() const {
-   bool consider_skipping = my->pending && my->pending->_block_status == block_status::irreversible;
+bool controller::skip_db_sessions( block_status bs ) const {
+   bool consider_skipping = bs == block_status::irreversible;
    return consider_skipping
       && !my->conf.disable_replay_opts
       && !my->in_trx_requiring_checks;
+}
+
+bool controller::skip_db_sessions( ) const {
+   if (my->pending) {
+      return skip_db_sessions(my->pending->_block_status);
+   } else {
+      return false;
+   }
 }
 
 bool controller::skip_trx_checks() const {
