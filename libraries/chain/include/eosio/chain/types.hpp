@@ -118,7 +118,6 @@ namespace eosio { namespace chain {
       permission_object_type,
       permission_usage_object_type,
       permission_link_object_type,
-      action_code_object_type,
       key_value_object_type,
       index64_object_type,
       index128_object_type,
@@ -131,24 +130,15 @@ namespace eosio { namespace chain {
       transaction_object_type,
       generated_transaction_object_type,
       producer_object_type,
-      chain_property_object_type,
-      account_control_history_object_type, ///< Defined by account_history_plugin
-      account_transaction_history_object_type, ///< Defined by account_history_plugin
-      transaction_history_object_type, ///< Defined by account_history_plugin
-      public_key_history_object_type, ///< Defined by account_history_plugin
-      balance_object_type, ///< Defined by native_contract library
-      staked_balance_object_type, ///< Defined by native_contract library
-      producer_votes_object_type, ///< Defined by native_contract library
-      producer_schedule_object_type, ///< Defined by native_contract library
-      proxy_vote_object_type, ///< Defined by native_contract library
-      scope_sequence_object_type,
+      account_control_history_object_type, ///< Defined by history_plugin
+      public_key_history_object_type, ///< Defined by history_plugin
       table_id_object_type,
       resource_limits_object_type,
       resource_usage_object_type,
       resource_limits_state_object_type,
       resource_limits_config_object_type,
-      account_history_object_type,
-      action_history_object_type,
+      account_history_object_type, ///< Defined by history_plugin
+      action_history_object_type, ///< Defined by history_plugin
       reversible_block_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
@@ -187,7 +177,6 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (permission_object_type)
                 (permission_usage_object_type)
                 (permission_link_object_type)
-                (action_code_object_type)
                 (key_value_object_type)
                 (index64_object_type)
                 (index128_object_type)
@@ -200,17 +189,8 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (transaction_object_type)
                 (generated_transaction_object_type)
                 (producer_object_type)
-                (chain_property_object_type)
                 (account_control_history_object_type)
-                (account_transaction_history_object_type)
-                (transaction_history_object_type)
                 (public_key_history_object_type)
-                (balance_object_type)
-                (staked_balance_object_type)
-                (producer_votes_object_type)
-                (producer_schedule_object_type)
-                (proxy_vote_object_type)
-                (scope_sequence_object_type)
                 (table_id_object_type)
                 (resource_limits_object_type)
                 (resource_usage_object_type)
