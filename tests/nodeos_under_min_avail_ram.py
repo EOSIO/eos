@@ -138,8 +138,8 @@ try:
     trans=nodes[0].delegatebw(contractAccount, 1000000.0000, 88000000.0000, exitOnError=True)
 
     contractDir="contracts/integration_test"
-    wasmFile="contracts/integration_test/integration_test.wasm"
-    abiFile="contracts/integration_test/integration_test.abi"
+    wasmFile="integration_test.wasm"
+    abiFile="integration_test.abi"
     Print("Publish contract")
     trans=nodes[0].publishContract(contractAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:
