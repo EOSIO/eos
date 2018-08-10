@@ -103,8 +103,8 @@ private-key = ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbw
 producer-name = initu
 plugin = eosio::producer_plugin
 plugin = eosio::chain_api_plugin
-plugin = eosio::account_history_plugin
-plugin = eosio::account_history_api_plugin"""
+plugin = eosio::history_plugin
+plugin = eosio::history_api_plugin"""
 
 
 config01="""genesis-json = ./genesis.json
@@ -123,8 +123,8 @@ private-key = ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbw
 producer-name = defproducerb
 plugin = eosio::producer_plugin
 plugin = eosio::chain_api_plugin
-plugin = eosio::account_history_plugin
-plugin = eosio::account_history_api_plugin"""
+plugin = eosio::history_plugin
+plugin = eosio::history_api_plugin"""
 
 
 producers="""producer-name = defproducerd
