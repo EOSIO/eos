@@ -81,22 +81,36 @@ namespace eosio { namespace client { namespace http {
       // Process the response headers.
       std::string header;
       int response_content_length = -1;
+      int isclose = 0;
       std::regex clregex(R"xx(^content-length:\s+(\d+))xx", std::regex_constants::icase);
+      std::regex coregex(R"xx(^connection:\s+close)xx", std::regex_constants::icase);
       while (std::getline(response_stream, header) && header != "\r") {
          std::smatch match;
          if(std::regex_search(header, match, clregex))
             response_content_length = std::stoi(match[1]);
+         if (std::regex_search(header, match, coregex))
+            isclose = 1;
       }
-      EOS_ASSERT(response_content_length >= 0, invalid_http_response, "Invalid content-length response");
+      EOS_ASSERT(isclose || response_content_length >= 0, invalid_http_response, "Invalid content-length response");
 
       std::stringstream re;
       // Write whatever content we already have to output.
-      response_content_length -= response.size();
-      if (response.size() > 0)
-         re << &response;
+      if (isclose) {
+         if (response.size() > 0)
+            re << &response;
+         
+         boost::system::error_code err;
+         while ( boost::asio::read(socket, response, err)) {
+            re << &response;
+         }
+      } else {
+         response_content_length -= response.size();
+         if (response.size() > 0)
+            re << &response;
 
-      boost::asio::read(socket, response, boost::asio::transfer_exactly(response_content_length));
-      re << &response;
+         boost::asio::read(socket, response, boost::asio::transfer_exactly(response_content_length));
+         re << &response;
+      }
 
       return re.str();
    }
