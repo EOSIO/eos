@@ -43,7 +43,6 @@ using chain::permission_name;
 using chain::transaction;
 using chain::signed_transaction;
 using chain::signed_block;
-using chain::block_trace;
 using chain::transaction_id_type;
 using chain::packed_transaction;
 
