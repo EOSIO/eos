@@ -2155,7 +2155,7 @@ int main( int argc, char** argv ) {
 
    std::vector<chain::action> actions;
    auto set_code_callback = [&]() {
-      std::string wast;
+      std::string wasm;
       fc::path cpath(contractPath);
 
       if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
@@ -2166,9 +2166,8 @@ int main( int argc, char** argv ) {
          wasmPath = (cpath / wasmPath).generic_string();
 
       std::cerr << localized(("Reading WASM from " + wasmPath + "...").c_str()) << std::endl;
-      fc::read_file_contents(wasmPath, wast);
-      EOS_ASSERT( !wast.empty(), wast_file_not_found, "no wasm file found ${f}", ("f", wasmPath) );
-      vector<uint8_t> wasm = vector<uint8_t>(wast.begin(), wast.end());
+      fc::read_file_contents(wasmPath, wasm);
+      EOS_ASSERT( !wasm.empty(), wast_file_not_found, "no wasm file found ${f}", ("f", wasmPath) );
 
       actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
       if ( shouldSend ) {
