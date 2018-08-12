@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/http_plugin/http_plugin.hpp>
+#include <eosio/http_plugin/local_endpoint.hpp>
 #include <eosio/chain/exceptions.hpp>
 
 #include <fc/network/ip.hpp>
@@ -79,9 +80,42 @@ namespace eosio {
 
           static const long timeout_open_handshake = 0;
       };
+
+      struct asio_local_with_stub_log : public websocketpp::config::asio {
+          typedef asio_local_with_stub_log type;
+          typedef asio base;
+
+          typedef base::concurrency_type concurrency_type;
+
+          typedef base::request_type request_type;
+          typedef base::response_type response_type;
+
+          typedef base::message_type message_type;
+          typedef base::con_msg_manager_type con_msg_manager_type;
+          typedef base::endpoint_msg_manager_type endpoint_msg_manager_type;
+
+          typedef websocketpp::log::stub elog_type;
+          typedef websocketpp::log::stub alog_type;
+
+          typedef base::rng_type rng_type;
+
+          struct transport_config : public base::transport_config {
+              typedef type::concurrency_type concurrency_type;
+              typedef type::alog_type alog_type;
+              typedef type::elog_type elog_type;
+              typedef type::request_type request_type;
+              typedef type::response_type response_type;
+              typedef websocketpp::transport::asio::basic_socket::local_endpoint socket_type;
+          };
+
+          typedef websocketpp::transport::asio::local_endpoint<transport_config> transport_type;
+
+          static const long timeout_open_handshake = 0;
+      };
    }
 
    using websocket_server_type = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::basic_socket::endpoint>>;
+   using websocket_local_server_type = websocketpp::server<detail::asio_local_with_stub_log>;
    using websocket_server_tls_type =  websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>;
    using ssl_context_ptr =  websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
 
@@ -98,6 +132,7 @@ namespace eosio {
          size_t                   max_body_size;
 
          websocket_server_type    server;
+         websocket_local_server_type local_server;
 
          optional<tcp::endpoint>  https_listen_endpoint;
          string                   https_cert_chain;
@@ -163,7 +198,7 @@ namespace eosio {
          }
 
          template<class T>
-         static void handle_exception(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
+         static void handle_exception(typename websocketpp::server<T>::connection_ptr con) {
             string err = "Internal Service error, http: ";
             try {
                con->set_status( websocketpp::http::status_code::internal_server_error );
@@ -195,18 +230,26 @@ namespace eosio {
          }
 
          template<class T>
-         void handle_http_request(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
-            try {
-               bool is_secure = con->get_uri()->get_secure();
-               const auto& local_endpoint = con->get_socket().lowest_layer().local_endpoint();
-               auto local_socket_host_port = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
+         bool allow_host(const typename T::request_type& req, typename websocketpp::server<T>::connection_ptr con) {
+            bool is_secure = con->get_uri()->get_secure();
+            const auto& local_endpoint = con->get_socket().lowest_layer().local_endpoint();
+            auto local_socket_host_port = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
 
+            const auto& host_str = req.get_header("Host");
+            if (host_str.empty() || !host_is_valid(host_str, local_socket_host_port, is_secure)) {
+               con->set_status(websocketpp::http::status_code::bad_request);
+               return false;
+            }
+            return true;
+         }
+
+         template<class T>
+         void handle_http_request(typename websocketpp::server<T>::connection_ptr con) {
+            try {
                auto& req = con->get_request();
-               const auto& host_str = req.get_header("Host");
-               if (host_str.empty() || !host_is_valid(host_str, local_socket_host_port, is_secure)) {
-                  con->set_status(websocketpp::http::status_code::bad_request);
+
+               if(!allow_host<T>(req, con))
                   return;
-               }
 
                if( !access_control_allow_origin.empty()) {
                   con->append_header( "Access-Control-Allow-Origin", access_control_allow_origin );
@@ -258,7 +301,7 @@ namespace eosio {
                ws.set_reuse_addr(true);
                ws.set_max_http_body_size(max_body_size);
                ws.set_http_handler([&](connection_hdl hdl) {
-                  handle_http_request<T>(ws.get_con_from_hdl(hdl));
+                  handle_http_request<detail::asio_with_stub_log<T>>(ws.get_con_from_hdl(hdl));
                });
             } catch ( const fc::exception& e ){
                elog( "http: ${e}", ("e",e.to_detail_string()));
@@ -276,6 +319,11 @@ namespace eosio {
          }
 
    };
+
+   template<>
+   bool http_plugin_impl::allow_host<detail::asio_local_with_stub_log>(const detail::asio_local_with_stub_log::request_type& req, websocketpp::server<detail::asio_local_with_stub_log>::connection_ptr con) {
+      return true;
+   }
 
    http_plugin::http_plugin():my(new http_plugin_impl()){}
    http_plugin::~http_plugin(){}
@@ -412,6 +460,18 @@ namespace eosio {
             throw;
          }
       }
+
+//disabled until configuration items sorted out
+#if 0
+      my->local_server.clear_access_channels(websocketpp::log::alevel::all);
+      my->local_server.init_asio(&app().get_io_service());
+      my->local_server.set_max_http_body_size(my->max_body_size);
+      my->local_server.listen(boost::asio::local::stream_protocol::endpoint("/tmp/test"));
+      my->local_server.set_http_handler([&](connection_hdl hdl) {
+         my->handle_http_request<detail::asio_local_with_stub_log>( my->local_server.get_con_from_hdl(hdl));
+      });
+      my->local_server.start_accept();
+#endif
 
       if(my->https_listen_endpoint) {
          try {
