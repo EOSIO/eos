@@ -470,8 +470,7 @@ class read_write {
    controller& db;
    const fc::microseconds abi_serializer_max_time;
 public:
-   read_write(controller& db, const fc::microseconds& abi_serializer_max_time)
-         : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
+   read_write(controller& db, const fc::microseconds& abi_serializer_max_time);
 
    using push_block_params = chain::signed_block;
    using push_block_results = empty;

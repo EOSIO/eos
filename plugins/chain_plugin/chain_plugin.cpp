@@ -40,6 +40,8 @@ std::ostream& operator<<(std::ostream& osm, eosio::chain::db_read_mode m) {
       osm << "speculative";
    } else if ( m == eosio::chain::db_read_mode::HEAD ) {
       osm << "head";
+   } else if ( m == eosio::chain::db_read_mode::READ_ONLY ) {
+      osm << "read-only";
    } else if ( m == eosio::chain::db_read_mode::IRREVERSIBLE ) {
       osm << "irreversible";
    }
@@ -65,6 +67,8 @@ void validate(boost::any& v,
      v = boost::any(eosio::chain::db_read_mode::SPECULATIVE);
   } else if ( s == "head" ) {
      v = boost::any(eosio::chain::db_read_mode::HEAD);
+  } else if ( s == "read-only" ) {
+     v = boost::any(eosio::chain::db_read_mode::READ_ONLY);
   } else if ( s == "irreversible" ) {
      v = boost::any(eosio::chain::db_read_mode::IRREVERSIBLE);
   } else {
@@ -655,6 +659,13 @@ void chain_plugin::plugin_shutdown() {
    my->applied_transaction_connection.reset();
    my->accepted_confirmation_connection.reset();
    my->chain.reset();
+}
+
+chain_apis::read_write::read_write(controller& db, const fc::microseconds& abi_serializer_max_time)
+: db(db)
+, abi_serializer_max_time(abi_serializer_max_time)
+{
+   EOS_ASSERT( db.get_read_mode() != chain::db_read_mode::READ_ONLY, missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
 }
 
 chain_apis::read_write chain_plugin::get_read_write_api() {
