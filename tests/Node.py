@@ -757,9 +757,9 @@ class Node(object):
             return None
 
     # publish contract and return transaction as json object
-    def publishContract(self, account, contractDir, wastFile, abiFile, waitForTransBlock=False, shouldFail=False):
+    def publishContract(self, account, contractDir, wasmFile, abiFile, waitForTransBlock=False, shouldFail=False):
         cmd="%s %s -v set contract -j %s %s" % (Utils.EosClientPath, self.endpointArgs, account, contractDir)
-        cmd += "" if wastFile is None else (" "+ wastFile)
+        cmd += "" if wasmFile is None else (" "+ wasmFile)
         cmd += "" if abiFile is None else (" " + abiFile)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None

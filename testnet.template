@@ -75,7 +75,7 @@ wcmd create -n ignition
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
 
-ecmd set contract eosio contracts/eosio.bios eosio.bios.wast eosio.bios.abi
+ecmd set contract eosio contracts/eosio.bios eosio.bios.wasm eosio.bios.abi
 
 # Create required system accounts
 ecmd create key

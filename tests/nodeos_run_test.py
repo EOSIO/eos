@@ -319,10 +319,10 @@ try:
         errorExit("FAILURE - get code currency1111 failed", raw=True)
 
     contractDir="contracts/eosio.token"
-    wastFile="eosio.token.wast"
+    wasmFile="eosio.token.wasm"
     abiFile="eosio.token.abi"
     Print("Publish contract")
-    trans=node.publishContract(currencyAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
+    trans=node.publishContract(currencyAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:
         cmdError("%s set contract currency1111" % (ClientName))
         errorExit("Failed to publish contract.")
@@ -605,20 +605,20 @@ try:
     Print("upload exchange contract")
 
     contractDir="contracts/exchange"
-    wastFile="exchange.wast"
+    wasmFile="exchange.wasm"
     abiFile="exchange.abi"
     Print("Publish exchange contract")
-    trans=node.publishContract(exchangeAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
+    trans=node.publishContract(exchangeAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:
         cmdError("%s set contract exchange" % (ClientName))
         errorExit("Failed to publish contract.")
 
     contractDir="contracts/simpledb"
-    wastFile="simpledb.wast"
+    wasmFile="simpledb.wasm"
     abiFile="simpledb.abi"
     Print("Setting simpledb contract without simpledb account was causing core dump in %s." % (ClientName))
     Print("Verify %s generates an error, but does not core dump." % (ClientName))
-    retMap=node.publishContract("simpledb", contractDir, wastFile, abiFile, shouldFail=True)
+    retMap=node.publishContract("simpledb", contractDir, wasmFile, abiFile, shouldFail=True)
     if retMap is None:
         errorExit("Failed to publish, but should have returned a details map")
     if retMap["returncode"] == 0 or retMap["returncode"] == 139: # 139 SIGSEGV
