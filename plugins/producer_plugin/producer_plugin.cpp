@@ -36,6 +36,7 @@ using boost::multi_index_container;
 
 using std::string;
 using std::vector;
+using std::deque;
 using boost::signals2::scoped_connection;
 
 // HACK TO EXPOSE LOGGER MAP
@@ -59,8 +60,7 @@ namespace {
       auto code = e.code();
       return (code == block_cpu_usage_exceeded::code_value) ||
              (code == block_net_usage_exceeded::code_value) ||
-             (code == deadline_exception::code_value && deadline_is_subjective) ||
-             (code == leeway_deadline_exception::code_value && deadline_is_subjective);
+             (code == deadline_exception::code_value && deadline_is_subjective);
    }
 }
 
@@ -167,6 +167,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
        */
       uint32_t _timer_corelation_id = 0;
 
+      // keep a expected ratio between defer txn and incoming txn
+      double _incoming_trx_weight = 0.0;
+      double _incoming_defer_ratio = 1.0; // 1:1
 
       void on_block( const block_state_ptr& bsp ) {
          if( bsp->header.timestamp <= _last_signed_block_time ) return;
@@ -328,7 +331,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
       }
 
-      std::vector<std::tuple<packed_transaction_ptr, bool, next_function<transaction_trace_ptr>>> _pending_incoming_transactions;
+      std::deque<std::tuple<packed_transaction_ptr, bool, next_function<transaction_trace_ptr>>> _pending_incoming_transactions;
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
@@ -480,6 +483,8 @@ void producer_plugin::set_program_options(
           "offset of non last block producing time in micro second. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
           "offset of last block producing time in micro second. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
+         ("incoming-defer-ratio", bpo::value<double>()->default_value(1.0),
+          "ratio between incoming transations and deferred transactions when both are exhausted")
          ;
    config_file_options.add(producer_options);
 }
@@ -599,6 +604,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_max_transaction_time_ms = options.at("max-transaction-time").as<int32_t>();
 
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
+
+   my->_incoming_defer_ratio = options.at("incoming-defer-ratio").as<double>();
 
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){
       try {
@@ -721,6 +728,10 @@ void producer_plugin::update_runtime_options(const runtime_options& options) {
       my->_last_block_time_offset_us = *options.last_block_time_offset_us;
    }
 
+   if (options.incoming_defer_ratio) {
+      my->_incoming_defer_ratio = *options.incoming_defer_ratio;
+   }
+
    if (check_speculating && my->_pending_block_mode == pending_block_mode::speculating) {
       chain::controller& chain = app().get_plugin<chain_plugin>().chain();
       chain.abort_block();
@@ -769,9 +780,11 @@ producer_plugin::greylist_params producer_plugin::get_greylist() const {
 
 optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name) const {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   const auto& hbs = chain.head_block_state();
+   const auto& active_schedule = hbs->active_schedule.producers;
+
    const auto& pbs = chain.pending_block_state();
-   const auto& active_schedule = pbs->active_schedule.producers;
-   const auto& hbt = pbs->header.timestamp;
+   const auto& pbt = pbs->header.timestamp;
 
    // determine if this producer is in the active schedule and if so, where
    auto itr = std::find_if(active_schedule.begin(), active_schedule.end(), [&](const auto& asp){ return asp.producer_name == producer_name; });
@@ -798,7 +811,7 @@ optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const a
    }
 
    // this producers next opportuity to produce is the next time its slot arrives after or at the calculated minimum
-   uint32_t minimum_slot = hbt.slot + minimum_offset;
+   uint32_t minimum_slot = pbt.slot + minimum_offset;
    size_t minimum_slot_producer_index = (minimum_slot % (active_schedule.size() * config::producer_repetitions)) / config::producer_repetitions;
    if ( producer_index == minimum_slot_producer_index ) {
       // this is the producer for the minimum slot, go with that
@@ -942,8 +955,11 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
             }
          }
 
+         size_t orig_pending_txn_size = _pending_incoming_transactions.size();
+
          if (_pending_block_mode == pending_block_mode::producing) {
             for (const auto& trx : unapplied_trxs) {
+               if (block_time <= fc::time_point::now()) exhausted = true;
                if (exhausted) {
                   break;
                }
@@ -990,8 +1006,24 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
             }
 
             auto scheduled_trxs = chain.get_scheduled_transactions();
+
             for (const auto& trx : scheduled_trxs) {
+               if (block_time <= fc::time_point::now()) exhausted = true;
                if (exhausted) {
+                  break;
+               }
+
+               // configurable ratio of incoming txns vs deferred txns
+               while (_incoming_trx_weight >= 1.0 && orig_pending_txn_size && _pending_incoming_transactions.size()) {
+                  auto e = _pending_incoming_transactions.front();
+                  _pending_incoming_transactions.pop_front();
+                  --orig_pending_txn_size;
+                  _incoming_trx_weight -= 1.0;
+                  on_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+               }
+
+               if (block_time <= fc::time_point::now()) {
+                  exhausted = true;
                   break;
                }
 
@@ -1021,21 +1053,24 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                   app().get_plugin<chain_plugin>().handle_guard_exception(e);
                   return start_block_result::failed;
                } FC_LOG_AND_DROP();
+
+               _incoming_trx_weight += _incoming_defer_ratio;
+               if (!orig_pending_txn_size) _incoming_trx_weight = 0.0;
             }
          }
 
-         if (exhausted) {
+         if (exhausted || block_time <= fc::time_point::now()) {
             return start_block_result::exhausted;
          } else {
             // attempt to apply any pending incoming transactions
-            if (!_pending_incoming_transactions.empty()) {
-               auto old_pending = std::move(_pending_incoming_transactions);
-               _pending_incoming_transactions.clear();
-               for (auto& e: old_pending) {
-                  on_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
-               }
+            _incoming_trx_weight = 0.0;
+            if (orig_pending_txn_size && _pending_incoming_transactions.size()) {
+               auto e = _pending_incoming_transactions.front();
+               _pending_incoming_transactions.pop_front();
+               --orig_pending_txn_size;
+               on_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+               if (block_time <= fc::time_point::now()) return start_block_result::exhausted;
             }
-
             return start_block_result::succeeded;
          }
 
@@ -1074,14 +1109,19 @@ void producer_plugin_impl::schedule_production_loop() {
    } else if (_pending_block_mode == pending_block_mode::producing) {
 
       // we succeeded but block may be exhausted
+      static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
       if (result == start_block_result::succeeded) {
          // ship this block off no later than its deadline
-         static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
          _timer.expires_at(epoch + boost::posix_time::microseconds(chain.pending_block_time().time_since_epoch().count() + (last_block ? _last_block_time_offset_us : _produce_time_offset_us)));
          fc_dlog(_log, "Scheduling Block Production on Normal Block #${num} for ${time}", ("num", chain.pending_block_state()->block_num)("time",chain.pending_block_time()));
       } else {
-         // ship this block off immediately
-         _timer.expires_from_now( boost::posix_time::microseconds( 0 ));
+         auto expect_time = chain.pending_block_time() - fc::microseconds(config::block_interval_us);
+         // ship this block off up to 1 block time earlier or immediately
+         if (fc::time_point::now() >= expect_time) {
+            _timer.expires_from_now( boost::posix_time::microseconds( 0 ));
+         } else {
+            _timer.expires_at(epoch + boost::posix_time::microseconds(expect_time.time_since_epoch().count()));
+         }
          fc_dlog(_log, "Scheduling Block Production on Exhausted Block #${num} immediately", ("num", chain.pending_block_state()->block_num));
       }
 

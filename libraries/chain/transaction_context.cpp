@@ -70,7 +70,9 @@ namespace eosio { namespace chain {
          }
       }
 
-      if( billed_cpu_time_us > 0 )
+      initial_objective_duration_limit = objective_duration_limit;
+
+      if( billed_cpu_time_us > 0 ) // could also call on explicit_billed_cpu_time but it would be redundant
          validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
 
       // Record accounts to be billed for network and CPU usage
@@ -85,17 +87,11 @@ namespace eosio { namespace chain {
       rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot );
 
       // Calculate the highest network usage and CPU time that all of the billed accounts can afford to be billed
-      int64_t account_net_limit = large_number_no_overflow;
-      int64_t account_cpu_limit = large_number_no_overflow;
-      for( const auto& a : bill_to_accounts ) {
-         bool elastic = !(control.is_producing_block() && control.is_resource_greylisted(a));
-         auto net_limit = rl.get_account_net_limit(a, elastic);
-         if( net_limit >= 0 )
-            account_net_limit = std::min( account_net_limit, net_limit );
-         auto cpu_limit = rl.get_account_cpu_limit(a, elastic);
-         if( cpu_limit >= 0 )
-            account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
-      }
+      int64_t account_net_limit = 0;
+      int64_t account_cpu_limit = 0;
+      bool greylisted = false;
+      std::tie( account_net_limit, account_cpu_limit, greylisted ) = max_bandwidth_billed_accounts_can_pay();
+      net_limit_due_to_greylist |= greylisted;
 
       eager_net_limit = net_limit;
 
@@ -115,7 +111,7 @@ namespace eosio { namespace chain {
       billing_timer_duration_limit = _deadline - start;
 
       // Check if deadline is limited by caller-set deadline (only change deadline if billed_cpu_time_us is not set)
-      if( billed_cpu_time_us > 0 || deadline < _deadline ) {
+      if( explicit_billed_cpu_time || deadline < _deadline ) {
          _deadline = deadline;
          deadline_exception_code = deadline_exception::code_value;
       } else {
@@ -203,7 +199,6 @@ namespace eosio { namespace chain {
 
    void transaction_context::finalize() {
       EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
-      const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
 
       if( is_input ) {
          auto& am = control.get_mutable_authorization_manager();
@@ -220,19 +215,11 @@ namespace eosio { namespace chain {
       }
 
       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
-      int64_t account_net_limit = large_number_no_overflow;
-      int64_t account_cpu_limit = large_number_no_overflow;
-      for( const auto& a : bill_to_accounts ) {
-         bool elastic = !(control.is_producing_block() && control.is_resource_greylisted(a));
-         auto net_limit = rl.get_account_net_limit(a, elastic);
-         if( net_limit >= 0 ) {
-            account_net_limit = std::min( account_net_limit, net_limit );
-            if (!elastic) net_limit_due_to_greylist = true;
-         }
-         auto cpu_limit = rl.get_account_cpu_limit(a, elastic);
-         if( cpu_limit >= 0 )
-            account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
-      }
+      int64_t account_net_limit = 0;
+      int64_t account_cpu_limit = 0;
+      bool greylisted = false;
+      std::tie( account_net_limit, account_cpu_limit, greylisted ) = max_bandwidth_billed_accounts_can_pay();
+      net_limit_due_to_greylist |= greylisted;
 
       // Possibly lower net_limit to what the billed accounts can pay
       if( static_cast<uint64_t>(account_net_limit) <= net_limit ) {
@@ -254,10 +241,7 @@ namespace eosio { namespace chain {
       auto now = fc::time_point::now();
       trace->elapsed = now - start;
 
-      if( billed_cpu_time_us == 0 ) {
-         const auto& cfg = control.get_global_properties().configuration;
-         billed_cpu_time_us = std::max( (now - pseudo_start).count(), static_cast<int64_t>(cfg.min_transaction_cpu_usage) );
-      }
+      update_billed_cpu_time( now );
 
       validate_cpu_usage_to_bill( billed_cpu_time_us );
 
@@ -295,7 +279,7 @@ namespace eosio { namespace chain {
       auto now = fc::time_point::now();
       if( BOOST_UNLIKELY( now > _deadline ) ) {
          // edump((now-start)(now-pseudo_start));
-         if( billed_cpu_time_us > 0 || deadline_exception_code == deadline_exception::code_value ) {
+         if( explicit_billed_cpu_time || deadline_exception_code == deadline_exception::code_value ) {
             EOS_THROW( deadline_exception, "deadline exceeded", ("now", now)("deadline", _deadline)("start", start) );
          } else if( deadline_exception_code == block_cpu_usage_exceeded::code_value ) {
             EOS_THROW( block_cpu_usage_exceeded,
@@ -316,7 +300,7 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::pause_billing_timer() {
-      if( billed_cpu_time_us > 0 || pseudo_start == fc::time_point() ) return; // either irrelevant or already paused
+      if( explicit_billed_cpu_time || pseudo_start == fc::time_point() ) return; // either irrelevant or already paused
 
       auto now = fc::time_point::now();
       billed_time = now - pseudo_start;
@@ -325,7 +309,7 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::resume_billing_timer() {
-      if( billed_cpu_time_us > 0 || pseudo_start != fc::time_point() ) return; // either irrelevant or already running
+      if( explicit_billed_cpu_time || pseudo_start != fc::time_point() ) return; // either irrelevant or already running
 
       auto now = fc::time_point::now();
       pseudo_start = now - billed_time;
@@ -368,6 +352,39 @@ namespace eosio { namespace chain {
       if( ram_delta > 0 ) {
          validate_ram_usage.insert( account );
       }
+   }
+
+   uint32_t transaction_context::update_billed_cpu_time( fc::time_point now ) {
+      if( explicit_billed_cpu_time ) return static_cast<uint32_t>(billed_cpu_time_us);
+
+      const auto& cfg = control.get_global_properties().configuration;
+      billed_cpu_time_us = std::max( (now - pseudo_start).count(), static_cast<int64_t>(cfg.min_transaction_cpu_usage) );
+
+      return static_cast<uint32_t>(billed_cpu_time_us);
+   }
+
+   std::tuple<int64_t, int64_t, bool> transaction_context::max_bandwidth_billed_accounts_can_pay( bool force_elastic_limits )const {
+      // Assumes rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot ) was already called prior
+
+      // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
+      auto& rl = control.get_mutable_resource_limits_manager();
+      const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
+      int64_t account_net_limit = large_number_no_overflow;
+      int64_t account_cpu_limit = large_number_no_overflow;
+      bool greylisted = false;
+      for( const auto& a : bill_to_accounts ) {
+         bool elastic = force_elastic_limits || !(control.is_producing_block() && control.is_resource_greylisted(a));
+         auto net_limit = rl.get_account_net_limit(a, elastic);
+         if( net_limit >= 0 ) {
+            account_net_limit = std::min( account_net_limit, net_limit );
+            if (!elastic) greylisted = true;
+         }
+         auto cpu_limit = rl.get_account_cpu_limit(a, elastic);
+         if( cpu_limit >= 0 )
+            account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
+      }
+
+      return std::make_tuple(account_net_limit, account_cpu_limit, greylisted);
    }
 
    void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {

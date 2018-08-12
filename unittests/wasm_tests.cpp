@@ -1731,6 +1731,11 @@ INCBIN(leak_readGlobals, "leak_readGlobals.wasm");
 INCBIN(leak_readImports, "leak_readImports.wasm");
 INCBIN(leak_wasm_binary_cpp_L1249, "leak_wasm_binary_cpp_L1249.wasm");
 INCBIN(readFunctions_slowness_out_of_memory, "readFunctions_slowness_out_of_memory.wasm");
+INCBIN(locals_yc, "locals-yc.wasm");
+INCBIN(locals_s, "locals-s.wasm");
+INCBIN(slowwasm_localsets, "slowwasm_localsets.wasm");
+INCBIN(getcode_deepindent, "getcode_deepindent.wasm");
+INCBIN(indent_mismatch, "indent-mismatch.wasm");
 INCBIN(deep_loops_ext_report, "deep_loops_ext_report.wasm");
 INCBIN(80k_deep_loop_with_ret, "80k_deep_loop_with_ret.wasm");
 INCBIN(80k_deep_loop_with_void, "80k_deep_loop_with_void.wasm");
@@ -1858,6 +1863,18 @@ BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
       BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
    }
    {
+      vector<uint8_t> wasm(glocals_ycData, glocals_ycData + glocals_ycSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(glocals_sData, glocals_sData + glocals_sSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
+      vector<uint8_t> wasm(gslowwasm_localsetsData, gslowwasm_localsetsData + gslowwasm_localsetsSize);
+      BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_serialization_error);
+   }
+   {
       vector<uint8_t> wasm(gdeep_loops_ext_reportData, gdeep_loops_ext_reportData + gdeep_loops_ext_reportSize);
       BOOST_CHECK_THROW(set_code(N(fuzzy), wasm), wasm_execution_error);
    }
@@ -1871,6 +1888,13 @@ BOOST_FIXTURE_TEST_CASE( fuzz, TESTER ) try {
    }
 
    produce_blocks(1);
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( getcode_checks, TESTER ) try {
+   vector<uint8_t> wasm(ggetcode_deepindentData, ggetcode_deepindentData + ggetcode_deepindentSize);
+   wasm_to_wast( wasm.data(), wasm.size(), true );
+   vector<uint8_t> wasmx(gindent_mismatchData, gindent_mismatchData + gindent_mismatchSize);
+   wasm_to_wast( wasmx.data(), wasmx.size(), true );
 } FC_LOG_AND_RETHROW()
 
 
