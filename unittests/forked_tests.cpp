@@ -453,7 +453,7 @@ BOOST_AUTO_TEST_CASE( read_modes ) try {
    BOOST_REQUIRE_EQUAL(head_block_num, head.control->fork_db_head_block_num());
    BOOST_REQUIRE_EQUAL(head_block_num, head.control->head_block_num());
 
-   tester read_only(true, db_read_mode::READ_ONLY);
+   tester read_only(false, db_read_mode::READ_ONLY);
    push_blocks(c, read_only);
    BOOST_REQUIRE_EQUAL(head_block_num, read_only.control->fork_db_head_block_num());
    BOOST_REQUIRE_EQUAL(head_block_num, read_only.control->head_block_num());
