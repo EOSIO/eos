@@ -239,7 +239,7 @@ namespace eosio {
                   } );
 
                } else {
-                  wlog( "404 - not found: ${ep}", ("ep", resource));
+                  dlog( "404 - not found: ${ep}", ("ep", resource));
                   error_results results{websocketpp::http::status_code::not_found,
                                         "Not Found", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Endpoint" )), verbose_http_errors )};
                   con->set_body( fc::json::to_string( results ));
