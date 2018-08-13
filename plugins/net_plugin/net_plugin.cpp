@@ -3022,7 +3022,13 @@ namespace eosio {
       if( my->acceptor ) {
          my->acceptor->open(my->listen_endpoint.protocol());
          my->acceptor->set_option(tcp::acceptor::reuse_address(true));
-         my->acceptor->bind(my->listen_endpoint);
+         try {
+           my->acceptor->bind(my->listen_endpoint);
+         } catch (const std::exception& e) {
+           ilog("net_plugin::plugin_startup failed to bind to port ${port}",
+             ("port", my->listen_endpoint.port()));
+           throw e;
+         }
          my->acceptor->listen();
          ilog("starting listener, max clients is ${mc}",("mc",my->max_client_count));
          my->start_listen_loop();
