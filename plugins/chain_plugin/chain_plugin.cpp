@@ -9,7 +9,6 @@
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/producer_object.hpp>
 #include <eosio/chain/config.hpp>
-#include <eosio/chain/types.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/reversible_block_object.hpp>
@@ -1042,31 +1041,31 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
    } else {
       EOS_ASSERT( !p.key_type.empty(), chain::contract_table_query_exception, "key type required for non-primary index" );
 
-      if (p.key_type == "i64" || p.key_type == "name") {
+      if (p.key_type == chain_apis::i64 || p.key_type == "name") {
          return get_table_rows_by_seckey<index64_index, uint64_t>(p, abi, [](uint64_t v)->uint64_t {
             return v;
          });
       }
-      else if (p.key_type == "i128") {
+      else if (p.key_type == chain_apis::i128) {
          return get_table_rows_by_seckey<index128_index, uint128_t>(p, abi, [](uint128_t v)->uint128_t {
             return v;
          });
       }
-      else if (p.key_type == "i256") {
-         return get_table_rows_by_seckey<index256_index, uint256_t>(p, abi, [](uint256_t v)->key256_t {
-            key256_t k;
-            k[0] = ((uint128_t *)&v)[0];
-            k[1] = ((uint128_t *)&v)[1];
-            return k;
-         });
+      else if (p.key_type == chain_apis::i256) {
+         if ( p.encode_type == chain_apis::hex) {
+            using  conv = keytype_converter<chain_apis::sha256,chain_apis::hex>;
+            return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
+         }
+         using  conv = keytype_converter<chain_apis::i256>;
+         return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
       }
-      else if (p.key_type == "float64") {
+      else if (p.key_type == chain_apis::float64) {
          return get_table_rows_by_seckey<index_double_index, double>(p, abi, [](double v)->float64_t {
             float64_t f = *(float64_t *)&v;
             return f;
          });
       }
-      else if (p.key_type == "float128") {
+      else if (p.key_type == chain_apis::float128) {
          return get_table_rows_by_seckey<index_long_double_index, double>(p, abi, [](double v)->float128_t{
             float64_t f = *(float64_t *)&v;
             float128_t f128;
@@ -1074,13 +1073,13 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
             return f128;
          });
       }
-      else if (p.key_type == "sha256") {
-          return get_table_rows_by_seckey<index256_index, checksum256_type>(p, abi, [](const checksum256_type& v)->key256_t {
-              key256_t k;
-              k[0] = ((uint128_t *)&v._hash)[0];
-              k[1] = ((uint128_t *)&v._hash)[1];
-              return k;
-          });
+      else if (p.key_type == chain_apis::sha256) {
+         using  conv = keytype_converter<chain_apis::sha256,chain_apis::hex>;
+         return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
+      }
+      else if(p.key_type == chain_apis::ripemd160) {
+         using  conv = keytype_converter<chain_apis::ripemd160,chain_apis::hex>;
+         return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
       }
       EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: ${t}", ("t", p.key_type));
    }

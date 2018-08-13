@@ -1859,6 +1859,7 @@ int main( int argc, char** argv ) {
    string upper;
    string table_key;
    string key_type;
+   string encode_type{"dec"};
    bool binary = false;
    uint32_t limit = 10;
    string index_position;
@@ -1875,8 +1876,12 @@ int main( int argc, char** argv ) {
                          localized("Index number, 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc.\n"
                                    "\t\t\t\tNumber or name of index can be specified, e.g. 'secondary' or '2'."));
    getTable->add_option( "--key-type", key_type,
-                         localized("The key type of --index, primary only supports (i64), all others support (i64, i128, i256, float64, float128, sha256).\n"
+                         localized("The key type of --index, primary only supports (i64), all others support (i64, i128, i256, float64, float128, ripemd160, sha256).\n"
                                    "\t\t\t\tSpecial type 'name' indicates an account name."));
+   getTable->add_option( "--encode-type", encode_type,
+                         localized("The encoding type of key_type (i64 , i128 , float64, float128) only support decimal encoding e.g. 'dec'"
+                                    "i256 - supports both 'dec' and 'hex', ripemd160 and sha256 is 'hex' only\n"));
+
 
    getTable->set_callback([&] {
       auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
@@ -1889,6 +1894,7 @@ int main( int argc, char** argv ) {
                          ("limit",limit)
                          ("key_type",key_type)
                          ("index_position", index_position)
+                         ("encode_type", encode_type)
                          );
 
       std::cout << fc::json::to_pretty_string(result)
