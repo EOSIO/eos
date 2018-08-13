@@ -2496,6 +2496,11 @@ namespace eosio {
    void net_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
       fc_dlog(logger, "got a packed transaction, cancel wait");
       peer_ilog(c, "received packed_transaction");
+      controller& cc = my_impl->chain_plug->chain();
+      if( cc.get_read_mode() == eosio::db_read_mode::READ_ONLY ) {
+         fc_dlog(logger, "got a txn in read-only mode - dropping");
+         return;
+      }
       if( sync_master->is_active(c) ) {
          fc_dlog(logger, "got a txn during sync - dropping");
          return;
@@ -2507,7 +2512,6 @@ namespace eosio {
          return;
       }
       dispatcher->recv_transaction(c, tid);
-      uint64_t code = 0;
       chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          if (result.contains<fc::exception_ptr>()) {
             auto e_ptr = result.get<fc::exception_ptr>();
@@ -3027,8 +3031,8 @@ namespace eosio {
          ilog("starting listener, max clients is ${mc}",("mc",my->max_client_count));
          my->start_listen_loop();
       }
+      chain::controller&cc = my->chain_plug->chain();
       {
-         chain::controller&cc = my->chain_plug->chain();
          cc.accepted_block_header.connect( boost::bind(&net_plugin_impl::accepted_block_header, my.get(), _1));
          cc.accepted_block.connect(  boost::bind(&net_plugin_impl::accepted_block, my.get(), _1));
          cc.irreversible_block.connect( boost::bind(&net_plugin_impl::irreversible_block, my.get(), _1));
@@ -3038,6 +3042,11 @@ namespace eosio {
       }
 
       my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
+
+      if( cc.get_read_mode() == chain::db_read_mode::READ_ONLY ) {
+         my->max_nodes_per_host = 0;
+         ilog( "node in read-only mode setting max_nodes_per_host to 0 to prevent connections" );
+      }
 
       my->start_monitors();
 
