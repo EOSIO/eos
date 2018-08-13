@@ -785,6 +785,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
    }
 
    if( !start_block_reached || !store_transaction_traces ) return;
+   if( !write_atraces ) return; //< do not insert transaction_trace if all action_traces filtered out
 
    // transaction trace insert
 
