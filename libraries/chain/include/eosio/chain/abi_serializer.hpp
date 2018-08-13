@@ -88,8 +88,8 @@ struct abi_serializer {
 
    static const size_t max_recursion_depth = 32; // arbitrary depth to prevent infinite recursion
 
-   typedef std::function<fc::variant(fc::datastream<const char*>&, bool, bool)>  unpack_function;
-   typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool, bool)>  pack_function;
+   typedef std::function<fc::variant(fc::datastream<const char*>&, bool, bool, int)>  unpack_function;
+   typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool, bool, int)>  pack_function;
 
 private:
 
