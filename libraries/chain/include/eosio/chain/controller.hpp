@@ -39,6 +39,11 @@ namespace eosio { namespace chain {
       IRREVERSIBLE
    };
 
+   enum class validation_mode {
+      FULL,
+      LIGHT
+   };
+
    class controller {
       public:
 
@@ -57,12 +62,14 @@ namespace eosio { namespace chain {
             uint64_t                 reversible_guard_size  =  chain::config::default_reversible_guard_size;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
+            bool                     disable_replay_opts    =  false;
             bool                     contracts_console      =  false;
 
             genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
 
-            db_read_mode             read_mode    = db_read_mode::SPECULATIVE;
+            db_read_mode             read_mode              = db_read_mode::SPECULATIVE;
+            validation_mode          block_validation_mode  = validation_mode::FULL;
 
             flat_set<account_name>   resource_greylist;
          };
@@ -212,12 +219,16 @@ namespace eosio { namespace chain {
          int64_t set_proposed_producers( vector<producer_key> producers );
 
          bool skip_auth_check()const;
+         bool skip_db_sessions( )const;
+         bool skip_db_sessions( block_status bs )const;
+         bool skip_trx_checks()const;
 
          bool contracts_console()const;
 
          chain_id_type get_chain_id()const;
 
          db_read_mode get_read_mode()const;
+         validation_mode get_validation_mode()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
 
@@ -284,6 +295,7 @@ FC_REFLECT( eosio::chain::controller::config,
             (reversible_cache_size)
             (read_only)
             (force_all_checks)
+            (disable_replay_opts)
             (contracts_console)
             (genesis)
             (wasm_runtime)

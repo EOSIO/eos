@@ -726,10 +726,10 @@ class Cluster(object):
 
             contract="eosio.bios"
             contractDir="contracts/%s" % (contract)
-            wastFile="contracts/%s/%s.wast" % (contract, contract)
-            abiFile="contracts/%s/%s.abi" % (contract, contract)
+            wasmFile="%s.wasm" % (contract)
+            abiFile="%s.abi" % (contract)
             Utils.Print("Publish %s contract" % (contract))
-            trans=biosNode.publishContract(eosioAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
+            trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
             if trans is None:
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return None
@@ -850,10 +850,10 @@ class Cluster(object):
 
             contract="eosio.token"
             contractDir="contracts/%s" % (contract)
-            wastFile="contracts/%s/%s.wast" % (contract, contract)
-            abiFile="contracts/%s/%s.abi" % (contract, contract)
+            wasmFile="%s.wasm" % (contract)
+            abiFile="%s.abi" % (contract)
             Utils.Print("Publish %s contract" % (contract))
-            trans=biosNode.publishContract(eosioTokenAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
+            trans=biosNode.publishContract(eosioTokenAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
             if trans is None:
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return None
@@ -905,10 +905,10 @@ class Cluster(object):
 
             contract="eosio.system"
             contractDir="contracts/%s" % (contract)
-            wastFile="contracts/%s/%s.wast" % (contract, contract)
-            abiFile="contracts/%s/%s.abi" % (contract, contract)
+            wasmFile="%s.wasm" % (contract)
+            abiFile="%s.abi" % (contract)
             Utils.Print("Publish %s contract" % (contract))
-            trans=biosNode.publishContract(eosioAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
+            trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
             if trans is None:
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return None
@@ -1115,6 +1115,13 @@ class Cluster(object):
                 return False
 
         return True
+
+    def getInfos(self, silentErrors=False, exitOnError=False):
+        infos=[]
+        for node in self.nodes:
+            infos.append(node.getInfo(silentErrors=silentErrors, exitOnError=exitOnError))
+
+        return infos
 
     def reportStatus(self):
         if hasattr(self, "biosNode") and self.biosNode is not None:

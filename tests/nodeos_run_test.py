@@ -275,7 +275,7 @@ try:
         if not enableMongo:
             assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
         else:
-            assert(actions["name"] == "transfer")
+            assert(actions["act"]["name"] == "transfer")
     except (AssertionError, TypeError, KeyError) as _:
         Print("Action validation failed. Actions: %s" % (actions))
         raise
@@ -319,10 +319,10 @@ try:
         errorExit("FAILURE - get code currency1111 failed", raw=True)
 
     contractDir="contracts/eosio.token"
-    wastFile="contracts/eosio.token/eosio.token.wast"
-    abiFile="contracts/eosio.token/eosio.token.abi"
+    wasmFile="eosio.token.wasm"
+    abiFile="eosio.token.abi"
     Print("Publish contract")
-    trans=node.publishContract(currencyAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
+    trans=node.publishContract(currencyAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:
         cmdError("%s set contract currency1111" % (ClientName))
         errorExit("Failed to publish contract.")
@@ -605,20 +605,20 @@ try:
     Print("upload exchange contract")
 
     contractDir="contracts/exchange"
-    wastFile="contracts/exchange/exchange.wast"
-    abiFile="contracts/exchange/exchange.abi"
+    wasmFile="exchange.wasm"
+    abiFile="exchange.abi"
     Print("Publish exchange contract")
-    trans=node.publishContract(exchangeAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
+    trans=node.publishContract(exchangeAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:
         cmdError("%s set contract exchange" % (ClientName))
         errorExit("Failed to publish contract.")
 
     contractDir="contracts/simpledb"
-    wastFile="contracts/simpledb/simpledb.wast"
-    abiFile="contracts/simpledb/simpledb.abi"
+    wasmFile="simpledb.wasm"
+    abiFile="simpledb.abi"
     Print("Setting simpledb contract without simpledb account was causing core dump in %s." % (ClientName))
     Print("Verify %s generates an error, but does not core dump." % (ClientName))
-    retMap=node.publishContract("simpledb", contractDir, wastFile, abiFile, shouldFail=True)
+    retMap=node.publishContract("simpledb", contractDir, wasmFile, abiFile, shouldFail=True)
     if retMap is None:
         errorExit("Failed to publish, but should have returned a details map")
     if retMap["returncode"] == 0 or retMap["returncode"] == 139: # 139 SIGSEGV
