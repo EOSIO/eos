@@ -172,7 +172,7 @@ namespace eosio {
       fc::sha256                    node_id;
 
       string                        user_agent_name;
-      chain_plugin*                 chain_plug;
+      chain_plugin*                 chain_plug = nullptr;
       int                           started_sessions = 0;
 
       node_transaction_index        local_txns;
@@ -650,7 +650,7 @@ namespace eosio {
       connection_ptr source;
       stages         state;
 
-      chain_plugin* chain_plug;
+      chain_plugin* chain_plug = nullptr;
 
       constexpr auto stage_str(stages s );
 
@@ -1256,6 +1256,7 @@ namespace eosio {
       ,state(in_sync)
    {
       chain_plug = app( ).find_plugin<chain_plugin>( );
+      EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, ""  );
    }
 
    constexpr auto sync_manager::stage_str(stages s ) {
@@ -2123,7 +2124,8 @@ namespace eosio {
                            auto index = conn->pending_message_buffer.read_index();
                            conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
                            if(message_length > def_send_buffer_size*2 || message_length == 0) {
-                              elog("incoming message length unexpected (${i})", ("i", message_length));
+                              boost::system::error_code ec;
+                              elog("incoming message length unexpected (${i}), from ${p}", ("i", message_length)("p",boost::lexical_cast<std::string>(conn->socket->remote_endpoint(ec))));
                               close(conn);
                               return;
                            }
@@ -3006,6 +3008,7 @@ namespace eosio {
          }
 
          my->chain_plug = app().find_plugin<chain_plugin>();
+         EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
          my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
          ilog( "my node_id is ${id}", ("id", my->node_id));

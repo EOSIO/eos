@@ -170,7 +170,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
 
    wdump((fc::json::to_pretty_string(cr)));
 
-   cr = c.push_action( N(eosio.token), N(issue), N(eosio), mutable_variant_object()
+   cr = c.push_action( N(eosio.token), N(issue), config::system_account_name, mutable_variant_object()
               ("to",       "dan" )
               ("quantity", core_from_string("100.0000"))
               ("memo", "")

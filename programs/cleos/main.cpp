@@ -763,9 +763,9 @@ void ensure_keosd_running(CLI::App* app) {
     // This extra check is necessary when running cleos like this: ./cleos ...
     if (binPath.filename_is_dot())
         binPath.remove_filename();
-    binPath.append("keosd"); // if cleos and keosd are in the same installation directory
+    binPath.append(key_store_executable_name); // if cleos and keosd are in the same installation directory
     if (!boost::filesystem::exists(binPath)) {
-        binPath.remove_filename().remove_filename().append("keosd").append("keosd");
+        binPath.remove_filename().remove_filename().append("keosd").append(key_store_executable_name);
     }
 
     const auto& lo_address = resolved_url.resolved_addresses.front();
@@ -1113,6 +1113,23 @@ struct get_schedule_subcommand {
          print("active", result["active"]);
          print("pending", result["pending"]);
          print("proposed", result["proposed"]);
+      });
+   }
+};
+
+struct get_transaction_id_subcommand {
+   string trx_to_check;
+
+   get_transaction_id_subcommand(CLI::App* actionRoot) {
+      auto get_transaction_id = actionRoot->add_subcommand("transaction_id", localized("Get transaction id given transaction object"));
+      get_transaction_id->add_option("transaction", trx_to_check, localized("The JSON string or filename defining the transaction which transaction id we want to retrieve"))->required();
+
+      get_transaction_id->set_callback([&] {
+         try {
+            auto trx_var = json_from_file_or_string(trx_to_check);
+            auto trx = trx_var.as<transaction>();
+            std::cout << string(trx.id()) << std::endl;
+         } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_check))
       });
    }
 };
@@ -2052,7 +2069,8 @@ int main( int argc, char** argv ) {
    });
 
    auto getSchedule = get_schedule_subcommand{get};
-
+   auto getTransactionId = get_transaction_id_subcommand{get};
+   
    /*
    auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"), false);
    getTransactions->add_option("account_name", account_name, localized("name of account to query on"))->required();
