@@ -2629,26 +2629,21 @@ int main( int argc, char** argv ) {
    string trx_to_push;
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
    trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
-
-   trxSubcommand->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout, essentially only validates)"));
-   trxSubcommand->add_flag("--return-packed", tx_return_packed, localized("used in conjunction with --dont-broadcast to get the packed transaction"));
+   add_standard_transaction_options(trxSubcommand);
 
    trxSubcommand->set_callback([&] {
       fc::variant trx_var;
       try {
          trx_var = json_from_file_or_string(trx_to_push);
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_push))
-      signed_transaction trx = trx_var.as<signed_transaction>();
-
-      if (!tx_dont_broadcast) {
-          auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
-          std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
-      } else {
-          if (tx_return_packed) {
-              std::cout << fc::json::to_pretty_string(fc::variant(packed_transaction(trx, packed_transaction::none))) << std::endl;
-          } else {
-              std::cout << fc::json::to_pretty_string(fc::variant(trx)) << std::endl;
-          }
+      try {
+         signed_transaction trx = trx_var.as<signed_transaction>();
+         std::cout << fc::json::to_pretty_string( push_transaction( trx )) << std::endl;
+      } catch( fc::exception& ) {
+         // unable to convert so try via abi
+         signed_transaction trx;
+         abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer_max_time );
+         std::cout << fc::json::to_pretty_string( push_transaction( trx )) << std::endl;
       }
    });
 
