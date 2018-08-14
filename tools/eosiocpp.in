@@ -63,6 +63,7 @@ function build_contract {
                                    -DBOOST_DISABLE_ASSERTS -DBOOST_EXCEPTION_DISABLE \
                                    -nostdlib -nostdlibinc -ffreestanding -nostdlib \
                                    -fno-threadsafe-statics -fno-rtti -fno-exceptions \
+                                   -I @CMAKE_BINARY_DIR@/contracts \
                                    -I @CMAKE_SOURCE_DIR@/contracts \
                                    -I @CMAKE_SOURCE_DIR@/contracts/libc++/upstream/include \
                                    -I @CMAKE_SOURCE_DIR@/contracts/musl/upstream/include \
