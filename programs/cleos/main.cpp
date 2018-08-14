@@ -384,13 +384,6 @@ fc::variant bin_to_variant( const account_name& account, const action_name& acti
    return abis->binary_to_variant( action_type, action_args, abi_serializer_max_time );
 }
 
-fc::variant trx_bin_to_variant( const account_name& account, const bytes& trx_args) {
-   auto abis = abi_serializer_resolver( account );
-   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
-
-   return abis->binary_to_variant( "transaction", trx_args, abi_serializer_max_time );
-}
-
 fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::legacy_parser)
 {
    regex r("^[ \t]*[\{\[]");
@@ -1781,16 +1774,16 @@ int main( int argc, char** argv ) {
    bool pack_action_data_flag = false;
    auto pack_transaction = convert->add_subcommand("pack_transaction", localized("From plain signed json to packed form"));
    pack_transaction->add_option("transaction", plain_signed_transaction_json, localized("The plain signed json (string)"))->required();
-   pack_transaction->add_flag("--pack-action-data", pack_action_data_flag, localized("Pack all action datas within transaction, needs interaction with nodeos"));
+   pack_transaction->add_flag("--pack-action-data", pack_action_data_flag, localized("Pack all action data within transaction, needs interaction with nodeos"));
    pack_transaction->set_callback([&] {
       fc::variant trx_var;
       try {
-         trx_var = json_from_file_or_string(plain_signed_transaction_json);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse plain transaction JSON '${data}'", ("data", plain_signed_transaction_json))
+         trx_var = json_from_file_or_string( plain_signed_transaction_json );
+      } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Fail to parse plain transaction JSON '${data}'", ("data", plain_signed_transaction_json))
       if( pack_action_data_flag ) {
          signed_transaction trx;
-         abi_serializer::from_variant(trx_var, trx, abi_serializer_resolver, abi_serializer_max_time);
-         std::cout << fc::json::to_pretty_string( packed_transaction( trx, packed_transaction::none ) ) << std::endl;
+         abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer_max_time );
+         std::cout << fc::json::to_pretty_string( packed_transaction( trx, packed_transaction::none )) << std::endl;
       } else {
          try {
             signed_transaction trx = trx_var.as<signed_transaction>();
@@ -1804,27 +1797,22 @@ int main( int argc, char** argv ) {
    bool unpack_action_data_flag = false;
    auto unpack_transaction = convert->add_subcommand("unpack_transaction", localized("From packed to plain signed json form"));
    unpack_transaction->add_option("transaction", packed_transaction_json, localized("The packed transaction json (string containing packed_trx and optionally compression fields)"))->required();
-   unpack_transaction->add_flag("--unpack-action-data", unpack_action_data_flag, localized("Unpack all action datas within transaction, needs interaction with nodeos"));
+   unpack_transaction->add_flag("--unpack-action-data", unpack_action_data_flag, localized("Unpack all action data within transaction, needs interaction with nodeos"));
    unpack_transaction->set_callback([&] {
+      fc::variant packed_trx_var;
+      packed_transaction packed_trx;
+      try {
+         packed_trx_var = json_from_file_or_string( packed_transaction_json );
+         fc::from_variant<packed_transaction>( packed_trx_var, packed_trx );
+      } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Fail to parse packed transaction JSON '${data}'", ("data", packed_transaction_json))
+      signed_transaction strx = packed_trx.get_signed_transaction();
       fc::variant trx_var;
-      try {
-         trx_var = json_from_file_or_string(packed_transaction_json);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse packed transaction JSON '${data}'", ("data", packed_transaction_json))
-      string trx_hex;
-      try {
-         trx_hex = trx_var["packed_trx"].as_string();
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Missing packed_trx field in provided JSON '${data}'", ("data", packed_transaction_json))
-
-      std::vector<char> trx_blob(trx_hex.size()/2);
-      fc::from_hex(trx_hex, trx_blob.data(), trx_blob.size());
-      transaction unpacked_trx = fc::raw::unpack<transaction>(trx_blob);
-      if (unpack_action_data_flag) {
-         abi_serializer::to_variant(unpacked_trx, trx_var, abi_serializer_resolver, abi_serializer_max_time);
-         std::cout << fc::json::to_pretty_string( trx_var );
+      if( unpack_action_data_flag ) {
+         abi_serializer::to_variant( strx, trx_var, abi_serializer_resolver, abi_serializer_max_time );
       } else {
-	 // TODO should the "sigantures" and "context_free_data" fields be copied from trx_var into the action field(s) ?
-         std::cout << fc::json::to_pretty_string(fc::variant(unpacked_trx)) << std::endl;
+         trx_var = strx;
       }
+      std::cout << fc::json::to_pretty_string( trx_var ) << std::endl;
    });
 
    // pack action data
