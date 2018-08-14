@@ -36,9 +36,10 @@ namespace eosio { namespace chain {
             if (fixed_array_size > 0) {
                EOS_ASSERT(fixed_array_size <= MAX_NUM_ARRAY_ELEMENTS, unpack_exception, "invalid fixed array size ${s}", ("s", fixed_array_size));
                vector<T> vec;
-               vec.resize(fixed_array_size);
                for (int i = 0; i < fixed_array_size; ++i) {
-                  fc::raw::unpack( stream, vec[i] );
+                  T tmp;
+                  fc::raw::unpack( stream, tmp );
+                  vec.push_back(std::move(tmp));
                }
                return fc::variant(std::move(vec));
             }
@@ -186,24 +187,22 @@ namespace eosio { namespace chain {
       return ends_with(string(type), "[]");
    }
 
-   // 1-dimensonal fixed size array
+   // one-dimensional fixed size array
    bool _is_fixed_array(const type_name& type, int &typelen, int &arrsize) {
-      string stype = type;
-      int p = 1;
       typelen = 0;
       arrsize = 0;
-      while (p < stype.length() && stype[p] != '[') ++p;
-      if (p >= stype.length()) return false;
+      auto p = type.find_first_of('[');
+      if (p == string::npos || p == 0) return false;
       typelen = p;
       ++p;
-      if (p >= stype.length()) return false;
-      while (p < stype.length() && (stype[p] >= '0' && stype[p] <= '9')) {
-         arrsize = arrsize * 10 + (stype[p] - '0');
+      if (p >= type.length()) return false;
+      while (p < type.length() && (type[p] >= '0' && type[p] <= '9')) {
+         arrsize = arrsize * 10 + (type[p] - '0');
          if (arrsize > (size_t)MAX_NUM_ARRAY_ELEMENTS) return false;
          ++p;
       }
       if (!arrsize) return false;
-      if (p != stype.length() - 1 || stype[p] != ']') return false;
+      if (p != type.length() - 1 || type[p] != ']') return false;
       return true;
    }
 

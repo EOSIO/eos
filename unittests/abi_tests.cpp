@@ -1407,6 +1407,75 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_POD, abi_gen_helper)
 
 } FC_LOG_AND_RETHROW() }
 
+
+BOOST_FIXTURE_TEST_CASE(abigen_array_of_POD, abi_gen_helper)
+{ try {
+
+   const char* abigen_array_of_POD = R"=====(
+   #include <string>
+   #include <eosiolib/types.hpp>
+
+   using namespace eosio;
+   using namespace std;
+
+   //@abi table
+   struct table1 {
+      uint64_t         field1;
+      uint64_t         uints64[1];
+      uint32_t         uints32[11+100];
+      uint16_t         uints16[222];
+      uint8_t          uints8[99999];
+   };
+
+   )=====";
+
+   const char* abigen_array_of_POD_abi = R"=====(
+   {
+     "types": [],
+     "structs": [{
+         "name": "table1",
+         "base": "",
+         "fields": [{
+             "name": "field1",
+             "type": "uint64"
+           },{
+             "name": "uints64",
+             "type": "uint64[1]"
+           },{
+             "name": "uints32",
+             "type": "uint32[111]"
+           },{
+             "name": "uints16",
+             "type": "uint16[222]"
+           },{
+             "name": "uints8",
+             "type": "uint8[99999]"
+           }
+         ]
+       }
+     ],
+     "actions": [],
+     "tables": [{
+         "name": "table1",
+         "index_type": "i64",
+         "key_names": [
+           "field1"
+         ],
+         "key_types": [
+           "uint64"
+         ],
+         "type": "table1"
+       }
+     ],
+    "ricardian_clauses": []
+   }
+   )=====";
+
+   BOOST_TEST( generate_abi(abigen_array_of_POD, abigen_array_of_POD_abi) == true );
+
+} FC_LOG_AND_RETHROW() }
+
+
 BOOST_FIXTURE_TEST_CASE(abigen_vector_of_structs, abi_gen_helper)
 { try {
 
@@ -1491,6 +1560,80 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_structs, abi_gen_helper)
 
 } FC_LOG_AND_RETHROW() }
 
+
+BOOST_FIXTURE_TEST_CASE(abigen_array_of_structs, abi_gen_helper)
+{ try {
+
+   const char* abigen_array_of_structs = R"=====(
+   #include <vector>
+   #include <string>
+   #include <eosiolib/types.hpp>
+
+   using namespace eosio;
+   using namespace std;
+
+   struct my_struct {
+      vector<uint64_t> uints64;
+      string           str;
+   };
+
+   //@abi table
+   struct table1 {
+      uint64_t          field1;
+      my_struct         field2[4];
+   };
+
+   )=====";
+
+   const char* abigen_array_of_structs_abi = R"=====(
+   {
+     "types": [],
+     "structs": [{
+         "name": "my_struct",
+         "base": "",
+         "fields": [{
+             "name": "uints64",
+             "type": "uint64[]"
+           },{
+             "name": "str",
+             "type": "string"
+           }
+         ]
+       },{
+         "name": "table1",
+         "base": "",
+         "fields": [{
+             "name": "field1",
+             "type": "uint64"
+           },{
+             "name": "field2",
+             "type": "my_struct[4]"
+           }
+         ]
+       }
+     ],
+     "actions": [],
+     "tables": [{
+         "name": "table1",
+         "index_type": "i64",
+         "key_names": [
+           "field1"
+         ],
+         "key_types": [
+           "uint64"
+         ],
+         "type": "table1"
+       }
+     ],
+    "ricardian_clauses": []
+   }
+   )=====";
+
+   BOOST_TEST( generate_abi(abigen_array_of_structs, abigen_array_of_structs_abi) == true );
+
+} FC_LOG_AND_RETHROW() }
+
+
 BOOST_FIXTURE_TEST_CASE(abigen_vector_multidimension, abi_gen_helper)
 { try {
 
@@ -1511,6 +1654,96 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_multidimension, abi_gen_helper)
    )=====";
 
    BOOST_CHECK_EXCEPTION( generate_abi(abigen_vector_multidimension, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(zero_length_array, abi_gen_helper)
+{ try {
+
+   const char* invalid_array = R"=====(
+   #include <string>
+   #include <eosiolib/types.hpp>
+
+   using namespace eosio;
+   using namespace std;
+
+   //@abi table
+   struct table1 {
+      uint64_t                 field1;
+      uint64_t                 field2[0];
+   };
+
+   )=====";
+
+   BOOST_CHECK_EXCEPTION( generate_abi(invalid_array, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_array_multidimension, abi_gen_helper)
+{ try {
+
+   const char* abigen_array_multidimension = R"=====(
+   #include <string>
+   #include <eosiolib/types.hpp>
+
+   using namespace eosio;
+   using namespace std;
+
+   //@abi table
+   struct table1 {
+      uint64_t                 field1;
+      uint64_t                 field2[2][3];
+   };
+
+   )=====";
+
+   BOOST_CHECK_EXCEPTION( generate_abi(abigen_array_multidimension, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_vector_multidimension2, abi_gen_helper)
+{ try {
+
+   const char* abigen_vector_multidimension2 = R"=====(
+   #include <vector>
+   #include <string>
+   #include <eosiolib/types.hpp>
+
+   using namespace eosio;
+   using namespace std;
+
+   //@abi table
+   struct table1 {
+      uint64_t                 field1;
+      vector<uint64_t>         field2[4];
+   };
+
+   )=====";
+
+   BOOST_CHECK_EXCEPTION( generate_abi(abigen_vector_multidimension2, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_vector_multidimension3, abi_gen_helper)
+{ try {
+
+   const char* abigen_vector_multidimension3 = R"=====(
+   #include <vector>
+   #include <string>
+   #include <eosiolib/types.hpp>
+
+   using namespace eosio;
+   using namespace std;
+
+   //@abi table
+   struct table1 {
+      uint64_t                 field1;
+      vector<uint64_t[4]>      field2;
+   };
+
+   )=====";
+
+   BOOST_CHECK_EXCEPTION( generate_abi(abigen_vector_multidimension3, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
 
 } FC_LOG_AND_RETHROW() }
 
