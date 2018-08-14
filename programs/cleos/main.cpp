@@ -154,7 +154,7 @@ bool no_verify = false;
 vector<string> headers;
 
 auto   tx_expiration = fc::seconds(30);
-const fc::microseconds abi_serializer_max_time = fc::seconds(1); // No risk to client side serialization taking a long time
+const fc::microseconds abi_serializer_max_time = fc::seconds(10); // No risk to client side serialization taking a long time
 string tx_ref_block_num_or_id;
 bool   tx_force_unique = false;
 bool   tx_dont_broadcast = false;
@@ -1778,15 +1778,25 @@ int main( int argc, char** argv ) {
 
    // pack transaction
    string plain_signed_transaction_json;
+   bool pack_action_data_flag = false;
    auto pack_transaction = convert->add_subcommand("pack_transaction", localized("From plain signed json to packed form"));
    pack_transaction->add_option("transaction", plain_signed_transaction_json, localized("The plain signed json (string)"))->required();
+   pack_transaction->add_flag("--pack-action-data", pack_action_data_flag, localized("Pack all action datas within transaction, needs interaction with nodeos"));
    pack_transaction->set_callback([&] {
       fc::variant trx_var;
       try {
          trx_var = json_from_file_or_string(plain_signed_transaction_json);
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse plain transaction JSON '${data}'", ("data", plain_signed_transaction_json))
-      signed_transaction trx = trx_var.as<signed_transaction>();
-      std::cout << fc::json::to_pretty_string(fc::variant(packed_transaction(trx, packed_transaction::none))) << std::endl;
+      if( pack_action_data_flag ) {
+         signed_transaction trx;
+         abi_serializer::from_variant(trx_var, trx, abi_serializer_resolver, abi_serializer_max_time);
+         std::cout << fc::json::to_pretty_string( packed_transaction( trx, packed_transaction::none ) ) << std::endl;
+      } else {
+         try {
+            signed_transaction trx = trx_var.as<signed_transaction>();
+            std::cout << fc::json::to_pretty_string( fc::variant( packed_transaction( trx, packed_transaction::none ))) << std::endl;
+         } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Fail to convert transaction, --pack-action-data likely needed" )
+      }
    });
 
    // unpack transaction
