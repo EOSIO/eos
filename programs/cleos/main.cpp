@@ -154,9 +154,11 @@ bool no_verify = false;
 vector<string> headers;
 
 auto   tx_expiration = fc::seconds(30);
+const fc::microseconds abi_serializer_max_time = fc::seconds(10); // No risk to client side serialization taking a long time
 string tx_ref_block_num_or_id;
 bool   tx_force_unique = false;
 bool   tx_dont_broadcast = false;
+bool   tx_return_packed = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
 bool   print_request = false;
@@ -185,6 +187,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
    cmd->add_flag("-j,--json", tx_print_json, localized("print result as json"));
    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
+   cmd->add_flag("--return-packed", tx_return_packed, localized("used in conjunction with --dont-broadcast to get the packed transaction"));
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
 
    string msg = "An account and permission level to authorize, as in 'account@permission'";
@@ -301,7 +304,11 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    if (!tx_dont_broadcast) {
       return call(push_txn_func, packed_transaction(trx, compression));
    } else {
-      return fc::variant(trx);
+      if (!tx_return_packed) {
+        return fc::variant(trx);
+      } else {
+        return fc::variant(packed_transaction(trx, compression));
+      }
    }
 }
 
@@ -337,25 +344,44 @@ void print_action( const fc::variant& at ) {
    }
 }
 
-bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
-   static unordered_map<account_name, std::vector<char> > abi_cache;
+//resolver for ABI serializer to decode actions in proposed transaction in multisig contract
+auto abi_serializer_resolver = [](const name& account) -> optional<abi_serializer> {
+   static unordered_map<account_name, optional<abi_serializer> > abi_cache;
    auto it = abi_cache.find( account );
    if ( it == abi_cache.end() ) {
-      const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", account));
-      std::tie( it, std::ignore ) = abi_cache.emplace( account, result["abi"].as_blob().data );
-      //we also received result["wasm"], but we don't use it
-   }
-   const std::vector<char>& abi_v = it->second;
+      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", account));
+      auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
 
-   abi_def abi;
-   if( abi_serializer::to_abi(abi_v, abi) ) {
-      abi_serializer abis( abi, fc::seconds(10) );
-      auto action_type = abis.get_action_type(action);
-      FC_ASSERT(!action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)("contract", account));
-      return abis.variant_to_binary(action_type, action_args_var, fc::seconds(10));
-   } else {
-      FC_ASSERT(false, "No ABI found for ${contract}", ("contract", account));
+      optional<abi_serializer> abis;
+      if( abi_results.abi.valid() ) {
+         abis.emplace( *abi_results.abi, abi_serializer_max_time );
+      } else {
+         std::cerr << "ABI for contract " << account.to_string() << " not found. Action data will be shown in hex only." << std::endl;
+      }
+      abi_cache.emplace( account, abis );
+
+      return abis;
    }
+
+   return it->second;
+};
+
+bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
+   auto abis = abi_serializer_resolver( account );
+   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+
+   auto action_type = abis->get_action_type( action );
+   FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
+   return abis->variant_to_binary( action_type, action_args_var, abi_serializer_max_time );
+}
+
+fc::variant bin_to_variant( const account_name& account, const action_name& action, const bytes& action_args) {
+   auto abis = abi_serializer_resolver( account );
+   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+
+   auto action_type = abis->get_action_type( action );
+   FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
+   return abis->binary_to_variant( action_type, action_args, abi_serializer_max_time );
 }
 
 fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::legacy_parser)
@@ -1679,8 +1705,6 @@ int main( int argc, char** argv ) {
    textdomain(locale_domain);
    context = eosio::client::http::create_http_context();
 
-   fc::microseconds abi_serializer_max_time = fc::seconds(1); // No risk to client side serialization taking a long time
-
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
    app.add_option( "-H,--host", obsoleted_option_host_port, localized("the host where nodeos is running") )->group("hidden");
@@ -1740,6 +1764,89 @@ int main( int argc, char** argv ) {
 
    // create account
    auto createAccount = create_account_subcommand( create, true /*simple*/ );
+
+   // convert subcommand
+   auto convert = app.add_subcommand("convert", localized("Pack and unpack transactions"), false); // TODO also add converting action args based on abi from here ?
+   convert->require_subcommand();
+
+   // pack transaction
+   string plain_signed_transaction_json;
+   bool pack_action_data_flag = false;
+   auto pack_transaction = convert->add_subcommand("pack_transaction", localized("From plain signed json to packed form"));
+   pack_transaction->add_option("transaction", plain_signed_transaction_json, localized("The plain signed json (string)"))->required();
+   pack_transaction->add_flag("--pack-action-data", pack_action_data_flag, localized("Pack all action data within transaction, needs interaction with nodeos"));
+   pack_transaction->set_callback([&] {
+      fc::variant trx_var;
+      try {
+         trx_var = json_from_file_or_string( plain_signed_transaction_json );
+      } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Fail to parse plain transaction JSON '${data}'", ("data", plain_signed_transaction_json))
+      if( pack_action_data_flag ) {
+         signed_transaction trx;
+         abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer_max_time );
+         std::cout << fc::json::to_pretty_string( packed_transaction( trx, packed_transaction::none )) << std::endl;
+      } else {
+         try {
+            signed_transaction trx = trx_var.as<signed_transaction>();
+            std::cout << fc::json::to_pretty_string( fc::variant( packed_transaction( trx, packed_transaction::none ))) << std::endl;
+         } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Fail to convert transaction, --pack-action-data likely needed" )
+      }
+   });
+
+   // unpack transaction
+   string packed_transaction_json;
+   bool unpack_action_data_flag = false;
+   auto unpack_transaction = convert->add_subcommand("unpack_transaction", localized("From packed to plain signed json form"));
+   unpack_transaction->add_option("transaction", packed_transaction_json, localized("The packed transaction json (string containing packed_trx and optionally compression fields)"))->required();
+   unpack_transaction->add_flag("--unpack-action-data", unpack_action_data_flag, localized("Unpack all action data within transaction, needs interaction with nodeos"));
+   unpack_transaction->set_callback([&] {
+      fc::variant packed_trx_var;
+      packed_transaction packed_trx;
+      try {
+         packed_trx_var = json_from_file_or_string( packed_transaction_json );
+         fc::from_variant<packed_transaction>( packed_trx_var, packed_trx );
+      } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Fail to parse packed transaction JSON '${data}'", ("data", packed_transaction_json))
+      signed_transaction strx = packed_trx.get_signed_transaction();
+      fc::variant trx_var;
+      if( unpack_action_data_flag ) {
+         abi_serializer::to_variant( strx, trx_var, abi_serializer_resolver, abi_serializer_max_time );
+      } else {
+         trx_var = strx;
+      }
+      std::cout << fc::json::to_pretty_string( trx_var ) << std::endl;
+   });
+
+   // pack action data
+   string unpacked_action_data_account_string;
+   string unpacked_action_data_name_string;
+   string unpacked_action_data_string;
+   auto pack_action_data = convert->add_subcommand("pack_action_data", localized("From json action data to packed form"));
+   pack_action_data->add_option("account", unpacked_action_data_account_string, localized("The name of the account that hosts the contract"))->required();
+   pack_action_data->add_option("name", unpacked_action_data_name_string, localized("The name of the function that's called by this action"))->required();
+   pack_action_data->add_option("unpacked_action_data", unpacked_action_data_string, localized("The action data expressed as json"))->required();
+   pack_action_data->set_callback([&] {
+      fc::variant unpacked_action_data_json;
+      try {
+         unpacked_action_data_json = json_from_file_or_string(unpacked_action_data_string);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse unpacked action data JSON")
+      bytes packed_action_data_string = variant_to_bin(unpacked_action_data_account_string, unpacked_action_data_name_string, unpacked_action_data_json);
+      std::cout << fc::to_hex(packed_action_data_string.data(), packed_action_data_string.size()) << std::endl;
+   });
+
+   // unpack action data
+   string packed_action_data_account_string;
+   string packed_action_data_name_string;
+   string packed_action_data_string;
+   auto unpack_action_data = convert->add_subcommand("unpack_action_data", localized("From packed to json action data form"));
+   unpack_action_data->add_option("account", packed_action_data_account_string, localized("The name of the account that hosts the contract"))->required();
+   unpack_action_data->add_option("name", packed_action_data_name_string, localized("The name of the function that's called by this action"))->required();
+   unpack_action_data->add_option("packed_action_data", packed_action_data_string, localized("The action data expressed as packed hex string"))->required();
+   unpack_action_data->set_callback([&] {
+      EOS_ASSERT( packed_action_data_string.size() >= 2, transaction_type_exception, "No packed_action_data found" );
+      vector<char> packed_action_data_blob(packed_action_data_string.size()/2);
+      fc::from_hex(packed_action_data_string, packed_action_data_blob.data(), packed_action_data_blob.size());
+      fc::variant unpacked_action_data_json = bin_to_variant(packed_action_data_account_string, packed_action_data_name_string, packed_action_data_blob);
+      std::cout << fc::json::to_pretty_string(unpacked_action_data_json) << std::endl;
+   });
 
    // Get subcommand
    auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);
@@ -2522,15 +2629,22 @@ int main( int argc, char** argv ) {
    string trx_to_push;
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
    trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
+   add_standard_transaction_options(trxSubcommand);
 
    trxSubcommand->set_callback([&] {
       fc::variant trx_var;
       try {
          trx_var = json_from_file_or_string(trx_to_push);
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_push))
-      signed_transaction trx = trx_var.as<signed_transaction>();
-      auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
-      std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
+      try {
+         signed_transaction trx = trx_var.as<signed_transaction>();
+         std::cout << fc::json::to_pretty_string( push_transaction( trx )) << std::endl;
+      } catch( fc::exception& ) {
+         // unable to convert so try via abi
+         signed_transaction trx;
+         abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer_max_time );
+         std::cout << fc::json::to_pretty_string( push_transaction( trx )) << std::endl;
+      }
    });
 
 
@@ -2640,18 +2754,6 @@ int main( int argc, char** argv ) {
       send_actions({chain::action{accountPermissions, "eosio.msig", "propose", variant_to_bin( N(eosio.msig), N(propose), args ) }});
    });
 
-   //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
-   auto resolver = [abi_serializer_max_time](const name& code) -> optional<abi_serializer> {
-      auto result = call(get_abi_func, fc::mutable_variant_object("account_name", code.to_string()));
-      if (result["abi"].is_object()) {
-         //std::cout << "ABI: " << fc::json::to_pretty_string(result) << std::endl;
-         return optional<abi_serializer>(abi_serializer(result["abi"].as<abi_def>(), abi_serializer_max_time));
-      } else {
-         std::cerr << "ABI for contract " << code.to_string() << " not found. Action data will be shown in hex only." << std::endl;
-         return optional<abi_serializer>();
-      }
-   };
-
    //multisige propose transaction
    auto propose_trx = msig->add_subcommand("propose_trx", localized("Propose transaction"));
    add_standard_transaction_options(propose_trx);
@@ -2727,7 +2829,7 @@ int main( int argc, char** argv ) {
 
       fc::variant trx_var;
       abi_serializer abi;
-      abi.to_variant(trx, trx_var, resolver, abi_serializer_max_time);
+      abi.to_variant(trx, trx_var, abi_serializer_resolver, abi_serializer_max_time);
       obj["transaction"] = trx_var;
       std::cout << fc::json::to_pretty_string(obj)
                 << std::endl;
