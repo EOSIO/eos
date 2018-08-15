@@ -3,6 +3,8 @@
 
 namespace eosio {
 
+const size_t abi_generator::max_recursion_depth;
+
 void abi_generator::set_target_contract(const string& contract, const vector<string>& actions) {
   target_contract = contract;
   target_actions  = actions;
@@ -500,17 +502,11 @@ string abi_generator::get_vector_array_element_type(const string& type_name) {
   if( is_fixed_array(type_name) ) {
      auto p = type_name.find_first_of('[');
      if (p != string::npos) {
-        while (p > 0 && type_name[p] == ' ') --p;
+        while (p > 0 && type_name[p - 1] == ' ') --p;
         return type_name.substr(0, p);
      }
   }
   return type_name;
-}
-
-clang::QualType abi_generator::get_array_element_type(const clang::QualType& qt) {
-  const auto* cat = clang::dyn_cast<const clang::ConstantArrayType>(qt.getTypePtr());
-  ABI_ASSERT(cat != nullptr);
-  return cat->getElementType();
 }
 
 string abi_generator::get_type_name(const clang::QualType& qt, bool with_namespace=false) {
@@ -522,7 +518,7 @@ string abi_generator::get_type_name(const clang::QualType& qt, bool with_namespa
 
 clang::QualType abi_generator::add_typedef(const clang::QualType& tqt, size_t recursion_depth) {
 
-  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth" );
+  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, exceeded recursive depth of ${d}", ("d", max_recursion_depth));
 
   clang::QualType qt(get_named_type_if_elaborated(tqt));
 
@@ -588,7 +584,7 @@ const clang::RecordDecl::field_range abi_generator::get_struct_fields(const clan
 
 string abi_generator::add_vector(const clang::QualType& vqt, size_t recursion_depth) {
 
-  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth" );
+  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, exceeded recursive depth of ${d}", ("d", max_recursion_depth));
 
   clang::QualType qt(get_named_type_if_elaborated(vqt));
 
@@ -605,7 +601,7 @@ string abi_generator::add_vector(const clang::QualType& vqt, size_t recursion_de
 
 string abi_generator::add_fixed_array(const clang::QualType& vqt, size_t recursion_depth) {
 
-  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth" );
+  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, exceeded recursive depth of ${d}", ("d", max_recursion_depth));
 
   clang::QualType qt(get_named_type_if_elaborated(vqt));
 
@@ -628,7 +624,7 @@ string abi_generator::add_fixed_array(const clang::QualType& vqt, size_t recursi
 
 string abi_generator::add_type(const clang::QualType& tqt, size_t recursion_depth) {
 
-  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth" );
+  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, exceeded recursive depth of ${d}", ("d", max_recursion_depth));
 
   clang::QualType qt(get_named_type_if_elaborated(tqt));
 
@@ -636,7 +632,6 @@ string abi_generator::add_type(const clang::QualType& tqt, size_t recursion_dept
   string type_name      = translate_type(get_type_name(qt));
   bool   is_type_def    = false;
 
- //  printf("add_type of %s...", full_type_name.c_str());
   if( is_builtin_type(type_name) ) {
     return type_name;
   }
@@ -649,8 +644,7 @@ string abi_generator::add_type(const clang::QualType& tqt, size_t recursion_dept
     is_type_def = true;
   }
 
-  bool fixed_array = is_fixed_array(qt);
- // printf("%d ", (int)fixed_array);
+  const bool fixed_array = is_fixed_array(qt);
 
   if( is_vector(qt) ) {
     ABI_ASSERT(!fixed_array, "vector of fixed array not supported. (${type}) ", ("type",get_type_name(qt)));
