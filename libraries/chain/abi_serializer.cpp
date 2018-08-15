@@ -192,7 +192,8 @@ namespace eosio { namespace chain {
       typelen = 0;
       arrsize = 0;
       auto p = type.find_first_of('[');
-      if (p == string::npos || p == 0) return false;
+      const auto q = type.find_first_of(']');
+      if (p == string::npos || p == 0 || q == string::npos || q != type.length() - 1 || q - p < 2) return false;
       typelen = p;
       ++p;
       if (p >= type.length()) return false;
@@ -202,7 +203,6 @@ namespace eosio { namespace chain {
          ++p;
       }
       if (!arrsize) return false;
-      if (p != type.length() - 1 || type[p] != ']') return false;
       return true;
    }
 
