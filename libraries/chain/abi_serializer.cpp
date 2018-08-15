@@ -32,15 +32,33 @@ namespace eosio { namespace chain {
    template <typename T>
    auto pack_unpack() {
       return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
-         []( fc::datastream<const char*>& stream, bool is_array, bool is_optional) -> fc::variant  {
-            if( is_array )
+         []( fc::datastream<const char*>& stream, bool is_array, bool is_optional, int fixed_array_size) -> fc::variant  {
+            if (fixed_array_size > 0) {
+               EOS_ASSERT(fixed_array_size <= MAX_NUM_ARRAY_ELEMENTS, unpack_exception, "invalid fixed array size ${s}", ("s", fixed_array_size));
+               vector<T> vec;
+               for (int i = 0; i < fixed_array_size; ++i) {
+                  T tmp;
+                  fc::raw::unpack( stream, tmp );
+                  vec.push_back(std::move(tmp));
+               }
+               return fc::variant(std::move(vec));
+            }
+            else if( is_array )
                return variant_from_stream<vector<T>>(stream);
             else if ( is_optional )
                return variant_from_stream<optional<T>>(stream);
             return variant_from_stream<T>(stream);
          },
-         []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional ){
-            if( is_array )
+         []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional, int fixed_array_size ) {
+            if (fixed_array_size > 0) {
+               auto var2 = var.as<vector<T>>();
+               EOS_ASSERT(fixed_array_size == var2.size(), pack_exception, "failed to pack fixed array of size ${s}", ("s", fixed_array_size));
+               for (int i = 0; i < fixed_array_size; ++i) {
+                  fc::raw::pack(ds, var2[i]);
+               }
+               return;
+            }
+            else if( is_array )
                fc::raw::pack( ds, var.as<vector<T>>() );
             else if ( is_optional )
                fc::raw::pack( ds, var.as<optional<T>>() );
@@ -169,12 +187,34 @@ namespace eosio { namespace chain {
       return ends_with(string(type), "[]");
    }
 
+   // one-dimensional fixed size array
+   bool _is_fixed_array(const type_name& type, int &typelen, int &arrsize) {
+      typelen = 0;
+      arrsize = 0;
+      auto p = type.find_first_of('[');
+      const auto q = type.find_first_of(']');
+      if (p == string::npos || p == 0 || q == string::npos || q != type.length() - 1 || q - p < 2) return false;
+      typelen = p;
+      ++p;
+      if (p >= type.length()) return false;
+      while (p < type.length() && (type[p] >= '0' && type[p] <= '9')) {
+         arrsize = arrsize * 10 + (type[p] - '0');
+         if (arrsize > (size_t)MAX_NUM_ARRAY_ELEMENTS) return false;
+         ++p;
+      }
+      if (!arrsize) return false;
+      return true;
+   }
+
    bool abi_serializer::is_optional(const type_name& type)const {
       return ends_with(string(type), "?");
    }
 
    type_name abi_serializer::fundamental_type(const type_name& type)const {
-      if( is_array(type) ) {
+      int len, arrsize;
+      if (_is_fixed_array(type, len, arrsize)) {
+         return type_name(string(type).substr(0, len));
+      } else if( is_array(type) ) {
          return type_name(string(type).substr(0, type.size()-2));
       } else if ( is_optional(type) ) {
          return type_name(string(type).substr(0, type.size()-1));
@@ -274,14 +314,16 @@ namespace eosio { namespace chain {
       EOS_ASSERT( ++recursion_depth < max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
       EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       type_name rtype = resolve_type(type);
+      int typelen, arrsize;
+      bool fixed_array = _is_fixed_array(rtype, typelen, arrsize);
       auto ftype = fundamental_type(rtype);
       auto btype = built_in_types.find(ftype );
       if( btype != built_in_types.end() ) {
-         return btype->second.first(stream, is_array(rtype), is_optional(rtype));
+         return btype->second.first(stream, is_array(rtype), is_optional(rtype), arrsize);
       }
-      if ( is_array(rtype) ) {
-        fc::unsigned_int size;
-        fc::raw::unpack(stream, size);
+      if (is_array(rtype) || fixed_array) {
+        fc::unsigned_int size = arrsize;
+        if (!fixed_array) fc::raw::unpack(stream, size);
         vector<fc::variant> vars;
         for( decltype(size.value) i = 0; i < size; ++i ) {
            auto v = _binary_to_variant(ftype, stream, recursion_depth, deadline, max_serialization_time);
@@ -298,7 +340,6 @@ namespace eosio { namespace chain {
         fc::raw::unpack(stream, flag);
         return flag ? _binary_to_variant(ftype, stream, recursion_depth, deadline, max_serialization_time) : fc::variant();
       }
-
       fc::mutable_variant_object mvo;
       _binary_to_variant(rtype, stream, mvo, recursion_depth, deadline, max_serialization_time);
       EOS_ASSERT( mvo.size() > 0, unpack_exception, "Unable to unpack stream ${type}", ("type", type) );
@@ -320,13 +361,18 @@ namespace eosio { namespace chain {
       EOS_ASSERT( ++recursion_depth < max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
       EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       auto rtype = resolve_type(type);
-
+      int typelen, arrsize;
+      bool fixed_array = _is_fixed_array(rtype, typelen, arrsize);
       auto btype = built_in_types.find(fundamental_type(rtype));
       if( btype != built_in_types.end() ) {
-         btype->second.second(var, ds, is_array(rtype), is_optional(rtype));
-      } else if ( is_array(rtype) ) {
+         btype->second.second(var, ds, is_array(rtype), is_optional(rtype), arrsize);
+      } else if ( is_array(rtype) || fixed_array) {
          vector<fc::variant> vars = var.get_array();
-         fc::raw::pack(ds, (fc::unsigned_int)vars.size());
+         if (!fixed_array) {
+            fc::raw::pack(ds, (fc::unsigned_int)vars.size());
+         } else {
+            EOS_ASSERT(arrsize == vars.size(), pack_exception, "failed to pack fixed array of size ${s}", ("s", arrsize));
+         }
          for (const auto& var : vars) {
            _variant_to_binary(fundamental_type(rtype), var, ds, recursion_depth, deadline, max_serialization_time);
          }

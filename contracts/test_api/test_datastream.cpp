@@ -7,11 +7,12 @@
 
 template <typename T>
 struct testtype {
-    static void run(const T &v, const char *errmsg = "") {
+    static void run(const T &v, const char *errmsg = "", int expectStreamLen = -1) {
         char buf[128];
         eosio::datastream<char *> ds(buf, sizeof(buf));
         ds << v;
         T v2;
+        eosio_assert(expectStreamLen < 0 || ds.tellp() == (size_t)expectStreamLen, errmsg);
         ds.seekp(0);
         ds >> v2;
         eosio_assert(v == v2, errmsg);            
@@ -20,11 +21,12 @@ struct testtype {
 
 template <>
 struct testtype<double> {
-   static void run(const double &v, const char *errmsg = "") {
+   static void run(const double &v, const char *errmsg = "", int expectStreamLen = -1) {
       char buf[128];
       eosio::datastream<char *> ds(buf, sizeof(buf));
       ds << v;
       double v2;
+      eosio_assert(expectStreamLen < 0 || ds.tellp() == (size_t)expectStreamLen, errmsg);
       ds.seekp(0);
       ds >> v2;
       eosio_assert(std::abs(v - v2) < 1e-20, errmsg);
@@ -33,15 +35,23 @@ struct testtype<double> {
 
 template <>
 struct testtype<float> {
-   static void run(const float &v, const char *errmsg = "") {
+   static void run(const float &v, const char *errmsg = "", int expectStreamLen = -1) {
       char buf[128];
       eosio::datastream<char *> ds(buf, sizeof(buf));
       ds << v;
       float v2;
+      eosio_assert(expectStreamLen < 0 || ds.tellp() == (size_t)expectStreamLen, errmsg);
       ds.seekp(0);
       ds >> v2;
       eosio_assert(std::abs(v - v2) < float(1e-10), errmsg);
    }
+};
+
+
+struct StaticArray2 {
+   int a[2];
+   bool operator==(const StaticArray2 &o) const { return a[0] == o.a[0] && a[1] == o.a[1]; }
+   EOSLIB_SERIALIZE(StaticArray2, (a));
 };
 
 void test_datastream::test_basic()
@@ -68,13 +78,16 @@ void test_datastream::test_basic()
         double d;
           bool operator==(const Pair &p) const { return a == p.a && std::abs(d - p.d) < 1e-20;} 
     };
-    testtype<Pair>::run({1, 1.23456}, "struct");
+    testtype<Pair>::run({1, 1.23456}, "struct", sizeof(int) + sizeof(double));
 
     struct StaticArray {
         int a[2];
         bool operator==(const StaticArray &o) const { return a[0] == o.a[0] && a[1] == o.a[1]; }
     };
-    testtype<StaticArray>::run({{10,20}}, "StaticArray");
+    testtype<StaticArray>::run({{10,20}}, "StaticArray", sizeof(StaticArray));
+
+    // EOSLIB_SERIALIZE serializes fixed array as vector
+    testtype<StaticArray2>::run({{10,20}}, "StaticArray2", sizeof(StaticArray2) + 1);
 
     testtype<std::string>::run("hello", "string");
 

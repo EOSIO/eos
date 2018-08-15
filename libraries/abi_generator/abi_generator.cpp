@@ -3,6 +3,8 @@
 
 namespace eosio {
 
+const size_t abi_generator::max_recursion_depth;
+
 void abi_generator::set_target_contract(const string& contract, const vector<string>& actions) {
   target_contract = contract;
   target_actions  = actions;
@@ -140,9 +142,10 @@ bool abi_generator::inspect_type_methods_for_actions(const Decl* decl) { try {
       string field_type_name = add_type(qt, 0);
 
       field_def struct_field{field_name, field_type_name};
-      ABI_ASSERT(is_builtin_type(get_vector_element_type(struct_field.type))
-        || find_struct(get_vector_element_type(struct_field.type))
-        || find_type(get_vector_element_type(struct_field.type))
+      auto element_type = get_vector_array_element_type(struct_field.type);
+      ABI_ASSERT(is_builtin_type(element_type)
+        || find_struct(element_type)
+        || find_type(element_type)
         , "Unknown type ${type} [${abi}]",("type",struct_field.type)("abi",*output));
 
       type_size[string(struct_field.type)] = is_vector(struct_field.type) ? 0 : ast_context->getTypeSize(qt);
@@ -460,6 +463,22 @@ bool abi_generator::is_vector(const string& type_name) {
   return boost::ends_with(type_name, "[]");
 }
 
+bool abi_generator::is_fixed_array(const clang::QualType& vqt) {
+  QualType qt(vqt);
+
+  if ( is_elaborated(qt) )
+    qt = qt->getAs<clang::ElaboratedType>()->getNamedType();
+
+  const auto* cat = clang::dyn_cast<const clang::ConstantArrayType>(qt.getTypePtr());
+  if (cat == nullptr) return false;
+
+  return is_fixed_array(get_type_name(qt, false));
+}
+
+bool abi_generator::is_fixed_array(const string& type_name) {
+  return (boost::ends_with(type_name, "]") && !boost::ends_with(type_name, "[]"));
+}
+
 bool abi_generator::is_struct_specialization(const clang::QualType& qt) {
   return is_struct(qt) && isa<clang::TemplateSpecializationType>(qt.getTypePtr());
 }
@@ -477,9 +496,16 @@ clang::QualType abi_generator::get_vector_element_type(const clang::QualType& qt
   return arg0.getAsType();
 }
 
-string abi_generator::get_vector_element_type(const string& type_name) {
+string abi_generator::get_vector_array_element_type(const string& type_name) {
   if( is_vector(type_name) )
     return type_name.substr(0, type_name.size()-2);
+  if( is_fixed_array(type_name) ) {
+     auto p = type_name.find_first_of('[');
+     if (p != string::npos) {
+        while (p > 0 && type_name[p - 1] == ' ') --p;
+        return type_name.substr(0, p);
+     }
+  }
   return type_name;
 }
 
@@ -492,7 +518,7 @@ string abi_generator::get_type_name(const clang::QualType& qt, bool with_namespa
 
 clang::QualType abi_generator::add_typedef(const clang::QualType& tqt, size_t recursion_depth) {
 
-  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth" );
+  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, exceeded recursive depth of ${d}", ("d", max_recursion_depth));
 
   clang::QualType qt(get_named_type_if_elaborated(tqt));
 
@@ -558,12 +584,12 @@ const clang::RecordDecl::field_range abi_generator::get_struct_fields(const clan
 
 string abi_generator::add_vector(const clang::QualType& vqt, size_t recursion_depth) {
 
-  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth" );
+  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, exceeded recursive depth of ${d}", ("d", max_recursion_depth));
 
   clang::QualType qt(get_named_type_if_elaborated(vqt));
 
   auto vector_element_type = get_vector_element_type(qt);
-  ABI_ASSERT(!is_vector(vector_element_type), "Only one-dimensional arrays are supported");
+  ABI_ASSERT(!is_vector(vector_element_type) && !is_fixed_array(vector_element_type), "Only one-dimensional arrays are supported");
 
   add_type(vector_element_type, recursion_depth);
 
@@ -573,9 +599,32 @@ string abi_generator::add_vector(const clang::QualType& vqt, size_t recursion_de
   return vector_element_type_str;
 }
 
+string abi_generator::add_fixed_array(const clang::QualType& vqt, size_t recursion_depth) {
+
+  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, exceeded recursive depth of ${d}", ("d", max_recursion_depth));
+
+  clang::QualType qt(get_named_type_if_elaborated(vqt));
+
+  const auto* cat = clang::dyn_cast<const clang::ConstantArrayType>(qt);
+  ABI_ASSERT(cat != nullptr);
+  
+  auto element_type = cat->getElementType();
+  ABI_ASSERT(!is_fixed_array(element_type) && !is_vector(element_type), "Only one-dimensional fixed arrays are supported");
+  ABI_ASSERT(cat->getSize().getSExtValue() > 0, "fixed array should have positive size");
+
+  add_type(element_type, recursion_depth);
+
+  auto element_type_str = translate_type(get_type_name(element_type));
+  element_type_str += "[";
+  element_type_str += cat->getSize().toString(10, true);
+  element_type_str += "]";
+
+  return element_type_str;
+}
+
 string abi_generator::add_type(const clang::QualType& tqt, size_t recursion_depth) {
 
-  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth" );
+  ABI_ASSERT( ++recursion_depth < max_recursion_depth, "recursive definition, exceeded recursive depth of ${d}", ("d", max_recursion_depth));
 
   clang::QualType qt(get_named_type_if_elaborated(tqt));
 
@@ -595,16 +644,23 @@ string abi_generator::add_type(const clang::QualType& tqt, size_t recursion_dept
     is_type_def = true;
   }
 
+  const bool fixed_array = is_fixed_array(qt);
+
   if( is_vector(qt) ) {
+    ABI_ASSERT(!fixed_array, "vector of fixed array not supported. (${type}) ", ("type",get_type_name(qt)));
     auto vector_type_name = add_vector(qt, recursion_depth);
     return is_type_def ? type_name : vector_type_name;
+  }
+
+  if (fixed_array) {
+     return add_fixed_array(qt, recursion_depth);
   }
 
   if( is_struct(qt) ) {
     return add_struct(qt, full_type_name, recursion_depth);
   }
 
-  ABI_ASSERT(false, "types can only be: vector, struct, class or a built-in type. (${type}) ", ("type",get_type_name(qt)));
+  ABI_ASSERT(false, "types can only be: fixed array, vector, struct, class or a built-in type. (${type}) ", ("type",get_type_name(qt)));
   return type_name;
 }
 
@@ -661,9 +717,10 @@ string abi_generator::add_struct(const clang::QualType& sqt, string full_name, s
     string field_type_name = add_type(qt, recursion_depth);
 
     field_def struct_field{field_name, field_type_name};
-    ABI_ASSERT(is_builtin_type(get_vector_element_type(struct_field.type))
-      || find_struct(get_vector_element_type(struct_field.type))
-      || find_type(get_vector_element_type(struct_field.type))
+    auto element_type = get_vector_array_element_type(struct_field.type);
+    ABI_ASSERT(is_builtin_type(element_type)
+      || find_struct(element_type)
+      || find_type(element_type)
       , "Unknown type ${type} [${abi}]",("type",struct_field.type)("abi",*output));
 
     type_size[string(struct_field.type)] = is_vector(struct_field.type) ? 0 : ast_context->getTypeSize(qt);

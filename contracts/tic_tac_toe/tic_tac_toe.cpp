@@ -23,7 +23,7 @@ bool is_empty_cell(const uint8_t& cell) {
  * @param board - the board on which the movement is being made
  * @return true if movement is valid
  */
-bool is_valid_movement(const uint16_t& row, const uint16_t& column, const vector<uint8_t>& board) {
+bool is_valid_movement(const uint16_t& row, const uint16_t& column, const uint8_t *board) {
    uint16_t board_width = tic_tac_toe::game::board_width;
    uint16_t board_height = tic_tac_toe::game::board_height;
    uint32_t movement_location = row * board_width + column;
@@ -50,7 +50,7 @@ account_name get_winner(const tic_tac_toe::game& current_game) {
    vector<uint32_t> consecutive_row(tic_tac_toe::game::board_height, 3 );
    uint32_t consecutive_diagonal_backslash = 3;
    uint32_t consecutive_diagonal_slash = 3;
-   for (uint32_t i = 0; i < board.size(); i++) {
+   for (uint32_t i = 0; i < sizeof(board) / sizeof(board[0]); i++) {
       is_board_full &= is_empty_cell(board[i]);
       uint16_t row = uint16_t(i / tic_tac_toe::game::board_width);
       uint16_t column = uint16_t(i % tic_tac_toe::game::board_width);
@@ -96,6 +96,7 @@ void tic_tac_toe::create(const account_name& challenger, const account_name& hos
    eosio_assert(itr == existing_host_games.end(), "game already exists");
 
    existing_host_games.emplace(host, [&]( auto& g ) {
+      g.init();
       g.challenger = challenger;
       g.host = host;
       g.turn = host;
@@ -168,6 +169,5 @@ void tic_tac_toe::move(const account_name& challenger, const account_name& host,
       g.winner = get_winner(g);
    });
 }
-
 
 EOSIO_ABI( tic_tac_toe, (create)(restart)(close)(move))
