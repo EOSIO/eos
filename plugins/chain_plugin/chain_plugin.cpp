@@ -666,6 +666,9 @@ chain_apis::read_write::read_write(controller& db, const fc::microseconds& abi_s
 : db(db)
 , abi_serializer_max_time(abi_serializer_max_time)
 {
+}
+
+void chain_apis::read_write::validate() const {
    EOS_ASSERT( db.get_read_mode() != chain::db_read_mode::READ_ONLY, missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
 }
 
