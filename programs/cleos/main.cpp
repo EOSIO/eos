@@ -2282,6 +2282,10 @@ int main( int argc, char** argv ) {
       fc::read_file_contents(wasmPath, wasm);
       EOS_ASSERT( !wasm.empty(), wast_file_not_found, "no wasm file found ${f}", ("f", wasmPath) );
 
+      const string binary_wasm_header("\x00\x61\x73\x6d\x01\x00\x00\x00", 8);
+      if(wasm.compare(0, 8, binary_wasm_header))
+         std::cerr << localized("WARNING: ") << wasmPath << localized(" doesn't look like a binary WASM file. Is it something else, like WAST? Trying anyways...") << std::endl;
+
       actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
       if ( shouldSend ) {
          std::cerr << localized("Setting Code...") << std::endl;
