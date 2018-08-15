@@ -831,10 +831,13 @@ optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const a
    auto current_watermark_itr = _producer_watermarks.find(producer_name);
    if (current_watermark_itr != _producer_watermarks.end()) {
       auto watermark = current_watermark_itr->second;
-      const auto& pbs = chain.pending_block_state();
-      if (watermark > pbs->block_num) {
+      auto block_num = chain.head_block_state()->block_num;
+      if (chain.pending_block_state()) {
+         ++block_num;
+      }
+      if (watermark > block_num) {
          // if I have a watermark then I need to wait until after that watermark
-         minimum_offset = watermark - pbs->block_num + 1;
+         minimum_offset = watermark - block_num + 1;
       }
    }
 
