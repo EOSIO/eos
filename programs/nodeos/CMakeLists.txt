@@ -35,13 +35,16 @@ if(UNIX)
   if(APPLE)
     set(whole_archive_flag "-force_load")
     set(no_whole_archive_flag "")
+    set(build_id_flag "")
   else()
     set(whole_archive_flag "--whole-archive")
     set(no_whole_archive_flag "--no-whole-archive")
+    set(build_id_flag "--build-id")
   endif()
 else()
   set(whole_archive_flag "--whole-archive")
   set(no_whole_archive_flag "--no-whole-archive")
+  set(build_id_flag "")
 endif()
 
 target_link_libraries( ${NODE_EXECUTABLE_NAME}
@@ -57,6 +60,7 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}
         PRIVATE -Wl,${whole_archive_flag} txn_test_gen_plugin        -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} db_size_api_plugin         -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} producer_api_plugin        -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${build_id_flag}
         PRIVATE chain_plugin http_plugin producer_plugin http_client_plugin
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
