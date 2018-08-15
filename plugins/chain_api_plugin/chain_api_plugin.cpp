@@ -38,6 +38,7 @@ struct async_result_visitor : public fc::visitor<std::string> {
 #define CALL(api_name, api_handle, api_namespace, call_name, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [this, api_handle](string, string body, url_response_callback cb) mutable { \
+          api_handle.validate(); \
           try { \
              if (body.empty()) body = "{}"; \
              auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()); \
@@ -51,6 +52,7 @@ struct async_result_visitor : public fc::visitor<std::string> {
 {std::string("/v1/" #api_name "/" #call_name), \
    [this, api_handle](string, string body, url_response_callback cb) mutable { \
       if (body.empty()) body = "{}"; \
+      api_handle.validate(); \
       api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>(),\
          [cb, body](const fc::static_variant<fc::exception_ptr, call_result>& result){\
             if (result.contains<fc::exception_ptr>()) {\
@@ -94,6 +96,7 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(abi_json_to_bin, 200),
       CHAIN_RO_CALL(abi_bin_to_json, 200),
       CHAIN_RO_CALL(get_required_keys, 200),
+      CHAIN_RO_CALL(get_transaction_id, 200),
       CHAIN_RW_CALL_ASYNC(push_block, chain_apis::read_write::push_block_results, 202),
       CHAIN_RW_CALL_ASYNC(push_transaction, chain_apis::read_write::push_transaction_results, 202),
       CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202)

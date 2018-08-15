@@ -86,10 +86,12 @@ struct abi_serializer {
       return false;
    }
 
-   static const size_t max_recursion_depth = 32; // arbitrary depth to prevent infinite recursion
-
    typedef std::function<fc::variant(fc::datastream<const char*>&, bool, bool)>  unpack_function;
    typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool, bool)>  pack_function;
+
+   void add_specialized_unpack_pack( const string& name, std::pair<abi_serializer::unpack_function, abi_serializer::pack_function> unpack_pack );
+
+   static const size_t max_recursion_depth = 32; // arbitrary depth to prevent infinite recursion
 
 private:
 
@@ -134,6 +136,7 @@ namespace impl {
              std::is_same<T, packed_transaction>::value ||
              std::is_same<T, transaction_trace>::value ||
              std::is_same<T, transaction_receipt>::value ||
+             std::is_same<T, base_action_trace>::value ||
              std::is_same<T, action_trace>::value ||
              std::is_same<T, signed_transaction>::value ||
              std::is_same<T, signed_block>::value ||

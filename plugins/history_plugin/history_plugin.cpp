@@ -139,29 +139,68 @@ namespace eosio {
       public:
          bool bypass_filter = false;
          std::set<filter_entry> filter_on;
+         std::set<filter_entry> filter_out;
          chain_plugin*          chain_plug = nullptr;
          fc::optional<scoped_connection> applied_transaction_connection;
 
-         bool filter( const action_trace& act ) {
-            if( bypass_filter )
-               return true;
-            if( filter_on.find({ act.receipt.receiver, act.act.name, 0 }) != filter_on.end() )
-               return true;
-            for( const auto& a : act.act.authorization )
-               if( filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end() )
-                  return true;
-            return false;
-         }
+          bool filter(const action_trace& act) {
+            bool pass_on = false;
+            if (bypass_filter) {
+              pass_on = true;
+            }
+            if (filter_on.find({ act.receipt.receiver, 0, 0 }) != filter_on.end()) {
+              pass_on = true;
+            }
+            if (filter_on.find({ act.receipt.receiver, act.act.name, 0 }) != filter_on.end()) {
+              pass_on = true;
+            }
+            for (const auto& a : act.act.authorization) {
+              if (filter_on.find({ act.receipt.receiver, 0, a.actor }) != filter_on.end()) {
+                pass_on = true;
+              }
+              if (filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end()) {
+                pass_on = true;
+              }
+            }
+
+            if (!pass_on) {  return false;  }
+
+            if (filter_out.find({ act.receipt.receiver, 0, 0 }) != filter_out.end()) {
+              return false;
+            }
+            if (filter_out.find({ act.receipt.receiver, act.act.name, 0 }) != filter_out.end()) {
+              return false;
+            }
+            for (const auto& a : act.act.authorization) {
+              if (filter_out.find({ act.receipt.receiver, 0, a.actor }) != filter_out.end()) {
+                return false;
+              }
+              if (filter_out.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_out.end()) {
+                return false;
+              }
+            }
+
+            return true;
+          }
 
          set<account_name> account_set( const action_trace& act ) {
             set<account_name> result;
 
             result.insert( act.receipt.receiver );
-            for( const auto& a : act.act.authorization )
+            for( const auto& a : act.act.authorization ) {
                if( bypass_filter ||
+                   filter_on.find({ act.receipt.receiver, 0, 0}) != filter_on.end() ||
+                   filter_on.find({ act.receipt.receiver, 0, a.actor}) != filter_on.end() ||
                    filter_on.find({ act.receipt.receiver, act.act.name, 0}) != filter_on.end() ||
-                   filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end() )
-                  result.insert( a.actor );
+                   filter_on.find({ act.receipt.receiver, act.act.name, a.actor }) != filter_on.end() ) {
+                 if ((filter_out.find({ act.receipt.receiver, 0, 0 }) == filter_out.end()) &&
+                     (filter_out.find({ act.receipt.receiver, 0, a.actor }) == filter_out.end()) &&
+                     (filter_out.find({ act.receipt.receiver, act.act.name, 0 }) == filter_out.end()) &&
+                     (filter_out.find({ act.receipt.receiver, act.act.name, a.actor }) == filter_out.end())) {
+                   result.insert( a.actor );
+                 }
+               }
+            }
             return result;
          }
 
@@ -261,7 +300,11 @@ namespace eosio {
    void history_plugin::set_program_options(options_description& cli, options_description& cfg) {
       cfg.add_options()
             ("filter-on,f", bpo::value<vector<string>>()->composing(),
-             "Track actions which match receiver:action:actor. Actor may be blank to include all. Receiver and Action may not be blank.")
+             "Track actions which match receiver:action:actor. Actor may be blank to include all. Action and Actor both blank allows all from Recieiver. Receiver may not be blank.")
+            ;
+      cfg.add_options()
+            ("filter-out,f", bpo::value<vector<string>>()->composing(),
+             "Do not track actions which match receiver:action:actor. Action and Actor both blank excludes all from Reciever. Actor blank excludes all from reciever:action. Receiver may not be blank.")
             ;
    }
 
@@ -279,13 +322,26 @@ namespace eosio {
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s", s));
                filter_entry fe{v[0], v[1], v[2]};
-               EOS_ASSERT( fe.receiver.value && fe.action.value, fc::invalid_arg_exception,
+               EOS_ASSERT( fe.receiver.value, fc::invalid_arg_exception,
                            "Invalid value ${s} for --filter-on", ("s", s));
                my->filter_on.insert( fe );
             }
          }
+         if( options.count( "filter-out" )) {
+            auto fo = options.at( "filter-out" ).as<vector<string>>();
+            for( auto& s : fo ) {
+               std::vector<std::string> v;
+               boost::split( v, s, boost::is_any_of( ":" ));
+               EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-out", ("s", s));
+               filter_entry fe{v[0], v[1], v[2]};
+               EOS_ASSERT( fe.receiver.value, fc::invalid_arg_exception,
+                           "Invalid value ${s} for --filter-out", ("s", s));
+               my->filter_out.insert( fe );
+            }
+         }
 
          my->chain_plug = app().find_plugin<chain_plugin>();
+         EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
          auto& chain = my->chain_plug->chain();
 
          chain.db().add_index<account_history_index>();

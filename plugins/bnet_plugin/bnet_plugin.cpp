@@ -1038,6 +1038,8 @@ namespace eosio {
               peer_elog(this, "bad packed_transaction_ptr : null pointer");
               EOS_THROW(transaction_exception, "bad transaction");
            }
+           if( app().get_plugin<chain_plugin>().chain().get_read_mode() == chain::db_read_mode::READ_ONLY )
+              return;
 
            auto id = p->id();
           // ilog( "recv trx ${n}", ("n", id) );
@@ -1190,7 +1192,7 @@ namespace eosio {
          }
 
          void on_accepted_transaction( transaction_metadata_ptr trx ) {
-            if( trx->trx.signatures.size() == 0 ) return;
+            if( trx->implicit || trx->scheduled ) return;
             for_each_session( [trx]( auto ses ){ ses->on_accepted_transaction( trx ); } );
          }
 
@@ -1367,6 +1369,11 @@ namespace eosio {
                                        my->on_bad_block(b);
                                 });
 
+
+      if( app().get_plugin<chain_plugin>().chain().get_read_mode() == chain::db_read_mode::READ_ONLY ) {
+         my->_request_trx = false;
+         ilog( "setting bnet-no-trx to true since in read-only mode" );
+      }
 
       const auto address = boost::asio::ip::make_address( my->_bnet_endpoint_address );
       my->_ioc.reset( new boost::asio::io_context{my->_num_threads} );

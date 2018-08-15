@@ -220,7 +220,7 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! "${TEMP_DIR}"/boost_1_67_0/b2 install
+		if ! "${TEMP_DIR}"/boost_1_67_0/b2 -j"${CPU_CORE}" install
 		then
 			printf "\\n\\tInstallation of boost libraries failed. 1\\n"
 			printf "\\tExiting now.\\n\\n"
@@ -474,6 +474,18 @@
 		if ! git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
 		then
 			printf "\\tUnable to clone llvm repo @ https://github.com/llvm-mirror/llvm.git.\\n"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! cd "${TEMP_DIR}/llvm-compiler/llvm"
+		then
+			printf "\\n\\tUnable to enter directory %s/llvm-compiler/llvm.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! $(curl https://bugzilla.redhat.com/attachment.cgi?id=1389687 | git apply)
+		then
+			printf "\\n\\tUnable to apply patch https://bugzilla.redhat.com/attachment.cgi?id=1389687.\\n"
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
