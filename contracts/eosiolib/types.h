@@ -27,13 +27,13 @@ typedef uint64_t account_name;
 
 /**
  * @brief Name of a permission
- * @details Name of an account
+ * @details Name of a permission
  */
 typedef uint64_t permission_name;
 
 /**
  * @brief Name of a table
- * @details Name of atable
+ * @details Name of a table
  */
 typedef uint64_t table_name;
 
