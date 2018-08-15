@@ -75,6 +75,8 @@ public:
    read_only(const controller& db, const fc::microseconds& abi_serializer_max_time)
       : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
 
+   void validate() const {}
+
    using get_info_params = empty;
 
    struct get_info_results {
@@ -474,6 +476,7 @@ class read_write {
    const fc::microseconds abi_serializer_max_time;
 public:
    read_write(controller& db, const fc::microseconds& abi_serializer_max_time);
+   void validate() const;
 
    using push_block_params = chain::signed_block;
    using push_block_results = empty;
