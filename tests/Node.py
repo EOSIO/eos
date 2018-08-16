@@ -245,27 +245,30 @@ class Node(object):
 
     # pylint: disable=too-many-branches
     def getTransaction(self, transId, silentErrors=False, exitOnError=False, delayedRetry=True):
-        firstExitOnError=not delayedRetry and exitOnError
+        exitOnErrorForDelayed=not delayedRetry and exitOnError
+        timeout=3
         if not self.enableMongo:
             cmdDesc="get transaction"
             cmd="%s %s" % (cmdDesc, transId)
             msg="(transaction id=%s)" % (transId);
-            trans=self.processCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=firstExitOnError, exitMsg=msg)
-            if trans is not None or not delayedRetry:
-                return trans
+            for i in range(0,(int(60/timeout) - 1)):
+                trans=self.processCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnErrorForDelayed, exitMsg=msg)
+                if trans is not None or not delayedRetry:
+                    return trans
+                if Utils.Debug: Utils.Print("Could not find transaction with id %s, delay and retry" % (transId))
+                time.sleep(timeout)
 
-            # delay long enough to ensure
-            if Utils.Debug: Utils.Print("Could not find transaction with id %s, delay and retry" % (transId))
-            time.sleep(1)
+            # either it is there or the transaction has timed out
             return self.processCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
         else:
-            trans=self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=firstExitOnError)
-            if trans is not None or not delayedRetry:
-                return trans
+            for i in range(0,(int(60/timeout) - 1)):
+                trans=self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=exitOnErrorForDelayed)
+                if trans is not None or not delayedRetry:
+                    return trans
+                if Utils.Debug: Utils.Print("Could not find transaction with id %s in mongodb, delay and retry" % (transId))
+                time.sleep(timeout)
 
-            if Utils.Debug: Utils.Print("Could not find transaction with id %s in mongodb, delay and retry" % (transId))
-            time.sleep(3)
-            return self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=firstExitOnError)
+            return self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=exitOnError)
 
     def getTransactionMdb(self, transId, silentErrors=False, exitOnError=False):
         """Get transaction from MongoDB. Since DB only contains finalized blocks, transactions can take a while to appear in DB."""
@@ -757,9 +760,9 @@ class Node(object):
             return None
 
     # publish contract and return transaction as json object
-    def publishContract(self, account, contractDir, wastFile, abiFile, waitForTransBlock=False, shouldFail=False):
+    def publishContract(self, account, contractDir, wasmFile, abiFile, waitForTransBlock=False, shouldFail=False):
         cmd="%s %s -v set contract -j %s %s" % (Utils.EosClientPath, self.endpointArgs, account, contractDir)
-        cmd += "" if wastFile is None else (" "+ wastFile)
+        cmd += "" if wasmFile is None else (" "+ wasmFile)
         cmd += "" if abiFile is None else (" " + abiFile)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None

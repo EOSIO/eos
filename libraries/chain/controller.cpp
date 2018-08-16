@@ -1423,6 +1423,7 @@ void controller::push_confirmation( const header_confirmation& c ) {
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
    validate_db_available_size();
+   EOS_ASSERT( get_read_mode() != chain::db_read_mode::READ_ONLY, transaction_type_exception, "push transaction not allowed in read-only mode" );
    EOS_ASSERT( trx && !trx->implicit && !trx->scheduled, transaction_type_exception, "Implicit/Scheduled transaction not allowed" );
    return my->push_transaction(trx, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
 }

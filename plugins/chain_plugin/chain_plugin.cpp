@@ -9,7 +9,6 @@
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/producer_object.hpp>
 #include <eosio/chain/config.hpp>
-#include <eosio/chain/types.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/reversible_block_object.hpp>
@@ -40,6 +39,8 @@ std::ostream& operator<<(std::ostream& osm, eosio::chain::db_read_mode m) {
       osm << "speculative";
    } else if ( m == eosio::chain::db_read_mode::HEAD ) {
       osm << "head";
+   } else if ( m == eosio::chain::db_read_mode::READ_ONLY ) {
+      osm << "read-only";
    } else if ( m == eosio::chain::db_read_mode::IRREVERSIBLE ) {
       osm << "irreversible";
    }
@@ -65,6 +66,8 @@ void validate(boost::any& v,
      v = boost::any(eosio::chain::db_read_mode::SPECULATIVE);
   } else if ( s == "head" ) {
      v = boost::any(eosio::chain::db_read_mode::HEAD);
+  } else if ( s == "read-only" ) {
+     v = boost::any(eosio::chain::db_read_mode::READ_ONLY);
   } else if ( s == "irreversible" ) {
      v = boost::any(eosio::chain::db_read_mode::IRREVERSIBLE);
   } else {
@@ -231,9 +234,11 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("key-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Public key added to blacklist of keys that should not be included in authorities (may specify multiple times)")
          ("read-mode", boost::program_options::value<eosio::chain::db_read_mode>()->default_value(eosio::chain::db_read_mode::SPECULATIVE),
-          "Database read mode (\"speculative\" or \"head\").\n"// or \"irreversible\").\n"
+          "Database read mode (\"speculative\", \"head\", or \"read-only\").\n"// or \"irreversible\").\n"
           "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
-          "In \"head\" mode database contains changes done up to the current head block.\n")
+          "In \"head\" mode database contains changes done up to the current head block.\n"
+          "In \"read-only\" mode database contains incoming block changes but no speculative transaction processing.\n"
+          )
           //"In \"irreversible\" mode database contains changes done up the current irreversible block.\n")
          ("validation-mode", boost::program_options::value<eosio::chain::validation_mode>()->default_value(eosio::chain::validation_mode::FULL),
           "Chain validation mode (\"full\" or \"light\").\n"
@@ -657,6 +662,16 @@ void chain_plugin::plugin_shutdown() {
    my->chain.reset();
 }
 
+chain_apis::read_write::read_write(controller& db, const fc::microseconds& abi_serializer_max_time)
+: db(db)
+, abi_serializer_max_time(abi_serializer_max_time)
+{
+}
+
+void chain_apis::read_write::validate() const {
+   EOS_ASSERT( db.get_read_mode() != chain::db_read_mode::READ_ONLY, missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
+}
+
 chain_apis::read_write chain_plugin::get_read_write_api() {
    return chain_apis::read_write(chain(), get_abi_serializer_max_time());
 }
@@ -1042,31 +1057,31 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
    } else {
       EOS_ASSERT( !p.key_type.empty(), chain::contract_table_query_exception, "key type required for non-primary index" );
 
-      if (p.key_type == "i64" || p.key_type == "name") {
+      if (p.key_type == chain_apis::i64 || p.key_type == "name") {
          return get_table_rows_by_seckey<index64_index, uint64_t>(p, abi, [](uint64_t v)->uint64_t {
             return v;
          });
       }
-      else if (p.key_type == "i128") {
+      else if (p.key_type == chain_apis::i128) {
          return get_table_rows_by_seckey<index128_index, uint128_t>(p, abi, [](uint128_t v)->uint128_t {
             return v;
          });
       }
-      else if (p.key_type == "i256") {
-         return get_table_rows_by_seckey<index256_index, uint256_t>(p, abi, [](uint256_t v)->key256_t {
-            key256_t k;
-            k[0] = ((uint128_t *)&v)[0];
-            k[1] = ((uint128_t *)&v)[1];
-            return k;
-         });
+      else if (p.key_type == chain_apis::i256) {
+         if ( p.encode_type == chain_apis::hex) {
+            using  conv = keytype_converter<chain_apis::sha256,chain_apis::hex>;
+            return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
+         }
+         using  conv = keytype_converter<chain_apis::i256>;
+         return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
       }
-      else if (p.key_type == "float64") {
+      else if (p.key_type == chain_apis::float64) {
          return get_table_rows_by_seckey<index_double_index, double>(p, abi, [](double v)->float64_t {
             float64_t f = *(float64_t *)&v;
             return f;
          });
       }
-      else if (p.key_type == "float128") {
+      else if (p.key_type == chain_apis::float128) {
          return get_table_rows_by_seckey<index_long_double_index, double>(p, abi, [](double v)->float128_t{
             float64_t f = *(float64_t *)&v;
             float128_t f128;
@@ -1074,13 +1089,13 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
             return f128;
          });
       }
-      else if (p.key_type == "sha256") {
-          return get_table_rows_by_seckey<index256_index, checksum256_type>(p, abi, [](const checksum256_type& v)->key256_t {
-              key256_t k;
-              k[0] = ((uint128_t *)&v._hash)[0];
-              k[1] = ((uint128_t *)&v._hash)[1];
-              return k;
-          });
+      else if (p.key_type == chain_apis::sha256) {
+         using  conv = keytype_converter<chain_apis::sha256,chain_apis::hex>;
+         return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
+      }
+      else if(p.key_type == chain_apis::ripemd160) {
+         using  conv = keytype_converter<chain_apis::ripemd160,chain_apis::hex>;
+         return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
       }
       EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: ${t}", ("t", p.key_type));
    }
