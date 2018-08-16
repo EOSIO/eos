@@ -239,7 +239,7 @@ namespace eosio {
                   } );
 
                } else {
-                  wlog( "404 - not found: ${ep}", ("ep", resource));
+                  dlog( "404 - not found: ${ep}", ("ep", resource));
                   error_results results{websocketpp::http::status_code::not_found,
                                         "Not Found", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Endpoint" )), verbose_http_errors )};
                   con->set_body( fc::json::to_string( results ));
@@ -460,12 +460,9 @@ namespace eosio {
          } catch (chain::tx_duplicate& e) {
             error_results results{409, "Conflict", error_results::error_info(e, verbose_http_errors)};
             cb( 409, fc::json::to_string( results ));
-         } catch (chain::transaction_exception& e) {
-            error_results results{400, "Bad Request", error_results::error_info(e, verbose_http_errors)};
-            cb( 400, fc::json::to_string( results ));
          } catch (fc::eof_exception& e) {
-            error_results results{400, "Bad Request", error_results::error_info(e, verbose_http_errors)};
-            cb( 400, fc::json::to_string( results ));
+            error_results results{422, "Unprocessable Entity", error_results::error_info(e, verbose_http_errors)};
+            cb( 422, fc::json::to_string( results ));
             elog( "Unable to parse arguments to ${api}.${call}", ("api", api_name)( "call", call_name ));
             dlog("Bad arguments: ${args}", ("args", body));
          } catch (fc::exception& e) {

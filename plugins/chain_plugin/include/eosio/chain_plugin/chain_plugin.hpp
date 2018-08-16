@@ -14,8 +14,10 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/plugin_interface.hpp>
+#include <eosio/chain/types.hpp>
 
 #include <boost/container/flat_set.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
 
 #include <fc/static_variant.hpp>
 
@@ -24,15 +26,19 @@ namespace fc { class variant; }
 namespace eosio {
    using chain::controller;
    using std::unique_ptr;
+   using std::pair;
    using namespace appbase;
    using chain::name;
    using chain::uint128_t;
    using chain::public_key_type;
+   using chain::transaction;
+   using chain::transaction_id_type;
    using fc::optional;
    using boost::container::flat_set;
    using chain::asset;
    using chain::authority;
    using chain::account_name;
+   using chain::action_name;
    using chain::abi_def;
    using chain::abi_serializer;
 
@@ -69,6 +75,8 @@ public:
    read_only(const controller& db, const fc::microseconds& abi_serializer_max_time)
       : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
 
+   void validate() const {}
+
    using get_info_params = empty;
 
    struct get_info_results {
@@ -88,6 +96,7 @@ public:
       uint64_t                block_net_limit = 0;
       //string                  recent_slots;
       //double                  participation_rate = 0;
+      optional<string>        server_version_string;
    };
    get_info_results get_info(const get_info_params&) const;
 
@@ -203,6 +212,10 @@ public:
 
    get_required_keys_result get_required_keys( const get_required_keys_params& params)const;
 
+   using get_transaction_id_params = transaction;
+   using get_transaction_id_result = transaction_id_type;
+
+   get_transaction_id_result get_transaction_id( const get_transaction_id_params& params)const;
 
    struct get_block_params {
       string block_num_or_id;
@@ -227,6 +240,7 @@ public:
       uint32_t    limit = 10;
       string      key_type;  // type of key specified by index_position
       string      index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
+      string      encode_type{"dec"}; //dec, hex , default=dec
     };
 
    struct get_table_rows_result {
@@ -443,6 +457,7 @@ public:
             }
 
             if (++count == p.limit || fc::time_point::now() > end) {
+               ++itr;
                break;
             }
          }
@@ -460,8 +475,8 @@ class read_write {
    controller& db;
    const fc::microseconds abi_serializer_max_time;
 public:
-   read_write(controller& db, const fc::microseconds& abi_serializer_max_time)
-         : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
+   read_write(controller& db, const fc::microseconds& abi_serializer_max_time);
+   void validate() const;
 
    using push_block_params = chain::signed_block;
    using push_block_results = empty;
@@ -481,6 +496,65 @@ public:
 
    friend resolver_factory<read_write>;
 };
+
+ //support for --key_types [sha256,ripemd160] and --encoding [dec/hex]
+ constexpr const char i64[]       = "i64";
+ constexpr const char i128[]      = "i128";
+ constexpr const char i256[]      = "i256";
+ constexpr const char float64[]   = "float64";
+ constexpr const char float128[]  = "float128";
+ constexpr const char sha256[]    = "sha256";
+ constexpr const char ripemd160[] = "ripemd160";
+ constexpr const char dec[]       = "dec";
+ constexpr const char hex[]       = "hex";
+
+
+ template<const char*key_type , const char *encoding=chain_apis::dec>
+ struct keytype_converter ;
+
+ template<>
+ struct keytype_converter<chain_apis::sha256, chain_apis::hex> {
+     using input_type = chain::checksum256_type;
+     using index_type = chain::index256_index;
+     static auto function() {
+        return [](const input_type& v) {
+            chain::key256_t k;
+            k[0] = ((uint128_t *)&v._hash)[0]; //0-127
+            k[1] = ((uint128_t *)&v._hash)[1]; //127-256
+            return k;
+        };
+     }
+ };
+
+ //key160 support with padding zeros in the end of key256
+ template<>
+ struct keytype_converter<chain_apis::ripemd160, chain_apis::hex> {
+     using input_type = chain::checksum160_type;
+     using index_type = chain::index256_index;
+     static auto function() {
+        return [](const input_type& v) {
+            chain::key256_t k;
+            memset(k.data(), 0, sizeof(k));
+            memcpy(k.data(), v._hash, sizeof(v._hash));
+            return k;
+        };
+     }
+ };
+
+ template<>
+ struct keytype_converter<chain_apis::i256> {
+     using input_type = boost::multiprecision::uint256_t;
+     using index_type = chain::index256_index;
+     static auto function() {
+        return [](const input_type v) {
+            chain::key256_t k;
+            k[0] = ((uint128_t *)&v)[0]; //0-127
+            k[1] = ((uint128_t *)&v)[1]; //127-256
+            return k;
+        };
+     }
+ };
+
 } // namespace chain_apis
 
 class chain_plugin : public plugin<chain_plugin> {
@@ -541,13 +615,13 @@ private:
 FC_REFLECT( eosio::chain_apis::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
-(server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit) )
+(server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)(server_version_string) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
 FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_num_or_id))
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));

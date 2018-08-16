@@ -24,8 +24,10 @@ bool is_empty_cell(const uint8_t& cell) {
  * @return true if movement is valid
  */
 bool is_valid_movement(const uint16_t& row, const uint16_t& column, const vector<uint8_t>& board) {
-   uint32_t movement_location = row * tic_tac_toe::game::board_width + column;
-   bool is_valid = movement_location < board.size() && is_empty_cell(board[movement_location]);
+   uint16_t board_width = tic_tac_toe::game::board_width;
+   uint16_t board_height = tic_tac_toe::game::board_height;
+   uint32_t movement_location = row * board_width + column;
+   bool is_valid = column < board_width && row < board_height && is_empty_cell(board[movement_location]);
    return is_valid;
 }
 

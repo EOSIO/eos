@@ -102,9 +102,6 @@ namespace eosio { namespace client { namespace http {
    const string get_key_accounts_func = history_func_base + "/get_key_accounts";
    const string get_controlled_accounts_func = history_func_base + "/get_controlled_accounts";
 
-   const string account_history_func_base = "/v1/account_history";
-   const string get_transactions_func = account_history_func_base + "/get_transactions";
-
    const string net_func_base = "/v1/net";
    const string net_connect = net_func_base + "/connect";
    const string net_disconnect = net_func_base + "/disconnect";

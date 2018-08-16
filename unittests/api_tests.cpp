@@ -182,7 +182,7 @@ transaction_trace_ptr CallFunction(TESTER& test, T ac, const vector<char>& data,
 }
 
 #define CALL_TEST_FUNCTION(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
-#define CALL_TEST_FUNCTION_SYSTEM(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {N(eosio)} )
+#define CALL_TEST_FUNCTION_SYSTEM(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {config::system_account_name} )
 #define CALL_TEST_FUNCTION_SCOPE(_TESTER, CLS, MTH, DATA, ACCOUNT) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, ACCOUNT)
 #define CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION(_TESTER, CLS, MTH, DATA, EXC, EXC_MESSAGE) \
 BOOST_CHECK_EXCEPTION( \
@@ -576,7 +576,7 @@ BOOST_FIXTURE_TEST_CASE(cfa_stateful_api, TESTER)  try {
 	set_code( N(testapi), test_api_wast );
 
    account_name a = N(testapi2);
-   account_name creator = N(eosio);
+   account_name creator = config::system_account_name;
 
    signed_transaction trx;
 
@@ -606,7 +606,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_failed, TESTER)  try {
 	set_code( N(testapi), test_api_wast );
 
    account_name a = N(testapi2);
-   account_name creator = N(eosio);
+   account_name creator = config::system_account_name;
 
    signed_transaction trx;
 
@@ -642,7 +642,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
 	set_code( N(testapi), test_api_wast );
 
    account_name a = N(testapi2);
-   account_name creator = N(eosio);
+   account_name creator = config::system_account_name;
 
    signed_transaction trx;
 
@@ -1019,7 +1019,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       produce_block( fc::seconds(2) );
 
       //check that it gets executed afterwards
-      BOOST_CHECK(trace);
+      BOOST_REQUIRE(trace);
 
       //confirm printed message
       BOOST_TEST(!trace->action_traces.empty());
@@ -1045,7 +1045,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
          control->push_scheduled_transaction(trx, fc::time_point::maximum());
       }
       BOOST_CHECK_EQUAL(1, count);
-      BOOST_CHECK(trace);
+      BOOST_REQUIRE(trace);
       BOOST_CHECK_EQUAL( 1, trace->action_traces.size() );
       c.disconnect();
    }
@@ -1098,7 +1098,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 
    produce_blocks(10);
 
-{
+   {
    // Trigger a tx which in turn sends a deferred tx with payer != receiver
    // Payer is alice in this case, this tx should fail since we don't have the authorization of alice
    dtt_action dtt_act1;

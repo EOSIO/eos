@@ -21,6 +21,7 @@ import shutil
 
 
 Print=testUtils.Utils.Print
+errorExit=Utils.errorExit
 
 StagedNodeInfo=namedtuple("StagedNodeInfo", "config logging")
 
@@ -102,8 +103,8 @@ private-key = ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbw
 producer-name = initu
 plugin = eosio::producer_plugin
 plugin = eosio::chain_api_plugin
-plugin = eosio::account_history_plugin
-plugin = eosio::account_history_api_plugin"""
+plugin = eosio::history_plugin
+plugin = eosio::history_api_plugin"""
 
 
 config01="""genesis-json = ./genesis.json
@@ -122,8 +123,8 @@ private-key = ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbw
 producer-name = defproducerb
 plugin = eosio::producer_plugin
 plugin = eosio::chain_api_plugin
-plugin = eosio::account_history_plugin
-plugin = eosio::account_history_api_plugin"""
+plugin = eosio::history_plugin
+plugin = eosio::history_api_plugin"""
 
 
 producers="""producer-name = defproducerd
@@ -191,11 +192,6 @@ def stageScenario(stagedNodeInfos):
 
 def cleanStaging():
     os.path.exists(stagingDir) and shutil.rmtree(stagingDir)
-
-
-def errorExit(msg="", errorCode=1):
-    Print("ERROR:", msg)
-    exit(errorCode)
 
 def error(msg="", errorCode=1):
     Print("ERROR:", msg)
@@ -269,9 +265,6 @@ def myTest(transWillEnterBlock):
         testWalletName="test"
         Print("Creating wallet \"%s\"." % (testWalletName))
         testWallet=walletMgr.create(testWalletName)
-        if testWallet is None:
-            error("Failed to create wallet %s." % (testWalletName))
-            return False
 
         for account in accounts:
             Print("Importing keys for account %s into wallet %s." % (account.name, testWallet.name))
@@ -281,9 +274,6 @@ def myTest(transWillEnterBlock):
 
         node=cluster.getNode(0)
         node2=cluster.getNode(1)
-        if node is None or node2 is None:
-            error("Cluster in bad state, received None node")
-            return False
 
         defproduceraAccount=testUtils.Cluster.defproduceraAccount
 
@@ -298,10 +288,10 @@ def myTest(transWillEnterBlock):
             error("Failed to create account %s" % (currencyAccount.name))
             return False
 
-        wastFile="contracts/currency/currency.wast"
-        abiFile="contracts/currency/currency.abi"
+        wasmFile="currency.wasm"
+        abiFile="currency.abi"
         Print("Publish contract")
-        trans=node.publishContract(currencyAccount.name, wastFile, abiFile, waitForTransBlock=True)
+        trans=node.publishContract(currencyAccount.name, wasmFile, abiFile, waitForTransBlock=True)
         if trans is None:
             error("Failed to publish contract.")
             return False
@@ -338,14 +328,14 @@ def myTest(transWillEnterBlock):
                 return False
 
             Print("Get details for transaction %s" % (transId))
-            transaction=node2.getTransaction(transId)
+            transaction=node2.getTransaction(transId, exitOnError=True)
             signature=transaction["transaction"]["signatures"][0]
 
             blockNum=int(transaction["transaction"]["ref_block_num"])
             blockNum += 1
             Print("Our transaction is in block %d" % (blockNum))
 
-            block=node2.getBlock(blockNum)
+            block=node2.getBlock(blockNum, exitOnError=True)
             cycles=block["cycles"]
             if len(cycles) > 0:
                 blockTransSignature=cycles[0][0]["user_input"][0]["signatures"][0]
