@@ -1186,12 +1186,10 @@ void producer_plugin_impl::schedule_production_loop() {
       _timer.async_wait([&chain,weak_this,cid=++_timer_corelation_id](const boost::system::error_code& ec) {
          auto self = weak_this.lock();
          if (self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id) {
+            // pending_block_state expected, but can't assert inside async_wait
+            auto block_num = chain.pending_block_state() ? chain.pending_block_state()->block_num : 0;
             auto res = self->maybe_produce_block();
-            if( chain.pending_block_state() ) {
-               fc_dlog( _log, "Producing Block #${num} returned: ${res}", ("num", chain.pending_block_state()->block_num)( "res", res ));
-            } else {
-               fc_dlog( _log, "Producing Block, head block #${num} returned: ${res}", ("num", chain.head_block_state()->block_num)( "res", res ));
-            }
+            fc_dlog( _log, "Producing Block #${num} returned: ${res}", ("num", chain.pending_block_state()->block_num)( "res", res ));
          }
       });
    } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && !production_disabled_by_policy()){
