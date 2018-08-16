@@ -676,18 +676,8 @@ namespace eosio {
 
       vector<transaction_id_type> req_trx;
 
-      struct block_origin {
-         block_id_type id;
-         connection_ptr origin;
-      };
-
-      struct transaction_origin {
-         transaction_id_type id;
-         connection_ptr origin;
-      };
-
-      vector<block_origin> received_blocks;
-      vector<transaction_origin> received_transactions;
+      std::multimap<block_id_type, connection_ptr> received_blocks;
+      std::multimap<transaction_id_type, connection_ptr> received_transactions;
 
       void bcast_transaction (const packed_transaction& msg);
       void rejected_transaction (const transaction_id_type& msg);
@@ -1610,14 +1600,13 @@ namespace eosio {
    //------------------------------------------------------------------------
 
    void dispatch_manager::bcast_block (const signed_block &bsum) {
-      connection_ptr skip;
-      for (auto org = received_blocks.begin(); org != received_blocks.end(); org++) {
-         if (org->id == bsum.id()) {
-            skip = org->origin;
-            received_blocks.erase(org);
-            break;
-         }
+      std::set<connection_ptr> skips;
+      auto range = received_blocks.equal_range(bsum.id());
+      for (auto org = range.first; org != range.second; ++org) {
+         skips.insert(org->second);
       }
+      received_blocks.erase(range.first, range.second);
+
       net_message msg(bsum);
       uint32_t packsiz = fc::raw::pack_size(msg);
       uint32_t msgsiz = packsiz + sizeof(packsiz);
@@ -1630,12 +1619,12 @@ namespace eosio {
 
       peer_block_state pbstate = {bid, bnum, false,true,time_point()};
       // skip will be empty if our producer emitted this block so just send it
-      if (( large_msg_notify && msgsiz > just_send_it_max) && skip) {
+      if (( large_msg_notify && msgsiz > just_send_it_max) && !skips.empty()) {
          fc_ilog(logger, "block size is ${ms}, sending notify",("ms", msgsiz));
-         connection_wptr weak_skip = skip;
-         my_impl->send_all(pending_notify, [weak_skip, pbstate](connection_ptr c) -> bool {
-            if (c == weak_skip.lock() || !c->current())
+         my_impl->send_all(pending_notify, [&skips, pbstate](connection_ptr c) -> bool {
+            if (skips.find(c) != skips.end() || !c->current())
                return false;
+
             bool unknown = c->add_peer_block(pbstate);
             if (!unknown) {
                elog("${p} already has knowledge of block ${b}", ("p",c->peer_name())("b",pbstate.block_num));
@@ -1646,7 +1635,7 @@ namespace eosio {
       else {
          pbstate.is_known = true;
          for (auto cp : my_impl->connections) {
-            if (cp == skip || !cp->current()) {
+            if (skips.find(cp) != skips.end() || !cp->current()) {
                continue;
             }
             cp->add_peer_block(pbstate);
@@ -1656,7 +1645,7 @@ namespace eosio {
    }
 
    void dispatch_manager::recv_block (connection_ptr c, const block_id_type& id, uint32_t bnum) {
-      received_blocks.emplace_back((block_origin){id, c});
+      received_blocks.insert(std::make_pair(id, c));
       if (c &&
           c->last_req &&
           c->last_req->req_blocks.mode != none &&
@@ -1672,25 +1661,19 @@ namespace eosio {
 
    void dispatch_manager::rejected_block (const block_id_type& id) {
       fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",id));
-      for (auto org = received_blocks.begin(); org != received_blocks.end(); org++) {
-         if (org->id == id) {
-            received_blocks.erase(org);
-            break;
-         }
-      }
+      auto range = received_blocks.equal_range(id);
+      received_blocks.erase(range.first, range.second);
    }
 
    void dispatch_manager::bcast_transaction (const packed_transaction& trx) {
-      connection_ptr skip;
+      std::set<connection_ptr> skips;
       transaction_id_type id = trx.id();
 
-      for (auto org = received_transactions.begin(); org != received_transactions.end(); org++) {
-         if (org->id == id) {
-            skip = org->origin;
-            received_transactions.erase(org);
-            break;
-         }
+      auto range = received_transactions.equal_range(id);
+      for (auto org = range.first; org != range.second; ++org) {
+         skips.insert(org->second);
       }
+      received_transactions.erase(range.first, range.second);
 
       for (auto ref = req_trx.begin(); ref != req_trx.end(); ++ref) {
          if (*ref == id) {
@@ -1723,9 +1706,8 @@ namespace eosio {
       my_impl->local_txns.insert(std::move(nts));
 
       if( !large_msg_notify || bufsiz <= just_send_it_max) {
-         connection_wptr weak_skip = skip;
-         my_impl->send_all( trx, [weak_skip, id, trx_expiration](connection_ptr c) -> bool {
-               if(c == weak_skip.lock() || c->syncing ) {
+         my_impl->send_all( trx, [id, &skips, trx_expiration](connection_ptr c) -> bool {
+               if( skips.find(c) != skips.end() || c->syncing ) {
                   return false;
                }
                const auto& bs = c->trx_state.find(id);
@@ -1745,9 +1727,8 @@ namespace eosio {
          pending_notify.known_trx.mode = normal;
          pending_notify.known_trx.ids.push_back( id );
          pending_notify.known_blocks.mode = none;
-         connection_wptr weak_skip = skip;
-         my_impl->send_all(pending_notify, [weak_skip, id, trx_expiration](connection_ptr c) -> bool {
-               if (c == weak_skip.lock() || c->syncing) {
+         my_impl->send_all(pending_notify, [id, &skips, trx_expiration](connection_ptr c) -> bool {
+               if (skips.find(c) != skips.end() || c->syncing) {
                   return false;
                }
                const auto& bs = c->trx_state.find(id);
@@ -1766,7 +1747,7 @@ namespace eosio {
    }
 
    void dispatch_manager::recv_transaction (connection_ptr c, const transaction_id_type& id) {
-      received_transactions.emplace_back((transaction_origin){id, c});
+      received_transactions.insert(std::make_pair(id, c));
       if (c &&
           c->last_req &&
           c->last_req->req_trx.mode != none &&
@@ -1781,12 +1762,8 @@ namespace eosio {
 
    void dispatch_manager::rejected_transaction (const transaction_id_type& id) {
       fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",id));
-      for (auto org = received_transactions.begin(); org != received_transactions.end(); org++) {
-         if (org->id == id) {
-            received_transactions.erase(org);
-            break;
-         }
-      }
+      auto range = received_transactions.equal_range(id);
+      received_transactions.erase(range.first, range.second);
    }
 
    void dispatch_manager::recv_notice (connection_ptr c, const notice_message& msg, bool generated) {
