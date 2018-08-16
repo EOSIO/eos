@@ -1664,7 +1664,7 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
       abi_serializer::from_variant(params.transaction, pretty_input, resolver, abi_serializer_max_time);
    } EOS_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction")
 
-   auto required_keys_set = db.get_authorization_manager().get_required_keys(pretty_input, params.available_keys);
+   auto required_keys_set = db.get_authorization_manager().get_required_keys(pretty_input, params.available_keys, pretty_input.delay_sec);
    get_required_keys_result result;
    result.required_keys = required_keys_set;
    return result;
