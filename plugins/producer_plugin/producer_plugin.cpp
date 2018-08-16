@@ -1189,7 +1189,7 @@ void producer_plugin_impl::schedule_production_loop() {
             // pending_block_state expected, but can't assert inside async_wait
             auto block_num = chain.pending_block_state() ? chain.pending_block_state()->block_num : 0;
             auto res = self->maybe_produce_block();
-            fc_dlog( _log, "Producing Block #${num} returned: ${res}", ("num", chain.pending_block_state()->block_num)( "res", res ));
+            fc_dlog(_log, "Producing Block #${num} returned: ${res}", ("num", block_num)("res", res));
          }
       });
    } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && !production_disabled_by_policy()){
