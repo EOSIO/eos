@@ -160,7 +160,7 @@ namespace eosio {
      */
    class abi_generator {
       private:
-         static constexpr size_t max_recursion_depth = 25; // arbitrary depth to prevent infinite recursion
+         static const size_t    max_recursion_depth = 25; // arbitrary depth to prevent infinite recursion
          bool                   verbose;
          int                    optimizations;
          abi_def*               output;
@@ -292,6 +292,10 @@ namespace eosio {
          bool is_vector(const string& type_name);
          string add_vector(const clang::QualType& qt, size_t recursion_depth);
 
+         bool is_fixed_array(const clang::QualType& qt);
+         bool is_fixed_array(const string& type_name);
+         string add_fixed_array(const clang::QualType& qt, size_t recursion_depth);
+
          bool is_struct(const clang::QualType& qt);
          string add_struct(const clang::QualType& qt, string full_type_name, size_t recursion_depth);
 
@@ -302,7 +306,8 @@ namespace eosio {
          bool is_struct_specialization(const clang::QualType& qt);
 
          QualType get_vector_element_type(const clang::QualType& qt);
-         string get_vector_element_type(const string& type_name);
+
+         string get_vector_array_element_type(const string& type_name);
 
          clang::QualType get_named_type_if_elaborated(const clang::QualType& qt);
 

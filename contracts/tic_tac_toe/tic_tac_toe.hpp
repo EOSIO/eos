@@ -52,29 +52,30 @@ class tic_tac_toe : public eosio::contract {
       struct game {
          static const uint16_t board_width = 3;
          static const uint16_t board_height = board_width;
-         game() { 
-            initialize_board(); 
-         }
+
          account_name          challenger;
          account_name          host;
          account_name          turn; // = account name of host/ challenger
          account_name          winner = N(none); // = none/ draw/ name of host/ name of challenger
-         std::vector<uint8_t>  board;
+         uint8_t               board[board_width * board_height];
 
-         // Initialize board with empty cell
-         void initialize_board() {
-            board = std::vector<uint8_t>(board_width * board_height, 0);
+         // can not have constructor in table struct
+         void init() {
+            memset(board, 0, sizeof(board));
          }
 
          // Reset game
          void reset_game() {
-            initialize_board();
+            init();
             turn = host;
             winner = N(none);
          }
 
          auto primary_key() const { return challenger; }
-         EOSLIB_SERIALIZE( game, (challenger)(host)(turn)(winner)(board))
+       //  EOSLIB_SERIALIZE serializes fixed array as vector, which is different from boost::pfr::for_each_field
+       //  ensure the abi definition follows the correct form for fixed array:
+       //     - EOSLIB_SERIALIZE => uint8[]
+       //     - default(boost::pfr::for_each_field) => uint8[9]
       };
 
       /**
