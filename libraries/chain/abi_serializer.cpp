@@ -32,14 +32,14 @@ namespace eosio { namespace chain {
    template <typename T>
    auto pack_unpack() {
       return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
-         []( fc::datastream<const char*>& stream, bool is_array, bool is_optional ) -> fc::variant  {
+         []( fc::datastream<const char*>& stream, bool is_array, bool is_optional) -> fc::variant  {
             if( is_array )
                return variant_from_stream<vector<T>>(stream);
             else if ( is_optional )
                return variant_from_stream<optional<T>>(stream);
             return variant_from_stream<T>(stream);
          },
-         []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional ) {
+         []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional ){
             if( is_array )
                fc::raw::pack( ds, var.as<vector<T>>() );
             else if ( is_optional )
@@ -165,12 +165,8 @@ namespace eosio { namespace chain {
       return structs.find(resolve_type(type)) != structs.end();
    }
 
-   bool abi_serializer::is_array(const type_name& type)const {
-      return ends_with(string(type), "[]");
-   }
-
    // one-dimensional fixed size array
-   bool _is_fixed_array(const type_name& type, int &typelen, int &arrsize) {
+   bool _is_fixed_array(const type_name& type, int& typelen, int& arrsize) {
       typelen = 0;
       arrsize = 0;
       auto p = type.find_first_of('[');
@@ -188,15 +184,18 @@ namespace eosio { namespace chain {
       return true;
    }
 
+   bool abi_serializer::is_array(const type_name& type)const {
+      if( ends_with(string(type), "[]") ) return true;
+      int len = 0, arrsize = 0;
+      return _is_fixed_array( type, len, arrsize );
+   }
+
    bool abi_serializer::is_optional(const type_name& type)const {
       return ends_with(string(type), "?");
    }
 
    type_name abi_serializer::fundamental_type(const type_name& type)const {
-      int len, arrsize;
-      if (_is_fixed_array(type, len, arrsize)) {
-         return type_name(string(type).substr(0, len));
-      } else if( is_array(type) ) {
+      if( is_array(type) ) {
          return type_name(string(type).substr(0, type.size()-2));
       } else if ( is_optional(type) ) {
          return type_name(string(type).substr(0, type.size()-1));
@@ -296,15 +295,13 @@ namespace eosio { namespace chain {
       EOS_ASSERT( ++recursion_depth < max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
       EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       type_name rtype = resolve_type(type);
-      int typelen, arrsize;
-      bool fixed_array = _is_fixed_array(rtype, typelen, arrsize);
       auto ftype = fundamental_type(rtype);
       auto btype = built_in_types.find(ftype );
       if( btype != built_in_types.end() ) {
          return btype->second.first(stream, is_array(rtype), is_optional(rtype));
       }
-      if (is_array(rtype) || fixed_array) {
-        fc::unsigned_int size = arrsize;
+      if ( is_array(rtype) ) {
+        fc::unsigned_int size = 0;
         fc::raw::unpack(stream, size);
         vector<fc::variant> vars;
         for( decltype(size.value) i = 0; i < size; ++i ) {
@@ -343,12 +340,10 @@ namespace eosio { namespace chain {
       EOS_ASSERT( ++recursion_depth < max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
       EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       auto rtype = resolve_type(type);
-      int typelen, arrsize;
-      bool fixed_array = _is_fixed_array(rtype, typelen, arrsize);
       auto btype = built_in_types.find(fundamental_type(rtype));
       if( btype != built_in_types.end() ) {
          btype->second.second(var, ds, is_array(rtype), is_optional(rtype));
-      } else if ( is_array(rtype) || fixed_array) {
+      } else if ( is_array(rtype) ) {
          vector<fc::variant> vars = var.get_array();
          fc::raw::pack(ds, (fc::unsigned_int)vars.size());
          for (const auto& var : vars) {

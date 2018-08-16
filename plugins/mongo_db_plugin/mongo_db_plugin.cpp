@@ -536,7 +536,7 @@ optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name 
                            // unpack setabi.abi as abi_def instead of as bytes
                            abis.add_specialized_unpack_pack( "abi_def",
                                  std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
-                                       []( fc::datastream<const char*>& stream, bool is_array, bool is_optional) -> fc::variant {
+                                       []( fc::datastream<const char*>& stream, bool is_array, bool is_optional ) -> fc::variant {
                                           EOS_ASSERT( !is_array && !is_optional, chain::mongo_db_exception, "unexpected abi_def");
                                           chain::bytes temp;
                                           fc::raw::unpack( stream, temp );
