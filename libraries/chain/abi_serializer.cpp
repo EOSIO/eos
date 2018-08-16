@@ -184,8 +184,12 @@ namespace eosio { namespace chain {
       return true;
    }
 
+   bool _is_array( const type_name& type ) {
+      return ends_with( string( type ), "[]" );
+   }
+
    bool abi_serializer::is_array(const type_name& type)const {
-      if( ends_with(string(type), "[]") ) return true;
+      if( _is_array( type ) ) return true;
       int len = 0, arrsize = 0;
       return _is_fixed_array( type, len, arrsize );
    }
@@ -195,7 +199,10 @@ namespace eosio { namespace chain {
    }
 
    type_name abi_serializer::fundamental_type(const type_name& type)const {
-      if( is_array(type) ) {
+      int len = 0, arrsize = 0;
+      if( _is_fixed_array( type, len, arrsize ) ) {
+         return type_name( string( type ).substr( 0, len ));
+      } else if( _is_array(type) ) {
          return type_name(string(type).substr(0, type.size()-2));
       } else if ( is_optional(type) ) {
          return type_name(string(type).substr(0, type.size()-1));
