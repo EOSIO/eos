@@ -2354,7 +2354,6 @@ int main( int argc, char** argv ) {
 
    add_standard_transaction_options(transfer, "sender@active");
    transfer->set_callback([&] {
-      signed_transaction trx;
       if (tx_force_unique && memo.size() == 0) {
          // use the memo to add a nonce
          memo = generate_nonce_string();
