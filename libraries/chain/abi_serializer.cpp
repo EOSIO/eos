@@ -165,8 +165,33 @@ namespace eosio { namespace chain {
       return structs.find(resolve_type(type)) != structs.end();
    }
 
+   // one-dimensional fixed size array
+   bool _is_fixed_array(const type_name& type, int& typelen, int& arrsize) {
+      typelen = 0;
+      arrsize = 0;
+      auto p = type.find_first_of('[');
+      const auto q = type.find_first_of(']');
+      if (p == string::npos || p == 0 || q == string::npos || q != type.length() - 1 || q - p < 2) return false;
+      typelen = p;
+      ++p;
+      if (p >= type.length()) return false;
+      while (p < type.length() && (type[p] >= '0' && type[p] <= '9')) {
+         arrsize = arrsize * 10 + (type[p] - '0');
+         if (arrsize > (size_t)MAX_NUM_ARRAY_ELEMENTS) return false;
+         ++p;
+      }
+      if (!arrsize) return false;
+      return true;
+   }
+
+   bool _is_array( const type_name& type ) {
+      return ends_with( string( type ), "[]" );
+   }
+
    bool abi_serializer::is_array(const type_name& type)const {
-      return ends_with(string(type), "[]");
+      if( _is_array( type ) ) return true;
+      int len = 0, arrsize = 0;
+      return _is_fixed_array( type, len, arrsize );
    }
 
    bool abi_serializer::is_optional(const type_name& type)const {
@@ -174,7 +199,10 @@ namespace eosio { namespace chain {
    }
 
    type_name abi_serializer::fundamental_type(const type_name& type)const {
-      if( is_array(type) ) {
+      int len = 0, arrsize = 0;
+      if( _is_fixed_array( type, len, arrsize ) ) {
+         return type_name( string( type ).substr( 0, len ));
+      } else if( _is_array(type) ) {
          return type_name(string(type).substr(0, type.size()-2));
       } else if ( is_optional(type) ) {
          return type_name(string(type).substr(0, type.size()-1));
@@ -280,7 +308,7 @@ namespace eosio { namespace chain {
          return btype->second.first(stream, is_array(rtype), is_optional(rtype));
       }
       if ( is_array(rtype) ) {
-        fc::unsigned_int size;
+        fc::unsigned_int size = 0;
         fc::raw::unpack(stream, size);
         vector<fc::variant> vars;
         for( decltype(size.value) i = 0; i < size; ++i ) {
@@ -298,7 +326,6 @@ namespace eosio { namespace chain {
         fc::raw::unpack(stream, flag);
         return flag ? _binary_to_variant(ftype, stream, recursion_depth, deadline, max_serialization_time) : fc::variant();
       }
-
       fc::mutable_variant_object mvo;
       _binary_to_variant(rtype, stream, mvo, recursion_depth, deadline, max_serialization_time);
       EOS_ASSERT( mvo.size() > 0, unpack_exception, "Unable to unpack stream ${type}", ("type", type) );
@@ -320,7 +347,6 @@ namespace eosio { namespace chain {
       EOS_ASSERT( ++recursion_depth < max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", max_recursion_depth) );
       EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       auto rtype = resolve_type(type);
-
       auto btype = built_in_types.find(fundamental_type(rtype));
       if( btype != built_in_types.end() ) {
          btype->second.second(var, ds, is_array(rtype), is_optional(rtype));
