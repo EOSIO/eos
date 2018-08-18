@@ -47,6 +47,11 @@
    bldred=${txtbld}$(tput setaf 1)
    txtrst=$(tput sgr0)
 
+   if [ ! -d $INSTALL_PREFIX ]; then
+     printf "\\n\\t$INSTALL_PREFIX must exist. Please run 'mkdir /usr/local/eosio' and make sure it's owned by the user executing this script. \\n\\n"
+     exit 1
+   fi
+
    create_symlink() {
       pushd /usr/local/bin &> /dev/null
       ln -sf ../eosio/bin/$1 $1
