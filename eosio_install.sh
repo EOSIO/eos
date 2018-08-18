@@ -52,6 +52,10 @@
      exit 1
    fi
 
+   if [ -d ~/Library/Application\ Support ] && [ ! -d ~/Library/Application\ Support/eosio/nodeos ]; then 
+     mkdir -p ~/Library/Application\ Support/eosio/nodeos; 
+   fi
+
    create_symlink() {
       pushd /usr/local/bin &> /dev/null
       ln -sf ../eosio/bin/$1 $1
