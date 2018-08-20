@@ -279,7 +279,7 @@ void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_p
 
 void mongo_db_plugin_impl::applied_irreversible_block( const chain::block_state_ptr& bs ) {
    try {
-      if( store_blocks || store_transactions ) {
+      if( store_blocks || store_block_states || store_transactions ) {
          queue( irreversible_block_state_queue, bs );
       }
    } catch (fc::exception& e) {
@@ -913,17 +913,15 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    using bsoncxx::builder::basic::make_document;
    using bsoncxx::builder::basic::kvp;
 
-   auto blocks = mongo_conn[db_name][blocks_col];
-   auto trans = mongo_conn[db_name][trans_col];
 
    const auto block_id = bs->block->id();
    const auto block_id_str = block_id.str();
-   const auto block_num = bs->block->block_num();
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
    if( store_blocks ) {
+      auto blocks = mongo_conn[db_name][blocks_col];
       auto ir_block = find_block( blocks, block_id_str );
       if( !ir_block ) {
          _process_accepted_block( bs );
@@ -939,7 +937,26 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
       blocks.update_one( make_document( kvp( "_id", ir_block->view()["_id"].get_oid() ) ), update_doc.view() );
    }
 
+   if( store_block_states ) {
+      auto block_states = mongo_conn[db_name][block_states_col];
+      auto ir_block = find_block( block_states, block_id_str );
+      if( !ir_block ) {
+         _process_accepted_block( bs );
+         ir_block = find_block( block_states, block_id_str );
+         if( !ir_block ) return; // should never happen
+      }
+
+      auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
+                                                                   kvp( "validated", b_bool{bs->validated} ),
+                                                                   kvp( "in_current_chain", b_bool{bs->in_current_chain} ),
+                                                                   kvp( "updatedAt", b_date{now} ) ) ) );
+
+      block_states.update_one( make_document( kvp( "_id", ir_block->view()["_id"].get_oid() ) ), update_doc.view() );
+   }
+
    if( store_transactions ) {
+      const auto block_num = bs->block->block_num();
+      auto trans = mongo_conn[db_name][trans_col];
       bool transactions_in_block = false;
       mongocxx::options::bulk_write bulk_opts;
       bulk_opts.ordered( false );
