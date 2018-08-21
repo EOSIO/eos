@@ -10,31 +10,18 @@ import json
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
 from testUtils import Account
+from testUtils import EnumType
+from testUtils import addEnum
+from testUtils import unhandledEnumType
 
-def addEnum(enumClassType, type):
-    setattr(enumClassType, type, enumClassType(type))
-
-def unhandledEnumType(type):
-    raise RuntimeError("No case defined for type=%s" % (type.type))
-
-class ReturnType:
-
-    def __init__(self, type):
-        self.type=type
-
-    def __str__(self):
-        return self.type
+class ReturnType(EnumType):
+    pass
 
 addEnum(ReturnType, "raw")
 addEnum(ReturnType, "json")
 
-class BlockType:
-
-    def __init__(self, type):
-        self.type=type
-
-    def __str__(self):
-        return self.type
+class BlockType(EnumType):
+    pass
 
 addEnum(BlockType, "head")
 addEnum(BlockType, "lib")
