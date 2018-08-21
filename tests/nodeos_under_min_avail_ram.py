@@ -144,7 +144,7 @@ try:
     Print("Publish contract")
     trans=nodes[0].publishContract(contractAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:
-        cmdError("%s set contract %s" % (ClientName, contractAccount.name))
+        Utils.cmdError("%s set contract %s" % (ClientName, contractAccount.name))
         errorExit("Failed to publish contract.")
 
     contract=contractAccount.name
