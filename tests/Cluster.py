@@ -812,6 +812,9 @@ class Cluster(object):
         Ensure nodes are inter-connected prior to this call. One way to validate this will be to check if every node has block 1."""
 
         Utils.Print("Starting cluster bootstrap.")
+        if totalProducers is None:
+            totalProducers=totalNodes
+
         biosNode=Node(biosHost, biosPort)
         if not biosNode.checkPulse():
             Utils.Print("ERROR: Bios node doesn't appear to be running...")
