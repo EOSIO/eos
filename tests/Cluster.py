@@ -203,7 +203,7 @@ class Cluster(object):
 
         Utils.Print("Bootstrap cluster.")
         if onlyBios or not useBiosBootFile:
-            self.biosNode=Cluster.bootstrap(totalNodes, prodCount, Cluster.__BiosHost, Cluster.__BiosPort, dontKill, onlyBios)
+            self.biosNode=Cluster.bootstrap(totalNodes, prodCount, totalProducers, Cluster.__BiosHost, Cluster.__BiosPort, dontKill, onlyBios)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False
@@ -323,12 +323,14 @@ class Cluster(object):
         """manually set nodes, alternative to explicit launch"""
         self.nodes=nodes
 
-    def waitOnClusterSync(self, timeout=None, blockType=BlockType.head):
-        """Get head block on node 0, then ensure the block is present on every cluster node."""
+    def waitOnClusterSync(self, timeout=None, blockType=BlockType.head, blockAdvancing=0):
+        """Get head or irrevercible block on node 0, then ensure that block (or that block plus the
+           blockAdvancing) is present on every cluster node."""
         assert(self.nodes)
         assert(len(self.nodes) > 0)
         node=self.nodes[0]
-        targetBlockNum=node.getBlockNum(blockType) #retrieve node 0's head or irrevercible block number 
+        targetBlockNum=node.getBlockNum(blockType) #retrieve node 0's head or irrevercible block number
+        targetBlockNum+=blockAdvancing 
         if Utils.Debug:
             Utils.Print("%s block number on root node: %d" % (blockType.type, targetBlockNum))
         if targetBlockNum == -1:
@@ -649,6 +651,7 @@ class Cluster(object):
 
         pattern=r"^\s*private-key\s*=\W+(\w+)\W+(\w+)\W+$"
         m=re.search(pattern, configStr, re.MULTILINE)
+        regMsg="None" if m is None else "NOT None"
         if m is None:
             if Utils.Debug: Utils.Print("Failed to find producer keys")
             return None
@@ -710,6 +713,7 @@ class Cluster(object):
             keys=Cluster.parseProducerKeys(configFile, node)
             if keys is not None:
                 producerKeys.update(keys)
+            keyMsg="None" if keys is None else len(keys)
 
         return producerKeys
 
@@ -803,7 +807,7 @@ class Cluster(object):
         return biosNode
 
     @staticmethod
-    def bootstrap(totalNodes, prodCount, biosHost, biosPort, dontKill=False, onlyBios=False):
+    def bootstrap(totalNodes, prodCount, totalProducers, biosHost, biosPort, dontKill=False, onlyBios=False):
         """Create 'prodCount' init accounts and deposits 10000000000 SYS in each. If prodCount is -1 will initialize all possible producers.
         Ensure nodes are inter-connected prior to this call. One way to validate this will be to check if every node has block 1."""
 
@@ -815,8 +819,11 @@ class Cluster(object):
 
         producerKeys=Cluster.parseClusterKeys(totalNodes)
         # should have totalNodes node plus bios node
-        if producerKeys is None or len(producerKeys) < (totalNodes+1):
-            Utils.Print("ERROR: Failed to parse private keys from cluster config files.")
+        if producerKeys is None or len(producerKeys) < (totalProducers+1):
+            if producerKeys is None:
+                Utils.Print("ERROR: Failed to parse any producer keys from config files.")
+            else:
+                Utils.Print("ERROR: Failed to parse %d producer keys from cluster config files, only found %d." % (totalNodes+1,len(producerKeys)))
             return None
 
         walletMgr=WalletMgr(True)
@@ -1092,7 +1099,11 @@ class Cluster(object):
             Utils.Print("ERROR: No nodes discovered.")
             return nodes
 
-        if Utils.Debug: Utils.Print("pgrep output: \"%s\"" % psOut)
+        if len(psOut) < 6660:
+            psOutDisplay=psOut
+        else:
+            psOutDisplay=psOut[:6660]+"..."
+        if Utils.Debug: Utils.Print("pgrep output: \"%s\"" % psOutDisplay)
         for i in range(0, totalNodes):
             pattern=r"[\n]?(\d+) (.* --data-dir var/lib/node_%02d .*)\n" % (i)
             m=re.search(pattern, psOut, re.MULTILINE)
@@ -1104,6 +1115,7 @@ class Cluster(object):
             if Utils.Debug: Utils.Print("Node>", instance)
             nodes.append(instance)
 
+        if Utils.Debug: Utils.Print("Found %d nodes" % (len(nodes)))
         return nodes
 
     # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
