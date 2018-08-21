@@ -1036,6 +1036,42 @@ class Node(object):
         else:
             return True
 
+
+    def getBlockProducer(self, blockNum, timeout=None, waitForBlock=True, exitOnError=True):
+        if waitForBlock:
+            self.waitForBlock(blockNum, timeout=timeout)
+        block=self.getBlock(blockNum, exitOnError=exitOnError)
+        blockProducer=block["producer"]
+        if blockProducer is None and exitOnError:
+            Utils.cmdError("could not get producer for block number %s" % (blockNum))
+            errorExit("Failed to get block's producer")
+        return blockProducer
+
+    def getNextCleanProductionCycle(self, trans):
+        transId=Node.getTransId(trans)
+        rounds=21*12*2  # max time to ensure that at least 2/3+1 of producers x blocks per producer x at least 2 times
+        self.waitForTransFinalization(transId, timeout=rounds/2)
+        irreversibleBlockNum=self.getIrreversibleBlockNum()
+
+        # The voted schedule should be promoted now, then need to wait for that to become irreversible
+        votingTallyWindow=120  #could be up to 120 blocks before the votes were tallied
+        promotedBlockNum=self.getHeadBlockNum()+votingTallyWindow
+        self.waitForIrreversibleBlock(promotedBlockNum, timeout=rounds/2)
+
+        ibnSchedActive=self.getIrreversibleBlockNum()
+
+        blockNum=self.getHeadBlockNum()
+        Utils.Print("Searching for clean production cycle blockNum=%s ibn=%s  transId=%s  promoted bn=%s  ibn for schedule active=%s" % (blockNum,irreversibleBlockNum,transId,promotedBlockNum,ibnSchedActive))
+        blockProducer=self.getBlockProducer(blockNum)
+        blockNum+=1
+        Utils.Print("Advance until the next block producer is retrieved")
+        while blockProducer == self.getBlockProducer(blockNum):
+            blockNum+=1
+
+        blockProducer=self.getBlockProducer(blockNum)
+        return blockNum
+
+
     # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
     def relaunch(self, nodeId, chainArg, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None):
