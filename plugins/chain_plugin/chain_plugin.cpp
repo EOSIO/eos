@@ -1404,11 +1404,15 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
             auto trx_trace_ptr = result.get<transaction_trace_ptr>();
 
             try {
-               fc::variant pretty_output;
-               pretty_output = db.to_variant_with_abi(*trx_trace_ptr, abi_serializer_max_time);
-
                chain::transaction_id_type id = trx_trace_ptr->id;
-               next(read_write::push_transaction_results{id, pretty_output});
+               fc::variant output;
+               try {
+                  output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer_max_time );
+               } catch( chain::abi_exception& ) {
+                  output = *trx_trace_ptr;
+               }
+
+               next(read_write::push_transaction_results{id, output});
             } CATCH_AND_CALL(next);
          }
       });
