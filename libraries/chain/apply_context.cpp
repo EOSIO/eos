@@ -78,6 +78,7 @@ action_trace apply_context::exec_one()
    t.trx_id = trx_context.id;
    t.block_num = control.pending_block_state()->block_num;
    t.block_time = control.pending_block_time();
+   t.producer_block_id = control.pending_producer_block_id();
    t.account_ram_delta = std::move( trx_context.account_ram_delta );
    trx_context.account_ram_delta.clear();
    t.act = act;
