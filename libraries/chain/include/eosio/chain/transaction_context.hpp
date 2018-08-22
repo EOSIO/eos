@@ -74,6 +74,7 @@ namespace eosio { namespace chain {
          vector<action_receipt>        executed;
          flat_set<account_name>        bill_to_accounts;
          flat_set<account_name>        validate_ram_usage;
+         flat_map<account_name, int64_t> account_ram_delta; // reset for each action
 
          /// the maximum number of virtual CPU instructions of the transaction that can be safely billed to the billable accounts
          uint64_t                      initial_max_billable_cpu = 0;
@@ -87,7 +88,6 @@ namespace eosio { namespace chain {
          fc::microseconds              leeway = fc::microseconds(3000);
          int64_t                       billed_cpu_time_us = 0;
          bool                          explicit_billed_cpu_time = false;
-         int64_t                       trx_ram_delta = 0;
 
       private:
          bool                          is_initialized = false;
