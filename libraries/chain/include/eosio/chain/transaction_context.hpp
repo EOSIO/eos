@@ -88,6 +88,7 @@ namespace eosio { namespace chain {
          fc::microseconds              leeway = fc::microseconds(3000);
          int64_t                       billed_cpu_time_us = 0;
          bool                          explicit_billed_cpu_time = false;
+         int64_t                       trx_ram_delta = 0;
 
       private:
          bool                          is_initialized = false;
