@@ -32,6 +32,7 @@ static inline void print_debug(account_name receiver, const action_trace& ar) {
 action_trace apply_context::exec_one()
 {
    auto start = fc::time_point::now();
+   int64_t ram_delta = trx_context.trx_ram_delta;
 
    const auto& cfg = control.get_global_properties().configuration;
    try {
@@ -78,6 +79,7 @@ action_trace apply_context::exec_one()
    t.trx_id = trx_context.id;
    t.block_num = control.pending_block_state()->block_num;
    t.block_time = control.pending_block_time();
+   t.ram_delta = trx_context.trx_ram_delta - ram_delta;
    t.act = act;
    t.console = _pending_console_output.str();
 
