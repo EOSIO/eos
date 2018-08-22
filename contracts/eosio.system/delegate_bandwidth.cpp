@@ -150,8 +150,16 @@ namespace eosiosystem {
             });
       }
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
+      SEND_INLINE_ACTION( *this, notifyram, {payer, N(active)}, {payer, receiver, bytes_out, res_itr->ram_bytes} );
    }
 
+   void system_contract::notifyram(account_name payer, account_name receiver, int64_t bytes_out, int64_t ram_balance)
+   {
+       eosio_assert( bytes_out > 0, "must reserve a positive amount" );
+       eosio_assert( ram_balance > 0, "must reserve a positive amount" );
+       require_recipient(payer);
+       require_recipient(receiver);
+   }
 
    /**
     *  The system contract now buys and sells RAM allocations at prevailing market prices.
