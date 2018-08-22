@@ -15,7 +15,7 @@ steps:
     agents:
       - "role=linux-coverage"
     plugins:
-      docker#v1.1.1:
+      docker#v1.4.0:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
         mounts:

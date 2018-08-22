@@ -681,8 +681,8 @@ struct set_account_permission_subcommand {
                const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
                auto permissionPredicate = [this](const auto& perm) {
                   return perm.is_object() &&
-                        perm.get_object().contains("permission") &&
-                        boost::equals(perm.get_object()["permission"].get_string(), permissionStr);
+                        perm.get_object().contains("perm_name") &&
+                        boost::equals(perm.get_object()["perm_name"].get_string(), permissionStr);
                };
 
                auto itr = boost::find_if(existing_permissions, permissionPredicate);
@@ -2281,6 +2281,10 @@ int main( int argc, char** argv ) {
       std::cerr << localized(("Reading WASM from " + wasmPath + "...").c_str()) << std::endl;
       fc::read_file_contents(wasmPath, wasm);
       EOS_ASSERT( !wasm.empty(), wast_file_not_found, "no wasm file found ${f}", ("f", wasmPath) );
+
+      const string binary_wasm_header("\x00\x61\x73\x6d\x01\x00\x00\x00", 8);
+      if(wasm.compare(0, 8, binary_wasm_header))
+         std::cerr << localized("WARNING: ") << wasmPath << localized(" doesn't look like a binary WASM file. Is it something else, like WAST? Trying anyways...") << std::endl;
 
       actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
       if ( shouldSend ) {
