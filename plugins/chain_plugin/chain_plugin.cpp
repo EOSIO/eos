@@ -1404,11 +1404,15 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
             auto trx_trace_ptr = result.get<transaction_trace_ptr>();
 
             try {
-               fc::variant pretty_output;
-               pretty_output = db.to_variant_with_abi(*trx_trace_ptr, abi_serializer_max_time);
-
                chain::transaction_id_type id = trx_trace_ptr->id;
-               next(read_write::push_transaction_results{id, pretty_output});
+               fc::variant output;
+               try {
+                  output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer_max_time );
+               } catch( chain::abi_exception& ) {
+                  output = *trx_trace_ptr;
+               }
+
+               next(read_write::push_transaction_results{id, output});
             } CATCH_AND_CALL(next);
          }
       });
@@ -1471,6 +1475,8 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    result.account_name = params.account_name;
    const auto& d = db.db();
    const auto& accnt  = d.get<account_object,by_name>( params.account_name );
+
+   EOS_ASSERT( params.code_as_wasm, unsupported_feature, "Returning WAST from get_code is no longer supported" );
 
    if( accnt.code.size() ) {
       if (params.code_as_wasm) {
@@ -1664,7 +1670,7 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
       abi_serializer::from_variant(params.transaction, pretty_input, resolver, abi_serializer_max_time);
    } EOS_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction")
 
-   auto required_keys_set = db.get_authorization_manager().get_required_keys(pretty_input, params.available_keys);
+   auto required_keys_set = db.get_authorization_manager().get_required_keys( pretty_input, params.available_keys, fc::seconds( pretty_input.delay_sec ));
    get_required_keys_result result;
    result.required_keys = required_keys_set;
    return result;

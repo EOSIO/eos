@@ -681,8 +681,8 @@ struct set_account_permission_subcommand {
                const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
                auto permissionPredicate = [this](const auto& perm) {
                   return perm.is_object() &&
-                        perm.get_object().contains("permission") &&
-                        boost::equals(perm.get_object()["permission"].get_string(), permissionStr);
+                        perm.get_object().contains("perm_name") &&
+                        boost::equals(perm.get_object()["perm_name"].get_string(), permissionStr);
                };
 
                auto itr = boost::find_if(existing_permissions, permissionPredicate);
@@ -2354,7 +2354,6 @@ int main( int argc, char** argv ) {
 
    add_standard_transaction_options(transfer, "sender@active");
    transfer->set_callback([&] {
-      signed_transaction trx;
       if (tx_force_unique && memo.size() == 0) {
          // use the memo to add a nonce
          memo = generate_nonce_string();
