@@ -949,14 +949,19 @@ struct controller_impl {
       static_cast<signed_block_header&>(*p->block) = p->header;
    } /// sign_block
 
-   void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
+   void apply_block( const signed_block_ptr& b, controller::block_status s ) { 
+   try {
       try {
          EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
          start_block( b->timestamp, b->confirmed, s );
 
-         transaction_trace_ptr trace;
+       //hc test
+       std::vector<boost::thread> threads;
+       for( const auto& receipt : b->transactions ) {
+            //hc test
+            threads.emplace_back([&]{
 
-         for( const auto& receipt : b->transactions ) {
+		        transaction_trace_ptr trace;
             auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
             if( receipt.trx.contains<packed_transaction>() ) {
                auto& pt = receipt.trx.get<packed_transaction>();
@@ -987,7 +992,14 @@ struct controller_impl {
             EOS_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
                         block_validate_exception, "receipt does not match",
                         ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back()) );
+              //hc test
+              });
          }
+
+				 //hc test
+         for(boost::thread & thread : threads) {
+              thread.join();
+          }
 
          finalize_block();
 
