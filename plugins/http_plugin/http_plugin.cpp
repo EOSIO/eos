@@ -76,8 +76,6 @@ namespace eosio {
 
           typedef websocketpp::transport::asio::endpoint<transport_config>
               transport_type;
-
-          static const long timeout_open_handshake = 0;
       };
    }
 
@@ -107,6 +105,8 @@ namespace eosio {
 
          bool                     validate_host;
          set<string>              valid_hosts;
+
+         uint32_t                 idle_connection_timeout_ms;
 
          bool host_port_is_valid( const std::string& header_host_port, const string& endpoint_local_host_port ) {
             return !validate_host || header_host_port == endpoint_local_host_port || valid_hosts.find(header_host_port) != valid_hosts.end();
@@ -257,6 +257,7 @@ namespace eosio {
                ws.init_asio(&app().get_io_service());
                ws.set_reuse_addr(true);
                ws.set_max_http_body_size(max_body_size);
+               ws.set_open_handshake_timeout(idle_connection_timeout_ms);
                ws.set_http_handler([&](connection_hdl hdl) {
                   handle_http_request<T>(ws.get_con_from_hdl(hdl));
                });
@@ -269,7 +270,7 @@ namespace eosio {
             }
          }
 
-         void add_aliases_for_endpoint( const tcp::endpoint& ep, string host, string port ) {
+         void add_aliases_for_endpoint( const tcp::endpoint& ep, const string &host, const string &port ) {
             auto resolved_port_str = std::to_string(ep.port());
             valid_hosts.emplace(host + ":" + port);
             valid_hosts.emplace(host + ":" + resolved_port_str);
@@ -322,11 +323,14 @@ namespace eosio {
             ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
             ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
             ("http-alias", bpo::value<std::vector<string>>()->composing(), "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
+            ("idle-connection-timeout-ms", bpo::value<uint32_t>()->default_value(5000), "Timeout in milliseconds to cut idle connections out")
             ;
    }
 
    void http_plugin::plugin_initialize(const variables_map& options) {
       try {
+         my->idle_connection_timeout_ms = options.at("idle-connection-timeout-ms").as<uint32_t >();
+
          my->validate_host = options.at("http-validate-host").as<bool>();
          if( options.count( "http-alias" )) {
             const auto& aliases = options["http-alias"].as<vector<string>>();
