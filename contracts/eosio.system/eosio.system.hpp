@@ -180,6 +180,7 @@ namespace eosiosystem {
           */
          void buyram( account_name buyer, account_name receiver, asset tokens );
          void buyrambytes( account_name buyer, account_name receiver, uint32_t bytes );
+         void notifyram(account_name buyer, account_name receiver, int64_t bytes_out, int64_t ram_balance);
 
          /**
           *  Reduces quota my bytes and then performs an inline transfer of tokens

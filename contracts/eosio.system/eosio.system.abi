@@ -158,6 +158,15 @@
          {"name":"quant", "type":"asset"}
       ]
     },{
+       "name": "notifyram",
+       "base": "",
+       "fields": [
+          {"name":"payer", "type":"account_name"},
+          {"name":"receiver", "type":"account_name"},
+          {"name":"ram_bought", "type":"int64"},
+          {"name":"ram_balance", "type":"int64"}
+       ]
+    },{
       "name": "delegatebw",
       "base": "",
       "fields": [
@@ -449,6 +458,10 @@
    },{
       "name": "buyram",
       "type": "buyram",
+      "ricardian_contract": ""
+   },{
+      "name": "notifyram",
+      "type": "notifyram",
       "ricardian_contract": ""
    },{
       "name": "sellram",
