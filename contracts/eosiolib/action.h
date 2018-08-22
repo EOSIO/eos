@@ -119,6 +119,15 @@ extern "C" {
     */
    void require_auth2( account_name name, permission_name permission );
 
+   /**
+    *  Verifies that @ref name has auth.
+    * 
+    *  @brief Verifies that @ref name has auth.
+    *  @param name - name of the account to be verified
+    *  @param permission - permission level to be verified
+    */
+   bool has_auth2( account_name name, permission_name permission );
+
    bool is_account( account_name name );
 
    /**

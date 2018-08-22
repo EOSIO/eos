@@ -496,6 +496,7 @@ class apply_context {
       void require_authorization(const account_name& account);
       bool has_authorization(const account_name& account) const;
       void require_authorization(const account_name& account, const permission_name& permission);
+      bool has_authorization(const account_name& account, const permission_name& permission);
 
       /**
        * @return true if account exists, false if it does not
