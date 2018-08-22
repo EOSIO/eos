@@ -87,6 +87,7 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(get_code, 200),
       CHAIN_RO_CALL(get_abi, 200),
       CHAIN_RO_CALL(get_raw_code_and_abi, 200),
+      CHAIN_RO_CALL(get_raw_abi, 200),
       CHAIN_RO_CALL(get_table_rows, 200),
       CHAIN_RO_CALL(get_currency_balance, 200),
       CHAIN_RO_CALL(get_currency_stats, 200),

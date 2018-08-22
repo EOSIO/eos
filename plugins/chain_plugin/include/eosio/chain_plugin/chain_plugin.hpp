@@ -171,10 +171,21 @@ public:
       name                   account_name;
    };
 
+   struct get_raw_abi_params {
+      name                   account_name;
+   };
+
+   struct get_raw_abi_results {
+      name                   account_name;
+      fc::sha256             code_hash;
+      chain::blob            abi;
+   };
+
 
    get_code_results get_code( const get_code_params& params )const;
    get_abi_results get_abi( const get_abi_params& params )const;
    get_raw_code_and_abi_results get_raw_code_and_abi( const get_raw_code_and_abi_params& params)const;
+   get_raw_abi_results get_raw_abi( const get_raw_abi_params& params)const;
 
 
 
@@ -648,6 +659,8 @@ FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name)(code_a
 FC_REFLECT( eosio::chain_apis::read_only::get_abi_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_raw_code_and_abi_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_raw_code_and_abi_results, (account_name)(wasm)(abi) )
+FC_REFLECT( eosio::chain_apis::read_only::get_raw_abi_params, (account_name) )
+FC_REFLECT( eosio::chain_apis::read_only::get_raw_abi_results, (account_name)(code_hash)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::producer_info, (producer_name) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
 FC_REFLECT( eosio::chain_apis::read_only::abi_json_to_bin_result, (binargs) )
