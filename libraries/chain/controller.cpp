@@ -83,6 +83,8 @@ struct pending_state {
 
    controller::block_status           _block_status = controller::block_status::incomplete;
 
+   block_id_type                      _producer_block_id;
+
    void push() {
       _db_session.push();
    }
@@ -868,7 +870,7 @@ struct controller_impl {
    } /// push_transaction
 
 
-   void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s ) {
+   void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s, const block_id_type& producer_block_id ) {
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
 
       auto guard_pending = fc::make_scoped_exit([this](){
@@ -885,6 +887,7 @@ struct controller_impl {
       }
 
       pending->_block_status = s;
+      pending->_producer_block_id = producer_block_id;
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
 
@@ -953,7 +956,8 @@ struct controller_impl {
    void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
       try {
          EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
-         start_block( b->timestamp, b->confirmed, s );
+         auto producer_block_id = b->id();
+         start_block( b->timestamp, b->confirmed, s , producer_block_id);
 
          transaction_trace_ptr trace;
 
@@ -993,9 +997,9 @@ struct controller_impl {
          finalize_block();
 
          // this implicitly asserts that all header fields (less the signature) are identical
-         EOS_ASSERT(b->id() == pending->_pending_block_state->header.id(),
+         EOS_ASSERT(producer_block_id == pending->_pending_block_state->header.id(),
                    block_validate_exception, "Block ID does not match",
-                   ("producer_block_id",b->id())("validator_block_id",pending->_pending_block_state->header.id()));
+                   ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id()));
 
          // We need to fill out the pending block state's block because that gets serialized in the reversible block log
          // in the future we can optimize this by serializing the original and not the copy
@@ -1389,7 +1393,7 @@ fork_database& controller::fork_db()const { return my->fork_db; }
 
 void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count) {
    validate_db_available_size();
-   my->start_block(when, confirm_block_count, block_status::incomplete );
+   my->start_block(when, confirm_block_count, block_status::incomplete, block_id_type() );
 }
 
 void controller::finalize_block() {
@@ -1519,6 +1523,11 @@ block_state_ptr controller::pending_block_state()const {
 time_point controller::pending_block_time()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
    return my->pending->_pending_block_state->header.timestamp;
+}
+
+block_id_type controller::pending_producer_block_id()const {
+   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+   return my->pending->_producer_block_id;
 }
 
 uint32_t controller::last_irreversible_block_num() const {

@@ -24,6 +24,7 @@ namespace eosio { namespace chain {
       transaction_id_type  trx_id; ///< the transaction that generated this action
       uint32_t             block_num = 0;
       block_timestamp_type block_time;
+      block_id_type        producer_block_id;
       flat_map<account_name, int64_t> account_ram_delta;
    };
 
@@ -52,7 +53,8 @@ namespace eosio { namespace chain {
 } }  /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::base_action_trace,
-                    (receipt)(act)(elapsed)(cpu_usage)(console)(total_cpu_usage)(trx_id)(block_num)(block_time)(account_ram_delta) )
+                    (receipt)(act)(elapsed)(cpu_usage)(console)(total_cpu_usage)(trx_id)
+                    (block_num)(block_time)(producer_block_id)(account_ram_delta) )
 
 FC_REFLECT_DERIVED( eosio::chain::action_trace,
                     (eosio::chain::base_action_trace), (inline_traces) )
