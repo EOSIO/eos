@@ -631,6 +631,9 @@ struct controller_impl {
       if( gtrx.expiration < self.pending_block_time() ) {
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
+         trace->block_num = self.pending_block_state()->block_num;
+         trace->block_time = self.pending_block_time();
+         trace->producer_block_id = self.pending_producer_block_id();
          trace->scheduled = true;
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
          emit( self.accepted_transaction, trx );
