@@ -1472,6 +1472,8 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    const auto& d = db.db();
    const auto& accnt  = d.get<account_object,by_name>( params.account_name );
 
+   EOS_ASSERT( params.code_as_wasm, unsupported_feature, "Returning WAST from get_code is no longer supported" );
+
    if( accnt.code.size() ) {
       if (params.code_as_wasm) {
          result.wasm = string(accnt.code.begin(), accnt.code.end());
