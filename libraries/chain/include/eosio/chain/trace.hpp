@@ -24,7 +24,7 @@ namespace eosio { namespace chain {
       transaction_id_type  trx_id; ///< the transaction that generated this action
       uint32_t             block_num = 0;
       block_timestamp_type block_time;
-
+      int64_t              ram_delta = 0;
    };
 
    struct action_trace : public base_action_trace {
@@ -52,7 +52,7 @@ namespace eosio { namespace chain {
 } }  /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::base_action_trace,
-                    (receipt)(act)(elapsed)(cpu_usage)(console)(total_cpu_usage)(trx_id)(block_num)(block_time) )
+                    (receipt)(act)(elapsed)(cpu_usage)(console)(total_cpu_usage)(trx_id)(block_num)(block_time)(ram_delta) )
 
 FC_REFLECT_DERIVED( eosio::chain::action_trace,
                     (eosio::chain::base_action_trace), (inline_traces) )

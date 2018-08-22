@@ -383,6 +383,7 @@ namespace eosio { namespace chain {
       if( ram_delta > 0 ) {
          validate_ram_usage.insert( account );
       }
+      trx_ram_delta += ram_delta;
    }
 
    uint32_t transaction_context::update_billed_cpu_time( fc::time_point now ) {
