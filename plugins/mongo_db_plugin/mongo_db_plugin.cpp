@@ -91,6 +91,7 @@ public:
    void purge_abi_cache();
 
    bool add_action_trace( mongocxx::bulk_write& bulk_action_traces, const chain::action_trace& atrace,
+                          const chain::transaction_trace_ptr& t,
                           bool executed, const std::chrono::milliseconds& now );
 
    void update_account(const chain::action& act);
@@ -704,6 +705,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
 
 bool
 mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces, const chain::action_trace& atrace,
+                                        const chain::transaction_trace_ptr& t,
                                         bool executed, const std::chrono::milliseconds& now )
 {
    using namespace bsoncxx::types;
@@ -734,6 +736,9 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
             elog( "  JSON: ${j}", ("j", json) );
          }
       }
+      if( t->receipt.valid() ) {
+         action_traces_doc.append( kvp( "trx_status", std::string( t->receipt->status ) ) );
+      }
       action_traces_doc.append( kvp( "createdAt", b_date{now} ) );
 
       mongocxx::model::insert_one insert_op{action_traces_doc.view()};
@@ -742,7 +747,7 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
    }
 
    for( const auto& iline_atrace : atrace.inline_traces ) {
-      added |= add_action_trace( bulk_action_traces, iline_atrace, executed, now );
+      added |= add_action_trace( bulk_action_traces, iline_atrace, t, executed, now );
    }
 
    return added;
@@ -768,7 +773,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
 
    for( const auto& atrace : t->action_traces ) {
       try {
-         write_atraces |= add_action_trace( bulk_action_traces, atrace, executed, now );
+         write_atraces |= add_action_trace( bulk_action_traces, atrace, t, executed, now );
       } catch(...) {
          handle_mongo_exception("add action traces", __LINE__);
       }
