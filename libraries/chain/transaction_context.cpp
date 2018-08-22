@@ -26,6 +26,9 @@ namespace eosio { namespace chain {
          undo_session = c.db().start_undo_session(true);
       }
       trace->id = id;
+      trace->block_num = c.pending_block_state()->block_num;
+      trace->block_time = c.pending_block_time();
+      trace->producer_block_id = c.pending_producer_block_id();
       executed.reserve( trx.total_actions() );
       EOS_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature, "we don't support any extensions yet" );
    }
