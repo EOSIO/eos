@@ -32,6 +32,7 @@ namespace eosio {
             char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
             read_action_data( buffer, size );
             set_proposed_producers(buffer, size);
+            if (max_stack_buffer_size < size) free(buffer);
          }
 
          void reqauth( action_name from ) {
