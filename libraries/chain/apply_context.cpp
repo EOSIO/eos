@@ -151,6 +151,15 @@ void apply_context::require_authorization(const account_name& account,
               ("account",account)("permission",permission) );
 }
 
+bool apply_context::has_authorization(const account_name& account,
+                                      const permission_name& permission) {
+   for( const auto& auth : act.authorization )
+     if( auth.actor == account )
+       if( auth.permission == permission )
+         return true;
+  return false;
+}
+
 bool apply_context::has_recipient( account_name code )const {
    for( auto a : _notified )
       if( a == code )

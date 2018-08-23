@@ -888,6 +888,11 @@ class authorization_api : public context_aware_api {
       context.require_authorization( account, permission );
    }
 
+   bool has_authorization( const account_name& account,
+                                                 const permission_name& permission )const {
+      return context.has_authorization( account, permission );
+   }
+
    void require_recipient( account_name recipient ) {
       context.require_recipient( recipient );
    }
@@ -1801,6 +1806,7 @@ REGISTER_INTRINSICS(authorization_api,
    (require_authorization, void(int64_t), "require_auth", void(authorization_api::*)(const account_name&) )
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
    (has_authorization,     int(int64_t), "has_auth", bool(authorization_api::*)(const account_name&)const )
+   (has_authorization,     int(int64_t, int64_t), "has_auth2", bool(authorization_api::*)(const account_name&, const permission_name&)const )
    (is_account,            int(int64_t)           )
 );
 
