@@ -562,6 +562,9 @@ class multi_index
 
          //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
          void* buffer = max_stack_buffer_size < size_t(size) ? malloc(size_t(size)) : alloca(size_t(size));
+         struct { 
+            struct S { ~S()  { if (buf) free(buf); } void *buf; } s; 
+         } __freemem{max_stack_buffer_size<size_t(size)?buffer:0};          
 
          db_get_i64( itr, buffer, uint32_t(size) );
 
@@ -585,9 +588,6 @@ class multi_index
 
          _items_vector.emplace_back( std::move(itm), pk, pitr );
          
-         if (max_stack_buffer_size < size_t(size) ) {
-            free(buffer);
-         }
 
          return *ptr;
       } /// load_object_by_primary_iterator
