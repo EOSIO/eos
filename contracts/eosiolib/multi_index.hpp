@@ -567,10 +567,6 @@ class multi_index
 
          datastream<const char*> ds( (char*)buffer, uint32_t(size) );
 
-         if ( max_stack_buffer_size < size_t(size) ) {
-            free(buffer);
-         }
-
          auto itm = std::make_unique<item>( this, [&]( auto& i ) {
             T& val = static_cast<T&>(i);
             ds >> val;
@@ -588,6 +584,10 @@ class multi_index
          auto pitr = itm->__primary_itr;
 
          _items_vector.emplace_back( std::move(itm), pk, pitr );
+         
+         if (max_stack_buffer_size < size_t(size) ) {
+            free(buffer);
+         }
 
          return *ptr;
       } /// load_object_by_primary_iterator
