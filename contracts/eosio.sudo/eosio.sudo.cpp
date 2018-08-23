@@ -19,6 +19,9 @@ void sudo::exec() {
    constexpr size_t max_stack_buffer_size = 512;
    size_t size = action_data_size();
    char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+   struct { 
+      struct S { ~S()  { if (buf) free(buf); } char *buf; } s; 
+   } __freemem{max_stack_buffer_size<size?buffer:0};  
    read_action_data( buffer, size );
 
    account_name executer;
@@ -30,6 +33,7 @@ void sudo::exec() {
 
    size_t trx_pos = ds.tellp();
    send_deferred( (uint128_t(executer) << 64) | current_time(), executer, buffer+trx_pos, size-trx_pos );
+  
 }
 
 } /// namespace eosio

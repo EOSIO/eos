@@ -30,6 +30,9 @@ namespace eosio {
             constexpr size_t max_stack_buffer_size = 512;
             size_t size = action_data_size();
             char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+            struct { 
+               struct S { ~S()  { if (buf) free(buf); } char *buf; } s; 
+            } __freemem{max_stack_buffer_size<size?buffer:0};             
             read_action_data( buffer, size );
             set_proposed_producers(buffer, size);
          }
