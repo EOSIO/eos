@@ -87,6 +87,9 @@ namespace eosio {
       eosio_assert( s > 0, "get_action size failed" );
       size_t size = static_cast<size_t>(s);
       char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+      struct { 
+         struct S { ~S()  { if (buf) free(buf); } char *buf; } s; 
+      } __freemem{max_stack_buffer_size<size?buffer:0};
       auto size2 = ::get_action( type, index, buffer, size );
       eosio_assert( size == static_cast<size_t>(size2), "get_action failed" );
       return eosio::unpack<eosio::action>( buffer, size );
