@@ -30,11 +30,6 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
 
-if [ "$(id -u)" -ne 0 ]; then
-	printf "\n\tThis requires sudo. Please run with sudo.\n\n"
-	exit -1
-fi
-
    SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
    function usage()
