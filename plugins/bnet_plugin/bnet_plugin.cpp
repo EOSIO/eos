@@ -537,6 +537,8 @@ namespace eosio {
            //idump((_block_status.size())(_transaction_status.size()));
            //ilog( "accepted block ${n}", ("n",s->block_num) );
 
+           const auto& id = s->id;
+
            _local_head_block_id = id;
            _local_head_block_num = block_header::num_from_id(id);
 
