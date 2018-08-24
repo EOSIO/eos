@@ -22,9 +22,28 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 
+#include <eosio/chain/database_utils.hpp>
+
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
+
+using controller_index_set = index_set<
+   account_index,
+   account_sequence_index,
+   table_id_multi_index,
+   key_value_index,
+   index64_index,
+   index128_index,
+   index256_index,
+   index_double_index,
+   index_long_double_index,
+   global_property_multi_index,
+   dynamic_global_property_multi_index,
+   block_summary_multi_index,
+   transaction_multi_index,
+   generated_transaction_multi_index
+>;
 
 class maybe_session {
    public:
@@ -320,6 +339,8 @@ struct controller_impl {
          db.undo();
       }
 
+      ilog( "database initialized with hash: ${hash}", ("hash", calculate_db_hash<sha256>()));
+
    }
 
    ~controller_impl() {
@@ -332,23 +353,8 @@ struct controller_impl {
    void add_indices() {
       reversible_blocks.add_index<reversible_block_index>();
 
-      db.add_index<account_index>();
-      db.add_index<account_sequence_index>();
-
-      db.add_index<table_id_multi_index>();
-      db.add_index<key_value_index>();
-      db.add_index<index64_index>();
-      db.add_index<index128_index>();
-      db.add_index<index256_index>();
-      db.add_index<index_double_index>();
-      db.add_index<index_long_double_index>();
-
-      db.add_index<global_property_multi_index>();
-      db.add_index<dynamic_global_property_multi_index>();
-      db.add_index<block_summary_multi_index>();
-      db.add_index<transaction_multi_index>();
-      db.add_index<generated_transaction_multi_index>();
-
+      controller_index_set::add_indices(db);
+      
       authorization.add_indices();
       resource_limits.add_indices();
    }
@@ -364,6 +370,20 @@ struct controller_impl {
                    */
       });
    }
+
+
+   template<typename DigestType>
+   DigestType calculate_db_hash() {
+
+      typename DigestType::encoder enc;
+      controller_index_set::walk_indices([this, &enc]( auto utils ){
+         decltype(utils)::walk(db, [&enc]( const auto &row ) {
+            fc::raw::pack(enc, row);
+         });
+      });
+
+      return enc.result();
+   };
 
    /**
     *  Sets fork database head to the genesis state.

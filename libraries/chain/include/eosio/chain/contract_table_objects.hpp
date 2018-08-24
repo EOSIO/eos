@@ -10,6 +10,8 @@
 
 #include <chainbase/chainbase.hpp>
 
+#include <fc/io/raw.hpp>
+
 #include <array>
 #include <type_traits>
 
@@ -217,4 +219,27 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::index_double_object, eosio::chain::index_
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::index_long_double_object, eosio::chain::index_long_double_index)
 
 FC_REFLECT(eosio::chain::table_id_object, (id)(code)(scope)(table) )
-FC_REFLECT(eosio::chain::key_value_object, (id)(t_id)(primary_key)(value)(payer) )
+FC_REFLECT(eosio::chain::key_value_object, (t_id)(primary_key)(value)(payer) )
+
+template<typename DataStream>
+DataStream& operator << ( DataStream& ds, const float64_t& v ) {
+   fc::raw::pack(ds, *reinterpret_cast<const double *>(&v));
+   return ds;
+}
+
+template<typename DataStream>
+DataStream& operator << ( DataStream& ds, const float128_t& v ) {
+   fc::raw::pack(ds, *reinterpret_cast<const eosio::chain::uint128_t*>(&v));
+   return ds;
+}
+
+#define REFLECT_SECONDARY(type)\
+  FC_REFLECT(type, (t_id)(primary_key)(payer)(secondary_key) )
+
+REFLECT_SECONDARY(eosio::chain::index64_object)
+REFLECT_SECONDARY(eosio::chain::index128_object)
+REFLECT_SECONDARY(eosio::chain::index256_object)
+REFLECT_SECONDARY(eosio::chain::index_double_object)
+REFLECT_SECONDARY(eosio::chain::index_long_double_object)
+
+

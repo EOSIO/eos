@@ -82,3 +82,4 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_sequence_object, eosio::chain::ac
 
 
 FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(code_version)(code)(creation_date))
+FC_REFLECT(eosio::chain::account_sequence_object, (name)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence))
