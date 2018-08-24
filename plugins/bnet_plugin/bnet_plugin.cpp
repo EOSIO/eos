@@ -530,7 +530,10 @@ namespace eosio {
                  _block_status.insert( block_status(id, false, false) );
               }
            }
+        }
 
+        void on_accepted_block( const block_state_ptr& s ) {
+           verify_strand_in_this_thread(_strand, __func__, __LINE__);
            //idump((_block_status.size())(_transaction_status.size()));
            //ilog( "accepted block ${n}", ("n",s->block_num) );
 
@@ -1204,6 +1207,18 @@ namespace eosio {
             for_each_session( [s]( auto ses ){ ses->on_new_lib( s ); } );
          }
 
+         /**
+          * Notify all active connections of the new accepted block so
+          * they can relay it. This method also pre-packages the block
+          * as a packed bnet_message so the connections can simply relay
+          * it on.
+          */
+         void on_accepted_block( block_state_ptr s ) {
+            _ioc->post( [s,this] { /// post this to the thread pool because packing can be intensive
+               for_each_session( [s]( auto ses ){ ses->on_accepted_block( s ); } );
+            });
+         }
+
          void on_accepted_block_header( block_state_ptr s ) {
             _ioc->post( [s,this] { /// post this to the thread pool because packing can be intensive
                for_each_session( [s]( auto ses ){ ses->on_accepted_block_header( s ); } );
@@ -1349,6 +1364,9 @@ namespace eosio {
 
       wlog( "bnet startup " );
 
+      auto& chain = app().get_plugin<chain_plugin>().chain();
+      FC_ASSERT ( chain.get_read_mode() != chain::db_read_mode::IRREVERSIBLE, "bnet is not compatible with \"irreversible\" read_mode");
+
       my->_on_appled_trx_handle = app().get_channel<channels::accepted_transaction>()
                                 .subscribe( [this]( transaction_metadata_ptr t ){
                                        my->on_accepted_transaction(t);
@@ -1358,6 +1376,11 @@ namespace eosio {
                                 .subscribe( [this]( block_state_ptr s ){
                                        my->on_irreversible_block(s);
                                 });
+
+      my->_on_accepted_block_handle = app().get_channel<channels::accepted_block>()
+                                         .subscribe( [this]( block_state_ptr s ){
+                                                my->on_accepted_block(s);
+                                         });
 
       my->_on_accepted_block_header_handle = app().get_channel<channels::accepted_block_header>()
                                          .subscribe( [this]( block_state_ptr s ){
