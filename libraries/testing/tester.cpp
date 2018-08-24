@@ -100,6 +100,8 @@ namespace eosio { namespace testing {
             cfg.wasm_runtime = chain::wasm_interface::vm_type::binaryen;
          else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
             cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
+         else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
+            cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
          else
             cfg.wasm_runtime = chain::wasm_interface::vm_type::binaryen;
       }

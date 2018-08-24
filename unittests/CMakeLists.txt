@@ -38,6 +38,9 @@ add_test(NAME unit_test_binaryen COMMAND unit_test
 add_test(NAME unit_test_wavm COMMAND unit_test
  -t \!wasm_tests/weighted_cpu_limit_tests
  --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
+ add_test(NAME unit_test_wabt COMMAND unit_test
+ -t \!wasm_tests/weighted_cpu_limit_tests
+ --report_level=detailed --color_output -- --wabt)
 
 if(ENABLE_COVERAGE_TESTING)
 
