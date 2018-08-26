@@ -152,6 +152,15 @@ public:
       bool code_as_wasm = false;
    };
 
+   struct get_code_hash_results {
+      name                   account_name;
+      fc::sha256             code_hash;
+   };
+
+   struct get_code_hash_params {
+      name account_name;
+   };
+
    struct get_abi_results {
       name                   account_name;
       optional<abi_def>      abi;
@@ -173,6 +182,7 @@ public:
 
 
    get_code_results get_code( const get_code_params& params )const;
+   get_code_hash_results get_code_hash( const get_code_hash_params& params )const;
    get_abi_results get_abi( const get_abi_params& params )const;
    get_raw_code_and_abi_results get_raw_code_and_abi( const get_raw_code_and_abi_params& params)const;
 
@@ -642,9 +652,11 @@ FC_REFLECT( eosio::chain_apis::read_only::get_account_results,
             (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)
             (total_resources)(self_delegated_bandwidth)(refund_request)(voter_info) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(wasm)(abi) )
+FC_REFLECT( eosio::chain_apis::read_only::get_code_hash_results, (account_name)(code_hash) )
 FC_REFLECT( eosio::chain_apis::read_only::get_abi_results, (account_name)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name)(code_as_wasm) )
+FC_REFLECT( eosio::chain_apis::read_only::get_code_hash_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_abi_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_raw_code_and_abi_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_raw_code_and_abi_results, (account_name)(wasm)(abi) )
