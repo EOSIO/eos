@@ -41,9 +41,9 @@ int main(int argc, char** argv)
       app().set_default_data_dir(home / "eosio-wallet");
       app().set_default_config_dir(home / "eosio-wallet");
       http_plugin::set_defaults({
-         .address_config_prefix = keosd::config::key_store_executable_name,
+         .address_config_prefix = "",
          .default_unix_socket_path = keosd::config::key_store_executable_name + ".sock",
-         .default_http_port = 0
+         .default_http_port = 8900
       });
       app().register_plugin<wallet_api_plugin>();
       if(!app().initialize<wallet_plugin, wallet_api_plugin, http_plugin>(argc, argv))
