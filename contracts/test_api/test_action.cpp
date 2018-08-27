@@ -225,3 +225,28 @@ void test_action::test_assert_code() {
    eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
    eosio_assert_code( false, code );
 }
+
+void test_action::test_ram_billing_in_notify(uint64_t receiver, uint64_t code, uint64_t action) {
+   uint128_t tmp = 0;
+   uint32_t total = read_action_data(&tmp, sizeof(uint128_t));
+   eosio_assert( total == sizeof(uint128_t), "total == sizeof(uint128_t)");
+
+   uint64_t to_notify = tmp >> 64;
+   uint64_t payer = tmp & 0xFFFFFFFFFFFFFFFFULL;
+
+   if( code == receiver ) {
+      eosio::require_recipient( to_notify );
+   } else {
+      eosio_assert( to_notify == receiver, "notified recipient other than the one specified in to_notify" );
+
+      // Remove main table row if it already exists.
+      int itr = db_find_i64( receiver, N(notifytest), N(notifytest), N(notifytest) );
+      if( itr >= 0 )
+         db_remove_i64( itr );
+
+      // Create the main table row simply for the purpose of charging code more RAM.
+      if( payer != 0 )
+         db_store_i64(N(notifytest), N(notifytest), payer, N(notifytest), &to_notify, sizeof(to_notify) );
+   }
+
+}
