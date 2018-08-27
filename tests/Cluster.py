@@ -104,7 +104,7 @@ class Cluster(object):
         pnodes: producer nodes count
         totalNodes: producer + non-producer nodes count
         prodCount: producers per producer node count
-        topo: cluster topology (as defined by launcher)
+        topo: cluster topology (as defined by launcher, and "bridge" shape that is specific to this launch method)
         delay: delay between individual nodes launch (as defined by launcher)
           delay 0 exposes a bootstrap bug where producer handover may have a large gap confusing nodes and bringing system to a halt.
         onlyBios: When true, only loads the bios contract (and not more full bootstrapping).
@@ -116,6 +116,8 @@ class Cluster(object):
         specificExtraNodeosArgs: dictionary of arguments to pass to a specific node (via --specific-num and
                                  --specific-nodeos flags on launcher), example: { "5" : "--plugin eosio::test_control_api_plugin" }
         """
+        assert(isinstance(topo, str))
+
         if not self.localCluster:
             Utils.Print("WARNING: Cluster not local, not launching %s." % (Utils.EosServerName))
             return True
@@ -132,8 +134,8 @@ class Cluster(object):
             Utils.Print("ERROR: Another process is listening on nodeos default port.")
             return False
 
-        cmd="%s -p %s -n %s -s %s -d %s -i %s -f --p2p-plugin %s %s" % (
-            Utils.EosLauncherPath, pnodes, totalNodes, topo, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
+        cmd="%s -p %s -n %s -d %s -i %s -f --p2p-plugin %s %s" % (
+            Utils.EosLauncherPath, pnodes, totalNodes, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
             p2pPlugin, producerFlag)
         cmdArr=cmd.split()
         if self.staging:
@@ -163,6 +165,101 @@ class Cluster(object):
                 cmdArr.append(str(nodeNum))
                 cmdArr.append("--specific-nodeos")
                 cmdArr.append(arg)
+
+        shapeFilePrefix="shape_bridge"
+        shapeFile=shapeFilePrefix+".json"
+        shapeHostsFile=shapeFilePrefix+"_hosts.json"
+        # must be last cmdArr.append before subprocess.call, so that everything is on the command line
+        # before constructing the shape.json file for "bridge"
+        if topo=="bridge":
+            numProducers=totalProducers if totalProducers is not None else totalNodes
+            maxProducers=ord('z')-ord('a')+1
+            assert numProducers<maxProducers, \
+                   "ERROR: topo of %s assumes names of \"defproducera\" to \"defproducerz\", so must have at most %d producers" % \
+                    (topo,maxProducers)
+            cmdArrForOutput=copy.deepcopy(cmdArr)
+            cmdArrForOutput.append("--output")
+            cmdArrForOutput.append(shapeFile)
+            s=" ".join(cmdArrForOutput)
+            if Utils.Debug: Utils.Print("cmd: %s" % (s))
+            if 0 != subprocess.call(cmdArrForOutput):
+                Utils.Print("ERROR: Launcher failed to create shape file \"%s\"." % (shapeFile))
+                return False
+
+            f = open(shapeFile, "r")
+            shapeFileJsonStr = f.read()
+            f.close()
+            shapeFileObject = json.loads(shapeFileJsonStr)
+            Utils.Print("shapeFileObject=%s" % (shapeFileObject))
+            # retrieve the nodes, which as a map of node name to node definition, which the fc library prints out as
+            # an array of array, the first level of arrays is the pair entries of the map, the second is an array
+            # of two entries - [ <first>, <second> ] with first being the name and second being the node definition
+            shapeFileNodes = shapeFileObject["nodes"]
+            # will make a map to node object to make identification easier
+            biosNodeObject=None
+            bridgeNodes={}
+            producerNodes={}
+            producers={}
+            index=0
+            for append in range(ord('a'),ord('a')+numProducers):
+                name="defproducer" + chr(append) 
+                producers[name]=index
+                index+=1
+
+            # first group starts at 0
+            secondGroupStart=int((numProducers+1)/2)
+            producerGroup1=[]
+            producerGroup2=[]
+
+            Utils.Print("producers=%s" % (producers))
+            shapeFileNodeMap = {}
+            def getNodeNum(nodeName):
+                p=re.compile(r'^testnet_(\d+)$')
+                m=p.match(nodeName)
+                return int(m.group(1))
+            
+            for shapeFileNodePair in shapeFileNodes:
+                assert(len(shapeFileNodePair)==2)
+                nodeName=shapeFileNodePair[0]
+                shapeFileNode=shapeFileNodePair[1]
+                shapeFileNodeMap[nodeName]=shapeFileNode
+                Utils.Print("name=%s, shapeFileNode=%s" % (nodeName, shapeFileNodeMap[shapeFileNodePair[0]]))
+                if nodeName=="bios":
+                    biosNodeObject=shapeFileNode
+                    continue
+                nodeNum=getNodeNum(nodeName)
+                Utils.Print("nodeNum=%d, shapeFileNode=%s" % (nodeNum, shapeFileNode))
+                assert("producers" in shapeFileNode)
+                numNodeProducers=len(shapeFileNode["producers"])
+                if (numNodeProducers==0):
+                    bridgeNodes[nodeName]=shapeFileNode
+                else:
+                    producerNodes[nodeName]=shapeFileNode
+                    if nodeNum<secondGroupStart:
+                        producerGroup1.append(nodeName)
+                    else:
+                        producerGroup2.append(nodeName)
+            #Utils.Print("shapeFileNodeMap=%s" % (shapeFileNodeMap))
+
+            for _,bridgeNode in bridgeNodes.items():
+                bridgeNode["peers"]=[]
+
+            for prodName,prodNode in producerNodes.items():
+                nodeNum=getNodeNum(prodName)
+                group=producerGroup1 if nodeNum<secondGroupStart else producerGroup2
+                prodNode["peers"]=[i for i in group if i!=prodNode]
+                for bridgeName in bridgeNodes:
+                    prodNode["peers"].append(bridgeName)
+
+            f=open(shapeFile,"w")
+            f.write(json.dumps(shapeFileObject, indent=4, sort_keys=True))
+            f.close()
+
+            cmdArr.append("--shape")
+            cmdArr.append(shapeFile)
+        else:
+            cmdArr.append("--shape")
+            cmdArr.append(topo)
 
         Cluster.__LauncherCmdArr = cmdArr.copy()
 

@@ -41,7 +41,8 @@ class Node(object):
         self.mongoHost=mongoHost
         self.mongoPort=mongoPort
         self.mongoDb=mongoDb
-        self.endpointArgs="--url http://%s:%d" % (self.host, self.port)
+        self.endpointHttp="http://%s:%d" % (self.host, self.port)
+        self.endpointArgs="--url %s" % (self.endpointHttp)
         self.miscEosClientArgs="--no-auto-keosd"
         self.mongoEndpointArgs=""
         self.infoValid=None
@@ -175,7 +176,7 @@ class Node(object):
             cmdDesc="get block"
             cmd="%s %d" % (cmdDesc, blockNum)
             msg="(block number=%s)" % (blockNum);
-            return self.processCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
+            return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
         else:
             cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
             subcommand='db.blocks.findOne( { "block_num": %d } )' % (blockNum)
@@ -255,14 +256,14 @@ class Node(object):
             cmd="%s %s" % (cmdDesc, transId)
             msg="(transaction id=%s)" % (transId);
             for i in range(0,(int(60/timeout) - 1)):
-                trans=self.processCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnErrorForDelayed, exitMsg=msg)
+                trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnErrorForDelayed, exitMsg=msg)
                 if trans is not None or not delayedRetry:
                     return trans
                 if Utils.Debug: Utils.Print("Could not find transaction with id %s, delay and retry" % (transId))
                 time.sleep(timeout)
 
             # either it is there or the transaction has timed out
-            return self.processCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
+            return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
         else:
             for i in range(0,(int(60/timeout) - 1)):
                 trans=self.getTransactionMdb(transId, silentErrors=silentErrors, exitOnError=exitOnErrorForDelayed)
@@ -420,7 +421,7 @@ class Node(object):
             cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey,
             account.activePublicKey, stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL)
         msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
-        trans=self.processCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
         transId=Node.getTransId(trans)
 
         if stakedDeposit > 0:
@@ -437,7 +438,7 @@ class Node(object):
         cmd="%s -j %s %s %s %s" % (
             cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey, account.activePublicKey)
         msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
-        trans=self.processCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
         transId=Node.getTransId(trans)
 
         if stakedDeposit > 0:
@@ -453,7 +454,7 @@ class Node(object):
             cmdDesc="get account"
             cmd="%s -j %s" % (cmdDesc, name)
             msg="( getEosAccount(name=%s) )" % (name);
-            return self.processCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
+            return self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
         else:
             return self.getEosAccountFromDb(name, exitOnError=exitOnError)
 
@@ -477,7 +478,7 @@ class Node(object):
         cmdDesc = "get table"
         cmd="%s %s %s %s" % (cmdDesc, contract, scope, table)
         msg="contract=%s, scope=%s, table=%s" % (contract, scope, table);
-        return self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        return self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
     def getTableAccountBalance(self, contract, scope):
         assert(isinstance(contract, str))
@@ -501,7 +502,7 @@ class Node(object):
         cmdDesc = "get currency balance"
         cmd="%s %s %s %s" % (cmdDesc, contract, account, symbol)
         msg="contract=%s, account=%s, symbol=%s" % (contract, account, symbol);
-        return self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg, returnType=ReturnType.raw)
+        return self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg, returnType=ReturnType.raw)
 
     def getCurrencyStats(self, contract, symbol=CORE_SYMBOL, exitOnError=False):
         """returns Json output from get currency stats."""
@@ -512,7 +513,7 @@ class Node(object):
         cmdDesc = "get currency stats"
         cmd="%s %s %s" % (cmdDesc, contract, symbol)
         msg="contract=%s, symbol=%s" % (contract, symbol);
-        return self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        return self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
     # Verifies account. Returns "get account" json return object
     def verifyAccount(self, account):
@@ -672,7 +673,7 @@ class Node(object):
         cmdDesc = "get accounts"
         cmd="%s %s" % (cmdDesc, key)
         msg="key=%s" % (key);
-        return self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        return self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
     # Get actions mapped to an account (cleos get actions)
     def getActions(self, account, pos=-1, offset=-1, exitOnError=False):
@@ -684,7 +685,7 @@ class Node(object):
             cmdDesc = "get actions"
             cmd="%s -j %s %d %d" % (cmdDesc, account.name, pos, offset)
             msg="account=%s, pos=%d, offset=%d" % (account.name, pos, offset);
-            return self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+            return self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
         else:
             return self.getActionsMdb(account, pos, offset, exitOnError=exitOnError)
 
@@ -722,7 +723,7 @@ class Node(object):
         cmdDesc = "get servants"
         cmd="%s %s" % (cmdDesc, name)
         msg="name=%s" % (name);
-        return self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        return self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
     def getServantsArr(self, name):
         trans=self.getServants(name, exitOnError=True)
@@ -838,7 +839,7 @@ class Node(object):
     def setPermission(self, account, code, pType, requirement, waitForTransBlock=False, exitOnError=False):
         cmdDesc="set action permission"
         cmd="%s -j %s %s %s %s" % (cmdDesc, account, code, pType, requirement)
-        trans=self.processCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError)
+        trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -851,7 +852,7 @@ class Node(object):
         cmd="%s -j %s %s \"%s %s\" \"%s %s\" %s" % (
             cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
-        trans=self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -860,7 +861,7 @@ class Node(object):
         cmd="%s -j %s %s %s %s" % (
             cmdDesc, producer.name, producer.activePublicKey, url, location)
         msg="producer=%s" % (producer.name);
-        trans=self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -869,11 +870,11 @@ class Node(object):
         cmd="%s -j %s %s" % (
             cmdDesc, account.name, " ".join(producers))
         msg="account=%s, producers=[ %s ]" % (account.name, ", ".join(producers));
-        trans=self.processCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def processCmd(self, cmd, cmdDesc, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
+    def processCleosCmd(self, cmd, cmdDesc, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
         assert(isinstance(returnType, ReturnType))
         cmd="%s %s %s" % (Utils.EosClientPath, self.eosClientArgs(), cmd)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
@@ -883,10 +884,12 @@ class Node(object):
                 trans=Utils.runCmdReturnJson(cmd, silentErrors=silentErrors)
             elif returnType==ReturnType.raw:
                 trans=Utils.runCmdReturnStr(cmd)
+            else:
+                unhandledEnumType(returnType)
         except subprocess.CalledProcessError as ex:
             if not silentErrors:
                 msg=ex.output.decode("utf-8")
-                errorMsg="Exception during %s. %s" % (cmdDesc, msg)
+                errorMsg="Exception during \"%s\". %s" % (cmdDesc, msg)
                 if exitOnError:
                     Utils.cmdError(errorMsg)
                     Utils.errorExit(errorMsg)
@@ -899,8 +902,45 @@ class Node(object):
         else:
             exitMsg=""
         if exitOnError and trans is None:
-            Utils.cmdError("could not %s - %s" % (cmdDesc,exitMsg))
-            Utils.errorExit("Failed to %s" % (cmdDesc))
+            Utils.cmdError("could not \"%s\" - %s" % (cmdDesc,exitMsg))
+            errorExit("Failed to \"%s\"" % (cmdDesc))
+
+        return trans
+
+    def killNodeOnProducer(self, producer, whereInSequence, blockType=BlockType.head, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
+        assert(isinstance(producer, str))
+        assert(isinstance(whereInSequence, int))
+        assert(isinstance(blockType, BlockType))
+        assert(isinstance(returnType, ReturnType))
+        basedOnLib=True if blockType==BlockType.lib else False
+        cmd="curl %s -d '{ \"producer\":\"%s\", \"where_in_sequence\":%d, \"based_on_lib\":%s }' -X POST -H \"Content-Type: application/json\"" % (self.endpointHttp, producer, whereInSequence, basedOnLib)
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        trans=None
+        try:
+            if returnType==ReturnType.json:
+                trans=Utils.runCmdReturnJson(cmd, silentErrors=silentErrors)
+            elif returnType==ReturnType.raw:
+                trans=Utils.runCmdReturnStr(cmd)
+            else:
+                unhandledEnumType(returnType)
+        except subprocess.CalledProcessError as ex:
+            if not silentErrors:
+                msg=ex.output.decode("utf-8")
+                errorMsg="Exception during \"%s\". %s" % (cmd, msg)
+                if exitOnError:
+                    Utils.cmdError(errorMsg)
+                    Utils.errorExit(errorMsg)
+                else:
+                    Utils.Print("ERROR: %s" % (errorMsg))
+            return None
+
+        if exitMsg is not None:
+            exitMsg=": " + exitMsg
+        else:
+            exitMsg=""
+        if exitOnError and trans is None:
+            Utils.cmdError("could not \"%s\" - %s" % (cmd,exitMsg))
+            Utils.errorExit("Failed to \"%s\"" % (cmd))
 
         return trans
 
@@ -918,7 +958,7 @@ class Node(object):
 
     def getInfo(self, silentErrors=False, exitOnError=False):
         cmdDesc = "get info"
-        info=self.processCmd(cmdDesc, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError)
+        info=self.processCleosCmd(cmdDesc, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError)
         if info is None:
             self.infoValid=False
         else:

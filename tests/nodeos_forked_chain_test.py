@@ -2,6 +2,7 @@
 
 from testUtils import Utils
 import testUtils
+import time
 from Cluster import Cluster
 from WalletMgr import WalletMgr
 from Node import Node
@@ -18,7 +19,6 @@ import re
 # --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
 Print=Utils.Print
-errorExit=Utils.errorExit
 
 from core_symbol import CORE_SYMBOL
 
@@ -52,17 +52,21 @@ try:
     specificExtraNodeosArgs={}
     # producer nodes will be mapped to 0 through totalProducerNodes-1, so totalProducerNodes will be the non-producing node
     specificExtraNodeosArgs[totalProducerNodes]="--plugin eosio::test_control_api_plugin"
-    if cluster.launch(prodCount=prodCount, onlyBios=False, dontKill=dontKill, pnodes=totalProducerNodes, totalNodes=totalNodes,
-                      totalProducers=totalProducerNodes, p2pPlugin=p2pPlugin, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
+    if cluster.launch(prodCount=prodCount, onlyBios=False, dontKill=dontKill, topo="bridge", pnodes=totalProducerNodes,
+                      totalNodes=totalNodes, totalProducers=totalProducerNodes, p2pPlugin=p2pPlugin,
+                      specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
         Utils.cmdError("launcher")
-        errorExit("Failed to stand up eos cluster.")
+        Utils.errorExit("Failed to stand up eos cluster.")
+
+    # "bridge" shape connects defprocera through defproducerk to each other and defproducerl through defproduceru and the only
+    # connection between those 2 groups is through the bridge node
 
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
 
     accounts=cluster.createAccountKeys(5)
     if accounts is None:
-        errorExit("FAILURE - create keys")
+        Utils.errorExit("FAILURE - create keys")
     accounts[0].name="tester111111"
     accounts[1].name="tester222222"
     accounts[2].name="tester333333"
@@ -76,7 +80,7 @@ try:
     walletMgr.cleanup()
     if walletMgr.launch() is False:
         Utils.cmdError("%s" % (WalletdName))
-        errorExit("Failed to stand up eos walletd.")
+        Utils.errorExit("Failed to stand up eos walletd.")
 
     testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount,accounts[0],accounts[1],accounts[2],accounts[3],accounts[4]])
 
@@ -101,9 +105,9 @@ try:
             if nonProdNode is None:
                 nonProdNode=node
             else:
-                errorExit("More than one non-producing nodes")
+                Utils.errorExit("More than one non-producing nodes")
         else:
-            errorExit("Producing node should have 1 producer, it has %d" % (numProducers))
+            Utils.errorExit("Producing node should have 1 producer, it has %d" % (numProducers))
 
     node=prodNodes[0]
     # create accounts via eosio as otherwise a bid is needed
@@ -139,12 +143,12 @@ try:
     expectedCount=12
     while True:
         if blockProducer not in producers:
-            errorExit("Producer %s was not one of the voted on producers" % blockProducer)
+            Utils.errorExit("Producer %s was not one of the voted on producers" % blockProducer)
 
         productionCycle.append(blockProducer)
         slot+=1
         if blockProducer in producerToSlot:
-            errorExit("Producer %s was first seen in slot %d, but is repeated in slot %d" % (blockProducer, producerToSlot[blockProducer], slot))
+            Utils.errorExit("Producer %s was first seen in slot %d, but is repeated in slot %d" % (blockProducer, producerToSlot[blockProducer], slot))
 
         producerToSlot[blockProducer]={"slot":slot, "count":0}
         lastBlockProducer=blockProducer
@@ -154,7 +158,7 @@ try:
             blockProducer=node.getBlockProducer(blockNum)
 
         if producerToSlot[lastBlockProducer]["count"]!=expectedCount:
-            errorExit("Producer %s, in slot %d, expected to produce %d blocks but produced %d blocks" % (blockProducer, expectedCount, producerToSlot[lastBlockProducer]["count"]))
+            Utils.errorExit("Producer %s, in slot %d, expected to produce %d blocks but produced %d blocks" % (blockProducer, expectedCount, producerToSlot[lastBlockProducer]["count"]))
 
         if blockProducer==productionCycle[0]:
             break
@@ -167,6 +171,26 @@ try:
             output+=", "
         output+=blockProducer+":"+str(producerToSlot[blockProducer]["count"])
     Utils.Print("ProductionCycle ->> {\n%s\n}" % output)
+
+    for prodNode in prodNodes:
+        prodNode.getInfo()
+
+    cluster.reportStatus()
+
+    Utils.Print("Sending command to kill \"bridge\" node to separate the 2 producer groups.")
+    nonProdNode.killNodeOnProducer(producer="defproducerl", whereInSequence=0)
+
+    for prodNode in prodNodes:
+        prodNode.getInfo()
+
+    cluster.reportStatus()
+
+    time.sleep(60)
+    assert(not nonProdNode.verifyAlive())
+    for prodNode in prodNodes:
+        prodNode.getInfo()
+
+    cluster.reportStatus()
 
     testSuccessful=True
 finally:
