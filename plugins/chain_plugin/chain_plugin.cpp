@@ -244,6 +244,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Chain validation mode (\"full\" or \"light\").\n"
           "In \"full\" mode all incoming blocks will be fully validated.\n"
           "In \"light\" mode all incoming blocks headers will be fully validated; transactions in those validated blocks will be trusted \n")
+         ("disable-ram-billing-notify-checks", bpo::bool_switch()->default_value(false),
+          "Disable the check which subjectively fails a transaction if a contract bills more RAM to another account within the context of a notification handler (i.e. when the receiver is not the code of the action).")
          ;
 
 // TODO: rate limiting
@@ -405,6 +407,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->force_all_checks = options.at( "force-all-checks" ).as<bool>();
       my->chain_config->disable_replay_opts = options.at( "disable-replay-opts" ).as<bool>();
       my->chain_config->contracts_console = options.at( "contracts-console" ).as<bool>();
+      my->chain_config->allow_ram_billing_in_notify = options.at( "disable-ram-billing-notify-checks" ).as<bool>();
 
       if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
          genesis_state gs;
