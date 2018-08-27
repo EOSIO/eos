@@ -2491,7 +2491,6 @@ namespace eosio {
       dispatcher->recv_transaction(c, tid);
       chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          if (result.contains<fc::exception_ptr>()) {
-            dlog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
             peer_dlog(c, "bad packed_transaction : ${m}", ("m",result.get<fc::exception_ptr>()->what()));
          } else {
             auto trace = result.get<transaction_trace_ptr>();
