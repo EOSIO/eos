@@ -71,6 +71,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_action, read_action_to_0);
       WASM_TEST_HANDLER(test_action, read_action_to_64k);
       WASM_TEST_HANDLER_EX(test_action, require_notice);
+      WASM_TEST_HANDLER_EX(test_action, require_notice_tests);
       WASM_TEST_HANDLER(test_action, require_auth);
       WASM_TEST_HANDLER(test_action, assert_false);
       WASM_TEST_HANDLER(test_action, assert_true);

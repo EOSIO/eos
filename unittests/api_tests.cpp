@@ -437,6 +437,36 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
+// test require_recipient loop (doesn't cause infinite loop)
+BOOST_FIXTURE_TEST_CASE(require_notice_tests, TESTER) { try {
+      produce_blocks(2);
+      create_account( N(testapi) );
+      create_account( N(acc5) );
+      produce_blocks(1);
+      set_code( N(testapi), test_api_wast );
+      set_code( N(acc5), test_api_wast );
+      produce_blocks(1);
+
+      // test require_notice
+      auto scope = std::vector<account_name>{N(testapi)};
+      auto test_require_notice = [this](auto& test, std::vector<account_name>& scope){
+         signed_transaction trx;
+         auto tm = test_api_action<TEST_METHOD("test_action", "require_notice_tests")>{};
+
+         action act(std::vector<permission_level>{{N(testapi), config::active_name}}, tm);
+         trx.actions.push_back(act);
+
+         test.set_transaction_headers(trx);
+         trx.sign(test.get_private_key(N(testapi), "active"), control->get_chain_id());
+         auto res = test.push_transaction(trx);
+         BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
+      };
+
+      test_require_notice(*this, scope); // no exception expected
+
+   } FC_LOG_AND_RETHROW() }
+
+
 /*************************************************************************************
  * context free action tests
  *************************************************************************************/
