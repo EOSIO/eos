@@ -574,6 +574,7 @@ struct controller_impl {
              || (code == block_net_usage_exceeded::code_value)
              || (code == greylist_net_usage_exceeded::code_value)
              || (code == block_cpu_usage_exceeded::code_value)
+             || (code == greylist_cpu_usage_exceeded::code_value)
              || (code == deadline_exception::code_value)
              || (code == leeway_deadline_exception::code_value)
              || (code == actor_whitelist_exception::code_value)
@@ -714,7 +715,7 @@ struct controller_impl {
             auto& rl = self.get_mutable_resource_limits_manager();
             rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
             int64_t account_cpu_limit = 0;
-            std::tie( std::ignore, account_cpu_limit, std::ignore ) = trx_context.max_bandwidth_billed_accounts_can_pay( true );
+            std::tie( std::ignore, account_cpu_limit, std::ignore, std::ignore ) = trx_context.max_bandwidth_billed_accounts_can_pay( true );
 
             cpu_time_to_bill_us = static_cast<uint32_t>( std::min( std::min( static_cast<int64_t>(cpu_time_to_bill_us),
                                                                              account_cpu_limit                          ),
