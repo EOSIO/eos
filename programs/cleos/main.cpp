@@ -1971,7 +1971,7 @@ int main( int argc, char** argv ) {
    uint32_t limit = 10;
    string index_position;
    auto getTable = get->add_subcommand( "table", localized("Retrieve the contents of a database table"), false);
-   getTable->add_option( "contract", code, localized("The contract who owns the table") )->required();
+   getTable->add_option( "account", code, localized("The account who owns the table") )->required();
    getTable->add_option( "scope", scope, localized("The scope within the contract in which the table is found") )->required();
    getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
    getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
