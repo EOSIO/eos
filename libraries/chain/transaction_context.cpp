@@ -277,11 +277,11 @@ namespace eosio { namespace chain {
                           ("net_usage", net_usage)("net_limit", eager_net_limit) );
             }  else if (net_limit_due_to_greylist) {
                EOS_THROW( greylist_net_usage_exceeded,
-                          "net usage of transaction is too high: ${net_usage} > ${net_limit}",
+                          "greylisted transaction net usage is too high: ${net_usage} > ${net_limit}",
                           ("net_usage", net_usage)("net_limit", eager_net_limit) );
             } else {
                EOS_THROW( tx_net_usage_exceeded,
-                          "net usage of transaction is too high: ${net_usage} > ${net_limit}",
+                          "transaction net usage is too high: ${net_usage} > ${net_limit}",
                           ("net_usage", net_usage)("net_limit", eager_net_limit) );
             }
          }
@@ -302,7 +302,7 @@ namespace eosio { namespace chain {
             } else if( deadline_exception_code == tx_cpu_usage_exceeded::code_value ) {
                if (cpu_limit_due_to_greylist) {
                   EOS_THROW( greylist_cpu_usage_exceeded,
-                           "transaction was executing for too long",
+                           "greylisted transaction was executing for too long",
                            ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
                } else {
                   EOS_THROW( tx_cpu_usage_exceeded,
