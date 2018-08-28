@@ -1,11 +1,7 @@
 FROM eosio/builder as builder
-RUN if [ -z "$branch"]; then branch=master; else branch=$branch; fi
-ARG branch=$branch
-RUN if [ -z "$symbol"]; then symbol=SYS; else symbol=$symbol; fi
-ARG symbol=$symbol
-RUN if [ -z "$user"]; then user=EOSIO; else user=$user; fi
-ARG user=$user
-RUN echo "[Branch: ${branch}, Symbol: ${symbol}, User: ${user}]"
+ARG branch=master
+ARG symbol=SYS
+ARG user=EOSIO
 
 RUN git clone -b $branch https://github.com/$user/eos.git --recursive \
     && cd eos && echo "$branch:$(git rev-parse HEAD)" > /etc/eosio-version \
