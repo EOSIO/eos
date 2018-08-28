@@ -2,9 +2,9 @@ version: "3"
 
 services:
   nodeosd_test:
-    container_name: nodeos_test
+    container_name: nodeosd_test
     image: eosio/eos:v1.1.0
-    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e --http-alias=127.0.0.1:8888
+    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir --genesis-json /opt/eosio/bin/data-dir/genesis.json --http-alias=nodeosd_test:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888 -e
     hostname: nodeosd_test
     ports:
       - 8888:8888
@@ -18,9 +18,9 @@ services:
     stop_grace_period: 10m
 
   keosd_test:
-    container_name: keos_test
+    container_name: keosd_test
     image: eosio/eos:v1.1.0
-    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900
+    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900 --http-alias=keosd_test:8900 --http-alias=localhost:8900
     hostname: keosd_test
     links:
       - nodeosd_test
