@@ -65,6 +65,7 @@ namespace eosio { namespace chain {
             bool                     force_all_checks       =  false;
             bool                     disable_replay_opts    =  false;
             bool                     contracts_console      =  false;
+            bool                     allow_ram_billing_in_notify = false;
 
             genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
@@ -204,6 +205,8 @@ namespace eosio { namespace chain {
          void check_key_list( const public_key_type& key )const;
          bool is_producing_block()const;
 
+         bool is_ram_billing_in_notify_allowed()const;
+
          void add_resource_greylist(const account_name &name);
          void remove_resource_greylist(const account_name &name);
          bool is_resource_greylisted(const account_name &name) const;
@@ -219,6 +222,7 @@ namespace eosio { namespace chain {
 
          int64_t set_proposed_producers( vector<producer_key> producers );
 
+         bool light_validation_allowed(bool replay_opts_disabled_by_policy) const;
          bool skip_auth_check()const;
          bool skip_db_sessions( )const;
          bool skip_db_sessions( block_status bs )const;

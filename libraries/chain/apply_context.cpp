@@ -301,6 +301,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          });
    }
 
+   EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account) || (receiver == payer) || privileged,
+               subjective_block_production_exception, "Cannot charge RAM to other accounts during notify." );
    trx_context.add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
 }
 
@@ -362,6 +364,8 @@ bytes apply_context::get_packed_transaction() {
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
    if( delta > 0 ) {
       if( !(privileged || payer == account_name(receiver)) ) {
+         EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account),
+                     subjective_block_production_exception, "Cannot charge RAM to other accounts during notify." );
          require_authorization( payer );
       }
    }
