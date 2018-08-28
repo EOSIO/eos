@@ -276,18 +276,22 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const
 
 fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
    auto info = get_info();
-   trx.expiration = info.head_block_time + tx_expiration;
+   if (trx.expiration == time_point_sec()) {
+      trx.expiration = info.head_block_time + tx_expiration;
+   }
 
    // Set tapos, default to last irreversible block if it's not specified by the user
-   block_id_type ref_block_id = info.last_irreversible_block_id;
-   try {
-      fc::variant ref_block;
-      if (!tx_ref_block_num_or_id.empty()) {
-         ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
-         ref_block_id = ref_block["id"].as<block_id_type>();
-      }
-   } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
-   trx.set_reference_block(ref_block_id);
+   if (trx.ref_block_prefix == 0 && trx.ref_block_num == 0) {
+      block_id_type ref_block_id = info.last_irreversible_block_id;
+      try {
+         fc::variant ref_block;
+         if (!tx_ref_block_num_or_id.empty()) {
+            ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
+            ref_block_id = ref_block["id"].as<block_id_type>();
+         }
+      } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
+      trx.set_reference_block(ref_block_id);
+   }
 
    if (tx_force_unique) {
       trx.context_free_actions.emplace_back( generate_nonce_action() );
