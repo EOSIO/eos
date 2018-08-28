@@ -1,6 +1,6 @@
-# Docker
+# Docker Setup
 
-Simple and fast setup of EOS.IO on Docker is also available.
+This guide explains how to get up and running with Docker.
 Docker Hub image available from [docker hub](https://hub.docker.com/r/eosio/eos/).
 
 ## Install Dependencies
