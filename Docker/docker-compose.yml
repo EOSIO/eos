@@ -7,6 +7,7 @@ services:
     image: eosio/builder
 
   nodeosd:
+    container_name: nodeos
     build:
       context: .
     image: eosio/eos
@@ -24,6 +25,7 @@ services:
     stop_grace_period: 10m
 
   keosd:
+    container_name: keos
     image: eosio/eos
     command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900 --http-alias=keosd:8900 --http-alias=localhost:8900
     hostname: keosd

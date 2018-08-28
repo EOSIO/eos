@@ -1,0 +1,35 @@
+version: "3"
+
+services:
+  nodeosd_test:
+    container_name: nodeos_test
+    image: eosio/eos:latest
+    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e --http-alias=127.0.0.1:8888
+    hostname: nodeosd_test
+    ports:
+      - 8888:8888
+      - 9876:9876
+    expose:
+      - "8888"
+    volumes:
+      - nodeosd-test-data-volume:/opt/eosio/bin/data-dir
+    cap_add:
+      - IPC_LOCK
+    stop_grace_period: 10m
+
+  keosd_test:
+    container_name: keos_test
+    image: eosio/eos:latest
+    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900
+    hostname: keosd_test
+    links:
+      - nodeosd_test
+    volumes:
+      - keosd-test-data-volume:/opt/eosio/bin/data-dir
+    stop_grace_period: 10m
+
+volumes:
+ nodeosd-test-data-volume:
+   external: true
+ keosd-test-data-volume:
+   external: true
