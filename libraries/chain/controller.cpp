@@ -1776,6 +1776,10 @@ bool controller::is_producing_block()const {
    return (my->pending->_block_status == block_status::incomplete);
 }
 
+bool controller::is_ram_billing_in_notify_allowed()const {
+   return !is_producing_block() || my->conf.allow_ram_billing_in_notify;
+}
+
 void controller::validate_referenced_accounts( const transaction& trx )const {
    for( const auto& a : trx.context_free_actions ) {
       auto* code = my->db.find<account_object, by_name>(a.account);
