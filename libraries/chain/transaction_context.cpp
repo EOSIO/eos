@@ -92,10 +92,10 @@ namespace eosio { namespace chain {
       // Calculate the highest network usage and CPU time that all of the billed accounts can afford to be billed
       int64_t account_net_limit = 0;
       int64_t account_cpu_limit = 0;
-      bool greylisted = false, greylistedCPU = false;
-      std::tie( account_net_limit, account_cpu_limit, greylisted, greylistedCPU) = max_bandwidth_billed_accounts_can_pay();
-      net_limit_due_to_greylist |= greylisted;
-      cpu_limit_due_to_greylist |= greylistedCPU;
+      bool greylisted_net = false, greylisted_cpu = false;
+      std::tie( account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu) = max_bandwidth_billed_accounts_can_pay();
+      net_limit_due_to_greylist |= greylisted_net;
+      cpu_limit_due_to_greylist |= greylisted_cpu;
 
       eager_net_limit = net_limit;
 
@@ -225,19 +225,21 @@ namespace eosio { namespace chain {
       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
       int64_t account_net_limit = 0;
       int64_t account_cpu_limit = 0;
-      bool greylisted = false, greylistedCPU = false;
-      std::tie( account_net_limit, account_cpu_limit, greylisted, greylistedCPU) = max_bandwidth_billed_accounts_can_pay();
-      net_limit_due_to_greylist |= greylisted;
-      cpu_limit_due_to_greylist |= greylistedCPU;
+      bool greylisted_net = false, greylisted_cpu = false;
+      std::tie( account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu) = max_bandwidth_billed_accounts_can_pay();
+      net_limit_due_to_greylist |= greylisted_net;
+      cpu_limit_due_to_greylist |= greylisted_cpu;
 
       // Possibly lower net_limit to what the billed accounts can pay
       if( static_cast<uint64_t>(account_net_limit) <= net_limit ) {
+         // NOTE: net_limit may possibly not be objective anymore due to net greylisting, but it should still be no greater than the truly objective net_limit
          net_limit = static_cast<uint64_t>(account_net_limit);
          net_limit_due_to_block = false;
       }
 
       // Possibly lower objective_duration_limit to what the billed accounts can pay
       if( account_cpu_limit <= objective_duration_limit.count() ) {
+         // NOTE: objective_duration_limit may possibly not be objective anymore due to cpu greylisting, but it should still be no greater than the truly objective objective_duration_limit
          objective_duration_limit = fc::microseconds(account_cpu_limit);
          billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
       }
@@ -400,23 +402,23 @@ namespace eosio { namespace chain {
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
       int64_t account_net_limit = large_number_no_overflow;
       int64_t account_cpu_limit = large_number_no_overflow;
-      bool greylisted = false;
-      bool greylistedCPU = false;
+      bool greylisted_net = false;
+      bool greylisted_cpu = false;
       for( const auto& a : bill_to_accounts ) {
          bool elastic = force_elastic_limits || !(control.is_producing_block() && control.is_resource_greylisted(a));
          auto net_limit = rl.get_account_net_limit(a, elastic);
          if( net_limit >= 0 ) {
             account_net_limit = std::min( account_net_limit, net_limit );
-            if (!elastic) greylisted = true;
+            if (!elastic) greylisted_net = true;
          }
          auto cpu_limit = rl.get_account_cpu_limit(a, elastic);
          if( cpu_limit >= 0 ) {
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
-            if (!elastic) greylistedCPU = true;
+            if (!elastic) greylisted_cpu = true;
          }
       }
 
-      return std::make_tuple(account_net_limit, account_cpu_limit, greylisted, greylistedCPU);
+      return std::make_tuple(account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu);
    }
 
    void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
