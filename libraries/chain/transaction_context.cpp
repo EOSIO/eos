@@ -302,7 +302,7 @@ namespace eosio { namespace chain {
             } else if( deadline_exception_code == tx_cpu_usage_exceeded::code_value ) {
                if (cpu_limit_due_to_greylist) {
                   EOS_THROW( greylist_cpu_usage_exceeded,
-                           "transaction was executing for too long",
+                           "greylisted transaction was executing for too long",
                            ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
                } else {
                   EOS_THROW( tx_cpu_usage_exceeded,
