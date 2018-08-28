@@ -1119,7 +1119,27 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 
    produce_blocks(10);
 
+   //repeated deferred transactions
    {
+      vector<transaction_trace_ptr> traces;
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) {
+         if (t && t->scheduled) {
+            traces.push_back( t );
+         }
+      } );
+
+      CALL_TEST_FUNCTION(*this, "test_transaction", "repeat_deferred_transaction", fc::raw::pack( (uint32_t)5 ) );
+
+      produce_block();
+
+      c.disconnect();
+
+      BOOST_CHECK_EQUAL( traces.size(), 5 );
+   }
+
+   produce_blocks(10);
+
+{
    // Trigger a tx which in turn sends a deferred tx with payer != receiver
    // Payer is alice in this case, this tx should fail since we don't have the authorization of alice
    dtt_action dtt_act1;
