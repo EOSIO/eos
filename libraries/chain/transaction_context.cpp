@@ -92,9 +92,10 @@ namespace eosio { namespace chain {
       // Calculate the highest network usage and CPU time that all of the billed accounts can afford to be billed
       int64_t account_net_limit = 0;
       int64_t account_cpu_limit = 0;
-      bool greylisted = false;
-      std::tie( account_net_limit, account_cpu_limit, greylisted ) = max_bandwidth_billed_accounts_can_pay();
-      net_limit_due_to_greylist |= greylisted;
+      bool greylisted_net = false, greylisted_cpu = false;
+      std::tie( account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu) = max_bandwidth_billed_accounts_can_pay();
+      net_limit_due_to_greylist |= greylisted_net;
+      cpu_limit_due_to_greylist |= greylisted_cpu;
 
       eager_net_limit = net_limit;
 
@@ -224,18 +225,21 @@ namespace eosio { namespace chain {
       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
       int64_t account_net_limit = 0;
       int64_t account_cpu_limit = 0;
-      bool greylisted = false;
-      std::tie( account_net_limit, account_cpu_limit, greylisted ) = max_bandwidth_billed_accounts_can_pay();
-      net_limit_due_to_greylist |= greylisted;
+      bool greylisted_net = false, greylisted_cpu = false;
+      std::tie( account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu) = max_bandwidth_billed_accounts_can_pay();
+      net_limit_due_to_greylist |= greylisted_net;
+      cpu_limit_due_to_greylist |= greylisted_cpu;
 
       // Possibly lower net_limit to what the billed accounts can pay
       if( static_cast<uint64_t>(account_net_limit) <= net_limit ) {
+         // NOTE: net_limit may possibly not be objective anymore due to net greylisting, but it should still be no greater than the truly objective net_limit
          net_limit = static_cast<uint64_t>(account_net_limit);
          net_limit_due_to_block = false;
       }
 
       // Possibly lower objective_duration_limit to what the billed accounts can pay
       if( account_cpu_limit <= objective_duration_limit.count() ) {
+         // NOTE: objective_duration_limit may possibly not be objective anymore due to cpu greylisting, but it should still be no greater than the truly objective objective_duration_limit
          objective_duration_limit = fc::microseconds(account_cpu_limit);
          billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
       }
@@ -273,11 +277,11 @@ namespace eosio { namespace chain {
                           ("net_usage", net_usage)("net_limit", eager_net_limit) );
             }  else if (net_limit_due_to_greylist) {
                EOS_THROW( greylist_net_usage_exceeded,
-                          "net usage of transaction is too high: ${net_usage} > ${net_limit}",
+                          "greylisted transaction net usage is too high: ${net_usage} > ${net_limit}",
                           ("net_usage", net_usage)("net_limit", eager_net_limit) );
             } else {
                EOS_THROW( tx_net_usage_exceeded,
-                          "net usage of transaction is too high: ${net_usage} > ${net_limit}",
+                          "transaction net usage is too high: ${net_usage} > ${net_limit}",
                           ("net_usage", net_usage)("net_limit", eager_net_limit) );
             }
          }
@@ -296,9 +300,15 @@ namespace eosio { namespace chain {
                           "not enough time left in block to complete executing transaction",
                           ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
             } else if( deadline_exception_code == tx_cpu_usage_exceeded::code_value ) {
-               EOS_THROW( tx_cpu_usage_exceeded,
-                          "transaction was executing for too long",
-                          ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
+               if (cpu_limit_due_to_greylist) {
+                  EOS_THROW( greylist_cpu_usage_exceeded,
+                           "greylisted transaction was executing for too long",
+                           ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
+               } else {
+                  EOS_THROW( tx_cpu_usage_exceeded,
+                           "transaction was executing for too long",
+                           ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
+               }
             } else if( deadline_exception_code == leeway_deadline_exception::code_value ) {
                EOS_THROW( leeway_deadline_exception,
                           "the transaction was unable to complete by deadline, "
@@ -350,11 +360,19 @@ namespace eosio { namespace chain {
                         ("billed", billed_us)("billable", objective_duration_limit.count())
                       );
          } else {
-            EOS_ASSERT( billed_us <= objective_duration_limit.count(),
-                        tx_cpu_usage_exceeded,
-                        "billed CPU time (${billed} us) is greater than the maximum billable CPU time for the transaction (${billable} us)",
-                        ("billed", billed_us)("billable", objective_duration_limit.count())
-                      );
+            if (cpu_limit_due_to_greylist) {
+               EOS_ASSERT( billed_us <= objective_duration_limit.count(),
+                           greylist_cpu_usage_exceeded,
+                           "billed CPU time (${billed} us) is greater than the maximum greylisted billable CPU time for the transaction (${billable} us)",
+                           ("billed", billed_us)("billable", objective_duration_limit.count())
+               );
+            } else {
+               EOS_ASSERT( billed_us <= objective_duration_limit.count(),
+                           tx_cpu_usage_exceeded,
+                           "billed CPU time (${billed} us) is greater than the maximum billable CPU time for the transaction (${billable} us)",
+                           ("billed", billed_us)("billable", objective_duration_limit.count())
+                        );
+            }
          }
       }
    }
@@ -376,7 +394,7 @@ namespace eosio { namespace chain {
       return static_cast<uint32_t>(billed_cpu_time_us);
    }
 
-   std::tuple<int64_t, int64_t, bool> transaction_context::max_bandwidth_billed_accounts_can_pay( bool force_elastic_limits )const {
+   std::tuple<int64_t, int64_t, bool, bool> transaction_context::max_bandwidth_billed_accounts_can_pay( bool force_elastic_limits ) const{
       // Assumes rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot ) was already called prior
 
       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
@@ -384,20 +402,23 @@ namespace eosio { namespace chain {
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
       int64_t account_net_limit = large_number_no_overflow;
       int64_t account_cpu_limit = large_number_no_overflow;
-      bool greylisted = false;
+      bool greylisted_net = false;
+      bool greylisted_cpu = false;
       for( const auto& a : bill_to_accounts ) {
          bool elastic = force_elastic_limits || !(control.is_producing_block() && control.is_resource_greylisted(a));
          auto net_limit = rl.get_account_net_limit(a, elastic);
          if( net_limit >= 0 ) {
             account_net_limit = std::min( account_net_limit, net_limit );
-            if (!elastic) greylisted = true;
+            if (!elastic) greylisted_net = true;
          }
          auto cpu_limit = rl.get_account_cpu_limit(a, elastic);
-         if( cpu_limit >= 0 )
+         if( cpu_limit >= 0 ) {
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
+            if (!elastic) greylisted_cpu = true;
+         }
       }
 
-      return std::make_tuple(account_net_limit, account_cpu_limit, greylisted);
+      return std::make_tuple(account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu);
    }
 
    void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
