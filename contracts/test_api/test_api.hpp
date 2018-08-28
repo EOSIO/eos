@@ -181,6 +181,7 @@ struct test_transaction {
   static void context_free_api();
   static void new_feature();
   static void active_new_feature();
+  static void repeat_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);
 };
 
 struct test_chain {
