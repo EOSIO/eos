@@ -19,7 +19,7 @@ services:
     expose:
       - "8888"
     volumes:
-      - nodeos-data-volume:/opt/eosio/bin/data-dir
+      - ~/nodeos-data-volume:/opt/eosio/bin/data-dir
     cap_add:
       - IPC_LOCK
     stop_grace_period: 10m
@@ -32,7 +32,7 @@ services:
     links:
       - nodeosd
     volumes:
-      - keosd-data-volume:/opt/eosio/bin/data-dir
+      - ~/keosd-data-volume:/opt/eosio/bin/data-dir
     stop_grace_period: 10m
 
 volumes:
