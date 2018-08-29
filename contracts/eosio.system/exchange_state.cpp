@@ -1,4 +1,4 @@
-#include <exchange/exchange_state.hpp>
+#include <eosio.system/exchange_state.hpp>
 
 namespace eosiosystem {
    asset exchange_state::convert_to_exchange( connector& c, asset in ) {
