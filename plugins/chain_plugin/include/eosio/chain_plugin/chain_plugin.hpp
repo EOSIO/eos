@@ -97,8 +97,8 @@ public:
       //string                  recent_slots;
       //double                  participation_rate = 0;
       optional<string>        server_version_string;
-      string                  core_symbol;
-      uint64_t                core_symbol_precision;
+      optional<string>                  core_symbol;
+      optional<uint64_t>                core_symbol_precision;
    };
    get_info_results get_info(const get_info_params&) const;
 
