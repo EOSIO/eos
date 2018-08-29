@@ -458,6 +458,7 @@ struct launcher_def {
   void make_custom ();
   void write_dot_file ();
   void format_ssh (const string &cmd, const string &host_name, string &ssh_cmd_line);
+  void do_command(const host_def& host, const string& name, vector<pair<string, string>> env_pairs, const string& cmd);
   bool do_ssh (const string &cmd, const string &host_name);
   void prep_remote_config_dir (eosd_def &node, host_def *host);
   void launch (eosd_def &node, string &gts);
@@ -1645,6 +1646,30 @@ launcher_def::get_nodes(const string& node_number_list) {
 }
 
 void
+launcher_def::do_command(const host_def& host, const string& name,
+                         vector<pair<string, string>> env_pairs, const string& cmd) {
+   if (!host.is_local()) {
+      string rcmd = "cd " + host.eosio_home + "; ";
+      for (auto& env_pair : env_pairs) {
+         rcmd += "export " + env_pair.first + "=" + env_pair.second + "; ";
+      }
+      rcmd += cmd;
+      if (!do_ssh(rcmd, host.host_name)) {
+         cerr << "Remote command failed for " << name << endl;
+         exit (-1);
+      }
+   }
+   else {
+      bp::environment e;
+      for (auto& env_pair : env_pairs) {
+         e.emplace(env_pair.first, env_pair.second);
+      }
+      bp::child c(cmd, e);
+      c.wait();
+   }
+}
+
+void
 launcher_def::bounce (const string& node_numbers) {
    auto node_list = get_nodes(node_numbers);
    for (auto node_pair: node_list) {
@@ -1652,30 +1677,8 @@ launcher_def::bounce (const string& node_numbers) {
       const eosd_def& node = node_pair.second;
       string node_num = node.name.substr( node.name.length() - 2 );
       cout << "Bouncing " << node.name << endl;
-      if (!host.is_local()) {
-         string cmd = "cd " + host.eosio_home + "; "
-                    + "export EOSIO_HOME=" + host.eosio_home + string("; ")
-                    + "export EOSIO_NODE=" + node_num + "; "
-                    + "./scripts/eosio-tn_bounce.sh " + eosd_extra_args;
-         if (!do_ssh(cmd, host.host_name)) {
-            cerr << "Unable to bounce " << node.name << endl;
-            exit (-1);
-         }
-      }
-      else {
-         string cmd = "./scripts/eosio-tn_bounce.sh " + eosd_extra_args;
-         bp::child c(cmd,
-                     bp::env["EOSIO_HOME"] = host.eosio_home,
-                     bp::env["EOSIO_NODE"] = node_num );
-
-         if(!c.running()) {
-           cerr << "child not running after spawn " << cmd << endl;
-           for (int i = 0; i > 0; i++) {
-             if (c.running () ) break;
-           }
-         }
-         c.wait();
-      }
+      string cmd = "./scripts/eosio-tn_bounce.sh " + eosd_extra_args;
+      do_command(host, node.name, { { "EOSIO_HOME", host.eosio_home }, { "EOSIO_NODE", node_num } }, cmd);
    }
 }
 
@@ -1687,32 +1690,10 @@ launcher_def::down (const string& node_numbers) {
       const eosd_def& node = node_pair.second;
       string node_num = node.name.substr( node.name.length() - 2 );
       cout << "Taking down " << node.name << endl;
-      if (!host.is_local()) {
-         string cmd = "cd " + host.eosio_home + "; "
-                    + "export EOSIO_HOME=" + host.eosio_home + "; "
-                    + "export EOSIO_NODE=" + node_num + "; "
-                    + "export EOSIO_TN_RESTART_CONFIG_DIR=" + node.config_dir_name + "; "
-                    + "./scripts/eosio-tn_down.sh";
-         if (!do_ssh(cmd, host.host_name)) {
-            cerr << "Unable to down " << node.name << endl;
-            exit (-1);
-         }
-      }
-      else {
-         string cmd = "./scripts/eosio-tn_down.sh ";
-         bp::child c(cmd,
-                     bp::env["EOSIO_HOME"] = host.eosio_home,
-                     bp::env["EOSIO_NODE"] = node_num,
-                     bp::env["EOSIO_TN_RESTART_CONFIG_DIR"] = node.config_dir_name );
-
-         if(!c.running()) {
-           cerr << "child not running after spawn " << cmd << endl;
-           for (int i = 0; i > 0; i++) {
-             if (c.running () ) break;
-           }
-         }
-         c.wait();
-      }
+      string cmd = "./scripts/eosio-tn_down.sh ";
+      do_command(host, node.name,
+                 { { "EOSIO_HOME", host.eosio_home }, { "EOSIO_NODE", node_num }, { "EOSIO_TN_RESTART_CONFIG_DIR", node.config_dir_name } },
+                 cmd);
    }
 }
 
@@ -1723,28 +1704,8 @@ launcher_def::roll (const string& host_names) {
    for (string host_name: hosts) {
       cout << "Rolling " << host_name << endl;
       auto host = find_host_by_name_or_address(host_name);
-      if (!host->is_local()) {
-         string cmd = "cd " + host->eosio_home + "; "
-                    + "export EOSIO_HOME=" + host->eosio_home + "; "
-                    + "./scripts/eosio-tn_roll.sh";
-         if (!do_ssh(cmd, host_name)) {
-            cerr << "Unable to roll " << host << endl;
-            exit (-1);
-         }
-      }
-      else {
-         string cmd = "./scripts/eosio-tn_roll.sh ";
-         bp::child c(cmd,
-                     bp::env["EOSIO_HOME"] = host->eosio_home );
-
-         if(!c.running()) {
-           cerr << "child not running after spawn " << cmd << endl;
-           for (int i = 0; i > 0; i++) {
-             if (c.running () ) break;
-           }
-         }
-         c.wait();
-      }
+      string cmd = "./scripts/eosio-tn_roll.sh ";
+      do_command(*host, host_name, { { "EOSIO_HOME", host->eosio_home } }, cmd);
    }
 }
 
