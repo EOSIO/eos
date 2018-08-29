@@ -276,25 +276,28 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const
 
 fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
    auto info = get_info();
-   trx.expiration = info.head_block_time + tx_expiration;
 
-   // Set tapos, default to last irreversible block if it's not specified by the user
-   block_id_type ref_block_id = info.last_irreversible_block_id;
-   try {
-      fc::variant ref_block;
-      if (!tx_ref_block_num_or_id.empty()) {
-         ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
-         ref_block_id = ref_block["id"].as<block_id_type>();
+   if (trx.signatures.size() == 0) { // #5445 can't change txn content if already signed
+      trx.expiration = info.head_block_time + tx_expiration;
+
+      // Set tapos, default to last irreversible block if it's not specified by the user
+      block_id_type ref_block_id = info.last_irreversible_block_id;
+      try {
+         fc::variant ref_block;
+         if (!tx_ref_block_num_or_id.empty()) {
+            ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
+            ref_block_id = ref_block["id"].as<block_id_type>();
+         }
+      } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
+      trx.set_reference_block(ref_block_id);
+
+      if (tx_force_unique) {
+         trx.context_free_actions.emplace_back( generate_nonce_action() );
       }
-   } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
-   trx.set_reference_block(ref_block_id);
 
-   if (tx_force_unique) {
-      trx.context_free_actions.emplace_back( generate_nonce_action() );
+      trx.max_cpu_usage_ms = tx_max_cpu_usage;
+      trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
    }
-
-   trx.max_cpu_usage_ms = tx_max_cpu_usage;
-   trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
 
    if (!tx_skip_sign) {
       auto required_keys = determine_required_keys(trx);
