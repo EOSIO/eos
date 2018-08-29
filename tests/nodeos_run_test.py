@@ -601,18 +601,6 @@ try:
         errorExit("Failed to lock wallet %s" % (defproduceraWallet.name))
 
 
-    Print("Exchange Contract Tests")
-    Print("upload exchange contract")
-
-    contractDir="contracts/exchange"
-    wasmFile="exchange.wasm"
-    abiFile="exchange.abi"
-    Print("Publish exchange contract")
-    trans=node.publishContract(exchangeAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
-    if trans is None:
-        cmdError("%s set contract exchange" % (ClientName))
-        errorExit("Failed to publish contract.")
-
     contractDir="contracts/simpledb"
     wasmFile="simpledb.wasm"
     abiFile="simpledb.abi"
@@ -622,7 +610,7 @@ try:
     if retMap is None:
         errorExit("Failed to publish, but should have returned a details map")
     if retMap["returncode"] == 0 or retMap["returncode"] == 139: # 139 SIGSEGV
-        errorExit("FAILURE - set contract exchange failed", raw=True)
+        errorExit("FAILURE - set contract simpledb failed", raw=True)
     else:
         Print("Test successful, %s returned error code: %d" % (ClientName, retMap["returncode"]))
 
