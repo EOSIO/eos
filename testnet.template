@@ -64,7 +64,7 @@ cacmd () {
 sleep 2
 ecmd get info
 
-wcmd create -n ignition
+wcmd create --to-console -n ignition
 
 # Manual deployers, add a line below this block that looks like:
 #    wcmd import -n ignition --private-key $PRODKEY[0]
@@ -75,10 +75,10 @@ wcmd create -n ignition
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
 
-ecmd set contract eosio contracts/eosio.bios contracts/eosio.bios/eosio.bios.wast contracts/eosio.bios/eosio.bios.abi
+ecmd set contract eosio contracts/eosio.bios eosio.bios.wasm eosio.bios.abi
 
 # Create required system accounts
-ecmd create key
+ecmd create key --to-console
 pubsyskey=`grep "^Public key:" $logfile | tail -1 | sed "s/^Public key://"`
 prisyskey=`grep "^Private key:" $logfile | tail -1 | sed "s/^Private key://"`
 echo eosio.* keys: $prisyskey $pubsyskey >> $logfile
@@ -94,9 +94,9 @@ ecmd create account eosio eosio.token $pubsyskey $pubsyskey
 ecmd create account eosio eosio.vpay $pubsyskey $pubsyskey
 ecmd create account eosio eosio.sudo $pubsyskey $pubsyskey
 
-ecmd set contract eosio.token contracts/eosio.token contracts/eosio.token/eosio.token.wast contracts/eosio.token/eosio.token.abi
-ecmd set contract eosio.msig contracts/eosio.msig contracts/eosio.msig/eosio.msig.wast contracts/eosio.msig/eosio.msig.abi
-ecmd set contract eosio.sudo contracts/eosio.sudo contracts/eosio.sudo/eosio.sudo.wast contracts/eosio.sudo/eosio.sudo.abi
+ecmd set contract eosio.token contracts/eosio.token eosio.token.wasm eosio.token.abi
+ecmd set contract eosio.msig contracts/eosio.msig eosio.msig.wasm eosio.msig.abi
+ecmd set contract eosio.sudo contracts/eosio.sudo eosio.sudo.wasm eosio.sudo.abi
 
 echo ===== Start: $step ============ >> $logfile
 echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 SYS" ]' -p eosio.token | tee -a $logfile
@@ -107,7 +107,7 @@ programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push a
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-ecmd set contract eosio contracts/eosio.system contracts/eosio.system/eosio.system.wast contracts/eosio.system/eosio.system.abi
+ecmd set contract eosio contracts/eosio.system eosio.system.wasm eosio.system.abi
 
 # Manual deployers, add a series of lines below this block that looks like:
 #    cacmd $PRODNAME[0] $OWNERKEY[0] $ACTIVEKEY[0]

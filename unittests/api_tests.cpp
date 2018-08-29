@@ -182,7 +182,7 @@ transaction_trace_ptr CallFunction(TESTER& test, T ac, const vector<char>& data,
 }
 
 #define CALL_TEST_FUNCTION(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
-#define CALL_TEST_FUNCTION_SYSTEM(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {N(eosio)} )
+#define CALL_TEST_FUNCTION_SYSTEM(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {config::system_account_name} )
 #define CALL_TEST_FUNCTION_SCOPE(_TESTER, CLS, MTH, DATA, ACCOUNT) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, ACCOUNT)
 #define CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION(_TESTER, CLS, MTH, DATA, EXC, EXC_MESSAGE) \
 BOOST_CHECK_EXCEPTION( \
@@ -437,6 +437,27 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE(ram_billing_in_notify_tests, TESTER) { try {
+   produce_blocks(2);
+   create_account( N(testapi) );
+   create_account( N(testapi2) );
+   produce_blocks(10);
+   set_code( N(testapi), test_api_wast );
+   produce_blocks(1);
+   set_code( N(testapi2), test_api_wast );
+   produce_blocks(1);
+
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | N(testapi) ) ),
+                          subjective_block_production_exception, fc_exception_message_is("Cannot charge RAM to other accounts during notify.") );
+
+
+   CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | 0 ) );
+
+   CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | N(testapi2) ) );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
+
 /*************************************************************************************
  * context free action tests
  *************************************************************************************/
@@ -576,7 +597,7 @@ BOOST_FIXTURE_TEST_CASE(cfa_stateful_api, TESTER)  try {
 	set_code( N(testapi), test_api_wast );
 
    account_name a = N(testapi2);
-   account_name creator = N(eosio);
+   account_name creator = config::system_account_name;
 
    signed_transaction trx;
 
@@ -606,7 +627,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_failed, TESTER)  try {
 	set_code( N(testapi), test_api_wast );
 
    account_name a = N(testapi2);
-   account_name creator = N(eosio);
+   account_name creator = config::system_account_name;
 
    signed_transaction trx;
 
@@ -642,7 +663,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_cfa_success, TESTER)  try {
 	set_code( N(testapi), test_api_wast );
 
    account_name a = N(testapi2);
-   account_name creator = N(eosio);
+   account_name creator = config::system_account_name;
 
    signed_transaction trx;
 
@@ -1019,7 +1040,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       produce_block( fc::seconds(2) );
 
       //check that it gets executed afterwards
-      BOOST_CHECK(trace);
+      BOOST_REQUIRE(trace);
 
       //confirm printed message
       BOOST_TEST(!trace->action_traces.empty());
@@ -1045,7 +1066,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
          control->push_scheduled_transaction(trx, fc::time_point::maximum());
       }
       BOOST_CHECK_EQUAL(1, count);
-      BOOST_CHECK(trace);
+      BOOST_REQUIRE(trace);
       BOOST_CHECK_EQUAL( 1, trace->action_traces.size() );
       c.disconnect();
    }
@@ -1094,6 +1115,26 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    //cancel_deferred() return zero if no scheduled transaction found
    {
       CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction_not_found", {});
+   }
+
+   produce_blocks(10);
+
+   //repeated deferred transactions
+   {
+      vector<transaction_trace_ptr> traces;
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) {
+         if (t && t->scheduled) {
+            traces.push_back( t );
+         }
+      } );
+
+      CALL_TEST_FUNCTION(*this, "test_transaction", "repeat_deferred_transaction", fc::raw::pack( (uint32_t)5 ) );
+
+      produce_block();
+
+      c.disconnect();
+
+      BOOST_CHECK_EQUAL( traces.size(), 5 );
    }
 
    produce_blocks(10);

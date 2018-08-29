@@ -36,7 +36,13 @@ namespace eosio { namespace chain {
    enum class db_read_mode {
       SPECULATIVE,
       HEAD,
+      READ_ONLY,
       IRREVERSIBLE
+   };
+
+   enum class validation_mode {
+      FULL,
+      LIGHT
    };
 
    class controller {
@@ -57,12 +63,15 @@ namespace eosio { namespace chain {
             uint64_t                 reversible_guard_size  =  chain::config::default_reversible_guard_size;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
+            bool                     disable_replay_opts    =  false;
             bool                     contracts_console      =  false;
+            bool                     allow_ram_billing_in_notify = false;
 
             genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
 
-            db_read_mode             read_mode    = db_read_mode::SPECULATIVE;
+            db_read_mode             read_mode              = db_read_mode::SPECULATIVE;
+            validation_mode          block_validation_mode  = validation_mode::FULL;
 
             flat_set<account_name>   resource_greylist;
          };
@@ -147,6 +156,20 @@ namespace eosio { namespace chain {
          const authorization_manager&          get_authorization_manager()const;
          authorization_manager&                get_mutable_authorization_manager();
 
+         const flat_set<account_name>&   get_actor_whitelist() const;
+         const flat_set<account_name>&   get_actor_blacklist() const;
+         const flat_set<account_name>&   get_contract_whitelist() const;
+         const flat_set<account_name>&   get_contract_blacklist() const;
+         const flat_set< pair<account_name, action_name> >& get_action_blacklist() const;
+         const flat_set<public_key_type>& get_key_blacklist() const;
+
+         void   set_actor_whitelist( const flat_set<account_name>& );
+         void   set_actor_blacklist( const flat_set<account_name>& );
+         void   set_contract_whitelist( const flat_set<account_name>& );
+         void   set_contract_blacklist( const flat_set<account_name>& );
+         void   set_action_blacklist( const flat_set< pair<account_name, action_name> >& );
+         void   set_key_blacklist( const flat_set<public_key_type>& );
+
          uint32_t             head_block_num()const;
          time_point           head_block_time()const;
          block_id_type        head_block_id()const;
@@ -182,6 +205,8 @@ namespace eosio { namespace chain {
          void check_key_list( const public_key_type& key )const;
          bool is_producing_block()const;
 
+         bool is_ram_billing_in_notify_allowed()const;
+
          void add_resource_greylist(const account_name &name);
          void remove_resource_greylist(const account_name &name);
          bool is_resource_greylisted(const account_name &name) const;
@@ -197,13 +222,18 @@ namespace eosio { namespace chain {
 
          int64_t set_proposed_producers( vector<producer_key> producers );
 
+         bool light_validation_allowed(bool replay_opts_disabled_by_policy) const;
          bool skip_auth_check()const;
+         bool skip_db_sessions( )const;
+         bool skip_db_sessions( block_status bs )const;
+         bool skip_trx_checks()const;
 
          bool contracts_console()const;
 
          chain_id_type get_chain_id()const;
 
          db_read_mode get_read_mode()const;
+         validation_mode get_validation_mode()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
 
@@ -270,6 +300,7 @@ FC_REFLECT( eosio::chain::controller::config,
             (reversible_cache_size)
             (read_only)
             (force_all_checks)
+            (disable_replay_opts)
             (contracts_console)
             (genesis)
             (wasm_runtime)

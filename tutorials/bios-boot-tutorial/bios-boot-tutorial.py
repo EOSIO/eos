@@ -74,7 +74,7 @@ def startWallet():
     run('mkdir -p ' + os.path.abspath(args.wallet_dir))
     background(args.keosd + ' --unlock-timeout %d --http-server-address 127.0.0.1:6666 --wallet-dir %s' % (unlockTimeout, os.path.abspath(args.wallet_dir)))
     sleep(.4)
-    run(args.cleos + 'wallet create')
+    run(args.cleos + 'wallet create --to-console')
 
 def importKeys():
     run(args.cleos + 'wallet import --private-key ' + args.private_key)
@@ -266,7 +266,7 @@ def msigReplaceSystem():
 def produceNewAccounts():
     with open('newusers', 'w') as f:
         for i in range(120_000, 200_000):
-            x = getOutput(args.cleos + 'create key')
+            x = getOutput(args.cleos + 'create key --to-console')
             r = re.match('Private key: *([^ \n]*)\nPublic key: *([^ \n]*)', x, re.DOTALL | re.MULTILINE)
             name = 'user'
             for j in range(7, -1, -1):
@@ -347,7 +347,7 @@ commands = [
 
 parser.add_argument('--public-key', metavar='', help="EOSIO Public Key", default='EOS8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr', dest="public_key")
 parser.add_argument('--private-Key', metavar='', help="EOSIO Private Key", default='5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p', dest="private_key")
-parser.add_argument('--cleos', metavar='', help="Cleos command", default='../../build/programs/cleos/cleos --wallet-url http://localhost:6666 ')
+parser.add_argument('--cleos', metavar='', help="Cleos command", default='../../build/programs/cleos/cleos --wallet-url http://127.0.0.1:6666 ')
 parser.add_argument('--nodeos', metavar='', help="Path to nodeos binary", default='../../build/programs/nodeos/nodeos')
 parser.add_argument('--keosd', metavar='', help="Path to keosd binary", default='../../build/programs/keosd/keosd')
 parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default='../../build/contracts/')
@@ -381,7 +381,7 @@ for (flag, command, function, inAll, help) in commands:
         
 args = parser.parse_args()
 
-args.cleos += '--url http://localhost:%d ' % args.http_port
+args.cleos += '--url http://127.0.0.1:%d ' % args.http_port
 
 logFile = open(args.log_path, 'a')
 

@@ -21,15 +21,17 @@ class transaction_metadata {
       packed_transaction                                         packed_trx;
       optional<pair<chain_id_type, flat_set<public_key_type>>>   signing_keys;
       bool                                                       accepted = false;
+      bool                                                       implicit = false;
+      bool                                                       scheduled = false;
 
-      transaction_metadata( const signed_transaction& t, packed_transaction::compression_type c = packed_transaction::none )
+      explicit transaction_metadata( const signed_transaction& t, packed_transaction::compression_type c = packed_transaction::none )
       :trx(t),packed_trx(t, c) {
          id = trx.id();
          //raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
          signed_id = digest_type::hash(packed_trx);
       }
 
-      transaction_metadata( const packed_transaction& ptrx )
+      explicit transaction_metadata( const packed_transaction& ptrx )
       :trx( ptrx.get_signed_transaction() ), packed_trx(ptrx) {
          id = trx.id();
          //raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );

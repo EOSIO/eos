@@ -178,7 +178,7 @@
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1
 		fi
-		if ! ./b2 install
+		if ! ./b2 -j"${CPU_CORE}" install
 		then
 			printf "\\n\\tInstallation of boost libraries failed. 1\\n"
 			printf "\\n\\tExiting now.\\n\\n"
