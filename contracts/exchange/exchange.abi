@@ -61,15 +61,13 @@
       ]
     },
     {
-      "name": "trade",
+      "name": "marketorder",
       "base": "",
       "fields": [
         {"name":"seller", "type":"account_name"},
         {"name":"market", "type":"symbol"},
         {"name":"sell", "type":"extended_asset"},
-        {"name":"min_receive", "type":"extended_asset"},
-        {"name":"expire", "type":"uint32"},
-        {"name":"fill_or_kill", "type":"uint8"}
+        {"name":"receive", "type":"extended_symbol"}
       ]
     },
     {
@@ -78,7 +76,8 @@
       "fields": [
         {"name":"creator", "type":"account_name"},
         {"name":"initial_supply", "type":"asset"},
-        {"name":"fee", "type":"uint32"},
+        {"name":"fee", "type":"float64"},
+        {"name":"interest_rate", "type":"float64"},
         {"name":"base_deposit", "type":"extended_asset"},
         {"name":"quote_deposit", "type":"extended_asset"}
       ]
@@ -94,7 +93,7 @@
       ]
     },
     {
-      "name": "deposit",
+      "name": "withdraw",
       "base": "",
       "fields": [
         {"name":"from", "type":"account_name"},
@@ -133,12 +132,19 @@
         {"name":"currency", "type":"uint64"},
         {"name":"supply", "type":"uint64"}
       ]
+    },{
+     "name": "continuation",
+     "base": "",
+     "fields": [
+        {"name":"market", "type":"symbol"},
+        {"name":"max_ops", "type":"int32"}
+     ]
     }
   ],
   "actions": [
-    { "name": "deposit", "type": "deposit", "ricardian_contract": "" },
+    { "name": "withdraw", "type": "withdraw", "ricardian_contract": "" },
     { "name": "transfer", "type": "transfer", "ricardian_contract": "" },
-    { "name": "trade", "type": "trade", "ricardian_contract": "" },
+    { "name": "marketorder", "type": "marketorder", "ricardian_contract": "" },
     { "name": "createx", "type": "createx", "ricardian_contract": "" },
     { "name": "issue", "type": "issue", "ricardian_contract": "" },
     { "name": "lend", "type": "lend", "ricardian_contract": "" },
@@ -146,6 +152,7 @@
     { "name": "upmargin", "type": "upmargin", "ricardian_contract": "" },
     { "name": "covermargin", "type": "covermargin", "ricardian_contract": "" },
     { "name": "create", "type": "create", "ricardian_contract": "" }
+    { "name": "continuation", "type": "continuation", "ricardian_contract": "" }
   ],
   "tables": [{
       "name": "account",

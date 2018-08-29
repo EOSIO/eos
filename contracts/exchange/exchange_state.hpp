@@ -9,6 +9,7 @@ namespace eosio {
    struct margin_state {
       extended_asset total_lendable;
       extended_asset total_lent;
+      extended_asset collected_interest;
       real_type      least_collateralized = std::numeric_limits<double>::max();
 
       /**
@@ -20,18 +21,21 @@ namespace eosio {
       real_type      interest_shares = 0;
 
       real_type lend( int64_t new_lendable ) {
+         real_type new_shares = new_lendable;
          if( total_lendable.amount > 0 ) {
-            real_type new_shares =  (interest_shares * new_lendable) / total_lendable.amount;
+            new_shares =  (interest_shares * new_lendable) / total_lendable.amount;
             interest_shares += new_shares;
             total_lendable.amount += new_lendable;
          } else {
             interest_shares += new_lendable;
             total_lendable.amount  += new_lendable;
          }
-         return new_lendable;
+         // Higher limits trigger a floating-point issue which causes unlend to refund too much
+         eosio_assert( total_lendable.amount < (1ll << 53), "exceeded maximum lendable amount" );
+         return new_shares;
       }
 
-      extended_asset unlend( double ishares ) {
+      extended_asset unlend( real_type ishares ) {
          extended_asset result = total_lent;
          print( "unlend: ", ishares, " existing interest_shares:  ", interest_shares, "\n" ); 
          result.amount  = int64_t( (ishares * total_lendable.amount) / interest_shares );
@@ -39,13 +43,15 @@ namespace eosio {
          total_lendable.amount -= result.amount;
          interest_shares -= ishares;
 
+         // todo: call margins? zero interest_shares on underflow?
          eosio_assert( interest_shares >= 0, "underflow" );
          eosio_assert( total_lendable.amount >= 0, "underflow" );
+         eosio_assert( total_lendable >= total_lent, "funds are in margins" );
 
          return result;
       }
 
-      EOSLIB_SERIALIZE( margin_state, (total_lendable)(total_lent)(least_collateralized)(interest_shares) )
+      EOSLIB_SERIALIZE( margin_state, (total_lendable)(total_lent)(collected_interest)(least_collateralized)(interest_shares) )
    };
 
    /**
@@ -56,7 +62,20 @@ namespace eosio {
    struct exchange_state {
       account_name      manager;
       extended_asset    supply;
-      uint32_t          fee = 0;
+      double            fee = 0;
+      double            interest_rate = 0;
+      bool              need_continuation = false;
+
+      struct market_continuation {
+         bool              active = false;
+         account_name      seller = 0;
+         extended_asset    sell;
+         extended_symbol   receive_symbol;
+
+         EOSLIB_SERIALIZE( market_continuation, (active)(seller)(sell)(receive_symbol) )
+      };
+
+      market_continuation active_market_continuation;
 
       struct connector {
          extended_asset balance;
@@ -72,14 +91,14 @@ namespace eosio {
 
       uint64_t primary_key()const { return supply.symbol.name(); }
 
-      extended_asset convert_to_exchange( connector& c, extended_asset in ); 
-      extended_asset convert_from_exchange( connector& c, extended_asset in );
-      extended_asset convert( extended_asset from, extended_symbol to );
+      extended_asset convert_to_exchange( connector& c, extended_asset in, bool allow_zero, bool charge_fee ); 
+      extended_asset convert_from_exchange( connector& c, extended_asset in, bool allow_zero, bool charge_fee );
+      extended_asset convert( extended_asset from, extended_symbol to, bool allow_zero = false, bool charge_fee = true );
 
-      bool requires_margin_call( const exchange_state::connector& con )const;
+      bool requires_margin_call( const exchange_state::connector& con, const extended_symbol& collateral_symbol )const;
       bool requires_margin_call()const;
 
-      EOSLIB_SERIALIZE( exchange_state, (manager)(supply)(fee)(base)(quote) )
+      EOSLIB_SERIALIZE( exchange_state, (manager)(supply)(fee)(interest_rate)(need_continuation)(active_market_continuation)(base)(quote) )
    };
 
    typedef eosio::multi_index<N(markets), exchange_state> markets;
