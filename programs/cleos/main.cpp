@@ -553,12 +553,12 @@ chain::action create_transfer(const string& contract, const name& sender, const 
    };
 }
 
-chain::action create_setabi(const name& account, const abi_def& abi) {
+chain::action create_setabi(const name& account, const bytes& abi) {
    return action {
       tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
       setabi{
          .account   = account,
-         .abi       = fc::raw::pack(abi)
+         .abi       = abi
       }
    };
 }
@@ -2248,45 +2248,57 @@ int main( int argc, char** argv ) {
    string wasmPath;
    string abiPath;
    bool shouldSend = true;
+   bool contract_clear = false;
    auto codeSubcommand = setSubcommand->add_subcommand("code", localized("Create or update the code on an account"));
    codeSubcommand->add_option("account", account, localized("The account to set code for"))->required();
-   codeSubcommand->add_option("code-file", wasmPath, localized("The fullpath containing the contract WASM"))->required();
+   codeSubcommand->add_option("code-file", wasmPath, localized("The fullpath containing the contract WASM"));//->required();
+   codeSubcommand->add_flag( "-c,--clear", contract_clear, localized("Remove code on an account"));
 
    auto abiSubcommand = setSubcommand->add_subcommand("abi", localized("Create or update the abi on an account"));
    abiSubcommand->add_option("account", account, localized("The account to set the ABI for"))->required();
-   abiSubcommand->add_option("abi-file", abiPath, localized("The fullpath containing the contract ABI"))->required();
+   abiSubcommand->add_option("abi-file", abiPath, localized("The fullpath containing the contract ABI"));//->required();
+   abiSubcommand->add_flag( "-c,--clear", contract_clear, localized("Remove abi on an account"));
 
    auto contractSubcommand = setSubcommand->add_subcommand("contract", localized("Create or update the contract on an account"));
    contractSubcommand->add_option("account", account, localized("The account to publish a contract for"))
                      ->required();
-   contractSubcommand->add_option("contract-dir", contractPath, localized("The path containing the .wasm and .abi"))
-                     ->required();
+   contractSubcommand->add_option("contract-dir", contractPath, localized("The path containing the .wasm and .abi"));
+                     // ->required();
    contractSubcommand->add_option("wasm-file", wasmPath, localized("The file containing the contract WASM relative to contract-dir"));
 //                     ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
 //                                ->check(CLI::ExistingFile);
+   contractSubcommand->add_flag( "-c,--clear", contract_clear, localized("Rmove contract on an account"));
 
    std::vector<chain::action> actions;
    auto set_code_callback = [&]() {
-      std::string wasm;
-      fc::path cpath(contractPath);
+      bytes code_bytes;
+      if(!contract_clear){
+        std::string wasm;
+        fc::path cpath(contractPath);
 
-      if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
+        if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
 
-      if( wasmPath.empty() )
-         wasmPath = (cpath / (cpath.filename().generic_string()+".wasm")).generic_string();
-      else
-         wasmPath = (cpath / wasmPath).generic_string();
+        if( wasmPath.empty() )
+           wasmPath = (cpath / (cpath.filename().generic_string()+".wasm")).generic_string();
+        else
+           wasmPath = (cpath / wasmPath).generic_string();
 
-      std::cerr << localized(("Reading WASM from " + wasmPath + "...").c_str()) << std::endl;
-      fc::read_file_contents(wasmPath, wasm);
-      EOS_ASSERT( !wasm.empty(), wast_file_not_found, "no wasm file found ${f}", ("f", wasmPath) );
+        std::cerr << localized(("Reading WASM from " + wasmPath + "...").c_str()) << std::endl;
+        fc::read_file_contents(wasmPath, wasm);
+        EOS_ASSERT( !wasm.empty(), wast_file_not_found, "no wasm file found ${f}", ("f", wasmPath) );
 
-      const string binary_wasm_header("\x00\x61\x73\x6d\x01\x00\x00\x00", 8);
-      if(wasm.compare(0, 8, binary_wasm_header))
-         std::cerr << localized("WARNING: ") << wasmPath << localized(" doesn't look like a binary WASM file. Is it something else, like WAST? Trying anyways...") << std::endl;
+        const string binary_wasm_header("\x00\x61\x73\x6d\x01\x00\x00\x00", 8);
+        if(wasm.compare(0, 8, binary_wasm_header))
+           std::cerr << localized("WARNING: ") << wasmPath << localized(" doesn't look like a binary WASM file. Is it something else, like WAST? Trying anyways...") << std::endl;
+        code_bytes = bytes(wasm.begin(), wasm.end());
 
-      actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
+      } else {
+        code_bytes = bytes();
+      }
+
+
+      actions.emplace_back( create_setcode(account, code_bytes ) );
       if ( shouldSend ) {
          std::cerr << localized("Setting Code...") << std::endl;
          send_actions(std::move(actions), 10000, packed_transaction::zlib);
@@ -2294,19 +2306,27 @@ int main( int argc, char** argv ) {
    };
 
    auto set_abi_callback = [&]() {
-      fc::path cpath(contractPath);
-      if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
+      bytes abi_bytes;
+      if(!contract_clear){
+        fc::path cpath(contractPath);
+        if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
 
-      if( abiPath.empty() ) {
-         abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
+        if( abiPath.empty() ) {
+           abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
+        } else {
+           abiPath = (cpath / abiPath).generic_string();
+        }
+
+        EOS_ASSERT( fc::exists( abiPath ), abi_file_not_found, "no abi file found ${f}", ("f", abiPath)  );
+
+        abi_bytes = fc::raw::pack(fc::json::from_file(abiPath).as<abi_def>());
+
       } else {
-         abiPath = (cpath / abiPath).generic_string();
+        abi_bytes = bytes();
       }
 
-      EOS_ASSERT( fc::exists( abiPath ), abi_file_not_found, "no abi file found ${f}", ("f", abiPath)  );
-
       try {
-         actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<abi_def>()) );
+         actions.emplace_back( create_setabi(account, abi_bytes) );
       } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
       if ( shouldSend ) {
          std::cerr << localized("Setting ABI...") << std::endl;
@@ -2318,6 +2338,7 @@ int main( int argc, char** argv ) {
    add_standard_transaction_options(codeSubcommand, "account@active");
    add_standard_transaction_options(abiSubcommand, "account@active");
    contractSubcommand->set_callback([&] {
+      if(!contract_clear) EOS_ASSERT( !contractPath.empty(), contract_exception, " contract-dir is null ", ("f", contractPath) );
       shouldSend = false;
       set_code_callback();
       set_abi_callback();
