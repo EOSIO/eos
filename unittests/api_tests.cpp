@@ -448,21 +448,16 @@ BOOST_FIXTURE_TEST_CASE(require_notice_tests, TESTER) { try {
       produce_blocks(1);
 
       // test require_notice
-      auto scope = std::vector<account_name>{N(testapi)};
-      auto test_require_notice = [this](auto& test, std::vector<account_name>& scope){
-         signed_transaction trx;
-         auto tm = test_api_action<TEST_METHOD("test_action", "require_notice_tests")>{};
+      signed_transaction trx;
+      auto tm = test_api_action<TEST_METHOD( "test_action", "require_notice_tests" )>{};
 
-         action act(std::vector<permission_level>{{N(testapi), config::active_name}}, tm);
-         trx.actions.push_back(act);
+      action act( std::vector<permission_level>{{N( testapi ), config::active_name}}, tm );
+      trx.actions.push_back( act );
 
-         test.set_transaction_headers(trx);
-         trx.sign(test.get_private_key(N(testapi), "active"), control->get_chain_id());
-         auto res = test.push_transaction(trx);
-         BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
-      };
-
-      test_require_notice(*this, scope); // no exception expected
+      set_transaction_headers( trx );
+      trx.sign( get_private_key( N( testapi ), "active" ), control->get_chain_id() );
+      auto res = push_transaction( trx );
+      BOOST_CHECK_EQUAL( res->receipt->status, transaction_receipt::executed );
 
    } FC_LOG_AND_RETHROW() }
 
