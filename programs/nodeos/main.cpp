@@ -6,7 +6,7 @@
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
-#include <eosio/history_plugin/history_plugin.hpp>
+// #include <eosio/history_plugin/history_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/utilities/common.hpp>
@@ -94,7 +94,7 @@ int main(int argc, char** argv)
 {
    try {
       app().set_version(eosio::nodeos::config::version);
-      app().register_plugin<history_plugin>();
+//      app().register_plugin<history_plugin>();
 
       auto root = fc::app_path();
       app().set_default_data_dir(root / "eosio/nodeos/data" );
