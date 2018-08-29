@@ -112,6 +112,7 @@ function generate_abi {
     ${ABIGEN} -extra-arg=-c -extra-arg=--std=c++14 -extra-arg=--target=wasm32 \
         -extra-arg=-nostdinc -extra-arg=-nostdinc++ -extra-arg=-DABIGEN \
         -extra-arg=-I@CMAKE_SOURCE_DIR@/contracts \
+        -extra-arg=-I@CMAKE_BINARY_DIR@/contracts \
         -extra-arg=-I@CMAKE_SOURCE_DIR@/contracts/libc++/upstream/include \
         -extra-arg=-I@CMAKE_SOURCE_DIR@/contracts/musl/upstream/include \
         -extra-arg=-I@CMAKE_SOURCE_DIR@/externals/magic_get/include \
