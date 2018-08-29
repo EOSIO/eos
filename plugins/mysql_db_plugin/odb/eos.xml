@@ -1,0 +1,132 @@
+<changelog xmlns="http://www.codesynthesis.com/xmlns/odb/changelog" database="mysql" version="1">
+  <model version="1">
+    <table name="Stats" options="ENGINE=InnoDB" kind="object">
+      <column name="id" type="INT UNSIGNED" null="false"/>
+      <column name="tx_count" type="BIGINT UNSIGNED" null="false"/>
+      <column name="action_count" type="BIGINT UNSIGNED" null="false"/>
+      <column name="context_free_action_count" type="BIGINT UNSIGNED" null="false"/>
+      <primary-key>
+        <column name="id"/>
+      </primary-key>
+    </table>
+    <table name="Block" options="ENGINE=InnoDB" kind="object">
+      <column name="id" type="BINARY(32)" null="false"/>
+      <column name="num" type="INT UNSIGNED" null="false"/>
+      <column name="timestamp" type="DATETIME(6)" null="true"/>
+      <column name="block" type="MEDIUMBLOB" null="false"/>
+      <column name="tx_count" type="INT UNSIGNED" null="false"/>
+      <column name="action_count" type="INT UNSIGNED" null="false"/>
+      <column name="context_free_action_count" type="INT UNSIGNED" null="false"/>
+      <column name="created_at" type="DATETIME(6)" null="true"/>
+      <primary-key>
+        <column name="id"/>
+      </primary-key>
+      <index name="num_i">
+        <column name="num"/>
+      </index>
+      <index name="timestamp_i">
+        <column name="timestamp"/>
+      </index>
+      <index name="created_at_i">
+        <column name="created_at"/>
+      </index>
+    </table>
+    <table name="Transaction" options="ENGINE=InnoDB" kind="object">
+      <column name="id" type="BINARY(32)" null="false"/>
+      <column name="block_id" type="BINARY(32)" null="false"/>
+      <column name="block_num" type="INT UNSIGNED" null="false"/>
+      <column name="block_time" type="DATETIME(6)" null="true"/>
+      <column name="block_seq" type="SMALLINT UNSIGNED" null="false"/>
+      <column name="action_count" type="INT UNSIGNED" null="false"/>
+      <column name="context_free_action_count" type="INT UNSIGNED" null="false"/>
+      <primary-key>
+        <column name="id"/>
+      </primary-key>
+      <index name="block_id_i">
+        <column name="block_id"/>
+      </index>
+      <index name="block_num_seq_i">
+        <column name="block_num"/>
+        <column name="block_seq"/>
+      </index>
+      <index name="block_time_i">
+        <column name="block_time"/>
+      </index>
+    </table>
+    <table name="TransactionTrace" options="ENGINE=InnoDB" kind="object">
+      <column name="id" type="BINARY(32)" null="false"/>
+      <column name="scheduled" type="TINYINT(1)" null="false"/>
+      <column name="status" type="ENUM('executed', 'soft_fail', 'hard_fail', 'delayed', 'expired', 'unknown')" null="false"/>
+      <column name="net_usage_words" type="INT UNSIGNED" null="false"/>
+      <column name="cpu_usage_us" type="INT UNSIGNED" null="false"/>
+      <column name="exception" type="TEXT" null="true"/>
+      <primary-key>
+        <column name="id"/>
+      </primary-key>
+      <index name="status_i">
+        <column name="status"/>
+      </index>
+    </table>
+    <table name="Action" options="ENGINE=InnoDB" kind="object">
+      <column name="global_seq" type="BIGINT UNSIGNED" null="false"/>
+      <column name="account_seq" type="BIGINT UNSIGNED" null="false"/>
+      <column name="parent_seq" type="BIGINT UNSIGNED" null="false"/>
+      <column name="account" type="BIGINT UNSIGNED" null="false"/>
+      <column name="name" type="BIGINT UNSIGNED" null="false"/>
+      <column name="auth" type="BLOB" null="true"/>
+      <column name="data" type="MEDIUMBLOB" null="false"/>
+      <column name="receiver" type="BIGINT UNSIGNED" null="false"/>
+      <column name="auth_seq" type="BLOB" null="true"/>
+      <column name="code_seq" type="INT UNSIGNED" null="false"/>
+      <column name="abi_seq" type="INT UNSIGNED" null="false"/>
+      <column name="tx_id" type="BINARY(32)" null="false"/>
+      <column name="console" type="TEXT" null="true"/>
+      <primary-key>
+        <column name="global_seq"/>
+      </primary-key>
+      <index name="account_seq_i">
+        <column name="account_seq"/>
+      </index>
+      <index name="parent_seq_i">
+        <column name="parent_seq"/>
+      </index>
+      <index name="account_i">
+        <column name="account"/>
+      </index>
+      <index name="name_i">
+        <column name="name"/>
+      </index>
+      <index name="receiver_i">
+        <column name="receiver"/>
+      </index>
+      <index name="tx_id_i">
+        <column name="tx_id"/>
+      </index>
+    </table>
+    <table name="TokenTransfer" options="ENGINE=InnoDB" kind="object">
+      <column name="action_global_seq" type="BIGINT UNSIGNED" null="false"/>
+      <column name="symbol" type="VARCHAR(8)" null="false"/>
+      <column name="precision" type="TINYINT UNSIGNED" null="false"/>
+      <column name="amount" type="BIGINT" null="false"/>
+      <column name="from" type="BIGINT UNSIGNED" null="false"/>
+      <column name="to" type="BIGINT UNSIGNED" null="false"/>
+      <column name="memo" type="TEXT" null="true"/>
+      <column name="tx_id" type="BINARY(32)" null="false"/>
+      <primary-key>
+        <column name="action_global_seq"/>
+      </primary-key>
+      <index name="symbol_i">
+        <column name="symbol"/>
+      </index>
+      <index name="from_i">
+        <column name="from"/>
+      </index>
+      <index name="to_i">
+        <column name="to"/>
+      </index>
+      <index name="tx_id_i">
+        <column name="tx_id"/>
+      </index>
+    </table>
+  </model>
+</changelog>
