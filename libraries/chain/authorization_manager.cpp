@@ -12,21 +12,36 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
+#include <eosio/chain/database_utils.hpp>
+
 
 namespace eosio { namespace chain {
+
+   using authorization_index_set = index_set<
+      permission_index,
+      permission_usage_index,
+      permission_link_index
+   >;
 
    authorization_manager::authorization_manager(controller& c, database& d)
    :_control(c),_db(d){}
 
    void authorization_manager::add_indices() {
-      _db.add_index<permission_index>();
-      _db.add_index<permission_usage_index>();
-      _db.add_index<permission_link_index>();
+      authorization_index_set::add_indices(_db);
    }
 
    void authorization_manager::initialize_database() {
       _db.create<permission_object>([](auto&){}); /// reserve perm 0 (used else where)
    }
+
+   void authorization_manager::calculate_integrity_hash( fc::sha256::encoder& enc ) const {
+      authorization_index_set::walk_indices([this, &enc]( auto utils ){
+         decltype(utils)::walk(_db, [&enc]( const auto &row ) {
+            fc::raw::pack(enc, row);
+         });
+      });
+   }
+
 
    const permission_object& authorization_manager::create_permission( account_name account,
                                                                       permission_name name,

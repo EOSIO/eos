@@ -339,7 +339,7 @@ struct controller_impl {
          db.undo();
       }
 
-      ilog( "database initialized with hash: ${hash}", ("hash", calculate_db_hash<sha256>()));
+      ilog( "database initialized with hash: ${hash}", ("hash", calculate_integrity_hash()));
 
    }
 
@@ -371,19 +371,21 @@ struct controller_impl {
       });
    }
 
-
-   template<typename DigestType>
-   DigestType calculate_db_hash() {
-
-      typename DigestType::encoder enc;
+   void calculate_integrity_hash( sha256::encoder& enc ) const {
       controller_index_set::walk_indices([this, &enc]( auto utils ){
          decltype(utils)::walk(db, [&enc]( const auto &row ) {
             fc::raw::pack(enc, row);
          });
       });
-
-      return enc.result();
    };
+
+   sha256 calculate_integrity_hash() const {
+      sha256::encoder enc;
+      calculate_integrity_hash(enc);
+      authorization.calculate_integrity_hash(enc);
+      resource_limits.calculate_integrity_hash(enc);
+      return enc.result();
+   }
 
    /**
     *  Sets fork database head to the genesis state.

@@ -27,6 +27,7 @@ namespace eosio { namespace chain {
 
          void add_indices();
          void initialize_database();
+         void calculate_integrity_hash( fc::sha256::encoder& enc ) const;
 
          const permission_object& create_permission( account_name account,
                                                      permission_name name,

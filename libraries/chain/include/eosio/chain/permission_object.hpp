@@ -110,8 +110,7 @@ namespace eosio { namespace chain {
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_object, eosio::chain::permission_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_usage_object, eosio::chain::permission_usage_index)
 
-FC_REFLECT(chainbase::oid<eosio::chain::permission_object>, (_id))
-FC_REFLECT(eosio::chain::permission_object, (id)(usage_id)(parent)(owner)(name)(last_updated)(auth))
+FC_REFLECT(eosio::chain::permission_object, (usage_id)(parent)(owner)(name)(last_updated)(auth))
 
 FC_REFLECT(chainbase::oid<eosio::chain::permission_usage_object>, (_id))
 FC_REFLECT(eosio::chain::permission_usage_object, (id)(last_used))

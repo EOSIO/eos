@@ -43,6 +43,7 @@ namespace eosio { namespace chain { namespace resource_limits {
 
          void add_indices();
          void initialize_database();
+         void calculate_integrity_hash( fc::sha256::encoder& enc ) const;
          void initialize_account( const account_name& account );
          void set_block_parameters( const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters );
 
@@ -80,3 +81,5 @@ namespace eosio { namespace chain { namespace resource_limits {
 } } } /// eosio::chain
 
 FC_REFLECT( eosio::chain::resource_limits::account_resource_limit, (used)(available)(max) )
+FC_REFLECT( eosio::chain::resource_limits::ratio, (numerator)(denominator))
+FC_REFLECT( eosio::chain::resource_limits::elastic_limit_parameters, (target)(max)(periods)(max_multiplier)(contract_rate)(expand_rate))
