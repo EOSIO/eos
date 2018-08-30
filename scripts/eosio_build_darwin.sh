@@ -533,9 +533,123 @@
 		printf "\\tWASM found at /usr/local/wasm/bin/.\\n"
 	fi
 
+    printf "\\n\\tChecking MySQL DB client installation.\\n"
+	MYSQL_INSTALL=true
+
+    if [ -e "/usr/local/opt/mysql-client/bin/mysql" ]; then
+		MYSQL_INSTALL=false
+		if ! version=$( grep "Version:" /usr/local/opt/mysql-client/lib/pkgconfig/mysqlclient.pc | tr -s ' ' | awk '{print $2}' )
+		then
+			printf "\\tUnable to determine client version.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+
+		maj=$( echo "${version}" | cut -d'.' -f1 )
+		min=$( echo "${version}" | cut -d'.' -f2 )
+		if [ "${maj}" -gt 20 ]; then
+			MYSQL_INSTALL=true
+		elif [ "${maj}" -eq 3 ] && [ "${min}" -lt 3 ]; then
+			MYSQL_INSTALL=true
+		fi
+	else
+		printf "\\tMySQL DB Client found at /usr/local/opt/mysql-client.\\n"
+	fi
+
+    if [ $MYSQL_INSTALL == "true" ]; then
+        printf "\\tInstalling MySQL client.\\n"
+		if ! "${BREW}" install mysql-client
+		then
+			printf "\\tUnable to install MySQL client at this time. 0\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		echo "export PATH=/usr/local/opt/mysql-client/bin:$PATH" >> ~/.bash_profile
+        echo "export LDFLAGS=-L/usr/local/opt/mysql-client/lib" >> ~/.bash_profile
+        echo "export CPPFLAGS=-I/usr/local/opt/mysql-client/include" >> ~/.bash_profile
+        source ~/.bash_profile
+    fi
+
+    if [ ! -e "/usr/local/lib/libzdb.a" ]; then
+		printf "\\tInstalling zdb library.\\n"
+		if ! cd "${TEMP_DIR}"
+		then
+			printf "\\tUnable to enter directory %s.\\n" "${TEMP_DIR}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+
+        STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 http://www.tildeslash.com/libzdb/dist/libzdb-3.1.tar.gz )
+        if [ "${STATUS}" -ne 200 ]; then
+            if ! rm -f "${TEMP_DIR}/libzdb-3.1.tar.gz"
+            then
+                printf "\\tUnable to remove file %s/libzdb-3.1.tar.gz.\\n" "${TEMP_DIR}"
+            fi
+            printf "\\tUnable to download zdb library at this time.\\n"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+        if ! tar xf libzdb-3.1.tar.gz
+        then
+            printf "\\tUnable to unarchive file %s/libzdb-3.1.tar.gz.\\n" "${TEMP_DIR}"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+        if ! rm -f "${TEMP_DIR}/libzdb-3.1.tar.gz"
+        then
+            printf "\\tUnable to remove file libzdb-3.1.tar.gz.\\n"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+        if ! cd "${TEMP_DIR}"/libzdb-3.1
+        then
+            printf "\\tUnable to cd into directory %s/libzdb-3.1.\\n" "${TEMP_DIR}"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+
+        if ! ./configure
+        then
+            printf "\\tError configuring zdb library.\\n"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+
+        if ! make
+        then
+            printf "\\tError make zdb library.\\n"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+
+        if ! sudo make install
+        then
+            printf "\\tError make install zdb library.\\n"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+
+        if ! cd "${TEMP_DIR}"
+        then
+            printf "\\tUnable to enter directory %s.\\n" "${TEMP_DIR}"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+        if ! rm -rf "${TEMP_DIR}/libzdb-3.1"
+        then
+            printf "\\tUnable to remove directory %s/libzdb-3.1.\\n" "${TEMP_DIR}"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+    else
+		printf "\\tlibzdb found at /usr/local/lib/zdb.\\n"
+	fi
+
+
+
 	function print_instructions()
 	{
 		printf "\\n\\t%s -f %s &\\n" "$( command -v mongod )" "${MONGOD_CONF}"
 		printf "\\tcd %s; make test\\n\\n" "${BUILD_DIR}"
-	return 0
+	    return 0
 	}

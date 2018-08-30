@@ -62,7 +62,7 @@
 
 	DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev cmake make automake libbz2-dev libssl-dev \
 	libgmp3-dev autotools-dev build-essential libicu-dev python2.7-dev python3-dev \
-    autoconf libtool curl zlib1g-dev doxygen graphviz)
+    autoconf libtool curl zlib1g-dev doxygen graphviz libmysqlclient-dev)
 	COUNT=1
 	DISPLAY=""
 	DEP=""
@@ -558,6 +558,118 @@ mongodconf
 		printf "\\n\\tWASM successffully installed @ %s/opt/wasm/bin.\\n\\n" "${HOME}"
 	else
 		printf "\\tWASM found at %s/opt/wasm/bin.\\n" "${HOME}"
+	fi
+
+    printf "\\n\\tChecking MySQL DB client installation.\\n"
+	MYSQL_INSTALL=true
+
+    if [ -e "/usr/bin/mysql" ]; then
+		MYSQL_INSTALL=false
+		if ! version=$( grep "Version:" /usr/lib/x86_64-linux-gnu/pkgconfig/mysqlclient.pc | tr -s ' ' | awk '{print $2}' )
+		then
+			printf "\\tUnable to determine client version.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+
+		maj=$( echo "${version}" | cut -d'.' -f1 )
+		min=$( echo "${version}" | cut -d'.' -f2 )
+		if [ "${maj}" -gt 20 ]; then
+			MYSQL_INSTALL=true
+		elif [ "${maj}" -eq 20 ] && [ "${min}" -lt 3 ]; then
+			MYSQL_INSTALL=true
+		fi
+	fi
+
+    if [ $MYSQL_INSTALL == "true" ]; then
+        printf "\\tInstalling MySQL client.\\n"
+		if ! sudo apt-get install mysql-client-dev
+		then
+			printf "\\tUnable to install MySQL client at this time. 0\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		echo "export PATH=/usr/bin:$PATH" >> ~/.bash_profile
+        echo "export LDFLAGS=-L/usr/lib/x86_64-linux-gnu/" >> ~/.bash_profile
+        echo "export CPPFLAGS=-I/usr/include/mysql" >> ~/.bash_profile
+        source ~/.bash_profile
+    else
+		printf "\\tMySQL DB Client found at /usr/bin.\\n"
+	fi
+
+    if [ ! -e "/usr/local/lib/libzdb.a" ]; then
+		printf "\\tInstalling zdb library.\\n"
+		if ! cd "${TEMP_DIR}"
+		then
+			printf "\\tUnable to enter directory %s.\\n" "${TEMP_DIR}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+
+        STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 http://www.tildeslash.com/libzdb/dist/libzdb-3.1.tar.gz )
+        if [ "${STATUS}" -ne 200 ]; then
+            if ! rm -f "${TEMP_DIR}/libzdb-3.1.tar.gz"
+            then
+                printf "\\tUnable to remove file %s/libzdb-3.1.tar.gz.\\n" "${TEMP_DIR}"
+            fi
+            printf "\\tUnable to download zdb library at this time.\\n"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+        if ! tar xf libzdb-3.1.tar.gz
+        then
+            printf "\\tUnable to unarchive file %s/libzdb-3.1.tar.gz.\\n" "${TEMP_DIR}"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+        if ! rm -f "${TEMP_DIR}/libzdb-3.1.tar.gz"
+        then
+            printf "\\tUnable to remove file libzdb-3.1.tar.gz.\\n"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+        if ! cd "${TEMP_DIR}"/libzdb-3.1
+        then
+            printf "\\tUnable to cd into directory %s/libzdb-3.1.\\n" "${TEMP_DIR}"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+
+        if ! ./configure
+        then
+            printf "\\tError configuring zdb library.\\n"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+
+        if ! make
+        then
+            printf "\\tError make zdb library.\\n"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+
+        if ! sudo make install
+        then
+            printf "\\tError make install zdb library.\\n"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+
+        if ! cd "${TEMP_DIR}"
+        then
+            printf "\\tUnable to enter directory %s.\\n" "${TEMP_DIR}"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+        if ! rm -rf "${TEMP_DIR}/libzdb-3.1"
+        then
+            printf "\\tUnable to remove directory %s/libzdb-3.1.\\n" "${TEMP_DIR}"
+            printf "\\tExiting now.\\n\\n"
+            exit 1;
+        fi
+	else
+		printf "\\tlibzdb found at /usr/local/lib/zdb.\\n"
 	fi
 
 	function print_instructions()
