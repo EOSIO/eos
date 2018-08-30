@@ -6,7 +6,6 @@ if [ ! -e ~/nodeos-test-data-volume/genesis.json ]; then
 	printf "Please ensure that you place your genesis.json file into ~/nodeos-test-data-volume before running this script!\n\n"
 	exit
 fi
-exit
 docker volume create --name=nodeos-test-data-volume
 docker volume create --name=keosd-test-data-volume
 if [ ! -h ~/keosd-test-data-volume ]; then ln -s ~/nodeos-test-data-volume ~/keosd-test-data-volume; fi
