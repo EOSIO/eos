@@ -24,7 +24,7 @@ namespace eosio { namespace chain {
       transaction_id_type  trx_id; ///< the transaction that generated this action
       uint32_t             block_num = 0;
       block_timestamp_type block_time;
-      block_id_type        producer_block_id;
+      fc::optional<block_id_type>     producer_block_id;
       flat_map<account_name, int64_t> account_ram_delta;
    };
 
@@ -41,7 +41,7 @@ namespace eosio { namespace chain {
       transaction_id_type                        id;
       uint32_t                                   block_num = 0;
       block_timestamp_type                       block_time;
-      block_id_type                              producer_block_id;
+      fc::optional<block_id_type>                producer_block_id;
       fc::optional<transaction_receipt_header>   receipt;
       fc::microseconds                           elapsed;
       uint64_t                                   net_usage = 0;
