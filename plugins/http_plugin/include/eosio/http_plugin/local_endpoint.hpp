@@ -386,9 +386,7 @@ public:
             m_acceptor->open(ep.protocol(),bec);
         }
         if (!bec) {
-            mode_t old_mask = umask(S_IXUSR|S_IXGRP|S_IRWXO);
             m_acceptor->bind(ep,bec);
-            umask(old_mask);
         }
         if (!bec) {
             m_acceptor->listen(boost::asio::socket_base::max_listen_connections,bec);
