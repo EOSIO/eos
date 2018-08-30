@@ -134,6 +134,8 @@ By default, all data is persisted in a docker volume (under ~/). There is a scri
 
 We can easily set up a EOSIO local testnet with the testnet_setup.sh or with the commands below.
 
+You'll need to place your genesis.json for the testnet into ~/nodeos-test-data-volume before the setup script will run.
+
 Note: if you want to use the mongodb plugin, you have to enable it in your `config.ini`.
 
 ```
