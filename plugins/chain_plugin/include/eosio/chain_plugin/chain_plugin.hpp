@@ -250,6 +250,27 @@ public:
 
    get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
 
+   struct get_table_by_scope_params {
+      name        code; // mandatory
+      name        table = 0; // optional, act as filter
+      string      lower_bound; // lower bound of scope, optional
+      string      upper_bound; // upper bound of scope, optional
+      uint32_t    limit = 10;
+   };
+   struct get_table_by_scope_result_row {
+      name        code;
+      name        scope;
+      name        table;
+      name        payer;
+      uint32_t    count;
+   };
+   struct get_table_by_scope_result {
+      vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object
+      bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
+   };
+
+   get_table_by_scope_result get_table_by_scope( const get_table_by_scope_params& params )const;
+
    struct get_currency_balance_params {
       name             code;
       name             account;
@@ -623,6 +644,10 @@ FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transactio
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
+
+FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_result_row, (code)(scope)(table)(payer)(count));
+FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
