@@ -267,6 +267,25 @@ void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metada
 
 void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_ptr& t ) {
    try {
+      // Traces emitted from an incomplete block leave the producer_block_id as empty.
+      //
+      // Avoid adding the action traces or transaction traces to the database if the producer_block_id is empty.
+      // This way traces from speculatively executed transactions are not included in the Mongo database which can
+      // avoid potential confusion for consumers of that database.
+      //
+      // Due to forks, it could be possible for multiple incompatible action traces with the same block_num and trx_id
+      // to exist in the database. And if the producer double produces a block, even the block_time may not
+      // disambiguate the two action traces. Without a producer_block_id to disambiguate and determine if the action
+      // trace comes from an orphaned fork branching off of the blockchain, consumers of the Mongo DB database may be
+      // reacting to a stale action trace that never actually executed in the current blockchain.
+      //
+      // It is better to avoid this potential confusion by not logging traces from speculative execution, i.e. emitted
+      // from an incomplete block. This means that traces will not be recorded in speculative read-mode, but
+      // users should not be using the mongo_db_plugin in that mode anyway.
+      //
+      // It is recommended to run mongo_db_plugin in read-mode = read-only.
+      //
+      if( !t->producer_block_id.valid() ) return;
       // always queue since account information always gathered
       queue( transaction_trace_queue, t );
    } catch (fc::exception& e) {
