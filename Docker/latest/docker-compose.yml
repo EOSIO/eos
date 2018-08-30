@@ -1,12 +1,6 @@
 version: "3"
 
 services:
-  builder:
-    container_name: "${COMPOSE_PROJECT_NAME}_builder"
-    build:
-      context: ../builder
-    image: eosio/builder
-
   nodeos:
     env_file:
       .env
