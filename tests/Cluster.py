@@ -748,6 +748,7 @@ class Cluster(object):
             eosioAccount.ownerPublicKey=eosioKeys["public"]
             eosioAccount.activePrivateKey=eosioKeys["private"]
             eosioAccount.activePublicKey=eosioKeys["public"]
+            producerKeys.pop(eosioName)
 
             if not walletMgr.importKey(eosioAccount, ignWallet):
                 Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (eosioName))
