@@ -1605,6 +1605,10 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
    return signed_blk->id();
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
+sha256 controller::calculate_integrity_hash()const { try {
+   return my->calculate_integrity_hash();
+} FC_LOG_AND_RETHROW() }
+
 void controller::pop_block() {
    my->pop_block();
 }
