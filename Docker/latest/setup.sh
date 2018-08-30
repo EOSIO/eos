@@ -17,6 +17,5 @@ docker volume create --name=$KEOSD_VOLUME_NAME 1> /dev/null
 if [ ! -h "${HOME}/${KEOSD_VOLUME_NAME}" ]; then ln -s $DATAVOLUME $HOME/$KEOSD_VOLUME_NAME; fi
 docker-compose up -d
 # Ensure nodeos is started
-sleep 3
 docker start "${COMPOSE_PROJECT_NAME}_nodeos" 1> /dev/null
 echo "[Docker Container Creation Complete][${COMPOSE_PROJECT_NAME}]"

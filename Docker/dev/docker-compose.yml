@@ -37,9 +37,3 @@ services:
     volumes:
       - ~/$KEOSD_VOLUME_NAME:/opt/eosio/bin/data-dir
     stop_grace_period: 10m
-
-volumes:
-  nodeos-dev-data-volume:
-    external: true
-  keosd-dev-data-volume:
-    external: true
