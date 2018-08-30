@@ -718,6 +718,7 @@ class Cluster(object):
             for line in bootFile:
                 if p.search(line):
                     Utils.Print("ERROR: bios_boot.sh script resulted in errors. See %s" % (bootlog))
+                    Utils.Print(line)
                     return None
 
         producerKeys=Cluster.parseClusterKeys(totalNodes)
