@@ -83,7 +83,7 @@ struct pending_state {
 
    controller::block_status           _block_status = controller::block_status::incomplete;
 
-   block_id_type                      _producer_block_id;
+   optional<block_id_type>            _producer_block_id;
 
    void push() {
       _db_session.push();
@@ -873,7 +873,9 @@ struct controller_impl {
    } /// push_transaction
 
 
-   void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s, const block_id_type& producer_block_id ) {
+   void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s,
+                     const optional<block_id_type>& producer_block_id )
+   {
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
 
       auto guard_pending = fc::make_scoped_exit([this](){
@@ -1396,7 +1398,7 @@ fork_database& controller::fork_db()const { return my->fork_db; }
 
 void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count) {
    validate_db_available_size();
-   my->start_block(when, confirm_block_count, block_status::incomplete, block_id_type() );
+   my->start_block(when, confirm_block_count, block_status::incomplete, optional<block_id_type>() );
 }
 
 void controller::finalize_block() {
@@ -1528,8 +1530,10 @@ time_point controller::pending_block_time()const {
    return my->pending->_pending_block_state->header.timestamp;
 }
 
-block_id_type controller::pending_producer_block_id()const {
+optional<block_id_type> controller::pending_producer_block_id()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+   if( my->pending->_block_status == block_status::incomplete )
+      return optional<block_id_type>();
    return my->pending->_producer_block_id;
 }
 
