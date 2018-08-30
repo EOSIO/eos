@@ -350,7 +350,7 @@ namespace eosio {
       my->mangle_option_names();
       if(current_http_plugin_defaults.default_unix_socket_path.length())
          cfg.add_options()
-            (my->unix_socket_path_option_name.c_str(), bpo::value<boost::filesystem::path>()->default_value(current_http_plugin_defaults.default_unix_socket_path),
+            (my->unix_socket_path_option_name.c_str(), bpo::value<string>()->default_value(current_http_plugin_defaults.default_unix_socket_path),
              "The filename (relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.");
 
       if(current_http_plugin_defaults.default_http_port)
@@ -431,8 +431,8 @@ namespace eosio {
             }
          }
 
-         if( options.count( my->unix_socket_path_option_name ) && !options.at( my->unix_socket_path_option_name ).as<boost::filesystem::path>().empty()) {
-            boost::filesystem::path sock_path = options.at(my->unix_socket_path_option_name).as<boost::filesystem::path>();
+         if( options.count( my->unix_socket_path_option_name ) && !options.at( my->unix_socket_path_option_name ).as<string>().empty()) {
+            boost::filesystem::path sock_path = options.at(my->unix_socket_path_option_name).as<string>();
             if (sock_path.is_relative())
                sock_path = app().data_dir() / sock_path;
             my->unix_endpoint = asio::local::stream_protocol::endpoint(sock_path.string());
