@@ -1,11 +1,20 @@
 FROM eosio/builder as builder
 
-RUN git clone -b $EOS_BRANCH https://github.com/$EOS_ORG_NAME/eos.git --recursive \
-    && cd eos && echo "$EOS_BRANCH:$(git rev-parse HEAD)" > /etc/eosio-version \
-    && cmake -H. -B"/tmp/build" -GNinja -DCMAKE_BUILD_TYPE=Release -DWASM_ROOT=/opt/wasm -DCMAKE_CXX_COMPILER=clang++ \
-       -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/tmp/build  -DSecp256k1_ROOT_DIR=/usr/local -DBUILD_MONGO_DB_PLUGIN=true -DCORE_SYMBOL_NAME=$EOS_SYMBOL \
-    && cmake --build /tmp/build --target install && rm /tmp/build/bin/eosiocpp
+ARG GITHUB_BRANCH=master
+ARG GITHUB_ORG=EOSIO
+ARG DOCKERHUB_USERNAME=eosio
+ARG IMAGE_NAME=eos
+ARG IMAGE_TAG=latest
+ARG BUILD_SYMBOL=EOS
+ARG NODEOS_VOLUME_NAME=nodeos-data-volume
+ARG KEOSD_VOLUME_NAME=keosd-data-volume
+ARG COMPOSE_PROJECT_NAME=main
 
+RUN git clone -b $GITHUB_BRANCH https://github.com/$GITHUB_ORG/eos.git --recursive \
+    && cd eos && echo "$GITHUB_BRANCH:$(git rev-parse HEAD)" > /etc/eosio-version \
+    && cmake -H. -B"/tmp/build" -GNinja -DCMAKE_BUILD_TYPE=Release -DWASM_ROOT=/opt/wasm -DCMAKE_CXX_COMPILER=clang++ \
+       -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/tmp/build  -DSecp256k1_ROOT_DIR=/usr/local -DBUILD_MONGO_DB_PLUGIN=true -DCORE_SYMBOL_NAME=$BUILD_SYMBOL \
+    && cmake --build /tmp/build --target install && rm /tmp/build/bin/eosiocpp
 
 FROM ubuntu:18.04
 

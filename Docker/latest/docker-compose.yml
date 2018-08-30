@@ -1,0 +1,45 @@
+version: "3"
+
+services:
+  builder:
+    container_name: "${COMPOSE_PROJECT_NAME}_builder"
+    build:
+      context: ../builder
+    image: eosio/builder
+
+  nodeos:
+    env_file:
+      .env
+    container_name: "${COMPOSE_PROJECT_NAME}_nodeos"
+    image: "${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}"
+    command: "/opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e --http-alias=${COMPOSE_PROJECT_NAME}_nodeos:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888"
+    hostname: "${COMPOSE_PROJECT_NAME}_nodeos"
+    ports:
+      - 8888:8888
+      - 9876:9876
+    expose:
+      - "8888"
+    volumes:
+      - ~/$NODEOS_VOLUME_NAME:/opt/eosio/bin/data-dir
+    cap_add:
+      - IPC_LOCK
+    stop_grace_period: 10m
+
+  keosd:
+    env_file:
+      .env
+    container_name: "${COMPOSE_PROJECT_NAME}_keosd"
+    image: "${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}"
+    command: "/opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900 --http-alias=${COMPOSE_PROJECT_NAME}_keosd:8900 --http-alias=localhost:8900"
+    hostname: "${COMPOSE_PROJECT_NAME}_keosd"
+    links:
+      - nodeos
+    volumes:
+      - ~/$KEOSD_VOLUME_NAME:/opt/eosio/bin/data-dir
+    stop_grace_period: 10m
+
+volumes:
+  nodeos-data-volume:
+    external: true
+  keosd-data-volume:
+    external: true
