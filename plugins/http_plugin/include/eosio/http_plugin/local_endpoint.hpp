@@ -58,7 +58,7 @@ public:
     }
 
     std::string get_remote_endpoint(lib::error_code & ec) const {
-        return "fixme";
+        return "UNIX Socket Endpoint";
     }
 
    void pre_init(init_handler callback) {
