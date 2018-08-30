@@ -15,7 +15,7 @@ Docker Hub image available from [docker hub](https://hub.docker.com/r/eosio/eos/
 
 ## Building the EOS Containers:
 
-There are currently two Docker template directories you can use: latest & dev. Inside of latest, you'll see a setup.sh, docker-compose.yml, Dockerfile, and a hidden .env file. 
+There are currently three Docker template directories you can use: `latest`, `testnet`, and `dev`. Inside of `latest`, you'll see a setup.sh, docker-compose.yml, Dockerfile, and a hidden .env file. 
 
 If you look at the .env file, you'll see (which are also the defaults used in the Dockerfile for manual building):
 
