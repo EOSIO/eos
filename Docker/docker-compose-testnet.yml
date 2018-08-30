@@ -1,35 +1,39 @@
 version: "3"
 
 services:
-  nodeosd_test:
-    container_name: nodeosd_test
-    image: eosio/eos:v1.1.0
-    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir --genesis-json /opt/eosio/bin/data-dir/genesis.json --http-alias=nodeosd_test:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888 -e
-    hostname: nodeosd_test
+  nodeos_test:
+    env_file:
+      .env
+    container_name: nodeos_test
+    image: "eosio/eos-dev:${EOS_TESTNET_VERSION}"
+    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir --http-alias=nodeos_test:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888 -e
+    hostname: nodeos_test
     ports:
       - 8888:8888
       - 9876:9876
     expose:
       - "8888"
     volumes:
-      - ~/nodeosd-test-data-volume:/opt/eosio/bin/data-dir
+      - ~/nodeos-test-data-volume:/opt/eosio/bin/data-dir
     cap_add:
       - IPC_LOCK
     stop_grace_period: 10m
 
   keosd_test:
+    env_file:
+      .env
     container_name: keosd_test
-    image: eosio/eos:v1.1.0
+    image: "eosio/eos-dev:${EOS_TESTNET_VERSION}"
     command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900 --http-alias=keosd_test:8900 --http-alias=localhost:8900
     hostname: keosd_test
     links:
-      - nodeosd_test
+      - nodeos_test
     volumes:
       - ~/keosd-test-data-volume:/opt/eosio/bin/data-dir
     stop_grace_period: 10m
 
 volumes:
- nodeosd-test-data-volume:
+ nodeos-test-data-volume:
    external: true
  keosd-test-data-volume:
    external: true

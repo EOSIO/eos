@@ -13,51 +13,53 @@ Docker Hub image available from [docker hub](https://hub.docker.com/r/eosio/eos/
 - At least 7GB RAM (Docker -> Preferences -> Advanced -> Memory -> 7GB or above)
 - If the build below fails, make sure you've adjusted Docker Memory settings and try again.
 
-## Build EOS image:
+## Build EOS Containers:
+
+Two options are provided:
+
+1. Use the mainnet_setup.sh or testnet_setup.sh scripts
+2. Manually build:
 
 ```bash
 git clone https://github.com/EOSIO/eos.git --recursive
 cd eos/Docker
-docker build -t eosio/eos .
+docker build -t eosio/eos:latest .
 ```
 
-### Arguments to "docker build"
+- Both methods will use the .env file variables to build.
 
-The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the v1.1.0 tag, you could do the following:
+### .env
+
+Within the eos/Docker directory, we store a .env containing the various variables to use in the build process. These can be modified to fit your needs:
 
 ```bash
-docker build -t eosio/eos:v1.1.0 --build-arg branch=v1.1.0 .
+$ cat eos/Docker/.env
+EOS_TESTNET_VERSION=v1.1.0
+EOS_MAINNET_VERSION=latest
+EOS_SYMBOL=EOS
+EOS_BRANCH=master
+EOS_ORG_NAME=EOSIO # The org name is the EOSIO on the end of https://github.com/EOSIO, or your own forked url
 ```
 
-By default, the symbol in eosio.system is set to SYS. You can override this using the symbol argument while building the docker image:
+## Start both nodeos and keosd containers (mainnet + latest):
 
 ```bash
-docker build -t eosio/eos --build-arg symbol=<symbol> .
-```
-
-If you're using you local forked repo, you can specify the user the Dockerfile uses when it does it's git clone: `RUN git clone -b $branch https://github.com/$user/eos.git --recursive`
-
-```bash
-docker build -t eosio/eos:v1.1.0 --build-arg branch=v1.1.0 --build-arg symbol=EOS --build-arg user=GITHUB_USER --no-cache .
-```
-
-## Start both nodeosd and keosd containers:
-
-```bash
-docker volume create --name=nodeosd-data-volume
+docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
-docker-compose up -d
+docker-compose -f docker-compose.yml up -d
 ```
 
-After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. nodeos service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to cleos when running cleos is running inside the keosd container as described in "Execute cleos commands" section.
+- After running `docker-compose up -d`, two containers named `nodeos` and `keosd` will be started in the background (up -d for detach).
+-- The nodeos container/servuce will expose ports 8888 and 9876.
+-- The keosd container/service does not expose any port to the host. It does however allow you to alias and run cleos from the local machine: `alias cleos='docker exec keosd /opt/eosio/bin/cleos -u http://nodeos:8888 --wallet-url http://127.0.0.1:8900'
 
 ### (Alternative) Start nodeos docker container only:
 
 ```bash
-docker run --name nodeosd -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh -e --http-alias=nodeos:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888
+docker run --name nodeosd -p 8888:8888 -p 9876:9876 -t eosio/eos:latest nodeosd.sh -e --http-alias=nodeos:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888
 ```
 
-Or, you can directly mount host directory into the container:
+You can also directly mount a host directory into the container:
 
 ```bash
 docker run --name nodeosd -v /path-to-data-dir:/opt/eosio/data-dir -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh -e --http-alias=nodeos:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888
@@ -69,14 +71,13 @@ docker run --name nodeosd -v /path-to-data-dir:/opt/eosio/data-dir -p 8888:8888 
 curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
-* Sometimes your nodeosd container does not start and show. You can check with `docker container ls -a`
+- Sometimes your nodeos container does not start after the compose or build process. You can check with `docker container ls -a` and manually start it.
 
-### Execute cleos commands:
+## Execute cleos commands:
 
-You can run the `cleos` commands via a bash alias.
+You can run the `cleos` commands via the bash alias we provided above:
 
 ```bash
-alias cleos='docker exec keos /opt/eosio/bin/cleos -u http://127.0.0.1:8888 --wallet-url http://127.0.0.1:8900'
 cleos get info
 cleos get account inita
 ```
@@ -93,18 +94,18 @@ If you don't need keosd afterwards, you can stop the keosd service using
 docker-compose stop keos
 ```
 
-### Develop/Build custom contracts:
+## Develop/Build custom contracts:
 
 Due to the fact that the eosio/eos image does not contain the required dependencies for contract development (this is by design, to keep the image size small), you will need to utilize the eosio/eos-dev image. This image contains both the required binaries and dependencies to build contracts using eosiocpp.
 
-You can either use the image available on [Docker Hub](https://hub.docker.com/r/eosio/eos-dev/) or navigate into the dev folder and build the image manually.
+You can either use the image available on [Docker Hub](https://hub.docker.com/r/eosio/eos-dev/) or navigate into the dev folder and build the image manually or with the setup script.
 
 ```bash
 cd dev
-docker build -t eosio/eos-dev .
+./dev_setup.sh
 ```
 
-### Change default configuration:
+## Change default configuration:
 
 You can use docker compose override file to change the default configurations. For example, create an alternate config file `config2.ini` and a `docker-compose.override.yml` with the following content.
 
@@ -121,52 +122,35 @@ services:
 Then restart your docker containers as follows:
 
 ```bash
-docker-compose down
-docker-compose up
+docker-compose -f docker-compose.yml down # You can change this if your original yml is different
+docker-compose -f docker-compose.override.yml up -d
 ```
 
-### Clear data-dir:
+## Docker Environment Reset / Cleanup
 
-The data volume created by docker-compose can be deleted as follows:
+By default, all data is persisted in a docker volume (under ~/). There is a script available for an entire reset of your docker environment: `./docker_reset.sh`.
 
-```bash
-docker volume rm nodeosd-data-volume
-docker volume rm keosd-data-volume
-```
+## EOSIO Testnet:
 
-By default, all data is persisted in a docker volume. It can be deleted if the data is outdated or corrupted:
+We can easily set up a EOSIO local testnet with the testnet_setup.sh or with the commands below.
 
-```bash
-$ docker inspect --format '{{ range .Mounts }}{{ .Name }} {{ end }}' nodeos
-nodeosd-data-volume
-$ docker volume rm nodeosd-data-volume
-```
-
-### EOSIO Testnet:
-
-We can easily set up a EOSIO local testnet using docker images. Just run the following commands:
-
-Note: if you want to use the mongo db plugin, you have to enable it in your `data-dir/config.ini` first.
+Note: if you want to use the mongodb plugin, you have to enable it in your `config.ini`.
 
 ```
-# create volume
-docker volume create --name=nodeosd-test-data-volume
+# Create volume
+docker volume create --name=nodeos-test-data-volume
 docker volume create --name=keosd-test-data-volume
-# pull images and start containers
-## Edit the testnet file to change the version of the image used
+# Pull images and start containers
 docker-compose -f docker-compose-testnet.yml up -d
-# get chain info
+# Get/Verify chain info
 curl http://127.0.0.1:8888/v1/chain/get_info
-# get logs
-docker-compose logs -f nodeosd
+# Get logs
+docker-compose logs -f nodeos_test
 # stop containers
 docker-compose -f docker-compose-testnet.yaml down
 # Set alias 
-alias dev_cleos='docker exec keos_test /opt/eosio/bin/cleos -u http://127.0.0.1:8888 --wallet-url http://127.0.0.1:8900'
+alias dev_cleos='docker exec keos_test /opt/eosio/bin/cleos -u http://nodeos_test:8888 --wallet-url http://127.0.0.1:8900'
 ```
 
-The `blocks` data are stored under `--data-dir` by default, and the wallet files are stored under `--wallet-dir` by default, of course you can change these as you want.
+- The `blocks` data is stored under `--data-dir` by default. The wallet files are stored under `--wallet-dir` by default. These can be changed if necessary.
 
-### About MongoDB Plugin:
-
-Currently, the mongodb plugin is disabled in `config.ini` by default, you have to change it manually in `config.ini` or you can mount a `config.ini` file to `/opt/eosio/data-dir/config.ini` in the docker-compose file.
