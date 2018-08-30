@@ -12,13 +12,13 @@ services:
       .env
     container_name: "${COMPOSE_PROJECT_NAME}_nodeos"
     image: "${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}"
-    command: "/opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e --http-alias=${COMPOSE_PROJECT_NAME}_nodeos:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888"
+    command: "/opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e --http-alias=${COMPOSE_PROJECT_NAME}_nodeos:8888 --http-alias=127.0.0.1:${NODEOS_API_PORT} --http-alias=localhost:${NODEOS_API_PORT}"
     hostname: "${COMPOSE_PROJECT_NAME}_nodeos"
     ports:
-      - 8888:8888
-      - 9876:9876
+      - $NODEOS_API_PORT:$NODEOS_API_PORT
+      - $NODEOS_PORT:$NODEOS_PORT
     expose:
-      - "8888"
+      - "${NODEOS_API_PORT}"
     volumes:
       - ~/$NODEOS_VOLUME_NAME:/opt/eosio/bin/data-dir
     cap_add:
@@ -30,7 +30,7 @@ services:
       .env
     container_name: "${COMPOSE_PROJECT_NAME}_keosd"
     image: "${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}"
-    command: "/opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900 --http-alias=${COMPOSE_PROJECT_NAME}_nodeos:8900 --http-alias=localhost:8900"
+    command: "/opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:${KEOSD_API_PORT} --http-alias=${COMPOSE_PROJECT_NAME}_keosd:${KEOSD_API_PORT} --http-alias=localhost:${KEOSD_API_PORT}"
     hostname: "${COMPOSE_PROJECT_NAME}_keosd"
     links:
       - nodeos
