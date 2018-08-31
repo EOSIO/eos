@@ -398,25 +398,27 @@ struct controller_impl {
       }
 
       void start_section( const string& section_name ) {
-         snapshot["sections"].get_array().emplace_back(mutable_variant_object()("name", section_name)("rows", variants()));
-
+         current_rows.clear();
+         current_section_name = section_name;
       }
 
       void add_row( variant&& row ) {
-         fc::mutable_variant_object(snapshot["sections"].get_array().back())["rows"].get_array().emplace_back(row);
+         current_rows.emplace_back(row);
       }
 
       void end_section( ) {
-
+         snapshot["sections"].get_array().emplace_back(mutable_variant_object()("name", std::move(current_section_name))("rows", std::move(current_rows)));
       }
 
       fc::mutable_variant_object snapshot;
+      string current_section_name;
+      fc::variants current_rows;
    };
 
    void print_json_snapshot() const {
       json_snapshot snapshot;
       controller_index_set::walk_indices([this, &snapshot]( auto utils ){
-         snapshot.start_section(boost::core::demangle(typeid(typename decltype(utils)::index_t).name()));
+         snapshot.start_section(boost::core::demangle(typeid(typename decltype(utils)::index_t::value_type).name()));
          decltype(utils)::walk(db, [&snapshot]( const auto &row ) {
             fc::variant vrow;
             fc::to_variant(row, vrow);
