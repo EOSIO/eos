@@ -4,9 +4,9 @@
  */
 #pragma once
 
-#include <chainbase/chainbase.hpp>
+#include <eosio/chain/types.hpp>
 #include <fc/io/raw.hpp>
-
+#include <softfloat.hpp>
 
 namespace eosio { namespace chain {
 
@@ -57,9 +57,100 @@ namespace eosio { namespace chain {
       }
    };
 
+} }
+
+namespace fc {
+   // overloads for to/from_variant
+   template<typename OidType>
+   void to_variant( const chainbase::oid<OidType>& oid, variant& v ) {
+      v = variant(oid._id);
+   }
+
+   template<typename OidType>
+   void from_variant( const variant& v, chainbase::oid<OidType>& oid ) {
+      from_variant(v, oid._id);
+   }
+
+   inline
+   void to_variant( const float64_t& f, variant& v ) {
+      v = variant(*reinterpret_cast<const double*>(&f));
+   }
+
+   inline
+   void from_variant( const variant& v, float64_t& f ) {
+      from_variant(v, *reinterpret_cast<double*>(&f));
+   }
+
+   inline
+   void to_variant( const float128_t& f, variant& v ) {
+      v = variant(*reinterpret_cast<const uint128_t*>(&f));
+   }
+
+   inline
+   void from_variant( const variant& v, float128_t& f ) {
+      from_variant(v, *reinterpret_cast<uint128_t*>(&f));
+   }
+
+   inline
+   void to_variant( const eosio::chain::shared_string& s, variant& v ) {
+      v = variant(s.c_str());
+   }
+
+   inline
+   void from_variant( const variant& v, eosio::chain::shared_string& s ) {
+      string _s;
+      from_variant(v, _s);
+      s = eosio::chain::shared_string(_s.begin(), _s.end(), s.get_allocator());
+   }
+
+   template<typename T>
+   void to_variant( const eosio::chain::shared_vector<T>& sv, variant& v ) {
+      to_variant(std::vector<T>(sv.begin(), sv.end()), v);
+   }
+
+   template<typename T>
+   void from_variant( const variant& v, eosio::chain::shared_vector<T>& sv ) {
+      std::vector<T> _v;
+      from_variant(v, _v);
+      sv = eosio::chain::shared_vector<T>(_v.begin(), _v.end(), sv.get_allocator());
+   }
+
+   // overloads for OID packing
    template<typename DataStream, typename OidType>
    DataStream& operator << ( DataStream& ds, const chainbase::oid<OidType>& oid ) {
       fc::raw::pack(ds, oid._id);
       return ds;
    }
-} }
+
+   template<typename DataStream, typename OidType>
+   DataStream& operator >> ( DataStream& ds, chainbase::oid<OidType>& oid ) {
+      fc::raw::unpack(ds, oid._id);
+      return ds;
+   }
+
+// overloads for softfloat packing
+   template<typename DataStream>
+   DataStream& operator << ( DataStream& ds, const float64_t& v ) {
+      fc::raw::pack(ds, *reinterpret_cast<const double *>(&v));
+      return ds;
+   }
+
+   template<typename DataStream>
+   DataStream& operator >> ( DataStream& ds, float64_t& v ) {
+      fc::raw::unpack(ds, *reinterpret_cast<const double *>(&v));
+      return ds;
+   }
+
+   template<typename DataStream>
+   DataStream& operator << ( DataStream& ds, const float128_t& v ) {
+      fc::raw::pack(ds, *reinterpret_cast<const eosio::chain::uint128_t*>(&v));
+      return ds;
+   }
+
+   template<typename DataStream>
+   DataStream& operator >> ( DataStream& ds, float128_t& v ) {
+      fc::raw::unpack(ds, *reinterpret_cast<const eosio::chain::uint128_t*>(&v));
+      return ds;
+   }
+
+}

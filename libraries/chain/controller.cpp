@@ -20,6 +20,9 @@
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
 
+#include <fc/variant_object.hpp>
+#include <boost/core/demangle.hpp>
+
 #include <eosio/chain/eosio_contract.hpp>
 
 #include <eosio/chain/database_utils.hpp>
@@ -385,6 +388,44 @@ struct controller_impl {
       authorization.calculate_integrity_hash(enc);
       resource_limits.calculate_integrity_hash(enc);
       return enc.result();
+   }
+
+   struct json_snapshot {
+      json_snapshot()
+      : snapshot(fc::mutable_variant_object()("sections", fc::variants()))
+      {
+
+      }
+
+      void start_section( const string& section_name ) {
+         snapshot["sections"].get_array().emplace_back(mutable_variant_object()("name", section_name)("rows", variants()));
+
+      }
+
+      void add_row( variant&& row ) {
+         fc::mutable_variant_object(snapshot["sections"].get_array().back())["rows"].get_array().emplace_back(row);
+      }
+
+      void end_section( ) {
+
+      }
+
+      fc::mutable_variant_object snapshot;
+   };
+
+   void print_json_snapshot() const {
+      json_snapshot snapshot;
+      controller_index_set::walk_indices([this, &snapshot]( auto utils ){
+         snapshot.start_section(boost::core::demangle(typeid(typename decltype(utils)::index_t).name()));
+         decltype(utils)::walk(db, [&snapshot]( const auto &row ) {
+            fc::variant vrow;
+            fc::to_variant(row, vrow);
+            snapshot.add_row(std::move(vrow));
+         });
+         snapshot.end_section();
+      });
+
+      std::cerr << fc::json::to_pretty_string(snapshot.snapshot) << std::endl;
    }
 
    /**
