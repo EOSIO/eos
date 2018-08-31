@@ -396,7 +396,7 @@ public:
                 m_acceptor->close();
             }
             log_err(log::elevel::info,"asio listen",bec);
-            ec = bec;//make_error_code(error::pass_through);
+            ec = bec;
         } else {
             m_state = LISTENING;
             ec = lib::error_code();
