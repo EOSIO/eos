@@ -285,7 +285,12 @@ void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_p
       //
       // It is recommended to run mongo_db_plugin in read-mode = read-only.
       //
-      if( !t->producer_block_id.valid() ) return;
+//      if( !t->producer_block_id.valid() ) {
+//         auto v = to_variant_with_abi( *t );
+//         ilog("==>${t}", ("t", fc::json::to_string( v )));
+//
+//         return;
+//      }
       // always queue since account information always gathered
       queue( transaction_trace_queue, t );
    } catch (fc::exception& e) {
