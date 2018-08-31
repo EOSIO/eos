@@ -459,7 +459,12 @@ class Node(object):
         subcommand='db.accounts.findOne({"name" : "%s"})' % (name)
         if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
         try:
-            trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand, exitOnError=exitOnError)
+            timeout = 3
+            for i in range(0,(int(60/timeout) - 1)):
+                trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand, exitOnError=exitOnError)
+                if trans is not None:
+                    return trans
+                time.sleep(timeout)
             return trans
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
