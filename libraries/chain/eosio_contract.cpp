@@ -362,6 +362,11 @@ void apply_eosio_unlinkauth(apply_context& context) {
    db.remove(*link);
 }
 
+void apply_eosio_providebw(apply_context& context) {
+   auto args = context.act.data_as<providebw>();
+   context.require_authorization(args.account);
+}
+
 void apply_eosio_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
    context.require_authorization(cancel.canceling_auth.actor); // only here to mark the single authority on this action as used

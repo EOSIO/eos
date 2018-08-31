@@ -82,12 +82,22 @@ namespace eosio { namespace chain {
          validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
 
       // Record accounts to be billed for network and CPU usage
+      account_name bandwidth_provider;
       for( const auto& act : trx.actions ) {
+         if( act.account == N(eosio) && act.name == N(providebw) ) {
+            auto args = act.data_as<providebw>();
+            bandwidth_provider = args.account;
+         }
          for( const auto& auth : act.authorization ) {
             bill_to_accounts.insert( auth.actor );
          }
       }
       validate_ram_usage.reserve( bill_to_accounts.size() );
+
+      if( bandwidth_provider ) {
+         bill_to_accounts.clear();
+         bill_to_accounts.insert( bandwidth_provider );
+      }
 
       // Update usage values of accounts to reflect new time
       rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot );

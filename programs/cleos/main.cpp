@@ -184,6 +184,7 @@ bool   no_auto_keosd = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
+string bandwidth_provider;
 
 uint32_t delaysec = 0;
 
@@ -219,6 +220,8 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
 
    cmd->add_option("--delay-sec", delaysec, localized("set the delay_sec seconds, defaults to 0s"));
+
+   cmd->add_option("-b,--bandwidth-provider", bandwidth_provider, localized("set an account which provide own bandwidth for transaction"));
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
@@ -320,6 +323,11 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
       trx.max_cpu_usage_ms = tx_max_cpu_usage;
       trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
       trx.delay_sec = delaysec;
+   }
+
+   if( !bandwidth_provider.empty() ) {
+      auto permissions = get_account_permissions({bandwidth_provider});
+      trx.actions.emplace_back(permissions, providebw{permissions[0].actor} );
    }
 
    if (!tx_skip_sign) {
