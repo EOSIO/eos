@@ -91,13 +91,15 @@ void kafka::stop() {
     producer_.reset();
 }
 
-void kafka::push_block(const chain::block_state_ptr& block_state) {
+void kafka::push_block(const chain::block_state_ptr& block_state, bool irreversible) {
     const auto& header = block_state->header;
     auto b = std::make_shared<Block>();
 
     b->id = checksum_bytes(block_state->id);
     b->num = block_state->block_num;
     b->timestamp = header.timestamp;
+
+    b->lib = irreversible;
 
     b->block = fc::raw::pack(*block_state->block);
     b->tx_count = static_cast<uint32_t>(block_state->block->transactions.size());

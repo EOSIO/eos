@@ -119,14 +119,14 @@ void kafka_plugin::plugin_initialize(const variables_map& options) {
             if (b->block_num >= start_block_num) start_sync_ = true;
             else return;
         }
-        handle([=] { kafka_->push_block(b); }, "push block");
+        handle([=] { kafka_->push_block(b, false); }, "push block");
     });
     irreversible_block_conn_ = chain.irreversible_block.connect([=](const chain::block_state_ptr& b) {
         if (not start_sync_) {
             if (b->block_num >= start_block_num) start_sync_ = true;
             else return;
         }
-        handle([=] { kafka_->push_block(b); }, "push irreversible block");
+        handle([=] { kafka_->push_block(b, true); }, "push irreversible block");
     });
     transaction_conn_ = chain.applied_transaction.connect([=](const chain::transaction_trace_ptr& t) {
         if (not start_sync_) return;

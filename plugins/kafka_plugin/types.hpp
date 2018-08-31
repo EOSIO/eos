@@ -15,6 +15,8 @@ struct Block {
 
     block_timestamp_type timestamp;
 
+    bool lib; // whether irreversible
+
     bytes block;
 
     uint32_t tx_count{};

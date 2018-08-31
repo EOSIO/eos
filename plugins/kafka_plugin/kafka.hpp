@@ -20,7 +20,7 @@ public:
     void start();
     void stop();
 
-    void push_block(const chain::block_state_ptr& block_state);
+    void push_block(const chain::block_state_ptr& block_state, bool irreversible);
     std::pair<uint32_t, uint32_t> push_transaction(const chain::transaction_receipt& transaction_receipt, const BlockPtr& block, uint16_t block_seq);
     void push_transaction_trace(const chain::transaction_trace_ptr& transaction_trace);
     void push_action(const chain::action_trace& action_trace, uint64_t parent_seq, const TransactionTracePtr& tx);
