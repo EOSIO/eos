@@ -72,6 +72,7 @@ Options:
 ```
 */
 
+#include <pwd.h>
 #include <string>
 #include <vector>
 #include <regex>
@@ -147,6 +148,22 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
       }                                                   \
     FC_MULTILINE_MACRO_END \
   )
+
+//copy pasta from keosd's main.cpp
+bfs::path determine_home_directory()
+{
+   bfs::path home;
+   struct passwd* pwd = getpwuid(getuid());
+   if(pwd) {
+      home = pwd->pw_dir;
+   }
+   else {
+      home = getenv("HOME");
+   }
+   if(home.empty())
+      home = "./";
+   return home;
+}
 
 string url = "http://127.0.0.1:8888/";
 string wallet_url = "http://127.0.0.1:8900/";
