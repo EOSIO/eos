@@ -1487,14 +1487,14 @@ void get_account( const string& accountName, bool json_format ) {
       std::function<void (account_name, int)> dfs_print = [&]( account_name name, int depth ) -> void {
          auto& p = cache.at(name);
          std::cout << indent << std::string(depth*3, ' ') << name << ' ' << std::setw(5) << p.required_auth.threshold << ":    ";
+         const char *sep = "";
          for ( auto it = p.required_auth.keys.begin(); it != p.required_auth.keys.end(); ++it ) {
-            if ( it != p.required_auth.keys.begin() ) {
-               std::cout  << ", ";
-            }
-            std::cout << it->weight << ' ' << string(it->key);
+            std::cout << sep << it->weight << ' ' << string(it->key);
+            sep = ", ";
          }
          for ( auto& acc : p.required_auth.accounts ) {
-            std::cout << acc.weight << ' ' << string(acc.permission.actor) << '@' << string(acc.permission.permission) << ", ";
+            std::cout << sep << acc.weight << ' ' << string(acc.permission.actor) << '@' << string(acc.permission.permission);
+            sep = ", ";
          }
          std::cout << std::endl;
          auto it = tree.find( name );
