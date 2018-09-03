@@ -112,20 +112,12 @@ namespace eosio {
     */
    static constexpr uint64_t name_mask(size_t length)
    {
+      // See the bug (?) submitted here: https://github.com/EOSIO/eos/issues/5516
+      if ( length == 0 )
+         return 0x0000000000000000ULL;
+      if ( length == 13 )
+         return 0xFFFFFFFFFFFFFFFFULL;
       return 0xFFFFFFFFFFFFFFFFULL << (4 + (12 - length) * 5);
-   }
-
-   /**
-    * @brief gets the length in characters for a normalized name
-    * @param n - The 64-bit unsigned integer representation of the name
-    * @return constexpr size_t - The length of the normalized name
-    * @ingroup types
-    */
-   static constexpr size_t name_length( uint64_t n ) {
-      for (size_t chars_removed = 0; chars_removed <= 12; chars_removed++)
-        if ((name >> (4 + chars_removed * 5)) & 0xFF)
-          return 12 - chars_removed;
-      return 0;
    }
 
    /**
@@ -137,7 +129,20 @@ namespace eosio {
     * @ingroup types
     */
    static constexpr uint64_t name_sub( uint64_t n, size_t start, size_t length ) {
-      return ( n & name_mask( length ) ) << ( start * 5 );
+      return ( n & name_mask( (start + length) ) ) << ( start * 5 );
+   }
+
+   /**
+    * @brief gets the length in characters for a normalized name
+    * @param n - The 64-bit unsigned integer representation of the name
+    * @return constexpr size_t - The length of the normalized name
+    * @ingroup types
+    */
+   static constexpr size_t name_length( uint64_t n ) {
+      for (size_t target_pos = 13; target_pos > 0; target_pos--)
+        if ( name_sub( n, target_pos - 1, 1 ) )
+          return target_pos;
+      return 0;
    }
 
    /**
