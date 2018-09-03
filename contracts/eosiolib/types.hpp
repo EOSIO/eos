@@ -105,6 +105,42 @@ namespace eosio {
    }
 
    /**
+    * @brief gets a mask for filtering the leading chars of a name
+    * @param length - The number of characters
+    * @return constexpr uint64_t - 64-bit unsigned integer mask
+    * @ingroup types
+    */
+   static constexpr uint64_t name_mask(size_t length)
+   {
+      return 0xFFFFFFFFFFFFFFFFULL << (4 + (12 - length) * 5);
+   }
+
+   /**
+    * @brief gets the length in characters for a normalized name
+    * @param n - The 64-bit unsigned integer representation of the name
+    * @return constexpr size_t - The length of the normalized name
+    * @ingroup types
+    */
+   static constexpr size_t name_length( uint64_t n ) {
+      for (size_t chars_removed = 0; chars_removed <= 12; chars_removed++)
+        if ((name >> (4 + chars_removed * 5)) & 0xFF)
+          return 12 - chars_removed;
+      return 0;
+   }
+
+   /**
+    * @brief gets part of a base-32 name
+    * @param n - The name from which a sub-name is taken
+    * @param start - The start position starting from 0
+    * @param length - The length of the sub-name
+    * @return constexpr uint64_t - 64-bit unsigned integer representation of the sub-name
+    * @ingroup types
+    */
+   static constexpr uint64_t name_sub( uint64_t n, size_t start, size_t length ) {
+      return ( n & name_mask( length ) ) << ( start * 5 );
+   }
+
+   /**
     *  Wraps a uint64_t to ensure it is only passed to methods that expect a Name and
     *  that no mathematical operations occur.  It also enables specialization of print
     *  so that it is printed as a base32 string.
