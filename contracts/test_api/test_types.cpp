@@ -85,6 +85,62 @@ void test_types::string_to_name() {
    eosio_assert( eosio::string_to_name("AAAAAAAAAAAAAAA") == eosio::string_to_name("BBBBBBBBBBBBBDDDDDFFFGG") , "eosio::string_to_name BBBBBBBBBBBBBDDDDDFFFGG" );
 }
 
+void test_types::name_mask() {
+
+   eosio_assert( eosio::name_mask(0) == 0b0000000000000000000000000000000000000000000000000000000000000000, "eosio::name_mask(0)" );
+   eosio_assert( eosio::name_mask(1) == 0b1111100000000000000000000000000000000000000000000000000000000000, "eosio::name_mask(1)" );
+   eosio_assert( eosio::name_mask(2) == 0b1111111111000000000000000000000000000000000000000000000000000000, "eosio::name_mask(2)" );
+   eosio_assert( eosio::name_mask(3) == 0b1111111111111110000000000000000000000000000000000000000000000000, "eosio::name_mask(3)" );
+   eosio_assert( eosio::name_mask(4) == 0b1111111111111111111100000000000000000000000000000000000000000000, "eosio::name_mask(4)" );
+   eosio_assert( eosio::name_mask(5) == 0b1111111111111111111111111000000000000000000000000000000000000000, "eosio::name_mask(5)" );
+   eosio_assert( eosio::name_mask(6) == 0b1111111111111111111111111111110000000000000000000000000000000000, "eosio::name_mask(6)" );
+   eosio_assert( eosio::name_mask(7) == 0b1111111111111111111111111111111111100000000000000000000000000000, "eosio::name_mask(7)" );
+   eosio_assert( eosio::name_mask(8) == 0b1111111111111111111111111111111111111111000000000000000000000000, "eosio::name_mask(8)" );
+   eosio_assert( eosio::name_mask(9) == 0b1111111111111111111111111111111111111111111110000000000000000000, "eosio::name_mask(9)" );
+   eosio_assert( eosio::name_mask(10) == 0b1111111111111111111111111111111111111111111111111100000000000000, "eosio::name_mask(10)" );
+   eosio_assert( eosio::name_mask(11) == 0b1111111111111111111111111111111111111111111111111111111000000000, "eosio::name_mask(11)" );
+   eosio_assert( eosio::name_mask(12) == 0b1111111111111111111111111111111111111111111111111111111111110000, "eosio::name_mask(12)" );
+
+}
+
+void test_types::name_length() {
+
+   eosio_assert( eosio::name_length(N(.)) == 0, "eosio::name_length(N(.))" );
+   eosio_assert( eosio::name_length(N(a)) == 1, "eosio::name_length(N(a))" );
+   eosio_assert( eosio::name_length(N(ab)) == 2, "eosio::name_length(N(ab))" );
+   eosio_assert( eosio::name_length(N(abc)) == 3, "eosio::name_length(N(abc))" );
+   eosio_assert( eosio::name_length(N(abcd)) == 4, "eosio::name_length(N(abcd))" );
+   eosio_assert( eosio::name_length(N(abcde)) == 5, "eosio::name_length(N(abcde))" );
+   eosio_assert( eosio::name_length(N(abcdef)) == 6, "eosio::name_length(N(abcdef))" );
+   eosio_assert( eosio::name_length(N(abcdefg)) == 7, "eosio::name_length(N(abcdefg))" );
+   eosio_assert( eosio::name_length(N(abcdefgh)) == 8, "eosio::name_length(N(abcdefgh))" );
+   eosio_assert( eosio::name_length(N(abcdefghi)) == 9, "eosio::name_length(N(abcdefghi))" );
+   eosio_assert( eosio::name_length(N(abcdefghij)) == 10, "eosio::name_length(N(abcdefghij))" );
+   eosio_assert( eosio::name_length(N(abcdefghijk)) == 11, "eosio::name_length(N(abcdefghijk))" );
+   eosio_assert( eosio::name_length(N(abcdefghijkl)) == 12, "eosio::name_length(N(abcdefghijkl))" );
+
+   eosio_assert( eosio::name_length(N(a..d.esfas)) == 10, "eosio::name_length(N(a..d.esfas))" );
+   eosio_assert( eosio::name_length(N(abcd.esfas)) == 10, "eosio::name_length(N(abcd.esfas))" );
+   eosio_assert( eosio::name_length(N(abcd.asdfes)) == 11, "eosio::name_length(N(abcd.asdfes))" );
+   eosio_assert( eosio::name_length(N(abcdefgh.jkl)) == 12, "eosio::name_length(N(abcdefgh.jkl))" );
+   eosio_assert( eosio::name_length(N(ab.def.hijkl)) == 12, "eosio::name_length(N(ab.def.hijkl))" );
+
+}
+
+void test_types::name_sub() {
+
+   eosio_assert( eosio::name_sub(N(abcdef), 0, 1) == N(a), "eosio::name_sub(N(abcdef), 0, 1)" );
+   eosio_assert( eosio::name_sub(N(abcdef), 1, 1) == N(b), "eosio::name_sub(N(abcdef), 1, 1)" );
+   eosio_assert( eosio::name_sub(N(abcdef), 2, 1) == N(c), "eosio::name_sub(N(abcdef), 2, 1)" );
+
+   eosio_assert( eosio::name_sub(N(abcdef), 0, 3) == N(abc), "eosio::name_sub(N(abcdef), 0, 3)" );
+   eosio_assert( eosio::name_sub(N(abcdef), 1, 3) == N(bcd), "eosio::name_sub(N(abcdef), 1, 3)" );
+   eosio_assert( eosio::name_sub(N(abcdef), 2, 3) == N(cde), "eosio::name_sub(N(abcdef), 2, 3)" );
+   eosio_assert( eosio::name_sub(N(abcdef), 3, 3) == N(def), "eosio::name_sub(N(abcdef), 3, 3)" );
+   eosio_assert( eosio::name_sub(N(abcdef), 4, 3) == N(ef), "eosio::name_sub(N(abcdef), 4, 3)" );
+
+}
+
 void test_types::name_class() {
 
    eosio_assert( eosio::name{eosio::string_to_name("azAA34")}.value == N(azAA34), "eosio::name != N(azAA34)" );

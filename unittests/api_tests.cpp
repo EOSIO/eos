@@ -1724,6 +1724,9 @@ BOOST_FIXTURE_TEST_CASE(types_tests, TESTER) { try {
 	CALL_TEST_FUNCTION( *this, "test_types", "types_size", {});
 	CALL_TEST_FUNCTION( *this, "test_types", "char_to_symbol", {});
 	CALL_TEST_FUNCTION( *this, "test_types", "string_to_name", {});
+	CALL_TEST_FUNCTION( *this, "test_types", "name_mask", {});
+	CALL_TEST_FUNCTION( *this, "test_types", "name_length", {});
+	CALL_TEST_FUNCTION( *this, "test_types", "name_sub", {});
 	CALL_TEST_FUNCTION( *this, "test_types", "name_class", {});
 
    BOOST_REQUIRE_EQUAL( validate(), true );
