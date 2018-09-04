@@ -286,21 +286,25 @@ namespace impl {
          mvo("name", act.name);
          mvo("authorization", act.authorization);
 
-         auto abi = resolver(act.account);
-         if (abi.valid()) {
-            auto type = abi->get_action_type(act.name);
-            if (!type.empty()) {
-               try {
-                  mvo( "data", abi->_binary_to_variant( type, act.data, recursion_depth, deadline, max_serialization_time ));
-                  mvo("hex_data", act.data);
-               } catch(...) {
-                  // any failure to serialize data, then leave as not serailzed
+         try {
+            auto abi = resolver(act.account);
+            if (abi.valid()) {
+               auto type = abi->get_action_type(act.name);
+               if (!type.empty()) {
+                  try {
+                     mvo( "data", abi->_binary_to_variant( type, act.data, recursion_depth, deadline, max_serialization_time ));
+                     mvo("hex_data", act.data);
+                  } catch(...) {
+                     // any failure to serialize data, then leave as not serailzed
+                     mvo("data", act.data);
+                  }
+               } else {
                   mvo("data", act.data);
                }
             } else {
                mvo("data", act.data);
             }
-         } else {
+         } catch(...) {
             mvo("data", act.data);
          }
          out(name, std::move(mvo));
