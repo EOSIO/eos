@@ -141,7 +141,7 @@ def allocateFunds(b, e):
     dist = numpy.random.pareto(1.161, e - b).tolist() # 1.161 = 80/20 rule
     dist.sort()
     dist.reverse()
-    factor = 1_000_000_000 / sum(dist)
+    factor = 1000000000 / sum(dist)
     total = 0
     for i in range(b, e):
         funds = round(factor * dist[i - b] * 10000)
@@ -265,7 +265,7 @@ def msigReplaceSystem():
 
 def produceNewAccounts():
     with open('newusers', 'w') as f:
-        for i in range(120_000, 200_000):
+        for i in range(120000, 200000):
             x = getOutput(args.cleos + 'create key --to-console')
             r = re.match('Private key: *([^ \n]*)\nPublic key: *([^ \n]*)', x, re.DOTALL | re.MULTILINE)
             name = 'user'
