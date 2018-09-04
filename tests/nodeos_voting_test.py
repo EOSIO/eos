@@ -26,13 +26,13 @@ class ProducerToNode:
             Utils.Print("Producer=%s for nodeNum=%s" % (prod,num))
 
 def isValidBlockProducer(prodsActive, blockNum, node):
-    blockProducer=node.getBlockProducer(blockNum)
+    blockProducer=node.getBlockProducerByNum(blockNum)
     if blockProducer not in prodsActive:
         return False
     return prodsActive[blockProducer]
 
 def validBlockProducer(prodsActive, prodsSeen, blockNum, node):
-    blockProducer=node.getBlockProducer(blockNum)
+    blockProducer=node.getBlockProducerByNum(blockNum)
     if blockProducer not in prodsActive:
         Utils.cmdError("unexpected block producer %s at blockNum=%s" % (blockProducer,blockNum))
         Utils.errorExit("Failed because of invalid block producer")
@@ -52,12 +52,12 @@ def verifyProductionRounds(trans, node, prodsActive, rounds):
     temp=Utils.Debug
     Utils.Debug=False
     Utils.Print("FIND VALID BLOCK PRODUCER")
-    blockProducer=node.getBlockProducer(blockNum)
+    blockProducer=node.getBlockProducerByNum(blockNum)
     lastBlockProducer=blockProducer
     adjust=False
     while not isValidBlockProducer(prodsActive, blockNum, node):
         adjust=True
-        blockProducer=node.getBlockProducer(blockNum)
+        blockProducer=node.getBlockProducerByNum(blockNum)
         if lastBlockProducer!=blockProducer:
             Utils.Print("blockProducer=%s for blockNum=%s is for node=%s" % (blockProducer, blockNum, ProducerToNode.map[blockProducer]))
         lastBlockProducer=blockProducer
@@ -88,7 +88,7 @@ def verifyProductionRounds(trans, node, prodsActive, rounds):
                     Utils.Print("saw=%s, blockProducer=%s, blockNum=%s" % (saw,blockProducer,blockNum))
                 lastBlockProducer=blockProducer
                 saw=1
-        blockProducer=node.getBlockProducer(blockNum)
+        blockProducer=node.getBlockProducerByNum(blockNum)
         blockNum+=1
 
     if adjust:
@@ -103,22 +103,22 @@ def verifyProductionRounds(trans, node, prodsActive, rounds):
         lastBlockProducer=None
         for j in range(0, 21):
             # each new set of 12 blocks should have a different blockProducer 
-            if lastBlockProducer is not None and lastBlockProducer==node.getBlockProducer(blockNum):
+            if lastBlockProducer is not None and lastBlockProducer==node.getBlockProducerByNum(blockNum):
                 Utils.cmdError("expected blockNum %s to be produced by any of the valid producers except %s" % (blockNum, lastBlockProducer))
                 Utils.errorExit("Failed because of incorrect block producer order")
 
             # make sure that the next set of 12 blocks all have the same blockProducer
-            lastBlockProducer=node.getBlockProducer(blockNum)
+            lastBlockProducer=node.getBlockProducerByNum(blockNum)
             for k in range(0, 12):
                 validBlockProducer(prodsActive, prodsSeen, blockNum, node1)
-                blockProducer=node.getBlockProducer(blockNum)
+                blockProducer=node.getBlockProducerByNum(blockNum)
                 if lastBlockProducer!=blockProducer:
                     printStr=""
                     newBlockNum=blockNum-18
                     for l in range(0,36):
                         printStr+="%s" % (newBlockNum)
                         printStr+=":"
-                        newBlockProducer=node.getBlockProducer(newBlockNum)
+                        newBlockProducer=node.getBlockProducerByNum(newBlockNum)
                         printStr+="%s" % (newBlockProducer)
                         printStr+="  "
                         newBlockNum+=1

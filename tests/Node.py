@@ -555,21 +555,19 @@ class Node(object):
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
-    def waitForNextBlock(self, timeout=None):
-        num=self.getHeadBlockNum()
+    def waitForNextBlock(self, timeout=None, blockType=BlockType.head):
+        num=self.getBlockNum(blockType=blockType)
         lam = lambda: self.getHeadBlockNum() > num
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
-    def waitForBlock(self, blockNum, timeout=None):
-        lam = lambda: self.getHeadBlockNum() > blockNum
+    def waitForBlock(self, blockNum, timeout=None, blockType=BlockType.head):
+        lam = lambda: self.getBlockNum(blockType=blockType) > blockNum
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
-    def waitForIrreversibleBlock(self, blockNum, timeout=None):
-        lam = lambda: self.getIrreversibleBlockNum() >= blockNum
-        ret=Utils.waitForBool(lam, timeout)
-        return ret
+    def waitForIrreversibleBlock(self, blockNum, timeout=None, blockType=BlockType.head):
+        return self.waitForBlock(blockNum, timeout=timeout, blockType=blockType)
 
     # Trasfer funds. Returns "transfer" json return object
     def transferFunds(self, source, destination, amountStr, memo="memo", force=False, waitForTransBlock=False, exitOnError=True):
@@ -1011,7 +1009,7 @@ class Node(object):
                 return blockNum
         return None
 
-    def getBlockNum(self, blockType):
+    def getBlockNum(self, blockType=BlockType.head):
         assert isinstance(blockType, BlockType)
         if blockType==BlockType.head:
             return self.getHeadBlockNum()
@@ -1063,10 +1061,9 @@ class Node(object):
         else:
             return True
 
-
-    def getBlockProducer(self, blockNum, timeout=None, waitForBlock=True, exitOnError=True):
+    def getBlockProducerByNum(self, blockNum, timeout=None, waitForBlock=True, exitOnError=True):
         if waitForBlock:
-            self.waitForBlock(blockNum, timeout=timeout)
+            self.waitForBlock(blockNum, timeout=timeout, blockType=BlockType.head)
         block=self.getBlock(blockNum, exitOnError=exitOnError)
         blockProducer=block["producer"]
         if blockProducer is None and exitOnError:
@@ -1089,13 +1086,13 @@ class Node(object):
 
         blockNum=self.getHeadBlockNum()
         Utils.Print("Searching for clean production cycle blockNum=%s ibn=%s  transId=%s  promoted bn=%s  ibn for schedule active=%s" % (blockNum,irreversibleBlockNum,transId,promotedBlockNum,ibnSchedActive))
-        blockProducer=self.getBlockProducer(blockNum)
+        blockProducer=self.getBlockProducerByNum(blockNum)
         blockNum+=1
         Utils.Print("Advance until the next block producer is retrieved")
-        while blockProducer == self.getBlockProducer(blockNum):
+        while blockProducer == self.getBlockProducerByNum(blockNum):
             blockNum+=1
 
-        blockProducer=self.getBlockProducer(blockNum)
+        blockProducer=self.getBlockProducerByNum(blockNum)
         return blockNum
 
 
