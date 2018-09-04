@@ -1172,11 +1172,8 @@ class Cluster(object):
 
         return biosNode
 
-
-    # Populates list of EosInstanceInfo objects, matched to actual running instances
-    def discoverLocalNodes(self, totalNodes, timeout=0):
-        nodes=[]
-
+    @staticmethod
+    def pgrepEosServers(timeout=None):
         pgrepOpts="-fl"
         # pylint: disable=deprecated-method
         if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
@@ -1196,7 +1193,21 @@ class Cluster(object):
                 return None
             return None
 
-        psOut=Utils.waitForObj(myFunc, timeout)
+        return Utils.waitForObj(myFunc, timeout)
+
+    @staticmethod
+    def pgrepEosServerPattern(nodeInstance):
+        if isinstance(nodeInstance, str):
+            return r"[\n]?(\d+) (.* --data-dir var/lib/node_%s .*)\n" % nodeInstance
+        else:
+            nodeInstanceStr="%02d" % nodeInstance
+            return Cluster.pgrepEosServerPattern(nodeInstanceStr)
+
+    # Populates list of EosInstanceInfo objects, matched to actual running instances
+    def discoverLocalNodes(self, totalNodes, timeout=None):
+        nodes=[]
+
+        psOut=Cluster.pgrepEosServers(timeout)
         if psOut is None:
             Utils.Print("ERROR: No nodes discovered.")
             return nodes
@@ -1207,7 +1218,7 @@ class Cluster(object):
             psOutDisplay=psOut[:6660]+"..."
         if Utils.Debug: Utils.Print("pgrep output: \"%s\"" % psOutDisplay)
         for i in range(0, totalNodes):
-            pattern=r"[\n]?(\d+) (.* --data-dir var/lib/node_%02d .*)\n" % (i)
+            pattern=Cluster.pgrepEosServerPattern(i)
             m=re.search(pattern, psOut, re.MULTILINE)
             if m is None:
                 Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
