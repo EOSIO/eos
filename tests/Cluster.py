@@ -919,11 +919,11 @@ class Cluster(object):
 
         producerKeys=Cluster.parseClusterKeys(totalNodes)
         # should have totalNodes node plus bios node
-        if producerKeys is None or len(producerKeys) < (totalProducers+1):
-            if producerKeys is None:
-                Utils.Print("ERROR: Failed to parse any producer keys from config files.")
-            else:
-                Utils.Print("ERROR: Failed to parse %d producer keys from cluster config files, only found %d." % (totalNodes+1,len(producerKeys)))
+        if producerKeys is None:
+            Utils.Print("ERROR: Failed to parse any producer keys from config files.")
+            return None
+        elif len(producerKeys) < (totalProducers+1):
+            Utils.Print("ERROR: Failed to parse %d producer keys from cluster config files, only found %d." % (totalProducers+1,len(producerKeys)))
             return None
 
         walletMgr=WalletMgr(True)
