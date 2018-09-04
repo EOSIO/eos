@@ -5,6 +5,7 @@ import testUtils
 import time
 from Cluster import Cluster
 from WalletMgr import WalletMgr
+from Node import BlockType
 from Node import Node
 from TestHelper import AppArgs
 from TestHelper import TestHelper
@@ -12,6 +13,7 @@ from TestHelper import TestHelper
 import decimal
 import math
 import re
+import signal
 
 ###############################################################
 # nodeos_voting_test
@@ -24,9 +26,11 @@ from core_symbol import CORE_SYMBOL
 
 args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run","--p2p-plugin"})
 Utils.Debug=args.v
-totalProducerNodes=21
+totalProducerNodes=2
 totalNonProducerNodes=1
 totalNodes=totalProducerNodes+totalNonProducerNodes
+maxActiveProducers=21
+totalProducers=maxActiveProducers
 cluster=Cluster(walletd=True)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
@@ -53,7 +57,7 @@ try:
     # producer nodes will be mapped to 0 through totalProducerNodes-1, so totalProducerNodes will be the non-producing node
     specificExtraNodeosArgs[totalProducerNodes]="--plugin eosio::test_control_api_plugin"
     if cluster.launch(prodCount=prodCount, onlyBios=False, dontKill=dontKill, topo="bridge", pnodes=totalProducerNodes,
-                      totalNodes=totalNodes, totalProducers=totalProducerNodes, p2pPlugin=p2pPlugin,
+                      totalNodes=totalNodes, totalProducers=totalProducers, p2pPlugin=p2pPlugin,
                       specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
@@ -89,25 +93,33 @@ try:
 
     Print("Wallet \"%s\" password=%s." % (testWalletName, testWallet.password.encode("utf-8")))
 
+    def printNode(node, msg=None):
+        if msg is None:
+            msg=""
+        else:
+            msg+=" "
+        Utils.Print("%sNode host=%s, port=%s, pid=%s" % (msg, node.host, node.port, node.pid))
+
     nonProdNode=None
     prodNodes=[]
-    producers={}
+    producers=[]
     for i in range(0, totalNodes):
         node=cluster.getNode(i)
         node.producers=Cluster.parseProducers(i)
         numProducers=len(node.producers)
-        if numProducers==1:
-            prod=node.producers[0]
-            trans=node.regproducer(cluster.defProducerAccounts[prod], "http::/mysite.com", 0, waitForTransBlock=False, exitOnError=True)
-            prodNodes.append(node)
-            producers[prod]=node
-        elif numProducers==0:
+        Utils.Print("node has producers=%s" % (node.producers))
+        if numProducers==0:
             if nonProdNode is None:
                 nonProdNode=node
+                nonProdNode.nodeNum=i
             else:
                 Utils.errorExit("More than one non-producing nodes")
         else:
-            Utils.errorExit("Producing node should have 1 producer, it has %d" % (numProducers))
+            for prod in node.producers:
+                trans=node.regproducer(cluster.defProducerAccounts[prod], "http::/mysite.com", 0, waitForTransBlock=False, exitOnError=True)
+
+            prodNodes.append(node)
+            producers.extend(node.producers)
 
     node=prodNodes[0]
     # create accounts via eosio as otherwise a bid is needed
@@ -123,24 +135,26 @@ try:
     cluster.waitOnClusterSync(blockAdvancing=5)    
     index=0
     for account in accounts:
-        trans=prodNodes[index].vote(account, producers)
+        Utils.Print("vote for producers=%s" % (producers))
+        trans=prodNodes[index % len(prodNodes)].vote(account, producers)
         index+=1
 
     #verify nodes are in sync and advancing
     cluster.waitOnClusterSync(blockAdvancing=5)    
     blockNum=node.getNextCleanProductionCycle(trans)
-    blockProducer=node.getBlockProducer(blockNum)
+    blockProducer=node.getBlockProducerByNum(blockNum)
     Utils.Print("Validating blockNum=%s, producer=%s" % (blockNum, blockProducer))
+    cluster.biosNode.kill(signal.SIGTERM)
 
     lastBlockProducer=blockProducer
     while blockProducer==lastBlockProducer:
         blockNum+=1
-        blockProducer=node.getBlockProducer(blockNum)
+        blockProducer=node.getBlockProducerByNum(blockNum)
 
     productionCycle=[]
     producerToSlot={}
     slot=-1
-    expectedCount=12
+    inRowCountPerProducer=12
     while True:
         if blockProducer not in producers:
             Utils.errorExit("Producer %s was not one of the voted on producers" % blockProducer)
@@ -155,10 +169,10 @@ try:
         while blockProducer==lastBlockProducer:
             producerToSlot[blockProducer]["count"]+=1
             blockNum+=1
-            blockProducer=node.getBlockProducer(blockNum)
+            blockProducer=node.getBlockProducerByNum(blockNum)
 
-        if producerToSlot[lastBlockProducer]["count"]!=expectedCount:
-            Utils.errorExit("Producer %s, in slot %d, expected to produce %d blocks but produced %d blocks" % (blockProducer, expectedCount, producerToSlot[lastBlockProducer]["count"]))
+        if producerToSlot[lastBlockProducer]["count"]!=inRowCountPerProducer:
+            Utils.errorExit("Producer %s, in slot %d, expected to produce %d blocks but produced %d blocks" % (blockProducer, inRowCountPerProducer, producerToSlot[lastBlockProducer]["count"]))
 
         if blockProducer==productionCycle[0]:
             break
@@ -178,19 +192,162 @@ try:
     cluster.reportStatus()
 
     Utils.Print("Sending command to kill \"bridge\" node to separate the 2 producer groups.")
-    nonProdNode.killNodeOnProducer(producer="defproducerl", whereInSequence=0)
+    # block number to start expecting node killed after
+    preKillBlockNum=nonProdNode.getBlockNum()
+    preKillBlockProducer=nonProdNode.getBlockProducerByNum(preKillBlockNum)
+    # kill at last block before defproducerl, since the block it is killed on will get propagated
+    killAtProducer="defproducerk"
+    nonProdNode.killNodeOnProducer(producer=killAtProducer, whereInSequence=(inRowCountPerProducer-1))
 
-    for prodNode in prodNodes:
-        prodNode.getInfo()
+    # will search full cycle after the current block, since we don't know how many blocks were produced since retrieving
+    # block number and issuing kill command
+    postKillBlockNum=prodNodes[1].getBlockNum()
+    blockProducers0=[]
+    blockProducers1=[]
+    libs0=[]
+    libs1=[]
+    lastBlockNum=max([preKillBlockNum,postKillBlockNum])+maxActiveProducers*inRowCountPerProducer
+    Utils.Print("preKillBlockNum=%s, postKillBlockNum=%s, lastBlockNum=%d" % (preKillBlockNum,postKillBlockNum,lastBlockNum)) 
+    actualLastBlockNum=None
+    prodChanged=False
+    nextProdChange=False
+    info0=prodNodes[0].getInfo(exitOnError=True)
+    info1=prodNodes[1].getInfo(exitOnError=True)
+    headBlockNum=min(int(info0["head_block_num"]),int(info1["head_block_num"]))
+    libNum=min(int(info0["last_irreversible_block_num"]), int(info1["last_irreversible_block_num"]))
+    for blockNum in range(preKillBlockNum,lastBlockNum):
+        if blockNum>headBlockNum:
+            info0=prodNodes[0].getInfo(exitOnError=True)
+            info1=prodNodes[1].getInfo(exitOnError=True)
+            headBlockNum=min(int(info0["head_block_num"]),int(info1["head_block_num"]))
+            libNum=min(int(info0["last_irreversible_block_num"]), int(info1["last_irreversible_block_num"]))
 
-    cluster.reportStatus()
+        blockProducer0=prodNodes[0].getBlockProducerByNum(blockNum)
+        blockProducer1=prodNodes[1].getBlockProducerByNum(blockNum)
+        blockProducers0.append({"blockNum":blockNum, "prod":blockProducer0})
+        blockProducers1.append({"blockNum":blockNum, "prod":blockProducer1})
+        #Utils.Print("blockProducer0=%s, blockProducer1=%s, blockNum=%d" % (blockProducer0,blockProducer1,blockNum))
+        # ensure that we wait for the next instance of killAtProducer
+        if not prodChanged:
+            if preKillBlockProducer!=blockProducer0:
+                prodChanged=True
+        if not nextProdChange and prodChanged and blockProducer1==killAtProducer:
+            nextProdChange=True
+        elif nextProdChange and blockProducer1!=killAtProducer:
+            actualLastBlockNum=blockNum
+            break
+        if blockProducer0!=blockProducer1:
+            Utils.errorExit("Groups reported different block producers for block number %d. %s != %s." % (blockNum,blockProducer0,blockProducer1))
 
-    time.sleep(60)
+    def analyzeBPs(bps0, bps1, expectDivergence):
+        start=0
+        index=None
+        length=len(bps0)
+        firstDivergence=None
+        printInfo=False
+        while start < length:
+            bpsStr=None
+            for i in range(start,length):
+                bp0=bps0[i]
+                bp1=bps1[i]
+                if bpsStr is None:
+                    bpsStr=""
+                else:
+                    bpsStr+=", "
+                blockNum0=bp0["blockNum"]
+                prod0=bp0["prod"]
+                blockNum1=bp1["blockNum"]
+                prod1=bp1["prod"]
+                numDiff=True if blockNum0!=blockNum1 else False
+                prodDiff=True if prod0!=prod1 else False
+                if numDiff or prodDiff:
+                    index=i
+                    if firstDivergence is None:
+                        firstDivergence=min(blockNum0, blockNum1)
+                    if not expectDivergence:
+                        printInfo=True
+                    break
+                bpsStr+=str(blockNum0)+"->"+prod0
+
+            if index is None:
+                return
+
+            bpsStr0=None
+            bpsStr2=None
+            start=length
+            for i in range(index,length):
+                if bpsStr0 is None:
+                    bpsStr0=""
+                    bpsStr1=""
+                else:
+                    bpsStr0+=", "
+                    bpsStr1+=", "
+                bp0=bps0[i]
+                bp1=bps1[i]
+                blockNum0=bp0["blockNum"]
+                prod0=bp0["prod"]
+                blockNum1=bp1["blockNum"]
+                prod1=bp1["prod"]
+                numDiff="*" if blockNum0!=blockNum1 else ""
+                prodDiff="*" if prod0!=prod1 else ""
+                if not numDiff and not prodDiff:
+                    start=i
+                    index=None
+                    break
+                bpsStr0+=str(blockNum0)+numDiff+"->"+prod0+prodDiff
+                bpsStr1+=str(blockNum1)+numDiff+"->"+prod1+prodDiff
+            if printInfo:
+                Utils.Print("ERROR: Analyzing Block Producers, did not expect nodes to indicate different block producers for the same blocks.")
+                Utils.Print("Matchinb Blocks= %s" % (bpsStr))
+                Utils.Print("Diverging branch node0= %s" % (bpsStr0))
+                Utils.Print("Diverging branch node1= %s" % (bpsStr1))
+        return firstDivergence
+
+    firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=True)
+    # Nodes should not have diverged till the last block
+    Utils.Print("firstDivergence=%s, blockNum=%s" % (firstDivergence, blockNum))
+    assert(firstDivergence==blockNum)
+    blockProducers0=[]
+    blockProducers1=[]
+
     assert(not nonProdNode.verifyAlive())
     for prodNode in prodNodes:
         prodNode.getInfo()
 
-    cluster.reportStatus()
+    killBlockNum=blockNum
+#    lastBlockNum=killBlockNum+(maxActiveProducers - 1)*inRowCountPerProducer+1  # allow 1st testnet group to produce just 1 more block than the 2nd
+    lastBlockNum=prodNodes[1].getBlockNum()+(maxActiveProducers - 1)*inRowCountPerProducer+1  # allow 1st testnet group to produce just 1 more block than the 2nd
+    for blockNum in range(killBlockNum,lastBlockNum):
+        blockProducer0=prodNodes[0].getBlockProducerByNum(blockNum)
+        blockProducer1=prodNodes[1].getBlockProducerByNum(blockNum)
+        blockProducers0.append({"blockNum":blockNum, "prod":blockProducer0})
+        blockProducers1.append({"blockNum":blockNum, "prod":blockProducer1})
+
+    info0=prodNodes[0].getInfo(blockNum)
+    info1=prodNodes[1].getInfo(blockNum)
+    Utils.Print("info0=%s\n\ninfo1=%s\n\n" % (info0, info1))
+    firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=True)
+    assert(firstDivergence==killBlockNum)
+    blockProducers0=[]
+    blockProducers1=[]
+
+    if not nonProdNode.relaunch(nonProdNode.nodeNum, None):
+        errorExit("Failure - (non-production) node %d should have restarted" % (nonProdNode.nodeNum))
+
+    # ensure all blocks from the lib before divergence till the current head are now in consensus
+    endBlockNum=max(prodNodes[0].getBlockNum(), prodNodes[1].getBlockNum())
+
+    for blockNum in range(libNum,endBlockNum):
+        blockProducer0=prodNodes[0].getBlockProducerByNum(blockNum)
+        blockProducer1=prodNodes[1].getBlockProducerByNum(blockNum)
+        blockProducers0.append({"blockNum":blockNum, "prod":blockProducer0})
+        blockProducers1.append({"blockNum":blockNum, "prod":blockProducer1})
+
+
+    firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=False)
+    assert(firstDivergence==None)
+    blockProducers0=[]
+    blockProducers1=[]
 
     testSuccessful=True
 finally:
