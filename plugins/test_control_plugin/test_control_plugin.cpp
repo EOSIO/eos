@@ -38,17 +38,14 @@ private:
 };
 
 void test_control_plugin_impl::connect() {
-   wlog("test_control_plugin::kill_node_on_producer() lib");
    _irreversible_block_connection.emplace(
          _chain.irreversible_block.connect( [&]( const chain::block_state_ptr& bs ) {
             applied_irreversible_block( bs );
          } ));
-   wlog("test_control_plugin::kill_node_on_producer() head");
    _accepted_block_connection =
          _chain.accepted_block.connect( [&]( const chain::block_state_ptr& bs ) {
             accepted_block( bs );
          } );
-   wlog("test_control_plugin::kill_node_on_producer() head connection created");
 }
 
 void test_control_plugin_impl::disconnect() {
@@ -57,13 +54,11 @@ void test_control_plugin_impl::disconnect() {
 }
 
 void test_control_plugin_impl::applied_irreversible_block(const chain::block_state_ptr& bsp) {
-   wlog("test_control_plugin_impl::applied_irreversible_block()");
    if (_track_lib)
       retrieve_next_block_state(bsp);
 }
 
 void test_control_plugin_impl::accepted_block(const chain::block_state_ptr& bsp) {
-   wlog("test_control_plugin_impl::accepted_block()");
    if (_track_head)
       retrieve_next_block_state(bsp);
 }
@@ -97,29 +92,21 @@ void test_control_plugin_impl::process_next_block_state(const chain::block_heade
 }
 
 void test_control_plugin_impl::kill_on_lib(account_name prod, uint32_t where_in_seq) {
-   wlog("test_control_plugin_impl::kill_on_lib() 1");
    _track_head = false;
-   wlog("test_control_plugin_impl::kill_on_lib() 2");
    _producer = prod;
    _where_in_sequence = static_cast<uint32_t>(where_in_seq);
    _producer_sequence = -1;
    _clean_producer_sequence = false;
-   wlog("test_control_plugin_impl::kill_on_lib() 3");
    _track_lib = true;
-   wlog("test_control_plugin_impl::kill_on_lib() 4");
 }
 
 void test_control_plugin_impl::kill_on_head(account_name prod, uint32_t where_in_seq) {
-   wlog("test_control_plugin_impl::kill_on_head() 1");
    _track_lib = false;
-   wlog("test_control_plugin_impl::kill_on_head() 2");
    _producer = prod;
    _where_in_sequence = static_cast<uint32_t>(where_in_seq);
    _producer_sequence = -1;
    _clean_producer_sequence = false;
-   wlog("test_control_plugin_impl::kill_on_head() 3");
    _track_head = true;
-   wlog("test_control_plugin_impl::kill_on_head() 4");
 }
 
 test_control_plugin::test_control_plugin()
@@ -128,20 +115,16 @@ test_control_plugin::test_control_plugin()
 }
 
 void test_control_plugin::set_program_options(options_description& cli, options_description& cfg) {
-   wlog("test_control_plugin::set_program_options()");
 }
 
 void test_control_plugin::plugin_initialize(const variables_map& options) {
-   wlog("test_control_plugin::plugin_initialize()");
 }
 
 void test_control_plugin::plugin_startup() {
-   wlog("test_control_plugin::plugin_startup()");
    my->connect();
 }
 
 void test_control_plugin::plugin_shutdown() {
-   wlog("test_control_plugin::plugin_shutdown()");
    my->disconnect();
 }
 
