@@ -910,8 +910,9 @@ class Node(object):
         assert(isinstance(whereInSequence, int))
         assert(isinstance(blockType, BlockType))
         assert(isinstance(returnType, ReturnType))
-        basedOnLib=True if blockType==BlockType.lib else False
-        cmd="curl %s -d '{ \"producer\":\"%s\", \"where_in_sequence\":%d, \"based_on_lib\":%s }' -X POST -H \"Content-Type: application/json\"" % (self.endpointHttp, producer, whereInSequence, basedOnLib)
+        basedOnLib="true" if blockType==BlockType.lib else "false"
+        cmd="curl %s/v1/test_control/kill_node_on_producer -d '{ \"producer\":\"%s\", \"where_in_sequence\":%d, \"based_on_lib\":\"%s\" }' -X POST -H \"Content-Type: application/json\"" % \
+            (self.endpointHttp, producer, whereInSequence, basedOnLib)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
