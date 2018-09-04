@@ -166,17 +166,11 @@ class Cluster(object):
                 cmdArr.append("--specific-nodeos")
                 cmdArr.append(arg)
 
-        shapeFilePrefix="shape_bridge"
-        shapeFile=shapeFilePrefix+".json"
-        shapeHostsFile=shapeFilePrefix+"_hosts.json"
         # must be last cmdArr.append before subprocess.call, so that everything is on the command line
         # before constructing the shape.json file for "bridge"
         if topo=="bridge":
-            numProducers=totalProducers if totalProducers is not None else totalNodes
-            maxProducers=ord('z')-ord('a')+1
-            assert numProducers<maxProducers, \
-                   "ERROR: topo of %s assumes names of \"defproducera\" to \"defproducerz\", so must have at most %d producers" % \
-                    (topo,maxProducers)
+            shapeFilePrefix="shape_bridge"
+            shapeFile=shapeFilePrefix+".json"
             cmdArrForOutput=copy.deepcopy(cmdArr)
             cmdArrForOutput.append("--output")
             cmdArrForOutput.append(shapeFile)
@@ -195,16 +189,21 @@ class Cluster(object):
             # an array of array, the first level of arrays is the pair entries of the map, the second is an array
             # of two entries - [ <first>, <second> ] with first being the name and second being the node definition
             shapeFileNodes = shapeFileObject["nodes"]
+
+            numProducers=totalProducers if totalProducers is not None else totalNodes
+            maxProducers=ord('z')-ord('a')+1
+            assert numProducers<maxProducers, \
+                   "ERROR: topo of %s assumes names of \"defproducera\" to \"defproducerz\", so must have at most %d producers" % \
+                    (topo,maxProducers)
+
             # will make a map to node object to make identification easier
             biosNodeObject=None
             bridgeNodes={}
             producerNodes={}
-            producers={}
-            index=0
+            producers=[]
             for append in range(ord('a'),ord('a')+numProducers):
                 name="defproducer" + chr(append) 
-                producers[name]=index
-                index+=1
+                producers.append(name)
 
             # first group starts at 0
             secondGroupStart=int((numProducers+1)/2)
@@ -217,7 +216,7 @@ class Cluster(object):
                 p=re.compile(r'^testnet_(\d+)$')
                 m=p.match(nodeName)
                 return int(m.group(1))
-            
+
             for shapeFileNodePair in shapeFileNodes:
                 assert(len(shapeFileNodePair)==2)
                 nodeName=shapeFileNodePair[0]
@@ -230,26 +229,53 @@ class Cluster(object):
                 nodeNum=getNodeNum(nodeName)
                 Utils.Print("nodeNum=%d, shapeFileNode=%s" % (nodeNum, shapeFileNode))
                 assert("producers" in shapeFileNode)
-                numNodeProducers=len(shapeFileNode["producers"])
+                shapeFileNodeProds=shapeFileNode["producers"]
+                numNodeProducers=len(shapeFileNodeProds)
                 if (numNodeProducers==0):
                     bridgeNodes[nodeName]=shapeFileNode
                 else:
                     producerNodes[nodeName]=shapeFileNode
-                    if nodeNum<secondGroupStart:
-                        producerGroup1.append(nodeName)
-                    else:
-                        producerGroup2.append(nodeName)
-            #Utils.Print("shapeFileNodeMap=%s" % (shapeFileNodeMap))
+                    group=None
+                    # go through all the producers for this node and determine which group on the bridged network they are in
+                    for shapeFileNodeProd in shapeFileNodeProds:
+                        producerIndex=0
+                        for prod in producers:
+                            if prod==shapeFileNodeProd:
+                                break
+                            producerIndex+=1
+
+                        prodGroup=None
+                        if producerIndex<secondGroupStart:
+                            prodGroup=1
+                            if group is None:
+                                group=prodGroup
+                                producerGroup1.append(nodeName)
+                                Utils.Print("Group1 grouping producerIndex=%s, secondGroupStart=%s" % (producerIndex,secondGroupStart))
+                        else:
+                            prodGroup=2
+                            if group is None:
+                                group=prodGroup
+                                producerGroup2.append(nodeName)
+                                Utils.Print("Group2 grouping producerIndex=%s, secondGroupStart=%s" % (producerIndex,secondGroupStart))
+                        if group!=prodGroup:
+                            errorExit("Node configuration not consistent with \"bridge\" topology. Node %s has producers that fall into both halves of the bridged network" % (nodeName))
 
             for _,bridgeNode in bridgeNodes.items():
                 bridgeNode["peers"]=[]
+                for prodName in producerNodes:
+                    bridgeNode["peers"].append(prodName)
 
-            for prodName,prodNode in producerNodes.items():
-                nodeNum=getNodeNum(prodName)
-                group=producerGroup1 if nodeNum<secondGroupStart else producerGroup2
-                prodNode["peers"]=[i for i in group if i!=prodNode]
-                for bridgeName in bridgeNodes:
-                    prodNode["peers"].append(bridgeName)
+            def connectGroup(group, producerNodes, bridgeNodes) :
+                groupStr=""
+                for nodeName in group:
+                    groupStr+=nodeName+", "
+                    prodNode=producerNodes[nodeName]
+                    prodNode["peers"]=[i for i in group if i!=nodeName]
+                    for bridgeName in bridgeNodes:
+                        prodNode["peers"].append(bridgeName)
+
+            connectGroup(producerGroup1, producerNodes, bridgeNodes)
+            connectGroup(producerGroup2, producerNodes, bridgeNodes)
 
             f=open(shapeFile,"w")
             f.write(json.dumps(shapeFileObject, indent=4, sort_keys=True))
