@@ -29,6 +29,7 @@
 
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
+#include <mongocxx/pool.hpp>
 #include <mongocxx/exception/operation_exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
 
@@ -117,6 +118,7 @@ public:
    uint32_t start_block_num = 0;
    std::atomic_bool start_block_reached{false};
 
+   bool is_producer = false;
    bool filter_on_star = true;
    std::set<filter_entry> filter_on;
    std::set<filter_entry> filter_out;
@@ -128,8 +130,18 @@ public:
 
    std::string db_name;
    mongocxx::instance mongo_inst;
-   mongocxx::client mongo_conn;
+   fc::optional<mongocxx::pool> mongo_pool;
+
+   // consum thread
+   fc::optional<mongocxx::pool::entry> mongo_client;
    mongocxx::collection accounts;
+   mongocxx::collection trans;
+   mongocxx::collection trans_traces;
+   mongocxx::collection action_traces;
+   mongocxx::collection block_states;
+   mongocxx::collection blocks;
+   mongocxx::collection pub_keys;
+   mongocxx::collection account_controls;
 
    size_t max_queue_size = 0;
    int queue_sleep_time = 0;
@@ -283,14 +295,12 @@ void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_p
       // from an incomplete block. This means that traces will not be recorded in speculative read-mode, but
       // users should not be using the mongo_db_plugin in that mode anyway.
       //
+      // Allow logging traces if node is a producer for testing purposes, so a single nodeos can do both for testing.
+      //
       // It is recommended to run mongo_db_plugin in read-mode = read-only.
       //
-//      if( !t->producer_block_id.valid() ) {
-//         auto v = to_variant_with_abi( *t );
-//         ilog("==>${t}", ("t", fc::json::to_string( v )));
-//
-//         return;
-//      }
+      if( !is_producer && !t->producer_block_id.valid() )
+         return;
       // always queue since account information always gathered
       queue( transaction_trace_queue, t );
    } catch (fc::exception& e) {
@@ -337,6 +347,18 @@ void mongo_db_plugin_impl::accepted_block( const chain::block_state_ptr& bs ) {
 
 void mongo_db_plugin_impl::consume_blocks() {
    try {
+      mongo_client = mongo_pool->acquire();
+      auto& mongo_conn = **mongo_client;
+
+      accounts = mongo_conn[db_name][accounts_col];
+      trans = mongo_conn[db_name][trans_col];
+      trans_traces = mongo_conn[db_name][trans_traces_col];
+      action_traces = mongo_conn[db_name][action_traces_col];
+      blocks = mongo_conn[db_name][blocks_col];
+      block_states = mongo_conn[db_name][block_states_col];
+      pub_keys = mongo_conn[db_name][pub_keys_col];
+      account_controls = mongo_conn[db_name][account_controls_col];
+
       while (true) {
          boost::mutex::scoped_lock lock(mtx);
          while ( transaction_metadata_queue.empty() &&
@@ -657,7 +679,6 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    using bsoncxx::builder::basic::make_array;
    namespace bbb = bsoncxx::builder::basic;
 
-   auto trans = mongo_conn[db_name][trans_col];
    auto trans_doc = bsoncxx::builder::basic::document{};
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -782,8 +803,6 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
    using namespace bsoncxx::types;
    using bsoncxx::builder::basic::kvp;
 
-   auto trans_traces = mongo_conn[db_name][trans_traces_col];
-   auto action_traces = mongo_conn[db_name][action_traces_col];
    auto trans_traces_doc = bsoncxx::builder::basic::document{};
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -864,7 +883,6 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
    if( store_block_states ) {
-      auto block_states = mongo_conn[db_name][block_states_col];
       auto block_state_doc = bsoncxx::builder::basic::document{};
       block_state_doc.append( kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ),
                               kvp( "block_id", block_id_str ),
@@ -901,7 +919,6 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
    }
 
    if( store_blocks ) {
-      auto blocks = mongo_conn[db_name][blocks_col];
       auto block_doc = bsoncxx::builder::basic::document{};
       block_doc.append( kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ),
                         kvp( "block_id", block_id_str ) );
@@ -950,7 +967,6 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
    if( store_blocks ) {
-      auto blocks = mongo_conn[db_name][blocks_col];
       auto ir_block = find_block( blocks, block_id_str );
       if( !ir_block ) {
          _process_accepted_block( bs );
@@ -967,7 +983,6 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
    }
 
    if( store_block_states ) {
-      auto block_states = mongo_conn[db_name][block_states_col];
       auto ir_block = find_block( block_states, block_id_str );
       if( !ir_block ) {
          _process_accepted_block( bs );
@@ -985,7 +1000,6 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
 
    if( store_transactions ) {
       const auto block_num = bs->block->block_num();
-      auto trans = mongo_conn[db_name][trans_col];
       bool transactions_in_block = false;
       mongocxx::options::bulk_write bulk_opts;
       bulk_opts.ordered( false );
@@ -1036,8 +1050,6 @@ void mongo_db_plugin_impl::add_pub_keys( const vector<chain::key_weight>& keys, 
 
    if( keys.empty()) return;
 
-   auto pub_keys = mongo_conn[db_name][pub_keys_col];
-
    mongocxx::bulk_write bulk = pub_keys.create_bulk_write();
 
    for( const auto& pub_key_weight : keys ) {
@@ -1071,8 +1083,6 @@ void mongo_db_plugin_impl::remove_pub_keys( const account_name& name, const perm
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::basic::make_document;
 
-   auto pub_keys = mongo_conn[db_name][pub_keys_col];
-
    try {
       auto result = pub_keys.delete_many( make_document( kvp( "account", name.to_string()),
                                                          kvp( "permission", permission.to_string())));
@@ -1095,8 +1105,6 @@ void mongo_db_plugin_impl::add_account_control( const vector<chain::permission_l
    using namespace bsoncxx::types;
 
    if( controlling_accounts.empty()) return;
-
-   auto account_controls = mongo_conn[db_name][account_controls_col];
 
    mongocxx::bulk_write bulk = account_controls.create_bulk_write();
 
@@ -1131,8 +1139,6 @@ void mongo_db_plugin_impl::remove_account_control( const account_name& name, con
 {
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::basic::make_document;
-
-   auto account_controls = mongo_conn[db_name][account_controls_col];
 
    try {
       auto result = account_controls.delete_many( make_document( kvp( "controlled_account", name.to_string()),
@@ -1249,8 +1255,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
 }
 
 mongo_db_plugin_impl::mongo_db_plugin_impl()
-: mongo_inst{}
-, mongo_conn{}
+: mongo_client{}
 {
 }
 
@@ -1270,6 +1275,9 @@ mongo_db_plugin_impl::~mongo_db_plugin_impl() {
 
 void mongo_db_plugin_impl::wipe_database() {
    ilog("mongo db wipe_database");
+
+   auto client = mongo_pool->acquire();
+   auto& mongo_conn = *client;
 
    auto block_states = mongo_conn[db_name][block_states_col];
    auto blocks = mongo_conn[db_name][blocks_col];
@@ -1297,7 +1305,10 @@ void mongo_db_plugin_impl::init() {
    // Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    // See native_contract_chain_initializer::prepare_database()
 
-   accounts = mongo_conn[db_name][accounts_col];
+   auto client = mongo_pool->acquire();
+   auto& mongo_conn = *client;
+
+   auto accounts = mongo_conn[db_name][accounts_col];
    if (accounts.count(make_document()) == 0) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
@@ -1484,6 +1495,10 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                my->filter_out.insert( fe );
             }
          }
+         if( options.count( "producer-name") ) {
+            wlog( "mongodb plugin not recommended on producer node" );
+            my->is_producer = true;
+         }
 
          if( my->start_block_num == 0 ) {
             my->start_block_reached = true;
@@ -1495,7 +1510,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          my->db_name = uri.database();
          if( my->db_name.empty())
             my->db_name = "EOS";
-         my->mongo_conn = mongocxx::client{uri};
+         my->mongo_pool.emplace(uri);
 
          // hook up to signals on controller
          chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
