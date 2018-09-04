@@ -833,6 +833,7 @@ launcher_def::bind_nodes () {
    int per_node = producers / non_bios;
    int extra = producers % non_bios;
    unsigned int i = 0;
+   unsigned int producer_number = 0;
    for (auto &h : bindings) {
       for (auto &inst : h.instances) {
          bool is_bios = inst.name == "bios";
@@ -856,12 +857,11 @@ launcher_def::bind_nodes () {
                  ++count;
                  --extra;
               }
-              char ext = i;
               while (count--) {
-                 const auto prodname = producer_names::producer_name(ext);
+                 const auto prodname = producer_names::producer_name(producer_number);
                  node.producers.push_back(prodname);
                  producer_set.schedule.push_back({prodname,pubkey});
-                 ext += non_bios;
+                 ++producer_number;
               }
            }
         }
