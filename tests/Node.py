@@ -36,6 +36,7 @@ class Node(object):
         self.port=port
         self.pid=pid
         self.cmd=cmd
+        if Utils.Debug: Utils.Print("new Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
         self.killed=False # marks node as killed
         self.enableMongo=enableMongo
         self.mongoHost=mongoHost
@@ -1072,6 +1073,15 @@ class Node(object):
             errorExit("Failed to get block's producer")
         return blockProducer
 
+    def getBlockProducer(self, timeout=None, waitForBlock=True, exitOnError=True, blockType=BlockType.head):
+        blockNum=self.getBlockNum(blockType=blockType)
+        block=self.getBlock(blockNum, exitOnError=exitOnError, blockType=blockType)
+        blockProducer=block["producer"]
+        if blockProducer is None and exitOnError:
+            Utils.cmdError("could not get producer for block number %s" % (blockNum))
+            errorExit("Failed to get block's producer")
+        return blockProducer
+
     def getNextCleanProductionCycle(self, trans):
         transId=Node.getTransId(trans)
         rounds=21*12*2  # max time to ensure that at least 2/3+1 of producers x blocks per producer x at least 2 times
@@ -1147,6 +1157,7 @@ class Node(object):
             Utils.Print("cmd: %s" % (cmd))
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
             self.pid=popen.pid
+            if Utils.Debug: Utils.Print("restart Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
 
         def isNodeAlive():
             """wait for node to be responsive."""
