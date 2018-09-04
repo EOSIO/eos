@@ -310,6 +310,8 @@ class Cluster(object):
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False
 
+        self.discoverBiosNodePid()
+
         # validate iniX accounts can be retrieved
 
         producerKeys=Cluster.parseClusterKeys(totalNodes)
@@ -1217,6 +1219,16 @@ class Cluster(object):
 
         if Utils.Debug: Utils.Print("Found %d nodes" % (len(nodes)))
         return nodes
+
+    def discoverBiosNodePid(self, timeout=None):
+        psOut=Cluster.pgrepEosServers(timeout=timeout)
+        pattern=Cluster.pgrepEosServerPattern("bios")
+        Utils.Print("pattern={\n%s\n}, psOut=\n%s\n" % (pattern,psOut))
+        m=re.search(pattern, psOut, re.MULTILINE)
+        if m is None:
+            Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
+        else:
+            self.biosNode.pid=int(m.group(1))
 
     # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
     def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
