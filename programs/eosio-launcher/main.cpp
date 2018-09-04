@@ -349,8 +349,7 @@ enum allowed_connection : char {
 
 class producer_names {
 public:
-   producer_names(int total_producers);
-   string producer_name(unsigned int producer_number) const;
+   static string producer_name(unsigned int producer_number);
 private:
    static const int total_chars = 12;
    static const char slot_chars[];
@@ -362,11 +361,7 @@ const char producer_names::valid_char_range = sizeof(producer_names::slot_chars)
 
 // for 26 or fewer total producers create "defproducera" .. "defproducerz"
 // above 26 produce  "defproducera" .. "defproducerz",  "defproduceaa" .. "defproducerb", etc.
-producer_names::producer_names(int total_producers)
-{
-}
-
-string producer_names::producer_name(unsigned int producer_number) const {
+string producer_names::producer_name(unsigned int producer_number) {
    // keeping legacy "defproducer[a-z]", but if greater than valid_char_range, will use "defpraaaaaaa"
    char prod_name[] = "defproducera";
    if (producer_number > valid_char_range) {
@@ -834,7 +829,6 @@ launcher_def::bind_nodes () {
       cerr << "Unable to allocate producers due to insufficient prod_nodes = " << prod_nodes << "\n";
       exit (10);
    }
-   producer_names names(producers);
    int non_bios = prod_nodes - 1;
    int per_node = producers / non_bios;
    int extra = producers % non_bios;
@@ -864,7 +858,7 @@ launcher_def::bind_nodes () {
               }
               char ext = i;
               while (count--) {
-                 const auto prodname = names.producer_name(ext);
+                 const auto prodname = producer_names::producer_name(ext);
                  node.producers.push_back(prodname);
                  producer_set.schedule.push_back({prodname,pubkey});
                  ext += non_bios;
