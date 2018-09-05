@@ -21,11 +21,11 @@
 #include <fc/scoped_exit.hpp>
 
 #include <fc/variant_object.hpp>
-#include <boost/core/demangle.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
 
 #include <eosio/chain/database_utils.hpp>
+#include <eosio/chain/snapshot.hpp>
 
 namespace eosio { namespace chain {
 
@@ -374,39 +374,36 @@ struct controller_impl {
       });
    }
 
-   void calculate_integrity_hash( sha256::encoder& enc ) const {
+   sha256 calculate_integrity_hash() const {
+      sha256::encoder enc;
       controller_index_set::walk_indices([this, &enc]( auto utils ){
          decltype(utils)::walk(db, [&enc]( const auto &row ) {
             fc::raw::pack(enc, row);
          });
       });
-   };
 
-   sha256 calculate_integrity_hash() const {
-      sha256::encoder enc;
-      calculate_integrity_hash(enc);
       authorization.calculate_integrity_hash(enc);
       resource_limits.calculate_integrity_hash(enc);
       return enc.result();
    }
 
-   struct json_snapshot {
+   struct json_snapshot : public abstract_snapshot_writer {
       json_snapshot()
       : snapshot(fc::mutable_variant_object()("sections", fc::variants()))
       {
 
       }
 
-      void start_section( const string& section_name ) {
+      void start_named_section( const string& section_name ) {
          current_rows.clear();
          current_section_name = section_name;
       }
 
-      void add_row( variant&& row ) {
+      void add_variant_row( variant&& row ) {
          current_rows.emplace_back(row);
       }
 
-      void end_section( ) {
+      void end_named_section( ) {
          snapshot["sections"].get_array().emplace_back(mutable_variant_object()("name", std::move(current_section_name))("rows", std::move(current_rows)));
       }
 
@@ -415,18 +412,22 @@ struct controller_impl {
       fc::variants current_rows;
    };
 
-   void print_json_snapshot() const {
-      json_snapshot snapshot;
+   void add_to_snapshot( abstract_snapshot_writer& snapshot ) const {
       controller_index_set::walk_indices([this, &snapshot]( auto utils ){
-         snapshot.start_section(boost::core::demangle(typeid(typename decltype(utils)::index_t::value_type).name()));
+         snapshot.start_section<typename decltype(utils)::index_t::value_type>();
          decltype(utils)::walk(db, [&snapshot]( const auto &row ) {
-            fc::variant vrow;
-            fc::to_variant(row, vrow);
-            snapshot.add_row(std::move(vrow));
+            snapshot.add_row(row);
          });
          snapshot.end_section();
       });
 
+      authorization.add_to_snapshot(snapshot);
+      resource_limits.add_to_snapshot(snapshot);
+   }
+
+   void print_json_snapshot() const {
+      json_snapshot snapshot;
+      add_to_snapshot(snapshot);
       std::cerr << fc::json::to_pretty_string(snapshot.snapshot) << std::endl;
    }
 

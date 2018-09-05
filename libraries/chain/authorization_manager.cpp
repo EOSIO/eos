@@ -42,6 +42,15 @@ namespace eosio { namespace chain {
       });
    }
 
+   void authorization_manager::add_to_snapshot( abstract_snapshot_writer& snapshot ) const {
+      authorization_index_set::walk_indices([this, &snapshot]( auto utils ){
+         snapshot.start_section<typename decltype(utils)::index_t::value_type>();
+         decltype(utils)::walk(_db, [&snapshot]( const auto &row ) {
+            snapshot.add_row(row);
+         });
+         snapshot.end_section();
+      });
+   }
 
    const permission_object& authorization_manager::create_permission( account_name account,
                                                                       permission_name name,

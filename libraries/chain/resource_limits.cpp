@@ -72,6 +72,16 @@ void resource_limits_manager::calculate_integrity_hash( fc::sha256::encoder& enc
    });
 }
 
+void resource_limits_manager::add_to_snapshot( abstract_snapshot_writer& snapshot ) const {
+   resource_index_set::walk_indices([this, &snapshot]( auto utils ){
+      snapshot.start_section<typename decltype(utils)::index_t::value_type>();
+      decltype(utils)::walk(_db, [&snapshot]( const auto &row ) {
+         snapshot.add_row(row);
+      });
+      snapshot.end_section();
+   });
+}
+
 void resource_limits_manager::initialize_account(const account_name& account) {
    _db.create<resource_limits_object>([&]( resource_limits_object& bl ) {
       bl.owner = account;
