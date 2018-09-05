@@ -2258,6 +2258,31 @@ BOOST_AUTO_TEST_CASE(deleteauth_test)
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(providebw_test)
+{ try {
+
+   abi_serializer abis(eosio_contract_abi(abi_def()), max_serialization_time);
+
+   BOOST_CHECK(true);
+   const char* test_data = R"=====(
+   {
+     "account" : "provbw.acct"
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   auto pbw = var.as<providebw>();
+   BOOST_TEST("provbw.acct" == pbw.account);
+
+   auto var2 = verify_byte_round_trip_conversion( abis, "providebw", var );
+   auto providebw2 = var2.as<providebw>();
+   BOOST_TEST(pbw.account == providebw2.account);
+
+   verify_type_round_trip_conversion<providebw>( abis, "providebw", var);
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE(newaccount_test)
 { try {
 
