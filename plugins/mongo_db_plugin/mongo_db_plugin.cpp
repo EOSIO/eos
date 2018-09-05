@@ -133,14 +133,14 @@ public:
    fc::optional<mongocxx::pool> mongo_pool;
 
    // consum thread
-   mongocxx::collection accounts;
-   mongocxx::collection trans;
-   mongocxx::collection trans_traces;
-   mongocxx::collection action_traces;
-   mongocxx::collection block_states;
-   mongocxx::collection blocks;
-   mongocxx::collection pub_keys;
-   mongocxx::collection account_controls;
+   mongocxx::collection _accounts;
+   mongocxx::collection _trans;
+   mongocxx::collection _trans_traces;
+   mongocxx::collection _action_traces;
+   mongocxx::collection _block_states;
+   mongocxx::collection _blocks;
+   mongocxx::collection _pub_keys;
+   mongocxx::collection _account_controls;
 
    size_t max_queue_size = 0;
    int queue_sleep_time = 0;
@@ -349,14 +349,14 @@ void mongo_db_plugin_impl::consume_blocks() {
       auto mongo_client = mongo_pool->acquire();
       auto& mongo_conn = *mongo_client;
 
-      accounts = mongo_conn[db_name][accounts_col];
-      trans = mongo_conn[db_name][trans_col];
-      trans_traces = mongo_conn[db_name][trans_traces_col];
-      action_traces = mongo_conn[db_name][action_traces_col];
-      blocks = mongo_conn[db_name][blocks_col];
-      block_states = mongo_conn[db_name][block_states_col];
-      pub_keys = mongo_conn[db_name][pub_keys_col];
-      account_controls = mongo_conn[db_name][account_controls_col];
+      _accounts = mongo_conn[db_name][accounts_col];
+      _trans = mongo_conn[db_name][trans_col];
+      _trans_traces = mongo_conn[db_name][trans_traces_col];
+      _action_traces = mongo_conn[db_name][action_traces_col];
+      _blocks = mongo_conn[db_name][blocks_col];
+      _block_states = mongo_conn[db_name][block_states_col];
+      _pub_keys = mongo_conn[db_name][pub_keys_col];
+      _account_controls = mongo_conn[db_name][account_controls_col];
 
       while (true) {
          boost::mutex::scoped_lock lock(mtx);
@@ -455,6 +455,7 @@ void mongo_db_plugin_impl::consume_blocks() {
             break;
          }
       }
+      mongo_pool.reset();
       ilog("mongo_db_plugin consume thread shutdown gracefully");
    } catch (fc::exception& e) {
       elog("FC Exception while consuming block ${e}", ("e", e.to_string()));
@@ -551,7 +552,7 @@ optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name 
             return itr->serializer;
          }
 
-         auto account = accounts.find_one( make_document( kvp("name", n.to_string())) );
+         auto account = _accounts.find_one( make_document( kvp("name", n.to_string())) );
          if(account) {
             auto view = account->view();
             abi_def abi;
@@ -737,8 +738,8 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    try {
       mongocxx::options::update update_opts{};
       update_opts.upsert( true );
-      if( !trans.update_one( make_document( kvp( "trx_id", trx_id_str ) ),
-                             make_document( kvp( "$set", trans_doc.view() ) ), update_opts ) ) {
+      if( !_trans.update_one( make_document( kvp( "trx_id", trx_id_str ) ),
+                              make_document( kvp( "$set", trans_doc.view() ) ), update_opts ) ) {
          EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert trans ${id}", ("id", trx_id) );
       }
    } catch( ... ) {
@@ -809,7 +810,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
 
    mongocxx::options::bulk_write bulk_opts;
    bulk_opts.ordered(false);
-   mongocxx::bulk_write bulk_action_traces = action_traces.create_bulk_write(bulk_opts);
+   mongocxx::bulk_write bulk_action_traces = _action_traces.create_bulk_write(bulk_opts);
    bool write_atraces = false;
    bool executed = t->receipt.valid() && t->receipt->status == chain::transaction_receipt_header::executed;
 
@@ -855,7 +856,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
    trans_traces_doc.append( kvp( "createdAt", b_date{now} ));
 
    try {
-      if( !trans_traces.insert_one( trans_traces_doc.view())) {
+      if( !_trans_traces.insert_one( trans_traces_doc.view())) {
          EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert trans ${id}", ("id", t->id));
       }
    } catch(...) {
@@ -908,8 +909,8 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       block_state_doc.append( kvp( "createdAt", b_date{now} ) );
 
       try {
-         if( !block_states.update_one( make_document( kvp( "block_id", block_id_str ) ),
-                                       make_document( kvp( "$set", block_state_doc.view() ) ), update_opts ) ) {
+         if( !_block_states.update_one( make_document( kvp( "block_id", block_id_str ) ),
+                                        make_document( kvp( "$set", block_state_doc.view() ) ), update_opts ) ) {
             EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block_state ${bid}", ("bid", block_id) );
          }
       } catch( ... ) {
@@ -941,8 +942,8 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       block_doc.append( kvp( "createdAt", b_date{now} ) );
 
       try {
-         if( !blocks.update_one( make_document( kvp( "block_id", block_id_str ) ),
-                                 make_document( kvp( "$set", block_doc.view() ) ), update_opts ) ) {
+         if( !_blocks.update_one( make_document( kvp( "block_id", block_id_str ) ),
+                                  make_document( kvp( "$set", block_doc.view() ) ), update_opts ) ) {
             EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block ${bid}", ("bid", block_id) );
          }
       } catch( ... ) {
@@ -966,10 +967,10 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
    if( store_blocks ) {
-      auto ir_block = find_block( blocks, block_id_str );
+      auto ir_block = find_block( _blocks, block_id_str );
       if( !ir_block ) {
          _process_accepted_block( bs );
-         ir_block = find_block( blocks, block_id_str );
+         ir_block = find_block( _blocks, block_id_str );
          if( !ir_block ) return; // should never happen
       }
 
@@ -978,14 +979,14 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
                                                                    kvp( "in_current_chain", b_bool{bs->in_current_chain} ),
                                                                    kvp( "updatedAt", b_date{now} ) ) ) );
 
-      blocks.update_one( make_document( kvp( "_id", ir_block->view()["_id"].get_oid() ) ), update_doc.view() );
+      _blocks.update_one( make_document( kvp( "_id", ir_block->view()["_id"].get_oid() ) ), update_doc.view() );
    }
 
    if( store_block_states ) {
-      auto ir_block = find_block( block_states, block_id_str );
+      auto ir_block = find_block( _block_states, block_id_str );
       if( !ir_block ) {
          _process_accepted_block( bs );
-         ir_block = find_block( block_states, block_id_str );
+         ir_block = find_block( _block_states, block_id_str );
          if( !ir_block ) return; // should never happen
       }
 
@@ -994,7 +995,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
                                                                    kvp( "in_current_chain", b_bool{bs->in_current_chain} ),
                                                                    kvp( "updatedAt", b_date{now} ) ) ) );
 
-      block_states.update_one( make_document( kvp( "_id", ir_block->view()["_id"].get_oid() ) ), update_doc.view() );
+      _block_states.update_one( make_document( kvp( "_id", ir_block->view()["_id"].get_oid() ) ), update_doc.view() );
    }
 
    if( store_transactions ) {
@@ -1002,7 +1003,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
       bool transactions_in_block = false;
       mongocxx::options::bulk_write bulk_opts;
       bulk_opts.ordered( false );
-      auto bulk = trans.create_bulk_write( bulk_opts );
+      auto bulk = _trans.create_bulk_write( bulk_opts );
 
       for( const auto& receipt : bs->block->transactions ) {
          string trx_id_str;
@@ -1049,7 +1050,7 @@ void mongo_db_plugin_impl::add_pub_keys( const vector<chain::key_weight>& keys, 
 
    if( keys.empty()) return;
 
-   mongocxx::bulk_write bulk = pub_keys.create_bulk_write();
+   mongocxx::bulk_write bulk = _pub_keys.create_bulk_write();
 
    for( const auto& pub_key_weight : keys ) {
       auto find_doc = bsoncxx::builder::basic::document();
@@ -1083,7 +1084,7 @@ void mongo_db_plugin_impl::remove_pub_keys( const account_name& name, const perm
    using bsoncxx::builder::basic::make_document;
 
    try {
-      auto result = pub_keys.delete_many( make_document( kvp( "account", name.to_string()),
+      auto result = _pub_keys.delete_many( make_document( kvp( "account", name.to_string()),
                                                          kvp( "permission", permission.to_string())));
       if( !result ) {
          EOS_ASSERT( false, chain::mongo_db_update_fail,
@@ -1105,7 +1106,7 @@ void mongo_db_plugin_impl::add_account_control( const vector<chain::permission_l
 
    if( controlling_accounts.empty()) return;
 
-   mongocxx::bulk_write bulk = account_controls.create_bulk_write();
+   mongocxx::bulk_write bulk = _account_controls.create_bulk_write();
 
    for( const auto& controlling_account : controlling_accounts ) {
       auto find_doc = bsoncxx::builder::basic::document();
@@ -1140,8 +1141,8 @@ void mongo_db_plugin_impl::remove_account_control( const account_name& name, con
    using bsoncxx::builder::basic::make_document;
 
    try {
-      auto result = account_controls.delete_many( make_document( kvp( "controlled_account", name.to_string()),
-                                                                 kvp( "controlled_permission", permission.to_string())));
+      auto result = _account_controls.delete_many( make_document( kvp( "controlled_account", name.to_string()),
+                                                                  kvp( "controlled_permission", permission.to_string())));
       if( !result ) {
          EOS_ASSERT( false, chain::mongo_db_update_fail,
                      "account_controls delete failed for account: ${a}, permission: ${p}",
@@ -1192,7 +1193,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
                std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
          auto newacc = act.data_as<chain::newaccount>();
 
-         create_account( accounts, newacc.name, now );
+         create_account( _accounts, newacc.name, now );
 
          add_pub_keys( newacc.owner.keys, newacc.name, owner, now );
          add_account_control( newacc.owner.accounts, newacc.name, owner, now );
@@ -1220,10 +1221,10 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
 
          abi_cache_index.erase( setabi.account );
 
-         auto account = find_account( accounts, setabi.account );
+         auto account = find_account( _accounts, setabi.account );
          if( !account ) {
-            create_account( accounts, setabi.account, now );
-            account = find_account( accounts, setabi.account );
+            create_account( _accounts, setabi.account, now );
+            account = find_account( _accounts, setabi.account );
          }
          if( account ) {
             abi_def abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
@@ -1235,8 +1236,8 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
                                                  kvp( "updatedAt", b_date{now} ))));
 
                try {
-                  if( !accounts.update_one( make_document( kvp( "_id", account->view()["_id"].get_oid())),
-                                            update_from.view())) {
+                  if( !_accounts.update_one( make_document( kvp( "_id", account->view()["_id"].get_oid())),
+                                             update_from.view())) {
                      EOS_ASSERT( false, chain::mongo_db_update_fail, "Failed to udpdate account ${n}", ("n", setabi.account));
                   }
                } catch( ... ) {
@@ -1303,63 +1304,68 @@ void mongo_db_plugin_impl::init() {
    // Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    // See native_contract_chain_initializer::prepare_database()
 
-   auto client = mongo_pool->acquire();
-   auto& mongo_conn = *client;
+   try {
+      auto client = mongo_pool->acquire();
+      auto& mongo_conn = *client;
 
-   auto accounts = mongo_conn[db_name][accounts_col];
-   if (accounts.count(make_document()) == 0) {
-      auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+      auto accounts = mongo_conn[db_name][accounts_col];
+      if( accounts.count( make_document()) == 0 ) {
+         auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
 
-      auto doc = make_document( kvp( "name", name( chain::config::system_account_name ).to_string()),
-                                kvp( "createdAt", b_date{now} ));
+         auto doc = make_document( kvp( "name", name( chain::config::system_account_name ).to_string()),
+                                   kvp( "createdAt", b_date{now} ));
 
-      try {
-         if( !accounts.insert_one( doc.view())) {
-            EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert account ${n}",
-                       ("n", name( chain::config::system_account_name ).to_string()));
+         try {
+            if( !accounts.insert_one( doc.view())) {
+               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert account ${n}",
+                           ("n", name( chain::config::system_account_name ).to_string()));
+            }
+         } catch (...) {
+            handle_mongo_exception( "account insert", __LINE__ );
          }
-      } catch(...) {
-         handle_mongo_exception("account insert", __LINE__);
+
+         try {
+            // blocks indexes
+            auto blocks = mongo_conn[db_name][blocks_col];
+            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
+            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
+
+            auto block_states = mongo_conn[db_name][block_states_col];
+            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
+            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
+
+            // accounts indexes
+            accounts.create_index( bsoncxx::from_json( R"xxx({ "name" : 1 })xxx" ));
+
+            // transactions indexes
+            auto trans = mongo_conn[db_name][trans_col];
+            trans.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
+
+            auto trans_trace = mongo_conn[db_name][trans_traces_col];
+            trans_trace.create_index( bsoncxx::from_json( R"xxx({ "id" : 1 })xxx" ));
+
+            // action traces indexes
+            auto action_traces = mongo_conn[db_name][action_traces_col];
+            action_traces.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
+
+            // pub_keys indexes
+            auto pub_keys = mongo_conn[db_name][pub_keys_col];
+            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "account" : 1, "permission" : 1 })xxx" ));
+            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "public_key" : 1 })xxx" ));
+
+            // account_controls indexes
+            auto account_controls = mongo_conn[db_name][account_controls_col];
+            account_controls.create_index(
+                  bsoncxx::from_json( R"xxx({ "controlled_account" : 1, "controlled_permission" : 1 })xxx" ));
+            account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlling_account" : 1 })xxx" ));
+
+         } catch (...) {
+            handle_mongo_exception( "create indexes", __LINE__ );
+         }
       }
-
-      try {
-         // blocks indexes
-         auto blocks = mongo_conn[db_name][blocks_col];
-         blocks.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
-         blocks.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
-
-         auto block_states = mongo_conn[db_name][block_states_col];
-         block_states.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
-         block_states.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
-
-         // accounts indexes
-         accounts.create_index( bsoncxx::from_json( R"xxx({ "name" : 1 })xxx" ));
-
-         // transactions indexes
-         auto trans = mongo_conn[db_name][trans_col];
-         trans.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
-
-         auto trans_trace = mongo_conn[db_name][trans_traces_col];
-         trans_trace.create_index( bsoncxx::from_json( R"xxx({ "id" : 1 })xxx" ));
-
-         // action traces indexes
-         auto action_traces = mongo_conn[db_name][action_traces_col];
-         action_traces.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
-
-         // pub_keys indexes
-         auto pub_keys = mongo_conn[db_name][pub_keys_col];
-         pub_keys.create_index( bsoncxx::from_json( R"xxx({ "account" : 1, "permission" : 1 })xxx" ));
-         pub_keys.create_index( bsoncxx::from_json( R"xxx({ "public_key" : 1 })xxx" ));
-
-         // account_controls indexes
-         auto account_controls = mongo_conn[db_name][account_controls_col];
-         account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlled_account" : 1, "controlled_permission" : 1 })xxx" ));
-         account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlling_account" : 1 })xxx" ));
-
-      } catch(...) {
-         handle_mongo_exception("create indexes", __LINE__);
-      }
+   } catch (...) {
+      handle_mongo_exception( "mongo init", __LINE__ );
    }
 
    ilog("starting db plugin thread");
