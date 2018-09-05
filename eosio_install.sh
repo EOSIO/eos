@@ -29,7 +29,11 @@
 #
 # https://github.com/EOSIO/eos/blob/master/LICENSE.txt
 ##########################################################################
-   
+
+if [ "$(id -u)" -ne 0 ]; then
+        printf "\n\tThis requires sudo. Please run with sudo.\n\n"
+        exit -1
+fi   
 
    CWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
    if [ "${CWD}" != "${PWD}" ]; then
