@@ -28,9 +28,6 @@
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
 
-#include "test_wasts.hpp"
-#include "test_softfloat_wasts.hpp"
-
 #include <array>
 #include <utility>
 
