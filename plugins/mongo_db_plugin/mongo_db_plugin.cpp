@@ -1295,6 +1295,7 @@ void mongo_db_plugin_impl::wipe_database() {
    accounts.drop();
    pub_keys.drop();
    account_controls.drop();
+   ilog("done wipe_database");
 }
 
 void mongo_db_plugin_impl::init() {
@@ -1304,6 +1305,7 @@ void mongo_db_plugin_impl::init() {
    // Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    // See native_contract_chain_initializer::prepare_database()
 
+   ilog("init mongo");
    try {
       auto client = mongo_pool->acquire();
       auto& mongo_conn = *client;

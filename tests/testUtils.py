@@ -6,6 +6,7 @@ import inspect
 import json
 import shlex
 from sys import stdout
+from sys import exit
 import traceback
 
 ###########################################################################################
@@ -87,7 +88,7 @@ class Utils:
             return
         Utils.Print("ERROR:" if not raw else "", msg)
         traceback.print_stack(limit=-1)
-        sys.exit(errorCode)
+        exit(errorCode)
 
     @staticmethod
     def cmdError(name, cmdCode=0):
