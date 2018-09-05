@@ -87,7 +87,7 @@ class Utils:
             return
         Utils.Print("ERROR:" if not raw else "", msg)
         traceback.print_stack(limit=-1)
-        exit(errorCode)
+        sys.exit(errorCode)
 
     @staticmethod
     def cmdError(name, cmdCode=0):
