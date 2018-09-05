@@ -133,7 +133,6 @@ public:
    fc::optional<mongocxx::pool> mongo_pool;
 
    // consum thread
-   fc::optional<mongocxx::pool::entry> mongo_client;
    mongocxx::collection accounts;
    mongocxx::collection trans;
    mongocxx::collection trans_traces;
@@ -347,8 +346,8 @@ void mongo_db_plugin_impl::accepted_block( const chain::block_state_ptr& bs ) {
 
 void mongo_db_plugin_impl::consume_blocks() {
    try {
-      mongo_client = mongo_pool->acquire();
-      auto& mongo_conn = **mongo_client;
+      auto mongo_client = mongo_pool->acquire();
+      auto& mongo_conn = *mongo_client;
 
       accounts = mongo_conn[db_name][accounts_col];
       trans = mongo_conn[db_name][trans_col];
@@ -1255,7 +1254,6 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
 }
 
 mongo_db_plugin_impl::mongo_db_plugin_impl()
-: mongo_client{}
 {
 }
 
@@ -1284,7 +1282,7 @@ void mongo_db_plugin_impl::wipe_database() {
    auto trans = mongo_conn[db_name][trans_col];
    auto trans_traces = mongo_conn[db_name][trans_traces_col];
    auto action_traces = mongo_conn[db_name][action_traces_col];
-   accounts = mongo_conn[db_name][accounts_col];
+   auto accounts = mongo_conn[db_name][accounts_col];
    auto pub_keys = mongo_conn[db_name][pub_keys_col];
    auto account_controls = mongo_conn[db_name][account_controls_col];
 
@@ -1331,9 +1329,9 @@ void mongo_db_plugin_impl::init() {
          blocks.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
          blocks.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
 
-         auto block_stats = mongo_conn[db_name][block_states_col];
-         block_stats.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
-         block_stats.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
+         auto block_states = mongo_conn[db_name][block_states_col];
+         block_states.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
+         block_states.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
 
          // accounts indexes
          accounts.create_index( bsoncxx::from_json( R"xxx({ "name" : 1 })xxx" ));
