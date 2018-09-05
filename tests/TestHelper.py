@@ -122,6 +122,12 @@ class TestHelper(object):
             if walletMgr:
                 walletMgr.dumpErrorDetails()
             Utils.Print("== Errors see above ==")
+            if len(Utils.CheckOutputDeque)>0:
+                Utils.Print("== cout/cerr pairs from last %d calls to Utils. ==" % len(Utils.CheckOutputDeque))
+                for out, err in Utils.CheckOutputDeque:
+                    Utils.Print("cout={%s}" % (out))
+                    Utils.Print("cerr={%s}\n" % (out))
+                Utils.Print("== cout/cerr pairs done. ==")
 
         if killEosInstances:
             Utils.Print("Shut down the cluster.")
