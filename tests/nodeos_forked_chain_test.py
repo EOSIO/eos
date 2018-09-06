@@ -93,13 +93,6 @@ try:
 
     Print("Wallet \"%s\" password=%s." % (testWalletName, testWallet.password.encode("utf-8")))
 
-    def printNode(node, msg=None):
-        if msg is None:
-            msg=""
-        else:
-            msg+=" "
-        Utils.Print("%sNode host=%s, port=%s, pid=%s" % (msg, node.host, node.port, node.pid))
-
     nonProdNode=None
     prodNodes=[]
     producers=[]
@@ -107,7 +100,7 @@ try:
         node=cluster.getNode(i)
         node.producers=Cluster.parseProducers(i)
         numProducers=len(node.producers)
-        Utils.Print("node has producers=%s" % (node.producers))
+        Print("node has producers=%s" % (node.producers))
         if numProducers==0:
             if nonProdNode is None:
                 nonProdNode=node
@@ -132,18 +125,18 @@ try:
         trans=node.delegatebw(account, 20000000.0000, 20000000.0000, exitOnError=True)
 
     #verify nodes are in sync and advancing
-    cluster.waitOnClusterSync(blockAdvancing=5)    
+    cluster.waitOnClusterSync(blockAdvancing=5)
     index=0
     for account in accounts:
-        Utils.Print("vote for producers=%s" % (producers))
+        Print("Vote for producers=%s" % (producers))
         trans=prodNodes[index % len(prodNodes)].vote(account, producers)
         index+=1
 
     #verify nodes are in sync and advancing
-    cluster.waitOnClusterSync(blockAdvancing=5)    
+    cluster.waitOnClusterSync(blockAdvancing=5)
     blockNum=node.getNextCleanProductionCycle(trans)
     blockProducer=node.getBlockProducerByNum(blockNum)
-    Utils.Print("Validating blockNum=%s, producer=%s" % (blockNum, blockProducer))
+    Print("Validating blockNum=%s, producer=%s" % (blockNum, blockProducer))
     cluster.biosNode.kill(signal.SIGTERM)
 
     lastBlockProducer=blockProducer
@@ -184,14 +177,14 @@ try:
         else:
             output+=", "
         output+=blockProducer+":"+str(producerToSlot[blockProducer]["count"])
-    Utils.Print("ProductionCycle ->> {\n%s\n}" % output)
+    Print("ProductionCycle ->> {\n%s\n}" % output)
 
     for prodNode in prodNodes:
         prodNode.getInfo()
 
     cluster.reportStatus()
 
-    Utils.Print("Sending command to kill \"bridge\" node to separate the 2 producer groups.")
+    Print("Sending command to kill \"bridge\" node to separate the 2 producer groups.")
     # block number to start expecting node killed after
     preKillBlockNum=nonProdNode.getBlockNum()
     preKillBlockProducer=nonProdNode.getBlockProducerByNum(preKillBlockNum)
@@ -207,7 +200,6 @@ try:
     libs0=[]
     libs1=[]
     lastBlockNum=max([preKillBlockNum,postKillBlockNum])+maxActiveProducers*inRowCountPerProducer
-    Utils.Print("preKillBlockNum=%s, postKillBlockNum=%s, lastBlockNum=%d" % (preKillBlockNum,postKillBlockNum,lastBlockNum)) 
     actualLastBlockNum=None
     prodChanged=False
     nextProdChange=False
@@ -226,7 +218,6 @@ try:
         blockProducer1=prodNodes[1].getBlockProducerByNum(blockNum)
         blockProducers0.append({"blockNum":blockNum, "prod":blockProducer0})
         blockProducers1.append({"blockNum":blockNum, "prod":blockProducer1})
-        #Utils.Print("blockProducer0=%s, blockProducer1=%s, blockNum=%d" % (blockProducer0,blockProducer1,blockNum))
         # ensure that we wait for the next instance of killAtProducer
         if not prodChanged:
             if preKillBlockProducer!=blockProducer0:
@@ -297,15 +288,14 @@ try:
                 bpsStr0+=str(blockNum0)+numDiff+"->"+prod0+prodDiff
                 bpsStr1+=str(blockNum1)+numDiff+"->"+prod1+prodDiff
             if printInfo:
-                Utils.Print("ERROR: Analyzing Block Producers, did not expect nodes to indicate different block producers for the same blocks.")
-                Utils.Print("Matchinb Blocks= %s" % (bpsStr))
-                Utils.Print("Diverging branch node0= %s" % (bpsStr0))
-                Utils.Print("Diverging branch node1= %s" % (bpsStr1))
+                Print("ERROR: Analyzing Block Producers, did not expect nodes to indicate different block producers for the same blocks.")
+                Print("Matching Blocks= %s" % (bpsStr))
+                Print("Diverging branch node0= %s" % (bpsStr0))
+                Print("Diverging branch node1= %s" % (bpsStr1))
         return firstDivergence
 
     firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=True)
     # Nodes should not have diverged till the last block
-    Utils.Print("firstDivergence=%s, blockNum=%s" % (firstDivergence, blockNum))
     assert(firstDivergence==blockNum)
     blockProducers0=[]
     blockProducers1=[]
@@ -325,7 +315,6 @@ try:
 
     info0=prodNodes[0].getInfo(blockNum)
     info1=prodNodes[1].getInfo(blockNum)
-    Utils.Print("info0=%s\n\ninfo1=%s\n\n" % (info0, info1))
     firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=True)
     assert(firstDivergence==killBlockNum)
     blockProducers0=[]

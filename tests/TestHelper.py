@@ -21,7 +21,6 @@ class AppArgs:
     def add(self, flag, type, help, default, choices=None):
         arg=self.AppArg(flag, type, help, default, choices)
         self.args.append(arg)
-        Utils.Print("args %d" % (len(self.args)))
 
 # pylint: disable=too-many-instance-attributes
 class TestHelper(object):
@@ -36,7 +35,6 @@ class TestHelper(object):
         assert(includeArgs)
         assert(isinstance(includeArgs, set))
         assert(isinstance(applicationSpecificArgs, AppArgs))
-        Utils.Print("applicationSpecificArgs %d" % (len(applicationSpecificArgs.args)))
 
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument('-?', action='help', default=argparse.SUPPRESS,

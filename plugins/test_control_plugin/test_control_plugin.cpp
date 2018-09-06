@@ -78,13 +78,11 @@ void test_control_plugin_impl::process_next_block_state(const chain::block_heade
    // start counting sequences for this producer (once we
    if (producer_name == _producer && _clean_producer_sequence) {
       _producer_sequence += 1;
-      wlog("test_control_plugin_impl::process_next_block_state() seq=${seq}",("seq",_producer_sequence));
 
       if (_producer_sequence >= _where_in_sequence) {
          app().quit();
       }
    } else if (producer_name != _producer) {
-      wlog("test_control_plugin_impl::process_next_block_state() reset");
       _producer_sequence = -1;
       // can now guarantee we are at the start of the producer
       _clean_producer_sequence = true;
@@ -130,16 +128,11 @@ void test_control_plugin::plugin_shutdown() {
 
 namespace test_control_apis {
 read_write::kill_node_on_producer_results read_write::kill_node_on_producer(const read_write::kill_node_on_producer_params& params) const {
-   wlog("test_control_plugin::kill_node_on_producer() ${prod} ${where_in_seq}  ${head_lib}",("prod",params.producer.to_string())("where_in_seq",params.where_in_sequence)("head_lib", (params.based_on_lib ? "LIB" : "HEAD")));
 
    if (params.based_on_lib) {
-      wlog("test_control_plugin::kill_node_on_producer() kill_on_lib");
       my->kill_on_lib(params.producer, params.where_in_sequence);
-      wlog("test_control_plugin::kill_node_on_producer() kill_on_lib done");
    } else {
-      wlog("test_control_plugin::kill_node_on_producer() kill_on_head");
       my->kill_on_head(params.producer, params.where_in_sequence);
-      wlog("test_control_plugin::kill_node_on_producer() kill_on_head done");
    }
    return read_write::kill_node_on_producer_results{};
 }
