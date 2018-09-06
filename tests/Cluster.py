@@ -118,9 +118,13 @@ class Cluster(object):
             assert(isinstance(totalProducers, (str,int)))
             producerFlag="--producers %s" % (totalProducers)
 
-        if not Cluster.arePortsAvailable(set(range(self.port, self.port+totalNodes+1))):
-            Utils.Print("ERROR: Another process is listening on nodeos default port.")
-            return False
+        tries = 30
+        while not Cluster.arePortsAvailable(set(range(self.port, self.port+totalNodes+1))):
+            Utils.Print("ERROR: Another process is listening on nodeos default port. wait...")
+            if tries == 0:
+                return False
+            tries = tries - 1
+            time.sleep(2)
 
         cmd="%s -p %s -n %s -s %s -d %s -i %s -f --p2p-plugin %s %s" % (
             Utils.EosLauncherPath, pnodes, totalNodes, topo, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
@@ -147,7 +151,7 @@ class Cluster(object):
         s=" ".join(cmdArr)
         if Utils.Debug: Utils.Print("cmd: %s" % (s))
         if 0 != subprocess.call(cmdArr):
-            Utils.Print("ERROR: Launcher failed to launch.")
+            Utils.Print("ERROR: Launcher failed to launch. failed cmd: %s" % (s))
             return False
 
         self.nodes=list(range(totalNodes)) # placeholder for cleanup purposes only
