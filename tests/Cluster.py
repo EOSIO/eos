@@ -1064,8 +1064,10 @@ class Cluster(object):
                 if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
                 psOut=Utils.checkOutput(cmd.split())
                 return psOut
-            except subprocess.CalledProcessError as _:
-                pass
+            except subprocess.CalledProcessError as ex:
+                msg=ex.output.decode("utf-8")
+                Utils.Print("ERROR: call of \"%s\" failed. %s" % (cmd, msg))
+                return None
             return None
 
         psOut=Utils.waitForObj(myFunc, timeout)

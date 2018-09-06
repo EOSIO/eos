@@ -55,7 +55,17 @@ class WalletMgr(object):
         p = re.compile(r'\n\"(\w+)\"\n', re.MULTILINE)
         cmd="%s %s wallet create --name %s --to-console" % (Utils.EosClientPath, self.endpointArgs, name)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        retStr=Utils.checkOutput(cmd.split())
+        retStr=None
+        try:
+            retStr=Utils.checkOutput(cmd.split())
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            msg="ERROR: Failed to import account owner key %s. %s" % (account.ownerPrivateKey, msg)
+            if exitOnError:
+                Utils.errorExit("%s" % (msg))
+            Utils.Print("%s" % (msg))
+            return None
+
         #Utils.Print("create: %s" % (retStr))
         m=p.search(retStr)
         if m is None:
@@ -152,8 +162,14 @@ class WalletMgr(object):
         p = re.compile(r'\s+\"(\w+)\s\*\",?\n', re.MULTILINE)
         cmd="%s %s wallet list" % (Utils.EosClientPath, self.endpointArgs)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        retStr=Utils.checkOutput(cmd.split())
-        #Utils.Print("retStr: %s" % (retStr))
+        retStr=None
+        try:
+            retStr=Utils.checkOutput(cmd.split())
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("ERROR: Failed to open wallets. %s" % (msg))
+            return False
+
         m=p.findall(retStr)
         if m is None:
             Utils.Print("ERROR: wallet list parser failure")
@@ -168,8 +184,13 @@ class WalletMgr(object):
         p = re.compile(r'\n\s+\"(\w+)\"\n', re.MULTILINE)
         cmd="%s %s wallet private_keys --name %s --password %s " % (Utils.EosClientPath, self.endpointArgs, wallet.name, wallet.password)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        retStr=Utils.checkOutput(cmd.split())
-        #Utils.Print("retStr: %s" % (retStr))
+        retStr=None
+        try:
+            retStr=Utils.checkOutput(cmd.split())
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("ERROR: Failed to get keys. %s" % (msg))
+            return False
         m=p.findall(retStr)
         if m is None:
             Utils.Print("ERROR: wallet private_keys parser failure")
