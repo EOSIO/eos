@@ -289,7 +289,7 @@ class Node(object):
             errorMsg="Exception during get db node get trans in mongodb with transaction id=%s. %s" % (transId,msg)
             if exitOnError:
                 Utils.cmdError("" % (errorMsg))
-                errorExit("Failed to retrieve transaction in mongodb for transaction id=%s" % (transId))
+                Utils.errorExit("Failed to retrieve transaction in mongodb for transaction id=%s" % (transId))
             elif not silentErrors:
                 Utils.Print("ERROR: %s" % (errorMsg))
             return None
@@ -469,7 +469,7 @@ class Node(object):
             msg=ex.output.decode("utf-8")
             if exitOnError:
                 Utils.cmdError("Exception during get account from db for %s. %s" % (name, msg))
-                errorExit("Failed during get account from db for %s. %s" % (name, msg))
+                Utils.errorExit("Failed during get account from db for %s. %s" % (name, msg))
 
             Utils.Print("ERROR: Exception during get account from db for %s. %s" % (name, msg))
             return None
@@ -596,12 +596,12 @@ class Node(object):
             Utils.Print("ERROR: Exception during funds transfer. %s" % (msg))
             if exitOnError:
                 Utils.cmdError("could not transfer \"%s\" from %s to %s" % (amountStr, source, destination))
-                errorExit("Failed to transfer \"%s\" from %s to %s" % (amountStr, source, destination))
+                Utils.errorExit("Failed to transfer \"%s\" from %s to %s" % (amountStr, source, destination))
             return None
 
         if trans is None:
             Utils.cmdError("could not transfer \"%s\" from %s to %s" % (amountStr, source, destination))
-            errorExit("Failed to transfer \"%s\" from %s to %s" % (amountStr, source, destination))
+            Utils.errorExit("Failed to transfer \"%s\" from %s to %s" % (amountStr, source, destination))
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -901,7 +901,7 @@ class Node(object):
             exitMsg=""
         if exitOnError and trans is None:
             Utils.cmdError("could not %s - %s" % (cmdDesc,exitMsg))
-            errorExit("Failed to %s" % (cmdDesc))
+            Utils.errorExit("Failed to %s" % (cmdDesc))
 
         return trans
 
@@ -913,7 +913,7 @@ class Node(object):
         if not self.waitForTransInBlock(transId):
             if exitOnError:
                 Utils.cmdError("transaction with id %s never made it to a block" % (transId))
-                errorExit("Failed to find transaction with id %s in a block before timeout" % (transId))
+                Utils.errorExit("Failed to find transaction with id %s in a block before timeout" % (transId))
             return None
         return trans
 

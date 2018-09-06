@@ -13,6 +13,9 @@ import decimal
 import math
 import re
 
+Print=Utils.Print
+errorExit=Utils.errorExit
+
 class NamedAccounts:
 
     def __init__(self, cluster, numAccounts):
@@ -50,8 +53,6 @@ class NamedAccounts:
 # --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
 # --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
-Print=Utils.Print
-errorExit=Utils.errorExit
 
 args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"})
 Utils.Debug=args.v

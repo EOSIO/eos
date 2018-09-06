@@ -71,7 +71,7 @@ class WalletMgr(object):
         if m is None:
             if exitOnError:
                 Utils.cmdError("could not create wallet %s" % (name))
-                errorExit("Failed  to create wallet %s" % (name))
+                Utils.errorExit("Failed  to create wallet %s" % (name))
 
             Utils.Print("ERROR: wallet password parser failure")
             return None

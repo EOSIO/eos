@@ -446,10 +446,10 @@ class Cluster(object):
     def getNode(self, nodeId=0, exitOnError=True):
         if exitOnError and nodeId >= len(self.nodes):
             Utils.cmdError("cluster never created node %d" % (nodeId))
-            errorExit("Failed to retrieve node %d" % (nodeId))
+            Utils.errorExit("Failed to retrieve node %d" % (nodeId))
         if exitOnError and self.nodes[nodeId] is None:
             Utils.cmdError("cluster has None value for node %d" % (nodeId))
-            errorExit("Failed to retrieve node %d" % (nodeId))
+            Utils.errorExit("Failed to retrieve node %d" % (nodeId))
         return self.nodes[nodeId]
 
     def getNodes(self):

@@ -36,7 +36,7 @@ def getBlockProducer(node, blockNum):
     blockProducer=block["producer"]
     if blockProducer is None:
         Utils.cmdError("could not get producer for block number %s" % (blockNum))
-        errorExit("Failed to get block's producer")
+        Utils.errorExit("Failed to get block's producer")
     return blockProducer
 
 def getNodeNum(cluster, node):
@@ -55,10 +55,10 @@ def validBlockProducer(prodsActive, prodsSeen, blockNum, node):
     blockProducer=getBlockProducer(node, blockNum)
     if blockProducer not in prodsActive:
         Utils.cmdError("unexpected block producer %s at blockNum=%s" % (blockProducer,blockNum))
-        errorExit("Failed because of invalid block producer")
+        Utils.errorExit("Failed because of invalid block producer")
     if not prodsActive[blockProducer]:
         Utils.cmdError("block producer %s for blockNum=%s not elected, belongs to node %s" % (blockProducer, blockNum, ProducerToNode.map[blockProducer]))
-        errorExit("Failed because of incorrect block producer")
+        Utils.errorExit("Failed because of incorrect block producer")
     prodsSeen[blockProducer]=True
 
 def getNextCleanProductionCycle(trans, node):
@@ -149,7 +149,7 @@ def verifyProductionRounds(trans, node, prodsActive, rounds):
             # each new set of 12 blocks should have a different blockProducer 
             if lastBlockProducer is not None and lastBlockProducer==getBlockProducer(node, blockNum):
                 Utils.cmdError("expected blockNum %s to be produced by any of the valid producers except %s" % (blockNum, lastBlockProducer))
-                errorExit("Failed because of incorrect block producer order")
+                Utils.errorExit("Failed because of incorrect block producer order")
 
             # make sure that the next set of 12 blocks all have the same blockProducer
             lastBlockProducer=getBlockProducer(node, blockNum)
@@ -167,14 +167,14 @@ def verifyProductionRounds(trans, node, prodsActive, rounds):
                         printStr+="  "
                         newBlockNum+=1
                     Utils.cmdError("expected blockNum %s (started from %s) to be produced by %s, but produded by %s: round=%s, prod slot=%s, prod num=%s - %s" % (blockNum, startingFrom, lastBlockProducer, blockProducer, i, j, k, printStr))
-                    errorExit("Failed because of incorrect block producer order")
+                    Utils.errorExit("Failed because of incorrect block producer order")
                 blockNum+=1
 
     # make sure that we have seen all 21 producers
     prodsSeenKeys=prodsSeen.keys()
     if len(prodsSeenKeys)!=21:
         Utils.cmdError("only saw %s producers of expected 21. At blockNum %s only the following producers were seen: %s" % (len(prodsSeenKeys), blockNum, ",".join(prodsSeenKeys)))
-        errorExit("Failed because of missing block producers")
+        Utils.errorExit("Failed because of missing block producers")
 
     Utils.Debug=temp
 
@@ -211,14 +211,14 @@ try:
     Print("Stand up cluster")
     if cluster.launch(prodCount=prodCount, onlyBios=False, dontKill=dontKill, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes*21, p2pPlugin=p2pPlugin, useBiosBootFile=False) is False:
         Utils.cmdError("launcher")
-        errorExit("Failed to stand up eos cluster.")
+        Utils.errorExit("Failed to stand up eos cluster.")
 
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
 
     accounts=cluster.createAccountKeys(5)
     if accounts is None:
-        errorExit("FAILURE - create keys")
+        Utils.errorExit("FAILURE - create keys")
     accounts[0].name="tester111111"
     accounts[1].name="tester222222"
     accounts[2].name="tester333333"
@@ -232,7 +232,7 @@ try:
     walletMgr.cleanup()
     if walletMgr.launch() is False:
         Utils.cmdError("%s" % (WalletdName))
-        errorExit("Failed to stand up eos walletd.")
+        Utils.errorExit("Failed to stand up eos walletd.")
 
     testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount,accounts[0],accounts[1],accounts[2],accounts[3],accounts[4]])
 
