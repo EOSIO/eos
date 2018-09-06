@@ -42,9 +42,12 @@ namespace eosio { namespace client { namespace http {
       {
       }
 
+      //used for unix domain, where resolving and ports are nonapplicable
+      resolved_url(const parsed_url& url) : parsed_url(url) {}
+
       vector<string> resolved_addresses;
-      uint16_t resolved_port;
-      bool is_loopback;
+      uint16_t resolved_port = 0;
+      bool is_loopback = false;
    };
 
    resolved_url resolve_url( const http_context& context,

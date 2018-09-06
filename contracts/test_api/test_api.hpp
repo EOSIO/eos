@@ -63,6 +63,7 @@ struct test_action {
   static void test_dummy_action();
   static void test_cf_action();
   static void require_notice(uint64_t receiver, uint64_t code, uint64_t action);
+  static void require_notice_tests(uint64_t receiver, uint64_t code, uint64_t action);
   static void require_auth();
   static void assert_false();
   static void assert_true();

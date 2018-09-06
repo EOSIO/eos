@@ -313,7 +313,7 @@ namespace eosio {
          if( options.count( "filter-on" )) {
             auto fo = options.at( "filter-on" ).as<vector<string>>();
             for( auto& s : fo ) {
-               if( s == "*" ) {
+               if( s == "*" || s == "\"*\"" ) {
                   my->bypass_filter = true;
                   wlog( "--filter-on * enabled. This can fill shared_mem, causing nodeos to stop." );
                   break;

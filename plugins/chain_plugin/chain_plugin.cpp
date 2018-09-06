@@ -950,6 +950,8 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       //std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string(),
       //__builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0,
       app().version_string(),
+      symbol().name(),
+      symbol().precision(),
    };
 }
 
@@ -1537,6 +1539,19 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    if( abi_serializer::to_abi(accnt.abi, abi) ) {
 
       result.abi = std::move(abi);
+   }
+
+   return result;
+}
+
+read_only::get_code_hash_results read_only::get_code_hash( const get_code_hash_params& params )const {
+   get_code_hash_results result;
+   result.account_name = params.account_name;
+   const auto& d = db.db();
+   const auto& accnt  = d.get<account_object,by_name>( params.account_name );
+
+   if( accnt.code.size() ) {
+      result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
    }
 
    return result;
