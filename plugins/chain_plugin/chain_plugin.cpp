@@ -1136,8 +1136,7 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
          }
          continue;
       }
-      get_table_by_scope_result_row row{itr->code, itr->scope, itr->table, itr->payer, itr->count};
-      result.rows.emplace_back(fc::variant(row));
+      result.rows.push_back({itr->code, itr->scope, itr->table, itr->payer, itr->count});
       if (++count == p.limit || fc::time_point::now() > end) {
          ++itr;
          break;

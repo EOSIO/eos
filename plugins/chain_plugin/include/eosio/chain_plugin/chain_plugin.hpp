@@ -277,7 +277,7 @@ public:
       uint32_t    count;
    };
    struct get_table_by_scope_result {
-      vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object
+      vector<get_table_by_scope_result_row> rows;
       bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
    };
 
