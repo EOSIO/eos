@@ -1112,7 +1112,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
          } else {
             // attempt to apply any pending incoming transactions
             _incoming_trx_weight = 0.0;
-            if (orig_pending_txn_size && _pending_incoming_transactions.size()) {
+            while (orig_pending_txn_size && _pending_incoming_transactions.size()) {
                auto e = _pending_incoming_transactions.front();
                _pending_incoming_transactions.pop_front();
                --orig_pending_txn_size;
