@@ -180,6 +180,7 @@ bool   tx_skip_sign = false;
 bool   tx_print_json = false;
 bool   print_request = false;
 bool   print_response = false;
+bool   no_auto_keosd = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
@@ -788,6 +789,8 @@ void try_local_port( const string& lo_address, uint16_t port, uint32_t duration 
 }
 
 void ensure_keosd_running(CLI::App* app) {
+    if (!no_auto_keosd)
+        return;
     // get, version, net do not require keosd
     if (tx_skip_sign || app->got_subcommand("get") || app->got_subcommand("version") || app->got_subcommand("net"))
         return;
@@ -1742,6 +1745,7 @@ int main( int argc, char** argv ) {
 
    app.add_option( "-r,--header", header_opt_callback, localized("pass specific HTTP header; repeat this option to pass multiple headers"));
    app.add_flag( "-n,--no-verify", no_verify, localized("don't verify peer certificate when using HTTPS"));
+   app.add_flag( "--no-auto-keosd", no_auto_keosd, localized("don't automatically launch a keosd if one is not currently running"));
    app.set_callback([&app]{ ensure_keosd_running(&app);});
 
    bool verbose_errors = false;

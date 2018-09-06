@@ -135,7 +135,7 @@ class Cluster(object):
         if self.staging:
             cmdArr.append("--nogen")
 
-        nodeosArgs="--max-transaction-time 50000 --abi-serializer-max-time-ms 990000 --filter-on * --p2p-max-nodes-per-host %d" % (totalNodes)
+        nodeosArgs="--max-transaction-time 990000 --abi-serializer-max-time-ms 990000 --filter-on * --p2p-max-nodes-per-host %d" % (totalNodes)
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
@@ -446,10 +446,10 @@ class Cluster(object):
     def getNode(self, nodeId=0, exitOnError=True):
         if exitOnError and nodeId >= len(self.nodes):
             Utils.cmdError("cluster never created node %d" % (nodeId))
-            errorExit("Failed to retrieve node %d" % (nodeId))
+            Utils.errorExit("Failed to retrieve node %d" % (nodeId))
         if exitOnError and self.nodes[nodeId] is None:
             Utils.cmdError("cluster has None value for node %d" % (nodeId))
-            errorExit("Failed to retrieve node %d" % (nodeId))
+            Utils.errorExit("Failed to retrieve node %d" % (nodeId))
         return self.nodes[nodeId]
 
     def getNodes(self):
@@ -1064,8 +1064,10 @@ class Cluster(object):
                 if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
                 psOut=Utils.checkOutput(cmd.split())
                 return psOut
-            except subprocess.CalledProcessError as _:
-                pass
+            except subprocess.CalledProcessError as ex:
+                msg=ex.output.decode("utf-8")
+                Utils.Print("ERROR: call of \"%s\" failed. %s" % (cmd, msg))
+                return None
             return None
 
         psOut=Utils.waitForObj(myFunc, timeout)

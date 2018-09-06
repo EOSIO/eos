@@ -38,12 +38,16 @@ class Node(object):
         self.mongoPort=mongoPort
         self.mongoDb=mongoDb
         self.endpointArgs="--url http://%s:%d" % (self.host, self.port)
+        self.miscEosClientArgs="--no-auto-keosd"
         self.mongoEndpointArgs=""
         self.infoValid=None
         self.lastRetrievedHeadBlockNum=None
         self.lastRetrievedLIB=None
         if self.enableMongo:
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
+
+    def eosClientArgs(self):
+        return self.endpointArgs + " " + self.miscEosClientArgs
 
     def __str__(self):
         #return "Host: %s, Port:%d, Pid:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.cmd)
@@ -285,7 +289,7 @@ class Node(object):
             errorMsg="Exception during get db node get trans in mongodb with transaction id=%s. %s" % (transId,msg)
             if exitOnError:
                 Utils.cmdError("" % (errorMsg))
-                errorExit("Failed to retrieve transaction in mongodb for transaction id=%s" % (transId))
+                Utils.errorExit("Failed to retrieve transaction in mongodb for transaction id=%s" % (transId))
             elif not silentErrors:
                 Utils.Print("ERROR: %s" % (errorMsg))
             return None
@@ -465,7 +469,7 @@ class Node(object):
             msg=ex.output.decode("utf-8")
             if exitOnError:
                 Utils.cmdError("Exception during get account from db for %s. %s" % (name, msg))
-                errorExit("Failed during get account from db for %s. %s" % (name, msg))
+                Utils.errorExit("Failed during get account from db for %s. %s" % (name, msg))
 
             Utils.Print("ERROR: Exception during get account from db for %s. %s" % (name, msg))
             return None
@@ -576,7 +580,7 @@ class Node(object):
         assert(isinstance(destination, Account))
 
         cmd="%s %s -v transfer -j %s %s" % (
-            Utils.EosClientPath, self.endpointArgs, source.name, destination.name)
+            Utils.EosClientPath, self.eosClientArgs(), source.name, destination.name)
         cmdArr=cmd.split()
         cmdArr.append(amountStr)
         cmdArr.append(memo)
@@ -592,12 +596,12 @@ class Node(object):
             Utils.Print("ERROR: Exception during funds transfer. %s" % (msg))
             if exitOnError:
                 Utils.cmdError("could not transfer \"%s\" from %s to %s" % (amountStr, source, destination))
-                errorExit("Failed to transfer \"%s\" from %s to %s" % (amountStr, source, destination))
+                Utils.errorExit("Failed to transfer \"%s\" from %s to %s" % (amountStr, source, destination))
             return None
 
         if trans is None:
             Utils.cmdError("could not transfer \"%s\" from %s to %s" % (amountStr, source, destination))
-            errorExit("Failed to transfer \"%s\" from %s to %s" % (amountStr, source, destination))
+            Utils.errorExit("Failed to transfer \"%s\" from %s to %s" % (amountStr, source, destination))
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -741,7 +745,7 @@ class Node(object):
         return balance
 
     def getAccountCodeHash(self, account):
-        cmd="%s %s get code %s" % (Utils.EosClientPath, self.endpointArgs, account)
+        cmd="%s %s get code %s" % (Utils.EosClientPath, self.eosClientArgs(), account)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
             retStr=Utils.checkOutput(cmd.split())
@@ -761,7 +765,7 @@ class Node(object):
 
     # publish contract and return transaction as json object
     def publishContract(self, account, contractDir, wasmFile, abiFile, waitForTransBlock=False, shouldFail=False):
-        cmd="%s %s -v set contract -j %s %s" % (Utils.EosClientPath, self.endpointArgs, account, contractDir)
+        cmd="%s %s -v set contract -j %s %s" % (Utils.EosClientPath, self.eosClientArgs(), account, contractDir)
         cmd += "" if wasmFile is None else (" "+ wasmFile)
         cmd += "" if abiFile is None else (" " + abiFile)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
@@ -815,7 +819,7 @@ class Node(object):
 
     # returns tuple with transaction and
     def pushMessage(self, account, action, data, opts, silentErrors=False):
-        cmd="%s %s push action -j %s %s" % (Utils.EosClientPath, self.endpointArgs, account, action)
+        cmd="%s %s push action -j %s %s" % (Utils.EosClientPath, self.eosClientArgs(), account, action)
         cmdArr=cmd.split()
         if data is not None:
             cmdArr.append(data)
@@ -872,7 +876,7 @@ class Node(object):
 
     def processCmd(self, cmd, cmdDesc, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
         assert(isinstance(returnType, ReturnType))
-        cmd="%s %s %s" % (Utils.EosClientPath, self.endpointArgs, cmd)
+        cmd="%s %s %s" % (Utils.EosClientPath, self.eosClientArgs(), cmd)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
@@ -897,7 +901,7 @@ class Node(object):
             exitMsg=""
         if exitOnError and trans is None:
             Utils.cmdError("could not %s - %s" % (cmdDesc,exitMsg))
-            errorExit("Failed to %s" % (cmdDesc))
+            Utils.errorExit("Failed to %s" % (cmdDesc))
 
         return trans
 
@@ -909,7 +913,7 @@ class Node(object):
         if not self.waitForTransInBlock(transId):
             if exitOnError:
                 Utils.cmdError("transaction with id %s never made it to a block" % (transId))
-                errorExit("Failed to find transaction with id %s in a block before timeout" % (transId))
+                Utils.errorExit("Failed to find transaction with id %s in a block before timeout" % (transId))
             return None
         return trans
 
