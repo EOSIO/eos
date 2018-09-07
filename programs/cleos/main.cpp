@@ -789,7 +789,7 @@ void try_local_port( const string& lo_address, uint16_t port, uint32_t duration 
 }
 
 void ensure_keosd_running(CLI::App* app) {
-    if (!no_auto_keosd)
+    if (no_auto_keosd)
         return;
     // get, version, net do not require keosd
     if (tx_skip_sign || app->got_subcommand("get") || app->got_subcommand("version") || app->got_subcommand("net"))
