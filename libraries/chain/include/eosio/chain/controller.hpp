@@ -74,6 +74,8 @@ namespace eosio { namespace chain {
             validation_mode          block_validation_mode  = validation_mode::FULL;
 
             flat_set<account_name>   resource_greylist;
+            flat_set<account_name>   trusted_producers;
+            bool                     trusted_producer_light_validation = false;
          };
 
          enum class block_status {
