@@ -23,14 +23,15 @@ public:
 										const std::string &insurance_company_name,
 										const std::string &download_url,
 										const std::string &time,
-										const std::string &state);
+										const std::string &state,
+										uint64_t loan_id);
 
 	// @abi action
-	void cancelinsure(uint64_t contract_id, const std::string &account_name);
+	void cancelinsure(uint64_t contract_id, const std::string &account_name, uint64_t loan_id);
 
 	//@abi action
 	void changestate(uint64_t contract_id, const std::string &insurance_holder,
-									 const std::string &state);
+									 const std::string &state, uint64_t loan_id);
 
 	// @abi action
 	void modaddinsure(uint64_t contract_id,
@@ -38,22 +39,24 @@ public:
 										const std::string &quantity,
 										const std::string &weight,
 										const std::string &insurance_num,
-										const std::string &beneficiary_order_num,
+										uint64_t beneficiary_order_num,
 										const std::string &download_url,
 										const std::string &time,
 										const std::string &insurance_holder_id,
 										const std::string &insurance_company_id,
 										const std::string &insurance_company_name,
-										const std::string &beneficiary_state);
+										const std::string &beneficiary_state,
+										uint64_t loan_id);
 
 	// @abi action
-	void moddelinsure(uint64_t contract_id, const std::string &beneficiary);
+	void moddelinsure(uint64_t contract_id, const std::string &beneficiary, uint64_t loan_id);
 
 
 private:
 	// @abi table holderinfo i64
 	struct holderinfo {
 		uint64_t contract_id;
+		uint64_t loan_id;
 		std::string insurance_holder;
 		std::string quantity;
 		std::string insurance_num;
@@ -67,6 +70,7 @@ private:
 
 		EOSLIB_SERIALIZE(
 				holderinfo, (contract_id)
+				(loan_id)
 				(insurance_holder)
 				(quantity)
 				(insurance_num)
@@ -81,11 +85,12 @@ private:
 	struct beneficinfo {
 		uint64_t beneficiary_id;
 		uint64_t contract_id;
+		uint64_t beneficiary_order_num;
+		uint64_t loan_id;
 		std::string beneficiary;
 		std::string quantity;
 		std::string weight;
 		std::string insurance_num;
-		std::string beneficiary_order_num;
 		std::string download_url;
 		std::string time;
 		std::string insurance_holder_id;
@@ -100,6 +105,7 @@ private:
 		EOSLIB_SERIALIZE(
 				beneficinfo, (beneficiary_id)
 				(contract_id)
+				(loan_id)
 				(beneficiary)
 				(quantity)
 				(weight)
