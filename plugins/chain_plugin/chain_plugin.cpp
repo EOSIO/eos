@@ -1143,7 +1143,7 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
       }
    }
    if (itr != upper) {
-      result.more = true;
+      result.more = (string)itr->scope;
    }
    return result;
 }

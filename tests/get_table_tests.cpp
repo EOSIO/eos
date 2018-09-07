@@ -80,7 +80,7 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
    eosio::chain_apis::read_only::get_table_by_scope_result result = plugin.read_only::get_table_by_scope(param);
 
    BOOST_REQUIRE_EQUAL(4, result.rows.size());
-   BOOST_REQUIRE_EQUAL(false, result.more);
+   BOOST_REQUIRE_EQUAL("", result.more);
    if (result.rows.size() >= 4) {
       BOOST_REQUIRE_EQUAL(name(N(eosio.token)), result.rows[0].code);
       BOOST_REQUIRE_EQUAL(name(N(inita)), result.rows[0].scope);
@@ -97,7 +97,7 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
    param.upper_bound = "initd";
    result = plugin.read_only::get_table_by_scope(param);
    BOOST_REQUIRE_EQUAL(2, result.rows.size());
-   BOOST_REQUIRE_EQUAL(false, result.more);
+   BOOST_REQUIRE_EQUAL("", result.more);
    if (result.rows.size() >= 2) {
       BOOST_REQUIRE_EQUAL(name(N(initb)), result.rows[0].scope);
       BOOST_REQUIRE_EQUAL(name(N(initc)), result.rows[1].scope);      
@@ -106,17 +106,17 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
    param.limit = 1;
    result = plugin.read_only::get_table_by_scope(param);
    BOOST_REQUIRE_EQUAL(1, result.rows.size());
-   BOOST_REQUIRE_EQUAL(true, result.more);
+   BOOST_REQUIRE_EQUAL("initc", result.more);
 
    param.table = name(0);
    result = plugin.read_only::get_table_by_scope(param);
    BOOST_REQUIRE_EQUAL(1, result.rows.size());
-   BOOST_REQUIRE_EQUAL(true, result.more);
+   BOOST_REQUIRE_EQUAL("initc", result.more);
 
    param.table = N(invalid);
    result = plugin.read_only::get_table_by_scope(param);
    BOOST_REQUIRE_EQUAL(0, result.rows.size());
-   BOOST_REQUIRE_EQUAL(false, result.more); 
+   BOOST_REQUIRE_EQUAL("", result.more); 
 
 } FC_LOG_AND_RETHROW() /// get_scope_test
 
