@@ -214,7 +214,7 @@ struct controller_impl {
     *
     */
    template<typename Signal, typename Arg>
-   void emit( const Signal& s, Arg&& a ) {
+   void emit( const Signal& s, Arg&& a ) const {
       try {
         s(std::forward<Arg>(a));
       } catch (boost::interprocess::bad_alloc& e) {
@@ -462,6 +462,8 @@ struct controller_impl {
 
       authorization.add_to_snapshot(snapshot);
       resource_limits.add_to_snapshot(snapshot);
+
+      emit(self.write_snapshot, snapshot);
    }
 
    void print_json_snapshot() const {
@@ -484,6 +486,8 @@ struct controller_impl {
 
       authorization.read_from_snapshot(snapshot);
       resource_limits.read_from_snapshot(snapshot);
+
+      emit(self.read_snapshot, snapshot);
    }
 
    /**
