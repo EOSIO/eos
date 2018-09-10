@@ -387,14 +387,14 @@ struct controller_impl {
       return enc.result();
    }
 
-   struct json_snapshot : public snapshot_writer {
-      json_snapshot()
+   struct json_snapshot_writer : public snapshot_writer {
+      json_snapshot_writer()
       : snapshot(fc::mutable_variant_object()("sections", fc::variants()))
       {
 
       }
 
-      void write_section( const string& section_name ) override {
+      void write_start_section( const string& section_name ) override {
          current_rows.clear();
          current_section_name = section_name;
       }
@@ -412,13 +412,52 @@ struct controller_impl {
       fc::variants current_rows;
    };
 
+   struct json_snapshot_reader : public snapshot_reader {
+      json_snapshot_reader(const fc::variant& snapshot)
+      :snapshot(snapshot)
+      ,cur_row(0)
+      {
+
+      }
+
+      void set_section( const string& section_name ) override {
+         const auto& sections = snapshot["sections"].get_array();
+         for( const auto& section: sections ) {
+            if (section["name"].as_string() == section_name) {
+               cur_section = &section.get_object();
+               break;
+            }
+         }
+      }
+
+      bool read_row( detail::abstract_snapshot_row_reader& row_reader ) override {
+         const auto& rows = (*cur_section)["rows"].get_array();
+         row_reader.provide(rows.at(cur_row++));
+         return cur_row < rows.size();
+      }
+
+      bool empty ( ) override {
+         const auto& rows = (*cur_section)["rows"].get_array();
+         return rows.empty();
+      }
+
+      void clear_section() override {
+         cur_section = nullptr;
+         cur_row = 0;
+      }
+
+      const fc::variant& snapshot;
+      const fc::variant_object* cur_section;
+      int cur_row;
+   };
+
    void add_to_snapshot( snapshot_writer& snapshot ) const {
       controller_index_set::walk_indices([this, &snapshot]( auto utils ){
-         snapshot.start_section<typename decltype(utils)::index_t::value_type>();
-         decltype(utils)::walk(db, [&snapshot]( const auto &row ) {
-            snapshot.add_row(row);
+         snapshot.write_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ){
+            decltype(utils)::walk(db, [&section]( const auto &row ) {
+               section.add_row(row);
+            });
          });
-         snapshot.end_section();
       });
 
       authorization.add_to_snapshot(snapshot);
@@ -426,9 +465,25 @@ struct controller_impl {
    }
 
    void print_json_snapshot() const {
-      json_snapshot snapshot;
+      json_snapshot_writer snapshot;
       add_to_snapshot(snapshot);
       std::cerr << fc::json::to_pretty_string(snapshot.snapshot) << std::endl;
+   }
+
+   void read_from_snapshot( snapshot_reader& snapshot ) {
+      controller_index_set::walk_indices([this, &snapshot]( auto utils ){
+         snapshot.read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
+            bool done = section.empty();
+            while(!done) {
+               decltype(utils)::create(db, [&section]( auto &row ) {
+                  section.read_row(row);
+               });
+            }
+         });
+      });
+
+      authorization.read_from_snapshot(snapshot);
+      resource_limits.read_from_snapshot(snapshot);
    }
 
    /**

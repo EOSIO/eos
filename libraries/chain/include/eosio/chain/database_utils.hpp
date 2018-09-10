@@ -27,6 +27,11 @@ namespace eosio { namespace chain {
                function(*itr);
             }
          }
+
+         template<typename F>
+         static void create( chainbase::database& db, F cons ) {
+            db.create<typename index_t::value_type>(cons);
+         }
    };
 
    template<typename Index>
@@ -127,6 +132,20 @@ namespace fc {
       sv = eosio::chain::shared_vector<T>(_v.begin(), _v.end(), sv.get_allocator());
    }
 
+   template<typename DataStream>
+   DataStream& operator << ( DataStream& ds, const eosio::chain::shared_blob& b ) {
+      fc::raw::pack(ds, static_cast<const eosio::chain::shared_string&>(b));
+      return ds;
+   }
+
+   template<typename DataStream>
+   DataStream& operator >> ( DataStream& ds, eosio::chain::shared_blob& b ) {
+      fc::raw::unpack(ds, static_cast<eosio::chain::shared_string &>(b));
+      return ds;
+   }
+}
+
+namespace chainbase {
    // overloads for OID packing
    template<typename DataStream, typename OidType>
    DataStream& operator << ( DataStream& ds, const chainbase::oid<OidType>& oid ) {
@@ -137,18 +156,6 @@ namespace fc {
    template<typename DataStream, typename OidType>
    DataStream& operator >> ( DataStream& ds, chainbase::oid<OidType>& oid ) {
       fc::raw::unpack(ds, oid._id);
-      return ds;
-   }
-
-   template<typename DataStream>
-   DataStream& operator << ( DataStream& ds, const eosio::chain::shared_blob& b ) {
-      fc::raw::pack(ds, static_cast<const eosio::chain::shared_string&>(b));
-      return ds;
-   }
-
-   template<typename DataStream>
-   DataStream& operator >> ( DataStream& ds, eosio::chain::shared_blob& b ) {
-      fc::raw::unpack(ds, static_cast<eosio::chain::shared_string &>(b));
       return ds;
    }
 }

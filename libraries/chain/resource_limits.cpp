@@ -74,11 +74,24 @@ void resource_limits_manager::calculate_integrity_hash( fc::sha256::encoder& enc
 
 void resource_limits_manager::add_to_snapshot( snapshot_writer& snapshot ) const {
    resource_index_set::walk_indices([this, &snapshot]( auto utils ){
-      snapshot.start_section<typename decltype(utils)::index_t::value_type>();
-      decltype(utils)::walk(_db, [&snapshot]( const auto &row ) {
-         snapshot.add_row(row);
+      snapshot.write_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ){
+         decltype(utils)::walk(_db, [&section]( const auto &row ) {
+            section.add_row(row);
+         });
       });
-      snapshot.end_section();
+   });
+}
+
+void resource_limits_manager::read_from_snapshot( snapshot_reader& snapshot ) {
+   resource_index_set::walk_indices([this, &snapshot]( auto utils ){
+      snapshot.read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
+         bool done = section.empty();
+         while(!done) {
+            decltype(utils)::create(_db, [&section]( auto &row ) {
+               section.read_row(row);
+            });
+         }
+      });
    });
 }
 
