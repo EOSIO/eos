@@ -72,7 +72,7 @@ void resource_limits_manager::calculate_integrity_hash( fc::sha256::encoder& enc
    });
 }
 
-void resource_limits_manager::add_to_snapshot( abstract_snapshot_writer& snapshot ) const {
+void resource_limits_manager::add_to_snapshot( snapshot_writer& snapshot ) const {
    resource_index_set::walk_indices([this, &snapshot]( auto utils ){
       snapshot.start_section<typename decltype(utils)::index_t::value_type>();
       decltype(utils)::walk(_db, [&snapshot]( const auto &row ) {

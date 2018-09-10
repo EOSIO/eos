@@ -4,8 +4,10 @@
  */
 #pragma once
 
+#include <eosio/chain/database_utils.hpp>
 #include <fc/variant_object.hpp>
 #include <boost/core/demangle.hpp>
+#include <ostream>
 
 
 namespace eosio { namespace chain {
@@ -29,28 +31,56 @@ namespace eosio { namespace chain {
       return value;
    };
 
-   class abstract_snapshot_writer {
+   namespace detail {
+      struct abstract_snapshot_row_writer {
+         virtual void write(std::ostream& out) const = 0;
+         virtual variant to_variant() const = 0;
+
+      };
+      template<typename T>
+      struct snapshot_row_writer : abstract_snapshot_row_writer {
+         explicit snapshot_row_writer( const T& data)
+         :data(data) {}
+
+         void write(std::ostream& out) const override {
+            fc::raw::pack(out, data);
+         }
+
+         fc::variant to_variant() const override {
+            variant var;
+            fc::to_variant(data, var);
+            return var;
+         }
+
+         const T& data;
+      };
+
+      template<typename T>
+      snapshot_row_writer<T> make_row_writer( const T& data) {
+         return snapshot_row_writer<T>(data);
+      }
+   }
+
+   class snapshot_writer {
       public:
          template<typename T>
          void start_section() {
-            start_named_section(snapshot_section_traits<T>::section_name());
+            write_section(snapshot_section_traits<T>::section_name());
          }
 
          template<typename T>
          void add_row( const T& row ) {
-            fc::variant vrow;
-            fc::to_variant(to_snapshot_row(row), vrow);
-            add_variant_row(std::move(vrow));
+            write_row(detail::make_row_writer(to_snapshot_row(row)));
          }
 
          void end_section( ) {
-            end_named_section();
+            write_end_section();
          }
 
       protected:
-         virtual void start_named_section( const std::string& section_name ) = 0;
-         virtual void add_variant_row( fc::variant&& row ) = 0;
-         virtual void end_named_section() = 0;
+         virtual void write_section( const std::string& section_name ) = 0;
+         virtual void write_row( const detail::abstract_snapshot_row_writer& row_writer ) = 0;
+         virtual void write_end_section() = 0;
    };
 
 }}

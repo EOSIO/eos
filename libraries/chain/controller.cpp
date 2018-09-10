@@ -387,23 +387,23 @@ struct controller_impl {
       return enc.result();
    }
 
-   struct json_snapshot : public abstract_snapshot_writer {
+   struct json_snapshot : public snapshot_writer {
       json_snapshot()
       : snapshot(fc::mutable_variant_object()("sections", fc::variants()))
       {
 
       }
 
-      void start_named_section( const string& section_name ) {
+      void write_section( const string& section_name ) override {
          current_rows.clear();
          current_section_name = section_name;
       }
 
-      void add_variant_row( variant&& row ) {
-         current_rows.emplace_back(row);
+      void write_row( const detail::abstract_snapshot_row_writer& row_writer ) override {
+         current_rows.emplace_back(row_writer.to_variant());
       }
 
-      void end_named_section( ) {
+      void write_end_section( ) override {
          snapshot["sections"].get_array().emplace_back(mutable_variant_object()("name", std::move(current_section_name))("rows", std::move(current_rows)));
       }
 
@@ -412,7 +412,7 @@ struct controller_impl {
       fc::variants current_rows;
    };
 
-   void add_to_snapshot( abstract_snapshot_writer& snapshot ) const {
+   void add_to_snapshot( snapshot_writer& snapshot ) const {
       controller_index_set::walk_indices([this, &snapshot]( auto utils ){
          snapshot.start_section<typename decltype(utils)::index_t::value_type>();
          decltype(utils)::walk(db, [&snapshot]( const auto &row ) {

@@ -60,6 +60,7 @@ namespace eosio { namespace chain {
 } }
 
 namespace fc {
+
    // overloads for to/from_variant
    template<typename OidType>
    void to_variant( const chainbase::oid<OidType>& oid, variant& v ) {
@@ -139,31 +140,6 @@ namespace fc {
       return ds;
    }
 
-// overloads for softfloat packing
-   template<typename DataStream>
-   DataStream& operator << ( DataStream& ds, const float64_t& v ) {
-      fc::raw::pack(ds, *reinterpret_cast<const double *>(&v));
-      return ds;
-   }
-
-   template<typename DataStream>
-   DataStream& operator >> ( DataStream& ds, float64_t& v ) {
-      fc::raw::unpack(ds, *reinterpret_cast<const double *>(&v));
-      return ds;
-   }
-
-   template<typename DataStream>
-   DataStream& operator << ( DataStream& ds, const float128_t& v ) {
-      fc::raw::pack(ds, *reinterpret_cast<const eosio::chain::uint128_t*>(&v));
-      return ds;
-   }
-
-   template<typename DataStream>
-   DataStream& operator >> ( DataStream& ds, float128_t& v ) {
-      fc::raw::unpack(ds, *reinterpret_cast<const eosio::chain::uint128_t*>(&v));
-      return ds;
-   }
-
    template<typename DataStream>
    DataStream& operator << ( DataStream& ds, const eosio::chain::shared_blob& b ) {
       fc::raw::pack(ds, static_cast<const eosio::chain::shared_string&>(b));
@@ -176,3 +152,29 @@ namespace fc {
       return ds;
    }
 }
+
+// overloads for softfloat packing
+template<typename DataStream>
+DataStream& operator << ( DataStream& ds, const float64_t& v ) {
+   fc::raw::pack(ds, *reinterpret_cast<const double *>(&v));
+   return ds;
+}
+
+template<typename DataStream>
+DataStream& operator >> ( DataStream& ds, float64_t& v ) {
+   fc::raw::unpack(ds, *reinterpret_cast<const double *>(&v));
+   return ds;
+}
+
+template<typename DataStream>
+DataStream& operator << ( DataStream& ds, const float128_t& v ) {
+   fc::raw::pack(ds, *reinterpret_cast<const eosio::chain::uint128_t*>(&v));
+   return ds;
+}
+
+template<typename DataStream>
+DataStream& operator >> ( DataStream& ds, float128_t& v ) {
+   fc::raw::unpack(ds, *reinterpret_cast<const eosio::chain::uint128_t*>(&v));
+   return ds;
+}
+

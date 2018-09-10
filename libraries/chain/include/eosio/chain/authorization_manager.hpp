@@ -29,7 +29,7 @@ namespace eosio { namespace chain {
          void add_indices();
          void initialize_database();
          void calculate_integrity_hash( fc::sha256::encoder& enc ) const;
-         void add_to_snapshot( abstract_snapshot_writer& snapshot ) const;
+         void add_to_snapshot( snapshot_writer& snapshot ) const;
 
          const permission_object& create_permission( account_name account,
                                                      permission_name name,
