@@ -985,93 +985,58 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
          } else {
             auto unapplied_trxs = chain.get_unapplied_transactions();
 
-            // step one, if we will never produce, prune unapplied to our persisted trxs
-            if (_producers.empty()) {
-               for (size_t idx = 0; idx < unapplied_trxs.size(); ) {
-                  const auto& trx = unapplied_trxs.at(idx);
-                  if (persisted_by_id.find(trx->id) == persisted_by_id.end()) {
-                     // remove it from further consideration as it is dropped
-                     chain.drop_unapplied_transaction(trx);
-                     std::swap(unapplied_trxs.at(idx), unapplied_trxs.back());
-                     unapplied_trxs.pop_back();
-                  } else {
-                     ++idx;
-                  }
-               }
-            } else {
-               // step two, if we may one day produce at least prune the expired trxs
-               for (size_t idx = 0; idx < unapplied_trxs.size(); ) {
-                  const auto& trx = unapplied_trxs.at(idx);
-                  if (trx->packed_trx.expiration() < pbs->header.timestamp.to_time_point()) {
-                     // expired, drop it
-                     chain.drop_unapplied_transaction(trx);
-                     std::swap(unapplied_trxs.at(idx), unapplied_trxs.back());
-                     unapplied_trxs.pop_back();
-                  } else {
-                     ++idx;
-                  }
+            // step one, prune any expired transaction or if we will never produce any non-persisted transaction
+            auto prune_itr = std::partition(unapplied_trxs.begin(), unapplied_trxs.end(), [&](const auto& entry) {
+               return (!_producers.empty() || persisted_by_id.find(entry->id) != persisted_by_id.end()) &&
+                      entry->packed_trx.expiration() >= pbs->header.timestamp.to_time_point();
+            });
+
+            for (auto itr = prune_itr; prune_itr != unapplied_trxs.end(); ++itr) {
+               chain.drop_unapplied_transaction(*itr);
+            }
+
+            unapplied_trxs.erase(prune_itr, unapplied_trxs.end());
+
+            // step two order persisted transactions first
+            if (!persisted_by_id.empty()) {
+               auto partition_itr = std::partition(unapplied_trxs.begin(), unapplied_trxs.end(), [&](const auto& entry) {
+                  return persisted_by_id.find(entry->id) != persisted_by_id.end();
+               });
+
+               // if we are not producing, we can truncate the non-persisted transactions
+               if (_pending_block_mode != pending_block_mode::producing) {
+                  unapplied_trxs.erase(partition_itr, unapplied_trxs.end());
                }
             }
 
-            // step three if we have persisted transactions apply them regarless of mode
-            if (!persisted_by_expiry.empty()) {
-               for (size_t idx = 0; idx < unapplied_trxs.size(); ) {
-                  const auto& trx = unapplied_trxs.at(idx);
-                  if (persisted_by_id.find(trx->id) != persisted_by_id.end()) {
-
-                     // this is a persisted transaction, push it into the block (even if we are speculating) with
-                     // no deadline as it has already passed the subjective deadlines once and we want to represent
-                     // the state of the chain including this transaction
-                     try {
-                        chain.push_transaction(trx, fc::time_point::maximum());
-                     } catch ( const guard_exception& e ) {
-                        app().get_plugin<chain_plugin>().handle_guard_exception(e);
-                        return start_block_result::failed;
-                     } FC_LOG_AND_DROP();
-
-                     // remove it from further consideration as it is applied and either
-                     // failed and was removed -or-
-                     // subjectively failed and should be tried _next_ block
-
-                     std::swap(unapplied_trxs.at(idx), unapplied_trxs.back());
-                     unapplied_trxs.pop_back();
-                  } else {
-                     ++idx;
-                  }
+            // step three apply any unapplied transactions that remain
+            for (const auto& trx : unapplied_trxs) {
+               if (block_time <= fc::time_point::now()) exhausted = true;
+               if (exhausted) {
+                  break;
                }
-            }
 
-            // FINAL STEP FOUR if we are producing, attempt to apply unapplied transactions
-            // if this becomes the none final step it will need to prune the local cache of unapplied transactions
-            if (_pending_block_mode == pending_block_mode::producing) {
-               for (const auto& trx : unapplied_trxs) {
-                  if (block_time <= fc::time_point::now()) exhausted = true;
-                  if (exhausted) {
-                     break;
+               try {
+                  auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
+                  bool deadline_is_subjective = false;
+                  if (_max_transaction_time_ms < 0 || (_pending_block_mode == pending_block_mode::producing && block_time < deadline)) {
+                     deadline_is_subjective = true;
+                     deadline = block_time;
                   }
 
-                  try {
-                     auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
-                     bool deadline_is_subjective = false;
-                     if (_max_transaction_time_ms < 0 || (_pending_block_mode == pending_block_mode::producing && block_time < deadline)) {
-                        deadline_is_subjective = true;
-                        deadline = block_time;
+                  auto trace = chain.push_transaction(trx, deadline);
+                  if (trace->except) {
+                     if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
+                        exhausted = true;
+                     } else {
+                        // this failed our configured maximum transaction time, we don't want to replay it
+                        chain.drop_unapplied_transaction(trx);
                      }
-
-                     auto trace = chain.push_transaction(trx, deadline);
-                     if (trace->except) {
-                        if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
-                           exhausted = true;
-                        } else {
-                           // this failed our configured maximum transaction time, we don't want to replay it
-                           chain.drop_unapplied_transaction(trx);
-                        }
-                     }
-                  } catch ( const guard_exception& e ) {
-                     app().get_plugin<chain_plugin>().handle_guard_exception(e);
-                     return start_block_result::failed;
-                  } FC_LOG_AND_DROP();
-               }
+                  }
+               } catch ( const guard_exception& e ) {
+                  app().get_plugin<chain_plugin>().handle_guard_exception(e);
+                  return start_block_result::failed;
+               } FC_LOG_AND_DROP();
             }
          }
 
