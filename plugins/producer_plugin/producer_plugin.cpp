@@ -987,36 +987,36 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
 
             // step one, if we will never produce, prune unapplied to our persisted trxs
             if (_producers.empty()) {
-               for (auto itr = unapplied_trxs.begin(); itr != unapplied_trxs.end(); ) {
-                  const auto& trx = *itr;
+               for (size_t idx = 0; idx < unapplied_trxs.size(); ) {
+                  const auto& trx = unapplied_trxs.at(idx);
                   if (persisted_by_id.find(trx->id) == persisted_by_id.end()) {
                      // remove it from further consideration as it is dropped
                      chain.drop_unapplied_transaction(trx);
-                     std::iter_swap(itr, std::min_element(itr, unapplied_trxs.end()));
+                     std::swap(unapplied_trxs.at(idx), unapplied_trxs.back());
                      unapplied_trxs.pop_back();
                   } else {
-                     ++itr;
+                     ++idx;
                   }
                }
             } else {
                // step two, if we may one day produce at least prune the expired trxs
-               for (auto itr = unapplied_trxs.begin(); itr != unapplied_trxs.end(); ) {
-                  const auto& trx = *itr;
+               for (size_t idx = 0; idx < unapplied_trxs.size(); ) {
+                  const auto& trx = unapplied_trxs.at(idx);
                   if (trx->packed_trx.expiration() < pbs->header.timestamp.to_time_point()) {
                      // expired, drop it
                      chain.drop_unapplied_transaction(trx);
-                     std::iter_swap(itr, std::min_element(itr, unapplied_trxs.end()));
+                     std::swap(unapplied_trxs.at(idx), unapplied_trxs.back());
                      unapplied_trxs.pop_back();
                   } else {
-                     ++itr;
+                     ++idx;
                   }
                }
             }
 
             // step three if we have persisted transactions apply them regarless of mode
             if (!persisted_by_expiry.empty()) {
-               for (auto itr = unapplied_trxs.begin(); itr != unapplied_trxs.end();) {
-                  const auto& trx = *itr;
+               for (size_t idx = 0; idx < unapplied_trxs.size(); ) {
+                  const auto& trx = unapplied_trxs.at(idx);
                   if (persisted_by_id.find(trx->id) != persisted_by_id.end()) {
 
                      // this is a persisted transaction, push it into the block (even if we are speculating) with
@@ -1033,10 +1033,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                      // failed and was removed -or-
                      // subjectively failed and should be tried _next_ block
 
-                     std::iter_swap(itr, std::min_element(itr, unapplied_trxs.end()));
+                     std::swap(unapplied_trxs.at(idx), unapplied_trxs.back());
                      unapplied_trxs.pop_back();
                   } else {
-                     ++itr;
+                     ++idx;
                   }
                }
             }
