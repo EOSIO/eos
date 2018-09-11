@@ -27,3 +27,12 @@
 [submodule "libraries/fc"]
 	path = libraries/fc
 	url = https://github.com/EOSIO/fc
+[submodule "plugins/uos_plugins"]
+	path = plugins/uos_plugins
+	url = https://github.com/UOSnetwork/uos.plugins
+[submodule "contracts/uos_contracts"]
+	path = contracts/uos_contracts
+	url = https://github.com/UOSnetwork/uos.contracts
+[submodule "libraries/singularity"]
+	path = libraries/singularity
+	url = https://github.com/UOSnetwork/singularity
