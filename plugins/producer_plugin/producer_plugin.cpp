@@ -876,6 +876,13 @@ fc::time_point producer_plugin_impl::calculate_pending_block_time() const {
    return block_time;
 }
 
+enum unapplied_transaction_category {
+   PERSISTED,
+   UNEXPIRED_UNPERSISTED,
+   EXPIRED,
+};
+
+
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool &last_block) {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
 
@@ -983,34 +990,32 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
             // there is no need for unapplied transactions they can be dropped
             chain.drop_all_unapplied_transactions();
          } else {
-            auto unapplied_trxs = chain.get_unapplied_transactions();
+            std::vector<transaction_metadata_ptr> apply_trxs;
+            { // derive appliable transactions from unapplied_transactions and drop droppable transactions
+               auto unapplied_trxs = chain.get_unapplied_transactions();
+               apply_trxs.reserve(unapplied_trxs.size());
 
-            // step one, prune any expired transaction or if we will never produce any non-persisted transaction
-            auto prune_itr = std::partition(unapplied_trxs.begin(), unapplied_trxs.end(), [&](const auto& entry) {
-               return (!_producers.empty() || persisted_by_id.find(entry->id) != persisted_by_id.end()) &&
-                      entry->packed_trx.expiration() >= pbs->header.timestamp.to_time_point();
-            });
+               auto calculate_transaction_category = [&](const transaction_metadata_ptr& trx) -> unapplied_transaction_category {
+                  if (trx->packed_trx.expiration() < pbs->header.timestamp.to_time_point()) {
+                     return EXPIRED;
+                  } else if (persisted_by_id.find(trx->id) != persisted_by_id.end()) {
+                     return PERSISTED;
+                  } else {
+                     return UNEXPIRED_UNPERSISTED;
+                  }
+               };
 
-            for (auto itr = prune_itr; prune_itr != unapplied_trxs.end(); ++itr) {
-               chain.drop_unapplied_transaction(*itr);
-            }
-
-            unapplied_trxs.erase(prune_itr, unapplied_trxs.end());
-
-            // step two order persisted transactions first
-            if (!persisted_by_id.empty()) {
-               auto partition_itr = std::partition(unapplied_trxs.begin(), unapplied_trxs.end(), [&](const auto& entry) {
-                  return persisted_by_id.find(entry->id) != persisted_by_id.end();
-               });
-
-               // if we are not producing, we can truncate the non-persisted transactions
-               if (_pending_block_mode != pending_block_mode::producing) {
-                  unapplied_trxs.erase(partition_itr, unapplied_trxs.end());
+               for (auto& trx: unapplied_trxs) {
+                  auto category = calculate_transaction_category(trx);
+                  if (category == EXPIRED || (category == UNEXPIRED_UNPERSISTED && _producers.empty())) {
+                     chain.drop_unapplied_transaction(trx);
+                  } else if (category == PERSISTED || (category == UNEXPIRED_UNPERSISTED && _pending_block_mode == pending_block_mode::producing)) {
+                     apply_trxs.emplace_back(std::move(trx));
+                  }
                }
             }
 
-            // step three apply any unapplied transactions that remain
-            for (const auto& trx : unapplied_trxs) {
+            for (const auto& trx: apply_trxs) {
                if (block_time <= fc::time_point::now()) exhausted = true;
                if (exhausted) {
                   break;
