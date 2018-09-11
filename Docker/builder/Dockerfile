@@ -50,12 +50,6 @@ RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/l
     && cmake --build build --target install \
     && cd .. && rm -rf llvm
 
-RUN wget https://github.com/WebAssembly/binaryen/archive/1.37.21.tar.gz -O - | tar -xz \
-    && cd binaryen-1.37.21 \
-    && cmake -H. -Bbuild -GNinja -DCMAKE_BUILD_TYPE=Release \
-    && cmake --build build --target install \
-    && cd .. && rm -rf binaryen-1.37.21
-
 RUN git clone --depth 1 https://github.com/cryptonomex/secp256k1-zkp \
     && cd secp256k1-zkp \
     && ./autogen.sh \
@@ -69,11 +63,3 @@ RUN git clone --depth 1 -b releases/v3.3 https://github.com/mongodb/mongo-cxx-dr
     && make -j$(nproc) \
     && make install \
     && cd ../../ && rm -rf mongo-cxx-driver
-
-RUN git clone --depth 1 --single-branch --branch master https://github.com/ucb-bar/berkeley-softfloat-3.git \
-    && cd berkeley-softfloat-3/build/Linux-x86_64-GCC \
-    && make -j${nproc} SPECIALIZE_TYPE="8086-SSE" SOFTFLOAT_OPS="-DSOFTFLOAT_ROUND_EVEN -DINLINE_LEVEL=5 -DSOFTFLOAT_FAST_DIV32TO16 -DSOFTFLOAT_FAST_DIV64TO32" \
-    && mkdir -p /opt/berkeley-softfloat-3 && cp softfloat.a /opt/berkeley-softfloat-3/libsoftfloat.a \
-    && mv ../../source/include /opt/berkeley-softfloat-3/include && cd - && rm -rf berkeley-softfloat-3
-
-ENV SOFTFLOAT_ROOT /opt/berkeley-softfloat-3
