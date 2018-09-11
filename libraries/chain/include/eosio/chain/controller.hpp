@@ -107,6 +107,7 @@ namespace eosio { namespace chain {
           */
          vector<transaction_metadata_ptr> get_unapplied_transactions() const;
          void drop_unapplied_transaction(const transaction_metadata_ptr& trx);
+         void drop_all_unapplied_transactions();
 
          /**
           * These transaction IDs represent transactions available in the head chain state as scheduled
