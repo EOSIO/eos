@@ -596,7 +596,7 @@ launcher_def::initialize (const variables_map &vmap) {
 
   stage = bfs::path(erd);
   if (!bfs::exists(stage)) {
-    cerr << erd << " is not a valid path" << endl;
+    cerr << "\"" << erd << "\" is not a valid path. Please ensure environment variable EOSIO_HOME is set to the build path." << endl;
     exit (-1);
   }
   stage /= bfs::path("staging");
