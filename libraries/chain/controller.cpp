@@ -1744,6 +1744,10 @@ void controller::drop_unapplied_transaction(const transaction_metadata_ptr& trx)
    my->unapplied_transactions.erase(trx->signed_id);
 }
 
+void controller::drop_all_unapplied_transactions() {
+   my->unapplied_transactions.clear();
+}
+
 vector<transaction_id_type> controller::get_scheduled_transactions() const {
    const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
 
