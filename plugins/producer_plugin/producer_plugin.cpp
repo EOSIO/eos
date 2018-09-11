@@ -896,11 +896,8 @@ fc::time_point producer_plugin_impl::calculate_pending_block_time() const {
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool &last_block) {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
 
-   if( chain.get_read_mode() == chain::db_read_mode::READ_ONLY ) {
-      // a read only node will never need the unapplied transactions.  so, let controller drop them
-      chain.drop_all_unapplied_transactions();
+   if( chain.get_read_mode() == chain::db_read_mode::READ_ONLY )
       return start_block_result::waiting;
-   }
 
    const auto& hbs = chain.head_block_state();
 
