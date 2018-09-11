@@ -876,7 +876,7 @@ fc::time_point producer_plugin_impl::calculate_pending_block_time() const {
    return block_time;
 }
 
-enum unapplied_transaction_category {
+enum class tx_category {
    PERSISTED,
    UNEXPIRED_UNPERSISTED,
    EXPIRED,
@@ -995,21 +995,21 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                auto unapplied_trxs = chain.get_unapplied_transactions();
                apply_trxs.reserve(unapplied_trxs.size());
 
-               auto calculate_transaction_category = [&](const transaction_metadata_ptr& trx) -> unapplied_transaction_category {
+               auto calculate_transaction_category = [&](const transaction_metadata_ptr& trx) {
                   if (trx->packed_trx.expiration() < pbs->header.timestamp.to_time_point()) {
-                     return EXPIRED;
+                     return tx_category::EXPIRED;
                   } else if (persisted_by_id.find(trx->id) != persisted_by_id.end()) {
-                     return PERSISTED;
+                     return tx_category::PERSISTED;
                   } else {
-                     return UNEXPIRED_UNPERSISTED;
+                     return tx_category::UNEXPIRED_UNPERSISTED;
                   }
                };
 
                for (auto& trx: unapplied_trxs) {
                   auto category = calculate_transaction_category(trx);
-                  if (category == EXPIRED || (category == UNEXPIRED_UNPERSISTED && _producers.empty())) {
+                  if (category == tx_category::EXPIRED || (category == tx_category::UNEXPIRED_UNPERSISTED && _producers.empty())) {
                      chain.drop_unapplied_transaction(trx);
-                  } else if (category == PERSISTED || (category == UNEXPIRED_UNPERSISTED && _pending_block_mode == pending_block_mode::producing)) {
+                  } else if (category == tx_category::PERSISTED || (category == tx_category::UNEXPIRED_UNPERSISTED && _pending_block_mode == pending_block_mode::producing)) {
                      apply_trxs.emplace_back(std::move(trx));
                   }
                }
