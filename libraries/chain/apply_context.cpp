@@ -79,8 +79,8 @@ action_trace apply_context::exec_one()
    t.block_num = control.pending_block_state()->block_num;
    t.block_time = control.pending_block_time();
    t.producer_block_id = control.pending_producer_block_id();
-   t.account_ram_delta = std::move( _account_ram_delta );
-   _account_ram_delta.clear();
+   t.account_ram_deltas = std::move( _account_ram_deltas );
+   _account_ram_deltas.clear();
    t.act = act;
    t.console = _pending_console_output.str();
 
@@ -641,7 +641,14 @@ uint64_t apply_context::next_auth_sequence( account_name actor ) {
 
 void apply_context::add_ram_usage( account_name account, int64_t ram_delta ) {
    trx_context.add_ram_usage( account, ram_delta );
-   _account_ram_delta[account] += ram_delta;
+
+   account_delta delta{account, ram_delta};
+   auto itr = _account_ram_deltas.find( delta );
+   if( itr == _account_ram_deltas.end() ) {
+      _account_ram_deltas.emplace( delta );
+   } else {
+      itr->delta += ram_delta;
+   }
 }
 
 

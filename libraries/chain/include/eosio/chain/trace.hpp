@@ -10,6 +10,13 @@
 
 namespace eosio { namespace chain {
 
+   struct account_delta {
+      account_name account;
+      int64_t delta;
+
+      friend bool operator<( const account_delta& lhs, const account_delta& rhs ) { return lhs.account < rhs.account; }
+   };
+
    struct base_action_trace {
       base_action_trace( const action_receipt& r ):receipt(r){}
       base_action_trace(){}
@@ -25,7 +32,7 @@ namespace eosio { namespace chain {
       uint32_t             block_num = 0;
       block_timestamp_type block_time;
       fc::optional<block_id_type>     producer_block_id;
-      flat_map<account_name, int64_t> account_ram_delta;
+      flat_set<account_delta>         account_ram_deltas;
    };
 
    struct action_trace : public base_action_trace {
@@ -55,9 +62,12 @@ namespace eosio { namespace chain {
 
 } }  /// namespace eosio::chain
 
+FC_REFLECT( eosio::chain::account_delta,
+            (account)(delta) )
+
 FC_REFLECT( eosio::chain::base_action_trace,
                     (receipt)(act)(elapsed)(cpu_usage)(console)(total_cpu_usage)(trx_id)
-                    (block_num)(block_time)(producer_block_id)(account_ram_delta) )
+                    (block_num)(block_time)(producer_block_id)(account_ram_deltas) )
 
 FC_REFLECT_DERIVED( eosio::chain::action_trace,
                     (eosio::chain::base_action_trace), (inline_traces) )
