@@ -15,8 +15,6 @@ namespace chainbase {
 namespace eosio { namespace chain {
 
    class authorization_manager;
-   class snapshot_reader;
-   class snapshot_writer;
 
    namespace resource_limits {
       class resource_limits_manager;
@@ -255,9 +253,6 @@ namespace eosio { namespace chain {
          signal<void(const transaction_trace_ptr&)>  pre_apply_action;
          signal<void(const transaction_trace_ptr&)>  post_apply_action;
          */
-
-         signal<void(snapshot_writer&)>                write_snapshot;
-         signal<void(snapshot_reader&)>                read_snapshot;
 
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
          wasm_interface& get_wasm_interface();
