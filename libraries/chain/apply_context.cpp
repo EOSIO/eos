@@ -102,7 +102,7 @@ void apply_context::exec()
 
    if( _cfa_inline_actions.size() > 0 || _inline_actions.size() > 0 ) {
       EOS_ASSERT( recurse_depth < control.get_global_properties().configuration.max_inline_action_depth,
-                  transaction_exception, "inline action recursion depth reached" );
+                  transaction_exception, "max inline action depth per transaction reached" );
    }
 
    for( const auto& inline_action : _cfa_inline_actions ) {
