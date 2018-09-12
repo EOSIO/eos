@@ -17,6 +17,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/function_output_iterator.hpp>
 #include <boost/multi_index_container.hpp>
@@ -533,7 +534,13 @@ make_key_signature_provider(const private_key_type& key) {
 
 static producer_plugin_impl::signature_provider_type
 make_keosd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
-   auto keosd_url = fc::url(url_str);
+   fc::url keosd_url;
+   if(boost::algorithm::starts_with(url_str, "unix://"))
+      //send the entire string after unix:// to http_plugin. It'll auto-detect which part
+      // is the unix socket path, and which part is the url to hit on the server
+      keosd_url = fc::url("unix", url_str.substr(7), ostring(), ostring(), ostring(), ostring(), ovariant_object(), fc::optional<uint16_t>());
+   else
+      keosd_url = fc::url(url_str);
    std::weak_ptr<producer_plugin_impl> weak_impl = impl;
 
    return [weak_impl, keosd_url, pubkey]( const chain::digest_type& digest ) {

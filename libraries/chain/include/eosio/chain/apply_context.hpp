@@ -572,6 +572,8 @@ class apply_context {
       uint64_t next_recv_sequence( account_name receiver );
       uint64_t next_auth_sequence( account_name actor );
 
+      void add_ram_usage( account_name account, int64_t ram_delta );
+
    private:
 
       void validate_referenced_accounts( const transaction& t )const;
@@ -607,6 +609,7 @@ class apply_context {
       vector<action>                      _inline_actions; ///< queued inline messages
       vector<action>                      _cfa_inline_actions; ///< queued inline messages
       std::ostringstream                  _pending_console_output;
+      flat_map<account_name, int64_t>     _account_ram_delta;
 
       //bytes                               _cached_trx;
 };
