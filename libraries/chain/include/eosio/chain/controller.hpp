@@ -6,6 +6,7 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/account_object.hpp>
+#include <eosio/chain/snapshot.hpp>
 
 namespace chainbase {
    class database;
@@ -85,7 +86,7 @@ namespace eosio { namespace chain {
          controller( const config& cfg );
          ~controller();
 
-         void startup();
+         void startup( const snapshot_reader_ptr& snapshot = nullptr );
 
          /**
           * Starts a new pending block session upon which new transactions can

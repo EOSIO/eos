@@ -9,16 +9,13 @@
 #include <boost/core/demangle.hpp>
 #include <ostream>
 
-
 namespace eosio { namespace chain {
-
    template<typename T>
    struct snapshot_section_traits {
       static std::string section_name() {
          return boost::core::demangle(typeid(T).name());
       }
    };
-
 
    template<typename T>
    struct snapshot_row_traits {
@@ -44,7 +41,7 @@ namespace eosio { namespace chain {
 
       template<typename T>
       struct snapshot_row_writer : abstract_snapshot_row_writer {
-         explicit snapshot_row_writer( const T& data)
+         explicit snapshot_row_writer( const T& data )
          :data(data) {}
 
          void write(std::ostream& out) const override {
@@ -98,6 +95,8 @@ namespace eosio { namespace chain {
          virtual void write_row( const detail::abstract_snapshot_row_writer& row_writer ) = 0;
          virtual void write_end_section() = 0;
    };
+
+   using snapshot_writer_ptr = std::shared_ptr<snapshot_writer>;
 
    namespace detail {
       struct abstract_snapshot_row_reader {
@@ -174,5 +173,7 @@ namespace eosio { namespace chain {
          virtual bool empty( ) = 0;
          virtual void clear_section() = 0;
    };
+
+   using snapshot_reader_ptr = std::shared_ptr<snapshot_reader>;
 
 }}

@@ -24,9 +24,6 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 
-#include <eosio/chain/database_utils.hpp>
-#include <eosio/chain/snapshot.hpp>
-
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
@@ -149,6 +146,7 @@ struct controller_impl {
       }
 
       if ( read_mode == db_read_mode::SPECULATIVE ) {
+         EOS_ASSERT( head->block && head->block->transactions.size() == head->trxs.size(), block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
          for( const auto& t : head->trxs )
             unapplied_transactions[t->signed_id] = t;
       }
@@ -266,15 +264,14 @@ struct controller_impl {
       emit( self.irreversible_block, s );
    }
 
-   void init() {
+   void init(const snapshot_reader_ptr& snapshot) {
 
-      /**
-      *  The fork database needs an initial block_state to be set before
-      *  it can accept any new blocks. This initial block state can be found
-      *  in the database (whose head block state should be irreversible) or
-      *  it would be the genesis state.
-      */
-      if( !head ) {
+      if (snapshot) {
+         EOS_ASSERT(!head, fork_database_exception, "");
+
+         read_from_snapshot(snapshot);
+
+      } else if( !head ) {
          initialize_fork_db(); // set head to genesis state
 
          auto end = blog.read_head();
@@ -325,7 +322,7 @@ struct controller_impl {
                     ("head",head->block_num)("unconfimed", objitr->blocknum)         );
       } else {
          auto end = blog.read_head();
-         EOS_ASSERT( end && end->block_num() == head->block_num, fork_database_exception,
+         EOS_ASSERT( !end || end->block_num() == head->block_num, fork_database_exception,
                     "fork database exists but reversible block database does not, replay blockchain",
                     ("blog_head",end->block_num())("head",head->block_num)  );
       }
@@ -451,9 +448,13 @@ struct controller_impl {
       int cur_row;
    };
 
-   void add_to_snapshot( snapshot_writer& snapshot ) const {
+   void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
+      snapshot->write_section<block_state>([this]( auto &section ){
+         section.template add_row<block_header_state>(*fork_db.head());
+      });
+
       controller_index_set::walk_indices([this, &snapshot]( auto utils ){
-         snapshot.write_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ){
+         snapshot->write_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ){
             decltype(utils)::walk(db, [&section]( const auto &row ) {
                section.add_row(row);
             });
@@ -466,13 +467,25 @@ struct controller_impl {
 
    void print_json_snapshot() const {
       json_snapshot_writer snapshot;
-      add_to_snapshot(snapshot);
+      auto snapshot_ptr = shared_ptr<snapshot_writer>(&snapshot, [](snapshot_writer *) {});
+      add_to_snapshot(snapshot_ptr);
       std::cerr << fc::json::to_pretty_string(snapshot.snapshot) << std::endl;
    }
 
-   void read_from_snapshot( snapshot_reader& snapshot ) {
+   void read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
+      snapshot->read_section<block_state>([this]( auto &section ){
+         block_header_state head_header_state;
+         section.read_row(head_header_state);
+
+         auto head_state = std::make_shared<block_state>(head_header_state);
+         fork_db.set(head_state);
+         fork_db.set_validity(head_state, true);
+         fork_db.mark_in_current_chain(head_state, true);
+         head = head_state;
+      });
+
       controller_index_set::walk_indices([this, &snapshot]( auto utils ){
-         snapshot.read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
+         snapshot->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
             bool done = section.empty();
             while(!done) {
                decltype(utils)::create(db, [&section]( auto &row ) {
@@ -484,6 +497,8 @@ struct controller_impl {
 
       authorization.read_from_snapshot(snapshot);
       resource_limits.read_from_snapshot(snapshot);
+
+      db.set_revision( head->block_num );
    }
 
    /**
@@ -1490,7 +1505,7 @@ controller::~controller() {
 }
 
 
-void controller::startup() {
+void controller::startup( const snapshot_reader_ptr& snapshot ) {
 
    // ilog( "${c}", ("c",fc::json::to_pretty_string(cfg)) );
    my->add_indices();
@@ -1499,7 +1514,7 @@ void controller::startup() {
    if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
    }
-   my->init();
+   my->init(snapshot);
 }
 
 chainbase::database& controller::db()const { return my->db; }
@@ -1665,7 +1680,7 @@ const global_property_object& controller::get_global_properties()const {
 
 signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
    auto state = my->fork_db.get_block(id);
-   if( state ) return state->block;
+   if( state && state->block ) return state->block;
    auto bptr = fetch_block_by_number( block_header::num_from_id(id) );
    if( bptr && bptr->id() == id ) return bptr;
    return signed_block_ptr();
@@ -1673,7 +1688,7 @@ signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
 
 signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  { try {
    auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
-   if( blk_state ) {
+   if( blk_state && blk_state->block ) {
       return blk_state->block;
    }
 
