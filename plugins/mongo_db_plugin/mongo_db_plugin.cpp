@@ -822,46 +822,53 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
       }
    }
 
-   if( write_atraces ) {
-      try {
-         if( !bulk_action_traces.execute() ) {
-            EOS_ASSERT( false, chain::mongo_db_insert_fail, "Bulk action traces insert failed for transaction trace: ${id}", ("id", t->id));
-         }
-      } catch(...) {
-         handle_mongo_exception("action traces insert", __LINE__);
-      }
-   }
-
-   if( !start_block_reached || !store_transaction_traces ) return;
+   if( !start_block_reached ) return; //< add_action_trace calls update_account which must be called always
    if( !write_atraces ) return; //< do not insert transaction_trace if all action_traces filtered out
 
    // transaction trace insert
 
-   auto v = to_variant_with_abi( *t );
-   string json = fc::json::to_string( v );
-   try {
-      const auto& value = bsoncxx::from_json( json );
-      trans_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
-   } catch( bsoncxx::exception& ) {
+   if( store_transaction_traces ) {
       try {
-         json = fc::prune_invalid_utf8( json );
-         const auto& value = bsoncxx::from_json( json );
-         trans_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
-         trans_traces_doc.append( kvp( "non-utf8-purged", b_bool{true} ));
-      } catch( bsoncxx::exception& e ) {
-         elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()));
-         elog( "  JSON: ${j}", ("j", json));
-      }
-   }
-   trans_traces_doc.append( kvp( "createdAt", b_date{now} ));
+         auto v = to_variant_with_abi( *t );
+         string json = fc::json::to_string( v );
+         try {
+            const auto& value = bsoncxx::from_json( json );
+            trans_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
+         } catch( bsoncxx::exception& ) {
+            try {
+               json = fc::prune_invalid_utf8( json );
+               const auto& value = bsoncxx::from_json( json );
+               trans_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
+               trans_traces_doc.append( kvp( "non-utf8-purged", b_bool{true} ) );
+            } catch( bsoncxx::exception& e ) {
+               elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()) );
+               elog( "  JSON: ${j}", ("j", json) );
+            }
+         }
+         trans_traces_doc.append( kvp( "createdAt", b_date{now} ) );
 
-   try {
-      if( !_trans_traces.insert_one( trans_traces_doc.view())) {
-         EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert trans ${id}", ("id", t->id));
+         try {
+            if( !_trans_traces.insert_one( trans_traces_doc.view() ) ) {
+               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert trans ${id}", ("id", t->id) );
+            }
+         } catch( ... ) {
+            handle_mongo_exception( "trans_traces insert: " + json, __LINE__ );
+         }
+      } catch( ... ) {
+         handle_mongo_exception( "trans_traces serialization: " + t->id.str(), __LINE__ );
       }
-   } catch(...) {
-      handle_mongo_exception("trans_traces insert: " + json, __LINE__);
    }
+
+   // insert action_traces
+   try {
+      if( !bulk_action_traces.execute() ) {
+         EOS_ASSERT( false, chain::mongo_db_insert_fail,
+                     "Bulk action traces insert failed for transaction trace: ${id}", ("id", t->id) );
+      }
+   } catch( ... ) {
+      handle_mongo_exception( "action traces insert", __LINE__ );
+   }
+
 }
 
 void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr& bs ) {
@@ -996,23 +1003,6 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
                                                                    kvp( "updatedAt", b_date{now} ) ) ) );
 
       _block_states.update_one( make_document( kvp( "_id", ir_block->view()["_id"].get_oid() ) ), update_doc.view() );
-   }
-
-   if( store_block_states ) {
-      auto block_states = mongo_conn[db_name][block_states_col];
-      auto ir_block = find_block( block_states, block_id_str );
-      if( !ir_block ) {
-         _process_accepted_block( bs );
-         ir_block = find_block( block_states, block_id_str );
-         if( !ir_block ) return; // should never happen
-      }
-
-      auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
-                                                                   kvp( "validated", b_bool{bs->validated} ),
-                                                                   kvp( "in_current_chain", b_bool{bs->in_current_chain} ),
-                                                                   kvp( "updatedAt", b_date{now} ) ) ) );
-
-      block_states.update_one( make_document( kvp( "_id", ir_block->view()["_id"].get_oid() ) ), update_doc.view() );
    }
 
    if( store_transactions ) {
