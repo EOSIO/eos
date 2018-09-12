@@ -50,6 +50,17 @@ fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const
    return var2;
 }
 
+void verify_round_trip_conversion( const abi_serializer& abis, const type_name& type, const std::string& json, const std::string& hex )
+{
+   auto var = fc::json::from_string(json);
+   auto bytes = abis.variant_to_binary(type, var, max_serialization_time);
+   BOOST_REQUIRE_EQUAL(fc::to_hex(bytes), hex);
+   auto var2 = abis.binary_to_variant(type, bytes, max_serialization_time);
+   BOOST_REQUIRE_EQUAL(fc::json::to_string(var2), json);
+   auto bytes2 = abis.variant_to_binary(type, var2, max_serialization_time);
+   BOOST_REQUIRE_EQUAL(fc::to_hex(bytes2), hex);
+}
+
 auto get_resolver(const abi_def& abi = abi_def())
 {
    return [&abi](const account_name &name) -> optional<abi_serializer> {
@@ -3468,6 +3479,65 @@ BOOST_AUTO_TEST_CASE(abi_deep_structs_validate)
       BOOST_CHECK_THROW(
             abi_serializer abis( fc::json::from_string( deep_nested_abi ).as<abi_def>(), max_serialization_time ),
             fc::exception );
+   } FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(variants)
+{
+   auto duplicate_variant_abi = R"({
+      "variants": [
+         {"name": "v1", "types": ["int8", "string", "bool"]},
+         {"name": "v1", "types": ["int8", "string", "bool"]},
+      ],
+   })";
+
+   auto variant_abi_invalid_type = R"({
+      "variants": [
+         {"name": "v1", "types": ["int91", "string", "bool"]},
+      ],
+   })";
+
+   auto variant_abi = R"({
+      "types": [
+         {"new_type_name": "foo", "type": "s"},
+         {"new_type_name": "bar", "type": "s"},
+      ],
+      "structs": [
+         {"name": "s", "base": "", "fields": [
+            {"name": "i0", "type": "int8"},
+            {"name": "i1", "type": "int8"},
+         ]}
+      ],
+      "variants": [
+         {"name": "v1", "types": ["int8", "string", "int16"]},
+         {"name": "v2", "types": ["foo", "bar"]},
+      ],
+   })";
+
+   try {
+      abi_serializer abis( fc::json::from_string(variant_abi).as<abi_def>(), max_serialization_time );
+
+      // duplicate variant definition detected
+      BOOST_CHECK_THROW( abi_serializer( fc::json::from_string(duplicate_variant_abi).as<abi_def>(), max_serialization_time ), duplicate_abi_variant_def_exception );
+
+      // invalid_type_inside_abi
+      BOOST_CHECK_THROW( abi_serializer( fc::json::from_string(variant_abi_invalid_type).as<abi_def>(), max_serialization_time ), invalid_type_inside_abi );
+
+      // expected array containing variant
+      BOOST_CHECK_THROW( abis.variant_to_binary("v1", fc::json::from_string(R"(9)"), max_serialization_time), abi_exception );
+      BOOST_CHECK_THROW( abis.variant_to_binary("v1", fc::json::from_string(R"([4])"), max_serialization_time), abi_exception );
+      BOOST_CHECK_THROW( abis.variant_to_binary("v1", fc::json::from_string(R"([4, 5])"), max_serialization_time), abi_exception );
+      BOOST_CHECK_THROW( abis.variant_to_binary("v1", fc::json::from_string(R"(["4", 5, 6])"), max_serialization_time), abi_exception );
+
+      // type is not valid within this variant
+      BOOST_CHECK_THROW( abis.variant_to_binary("v1", fc::json::from_string(R"(["int9", 21])"), max_serialization_time), abi_exception );
+
+      verify_round_trip_conversion(abis, "v1", R"(["int8",21])", "0015");
+      verify_round_trip_conversion(abis, "v1", R"(["string","abcd"])", "010461626364");
+      verify_round_trip_conversion(abis, "v1", R"(["int16",3])", "020300");
+      verify_round_trip_conversion(abis, "v1", R"(["int16",4])", "020400");
+      verify_round_trip_conversion(abis, "v2", R"(["foo",{"i0":5,"i1":6}])", "000506");
+      verify_round_trip_conversion(abis, "v2", R"(["bar",{"i0":5,"i1":6}])", "010506");
    } FC_LOG_AND_RETHROW()
 }
 

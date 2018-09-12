@@ -110,6 +110,7 @@ namespace eosio { namespace chain {
       actions.clear();
       tables.clear();
       error_messages.clear();
+      variants.clear();
 
       for( const auto& st : abi.structs )
          structs[st.name] = st;
@@ -129,6 +130,9 @@ namespace eosio { namespace chain {
       for( const auto& e : abi.error_messages )
          error_messages[e.error_code] = e.error_msg;
 
+      for( const auto& v : abi.variants.value )
+         variants[v.name] = v;
+
       /**
        *  The ABI vector may contain duplicates which would make it
        *  an invalid ABI
@@ -138,6 +142,7 @@ namespace eosio { namespace chain {
       EOS_ASSERT( actions.size() == abi.actions.size(), duplicate_abi_action_def_exception, "duplicate action definition detected" );
       EOS_ASSERT( tables.size() == abi.tables.size(), duplicate_abi_table_def_exception, "duplicate table definition detected" );
       EOS_ASSERT( error_messages.size() == abi.error_messages.size(), duplicate_abi_err_msg_def_exception, "duplicate error message definition detected" );
+      EOS_ASSERT( variants.size() == abi.variants.value.size(), duplicate_abi_variant_def_exception, "duplicate variant definition detected" );
 
       validate(deadline, max_serialization_time);
    }
@@ -190,6 +195,7 @@ namespace eosio { namespace chain {
       if( built_in_types.find(type) != built_in_types.end() ) return true;
       if( typedefs.find(type) != typedefs.end() ) return _is_type(typedefs.find(type)->second, recursion_depth, deadline, max_serialization_time);
       if( structs.find(type) != structs.end() ) return true;
+      if( variants.find(type) != variants.end() ) return true;
       return false;
    }
 
@@ -229,6 +235,12 @@ namespace eosio { namespace chain {
             EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
             EOS_ASSERT(_is_type(field.type, 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",field.type) );
          } FC_CAPTURE_AND_RETHROW( (field) ) }
+      } FC_CAPTURE_AND_RETHROW( (s) ) }
+      for( const auto& s : variants ) { try {
+         for( const auto& type : s.second.types ) { try {
+            EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+            EOS_ASSERT(_is_type(type, 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",type) );
+         } FC_CAPTURE_AND_RETHROW( (type) ) }
       } FC_CAPTURE_AND_RETHROW( (s) ) }
       for( const auto& a : actions ) { try {
         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
@@ -297,6 +309,14 @@ namespace eosio { namespace chain {
         char flag;
         fc::raw::unpack(stream, flag);
         return flag ? _binary_to_variant(ftype, stream, recursion_depth, deadline, max_serialization_time) : fc::variant();
+      } else {
+         auto v = variants.find(rtype);
+         if( v != variants.end() ) {
+            fc::unsigned_int select;
+            fc::raw::unpack(stream, select);
+            EOS_ASSERT( (size_t)select < v->second.types.size(), unpack_exception, "Invalid packed variant" );
+            return vector<fc::variant>{v->second.types[select], _binary_to_variant(v->second.types[select], stream, recursion_depth, deadline, max_serialization_time)};
+         }
       }
 
       fc::mutable_variant_object mvo;
@@ -330,6 +350,13 @@ namespace eosio { namespace chain {
          for (const auto& var : vars) {
            _variant_to_binary(fundamental_type(rtype), var, ds, recursion_depth, deadline, max_serialization_time);
          }
+      } else if ( variants.find(rtype) != variants.end() ) {
+         EOS_ASSERT( var.is_array() && var.size() == 2 && var[size_t(0)].is_string(), abi_exception, "expected array containing variant" );
+         auto& v = variants.find(rtype)->second;
+         auto it = find(v.types.begin(), v.types.end(), var[size_t(0)].get_string());
+         EOS_ASSERT( it != v.types.end(), abi_exception, "type is not valid within this variant" );
+         fc::raw::pack(ds, fc::unsigned_int(it - v.types.begin()));
+         _variant_to_binary( *it, var[size_t(1)], ds, recursion_depth, deadline, max_serialization_time );
       } else {
          const auto& st = get_struct(rtype);
 

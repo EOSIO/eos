@@ -95,11 +95,12 @@ struct abi_serializer {
 
 private:
 
-   map<type_name, type_name>  typedefs;
-   map<type_name, struct_def> structs;
-   map<name,type_name>        actions;
-   map<name,type_name>        tables;
-   map<uint64_t, string>      error_messages;
+   map<type_name, type_name>     typedefs;
+   map<type_name, struct_def>    structs;
+   map<name,type_name>           actions;
+   map<name,type_name>           tables;
+   map<uint64_t, string>         error_messages;
+   map<type_name, variant_def>   variants;
 
    map<type_name, pair<unpack_function, pack_function>> built_in_types;
    void configure_built_in_types();
