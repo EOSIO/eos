@@ -80,8 +80,6 @@ using transaction_id_with_expiry_index = multi_index_container<
    >
 >;
 
-
-
 enum class pending_block_mode {
    producing,
    speculating
@@ -878,6 +876,13 @@ fc::time_point producer_plugin_impl::calculate_pending_block_time() const {
    return block_time;
 }
 
+enum class tx_category {
+   PERSISTED,
+   UNEXPIRED_UNPERSISTED,
+   EXPIRED,
+};
+
+
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool &last_block) {
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
 
@@ -978,71 +983,66 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
       try {
          size_t orig_pending_txn_size = _pending_incoming_transactions.size();
 
-         if (!persisted_by_expiry.empty() || _pending_block_mode == pending_block_mode::producing) {
-            auto unapplied_trxs = chain.get_unapplied_transactions();
+         // Processing unapplied transactions...
+         //
+         if (_producers.empty() && persisted_by_id.empty()) {
+            // if this node can never produce and has no persisted transactions,
+            // there is no need for unapplied transactions they can be dropped
+            chain.drop_all_unapplied_transactions();
+         } else {
+            std::vector<transaction_metadata_ptr> apply_trxs;
+            { // derive appliable transactions from unapplied_transactions and drop droppable transactions
+               auto unapplied_trxs = chain.get_unapplied_transactions();
+               apply_trxs.reserve(unapplied_trxs.size());
 
-            if (!persisted_by_expiry.empty()) {
-               for (auto itr = unapplied_trxs.begin(); itr != unapplied_trxs.end(); ++itr) {
-                  const auto& trx = *itr;
-                  if (persisted_by_id.find(trx->id) != persisted_by_id.end()) {
-                     // this is a persisted transaction, push it into the block (even if we are speculating) with
-                     // no deadline as it has already passed the subjective deadlines once and we want to represent
-                     // the state of the chain including this transaction
-                     try {
-                        chain.push_transaction(trx, fc::time_point::maximum());
-                     } catch ( const guard_exception& e ) {
-                        app().get_plugin<chain_plugin>().handle_guard_exception(e);
-                        return start_block_result::failed;
-                     } FC_LOG_AND_DROP();
-
-                     // remove it from further consideration as it is applied
-                     *itr = nullptr;
-                  }
-               }
-            }
-
-            if (_pending_block_mode == pending_block_mode::producing) {
-               for (const auto& trx : unapplied_trxs) {
-                  if (block_time <= fc::time_point::now()) exhausted = true;
-                  if (exhausted) {
-                     break;
-                  }
-
-                  if (!trx) {
-                     // nulled in the loop above, skip it
-                     continue;
-                  }
-
+               auto calculate_transaction_category = [&](const transaction_metadata_ptr& trx) {
                   if (trx->packed_trx.expiration() < pbs->header.timestamp.to_time_point()) {
-                     // expired, drop it
-                     chain.drop_unapplied_transaction(trx);
-                     continue;
+                     return tx_category::EXPIRED;
+                  } else if (persisted_by_id.find(trx->id) != persisted_by_id.end()) {
+                     return tx_category::PERSISTED;
+                  } else {
+                     return tx_category::UNEXPIRED_UNPERSISTED;
                   }
+               };
 
-                  try {
-                     auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
-                     bool deadline_is_subjective = false;
-                     if (_max_transaction_time_ms < 0 || (_pending_block_mode == pending_block_mode::producing && block_time < deadline)) {
-                        deadline_is_subjective = true;
-                        deadline = block_time;
-                     }
-
-                     auto trace = chain.push_transaction(trx, deadline);
-                     if (trace->except) {
-                        if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
-                           exhausted = true;
-                        } else {
-                           // this failed our configured maximum transaction time, we don't want to replay it
-                           chain.drop_unapplied_transaction(trx);
-                        }
-                     }
-                  } catch ( const guard_exception& e ) {
-                     app().get_plugin<chain_plugin>().handle_guard_exception(e);
-                     return start_block_result::failed;
-                  } FC_LOG_AND_DROP();
+               for (auto& trx: unapplied_trxs) {
+                  auto category = calculate_transaction_category(trx);
+                  if (category == tx_category::EXPIRED || (category == tx_category::UNEXPIRED_UNPERSISTED && _producers.empty())) {
+                     chain.drop_unapplied_transaction(trx);
+                  } else if (category == tx_category::PERSISTED || (category == tx_category::UNEXPIRED_UNPERSISTED && _pending_block_mode == pending_block_mode::producing)) {
+                     apply_trxs.emplace_back(std::move(trx));
+                  }
                }
             }
 
+            for (const auto& trx: apply_trxs) {
+               if (block_time <= fc::time_point::now()) exhausted = true;
+               if (exhausted) {
+                  break;
+               }
+
+               try {
+                  auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
+                  bool deadline_is_subjective = false;
+                  if (_max_transaction_time_ms < 0 || (_pending_block_mode == pending_block_mode::producing && block_time < deadline)) {
+                     deadline_is_subjective = true;
+                     deadline = block_time;
+                  }
+
+                  auto trace = chain.push_transaction(trx, deadline);
+                  if (trace->except) {
+                     if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
+                        exhausted = true;
+                     } else {
+                        // this failed our configured maximum transaction time, we don't want to replay it
+                        chain.drop_unapplied_transaction(trx);
+                     }
+                  }
+               } catch ( const guard_exception& e ) {
+                  app().get_plugin<chain_plugin>().handle_guard_exception(e);
+                  return start_block_result::failed;
+               } FC_LOG_AND_DROP();
+            }
          }
 
          if (_pending_block_mode == pending_block_mode::producing) {
