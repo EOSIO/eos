@@ -6,6 +6,22 @@ import platform
 
 import argparse
 
+class AppArgs:
+    def __init__(self):
+        self.args=[]
+
+    class AppArg:
+        def __init__(self, flag, type, help, default, choices=None):
+            self.flag=flag
+            self.type=type
+            self.help=help
+            self.default=default
+            self.choices=choices
+
+    def add(self, flag, type, help, default, choices=None):
+        arg=self.AppArg(flag, type, help, default, choices)
+        self.args.append(arg)
+
 # pylint: disable=too-many-instance-attributes
 class TestHelper(object):
     LOCAL_HOST="localhost"
@@ -14,10 +30,11 @@ class TestHelper(object):
     @staticmethod
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
-    def parse_args(includeArgs):
+    def parse_args(includeArgs, applicationSpecificArgs=AppArgs()):
         """Accepts set of arguments, builds argument parser and returns parse_args() output."""
         assert(includeArgs)
         assert(isinstance(includeArgs, set))
+        assert(isinstance(applicationSpecificArgs, AppArgs))
 
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
@@ -81,6 +98,9 @@ class TestHelper(object):
             parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
         if "--sanity-test" in includeArgs:
             parser.add_argument("--sanity-test", help="Validates nodeos and kleos are in path and can be started up.", action='store_true')
+
+        for arg in applicationSpecificArgs.args:
+            parser.add_argument(arg.flag, type=arg.type, help=arg.help, choices=arg.choices, default=arg.default)
 
         args = parser.parse_args()
         return args
