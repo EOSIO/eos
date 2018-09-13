@@ -1532,8 +1532,6 @@ time_point controller::pending_block_time()const {
 
 optional<block_id_type> controller::pending_producer_block_id()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
-   if( my->pending->_block_status == block_status::incomplete )
-      return optional<block_id_type>();
    return my->pending->_producer_block_id;
 }
 
