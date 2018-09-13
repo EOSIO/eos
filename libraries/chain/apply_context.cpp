@@ -281,7 +281,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                   "Replacing a deferred transaction is temporarily disabled." );
 
       // TODO: The logic of the next line needs to be incorporated into the next hard fork.
-      // trx_context.add_ram_usage( ptr->payer, -(config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size()) );
+      // add_ram_usage( ptr->payer, -(config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size()) );
 
       d.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
             gtx.sender      = receiver;
