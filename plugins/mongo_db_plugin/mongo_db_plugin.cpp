@@ -893,8 +893,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       auto block_state_doc = bsoncxx::builder::basic::document{};
       block_state_doc.append( kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ),
                               kvp( "block_id", block_id_str ),
-                              kvp( "validated", b_bool{bs->validated} ),
-                              kvp( "in_current_chain", b_bool{bs->in_current_chain} ) );
+                              kvp( "validated", b_bool{bs->validated} ) );
 
       const chain::block_header_state& bhs = *bs;
 
@@ -983,7 +982,6 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
 
       auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
                                                                    kvp( "validated", b_bool{bs->validated} ),
-                                                                   kvp( "in_current_chain", b_bool{bs->in_current_chain} ),
                                                                    kvp( "updatedAt", b_date{now} ) ) ) );
 
       _blocks.update_one( make_document( kvp( "_id", ir_block->view()["_id"].get_oid() ) ), update_doc.view() );
@@ -999,7 +997,6 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
 
       auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
                                                                    kvp( "validated", b_bool{bs->validated} ),
-                                                                   kvp( "in_current_chain", b_bool{bs->in_current_chain} ),
                                                                    kvp( "updatedAt", b_date{now} ) ) ) );
 
       _block_states.update_one( make_document( kvp( "_id", ir_block->view()["_id"].get_oid() ) ), update_doc.view() );
