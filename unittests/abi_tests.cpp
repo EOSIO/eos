@@ -3515,7 +3515,11 @@ BOOST_AUTO_TEST_CASE(variants)
    })";
 
    try {
-      abi_serializer abis( fc::json::from_string(variant_abi).as<abi_def>(), max_serialization_time );
+      // round-trip abi through multiple formats
+      // json -> variant -> abi_def -> bin
+      auto bin = fc::raw::pack(fc::json::from_string(variant_abi).as<abi_def>());
+      // bin -> abi_def -> variant -> abi_def
+      abi_serializer abis(variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), max_serialization_time );
 
       // duplicate variant definition detected
       BOOST_CHECK_THROW( abi_serializer( fc::json::from_string(duplicate_variant_abi).as<abi_def>(), max_serialization_time ), duplicate_abi_variant_def_exception );
