@@ -108,7 +108,6 @@ void test_control_plugin_impl::kill_on_head(account_name prod, uint32_t where_in
 }
 
 test_control_plugin::test_control_plugin()
-: my(new test_control_plugin_impl(app().get_plugin<chain_plugin>().chain()))
 {
 }
 
@@ -119,6 +118,7 @@ void test_control_plugin::plugin_initialize(const variables_map& options) {
 }
 
 void test_control_plugin::plugin_startup() {
+   my.reset(new test_control_plugin_impl(app().get_plugin<chain_plugin>().chain()));
    my->connect();
 }
 
