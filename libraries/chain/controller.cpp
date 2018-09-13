@@ -1020,8 +1020,8 @@ struct controller_impl {
    void push_block( const signed_block_ptr& b, controller::block_status s ) {
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
 
-      auto reset_prod_light_validation = fc::make_scoped_exit([this]() {
-         conf.trusted_producer_light_validation = false;
+      auto reset_prod_light_validation = fc::make_scoped_exit([old_value=conf.trusted_producer_light_validation, this]() {
+         conf.trusted_producer_light_validation = old_value;
       });
       try {
          EOS_ASSERT( b, block_validate_exception, "trying to push empty block" );
