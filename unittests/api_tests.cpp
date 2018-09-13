@@ -1013,15 +1013,16 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
       );
 
    {
-   produce_blocks(10);
-   transaction_trace_ptr trace;
-   auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->receipt->status != transaction_receipt::executed) { trace = t; } } );
+      produce_blocks(10);
+      transaction_trace_ptr trace;
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->receipt && t->receipt->status != transaction_receipt::executed) { trace = t; } } );
 
-   // test error handling on deferred transaction failure
-   CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_trigger_error_handler", {});
+      // test error handling on deferred transaction failure
+      CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_trigger_error_handler", {});
 
-   BOOST_CHECK(trace);
-   BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::soft_fail);
+      BOOST_REQUIRE(trace);
+      BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::soft_fail);
+      c.disconnect();
    }
 
    // test test_transaction_size
