@@ -78,6 +78,7 @@ extern "C" {
     */
    uint64_t  current_time();
 
+   uint64_t  system_time();
    /**
     *  Returns the time in seconds from 1970 of the block including this action
     *  @brief Get time (rounded down to the nearest second) of the current block (i.e. the block including this action)

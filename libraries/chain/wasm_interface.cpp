@@ -903,7 +903,12 @@ class system_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
       uint64_t current_time() {
-         return static_cast<uint64_t>( context.control.pending_block_time().time_since_epoch().count() );
+         //return static_cast<uint64_t>( context.control.pending_block_time().time_since_epoch().count() );
+         return static_cast<uint64_t>( std::chrono::system_clock::now().time_since_epoch().count() );
+      }
+
+      uint64_t system_time() {
+         return static_cast<uint64_t>( std::chrono::system_clock::now().time_since_epoch().count() );
       }
 
       uint64_t publication_time() {
