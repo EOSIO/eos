@@ -1041,7 +1041,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    // test send_action_recurse
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_recurse", {}), eosio::chain::transaction_exception,
          [](const eosio::chain::transaction_exception& e) {
-            return expect_assert_message(e, "inline action recursion depth reached");
+            return expect_assert_message(e, "max inline action depth per transaction reached");
          }
       );
 
