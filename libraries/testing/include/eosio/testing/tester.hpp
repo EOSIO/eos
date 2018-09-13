@@ -6,6 +6,7 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <fc/io/json.hpp>
 #include <boost/test/unit_test.hpp>
+#include <boost/tuple/tuple_io.hpp>
 
 #include <iosfwd>
 
