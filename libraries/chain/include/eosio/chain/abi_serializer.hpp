@@ -118,6 +118,7 @@ private:
    void _binary_to_variant(const type_name& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj,
                            size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
 
+   static type_name _remove_bin_extension(const type_name& type);
    bool _is_type(const type_name& type, size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
 
    void validate(const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;

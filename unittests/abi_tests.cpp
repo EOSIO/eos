@@ -50,15 +50,20 @@ fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const
    return var2;
 }
 
-void verify_round_trip_conversion( const abi_serializer& abis, const type_name& type, const std::string& json, const std::string& hex )
+void verify_round_trip_conversion( const abi_serializer& abis, const type_name& type, const std::string& json, const std::string& hex, const std::string& expected_json )
 {
    auto var = fc::json::from_string(json);
    auto bytes = abis.variant_to_binary(type, var, max_serialization_time);
    BOOST_REQUIRE_EQUAL(fc::to_hex(bytes), hex);
    auto var2 = abis.binary_to_variant(type, bytes, max_serialization_time);
-   BOOST_REQUIRE_EQUAL(fc::json::to_string(var2), json);
+   BOOST_REQUIRE_EQUAL(fc::json::to_string(var2), expected_json);
    auto bytes2 = abis.variant_to_binary(type, var2, max_serialization_time);
    BOOST_REQUIRE_EQUAL(fc::to_hex(bytes2), hex);
+}
+
+void verify_round_trip_conversion( const abi_serializer& abis, const type_name& type, const std::string& json, const std::string& hex )
+{
+   verify_round_trip_conversion( abis, type, json, hex, json );
 }
 
 auto get_resolver(const abi_def& abi = abi_def())
@@ -3542,6 +3547,43 @@ BOOST_AUTO_TEST_CASE(variants)
       verify_round_trip_conversion(abis, "v1", R"(["int16",4])", "020400");
       verify_round_trip_conversion(abis, "v2", R"(["foo",{"i0":5,"i1":6}])", "000506");
       verify_round_trip_conversion(abis, "v2", R"(["bar",{"i0":5,"i1":6}])", "010506");
+   } FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(extend)
+{
+   auto abi = R"({
+      "structs": [
+         {"name": "s", "base": "", "fields": [
+            {"name": "i0", "type": "int8"},
+            {"name": "i1", "type": "int8"},
+            {"name": "i2", "type": "int8$"},
+            {"name": "a", "type": "int8[]$"},
+            {"name": "o", "type": "int8?$"},
+         ]}
+      ],
+   })";
+
+   try {
+      abi_serializer abis(fc::json::from_string(abi).as<abi_def>(), max_serialization_time );
+
+      // missing i1
+      BOOST_CHECK_THROW( abis.variant_to_binary("s", fc::json::from_string(R"({"i0":5})"), max_serialization_time), abi_exception );
+
+      // Unexpected 'a'
+      BOOST_CHECK_THROW( abis.variant_to_binary("s", fc::json::from_string(R"({"i0":5,"i1":6,"a":[8,9,10]})"), max_serialization_time), pack_exception );
+
+      verify_round_trip_conversion(abis, "s", R"({"i0":5,"i1":6})", "0506");
+      verify_round_trip_conversion(abis, "s", R"({"i0":5,"i1":6,"i2":7})", "050607");
+      verify_round_trip_conversion(abis, "s", R"({"i0":5,"i1":6,"i2":7,"a":[8,9,10]})", "0506070308090a");
+      verify_round_trip_conversion(abis, "s", R"({"i0":5,"i1":6,"i2":7,"a":[8,9,10],"o":null})", "0506070308090a00");
+      verify_round_trip_conversion(abis, "s", R"({"i0":5,"i1":6,"i2":7,"a":[8,9,10],"o":31})", "0506070308090a011f");
+
+      verify_round_trip_conversion(abis, "s", R"([5,6])", "0506", R"({"i0":5,"i1":6})");
+      verify_round_trip_conversion(abis, "s", R"([5,6,7])", "050607", R"({"i0":5,"i1":6,"i2":7})");
+      verify_round_trip_conversion(abis, "s", R"([5,6,7,[8,9,10]])", "0506070308090a", R"({"i0":5,"i1":6,"i2":7,"a":[8,9,10]})");
+      verify_round_trip_conversion(abis, "s", R"([5,6,7,[8,9,10],null])", "0506070308090a00", R"({"i0":5,"i1":6,"i2":7,"a":[8,9,10],"o":null})");
+      verify_round_trip_conversion(abis, "s", R"([5,6,7,[8,9,10],31])", "0506070308090a011f", R"({"i0":5,"i1":6,"i2":7,"a":[8,9,10],"o":31})");
    } FC_LOG_AND_RETHROW()
 }
 
