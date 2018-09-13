@@ -11,8 +11,11 @@
 namespace eosio { namespace chain {
 
    struct account_delta {
+      account_delta( const account_name& n, int64_t d):account(n),delta(d){}
+      account_delta(){}
+
       account_name account;
-      int64_t delta;
+      int64_t delta = 0;
 
       friend bool operator<( const account_delta& lhs, const account_delta& rhs ) { return lhs.account < rhs.account; }
    };
