@@ -344,13 +344,15 @@ try:
 
     firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=True)
     # Nodes should not have diverged till the last block
-    assert(firstDivergence==blockNum)
+    if firstDivergence!=blockNum:
+        Utils.errorExit("Expected to diverge at %s, but diverged at %s." % (firstDivergence, blockNum))
     blockProducers0=[]
     blockProducers1=[]
 
     #verify that the non producing node is not alive (and populate the producer nodes with current getInfo data to report if
     #an error occurs)
-    assert(not nonProdNode.verifyAlive())
+    if nonProdNode.verifyAlive():
+        Utils.errorExit("Expected the non-producing node to have shutdown.")
     for prodNode in prodNodes:
         prodNode.getInfo()
 
@@ -369,7 +371,8 @@ try:
     # ***   Analyze the producers from the divergence to the lastBlockNum and verify they stay diverged   ***
 
     firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=True)
-    assert(firstDivergence==killBlockNum)
+    if firstDivergence!=killBlockNum:
+        Utils.errorExit("Expected to diverge at %s, but diverged at %s." % (firstDivergence, killBlockNum))
     blockProducers0=[]
     blockProducers1=[]
 
@@ -397,8 +400,8 @@ try:
 
     # ***   Analyze the producers from the saved LIB to the current highest head and verify they match now   ***
 
-    firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=False)
-    assert(firstDivergence==None)
+    analyzeBPs(blockProducers0, blockProducers1, expectDivergence=False)
+
     blockProducers0=[]
     blockProducers1=[]
 
