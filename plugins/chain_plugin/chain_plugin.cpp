@@ -1572,9 +1572,10 @@ read_only::get_raw_abi_results read_only::get_raw_abi( const get_raw_abi_params&
 
    const auto& d = db.db();
    const auto& accnt = d.get<account_object,by_name>(params.account_name);
-   // todo: fetch hash from table in eosio account
+   result.abi_hash = fc::sha256::hash( accnt.abi.data(), accnt.abi.size() );
    result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
-   result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
+   if( !params.abi_hash || *params.abi_hash != result.abi_hash )
+      result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
 
    return result;
 }
