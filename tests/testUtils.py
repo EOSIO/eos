@@ -188,3 +188,17 @@ class Account(object):
         return "Name: %s" % (self.name)
 
 ###########################################################################################
+
+def addEnum(enumClassType, type):
+    setattr(enumClassType, type, enumClassType(type))
+
+def unhandledEnumType(type):
+    raise RuntimeError("No case defined for type=%s" % (type.type))
+
+class EnumType:
+
+    def __init__(self, type):
+        self.type=type
+
+    def __str__(self):
+        return self.type
