@@ -107,7 +107,7 @@ struct may_not_exist {
 struct abi_def {
    abi_def() = default;
    abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<clause_pair>& clauses, const vector<error_message>& error_msgs)
-   :version("eosio::abi/1.0")
+   :version("eosio::abi/1.1")
    ,types(types)
    ,structs(structs)
    ,actions(actions)
@@ -116,7 +116,7 @@ struct abi_def {
    ,error_messages(error_msgs)
    {}
 
-   string                              version = "eosio::abi/1.0";
+   string                              version = "eosio::abi/1.1";
    vector<type_def>                    types;
    vector<struct_def>                  structs;
    vector<action_def>                  actions;
