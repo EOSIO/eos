@@ -23,6 +23,7 @@ namespace eosio { namespace chain {
 
       action_receipt       receipt;
       action               act;
+      bool                 context_free = false;
       fc::microseconds     elapsed;
       uint64_t             cpu_usage = 0;
       string               console;

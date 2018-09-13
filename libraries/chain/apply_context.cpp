@@ -82,6 +82,7 @@ action_trace apply_context::exec_one()
    t.account_ram_deltas = std::move( _account_ram_deltas );
    _account_ram_deltas.clear();
    t.act = act;
+   t.context_free = context_free;
    t.console = _pending_console_output.str();
 
    trx_context.executed.emplace_back( move(r) );
