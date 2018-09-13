@@ -67,7 +67,7 @@ FC_REFLECT( eosio::chain::account_delta,
             (account)(delta) )
 
 FC_REFLECT( eosio::chain::base_action_trace,
-                    (receipt)(act)(elapsed)(cpu_usage)(console)(total_cpu_usage)(trx_id)
+                    (receipt)(act)(context_free)(elapsed)(cpu_usage)(console)(total_cpu_usage)(trx_id)
                     (block_num)(block_time)(producer_block_id)(account_ram_deltas) )
 
 FC_REFLECT_DERIVED( eosio::chain::action_trace,
