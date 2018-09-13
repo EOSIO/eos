@@ -47,21 +47,32 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/launcher_test.py ${CMAKE_CURRENT_BINA
 add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_output)
 
 add_test(NAME nodeos_sanity_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_sanity_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME nodeos_run_test COMMAND tests/nodeos_run_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_run_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME bnet_nodeos_run_test COMMAND tests/nodeos_run_test.py -v --clean-run --p2p-plugin bnet --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST bnet_nodeos_run_test PROPERTY LABELS nonparallelizable_tests)
 
 add_test(NAME p2p_dawn515_test COMMAND tests/p2p_tests/dawn_515/test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST p2p_dawn515_test PROPERTY LABELS nonparallelizable_tests)
 if(BUILD_MONGO_DB_PLUGIN)
   add_test(NAME nodeos_run_test-mongodb COMMAND tests/nodeos_run_test.py --mongodb -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST nodeos_run_test PROPERTY LABELS nonparallelizable_tests)
 endif()
 
 add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactions-test.py -d 2 -p 1 -n 4 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST distributed-transactions-test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME restart-scenarios-test-resync COMMAND tests/restart-scenarios-test.py -c resync -p4 -v --clean-run --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST restart-scenarios-test-resync PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME restart-scenarios-test-hard_replay COMMAND tests/restart-scenarios-test.py -c hardReplay -p4 -v --clean-run --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST restart-scenarios-test-hard_replay PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME restart-scenarios-test-none COMMAND tests/restart-scenarios-test.py -c none --kill-sig term -p4 -v --clean-run --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST restart-scenarios-test-none PROPERTY LABELS nonparallelizable_tests)
 # TODO: add_test(NAME consensus-validation-malicious-producers COMMAND tests/consensus-validation-malicious-producers.py -w 80 --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME validate_dirty_db_test COMMAND tests/validate-dirty-db.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST validate_dirty_db_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME launcher_test COMMAND tests/launcher_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST launcher_test PROPERTY LABELS nonparallelizable_tests)
 
 # Long running tests
 add_test(NAME nodeos_sanity_lr_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
