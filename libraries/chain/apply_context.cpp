@@ -643,12 +643,9 @@ uint64_t apply_context::next_auth_sequence( account_name actor ) {
 void apply_context::add_ram_usage( account_name account, int64_t ram_delta ) {
    trx_context.add_ram_usage( account, ram_delta );
 
-   account_delta delta{account, ram_delta};
-   auto itr = _account_ram_deltas.find( delta );
-   if( itr == _account_ram_deltas.end() ) {
-      _account_ram_deltas.emplace( delta );
-   } else {
-      itr->delta += ram_delta;
+   auto p = _account_ram_deltas.emplace( account, ram_delta );
+   if( !p.second ) {
+      p.first->delta += ram_delta;
    }
 }
 
