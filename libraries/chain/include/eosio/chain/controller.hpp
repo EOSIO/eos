@@ -182,8 +182,9 @@ namespace eosio { namespace chain {
          time_point           fork_db_head_block_time()const;
          account_name         fork_db_head_block_producer()const;
 
-         time_point      pending_block_time()const;
-         block_state_ptr pending_block_state()const;
+         time_point              pending_block_time()const;
+         block_state_ptr         pending_block_state()const;
+         optional<block_id_type> pending_producer_block_id()const;
 
          const producer_schedule_type&    active_producers()const;
          const producer_schedule_type&    pending_producers()const;

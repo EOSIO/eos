@@ -1436,4 +1436,7 @@ class Cluster(object):
             self.biosNode.reportStatus()
         if hasattr(self, "nodes"): 
             for node in self.nodes:
-                node.reportStatus()
+                try:
+                    node.reportStatus()
+                except:
+                    Utils.Print("No reportStatus")
