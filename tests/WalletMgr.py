@@ -44,7 +44,7 @@ class WalletMgr(object):
             self.__walletPid=popen.pid
 
         # Give keosd time to warm up
-        time.sleep(1)
+        time.sleep(2)
         return True
 
     def create(self, name, accounts=None, exitOnError=True):
@@ -53,20 +53,31 @@ class WalletMgr(object):
             if Utils.Debug: Utils.Print("Wallet \"%s\" already exists. Returning same." % name)
             return wallet
         p = re.compile(r'\n\"(\w+)\"\n', re.MULTILINE)
-        cmd="%s %s wallet create --name %s --to-console" % (Utils.EosClientPath, self.endpointArgs, name)
+        cmdDesc="wallet create"
+        cmd="%s %s %s --name %s --to-console" % (Utils.EosClientPath, self.endpointArgs, cmdDesc, name)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         retStr=None
-        try:
-            retStr=Utils.checkOutput(cmd.split())
-        except subprocess.CalledProcessError as ex:
-            msg=ex.output.decode("utf-8")
-            msg="ERROR: Failed to import account owner key %s. %s" % (account.ownerPrivateKey, msg)
-            if exitOnError:
-                Utils.errorExit("%s" % (msg))
-            Utils.Print("%s" % (msg))
-            return None
+        maxRetryCount=4
+        retryCount=0
+        while True:
+            try:
+                retStr=Utils.checkOutput(cmd.split())
+                break
+            except subprocess.CalledProcessError as ex:
+                retryCount+=1
+                if retryCount<maxRetryCount:
+                    delay=10
+                    if Utils.Debug: Utils.Print("%s was not accepted, delaying for %d seconds and trying again" % (cmdDesc, delay))
+                    time.sleep(delay)
+                    continue
 
-        #Utils.Print("create: %s" % (retStr))
+                msg=ex.output.decode("utf-8")
+                msg="ERROR: Failed to create wallet - %s. %s" % (name, msg)
+                if exitOnError:
+                    Utils.errorExit("%s" % (msg))
+                Utils.Print("%s" % (msg))
+                return None
+
         m=p.search(retStr)
         if m is None:
             if exitOnError:
