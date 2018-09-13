@@ -41,4 +41,4 @@ else
 fi
 
 bash $EOSIO_HOME/scripts/eosio-tn_down.sh
-bash $EOSIO_HOME/scripts/eosio-tn_up.sh $*
+bash $EOSIO_HOME/scripts/eosio-tn_up.sh "$*"

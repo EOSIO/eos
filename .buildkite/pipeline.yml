@@ -22,7 +22,7 @@ steps:
       - "role=linux-builder"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v1.1.1:
+      docker#v1.4.0:
         image: "eosio/ci:ubuntu"
         workdir: /data/job
     timeout: 60
@@ -37,7 +37,7 @@ steps:
       - "role=linux-builder"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v1.1.1:
+      docker#v1.4.0:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
     timeout: 60
@@ -52,7 +52,7 @@ steps:
       - "role=linux-builder"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v1.1.1:
+      docker#v1.4.0:
         image: "eosio/ci:fedora"
         workdir: /data/job
     timeout: 60
@@ -67,7 +67,7 @@ steps:
       - "role=linux-builder"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v1.1.1:
+      docker#v1.4.0:
         image: "eosio/ci:centos"
         workdir: /data/job
     timeout: 60
@@ -82,7 +82,7 @@ steps:
       - "role=linux-builder"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v1.1.1:
+      docker#v1.4.0:
         image: "eosio/ci:amazonlinux"
         workdir: /data/job
     timeout: 60
@@ -128,7 +128,7 @@ steps:
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v1.1.1:
+      docker#v1.4.0:
         image: "eosio/ci:ubuntu"
         workdir: /data/job
     timeout: 60
@@ -152,7 +152,7 @@ steps:
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v1.1.1:
+      docker#v1.4.0:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
     timeout: 60
@@ -176,7 +176,7 @@ steps:
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v1.1.1:
+      docker#v1.4.0:
         image: "eosio/ci:fedora"
         workdir: /data/job
     timeout: 60
@@ -200,7 +200,7 @@ steps:
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v1.1.1:
+      docker#v1.4.0:
         image: "eosio/ci:centos"
         workdir: /data/job
     timeout: 60
@@ -224,7 +224,7 @@ steps:
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v1.1.1:
+      docker#v1.4.0:
         image: "eosio/ci:amazonlinux"
         workdir: /data/job
     timeout: 60

@@ -104,7 +104,7 @@ public:
    void remove_account_control( const account_name& name, const permission_name& permission );
 
    /// @return true if act should be added to mongodb, false to skip it
-   bool filter_include( const chain::action& act ) const;
+   bool filter_include( const chain::action_trace& action_trace ) const;
 
    void init();
    void wipe_database();
@@ -200,13 +200,13 @@ const std::string mongo_db_plugin_impl::accounts_col = "accounts";
 const std::string mongo_db_plugin_impl::pub_keys_col = "pub_keys";
 const std::string mongo_db_plugin_impl::account_controls_col = "account_controls";
 
-bool mongo_db_plugin_impl::filter_include( const chain::action& act ) const {
+bool mongo_db_plugin_impl::filter_include( const chain::action_trace& action_trace ) const {
    bool include = false;
-   if( filter_on_star || filter_on.find( {act.account, act.name, 0} ) != filter_on.end() ) {
+   if( filter_on_star || filter_on.find( {action_trace.receipt.receiver, action_trace.act.name, 0} ) != filter_on.end() ) {
       include = true;
    } else {
-      for( const auto& a : act.authorization ) {
-         if( filter_on.find( {act.account, act.name, a.actor} ) != filter_on.end() ) {
+      for( const auto& a : action_trace.act.authorization ) {
+         if( filter_on.find( {action_trace.receipt.receiver, action_trace.act.name, a.actor} ) != filter_on.end() ) {
             include = true;
             break;
          }
@@ -215,14 +215,14 @@ bool mongo_db_plugin_impl::filter_include( const chain::action& act ) const {
 
    if( !include ) { return false; }
 
-   if( filter_out.find( {act.account, 0, 0} ) != filter_out.end() ) {
+   if( filter_out.find( {action_trace.receipt.receiver, 0, 0} ) != filter_out.end() ) {
       return false;
    }
-   if( filter_out.find( {act.account, act.name, 0} ) != filter_out.end() ) {
+   if( filter_out.find( {action_trace.receipt.receiver, action_trace.act.name, 0} ) != filter_out.end() ) {
       return false;
    }
-   for( const auto& a : act.authorization ) {
-      if( filter_out.find( {act.account, act.name, a.actor} ) != filter_out.end() ) {
+   for( const auto& a : action_trace.act.authorization ) {
+      if( filter_out.find( {action_trace.receipt.receiver, action_trace.act.name, a.actor} ) != filter_out.end() ) {
          return false;
       }
    }
@@ -714,7 +714,7 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
    }
 
    bool added = false;
-   if( start_block_reached && store_action_traces && filter_include( atrace.act ) ) {
+   if( start_block_reached && store_action_traces && filter_include( atrace ) ) {
       auto action_traces_doc = bsoncxx::builder::basic::document{};
       const chain::base_action_trace& base = atrace; // without inline action traces
 

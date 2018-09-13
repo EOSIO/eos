@@ -244,6 +244,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Chain validation mode (\"full\" or \"light\").\n"
           "In \"full\" mode all incoming blocks will be fully validated.\n"
           "In \"light\" mode all incoming blocks headers will be fully validated; transactions in those validated blocks will be trusted \n")
+         ("disable-ram-billing-notify-checks", bpo::bool_switch()->default_value(false),
+          "Disable the check which subjectively fails a transaction if a contract bills more RAM to another account within the context of a notification handler (i.e. when the receiver is not the code of the action).")
          ;
 
 // TODO: rate limiting
@@ -405,6 +407,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->force_all_checks = options.at( "force-all-checks" ).as<bool>();
       my->chain_config->disable_replay_opts = options.at( "disable-replay-opts" ).as<bool>();
       my->chain_config->contracts_console = options.at( "contracts-console" ).as<bool>();
+      my->chain_config->allow_ram_billing_in_notify = options.at( "disable-ram-billing-notify-checks" ).as<bool>();
 
       if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
          genesis_state gs;
@@ -1101,6 +1104,48 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
    }
 }
 
+read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_only::get_table_by_scope_params& p )const {
+   const auto& d = db.db();
+   const auto& idx = d.get_index<chain::table_id_multi_index, chain::by_code_scope_table>();
+   decltype(idx.lower_bound(boost::make_tuple(0, 0, 0))) lower;
+   decltype(idx.upper_bound(boost::make_tuple(0, 0, 0))) upper;
+
+   if (p.lower_bound.size()) {
+      uint64_t scope = convert_to_type<uint64_t>(p.lower_bound, "lower_bound scope");
+      lower = idx.lower_bound( boost::make_tuple(p.code, scope, p.table));
+   } else {
+      lower = idx.lower_bound(boost::make_tuple(p.code, 0, p.table));
+   }
+   if (p.upper_bound.size()) {
+      uint64_t scope = convert_to_type<uint64_t>(p.upper_bound, "upper_bound scope");
+      upper = idx.lower_bound( boost::make_tuple(p.code, scope, 0));
+   } else {
+      upper = idx.lower_bound(boost::make_tuple((uint64_t)p.code + 1, 0, 0));
+   }
+
+   auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
+   unsigned int count = 0;
+   auto itr = lower;
+   read_only::get_table_by_scope_result result;
+   for (; itr != upper; ++itr) {
+      if (p.table && itr->table != p.table) {
+         if (fc::time_point::now() > end) {
+            break;
+         }
+         continue;
+      }
+      result.rows.push_back({itr->code, itr->scope, itr->table, itr->payer, itr->count});
+      if (++count == p.limit || fc::time_point::now() > end) {
+         ++itr;
+         break;
+      }
+   }
+   if (itr != upper) {
+      result.more = (string)itr->scope;
+   }
+   return result;
+}
+
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
 
    const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
@@ -1404,11 +1449,15 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
             auto trx_trace_ptr = result.get<transaction_trace_ptr>();
 
             try {
-               fc::variant pretty_output;
-               pretty_output = db.to_variant_with_abi(*trx_trace_ptr, abi_serializer_max_time);
-
                chain::transaction_id_type id = trx_trace_ptr->id;
-               next(read_write::push_transaction_results{id, pretty_output});
+               fc::variant output;
+               try {
+                  output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer_max_time );
+               } catch( chain::abi_exception& ) {
+                  output = *trx_trace_ptr;
+               }
+
+               next(read_write::push_transaction_results{id, output});
             } CATCH_AND_CALL(next);
          }
       });
@@ -1472,6 +1521,8 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    const auto& d = db.db();
    const auto& accnt  = d.get<account_object,by_name>( params.account_name );
 
+   EOS_ASSERT( params.code_as_wasm, unsupported_feature, "Returning WAST from get_code is no longer supported" );
+
    if( accnt.code.size() ) {
       if (params.code_as_wasm) {
          result.wasm = string(accnt.code.begin(), accnt.code.end());
@@ -1485,6 +1536,19 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    if( abi_serializer::to_abi(accnt.abi, abi) ) {
 
       result.abi = std::move(abi);
+   }
+
+   return result;
+}
+
+read_only::get_code_hash_results read_only::get_code_hash( const get_code_hash_params& params )const {
+   get_code_hash_results result;
+   result.account_name = params.account_name;
+   const auto& d = db.db();
+   const auto& accnt  = d.get<account_object,by_name>( params.account_name );
+
+   if( accnt.code.size() ) {
+      result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
    }
 
    return result;
@@ -1677,7 +1741,7 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
       abi_serializer::from_variant(params.transaction, pretty_input, resolver, abi_serializer_max_time);
    } EOS_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction")
 
-   auto required_keys_set = db.get_authorization_manager().get_required_keys(pretty_input, params.available_keys);
+   auto required_keys_set = db.get_authorization_manager().get_required_keys( pretty_input, params.available_keys, fc::seconds( pretty_input.delay_sec ));
    get_required_keys_result result;
    result.required_keys = required_keys_set;
    return result;
