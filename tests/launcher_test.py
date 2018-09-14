@@ -191,7 +191,7 @@ try:
 
     node.waitForTransInBlock(transId)
 
-    transaction=node.getTransaction(transId, exitOnError=True, delayedRetry=False)
+    transaction=node.getTransaction(trans, exitOnError=True, delayedRetry=False)
 
     typeVal=None
     amountVal=None
