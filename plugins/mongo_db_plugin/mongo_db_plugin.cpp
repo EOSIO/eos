@@ -455,7 +455,6 @@ void mongo_db_plugin_impl::consume_blocks() {
             break;
          }
       }
-      mongo_pool.reset();
       ilog("mongo_db_plugin consume thread shutdown gracefully");
    } catch (fc::exception& e) {
       elog("FC Exception while consuming block ${e}", ("e", e.to_string()));
@@ -1270,6 +1269,8 @@ mongo_db_plugin_impl::~mongo_db_plugin_impl() {
          condition.notify_one();
 
          consume_thread.join();
+
+         mongo_pool.reset();
       } catch( std::exception& e ) {
          elog( "Exception on mongo_db_plugin shutdown of consume thread: ${e}", ("e", e.what()));
       }
