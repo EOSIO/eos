@@ -106,6 +106,7 @@ struct controller_impl {
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
    optional<fc::microseconds>     subjective_cpu_leeway;
+   bool                           trusted_producer_light_validation = false;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -1020,8 +1021,8 @@ struct controller_impl {
    void push_block( const signed_block_ptr& b, controller::block_status s ) {
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
 
-      auto reset_prod_light_validation = fc::make_scoped_exit([old_value=conf.trusted_producer_light_validation, this]() {
-         conf.trusted_producer_light_validation = old_value;
+      auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
+         trusted_producer_light_validation = old_value;
       });
       try {
          EOS_ASSERT( b, block_validate_exception, "trying to push empty block" );
@@ -1030,7 +1031,7 @@ struct controller_impl {
          bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
          auto new_header_state = fork_db.add( b, trust );
          if (conf.trusted_producers.count(b->producer)) {
-            conf.trusted_producer_light_validation = true;
+            trusted_producer_light_validation = true;
          };
          emit( self.accepted_block_header, new_header_state );
          // on replay irreversible is not emitted by fork database, so emit it explicitly here
@@ -1670,7 +1671,7 @@ bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) c
 
    // OR in a signed block and in light validation mode
    const bool consider_skipping_on_validate = (pb_status == block_status::complete &&
-         (my->conf.block_validation_mode == validation_mode::LIGHT || my->conf.trusted_producer_light_validation));
+         (my->conf.block_validation_mode == validation_mode::LIGHT || my->trusted_producer_light_validation));
 
    return consider_skipping_on_replay || consider_skipping_on_validate;
 }

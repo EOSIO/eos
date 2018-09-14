@@ -75,7 +75,6 @@ namespace eosio { namespace chain {
 
             flat_set<account_name>   resource_greylist;
             flat_set<account_name>   trusted_producers;
-            bool                     trusted_producer_light_validation = false;
          };
 
          enum class block_status {
@@ -307,4 +306,5 @@ FC_REFLECT( eosio::chain::controller::config,
             (genesis)
             (wasm_runtime)
             (resource_greylist)
+            (trusted_producers)
           )
