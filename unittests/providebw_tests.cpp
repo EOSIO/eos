@@ -142,7 +142,7 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
         auto actual = get_balance(config::system_account_name);
         BOOST_REQUIRE_EQUAL(initial_supply, actual);
 
-        create_accounts({N(provider), N(user)});
+        create_accounts({N(provider), N(user), N(user2)});
 
         // Set eosio.system to eosio
         set_code_abi(config::system_account_name, eosio_system_wast, eosio_system_abi);
@@ -156,6 +156,8 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
 
             r = buyram(config::system_account_name, N(user), asset(1000));
             BOOST_REQUIRE( !r->except_ptr );
+
+            r = buyram(config::system_account_name, N(user2), asset(1000));
         }
 
         auto& rlm = control->get_resource_limits_manager();
@@ -171,30 +173,21 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
         BOOST_CHECK_EQUAL(user_cpu.available, 0);
         BOOST_CHECK_EQUAL(user_net.available, 0);
 
+        BOOST_CHECK_EQUAL(rlm.get_account_cpu_limit_ex(N(user2)).available, 0);
+        BOOST_CHECK_EQUAL(rlm.get_account_net_limit_ex(N(user2)).available, 0);
+
         // Check that user can't send transaction due missing bandwidth
-        variant pretty_trx = fc::mutable_variant_object()
-           ("actions", fc::variants({
-              fc::mutable_variant_object()
-                 ("account", name(config::system_account_name))
-                 ("name", "reqauth")
-                 ("authorization", fc::variants({
-                    fc::mutable_variant_object()
-                       ("actor", "user")
-                       ("permission", name(config::active_name))
-                 }))
-                 ("data", fc::mutable_variant_object()
-                    ("from", "user")
-                 )
-              })
-          );
         signed_transaction trx;
-        abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
+        trx.actions.push_back(get_action(
+               name(config::system_account_name), N(reqauth),
+               vector<permission_level>{{N(user),name(config::active_name)}},
+               mvo()("from","user")));
         set_transaction_headers(trx);
         trx.sign( get_private_key("user", "active"), control->get_chain_id() );
         BOOST_REQUIRE_EXCEPTION( push_transaction(trx), tx_net_usage_exceeded, [](auto&){return true;});
 
         trx.actions.emplace_back( vector<permission_level>{{"provider", config::active_name}},
-                                  providebw(N(provider)));
+                                  providebw(N(provider), N(user)));
         set_transaction_headers(trx);
 
         // Check that user can publish transaction using provider bandwidth
@@ -218,6 +211,28 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
 
         BOOST_CHECK_GT(provider_cpu2.used, provider_cpu.used);
         BOOST_CHECK_GT(provider_net2.used, provider_net.used);
+
+        // Check that another actor need bandwidth to publish transaction
+        trx.actions.push_back(get_action(name(config::system_account_name), N(reqauth),
+               vector<permission_level>{{N(user2),name(config::active_name)}},
+               mvo()("from","user2")));
+        set_transaction_headers(trx);
+        trx.signatures.clear();
+        trx.sign( get_private_key("user", "active"), control->get_chain_id() );
+        trx.sign( get_private_key("user2", "active"), control->get_chain_id() );
+        trx.sign( get_private_key("provider", "active"), control->get_chain_id() );
+        BOOST_REQUIRE_EXCEPTION(push_transaction( trx ), tx_net_usage_exceeded, [](auto&){return true;});
+
+        // Check operation success with 2 providebw
+        trx.actions.emplace_back( vector<permission_level>{{"provider", config::active_name}},
+                                  providebw(N(provider), N(user2)));
+        set_transaction_headers(trx);
+        trx.signatures.clear();
+        trx.sign( get_private_key("user", "active"), control->get_chain_id() );
+        trx.sign( get_private_key("user2", "active"), control->get_chain_id() );
+        trx.sign( get_private_key("provider", "active"), control->get_chain_id() );
+        r = push_transaction( trx );
+        BOOST_REQUIRE( !r->except_ptr );
 
     } FC_LOG_AND_RETHROW()
 }

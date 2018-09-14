@@ -2266,6 +2266,7 @@ BOOST_AUTO_TEST_CASE(providebw_test)
    BOOST_CHECK(true);
    const char* test_data = R"=====(
    {
+     "provider" : "provbw.prov",
      "account" : "provbw.acct"
    }
    )=====";
@@ -2273,10 +2274,12 @@ BOOST_AUTO_TEST_CASE(providebw_test)
    auto var = fc::json::from_string(test_data);
 
    auto pbw = var.as<providebw>();
+   BOOST_TEST("provbw.prov" == pbw.provider);
    BOOST_TEST("provbw.acct" == pbw.account);
 
    auto var2 = verify_byte_round_trip_conversion( abis, "providebw", var );
    auto providebw2 = var2.as<providebw>();
+   BOOST_TEST(pbw.provider == providebw2.provider);
    BOOST_TEST(pbw.account == providebw2.account);
 
    verify_type_round_trip_conversion<providebw>( abis, "providebw", var);

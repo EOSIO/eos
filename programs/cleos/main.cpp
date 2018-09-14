@@ -184,7 +184,7 @@ bool   no_auto_keosd = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
-string bandwidth_provider;
+vector<string> bandwidth_provider;
 
 uint32_t delaysec = 0;
 
@@ -234,6 +234,24 @@ vector<chain::permission_level> get_account_permissions(const vector<string>& pe
    vector<chain::permission_level> accountPermissions;
    boost::range::copy(fixedPermissions, back_inserter(accountPermissions));
    return accountPermissions;
+}
+
+typedef vector<std::pair<account_name,chain::permission_level>> bandwidth_providers;
+bandwidth_providers get_bandwidth_providers(const vector<string>& providers) {
+   bandwidth_providers bandwidthProviders;
+   for( const auto& p : providers ) {
+      vector<string> pieces;
+      split(pieces, p, boost::algorithm::is_any_of("/"));
+      if( pieces.size() != 2 ) {
+         std::cerr << localized("Bandwidth provider ${p} not in 'account/provider[@permission]' form", ("p", p)) << std::endl;
+         continue;
+      }
+      const auto account = pieces[0];
+      split(pieces, pieces[1], boost::algorithm::is_any_of("@"));
+      if (pieces.size() == 1) pieces.push_back( "active" );
+      bandwidthProviders.emplace_back( account, chain::permission_level{ .actor = pieces[0], .permission = pieces[1] });
+   }
+   return bandwidthProviders;
 }
 
 template<typename T>
@@ -326,8 +344,10 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    }
 
    if( !bandwidth_provider.empty() ) {
-      auto permissions = get_account_permissions({bandwidth_provider});
-      trx.actions.emplace_back(permissions, providebw{permissions[0].actor} );
+      auto providers = get_bandwidth_providers({bandwidth_provider});
+      for (const auto& prov: providers) {
+         trx.actions.emplace_back(vector<chain::permission_level>{prov.second}, providebw{prov.first, prov.second.actor} );
+      }
    }
 
    if (!tx_skip_sign) {
