@@ -96,7 +96,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -LE long_running_tests --output-on-failure
+        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -j8 -LE _tests --output-on-failure && ctest -L nonparallelizable_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -116,7 +116,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -LE long_running_tests --output-on-failure
+        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure && ctest -L nonparallelizable_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -140,7 +140,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -LE long_running_tests --output-on-failure
+        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure && ctest -L nonparallelizable_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -164,7 +164,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -LE long_running_tests --output-on-failure
+        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure && ctest -L nonparallelizable_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -188,7 +188,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -LE long_running_tests --output-on-failure
+        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure && ctest -L nonparallelizable_tests --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -212,7 +212,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -LE long_running_tests --output-on-failure
+        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure && ctest -L nonparallelizable_tests --output-on-failure
     retry:
       automatic:
         limit: 1
