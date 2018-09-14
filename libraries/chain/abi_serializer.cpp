@@ -362,6 +362,8 @@ namespace eosio { namespace chain {
                   ++i;
                }
             }
+         } else {
+            EOS_THROW( pack_exception, "Failed to serialize struct '${t}' in variant object", ("t", st.name));
          }
       }
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
