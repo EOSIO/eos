@@ -12,6 +12,7 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
+#include <boost/tuple/tuple_io.hpp>
 
 namespace eosio { namespace chain {
 
