@@ -296,7 +296,7 @@ class Node(object):
                 if trans is not None or not delayedRetry:
                     return trans
                 if blockWalker is None:
-                    blockWalker=Node.BlockWalker(node, trans)
+                    blockWalker=Node.BlockWalker(self, trans)
                 if Utils.Debug: Utils.Print("Could not find transaction with id %s, delay and retry" % (transId))
                 time.sleep(timeout)
 
