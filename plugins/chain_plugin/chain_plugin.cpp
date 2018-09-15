@@ -212,7 +212,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to application data dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
+         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen/wabt"), "Override default WASM runtime")
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
@@ -244,6 +244,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Chain validation mode (\"full\" or \"light\").\n"
           "In \"full\" mode all incoming blocks will be fully validated.\n"
           "In \"light\" mode all incoming blocks headers will be fully validated; transactions in those validated blocks will be trusted \n")
+         ("disable-ram-billing-notify-checks", bpo::bool_switch()->default_value(false),
+          "Disable the check which subjectively fails a transaction if a contract bills more RAM to another account within the context of a notification handler (i.e. when the receiver is not the code of the action).")
          ;
 
 // TODO: rate limiting
@@ -405,6 +407,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->force_all_checks = options.at( "force-all-checks" ).as<bool>();
       my->chain_config->disable_replay_opts = options.at( "disable-replay-opts" ).as<bool>();
       my->chain_config->contracts_console = options.at( "contracts-console" ).as<bool>();
+      my->chain_config->allow_ram_billing_in_notify = options.at( "disable-ram-billing-notify-checks" ).as<bool>();
 
       if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
          genesis_state gs;
@@ -1101,6 +1104,48 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
    }
 }
 
+read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_only::get_table_by_scope_params& p )const {
+   const auto& d = db.db();
+   const auto& idx = d.get_index<chain::table_id_multi_index, chain::by_code_scope_table>();
+   decltype(idx.lower_bound(boost::make_tuple(0, 0, 0))) lower;
+   decltype(idx.upper_bound(boost::make_tuple(0, 0, 0))) upper;
+
+   if (p.lower_bound.size()) {
+      uint64_t scope = convert_to_type<uint64_t>(p.lower_bound, "lower_bound scope");
+      lower = idx.lower_bound( boost::make_tuple(p.code, scope, p.table));
+   } else {
+      lower = idx.lower_bound(boost::make_tuple(p.code, 0, p.table));
+   }
+   if (p.upper_bound.size()) {
+      uint64_t scope = convert_to_type<uint64_t>(p.upper_bound, "upper_bound scope");
+      upper = idx.lower_bound( boost::make_tuple(p.code, scope, 0));
+   } else {
+      upper = idx.lower_bound(boost::make_tuple((uint64_t)p.code + 1, 0, 0));
+   }
+
+   auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
+   unsigned int count = 0;
+   auto itr = lower;
+   read_only::get_table_by_scope_result result;
+   for (; itr != upper; ++itr) {
+      if (p.table && itr->table != p.table) {
+         if (fc::time_point::now() > end) {
+            break;
+         }
+         continue;
+      }
+      result.rows.push_back({itr->code, itr->scope, itr->table, itr->payer, itr->count});
+      if (++count == p.limit || fc::time_point::now() > end) {
+         ++itr;
+         break;
+      }
+   }
+   if (itr != upper) {
+      result.more = (string)itr->scope;
+   }
+   return result;
+}
+
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
 
    const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
@@ -1496,6 +1541,19 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    return result;
 }
 
+read_only::get_code_hash_results read_only::get_code_hash( const get_code_hash_params& params )const {
+   get_code_hash_results result;
+   result.account_name = params.account_name;
+   const auto& d = db.db();
+   const auto& accnt  = d.get<account_object,by_name>( params.account_name );
+
+   if( accnt.code.size() ) {
+      result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+   }
+
+   return result;
+}
+
 read_only::get_raw_code_and_abi_results read_only::get_raw_code_and_abi( const get_raw_code_and_abi_params& params)const {
    get_raw_code_and_abi_results result;
    result.account_name = params.account_name;
@@ -1504,6 +1562,20 @@ read_only::get_raw_code_and_abi_results read_only::get_raw_code_and_abi( const g
    const auto& accnt = d.get<account_object,by_name>(params.account_name);
    result.wasm = blob{{accnt.code.begin(), accnt.code.end()}};
    result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
+
+   return result;
+}
+
+read_only::get_raw_abi_results read_only::get_raw_abi( const get_raw_abi_params& params )const {
+   get_raw_abi_results result;
+   result.account_name = params.account_name;
+
+   const auto& d = db.db();
+   const auto& accnt = d.get<account_object,by_name>(params.account_name);
+   result.abi_hash = fc::sha256::hash( accnt.abi.data(), accnt.abi.size() );
+   result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+   if( !params.abi_hash || *params.abi_hash != result.abi_hash )
+      result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
 
    return result;
 }

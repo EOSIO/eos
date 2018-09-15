@@ -206,10 +206,10 @@ try:
     transId=node.createInitializeAccount(testeraAccount, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
 
     Print("Create new account %s via %s" % (currencyAccount.name, cluster.eosioAccount.name))
-    transId=node.createInitializeAccount(currencyAccount, cluster.eosioAccount, stakedDeposit=5000, exitOnError=True)
+    transId=node.createInitializeAccount(currencyAccount, cluster.eosioAccount, buyRAM=1000000, stakedDeposit=5000, exitOnError=True)
 
     Print("Create new account %s via %s" % (exchangeAccount.name, cluster.eosioAccount.name))
-    transId=node.createInitializeAccount(exchangeAccount, cluster.eosioAccount, waitForTransBlock=True, exitOnError=True)
+    transId=node.createInitializeAccount(exchangeAccount, cluster.eosioAccount, buyRAM=1000000, waitForTransBlock=True, exitOnError=True)
 
     Print("Validating accounts after user accounts creation")
     accounts=[testeraAccount, currencyAccount, exchangeAccount]
@@ -282,7 +282,7 @@ try:
 
     node.waitForTransInBlock(transId)
 
-    transaction=node.getTransaction(transId, exitOnError=True, delayedRetry=False)
+    transaction=node.getTransaction(trans, exitOnError=True, delayedRetry=False)
 
     typeVal=None
     amountVal=None
@@ -467,7 +467,7 @@ try:
         raise
 
     Print("Test for block decoded packed transaction (issue 2932)")
-    blockId=node.getBlockIdByTransId(transId)
+    blockId=node.getBlockIdByTransId(trans[1])
     assert(blockId)
     block=node.getBlock(blockId, exitOnError=True)
 
@@ -601,18 +601,6 @@ try:
         errorExit("Failed to lock wallet %s" % (defproduceraWallet.name))
 
 
-    Print("Exchange Contract Tests")
-    Print("upload exchange contract")
-
-    contractDir="contracts/exchange"
-    wasmFile="exchange.wasm"
-    abiFile="exchange.abi"
-    Print("Publish exchange contract")
-    trans=node.publishContract(exchangeAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
-    if trans is None:
-        cmdError("%s set contract exchange" % (ClientName))
-        errorExit("Failed to publish contract.")
-
     contractDir="contracts/simpledb"
     wasmFile="simpledb.wasm"
     abiFile="simpledb.abi"
@@ -622,7 +610,7 @@ try:
     if retMap is None:
         errorExit("Failed to publish, but should have returned a details map")
     if retMap["returncode"] == 0 or retMap["returncode"] == 139: # 139 SIGSEGV
-        errorExit("FAILURE - set contract exchange failed", raw=True)
+        errorExit("FAILURE - set contract simpledb failed", raw=True)
     else:
         Print("Test successful, %s returned error code: %d" % (ClientName, retMap["returncode"]))
 

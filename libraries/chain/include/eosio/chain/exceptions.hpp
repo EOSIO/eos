@@ -268,6 +268,8 @@ namespace eosio { namespace chain {
                                     3080006, "Transaction took too long" )
       FC_DECLARE_DERIVED_EXCEPTION( greylist_net_usage_exceeded, resource_exhausted_exception,
                                     3080007, "Transaction exceeded the current greylisted account network usage limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( greylist_cpu_usage_exceeded, resource_exhausted_exception,
+                                    3080008, "Transaction exceeded the current greylisted account CPU usage limit" )
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
 
@@ -414,6 +416,10 @@ namespace eosio { namespace chain {
                                     3015013, "Unpack data exception" )
       FC_DECLARE_DERIVED_EXCEPTION( pack_exception,                     abi_exception,
                                     3015014, "Pack data exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_variant_def_exception,  abi_exception,
+                                    3015015, "Duplicate variant definition in the ABI" )
+      FC_DECLARE_DERIVED_EXCEPTION( unsupported_abi_version_exception,  abi_exception,
+                                    3015016, "ABI has an unsupported version" )
 
    FC_DECLARE_DERIVED_EXCEPTION( contract_exception,           chain_exception,
                                  3160000, "Contract exception" )

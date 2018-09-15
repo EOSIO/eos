@@ -3,6 +3,7 @@
 #include <eosio/chain/resource_limits_private.hpp>
 #include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/transaction.hpp>
+#include <boost/tuple/tuple_io.hpp>
 #include <algorithm>
 
 namespace eosio { namespace chain { namespace resource_limits {

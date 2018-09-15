@@ -6,9 +6,6 @@
 #include <eosio.msig/eosio.msig.wast.hpp>
 #include <eosio.msig/eosio.msig.abi.hpp>
 
-#include <exchange/exchange.wast.hpp>
-#include <exchange/exchange.abi.hpp>
-
 #include <test_api/test_api.wast.hpp>
 
 #include <eosio.system/eosio.system.wast.hpp>
@@ -322,7 +319,7 @@ BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) 
 
 BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name } };
-   auto wasm = wast_to_wasm( exchange_wast );
+   auto wasm = wast_to_wasm( eosio_token_wast );
 
    variant pretty_trx = fc::mutable_variant_object()
       ("expiration", "2020-01-01T00:30")
