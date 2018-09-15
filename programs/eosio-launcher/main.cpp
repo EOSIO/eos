@@ -1045,8 +1045,6 @@ launcher_def::write_config_file (tn_node_def &node) {
    }
 
    cfg << "blocks-dir = " << block_dir << "\n";
-   cfg << "readonly = 0\n";
-   cfg << "send-whole-blocks = true\n";
    cfg << "http-server-address = " << host->host_name << ":" << instance.http_port << "\n";
    cfg << "http-validate-host = false\n";
    if (p2p == p2p_plugin::NET) {
