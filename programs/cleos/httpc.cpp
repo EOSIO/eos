@@ -129,7 +129,7 @@ namespace eosio { namespace client { namespace http {
       boost::system::error_code ec;
       auto result = resolver.resolve(tcp::v4(), url.server, url.port, ec);
       if (ec) {
-         EOS_THROW(fail_to_resolve_host, "Error resolving \"${server}:${url}\" : ${m}", ("server", url.server)("port",url.port)("m",ec.message()));
+         EOS_THROW(fail_to_resolve_host, "Error resolving \"${server}:${port}\" : ${m}", ("server", url.server)("port",url.port)("m",ec.message()));
       }
 
       // non error results are guaranteed to return a non-empty range
