@@ -925,6 +925,10 @@ class Node(object):
         assert(isinstance(returnType, ReturnType))
         cmd="%s %s %s" % (Utils.EosClientPath, self.eosClientArgs(), cmd)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        if exitMsg is not None:
+            exitMsg="Context: " + exitMsg
+        else:
+            exitMsg=""
         trans=None
         try:
             if returnType==ReturnType.json:
@@ -936,7 +940,7 @@ class Node(object):
         except subprocess.CalledProcessError as ex:
             if not silentErrors:
                 msg=ex.output.decode("utf-8")
-                errorMsg="Exception during \"%s\". %s" % (cmdDesc, msg)
+                errorMsg="Exception during \"%s\". Exception message: %s. %s" % (cmdDesc, msg, exitMsg)
                 if exitOnError:
                     Utils.cmdError(errorMsg)
                     Utils.errorExit(errorMsg)
@@ -944,10 +948,6 @@ class Node(object):
                     Utils.Print("ERROR: %s" % (errorMsg))
             return None
 
-        if exitMsg is not None:
-            exitMsg=": " + exitMsg
-        else:
-            exitMsg=""
         if exitOnError and trans is None:
             Utils.cmdError("could not \"%s\" - %s" % (cmdDesc,exitMsg))
             errorExit("Failed to \"%s\"" % (cmdDesc))
