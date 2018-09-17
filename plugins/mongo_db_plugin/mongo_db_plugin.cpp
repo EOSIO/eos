@@ -53,11 +53,16 @@ struct filter_entry {
    name receiver;
    name action;
    name actor;
-   std::tuple<name, name, name> key() const {
-      return std::make_tuple(receiver, action, actor);
-   }
+
    friend bool operator<( const filter_entry& a, const filter_entry& b ) {
-      return a.key() < b.key();
+      return std::tie( a.receiver, a.action, a.actor ) < std::tie( b.receiver, b.action, b.actor );
+   }
+
+   //            receiver          action       actor
+   bool match( const name& rr, const name& an, const name& ar ) const {
+      return (receiver.value == 0 || receiver == rr) &&
+             (action.value == 0 || action == an) &&
+             (actor.value == 0 || actor == ar);
    }
 };
 
@@ -214,30 +219,41 @@ const std::string mongo_db_plugin_impl::account_controls_col = "account_controls
 
 bool mongo_db_plugin_impl::filter_include( const chain::action_trace& action_trace ) const {
    bool include = false;
-   if( filter_on_star || filter_on.find( {action_trace.receipt.receiver, action_trace.act.name, 0} ) != filter_on.end() ) {
+   if( filter_on_star ) {
       include = true;
    } else {
-      for( const auto& a : action_trace.act.authorization ) {
-         if( filter_on.find( {action_trace.receipt.receiver, action_trace.act.name, a.actor} ) != filter_on.end() ) {
-            include = true;
-            break;
+      auto itr = std::find_if( filter_on.cbegin(), filter_on.cend(), [&action_trace]( const auto& filter ) {
+         return filter.match( action_trace.receipt.receiver, action_trace.act.name, 0 );
+      } );
+      if( itr != filter_on.cend() ) {
+         include = true;
+      } else {
+         for( const auto& a : action_trace.act.authorization ) {
+            auto itr = std::find_if( filter_on.cbegin(), filter_on.cend(), [&action_trace, &a]( const auto& filter ) {
+               return filter.match( action_trace.receipt.receiver, action_trace.act.name, a.actor );
+            } );
+            if( itr != filter_on.cend() ) {
+               include = true;
+               break;
+            }
          }
       }
    }
 
    if( !include ) { return false; }
 
-   if( filter_out.find( {action_trace.receipt.receiver, 0, 0} ) != filter_out.end() ) {
-      return false;
-   }
-   if( filter_out.find( {action_trace.receipt.receiver, action_trace.act.name, 0} ) != filter_out.end() ) {
-      return false;
-   }
+   auto itr = std::find_if( filter_out.cbegin(), filter_out.cend(), [&action_trace]( const auto& filter ) {
+      return filter.match( action_trace.receipt.receiver, action_trace.act.name, 0 );
+   } );
+   if( itr != filter_out.cend() ) { return false; }
+
    for( const auto& a : action_trace.act.authorization ) {
-      if( filter_out.find( {action_trace.receipt.receiver, action_trace.act.name, a.actor} ) != filter_out.end() ) {
-         return false;
-      }
+      auto itr = std::find_if( filter_out.cbegin(), filter_out.cend(), [&action_trace, &a]( const auto& filter ) {
+         return filter.match( action_trace.receipt.receiver, action_trace.act.name, a.actor );
+      } );
+      if( itr != filter_out.cend() ) { return false; }
    }
+
    return true;
 }
 
@@ -1422,9 +1438,9 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
          ("mongodb-store-action-traces", bpo::value<bool>()->default_value(true),
           "Enables storing action traces in mongodb.")
          ("mongodb-filter-on", bpo::value<vector<string>>()->composing(),
-          "Mongodb: Track actions which match receiver:action:actor. Actor may be blank to include all. Receiver and Action may not be blank. Default is * include everything.")
+          "Track actions which match receiver:action:actor. Receiver, Action, & Actor may be blank to include all. i.e. eosio:: or :transfer:  Use * or leave unspecified to include all.")
          ("mongodb-filter-out", bpo::value<vector<string>>()->composing(),
-          "Mongodb: Do not track actions which match receiver:action:actor. Action and Actor both blank excludes all from reciever. Actor blank excludes all from reciever:action. Receiver may not be blank.")
+          "Do not track actions which match receiver:action:actor. Receiver, Action, & Actor may be blank to exclude all.")
          ;
 }
 
@@ -1487,8 +1503,6 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-on", ("s", s));
                filter_entry fe{v[0], v[1], v[2]};
-               EOS_ASSERT( fe.receiver.value && fe.action.value, fc::invalid_arg_exception,
-                           "Invalid value ${s} for --mongodb-filter-on", ("s", s));
                my->filter_on.insert( fe );
             }
          } else {
@@ -1501,8 +1515,6 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-out", ("s", s));
                filter_entry fe{v[0], v[1], v[2]};
-               EOS_ASSERT( fe.receiver.value, fc::invalid_arg_exception,
-                           "Invalid value ${s} for --mongodb-filter-out", ("s", s));
                my->filter_out.insert( fe );
             }
          }
