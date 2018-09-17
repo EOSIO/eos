@@ -123,3 +123,5 @@ if(ENABLE_COVERAGE_TESTING)
     COMMENT "Open ./${Coverage_NAME}/index.html in your browser to view the coverage report."
     )
 endif()
+
+add_subdirectory(chaindb)
