@@ -53,11 +53,8 @@ struct filter_entry {
    name receiver;
    name action;
    name actor;
-   std::tuple<name, name, name> key() const {
-      return std::make_tuple(receiver, action, actor);
-   }
    friend bool operator<( const filter_entry& a, const filter_entry& b ) {
-      return a.key() < b.key();
+       return std::tie(a.receiver,a.action,a.actor) < std::tie(b.receiver,b.action,b.actor);
    }
 };
 
@@ -214,14 +211,27 @@ const std::string mongo_db_plugin_impl::account_controls_col = "account_controls
 
 bool mongo_db_plugin_impl::filter_include( const chain::action_trace& action_trace ) const {
    bool include = false;
-   if( filter_on_star || filter_on.find( {action_trace.receipt.receiver, action_trace.act.name, 0} ) != filter_on.end() ) {
+   if( filter_on_star  ) {
       include = true;
    } else {
       for( const auto& a : action_trace.act.authorization ) {
-         if( filter_on.find( {action_trace.receipt.receiver, action_trace.act.name, a.actor} ) != filter_on.end() ) {
-            include = true;
-            break;
-         }
+           auto itr = std::find_if(filter_on.begin(), filter_on.end(), [&action_trace,&a](auto && filter) {
+              bool is_found{true};
+              if(filter.receiver) {
+                  is_found &= action_trace.receipt.receiver == filter.receiver;
+              }
+              if(filter.action) {
+                  is_found &= action_trace.act.name == filter.action;
+              }
+              if(filter.actor) {
+                  is_found &= a.actor == filter.action;
+              }
+              return is_found;
+           });
+           if(itr != filter_on.end()) {
+               include = true;
+               break;
+           }
       }
    }
 
@@ -1487,8 +1497,6 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-on", ("s", s));
                filter_entry fe{v[0], v[1], v[2]};
-               EOS_ASSERT( fe.receiver.value && fe.action.value, fc::invalid_arg_exception,
-                           "Invalid value ${s} for --mongodb-filter-on", ("s", s));
                my->filter_on.insert( fe );
             }
          } else {
