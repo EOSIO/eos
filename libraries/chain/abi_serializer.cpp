@@ -312,7 +312,7 @@ namespace eosio { namespace chain {
            vars.emplace_back(std::move(v));
         }
         EOS_ASSERT( vars.size() == size.value,
-                    unpack_exception, 
+                    unpack_exception,
                     "packed size does not match unpacked array size, packed size ${p} actual size ${a}",
                     ("p", size)("a", vars.size()) );
         return fc::variant( std::move(vars) );
@@ -386,8 +386,6 @@ namespace eosio { namespace chain {
                } else if( ends_with(field.type, "$") && allow_extensions ) {
                   missing_extension = true;
                } else {
-                  _variant_to_binary(field.type, fc::variant(), ds, false, recursion_depth, deadline, max_serialization_time);
-                  /// TODO: default construct field and write it out
                   EOS_THROW( pack_exception, "Missing '${f}' in variant object", ("f",field.name) );
                }
             }
@@ -395,17 +393,18 @@ namespace eosio { namespace chain {
             const auto& va = var.get_array();
             EOS_ASSERT( st.base == type_name(), invalid_type_inside_abi, "support for base class as array not yet implemented" );
             uint32_t i = 0;
-            if (va.size() > 0) {
-               for( const auto& field : st.fields ) {
-                  if( va.size() > i )
-                     _variant_to_binary(_remove_bin_extension(field.type), va[i], ds, allow_extensions && &field == &st.fields.back(), recursion_depth, deadline, max_serialization_time);
-                  else if( ends_with(field.type, "$") && allow_extensions )
-                     break;
-                  else
-                     _variant_to_binary(field.type, fc::variant(), ds, false, recursion_depth, deadline, max_serialization_time);
-                  ++i;
-               }
+            for( const auto& field : st.fields ) {
+               if( va.size() > i )
+                  _variant_to_binary(_remove_bin_extension(field.type), va[i], ds, allow_extensions && &field == &st.fields.back(), recursion_depth, deadline, max_serialization_time);
+               else if( ends_with(field.type, "$") && allow_extensions )
+                  break;
+               else
+                  EOS_THROW( pack_exception, "Early end to array specifying the fields of struct '${t}'; require input for field '${f}'",
+                             ("t", st.name)("f", field.name) );
+               ++i;
             }
+         } else {
+            EOS_THROW( pack_exception, "Failed to serialize struct '${t}' in variant object", ("t", st.name));
          }
       }
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }

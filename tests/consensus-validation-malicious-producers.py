@@ -328,7 +328,7 @@ def myTest(transWillEnterBlock):
                 return False
 
             Print("Get details for transaction %s" % (transId))
-            transaction=node2.getTransaction(transId, exitOnError=True)
+            transaction=node2.getTransaction(trans[1], exitOnError=True)
             signature=transaction["transaction"]["signatures"][0]
 
             blockNum=int(transaction["transaction"]["ref_block_num"])

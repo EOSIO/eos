@@ -248,10 +248,45 @@ class Node(object):
         """Is blockNum finalized"""
         return self.isBlockPresent(blockNum, blockType=BlockType.lib)
 
+    class BlockWalker:
+        def __init__(self, node, trans, startBlockNum=None, endBlockNum=None):
+            self.trans=trans
+            self.node=node
+            self.startBlockNum=startBlockNum
+            self.endBlockNum=endBlockNum
+
+        def walkBlocks(self):
+            start=None
+            end=None
+            blockNum=self.trans["processed"]["action_traces"][0]["block_num"]
+            # it should be blockNum or later, but just in case the block leading up have any clues...
+            if self.startBlockNum is not None:
+                start=self.startBlockNum
+            else:
+                start=blockNum-5
+            if self.endBlockNum is not None:
+                end=self.endBlockNum
+            else:
+                info=self.node.getInfo()
+                end=info["head_block_num"]
+            msg="Original transaction=\n%s\nExpected block_num=%s\n" % (json.dumps(trans, indent=2, sort_keys=True), blockNum)
+            for blockNum in range(start, end+1):
+                block=self.node.getBlock(blockNum)
+                msg+=json.dumps(block, indent=2, sort_keys=True)+"\n"
+
     # pylint: disable=too-many-branches
-    def getTransaction(self, transId, silentErrors=False, exitOnError=False, delayedRetry=True):
+    def getTransaction(self, transOrTransId, silentErrors=False, exitOnError=False, delayedRetry=True):
+        transId=None
+        trans=None
+        assert(isinstance(transOrTransId, (str,dict)))
+        if isinstance(transOrTransId, str):
+            transId=transOrTransId
+        else:
+            trans=transOrTransId
+            transId=Node.getTransId(trans)
         exitOnErrorForDelayed=not delayedRetry and exitOnError
         timeout=3
+        blockWalker=None
         if not self.enableMongo:
             cmdDesc="get transaction"
             cmd="%s %s" % (cmdDesc, transId)
@@ -260,9 +295,12 @@ class Node(object):
                 trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnErrorForDelayed, exitMsg=msg)
                 if trans is not None or not delayedRetry:
                     return trans
+                if blockWalker is None:
+                    blockWalker=Node.BlockWalker(self, trans)
                 if Utils.Debug: Utils.Print("Could not find transaction with id %s, delay and retry" % (transId))
                 time.sleep(timeout)
 
+            msg+="\nBlock printout -->>\n%s" % blockWalker.walkBlocks();
             # either it is there or the transaction has timed out
             return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
         else:
@@ -329,11 +367,16 @@ class Node(object):
 
         return False
 
-    def getBlockIdByTransId(self, transId, delayedRetry=True):
-        """Given a transaction Id (string), will return block id (int) containing the transaction"""
-        assert(transId)
-        assert(isinstance(transId, str))
-        trans=self.getTransaction(transId, exitOnError=True, delayedRetry=delayedRetry)
+    def getBlockIdByTransId(self, transOrTransId, delayedRetry=True):
+        """Given a transaction (dictionary) or transaction Id (string), will return the actual block id (int) containing the transaction"""
+        assert(transOrTransId)
+        transId=None
+        assert(isinstance(transOrTransId, (str,dict)))
+        if isinstance(transOrTransId, str):
+            transId=transOrTransId
+        else:
+            transId=Node.getTransId(transOrTransId)
+        trans=self.getTransaction(transOrTransId, exitOnError=True, delayedRetry=delayedRetry)
 
         refBlockNum=None
         key=""

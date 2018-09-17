@@ -72,10 +72,10 @@ class WalletMgr(object):
                     continue
 
                 msg=ex.output.decode("utf-8")
-                msg="ERROR: Failed to create wallet - %s. %s" % (name, msg)
+                errorMsg="ERROR: Failed to create wallet - %s. %s" % (name, msg)
                 if exitOnError:
-                    Utils.errorExit("%s" % (msg))
-                Utils.Print("%s" % (msg))
+                    Utils.errorExit("%s" % (errorMsg))
+                Utils.Print("%s" % (errorMsg))
                 return None
 
         m=p.search(retStr)
