@@ -313,6 +313,14 @@ fc::time_point calculate_genesis_timestamp( string tstr ) {
    return genesis_timestamp;
 }
 
+void clear_directory_contents( const fc::path& p ) {
+   using boost::filesystem::directory_iterator;
+
+   for( directory_iterator enditr, itr{p}; itr != enditr; ++itr ) {
+      fc::remove_all( itr->path() );
+   }
+}
+
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
@@ -456,11 +464,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          ilog( "Deleting state database and blocks" );
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
             wlog( "The --truncate-at-block option does not make sense when deleting all blocks." );
-         fc::remove_all( my->chain_config->state_dir );
+         clear_directory_contents( my->chain_config->state_dir );
          fc::remove_all( my->blocks_dir );
       } else if( options.at( "hard-replay-blockchain" ).as<bool>()) {
          ilog( "Hard replay requested: deleting state database" );
-         fc::remove_all( my->chain_config->state_dir );
+         clear_directory_contents( my->chain_config->state_dir );
          auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>());
          if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
              options.at( "fix-reversible-blocks" ).as<bool>()) {
@@ -482,7 +490,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          ilog( "Replay requested: deleting state database" );
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
             wlog( "The --truncate-at-block option does not work for a regular replay of the blockchain." );
-         fc::remove_all( my->chain_config->state_dir );
+         clear_directory_contents( my->chain_config->state_dir );
          if( options.at( "fix-reversible-blocks" ).as<bool>()) {
             if( !recover_reversible_blocks( my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
                                             my->chain_config->reversible_cache_size )) {
