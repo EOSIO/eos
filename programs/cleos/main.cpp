@@ -217,7 +217,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
 
    cmd->add_option("--max-cpu-usage-ms", tx_max_cpu_usage, localized("set an upper limit on the milliseconds of cpu usage budget, for the execution of the transaction (defaults to 0 which means no limit)"));
    cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
-  
+
    cmd->add_option("--delay-sec", delaysec, localized("set the delay_sec seconds, defaults to 0s"));
 }
 
@@ -560,13 +560,12 @@ fc::variant regproducer_variant(const account_name& producer, const public_key_t
             ;
 }
 
-chain::action create_open(const string& contract, const name& owner, asset amount, const name& ram_payer) {
+chain::action create_open(const string& contract, const name& owner, symbol sym, const name& ram_payer) {
    auto open_ = fc::mutable_variant_object
       ("owner", owner)
-      ("symbol", amount.get_symbol())
+      ("symbol", sym)
       ("ram_payer", ram_payer);
-
-   return action {
+    return action {
       tx_permission.empty() ? vector<chain::permission_level>{{ram_payer,config::active_name}} : get_account_permissions(tx_permission),
       contract, "open", variant_to_bin( contract, N(open), open_ )
    };
@@ -646,11 +645,11 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
    }
 }
 
-asset to_asset( const string& code, const string& s ) {
-   static map<eosio::chain::symbol_code, eosio::chain::symbol> cache;
+asset to_asset( account_name code, const string& s ) {
+   static map< pair<account_name, eosio::chain::symbol_code>, eosio::chain::symbol> cache;
    auto a = asset::from_string( s );
    eosio::chain::symbol_code sym = a.get_symbol().to_symbol_code();
-   auto it = cache.find( sym );
+   auto it = cache.find( make_pair(code, sym) );
    auto sym_str = a.symbol_name();
    if ( it == cache.end() ) {
       auto json = call(get_currency_stats_func, fc::mutable_variant_object("json", false)
@@ -661,7 +660,7 @@ asset to_asset( const string& code, const string& s ) {
       auto obj_it = obj.find( sym_str );
       if (obj_it != obj.end()) {
          auto result = obj_it->value().as<eosio::chain_apis::read_only::get_currency_stats_result>();
-         auto p = cache.insert(make_pair( sym, result.max_supply.get_symbol() ));
+         auto p = cache.emplace( make_pair( code, sym ), result.max_supply.get_symbol() );
          it = p.first;
       } else {
          EOS_THROW(symbol_type_exception, "Symbol ${s} is not supported by token contract ${c}", ("s", sym_str)("c", code));
@@ -679,7 +678,7 @@ asset to_asset( const string& code, const string& s ) {
 }
 
 inline asset to_asset( const string& s ) {
-   return to_asset( "eosio.token", s );
+   return to_asset( N(eosio.token), s );
 }
 
 struct set_account_permission_subcommand {
@@ -1368,7 +1367,7 @@ struct buyram_subcommand {
                   ("payer", from_str)
                   ("receiver", receiver_str)
                   ("bytes", fc::to_uint64(amount) * 1024ull);
-            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyrambytes), act_payload)});            
+            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyrambytes), act_payload)});
          } else {
             fc::variant act_payload = fc::mutable_variant_object()
                ("payer", from_str)
@@ -2235,7 +2234,7 @@ int main( int argc, char** argv ) {
 
    auto getSchedule = get_schedule_subcommand{get};
    auto getTransactionId = get_transaction_id_subcommand{get};
-   
+
    /*
    auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"), false);
    getTransactions->add_option("account_name", account_name, localized("name of account to query on"))->required();
@@ -2436,11 +2435,12 @@ int main( int argc, char** argv ) {
          tx_force_unique = false;
       }
 
-      auto transfer = create_transfer(con, sender, recipient, to_asset(con, amount), memo);
+      auto transfer_amount = to_asset(con, amount);
+      auto transfer = create_transfer(con, sender, recipient, transfer_amount, memo);
       if (!pay_ram) {
          send_actions( { transfer });
       } else {
-         auto open_ = create_open(con, recipient, to_asset(con, amount), sender);
+         auto open_ = create_open(con, recipient, transfer_amount.get_symbol(), sender);
          send_actions( { open_, transfer } );
       }
    });
