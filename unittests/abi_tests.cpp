@@ -495,7 +495,7 @@ BOOST_AUTO_TEST_CASE(uint_types)
 
    const char* currency_abi = R"=====(
    {
-       "version": "eosio::abi/1.1",
+       "version": "eosio::abi/1.0",
        "types": [],
        "structs": [{
            "name": "transfer",
@@ -557,7 +557,7 @@ struct abi_gen_helper {
     std::string stdc_include_param = std::string("-I") + eosiolib_path +  "/musl/upstream/include";
 
     abi_def output;
-    output.version = "eosio::abi/1.1";
+    output.version = "eosio::abi/1.0";
 
     std::string contract;
     std::vector<std::string> actions;
@@ -664,7 +664,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
 
    const char* all_types_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [],
      "structs": [{
       "name": "test_struct",
@@ -812,7 +812,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_double_action, abi_gen_helper)
 
    const char* double_action_abi = R"=====(
    {
-       "version": "eosio::abi/1.1",
+       "version": "eosio::abi/1.0",
        "types": [],
        "structs": [{
           "name" : "A",
@@ -874,7 +874,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_indexes, abi_gen_helper)
 
    const char* all_indexes_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [],
      "structs": [{
          "name": "table1",
@@ -1031,7 +1031,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_full_table_decl, abi_gen_helper)
 
    const char* full_table_decl_abi = R"=====(
    {
-       "version": "eosio::abi/1.1",
+       "version": "eosio::abi/1.0",
        "types": [],
        "structs": [{
           "name" : "table1",
@@ -1130,7 +1130,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_template_base, abi_gen_helper)
 
    const char* template_base_abi = R"=====(
    {
-       "version": "eosio::abi/1.1",
+       "version": "eosio::abi/1.0",
        "types": [],
        "structs": [{
           "name" : "base32",
@@ -1186,7 +1186,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_action_and_table, abi_gen_helper)
 
    const char* action_and_table_abi = R"=====(
    {
-       "version": "eosio::abi/1.1",
+       "version": "eosio::abi/1.0",
        "types": [],
        "structs": [{
           "name" : "table_action",
@@ -1246,7 +1246,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_simple_typedef, abi_gen_helper)
 
    const char* simple_typedef_abi = R"=====(
    {
-       "version": "eosio::abi/1.1",
+       "version": "eosio::abi/1.0",
        "types": [{
           "new_type_name" : "my_base_alias",
           "type" : "common_params"
@@ -1313,7 +1313,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_field_typedef, abi_gen_helper)
 
    const char* field_typedef_abi = R"=====(
    {
-       "version": "eosio::abi/1.1",
+       "version": "eosio::abi/1.0",
        "types": [{
           "new_type_name" : "my_complex_field_alias",
           "type" : "complex_field"
@@ -1389,7 +1389,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_POD, abi_gen_helper)
 
    const char* abigen_vector_of_POD_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [],
      "structs": [{
          "name": "table1",
@@ -1463,7 +1463,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_structs, abi_gen_helper)
 
    const char* abigen_vector_of_structs_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [],
      "structs": [{
          "name": "my_struct",
@@ -1569,7 +1569,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_alias, abi_gen_helper)
 
    const char* abigen_vector_alias_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [{
          "new_type_name": "array_of_rows",
          "type": "row[]"
@@ -1646,7 +1646,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_eosioabi_macro, abi_gen_helper)
 
    const char* abigen_eosioabi_macro_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [],
      "structs": [{
          "name": "hi",
@@ -1709,7 +1709,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_contract_inheritance, abi_gen_helper)
 
    const char* abigen_contract_inheritance_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [],
      "structs": [{
          "name": "hi",
@@ -1791,7 +1791,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_no_eosioabi_macro, abi_gen_helper)
 
    const char* abigen_no_eosioabi_macro_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [],
      "structs": [{
          "name": "hi",
@@ -2061,7 +2061,7 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
 
    const char* struct_cycle_abi = R"=====(
    {
-       "version": "eosio::abi/1.1",
+       "version": "eosio::abi/1.0",
        "types": [],
        "structs": [{
          "name": "A",
@@ -2798,7 +2798,7 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
 
    const char* packed_transaction_abi = R"=====(
    {
-       "version": "eosio::abi/1.1",
+       "version": "eosio::abi/1.0",
        "types": [{
           "new_type_name": "compression_type",
           "type": "int64"
@@ -2881,7 +2881,7 @@ BOOST_AUTO_TEST_CASE(abi_type_repeat)
 
    const char* repeat_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [{
          "new_type_name": "actor_name",
          "type": "name"
@@ -2942,7 +2942,7 @@ BOOST_AUTO_TEST_CASE(abi_struct_repeat)
 
    const char* repeat_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [{
          "new_type_name": "actor_name",
          "type": "name"
@@ -2999,7 +2999,7 @@ BOOST_AUTO_TEST_CASE(abi_action_repeat)
 
    const char* repeat_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [{
          "new_type_name": "actor_name",
          "type": "name"
@@ -3059,7 +3059,7 @@ BOOST_AUTO_TEST_CASE(abi_table_repeat)
 
    const char* repeat_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [{
          "new_type_name": "actor_name",
          "type": "name"
@@ -3122,7 +3122,7 @@ BOOST_AUTO_TEST_CASE(abi_type_def)
    // inifinite loop in types
    const char* repeat_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [{
          "new_type_name": "account_name",
          "type": "name"
@@ -3175,7 +3175,7 @@ BOOST_AUTO_TEST_CASE(abi_type_loop)
    // inifinite loop in types
    const char* repeat_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [{
          "new_type_name": "account_name",
          "type": "name"
@@ -3219,7 +3219,7 @@ BOOST_AUTO_TEST_CASE(abi_type_redefine)
    // inifinite loop in types
    const char* repeat_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [{
          "new_type_name": "account_name",
          "type": "account_name"
@@ -3260,7 +3260,7 @@ BOOST_AUTO_TEST_CASE(abi_type_redefine_to_name)
       // inifinite loop in types
       const char* repeat_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [{
          "new_type_name": "name",
          "type": "name"
@@ -3282,7 +3282,7 @@ BOOST_AUTO_TEST_CASE(abi_type_nested_in_vector)
       // inifinite loop in types
       const char* repeat_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [],
      "structs": [{
          "name": "store_t",
@@ -3308,7 +3308,7 @@ BOOST_AUTO_TEST_CASE(abi_account_name_in_eosio_abi)
    // inifinite loop in types
    const char* repeat_abi = R"=====(
    {
-     "version": "eosio::abi/1.1",
+     "version": "eosio::abi/1.0",
      "types": [{
          "new_type_name": "account_name",
          "type": "name"
@@ -3351,7 +3351,7 @@ BOOST_AUTO_TEST_CASE(abi_large_array)
    try {
       const char* abi_str = R"=====(
       {
-        "version": "eosio::abi/1.1",
+        "version": "eosio::abi/1.0",
         "types": [],
         "structs": [{
            "name": "hi",
@@ -3389,7 +3389,7 @@ BOOST_AUTO_TEST_CASE(abi_is_type_recursion)
    try {
       const char* abi_str = R"=====(
       {
-       "version": "eosio::abi/1.1",
+       "version": "eosio::abi/1.0",
        "types": [
         {
             "new_type_name": "a[]",
@@ -3433,7 +3433,7 @@ BOOST_AUTO_TEST_CASE(abi_recursive_structs)
    try {
       const char* abi_str = R"=====(
       {
-        "version": "eosio::abi/1.1",
+        "version": "eosio::abi/1.0",
         "types": [],
         "structs": [
           {
@@ -3529,7 +3529,7 @@ BOOST_AUTO_TEST_CASE(abi_deep_structs_validate)
 BOOST_AUTO_TEST_CASE(variants)
 {
    auto duplicate_variant_abi = R"({
-      "version": "eosio::abi/1.0",
+      "version": "eosio::abi/1.1",
       "variants": [
          {"name": "v1", "types": ["int8", "string", "bool"]},
          {"name": "v1", "types": ["int8", "string", "bool"]},
@@ -3537,14 +3537,14 @@ BOOST_AUTO_TEST_CASE(variants)
    })";
 
    auto variant_abi_invalid_type = R"({
-      "version": "eosio::abi/1.0",
+      "version": "eosio::abi/1.1",
       "variants": [
          {"name": "v1", "types": ["int91", "string", "bool"]},
       ],
    })";
 
    auto variant_abi = R"({
-      "version": "eosio::abi/1.0",
+      "version": "eosio::abi/1.1",
       "types": [
          {"new_type_name": "foo", "type": "s"},
          {"new_type_name": "bar", "type": "s"},
