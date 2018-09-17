@@ -560,6 +560,18 @@ fc::variant regproducer_variant(const account_name& producer, const public_key_t
             ;
 }
 
+chain::action create_open(const string& contract, const name& owner, asset amount, const name& ram_payer) {
+   auto open_ = fc::mutable_variant_object
+      ("owner", owner)
+      ("symbol", amount.get_symbol())
+      ("ram_payer", ram_payer);
+
+   return action {
+      tx_permission.empty() ? vector<chain::permission_level>{{ram_payer,config::active_name}} : get_account_permissions(tx_permission),
+      contract, "open", variant_to_bin( contract, N(open), open_ )
+   };
+}
+
 chain::action create_transfer(const string& contract, const name& sender, const name& recipient, asset amount, const string& memo ) {
 
    auto transfer = fc::mutable_variant_object
@@ -2407,12 +2419,14 @@ int main( int argc, char** argv ) {
    string recipient;
    string amount;
    string memo;
+   bool pay_ram = false;
    auto transfer = app.add_subcommand("transfer", localized("Transfer EOS from account to account"), false);
    transfer->add_option("sender", sender, localized("The account sending EOS"))->required();
    transfer->add_option("recipient", recipient, localized("The account receiving EOS"))->required();
    transfer->add_option("amount", amount, localized("The amount of EOS to send"))->required();
    transfer->add_option("memo", memo, localized("The memo for the transfer"));
    transfer->add_option("--contract,-c", con, localized("The contract which controls the token"));
+   transfer->add_flag("--pay-ram-to-open", pay_ram, localized("Pay ram to open recipient's token balance row"));
 
    add_standard_transaction_options(transfer, "sender@active");
    transfer->set_callback([&] {
@@ -2422,7 +2436,13 @@ int main( int argc, char** argv ) {
          tx_force_unique = false;
       }
 
-      send_actions({create_transfer(con, sender, recipient, to_asset(con, amount), memo)});
+      auto transfer = create_transfer(con, sender, recipient, to_asset(con, amount), memo);
+      if (!pay_ram) {
+         send_actions( { transfer });
+      } else {
+         auto open_ = create_open(con, recipient, to_asset(con, amount), sender);
+         send_actions( { open_, transfer } );
+      }
    });
 
    // Net subcommand
