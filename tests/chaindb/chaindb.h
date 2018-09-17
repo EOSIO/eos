@@ -14,6 +14,8 @@ static constexpr cursor_t invalid_cursor = (-1);
 typedef uint64_t primary_key_t;
 static constexpr primary_key_t unset_primary_key = (-1);
 
+int32_t chaindb_init(const char*);
+
 cursor_t chaindb_lower_bound(account_name_t code, account_name_t scope, table_name_t, index_name_t, void* key, size_t);
 cursor_t chaindb_upper_bound(account_name_t code, account_name_t scope, table_name_t, index_name_t, void* key, size_t);
 cursor_t chaindb_find(account_name_t code, account_name_t scope, table_name_t, index_name_t, primary_key_t, void* key, size_t);

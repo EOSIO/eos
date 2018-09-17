@@ -62,13 +62,10 @@ void safe_allocate(const size_t size, const char* error_msg, Lambda&& callback) 
 
     struct allocator {
         char* data = nullptr;
-        const size_t size;
         const bool use_malloc;
-
         allocator(const size_t s)
-            : size(s),
-              use_malloc(s > max_stack_data_size) {
-            if (use_malloc) data = static_cast<char*>(malloc(size));
+            : use_malloc(s > max_stack_data_size) {
+            if (use_malloc) data = static_cast<char*>(malloc(s));
         }
 
         ~allocator() {
@@ -76,10 +73,10 @@ void safe_allocate(const size_t size, const char* error_msg, Lambda&& callback) 
         }
     } alloc(size);
 
-    if (!alloc.use_malloc) alloc.data = static_cast<char*>(alloca(alloc.size));
+    if (!alloc.use_malloc) alloc.data = static_cast<char*>(alloca(size));
     chaindb_assert(alloc.data != nullptr, "unable to allocate memory");
 
-    callback(alloc.data, alloc.size);
+    callback(alloc.data, size);
 }
 
 template<table_name_t TableName, typename PrimaryKeyExtractor, typename T, typename... Indices>

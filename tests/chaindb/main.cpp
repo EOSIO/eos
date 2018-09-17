@@ -27,19 +27,27 @@ using hello_index =
             N(name), chaindb::const_mem_fun<hello_object, const std::string&, &hello_object::by_name>>>;
 
 int main() {
-    hello_index hidx(N(test), N(test));
-
-    auto idx = hidx.get_index<N(name)>();
-    auto itr = idx.find("monro");
-
-    if (idx.end() == itr) {
-        hidx.emplace(N(test),[&](auto& o){
-            o.id = hidx.available_primary_key();
-            o.name = "monro";
-            o.age = 10;
-        });
+    if (!chaindb_init("mongodb://127.0.0.1:27017")) {
+        std::cerr << "Cannot connect to database" << std::endl;
+        return 1;
     }
 
-    //std::cout << "Hello, World!" << std::endl;
+    try {
+        hello_index hidx(N(test), N(test));
+
+        auto idx = hidx.get_index<N(name)>();
+        auto itr = idx.find("monro");
+
+        if (idx.end() == itr) {
+            hidx.emplace(N(test), [&](auto& o) {
+                o.id = hidx.available_primary_key();
+                o.name = "monro";
+                o.age = 10;
+            });
+        }
+    } catch (const fc::exception& e) {
+        std::cerr << e.to_detail_string() << std::endl;
+    }
+
     return 0;
 }
