@@ -283,6 +283,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "replace reversible block database with blocks imported from specified file and then exit")
          ("export-reversible-blocks", bpo::value<bfs::path>(),
            "export reversible block database in portable format into specified file and then exit")
+         ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
          ;
 
 }
@@ -331,6 +332,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       LOAD_VALUE_SET( options, "actor-blacklist", my->chain_config->actor_blacklist );
       LOAD_VALUE_SET( options, "contract-whitelist", my->chain_config->contract_whitelist );
       LOAD_VALUE_SET( options, "contract-blacklist", my->chain_config->contract_blacklist );
+
+      LOAD_VALUE_SET( options, "trusted-producer", my->chain_config->trusted_producers );
 
       if( options.count( "action-blacklist" )) {
          const std::vector<std::string>& acts = options["action-blacklist"].as<std::vector<std::string>>();

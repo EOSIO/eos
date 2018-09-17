@@ -108,6 +108,7 @@ struct controller_impl {
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
    optional<fc::microseconds>     subjective_cpu_leeway;
+   bool                           trusted_producer_light_validation = false;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -1027,14 +1028,20 @@ struct controller_impl {
 
 
    void push_block( const signed_block_ptr& b, controller::block_status s ) {
-    //  idump((fc::json::to_pretty_string(*b)));
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
+
+      auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
+         trusted_producer_light_validation = old_value;
+      });
       try {
          EOS_ASSERT( b, block_validate_exception, "trying to push empty block" );
          EOS_ASSERT( s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block" );
          emit( self.pre_accepted_block, b );
          bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
          auto new_header_state = fork_db.add( b, trust );
+         if (conf.trusted_producers.count(b->producer)) {
+            trusted_producer_light_validation = true;
+         };
          emit( self.accepted_block_header, new_header_state );
 
          if ( read_mode != db_read_mode::IRREVERSIBLE ) {
@@ -1673,13 +1680,14 @@ bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) c
       return false;
    }
 
-   auto pb_status = my->pending->_block_status;
+   const auto pb_status = my->pending->_block_status;
 
    // in a pending irreversible or previously validated block and we have forcing all checks
-   bool consider_skipping_on_replay = (pb_status == block_status::irreversible || pb_status == block_status::validated) && !replay_opts_disabled_by_policy;
+   const bool consider_skipping_on_replay = (pb_status == block_status::irreversible || pb_status == block_status::validated) && !replay_opts_disabled_by_policy;
 
    // OR in a signed block and in light validation mode
-   bool consider_skipping_on_validate = (pb_status == block_status::complete && my->conf.block_validation_mode == validation_mode::LIGHT);
+   const bool consider_skipping_on_validate = (pb_status == block_status::complete &&
+         (my->conf.block_validation_mode == validation_mode::LIGHT || my->trusted_producer_light_validation));
 
    return consider_skipping_on_replay || consider_skipping_on_validate;
 }
