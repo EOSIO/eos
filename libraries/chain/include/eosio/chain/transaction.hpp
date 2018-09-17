@@ -132,7 +132,8 @@ namespace eosio { namespace chain {
 
       time_point_sec     expiration()const;
       transaction_id_type id()const;
-      bytes              get_raw_transaction()const;
+      transaction_id_type get_uncached_id()const; // thread safe
+      bytes              get_raw_transaction()const; // thread safe
       vector<bytes>      get_context_free_data()const;
       transaction        get_transaction()const;
       signed_transaction get_signed_transaction()const;

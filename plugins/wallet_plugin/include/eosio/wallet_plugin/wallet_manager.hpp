@@ -6,6 +6,7 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/wallet_plugin/wallet_api.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/interprocess/sync/file_lock.hpp>
 #include <chrono>
 
 namespace fc { class variant; }
@@ -24,11 +25,14 @@ public:
    wallet_manager(wallet_manager&&) = delete;
    wallet_manager& operator=(const wallet_manager&) = delete;
    wallet_manager& operator=(wallet_manager&&) = delete;
-   ~wallet_manager() = default;
+   ~wallet_manager();
 
    /// Set the path for location of wallet files.
    /// @param p path to override default ./ location of wallet files.
-   void set_dir(const boost::filesystem::path& p) { dir = p; }
+   void set_dir(const boost::filesystem::path& p) {
+      dir = p;
+      initialize_lock();
+   }
 
    /// Set the timeout for locking all wallets.
    /// If set then after t seconds of inactivity then lock_all().
@@ -135,6 +139,10 @@ private:
    std::chrono::seconds timeout = std::chrono::seconds::max(); ///< how long to wait before calling lock_all()
    mutable timepoint_t timeout_time = timepoint_t::max(); ///< when to call lock_all()
    boost::filesystem::path dir = ".";
+   boost::filesystem::path lock_path = dir / "wallet.lock";
+   std::unique_ptr<boost::interprocess::file_lock> wallet_dir_lock;
+
+   void initialize_lock();
 };
 
 } // namespace wallet

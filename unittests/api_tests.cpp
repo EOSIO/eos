@@ -437,6 +437,27 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE(ram_billing_in_notify_tests, TESTER) { try {
+   produce_blocks(2);
+   create_account( N(testapi) );
+   create_account( N(testapi2) );
+   produce_blocks(10);
+   set_code( N(testapi), test_api_wast );
+   produce_blocks(1);
+   set_code( N(testapi2), test_api_wast );
+   produce_blocks(1);
+
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | N(testapi) ) ),
+                          subjective_block_production_exception, fc_exception_message_is("Cannot charge RAM to other accounts during notify.") );
+
+
+   CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | 0 ) );
+
+   CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | N(testapi2) ) );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
+
 /*************************************************************************************
  * context free action tests
  *************************************************************************************/
@@ -1098,7 +1119,27 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 
    produce_blocks(10);
 
+   //repeated deferred transactions
    {
+      vector<transaction_trace_ptr> traces;
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) {
+         if (t && t->scheduled) {
+            traces.push_back( t );
+         }
+      } );
+
+      CALL_TEST_FUNCTION(*this, "test_transaction", "repeat_deferred_transaction", fc::raw::pack( (uint32_t)5 ) );
+
+      produce_block();
+
+      c.disconnect();
+
+      BOOST_CHECK_EQUAL( traces.size(), 5 );
+   }
+
+   produce_blocks(10);
+
+{
    // Trigger a tx which in turn sends a deferred tx with payer != receiver
    // Payer is alice in this case, this tx should fail since we don't have the authorization of alice
    dtt_action dtt_act1;

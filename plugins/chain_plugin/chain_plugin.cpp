@@ -244,6 +244,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Chain validation mode (\"full\" or \"light\").\n"
           "In \"full\" mode all incoming blocks will be fully validated.\n"
           "In \"light\" mode all incoming blocks headers will be fully validated; transactions in those validated blocks will be trusted \n")
+         ("disable-ram-billing-notify-checks", bpo::bool_switch()->default_value(false),
+          "Disable the check which subjectively fails a transaction if a contract bills more RAM to another account within the context of a notification handler (i.e. when the receiver is not the code of the action).")
          ;
 
 // TODO: rate limiting
@@ -405,6 +407,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->force_all_checks = options.at( "force-all-checks" ).as<bool>();
       my->chain_config->disable_replay_opts = options.at( "disable-replay-opts" ).as<bool>();
       my->chain_config->contracts_console = options.at( "contracts-console" ).as<bool>();
+      my->chain_config->allow_ram_billing_in_notify = options.at( "disable-ram-billing-notify-checks" ).as<bool>();
 
       if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
          genesis_state gs;
@@ -1404,11 +1407,15 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
             auto trx_trace_ptr = result.get<transaction_trace_ptr>();
 
             try {
-               fc::variant pretty_output;
-               pretty_output = db.to_variant_with_abi(*trx_trace_ptr, abi_serializer_max_time);
-
                chain::transaction_id_type id = trx_trace_ptr->id;
-               next(read_write::push_transaction_results{id, pretty_output});
+               fc::variant output;
+               try {
+                  output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer_max_time );
+               } catch( chain::abi_exception& ) {
+                  output = *trx_trace_ptr;
+               }
+
+               next(read_write::push_transaction_results{id, output});
             } CATCH_AND_CALL(next);
          }
       });
@@ -1471,6 +1478,8 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    result.account_name = params.account_name;
    const auto& d = db.db();
    const auto& accnt  = d.get<account_object,by_name>( params.account_name );
+
+   EOS_ASSERT( params.code_as_wasm, unsupported_feature, "Returning WAST from get_code is no longer supported" );
 
    if( accnt.code.size() ) {
       if (params.code_as_wasm) {
@@ -1664,7 +1673,7 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
       abi_serializer::from_variant(params.transaction, pretty_input, resolver, abi_serializer_max_time);
    } EOS_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction")
 
-   auto required_keys_set = db.get_authorization_manager().get_required_keys(pretty_input, params.available_keys);
+   auto required_keys_set = db.get_authorization_manager().get_required_keys( pretty_input, params.available_keys, fc::seconds( pretty_input.delay_sec ));
    get_required_keys_result result;
    result.required_keys = required_keys_set;
    return result;

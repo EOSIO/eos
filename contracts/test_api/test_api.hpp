@@ -57,7 +57,6 @@ struct test_print {
 };
 
 struct test_action {
-
   static void read_action_normal();
   static void read_action_to_0();
   static void read_action_to_64k();
@@ -73,6 +72,7 @@ struct test_action {
   static void test_current_receiver(uint64_t receiver, uint64_t code, uint64_t action);
   static void test_publication_time();
   static void test_assert_code();
+  static void test_ram_billing_in_notify(uint64_t receiver, uint64_t code, uint64_t action);
 };
 
 struct test_db {
@@ -181,6 +181,7 @@ struct test_transaction {
   static void context_free_api();
   static void new_feature();
   static void active_new_feature();
+  static void repeat_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);
 };
 
 struct test_chain {
