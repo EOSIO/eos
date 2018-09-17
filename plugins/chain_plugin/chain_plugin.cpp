@@ -1644,16 +1644,18 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 
       const auto token_code = N(eosio.token);
 
+      auto core_symbol = extract_core_symbol();
+
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));
       if( t_id != nullptr ) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, symbol().to_symbol_code() ));
+         auto it = idx.find(boost::make_tuple( t_id->id, core_symbol.to_symbol_code() ));
          if( it != idx.end() && it->value.size() >= sizeof(asset) ) {
             asset bal;
             fc::datastream<const char *> ds(it->value.data(), it->value.size());
             fc::raw::unpack(ds, bal);
 
-            if( bal.get_symbol().valid() && bal.get_symbol() == symbol() ) {
+            if( bal.get_symbol().valid() && bal.get_symbol() == core_symbol ) {
                result.core_liquid_balance = bal;
             }
          }
@@ -1766,6 +1768,46 @@ read_only::get_transaction_id_result read_only::get_transaction_id( const read_o
    return params.id();
 }
 
+namespace detail {
+   struct ram_market_exchange_state_t {
+      asset  ignore1;
+      asset  ignore2;
+      double ignore3;
+      asset  core_symbol;
+      double ignore4;
+   };
+}
+
+chain::symbol read_only::extract_core_symbol()const {
+   symbol core_symbol; // Default to CORE_SYMBOL if the appropriate data structure cannot be found in the system contract table data
+
+   // The following code makes assumptions about the contract deployed on eosio account (i.e. the system contract) and how it stores its data.
+   const auto& d = db.db();
+   const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(eosio), N(eosio), N(rammarket) ));
+   if( t_id != nullptr ) {
+      const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+      auto it = idx.find(boost::make_tuple( t_id->id, eosio::chain::string_to_symbol_c(4,"RAMCORE") ));
+      if( it != idx.end() ) {
+         detail::ram_market_exchange_state_t ram_market_exchange_state;
+
+         fc::datastream<const char *> ds( it->value.data(), it->value.size() );
+
+         try {
+            fc::raw::unpack(ds, ram_market_exchange_state);
+         } catch( ... ) {
+            return core_symbol;
+         }
+
+         if( ram_market_exchange_state.core_symbol.get_symbol().valid() ) {
+            core_symbol = ram_market_exchange_state.core_symbol.get_symbol();
+         }
+      }
+   }
+
+   return core_symbol;
+}
 
 } // namespace chain_apis
 } // namespace eosio
+
+FC_REFLECT( eosio::chain_apis::detail::ram_market_exchange_state_t, (ignore1)(ignore2)(ignore3)(core_symbol)(ignore4) )

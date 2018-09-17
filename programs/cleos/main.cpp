@@ -1479,6 +1479,13 @@ void get_account( const string& accountName, bool json_format ) {
       asset staked;
       asset unstaking;
 
+      if( res.core_liquid_balance.valid() ) {
+         unstaking = asset( 0, res.core_liquid_balance->get_symbol() ); // Correct core symbol for unstaking asset.
+         staked = asset( 0, res.core_liquid_balance->get_symbol() );    // Correct core symbol for staked asset.
+      }
+
+      std::cout << "created: " << string(res.created) << std::endl;
+
       if(res.privileged) std::cout << "privileged: true" << std::endl;
 
       constexpr size_t indent_size = 5;

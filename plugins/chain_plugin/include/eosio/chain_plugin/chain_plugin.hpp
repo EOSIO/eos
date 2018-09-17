@@ -512,6 +512,8 @@ public:
       return result;
    }
 
+   chain::symbol extract_core_symbol()const;
+
    friend struct resolver_factory<read_only>;
 };
 
