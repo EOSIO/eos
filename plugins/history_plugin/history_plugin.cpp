@@ -440,13 +440,22 @@ namespace eosio {
       read_only::get_transaction_result read_only::get_transaction( const read_only::get_transaction_params& p )const {
          auto& chain = history->chain_plug->chain();
          const auto abi_serializer_max_time = history->chain_plug->get_abi_serializer_max_time();
-         auto short_id = fc::variant(p.id).as_string().substr(0,8);
 
          const auto& db = chain.db();
          const auto& idx = db.get_index<action_history_index, by_trx_id>();
          auto itr = idx.lower_bound( boost::make_tuple(p.id) );
 
-         bool in_history = (itr != idx.end() && fc::variant(itr->trx_id).as_string().substr(0,8) == short_id );
+         auto txn_id_matched = [&p](const transaction_id_type &id)->bool { // hex prefix comparison
+            string p_str = (string)p.id;
+            size_t prefix_len = p_str.length();
+            string id_str = (string)id;
+            while (prefix_len > 1 && p_str[prefix_len - 1] == '0') prefix_len--;
+            if (prefix_len < 8) prefix_len = 8;
+            if (p_str.length() < prefix_len || id_str.length() < prefix_len) return false;
+            return memcmp(p_str.c_str(), id_str.c_str(), prefix_len) == 0;
+         };
+
+         bool in_history = (itr != idx.end() && txn_id_matched(itr->trx_id));
 
          if( !in_history && !p.block_num_hint ) {
             EOS_THROW(tx_not_found, "Transaction ${id} not found in history and no block hint was given", ("id",p.id));
@@ -509,7 +518,7 @@ namespace eosio {
                   if (receipt.trx.contains<packed_transaction>()) {
                      auto& pt = receipt.trx.get<packed_transaction>();
                      auto mtrx = transaction_metadata(pt);
-                     if (fc::variant(mtrx.id).as_string().substr(0, 8) == short_id) {
+                     if (txn_id_matched(mtrx.id)) {
                         result.id = mtrx.id;
                         result.last_irreversible_block = chain.last_irreversible_block_num();
                         result.block_num = *p.block_num_hint;
@@ -522,7 +531,7 @@ namespace eosio {
                      }
                   } else {
                      auto& id = receipt.trx.get<transaction_id_type>();
-                     if (fc::variant(id).as_string().substr(0, 8) == short_id) {
+                     if (txn_id_matched(id)) {
                         result.id = id;
                         result.last_irreversible_block = chain.last_irreversible_block_num();
                         result.block_num = *p.block_num_hint;
