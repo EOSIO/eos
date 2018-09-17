@@ -1438,9 +1438,9 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
          ("mongodb-store-action-traces", bpo::value<bool>()->default_value(true),
           "Enables storing action traces in mongodb.")
          ("mongodb-filter-on", bpo::value<vector<string>>()->composing(),
-          "Mongodb: Track actions which match receiver:action:actor. Action and/or Actor may be blank to include all. Action and Actor both blank allows all from Receiver. Receiver may not be blank.")
+          "Track actions which match receiver:action:actor. Receiver, Action, & Actor may be blank to include all. i.e. eosio:: or :transfer:  Use * or leave unspecified to include all.")
          ("mongodb-filter-out", bpo::value<vector<string>>()->composing(),
-          "Mongodb: Do not track actions which match receiver:action:actor. Action and Actor both blank excludes all from Receiver. Actor blank excludes all from receiver:action. Receiver may not be blank.")
+          "Do not track actions which match receiver:action:actor. Receiver, Action, & Actor may be blank to exclude all.")
          ;
 }
 
