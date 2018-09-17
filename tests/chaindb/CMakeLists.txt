@@ -1,5 +1,5 @@
 set(CHAINDB_TEST_NAME chaindb_test)
-add_executable(${CHAINDB_TEST_NAME} main.cpp multi_index.hpp)
+add_executable(${CHAINDB_TEST_NAME} main.cpp multi_index.hpp chaindb.h)
 
 target_include_directories(
     ${CHAINDB_TEST_NAME}
@@ -7,7 +7,7 @@ target_include_directories(
 
 target_link_libraries(
     ${CHAINDB_TEST_NAME}
-    PRIVATE ${PLATFORM_SPECIFIC_LIBS} ${Boost_LIBRARIES})
+    PRIVATE ${PLATFORM_SPECIFIC_LIBS} ${Boost_LIBRARIES} fc eosio_chain)
 
 install(TARGETS
    ${CHAINDB_TEST_NAME}
