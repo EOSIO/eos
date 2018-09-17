@@ -316,6 +316,9 @@ fc::time_point calculate_genesis_timestamp( string tstr ) {
 void clear_directory_contents( const fc::path& p ) {
    using boost::filesystem::directory_iterator;
 
+   if( !fc::is_directory( p ) )
+      return;
+
    for( directory_iterator enditr, itr{p}; itr != enditr; ++itr ) {
       fc::remove_all( itr->path() );
    }
