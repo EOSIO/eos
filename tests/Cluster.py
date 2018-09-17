@@ -99,7 +99,7 @@ class Cluster(object):
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", p2pPlugin="net", delay=1, onlyBios=False, dontKill=False
-               , dontBootstrap=False, totalProducers=None, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None):
+               , dontBootstrap=False, totalProducers=None, extraNodeosArgs=None, useBiosBootFile=False, specificExtraNodeosArgs=None):
         """Launch cluster.
         pnodes: producer nodes count
         totalNodes: producer + non-producer nodes count
