@@ -74,8 +74,6 @@ if ("${OPENSSL_ROOT_DIR}" STREQUAL "")
    endif()
 endif()
 
-find_package(Secp256k1 REQUIRED)
-
 if(UNIX)
   if(APPLE)
     set(whole_archive_flag "-force_load")
