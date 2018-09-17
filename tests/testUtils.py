@@ -79,7 +79,7 @@ class Utils:
         assert(isinstance(cmd, list))
         popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (output,error)=popen.communicate()
-        Utils.CheckOutputDeque.append((output,error))
+        Utils.CheckOutputDeque.append((output,error,cmd))
         if popen.returncode != 0:
             raise subprocess.CalledProcessError(returncode=popen.returncode, cmd=cmd, output=error)
         return output.decode("utf-8")
