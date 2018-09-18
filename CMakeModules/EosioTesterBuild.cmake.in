@@ -61,6 +61,12 @@ find_library(libosssl ssl @OPENSSL_ROOT_DIR@/lib)
 find_library(libchainbase chainbase @CMAKE_BINARY_DIR@/libraries/chainbase)
 find_library(libbuiltins builtins @CMAKE_BINARY_DIR@/libraries/builtins)
 find_library(libsecp256k1 secp256k1 @CMAKE_BINARY_DIR@/libraries/fc/secp256k1)
+find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
+    HINTS ENV GMP_LIB_DIR
+          ENV GMP_DIR
+    PATH_SUFFIXES lib
+    DOC "Path to the GMP library"
+)
 
 macro(add_eosio_test test_name)
    add_executable( ${test_name} ${ARGN} )
@@ -82,6 +88,7 @@ macro(add_eosio_test test_name)
        ${liblogging}
        ${libchainbase}
        ${libbuiltins}
+       ${GMP_LIBRARIES}
        ${libsecp256k1}
 
        LLVMX86Disassembler
