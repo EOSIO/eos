@@ -36,6 +36,10 @@ case "$1" in
       adduser --no-create-home --group --system ${USER}
     fi
     set -e
+    touch /var/log/${PACKAGE}
+    mkdir -p /var/lib/${PACKAGE}
+    mkdir -p /etc/${PACKAGE}
+    mkdir -p /etc/${PACKAGE}/node_00
     chown ${USER}:${GROUP} /var/log/${PACKAGE}
     chown ${USER}:${GROUP} /var/lib/${PACKAGE}
     chown ${USER}:${GROUP} /etc/${PACKAGE}
