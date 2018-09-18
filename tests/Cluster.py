@@ -12,7 +12,6 @@ import datetime
 import sys
 import random
 import json
-import socket
 import errno
 
 from core_symbol import CORE_SYMBOL
@@ -131,7 +130,7 @@ class Cluster(object):
             producerFlag="--producers %s" % (totalProducers)
 
         tries = 30
-        while not Cluster.arePortsAvailable(set(range(self.port, self.port+totalNodes+1))):
+        while not Utils.arePortsAvailable(set(range(self.port, self.port+totalNodes+1))):
             Utils.Print("ERROR: Another process is listening on nodeos default port. wait...")
             if tries == 0:
                 return False
@@ -365,34 +364,6 @@ class Cluster(object):
         self.defproducerbAccount=self.defProducerAccounts["defproducerb"]
 
         return True
-
-    @staticmethod
-    def arePortsAvailable(ports):
-        """Check if specified ports are available for listening on."""
-        assert(ports)
-        assert(isinstance(ports, set))
-
-        for port in ports:
-            if Utils.Debug: Utils.Print("Checking if port %d is available." % (port))
-            assert(isinstance(port, int))
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-            try:
-                s.bind(("127.0.0.1", port))
-            except socket.error as e:
-                if e.errno == errno.EADDRINUSE:
-                    Utils.Print("ERROR: Port %d is already in use" % (port))
-                else:
-                    # something else raised the socket.error exception
-                    Utils.Print("ERROR: Unknown exception while trying to listen on port %d" % (port))
-                    Utils.Print(e)
-                return False
-            finally:
-                s.close()
-
-        return True
-
 
     # Initialize the default nodes (at present just the root node)
     def initializeNodes(self, defproduceraPrvtKey=None, defproducerbPrvtKey=None, onlyBios=False):
