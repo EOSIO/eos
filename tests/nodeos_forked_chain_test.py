@@ -122,7 +122,7 @@ testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
 
-WalletdName="keosd"
+WalletdName=Utils.EosWalletName
 ClientName="cleos"
 
 try:
