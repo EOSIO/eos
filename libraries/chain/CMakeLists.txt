@@ -51,7 +51,7 @@ add_library( eosio_chain
              )
 
 target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime
-      wasm asmjs passes cfg ast emscripten-optimizer support softfloat builtins libwabt
+      wasm asmjs passes cfg ast emscripten-optimizer support softfloat builtins wabt
                      )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"

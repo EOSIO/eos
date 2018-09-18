@@ -7,7 +7,6 @@
 #include <softfloat_types.h>
 
 //wabt includes
-#include <src/error-handler.h>
 #include <src/binary-reader.h>
 #include <src/common.h>
 #include <src/interp.h>
