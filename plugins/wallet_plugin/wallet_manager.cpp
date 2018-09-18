@@ -33,6 +33,12 @@ wallet_manager::wallet_manager() {
 #endif
 }
 
+wallet_manager::~wallet_manager() {
+   //not really required, but may spook users
+   if(wallet_dir_lock)
+      boost::filesystem::remove(lock_path);
+}
+
 void wallet_manager::set_timeout(const std::chrono::seconds& t) {
    timeout = t;
    auto now = std::chrono::system_clock::now();
@@ -267,6 +273,21 @@ void wallet_manager::own_and_use_wallet(const string& name, std::unique_ptr<wall
    if(wallets.find(name) != wallets.end())
       FC_THROW("tried to use wallet name the already existed");
    wallets.emplace(name, std::move(wallet));
+}
+
+void wallet_manager::initialize_lock() {
+   //This is technically somewhat racy in here -- if multiple keosd are in this function at once.
+   //I've considered that an acceptable tradeoff to maintain cross-platform boost constructs here
+   lock_path = dir / "wallet.lock";
+   {
+      std::ofstream x(lock_path.string());
+      EOS_ASSERT(!x.fail(), wallet_exception, "Failed to open wallet lock file at ${f}", ("f", lock_path.string()));
+   }
+   wallet_dir_lock = std::make_unique<boost::interprocess::file_lock>(lock_path.string().c_str());
+   if(!wallet_dir_lock->try_lock()) {
+      wallet_dir_lock.reset();
+      EOS_THROW(wallet_exception, "Failed to lock access to wallet directory; is another keosd running?");
+   }
 }
 
 } // namespace wallet
