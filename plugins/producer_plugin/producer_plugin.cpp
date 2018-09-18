@@ -1074,7 +1074,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                   auto category = calculate_transaction_category(trx);
                   if (category == tx_category::EXPIRED || (category == tx_category::UNEXPIRED_UNPERSISTED && _producers.empty())) {
                      if (!_producers.empty()) {
-                        fc_dlog(_trx_trace_log, "[TRX_TRACE] Node with producers configured is dropping a PREVIOUSLY ACCEPTED transaction : ${txid}",
+                        fc_dlog(_trx_trace_log, "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED : ${txid}",
                                ("txid", trx->id));
                      }
                      chain.drop_unapplied_transaction(trx);
