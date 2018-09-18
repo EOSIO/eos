@@ -5,6 +5,7 @@
 //wabt includes
 #include <src/interp.h>
 #include <src/binary-reader-interp.h>
+#include <src/error-formatter.h>
 
 namespace eosio { namespace chain { namespace webassembly { namespace wabt_runtime {
 
@@ -87,10 +88,10 @@ std::unique_ptr<wasm_instantiated_module_interface> wabt_runtime::instantiate_mo
    }
 
    interp::DefinedModule* instantiated_module = nullptr;
-   ErrorHandlerBuffer error_handler(Location::Type::Binary);
+   wabt::Errors errors;
 
-   wabt::Result res = ReadBinaryInterp(env.get(), code_bytes, code_size, read_binary_options, &error_handler, &instantiated_module);
-   EOS_ASSERT( Succeeded(res), wasm_execution_error, "Error building wabt interp: ${e}", ("e", error_handler.buffer()) );
+   wabt::Result res = ReadBinaryInterp(env.get(), code_bytes, code_size, read_binary_options, &errors, &instantiated_module);
+   EOS_ASSERT( Succeeded(res), wasm_execution_error, "Error building wabt interp: ${e}", ("e", wabt::FormatErrorsToString(errors, Location::Type::Binary)) );
    
    return std::make_unique<wabt_instantiated_module>(std::move(env), initial_memory, instantiated_module);
 }
