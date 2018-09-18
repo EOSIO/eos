@@ -1083,12 +1083,15 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
             if (!apply_trxs.empty()) {
                int num_applied = 0;
                int num_failed = 0;
+               int num_processed = 0;
 
                for (const auto& trx: apply_trxs) {
                   if (block_time <= fc::time_point::now()) exhausted = true;
                   if (exhausted) {
                      break;
                   }
+
+                  num_processed++;
 
                   try {
                      auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
@@ -1116,7 +1119,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                   } FC_LOG_AND_DROP();
                }
 
-               fc_dlog(_log, "Processed ${n} previously applied transactions, Applied ${applied}, Failed/Dropped ${failed}",
+               fc_dlog(_log, "Processed ${m} of ${n} previously applied transactions, Applied ${applied}, Failed/Dropped ${failed}",
+                      ("m", num_processed)
                       ("n", apply_trxs.size())
                       ("applied", num_applied)
                       ("failed", num_failed));
@@ -1145,12 +1149,15 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
             if (!scheduled_trxs.empty()) {
                int num_applied = 0;
                int num_failed = 0;
+               int num_processed = 0;
 
                for (const auto& trx : scheduled_trxs) {
                   if (block_time <= fc::time_point::now()) exhausted = true;
                   if (exhausted) {
                      break;
                   }
+
+                  num_processed++;
 
                   // configurable ratio of incoming txns vs deferred txns
                   while (_incoming_trx_weight >= 1.0 && orig_pending_txn_size && _pending_incoming_transactions.size()) {
@@ -1200,8 +1207,11 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                   if (!orig_pending_txn_size) _incoming_trx_weight = 0.0;
                }
 
-               fc_dlog(_log, "Processed ${n} scheduled transactions, Applied ${applied}, Failed/Dropped ${failed}",
-                      ("n", scheduled_trxs.size())("applied", num_applied)("failed", num_failed));
+               fc_dlog(_log, "Processed ${m} of ${n} scheduled transactions, Applied ${applied}, Failed/Dropped ${failed}",
+                      ("m", num_processed)
+                      ("n", scheduled_trxs.size())
+                      ("applied", num_applied)
+                      ("failed", num_failed));
 
             }
          }
