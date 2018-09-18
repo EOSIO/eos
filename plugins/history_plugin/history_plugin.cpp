@@ -303,7 +303,7 @@ namespace eosio {
              "Track actions which match receiver:action:actor. Actor may be blank to include all. Action and Actor both blank allows all from Recieiver. Receiver may not be blank.")
             ;
       cfg.add_options()
-            ("filter-out,f", bpo::value<vector<string>>()->composing(),
+            ("filter-out,F", bpo::value<vector<string>>()->composing(),
              "Do not track actions which match receiver:action:actor. Action and Actor both blank excludes all from Reciever. Actor blank excludes all from reciever:action. Receiver may not be blank.")
             ;
    }
