@@ -6,6 +6,7 @@ from collections import namedtuple
 import inspect
 import json
 import shlex
+import socket
 from sys import stdout
 from sys import exit
 import traceback
@@ -170,6 +171,35 @@ class Utils:
     def runCmdReturnJson(cmd, trace=False, silentErrors=False):
         cmdArr=shlex.split(cmd)
         return Utils.runCmdArrReturnJson(cmdArr, trace=trace, silentErrors=silentErrors)
+
+    @staticmethod
+    def arePortsAvailable(ports):
+        """Check if specified port (as int) or ports (as set) is/are available for listening on."""
+        assert(ports)
+        if isinstance(ports, int):
+            ports={ports}
+        assert(isinstance(ports, set))
+
+        for port in ports:
+            if Utils.Debug: Utils.Print("Checking if port %d is available." % (port))
+            assert(isinstance(port, int))
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+            try:
+                s.bind(("127.0.0.1", port))
+            except socket.error as e:
+                if e.errno == errno.EADDRINUSE:
+                    Utils.Print("ERROR: Port %d is already in use" % (port))
+                else:
+                    # something else raised the socket.error exception
+                    Utils.Print("ERROR: Unknown exception while trying to listen on port %d" % (port))
+                    Utils.Print(e)
+                return False
+            finally:
+                s.close()
+
+        return True
 
 
 ###########################################################################################
