@@ -40,6 +40,7 @@ int main(int argc, char** argv)
       bfs::path home = determine_home_directory();
       app().set_default_data_dir(home / "eosio-wallet");
       app().set_default_config_dir(home / "eosio-wallet");
+      app().allow_daemonization();
       http_plugin::set_defaults({
          .address_config_prefix = "",
          .default_unix_socket_path = keosd::config::key_store_executable_name + ".sock",
@@ -52,6 +53,7 @@ int main(int argc, char** argv)
       http.add_handler("/v1/keosd/stop", [](string, string, url_response_callback cb) { cb(200, "{}"); std::raise(SIGTERM); } );
       app().startup();
       app().exec();
+      return 0;
    } catch (const fc::exception& e) {
       elog("${e}", ("e",e.to_detail_string()));
    } catch (const boost::exception& e) {
@@ -61,5 +63,5 @@ int main(int argc, char** argv)
    } catch (...) {
       elog("unknown exception");
    }
-   return 0;
+   return -1;
 }

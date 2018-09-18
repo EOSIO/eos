@@ -783,17 +783,6 @@ bool local_port_used(const string& lo_address, uint16_t port) {
     return !ec;
 }
 
-void try_local_port( const string& lo_address, uint16_t port, uint32_t duration ) {
-   using namespace std::chrono;
-   auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
-   while ( !local_port_used(lo_address, port)) {
-      if (duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration ) {
-         std::cerr << "Unable to connect to keosd, if keosd is running please kill the process and try again.\n";
-         throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to keosd")});
-      }
-   }
-}
-
 void ensure_keosd_running(CLI::App* app) {
     if (no_auto_keosd)
         return;
@@ -834,19 +823,26 @@ void ensure_keosd_running(CLI::App* app) {
 
         vector<std::string> pargs;
         pargs.push_back("--http-server-address=" + lo_address + ":" + std::to_string(resolved_url.resolved_port));
+#ifndef _WIN32
+        pargs.push_back("--daemon");
+#endif
 
         ::boost::process::child keos(binPath, pargs,
                                      bp::std_in.close(),
                                      bp::std_out > bp::null,
                                      bp::std_err > bp::null);
-        if (keos.running()) {
-            std::cerr << binPath << " launched" << std::endl;
-            keos.detach();
-            try_local_port(lo_address, resolved_url.resolved_port, 2000);
-        } else {
-            std::cerr << "No wallet service listening on " << lo_address << ":"
-                      << std::to_string(resolved_url.resolved_port) << ". Failed to launch " << binPath << std::endl;
+#ifdef _WIN32
+        Sleep(2000); //fixme one day...
+#else
+        keos.wait();
+        if(keos.exit_code()) {
+            std::cerr << "No wallet service listening on " << lo_address << ":" << std::to_string(resolved_url.resolved_port)
+                      << ". keosd failed to initialize. " << std::endl;
+            exit(1); //just returning would allow the normal path to go through and print "is keosd running?"
         }
+        else
+            std::cerr << binPath << " launched" << std::endl;
+#endif
     } else {
         std::cerr << "No wallet service listening on " << lo_address << ":" << std::to_string(resolved_url.resolved_port)
                   << ". Cannot automatically start keosd because keosd was not found." << std::endl;
