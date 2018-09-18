@@ -49,6 +49,9 @@ namespace fc {
 const fc::string logger_name("producer_plugin");
 fc::logger _log;
 
+const fc::string trx_trace_logger_name("transaction_tracing");
+fc::logger _trx_trace_log;
+
 namespace eosio {
 
 static appbase::abstract_plugin& _producer_plugin = app().register_plugin<producer_plugin>();
@@ -341,12 +344,32 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
 
-         auto send_response = [this, &trx, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
+         auto send_response = [this, &trx, &chain, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
             if (response.contains<fc::exception_ptr>()) {
                _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(response.get<fc::exception_ptr>(), trx));
+               if (_pending_block_mode == pending_block_mode::producing) {
+                  fc_ilog(_trx_trace_log, "[TRX_TRACE] Block ${block num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
+                        ("block_num", chain.head_block_num() + 1)
+                        ("prod", chain.pending_block_state()->header.producer)
+                        ("txid", trx->id())
+                        ("why",response.get<fc::exception_ptr>()->what()));
+               } else {
+                  fc_ilog(_trx_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
+                          ("txid", trx->id())
+                          ("why",response.get<fc::exception_ptr>()->what()));
+               }
             } else {
                _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(nullptr, trx));
+               if (_pending_block_mode == pending_block_mode::producing) {
+                  fc_ilog(_trx_trace_log, "[TRX_TRACE] Block ${block num} for producer ${prod} is ACCEPTING tx: ${txid}",
+                          ("block_num", chain.head_block_num() + 1)
+                          ("prod", chain.pending_block_state()->header.producer)
+                          ("txid", trx->id()));
+               } else {
+                  fc_ilog(_trx_trace_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${txid}",
+                          ("txid", trx->id()));
+               }
             }
          };
 
@@ -373,6 +396,15 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             if (trace->except) {
                if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
                   _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
+                  if (_pending_block_mode == pending_block_mode::producing) {
+                     fc_ilog(_trx_trace_log, "[TRX_TRACE] Block ${block num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
+                             ("block_num", chain.head_block_num() + 1)
+                             ("prod", chain.pending_block_state()->header.producer)
+                             ("txid", trx->id()));
+                  } else {
+                     fc_ilog(_trx_trace_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
+                             ("txid", trx->id()));
+                  }
                } else {
                   auto e_ptr = trace->except->dynamic_copy_exception();
                   send_response(e_ptr);
@@ -648,8 +680,13 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
 void producer_plugin::plugin_startup()
 { try {
-   if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end()) {
-      _log = fc::get_logger_map()[logger_name];
+   auto& logger_map = fc::get_logger_map();
+   if(logger_map.find(logger_name) != logger_map.end()) {
+      _log = logger_map[logger_name];
+   }
+
+   if( logger_map.find(trx_trace_logger_name) != logger_map.end()) {
+      _trx_trace_log = logger_map[trx_trace_logger_name];
    }
 
    ilog("producer plugin:  plugin_startup() begin");
