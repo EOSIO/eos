@@ -77,12 +77,12 @@ class Utils:
         return chainSyncStrategies
 
     @staticmethod
-    def checkOutput(cmd):
+    def checkOutput(cmd, ignoreError=False):
         assert(isinstance(cmd, list))
         popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (output,error)=popen.communicate()
         Utils.CheckOutputDeque.append((output,error,cmd))
-        if popen.returncode != 0:
+        if popen.returncode != 0 and not ignoreError:
             raise subprocess.CalledProcessError(returncode=popen.returncode, cmd=cmd, output=error)
         return output.decode("utf-8")
 
