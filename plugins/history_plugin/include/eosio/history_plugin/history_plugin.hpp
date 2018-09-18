@@ -30,18 +30,6 @@ class read_only {
          : history(history) {}
 
 
-      /*
-      struct get_transaction_params {
-         chain::transaction_id_type  transaction_id;
-      };
-      struct get_transaction_results {
-         chain::transaction_id_type  transaction_id;
-         fc::variant                 transaction;
-      };
-      get_transaction_results get_transaction(const get_transaction_params& params) const;
-      */
-
-
       struct get_actions_params {
          chain::account_name account_name;
          optional<int32_t>   pos; /// a absolute sequence positon -1 is the end/last action
@@ -67,7 +55,7 @@ class read_only {
 
 
       struct get_transaction_params {
-         transaction_id_type           id;
+         string                        id;
          optional<uint32_t>            block_num_hint;
       };
 
@@ -81,7 +69,7 @@ class read_only {
       };
 
       get_transaction_result get_transaction( const get_transaction_params& )const;
-      
+
 
 
 
@@ -120,13 +108,13 @@ class read_only {
 
 /**
  *  This plugin tracks all actions and keys associated with a set of configured accounts. It enables
- *  wallets to paginate queries for history.  
+ *  wallets to paginate queries for history.
  *
  *  An action will be included in the account's history if any of the following:
  *     - receiver
  *     - any account named in auth list
  *
- *  A key will be linked to an account if the key is referneced in authorities of updateauth or newaccount 
+ *  A key will be linked to an account if the key is referneced in authorities of updateauth or newaccount
  */
 class history_plugin : public plugin<history_plugin> {
    public:
