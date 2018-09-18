@@ -949,7 +949,7 @@ class Node(object):
             return None
 
         if exitOnError and trans is None:
-            Utils.cmdError("could not \"%s\" - %s" % (cmdDesc,exitMsg))
+            Utils.cmdError("could not \"%s\". %s" % (cmdDesc,exitMsg))
             errorExit("Failed to \"%s\"" % (cmdDesc))
 
         return trans
