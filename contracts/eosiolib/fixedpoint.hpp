@@ -362,7 +362,7 @@ namespace eosio
          * Assignment operator. Assign fixed_point32 to fixed_point64
          * 
          * @brief Assignment operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return fixed_point64& - Reference to this object
          */
@@ -372,7 +372,7 @@ namespace eosio
          * Assignment operator. Assign fixed_point64 to fixed_point64
          * 
          * @brief Assignment operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return fixed_point64& - Reference to this object
          */
@@ -426,7 +426,7 @@ namespace eosio
          * Equality operator
          * 
          * @brief Equality operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return true - if equal
          * @return false - otherwise
@@ -437,7 +437,7 @@ namespace eosio
          * Greater than operator
          * 
          * @brief Greater than operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return true - if equal
          * @return false - otherwise
@@ -448,7 +448,7 @@ namespace eosio
          * Less than operator
          * 
          * @brief Less than operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return true - if equal
          * @return false - otherwise
@@ -506,7 +506,7 @@ namespace eosio
          * Construct a new fixed point32 object from int32_t
          * 
          * @brief Construct a new fixed point32 object
-         * @param v - int32_t representation of the fixed point value
+         * @param param - int32_t representation of the fixed point value
          */
         fixed_point32(int32_t param=0) : val(param) {}
 
@@ -553,7 +553,7 @@ namespace eosio
          * Assignment operator. Assign fixed_point32 to fixed_point32
          * 
          * @brief Assignment operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return fixed_point32& - Reference to this object
          */
@@ -563,7 +563,7 @@ namespace eosio
          * Assignment operator. Assign fixed_point64 to fixed_point32
          * 
          * @brief Assignment operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return fixed_point32& - Reference to this object
          */
@@ -615,7 +615,7 @@ namespace eosio
          * Equality operator
          * 
          * @brief Equality operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return true - if equal
          * @return false - otherwise
@@ -626,7 +626,7 @@ namespace eosio
          * Greater than operator
          * 
          * @brief Greater than operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return true - if equal
          * @return false - otherwise
@@ -637,7 +637,7 @@ namespace eosio
          * Less than operator
          * 
          * @brief Less than operator
-         * @tparam qr - Precision of the source
+         * @tparam QR - Precision of the source
          * @param r - Source
          * @return true - if equal
          * @return false - otherwise

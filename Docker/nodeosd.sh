@@ -1,6 +1,10 @@
 #!/bin/sh
 cd /opt/eosio/bin
 
+if [ ! -d "/opt/eosio/bin/data-dir" ]; then
+    mkdir /opt/eosio/bin/data-dir
+fi
+
 if [ -f '/opt/eosio/bin/data-dir/config.ini' ]; then
     echo
   else
