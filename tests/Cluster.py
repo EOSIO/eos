@@ -4,7 +4,6 @@ import time
 import glob
 import shutil
 import os
-import platform
 import re
 import string
 import signal
@@ -1175,12 +1174,7 @@ class Cluster(object):
 
     @staticmethod
     def pgrepEosServers(timeout=None):
-        pgrepOpts="-fl"
-        # pylint: disable=deprecated-method
-        if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
-            pgrepOpts="-a"
-
-        cmd="pgrep %s %s" % (pgrepOpts, Utils.EosServerName)
+        cmd=Utils.pgrepCmd(Utils.EosServerName)
 
         def myFunc():
             psOut=None

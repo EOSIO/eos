@@ -1,6 +1,7 @@
 import subprocess
 import time
 import os
+import platform
 from collections import deque
 from collections import namedtuple
 import inspect
@@ -200,6 +201,15 @@ class Utils:
                 s.close()
 
         return True
+
+    @staticmethod
+    def pgrepCmd(serverName):
+        pgrepOpts="-fl"
+        # pylint: disable=deprecated-method
+        if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
+            pgrepOpts="-a"
+
+        return "pgrep %s %s" % (pgrepOpts, serverName)
 
 
 ###########################################################################################
