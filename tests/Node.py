@@ -64,11 +64,80 @@ class Node(object):
         assert trans
         assert isinstance(trans, dict), print("Input type is %s" % type(trans))
 
-        def printTrans(trans):
-            Utils.Print("ERROR: Failure in transaction validation.")
+        executed="executed"
+        def printTrans(trans, status):
+            Utils.Print("ERROR: Valid transaction should be \"%s\" but it was \"%s\"." % (executed, status))
             Utils.Print("Transaction: %s" % (json.dumps(trans, indent=1)))
 
-        assert trans["processed"]["receipt"]["status"] == "executed", printTrans(trans)
+        transStatus=Node.getTransStatus(trans)
+        assert transStatus == executed, printTrans(trans, transStatus)
+
+    @staticmethod
+    def __printTransStructureError(trans, context):
+        Utils.Print("ERROR: Failure in expected transaction structure. Missing trans%s." % (context))
+        Utils.Print("Transaction: %s" % (json.dumps(trans, indent=1)))
+
+    class Context:
+        def __init__(self, obj, desc):
+            self.obj=obj
+            self.sections=[obj]
+            self.keyContext=[]
+            self.desc=desc
+
+        def __json(self):
+            return "%s=\n%s" % (self.desc, json.dumps(self.obj, indent=1))
+
+        def __keyContext(self):
+            msg=""
+            for key in self.keyContext:
+                if msg=="":
+                    msg="["
+                else:
+                    msg+="]["
+                msg+=key
+            if msg!="":
+                msg+="]"
+            return msg
+
+        def __contextDesc(self):
+            return "%s%s" % (self.desc, self.__keyContext())
+
+        def add(self, newKey):
+            assert isinstance(newKey, str), print("ERROR: Trying to use %s as a key" % (newKey))
+            subSection=self.sections[-1]
+            assert isinstance(subSection, dict), print("ERROR: Calling \"add\" method when context is not a dictionary. %s in %s" % (self.__contextDesc(), self.__json()))
+            assert newKey in subSection, print("ERROR: %s%s does not contain key \"%s\". %s" % (self.__contextDesc(), key, self.__json()))
+            current=subSection[newKey]
+            self.sections.append(current)
+            self.keyContext.append(newKey)
+            return current
+
+        def index(self, i):
+            assert isinstance(i, int), print("ERROR: Trying to use \"%s\" as a list index" % (i))
+            cur=self.getCurrent()
+            assert isinstance(cur, list), print("ERROR: Calling \"index\" method when context is not a list.  %s in %s" % (self.__contextDesc(), self.__json()))
+            listLen=len(cur)
+            assert i < listLen, print("ERROR: Index %s is beyond the size of the current list (%s).  %s in %s" % (i, listLen, self.__contextDesc(), self.__json()))
+            return self.sections.append(cur[i])
+
+        def getCurrent(self):
+            return self.sections[-1]
+
+    @staticmethod
+    def getTransStatus(trans):
+        cntxt=Node.Context(trans, "trans")
+        cntxt.add("processed")
+        cntxt.add("receipt")
+        return cntxt.add("status")
+
+    @staticmethod
+    def getTransBlockNum(trans):
+        cntxt=Node.Context(trans, "trans")
+        cntxt.add("processed")
+        cntxt.add("action_traces")
+        cntxt.index(0)
+        return cntxt.add("block_num")
+
 
     @staticmethod
     def stdinAndCheckOutput(cmd, subcommand):
@@ -911,7 +980,7 @@ class Node(object):
             toAccount=fromAccount
 
         cmdDesc="system delegatebw"
-        transferStr="--transfer" if transferTo else "" 
+        transferStr="--transfer" if transferTo else ""
         cmd="%s -j %s %s \"%s %s\" \"%s %s\" %s" % (
             cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
@@ -1186,7 +1255,7 @@ class Node(object):
 
         cmdArr=[]
         myCmd=self.cmd
-        toAddOrSwap=copy.deepcopy(addOrSwapFlags) if addOrSwapFlags is not None else {} 
+        toAddOrSwap=copy.deepcopy(addOrSwapFlags) if addOrSwapFlags is not None else {}
         if not newChain:
             skip=False
             swapValue=None
@@ -1259,7 +1328,9 @@ class Node(object):
             return
 
         transId=Node.getTransId(trans)
-        Utils.Print("  cmd returned transaction id: %s" % (transId))
+        status=Node.getTransStatus(trans)
+        blockNum=Node.getTransBlockNum(trans)
+        Utils.Print("  cmd returned transaction id: %s, status: %s, (possible) block num: %s" % (transId, status, blockNum))
 
     def reportStatus(self):
         Utils.Print("Node State:")
