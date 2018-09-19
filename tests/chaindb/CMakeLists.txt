@@ -24,17 +24,19 @@ if (libmongoc-1.0_FOUND)
         set(CHAINDB_LIBMONGOCXX ${LIBMONGOCXX_STATIC_LIBRARIES})
     endif()
 
+    set(CHAINDB_LIBBSON ${BSON_LIBRARIES})
+
     message(STATUS "Found mongocxx library: ${CHAINDB_LIBMONGOCXX}")
 else()
     message("Could NOT find MongoDB. mongo_db_plugin with MongoDB support will not be included.")
 endif()
 
 set(CHAINDB_TEST_NAME chaindb_test)
-add_executable(${CHAINDB_TEST_NAME} main.cpp multi_index.hpp chaindb.h chaindb.cpp)
+add_executable(${CHAINDB_TEST_NAME} main.cpp multi_index.hpp chaindb.h chaindb.cpp chaindb_control.hpp)
 
 target_include_directories(
     ${CHAINDB_TEST_NAME}
-    PRIVATE ${LIBMONGOCXX_STATIC_INCLUDE_DIRS} ${LIBBSONCXX_STATIC_INCLUDE_DIRS}
+    PRIVATE ${BSON_INCLUDE_DIRS} ${LIBMONGOCXX_STATIC_INCLUDE_DIRS} ${LIBBSONCXX_STATIC_INCLUDE_DIRS}
     PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${Boost_INCLUDE_DIR})
 
 target_compile_definitions(
@@ -44,7 +46,7 @@ target_compile_definitions(
 target_link_libraries(
     ${CHAINDB_TEST_NAME}
     PRIVATE ${PLATFORM_SPECIFIC_LIBS} ${Boost_LIBRARIES} fc eosio_chain
-    ${CHAINDB_LIBMONGOCXX} ${CHAINDB_LIBBSONCXX})
+    ${CHAINDB_LIBMONGOCXX} ${CHAINDB_LIBBSONCXX} ${CHAINDB_LIBBSON})
 
 install(TARGETS
    ${CHAINDB_TEST_NAME}
