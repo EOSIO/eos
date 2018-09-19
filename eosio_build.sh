@@ -120,7 +120,7 @@
 
    pushd "${SOURCE_DIR}" &> /dev/null
 
-   STALE_SUBMODS=$(( $(git submodule status | grep -c "^[+\-]") ))
+   STALE_SUBMODS=$(( $(git submodule status --recursive | grep -c "^[+\-]") ))
    if [ $STALE_SUBMODS -gt 0 ]; then
       printf "\\n\\tgit submodules are not up to date.\\n"
       printf "\\tPlease run the command 'git submodule update --init --recursive'.\\n"
