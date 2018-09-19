@@ -340,6 +340,11 @@ namespace eosio {
             }
          }
 
+      } FC_LOG_AND_RETHROW()
+   }
+
+   void history_plugin::plugin_startup() {
+      try {
          my->chain_plug = app().find_plugin<chain_plugin>();
          EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
          auto& chain = my->chain_plug->chain();
@@ -354,9 +359,6 @@ namespace eosio {
                   my->on_applied_transaction( p );
                } ));
       } FC_LOG_AND_RETHROW()
-   }
-
-   void history_plugin::plugin_startup() {
    }
 
    void history_plugin::plugin_shutdown() {
