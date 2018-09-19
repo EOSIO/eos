@@ -7,6 +7,7 @@
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <fc/variant_object.hpp>
+#include <fc/scoped_exit.hpp>
 
 namespace eosio { namespace chain {
 
@@ -19,6 +20,10 @@ using namespace fc;
 namespace impl {
   struct abi_from_variant;
   struct abi_to_variant;
+
+  struct abi_traverse_context;
+  struct binary_to_variant_context;
+  struct variant_to_binary_context;
 }
 
 /**
@@ -33,9 +38,7 @@ struct abi_serializer {
    type_name resolve_type(const type_name& t)const;
    bool      is_array(const type_name& type)const;
    bool      is_optional(const type_name& type)const;
-   bool      is_type(const type_name& type, const fc::microseconds& max_serialization_time)const {
-      return _is_type(type, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
-   }
+   bool      is_type(const type_name& type, const fc::microseconds& max_serialization_time)const;
    bool      is_builtin_type(const type_name& type)const;
    bool      is_integer(const type_name& type) const;
    int       get_integer_size(const type_name& type) const;
@@ -49,19 +52,11 @@ struct abi_serializer {
 
    optional<string>  get_error_message( uint64_t error_code )const;
 
-   fc::variant binary_to_variant(const type_name& type, const bytes& binary, const fc::microseconds& max_serialization_time)const {
-      return _binary_to_variant(type, binary, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
-   }
-   bytes       variant_to_binary(const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time)const {
-      return _variant_to_binary(type, var, true, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
-   }
+   fc::variant binary_to_variant(const type_name& type, const bytes& binary, const fc::microseconds& max_serialization_time)const;
+   fc::variant binary_to_variant(const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time)const;
 
-   fc::variant binary_to_variant(const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time)const {
-      return _binary_to_variant(type, binary, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
-   }
-   void        variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time)const {
-      _variant_to_binary(type, var, ds, true, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
-   }
+   bytes       variant_to_binary(const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time)const;
+   void        variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time)const;
 
    template<typename T, typename Resolver>
    static void to_variant( const T& o, fc::variant& vo, Resolver resolver, const fc::microseconds& max_serialization_time );
@@ -105,29 +100,93 @@ private:
    map<type_name, pair<unpack_function, pack_function>> built_in_types;
    void configure_built_in_types();
 
-   fc::variant _binary_to_variant(const type_name& type, const bytes& binary,
-                                  size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
-   bytes       _variant_to_binary(const type_name& type, const fc::variant& var, bool allow_extensions,
-                                  size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
+   fc::variant _binary_to_variant( const type_name& type, const bytes& binary, impl::binary_to_variant_context& ctx )const;
+   fc::variant _binary_to_variant( const type_name& type, fc::datastream<const char*>& binary, impl::binary_to_variant_context& ctx )const;
+   void        _binary_to_variant( const type_name& type, fc::datastream<const char*>& stream,
+                                   fc::mutable_variant_object& obj, impl::binary_to_variant_context& ctx )const;
 
-   fc::variant _binary_to_variant(const type_name& type, fc::datastream<const char*>& binary,
-                                  size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
-   void        _variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, bool allow_extensions,
-                                  size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
-
-   void _binary_to_variant(const type_name& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj,
-                           size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
+   bytes       _variant_to_binary( const type_name& type, const fc::variant& var, impl::variant_to_binary_context& ctx )const;
+   void        _variant_to_binary( const type_name& type, const fc::variant& var,
+                                   fc::datastream<char*>& ds, impl::variant_to_binary_context& ctx )const;
 
    static type_name _remove_bin_extension(const type_name& type);
-   bool _is_type(const type_name& type, size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
+   bool _is_type( const type_name& type, impl::abi_traverse_context& ctx )const;
 
-   void validate(const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
+   void validate( impl::abi_traverse_context& ctx )const;
 
    friend struct impl::abi_from_variant;
    friend struct impl::abi_to_variant;
 };
 
 namespace impl {
+
+   struct abi_traverse_context {
+      abi_traverse_context( fc::microseconds max_serialization_time )
+      : max_serialization_time( max_serialization_time ), deadline( fc::time_point::now() + max_serialization_time ), recursion_depth(0)
+      {}
+
+      abi_traverse_context( fc::microseconds max_serialization_time, fc::time_point deadline )
+      : max_serialization_time( max_serialization_time ), deadline( deadline ), recursion_depth(0)
+      {}
+
+      void check_deadline()const {
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+      }
+
+      fc::scoped_exit<std::function<void()>> enter_scope() {
+         std::function<void()> callback = [old_recursion_depth=recursion_depth, this](){
+            recursion_depth = old_recursion_depth;
+         };
+
+         ++recursion_depth;
+         EOS_ASSERT( recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception,
+                     "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception,
+                     "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+
+         return {std::move(callback)};
+      }
+
+   protected:
+      fc::microseconds max_serialization_time;
+      fc::time_point   deadline;
+      size_t           recursion_depth;
+   };
+
+   struct binary_to_variant_context : public abi_traverse_context {
+      using abi_traverse_context::abi_traverse_context;
+
+      binary_to_variant_context( const abi_traverse_context& ctx )
+      : abi_traverse_context(ctx)
+      {}
+   };
+
+   struct variant_to_binary_context : public abi_traverse_context {
+      using abi_traverse_context::abi_traverse_context;
+
+      variant_to_binary_context( const abi_traverse_context& ctx )
+      : abi_traverse_context(ctx)
+      {}
+
+      fc::scoped_exit<std::function<void()>> disallow_extensions_unless( bool condition ) {
+         std::function<void()> callback = [old_recursion_depth=recursion_depth, old_allow_extensions=allow_extensions, this](){
+            allow_extensions = old_allow_extensions;
+         };
+
+         if( !condition ) {
+            allow_extensions = false;
+         }
+
+         return {std::move(callback)};
+      }
+
+      bool extensions_allowed()const { return allow_extensions; }
+
+   protected:
+      bool allow_extensions = true;
+   };
+
    /**
     * Determine if a type contains ABI related info, perhaps deeply nested
     * @tparam T - the type to check
@@ -187,11 +246,9 @@ namespace impl {
        * and can be degraded to the normal ::to_variant(...) processing
        */
       template<typename M, typename Resolver, not_require_abi_t<M> = 1>
-      static void add( mutable_variant_object &mvo, const char* name, const M& v, Resolver,
-                       size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+      static void add( mutable_variant_object &mvo, const char* name, const M& v, Resolver, abi_traverse_context& ctx )
       {
-         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         auto h = ctx.enter_scope();
          mvo(name,v);
       }
 
@@ -200,25 +257,22 @@ namespace impl {
        * for these types we create new ABI aware visitors
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver,
-                       size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time );
+      static void add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver, abi_traverse_context& ctx );
 
       /**
        * template which overloads add for vectors of types which contain ABI information in their trees
        * for these members we call ::add in order to trigger further processing
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void add( mutable_variant_object &mvo, const char* name, const vector<M>& v, Resolver resolver,
-                       size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+      static void add( mutable_variant_object &mvo, const char* name, const vector<M>& v, Resolver resolver, abi_traverse_context& ctx )
       {
-         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         auto h = ctx.enter_scope();
          vector<variant> array;
          array.reserve(v.size());
 
          for (const auto& iter: v) {
             mutable_variant_object elem_mvo;
-            add(elem_mvo, "_", iter, resolver, recursion_depth, deadline, max_serialization_time);
+            add(elem_mvo, "_", iter, resolver, ctx);
             array.emplace_back(std::move(elem_mvo["_"]));
          }
          mvo(name, std::move(array));
@@ -229,14 +283,12 @@ namespace impl {
        * for these members we call ::add in order to trigger further processing
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void add( mutable_variant_object &mvo, const char* name, const std::shared_ptr<M>& v, Resolver resolver,
-                       size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+      static void add( mutable_variant_object &mvo, const char* name, const std::shared_ptr<M>& v, Resolver resolver, abi_traverse_context& ctx )
       {
-         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         auto h = ctx.enter_scope();
          if( !v ) return;
          mutable_variant_object obj_mvo;
-         add(obj_mvo, "_", *v, resolver, recursion_depth, deadline, max_serialization_time);
+         add(obj_mvo, "_", *v, resolver, ctx);
          mvo(name, std::move(obj_mvo["_"]));
       }
 
@@ -245,27 +297,24 @@ namespace impl {
       {
          mutable_variant_object& obj_mvo;
          Resolver& resolver;
-         size_t recursion_depth;
-         fc::time_point deadline;
-         fc::microseconds max_serialization_time;
-         add_static_variant( mutable_variant_object& o, Resolver& r, size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
-               :obj_mvo(o), resolver(r), recursion_depth(recursion_depth), deadline(deadline), max_serialization_time(max_serialization_time){}
+         abi_traverse_context& ctx;
+
+         add_static_variant( mutable_variant_object& o, Resolver& r, abi_traverse_context& ctx )
+               :obj_mvo(o), resolver(r), ctx(ctx) {}
 
          typedef void result_type;
          template<typename T> void operator()( T& v )const
          {
-            add(obj_mvo, "_", v, resolver, recursion_depth, deadline, max_serialization_time);
+            add(obj_mvo, "_", v, resolver, ctx);
          }
       };
 
       template<typename Resolver, typename... Args>
-      static void add( mutable_variant_object &mvo, const char* name, const fc::static_variant<Args...>& v, Resolver resolver,
-                       size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+      static void add( mutable_variant_object &mvo, const char* name, const fc::static_variant<Args...>& v, Resolver resolver, abi_traverse_context& ctx )
       {
-         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         auto h = ctx.enter_scope();
          mutable_variant_object obj_mvo;
-         add_static_variant<Resolver> adder(obj_mvo, resolver, recursion_depth, deadline, max_serialization_time);
+         add_static_variant<Resolver> adder(obj_mvo, resolver, ctx);
          v.visit(adder);
          mvo(name, std::move(obj_mvo["_"]));
       }
@@ -278,11 +327,9 @@ namespace impl {
        * @return
        */
       template<typename Resolver>
-      static void add( mutable_variant_object &out, const char* name, const action& act, Resolver resolver,
-                       size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+      static void add( mutable_variant_object &out, const char* name, const action& act, Resolver resolver, abi_traverse_context& ctx )
       {
-         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         auto h = ctx.enter_scope();
          mutable_variant_object mvo;
          mvo("account", act.account);
          mvo("name", act.name);
@@ -294,7 +341,8 @@ namespace impl {
                auto type = abi->get_action_type(act.name);
                if (!type.empty()) {
                   try {
-                     mvo( "data", abi->_binary_to_variant( type, act.data, recursion_depth, deadline, max_serialization_time ));
+                     binary_to_variant_context _ctx(ctx);
+                     mvo( "data", abi->_binary_to_variant( type, act.data, _ctx ));
                      mvo("hex_data", act.data);
                   } catch(...) {
                      // any failure to serialize data, then leave as not serailzed
@@ -320,11 +368,9 @@ namespace impl {
        * @return
        */
       template<typename Resolver>
-      static void add( mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver,
-                       size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+      static void add( mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver, abi_traverse_context& ctx )
       {
-         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         auto h = ctx.enter_scope();
          mutable_variant_object mvo;
          auto trx = ptrx.get_transaction();
          mvo("id", trx.id());
@@ -333,7 +379,7 @@ namespace impl {
          mvo("packed_context_free_data", ptrx.packed_context_free_data);
          mvo("context_free_data", ptrx.get_context_free_data());
          mvo("packed_trx", ptrx.packed_trx);
-         add(mvo, "transaction", trx, resolver, recursion_depth, deadline, max_serialization_time);
+         add(mvo, "transaction", trx, resolver, ctx);
 
          out(name, std::move(mvo));
       }
@@ -350,14 +396,11 @@ namespace impl {
    class abi_to_variant_visitor
    {
       public:
-         abi_to_variant_visitor( mutable_variant_object& _mvo, const T& _val, Resolver _resolver,
-                                 size_t _recursion_depth, const fc::time_point& _deadline, const fc::microseconds& max_serialization_time )
+         abi_to_variant_visitor( mutable_variant_object& _mvo, const T& _val, Resolver _resolver, abi_traverse_context& _ctx )
          :_vo(_mvo)
          ,_val(_val)
          ,_resolver(_resolver)
-         ,_recursion_depth(_recursion_depth)
-         ,_deadline(_deadline)
-         ,_max_serialization_time(max_serialization_time)
+         ,_ctx(_ctx)
          {}
 
          /**
@@ -370,16 +413,14 @@ namespace impl {
          template<typename Member, class Class, Member (Class::*member) >
          void operator()( const char* name )const
          {
-            abi_to_variant::add( _vo, name, (_val.*member), _resolver, _recursion_depth, _deadline, _max_serialization_time );
+            abi_to_variant::add( _vo, name, (_val.*member), _resolver, _ctx );
          }
 
       private:
          mutable_variant_object& _vo;
          const T& _val;
          Resolver _resolver;
-         size_t _recursion_depth;
-         fc::time_point _deadline;
-         fc::microseconds _max_serialization_time;
+         abi_traverse_context& _ctx;
    };
 
    struct abi_from_variant {
@@ -388,11 +429,9 @@ namespace impl {
        * and can be degraded to the normal ::from_variant(...) processing
        */
       template<typename M, typename Resolver, not_require_abi_t<M> = 1>
-      static void extract( const variant& v, M& o, Resolver,
-                           size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+      static void extract( const variant& v, M& o, Resolver, abi_traverse_context& ctx )
       {
-         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         auto h = ctx.enter_scope();
          from_variant(v, o);
       }
 
@@ -401,25 +440,22 @@ namespace impl {
        * for these types we create new ABI aware visitors
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void extract( const variant& v, M& o, Resolver resolver,
-                           size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time );
+      static void extract( const variant& v, M& o, Resolver resolver, abi_traverse_context& ctx );
 
       /**
        * template which overloads extract for vectors of types which contain ABI information in their trees
        * for these members we call ::extract in order to trigger further processing
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void extract( const variant& v, vector<M>& o, Resolver resolver,
-                           size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+      static void extract( const variant& v, vector<M>& o, Resolver resolver, abi_traverse_context& ctx )
       {
-         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         auto h = ctx.enter_scope();
          const variants& array = v.get_array();
          o.clear();
          o.reserve( array.size() );
          for( auto itr = array.begin(); itr != array.end(); ++itr ) {
             M o_iter;
-            extract(*itr, o_iter, resolver, recursion_depth, deadline, max_serialization_time);
+            extract(*itr, o_iter, resolver, ctx);
             o.emplace_back(std::move(o_iter));
          }
       }
@@ -429,14 +465,12 @@ namespace impl {
        * for these members we call ::extract in order to trigger further processing
        */
       template<typename M, typename Resolver, require_abi_t<M> = 1>
-      static void extract( const variant& v, std::shared_ptr<M>& o, Resolver resolver,
-                           size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+      static void extract( const variant& v, std::shared_ptr<M>& o, Resolver resolver, abi_traverse_context& ctx )
       {
-         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         auto h = ctx.enter_scope();
          const variant_object& vo = v.get_object();
          M obj;
-         extract(vo, obj, resolver, recursion_depth, deadline, max_serialization_time);
+         extract(vo, obj, resolver, ctx);
          o = std::make_shared<M>(obj);
       }
 
@@ -446,11 +480,9 @@ namespace impl {
        * exploded and processed explicitly
        */
       template<typename Resolver>
-      static void extract( const variant& v, action& act, Resolver resolver,
-                           size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+      static void extract( const variant& v, action& act, Resolver resolver, abi_traverse_context& ctx )
       {
-         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         auto h = ctx.enter_scope();
          const variant_object& vo = v.get_object();
          EOS_ASSERT(vo.contains("account"), packed_transaction_type_exception, "Missing account");
          EOS_ASSERT(vo.contains("name"), packed_transaction_type_exception, "Missing name");
@@ -472,7 +504,8 @@ namespace impl {
                if (abi.valid()) {
                   auto type = abi->get_action_type(act.name);
                   if (!type.empty()) {
-                     act.data = std::move( abi->_variant_to_binary( type, data, true, recursion_depth, deadline, max_serialization_time ));
+                     variant_to_binary_context _ctx(ctx);
+                     act.data = std::move( abi->_variant_to_binary( type, data, _ctx ));
                      valid_empty_data = act.data.empty();
                   }
                }
@@ -493,11 +526,9 @@ namespace impl {
       }
 
       template<typename Resolver>
-      static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver,
-                           size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+      static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver, abi_traverse_context& ctx )
       {
-         EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         auto h = ctx.enter_scope();
          const variant_object& vo = v.get_object();
          EOS_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
          EOS_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
@@ -519,7 +550,7 @@ namespace impl {
             EOS_ASSERT(vo.contains("transaction"), packed_transaction_type_exception, "Missing transaction");
             transaction trx;
             vector<bytes> context_free_data;
-            extract(vo["transaction"], trx, resolver, recursion_depth, deadline, max_serialization_time);
+            extract(vo["transaction"], trx, resolver, ctx);
             if( vo.contains("packed_context_free_data") && vo["packed_context_free_data"].is_string() && !vo["packed_context_free_data"].as_string().empty() ) {
                from_variant(vo["packed_context_free_data"], ptrx.packed_context_free_data );
                context_free_data = ptrx.get_context_free_data();
@@ -542,14 +573,11 @@ namespace impl {
    class abi_from_variant_visitor : reflector_verifier_visitor<T>
    {
       public:
-         abi_from_variant_visitor( const variant_object& _vo, T& v, Resolver _resolver,
-                                   size_t _recursion_depth, const fc::time_point& _deadline, const fc::microseconds& max_serialization_time )
+         abi_from_variant_visitor( const variant_object& _vo, T& v, Resolver _resolver, abi_traverse_context& _ctx )
          : reflector_verifier_visitor<T>(v)
          ,_vo(_vo)
          ,_resolver(_resolver)
-         ,_recursion_depth(_recursion_depth)
-         ,_deadline(_deadline)
-         ,_max_serialization_time(max_serialization_time)
+         ,_ctx(_ctx)
          {}
 
          /**
@@ -564,49 +592,45 @@ namespace impl {
          {
             auto itr = _vo.find(name);
             if( itr != _vo.end() )
-               abi_from_variant::extract( itr->value(), this->obj.*member, _resolver, _recursion_depth, _deadline, _max_serialization_time );
+               abi_from_variant::extract( itr->value(), this->obj.*member, _resolver, _ctx );
          }
 
       private:
          const variant_object& _vo;
          Resolver _resolver;
-         size_t _recursion_depth;
-         fc::time_point _deadline;
-         fc::microseconds _max_serialization_time;
+         abi_traverse_context& _ctx;
    };
 
    template<typename M, typename Resolver, require_abi_t<M>>
-   void abi_to_variant::add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver,
-                             size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+   void abi_to_variant::add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver, abi_traverse_context& ctx )
    {
-      EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-      EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+      auto h = ctx.enter_scope();
       mutable_variant_object member_mvo;
-      fc::reflector<M>::visit( impl::abi_to_variant_visitor<M, Resolver>( member_mvo, v, resolver, recursion_depth, deadline, max_serialization_time ) );
+      fc::reflector<M>::visit( impl::abi_to_variant_visitor<M, Resolver>( member_mvo, v, resolver, ctx) );
       mvo(name, std::move(member_mvo));
    }
 
    template<typename M, typename Resolver, require_abi_t<M>>
-   void abi_from_variant::extract( const variant& v, M& o, Resolver resolver,
-                                   size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time )
+   void abi_from_variant::extract( const variant& v, M& o, Resolver resolver, abi_traverse_context& ctx )
    {
-      EOS_ASSERT( ++recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception, "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-      EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+      auto h = ctx.enter_scope();
       const variant_object& vo = v.get_object();
-      fc::reflector<M>::visit( abi_from_variant_visitor<M, decltype(resolver)>( vo, o, resolver, recursion_depth, deadline, max_serialization_time ) );
+      fc::reflector<M>::visit( abi_from_variant_visitor<M, decltype(resolver)>( vo, o, resolver, ctx ) );
    }
-}
+} /// namespace eosio::chain::impl
 
 template<typename T, typename Resolver>
 void abi_serializer::to_variant( const T& o, variant& vo, Resolver resolver, const fc::microseconds& max_serialization_time ) try {
    mutable_variant_object mvo;
-   impl::abi_to_variant::add(mvo, "_", o, resolver, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
+   impl::abi_traverse_context ctx(max_serialization_time);
+   impl::abi_to_variant::add(mvo, "_", o, resolver, ctx);
    vo = std::move(mvo["_"]);
 } FC_RETHROW_EXCEPTIONS(error, "Failed to serialize type", ("object",o))
 
 template<typename T, typename Resolver>
 void abi_serializer::from_variant( const variant& v, T& o, Resolver resolver, const fc::microseconds& max_serialization_time ) try {
-   impl::abi_from_variant::extract(v, o, resolver, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
+   impl::abi_traverse_context ctx(max_serialization_time);
+   impl::abi_from_variant::extract(v, o, resolver, ctx);
 } FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant",v))
 
 
