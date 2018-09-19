@@ -16,13 +16,13 @@
 
 using eosio::chain::abi_def;
 using eosio::chain::table_def;
+using eosio::chain::index_def;
 using eosio::chain::abi_serializer;
 using eosio::chain::name;
 
 using fc::variant;
 using fc::variants;
 using fc::variant_object;
-
 
 using bsoncxx::builder::basic::make_document;
 using bsoncxx::builder::basic::document;
@@ -42,17 +42,25 @@ using bsoncxx::oid;
 
 using mongocxx::model::insert_one;
 using mongocxx::model::update_one;
+using mongocxx::collection;
 
 using std::string;
 
 struct abi_info {
-    abi_def def;
+    std::unordered_map<table_name_t, bool> verified_map;
+    abi_def abi;
     abi_serializer serializer;
 };
 
-struct abi_table_info {
+struct abi_table_result {
     const table_def* table;
-    const abi_serializer* serializer;
+    abi_info* info;
+};
+
+struct abi_index_result {
+    const table_def* table;
+    const index_def* index;
+    abi_info* info;
 };
 
 struct mongodb_ctx {
@@ -62,14 +70,24 @@ struct mongodb_ctx {
 
     std::unordered_map<account_name_t /* code */, abi_info> abi_map;
 
-    abi_table_info find_table(const account_name_t code, const string& table) const {
+    abi_table_result find_table(const account_name_t code, const string& table) {
         auto itr = abi_map.find(code);
         if (abi_map.end() == itr) return {nullptr, nullptr};
 
-        for (auto titr = itr->second.def.tables.begin(); itr->second.def.tables.end() != titr; ++titr) {
-            if (titr->name == table) return {&(*titr), &itr->second.serializer};
+        for (auto titr = itr->second.abi.tables.begin(); itr->second.abi.tables.end() != titr; ++titr) {
+            if (titr->name == table) return {&(*titr), &itr->second};
         }
         return {nullptr, nullptr};
+    }
+
+    abi_index_result find_index(const account_name_t code, const string& table, const string& index) {
+        auto info = find_table(code, table);
+        if (info.table == nullptr) return {nullptr, nullptr, nullptr};
+
+        for (auto itr = info.table->indexes.begin(); info.table->indexes.end() != itr; ++ itr) {
+            if (itr->name == index) return {info.table, &(*itr), info.info};
+        }
+        return {nullptr, nullptr, nullptr};
     }
 };
 
@@ -120,10 +138,10 @@ void build_array(sub_array& array, const variants& obj) {
                 array.append(itr->as_string());
                 break;
             case variant::array_type:
-                array.append([&](sub_array array) { build_array(array, itr->get_array()); });
+                array.append([&](sub_array array){ build_array(array, itr->get_array()); });
                 break;
             case variant::object_type:
-                array.append([&](sub_document sub_doc) { build_document(sub_doc, itr->get_object()); });
+                array.append([&](sub_document sub_doc){ build_document(sub_doc, itr->get_object()); });
                 break;
             case variant::blob_type: {
                     auto blob = itr->as_blob();
@@ -158,9 +176,8 @@ void build_document(sub_document& doc, const string& name, const variant& obj) {
         case variant::array_type:
             doc.append(kvp(name, [&](sub_array array){ build_array(array, obj.get_array()); }));
             break;
-        case variant::object_type: {
-                doc.append(kvp(name, [&](sub_document sub_doc){ build_document(sub_doc, obj.get_object()); }));
-            }
+        case variant::object_type:
+            doc.append(kvp(name, [&](sub_document sub_doc){ build_document(sub_doc, obj.get_object()); }));
             break;
         case variant::blob_type: {
                 auto blob = obj.as_blob();
@@ -192,10 +209,28 @@ int32_t chaindb_init(const char* uri_str) {
 bool chaindb_set_abi(account_name_t code, abi_def abi) {
     abi_info info;
 
-    info.def = std::move(abi);
-    info.serializer.set_abi(info.def, ctx.max_time);
+    info.abi = std::move(abi);
+    info.serializer.set_abi(info.abi, ctx.max_time);
     ctx.abi_map[code] = std::move(info);
     return true;
+}
+
+void verify_table_structure(collection& db_table, const table_name_t table, abi_table_result& result) {
+    if (result.info->verified_map.count(table)) return;
+    result.info->verified_map.emplace(table, true);
+    for (auto itr = result.table->indexes.begin(); result.table->indexes.end() != itr; ++itr) {
+        if (itr->key_names.empty()) continue;
+        document doc;
+        doc.append(kvp("scope", 1));
+        for (int i = 0; i < itr->key_names.size(); ++i) {
+            if (itr->key_orders[i].size() == 3) {
+                doc.append(kvp(itr->key_names[i], 1));
+            } else {
+                doc.append(kvp(itr->key_names[i], -1));
+            }
+        }
+        db_table.create_index(doc.view());
+    }
 }
 
 cursor_t chaindb_lower_bound(account_name_t code, account_name_t scope, table_name_t, index_name_t, void* key, size_t) {
@@ -246,15 +281,15 @@ cursor_t chaindb_insert(
     account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk, void* data, size_t size
 ) {
     auto table_name = name(table).to_string();
-    auto info = ctx.find_table(code, table_name);
-    if (!info.table) return invalid_cursor;
+    auto result = ctx.find_table(code, table_name);
+    if (!result.table) return invalid_cursor;
 
     fc::datastream<const char*> ds(static_cast<const char*>(data), size);
-    auto obj = info.serializer->binary_to_variant(info.table->type, ds, ctx.max_time);
+    auto obj = result.info->serializer.binary_to_variant(result.table->type, ds, ctx.max_time);
     if (!obj.is_object()) return invalid_cursor;
 
     auto db_name = name(code).to_string();
-    auto db = ctx.mongo_conn[db_name];
+    auto db_table = ctx.mongo_conn[db_name][table_name];
     document doc;
 
 //    ilog(
@@ -264,7 +299,8 @@ cursor_t chaindb_insert(
     doc.append(kvp("scope", name(scope).to_string()));
     build_document(doc, obj.get_object());
 
-    db[table_name].insert_one(doc.view());
+    db_table.insert_one(doc.view());
+    verify_table_structure(db_table, table, result);
 
     return invalid_cursor;
 }
