@@ -40,6 +40,19 @@ namespace eosio {
     */
    using api_description = std::map<string, url_handler>;
 
+   struct http_plugin_defaults {
+      //If not empty, this string is prepended on to the various configuration
+      // items for setting listen addresses
+      string address_config_prefix;
+      //If empty, unix socket support will be completely disabled. If not empty,
+      // unix socket support is enabled with the given default path (treated relative
+      // to the datadir)
+      string default_unix_socket_path;
+      //If non 0, HTTP will be enabled by default on the given port number. If
+      // 0, HTTP will not be enabled by default
+      uint16_t default_http_port{0};
+   };
+
    /**
     *  This plugin starts an HTTP server and dispatches queries to
     *  registered handles based upon URL. The handler is passed the
@@ -59,6 +72,9 @@ namespace eosio {
       public:
         http_plugin();
         virtual ~http_plugin();
+
+        //must be called before initialize
+        static void set_defaults(const http_plugin_defaults config);
 
         APPBASE_PLUGIN_REQUIRES()
         virtual void set_program_options(options_description&, options_description& cfg) override;

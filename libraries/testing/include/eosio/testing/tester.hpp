@@ -6,6 +6,7 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <fc/io/json.hpp>
 #include <boost/test/unit_test.hpp>
+#include <boost/tuple/tuple_io.hpp>
 
 #include <iosfwd>
 
@@ -308,14 +309,17 @@ namespace eosio { namespace testing {
          try {
             if( num_blocks_to_producer_before_shutdown > 0 )
                produce_blocks( num_blocks_to_producer_before_shutdown );
-            BOOST_REQUIRE_EQUAL( validate(), true );
+            if (!skip_validate)
+               BOOST_REQUIRE_EQUAL( validate(), true );
          } catch( const fc::exception& e ) {
             wdump((e.to_detail_string()));
          }
       }
       controller::config vcfg;
 
-      validating_tester() {
+      static controller::config default_config() {
+         fc::temp_directory tempdir;
+         controller::config vcfg;
          vcfg.blocks_dir      = tempdir.path() / std::string("v_").append(config::default_blocks_dir_name);
          vcfg.state_dir  = tempdir.path() /  std::string("v_").append(config::default_state_dir_name);
          vcfg.state_size = 1024*1024*8;
@@ -332,8 +336,16 @@ namespace eosio { namespace testing {
                vcfg.wasm_runtime = chain::wasm_interface::vm_type::binaryen;
             else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
                vcfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
+            else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
+               vcfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
          }
+         return vcfg;
+      }
 
+      validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>()) {
+         vcfg = default_config();
+
+         vcfg.trusted_producers = trusted_producers;
 
          validating_node = std::make_unique<controller>(vcfg);
          validating_node->startup();
@@ -360,6 +372,14 @@ namespace eosio { namespace testing {
          validating_node->push_block( sb );
 
          return sb;
+      }
+
+      signed_block_ptr produce_block_no_validation( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ ) {
+         return _produce_block(skip_time, false, skip_flag | 2);
+      }
+
+      void validate_push_block(const signed_block_ptr& sb) {
+         validating_node->push_block( sb );
       }
 
       signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
@@ -393,6 +413,7 @@ namespace eosio { namespace testing {
 
       unique_ptr<controller>   validating_node;
       uint32_t                 num_blocks_to_producer_before_shutdown = 0;
+      bool                     skip_validate = false;
    };
 
    /**
