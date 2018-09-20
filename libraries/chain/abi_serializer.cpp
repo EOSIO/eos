@@ -366,19 +366,35 @@ namespace eosio { namespace chain {
       } else if ( is_array(rtype) ) {
          vector<fc::variant> vars = var.get_array();
          fc::raw::pack(ds, (fc::unsigned_int)vars.size());
+         auto h1 = ctx.push_to_path( fundamental_type(rtype), ctx.is_path_empty() );
+         int64_t i = 0;
          for (const auto& var : vars) {
+            ctx.set_array_index_of_path_back(i);
             auto h2 = ctx.disallow_extensions_unless(false);
            _variant_to_binary(fundamental_type(rtype), var, ds, ctx);
+           ++i;
          }
       } else if ( variants.find(rtype) != variants.end() ) {
-         EOS_ASSERT( var.is_array() && var.size() == 2 && var[size_t(0)].is_string(), abi_exception, "expected array containing variant" );
          auto& v = variants.find(rtype)->second;
-         auto it = find(v.types.begin(), v.types.end(), var[size_t(0)].get_string());
-         EOS_ASSERT( it != v.types.end(), abi_exception, "type is not valid within this variant" );
+         auto h1 = ctx.push_to_path( v.name, ctx.is_path_empty() );
+         EOS_ASSERT( var.is_array() && var.size() == 2, pack_exception,
+                    "Expected input to be an array of two items while processing variant '${p}'", ("p", ctx.get_path_string()) );
+         EOS_ASSERT( var[size_t(0)].is_string(), pack_exception,
+                    "Encountered non-string as first item of input array while processing variant '${p}'", ("p", ctx.get_path_string()) );
+         auto variant_type_str = var[size_t(0)].get_string();
+         auto it = find(v.types.begin(), v.types.end(), variant_type_str);
+         EOS_ASSERT( it != v.types.end(), pack_exception,
+                     "Specified type '${t}' in input array is not valid within the variant '${p}'",
+                     ("t", variant_type_str)("p", ctx.get_path_string()) );
          fc::raw::pack(ds, fc::unsigned_int(it - v.types.begin()));
+         std::stringstream s;
+         s << "<variant(" << (it - v.types.begin()) << ")=" << *it << ">";
+         auto h3 = ctx.push_to_path(s.str());
          _variant_to_binary( *it, var[size_t(1)], ds, ctx );
       } else {
          const auto& st = get_struct(rtype);
+
+         auto h1 = ctx.push_to_path( st.name, ctx.is_path_empty() );
 
          if( var.is_object() ) {
             const auto& vo = var.get_object();
@@ -387,39 +403,45 @@ namespace eosio { namespace chain {
                auto h2 = ctx.disallow_extensions_unless(false);
                _variant_to_binary(resolve_type(st.base), var, ds, ctx);
             }
-            bool missing_extension = false;
+            bool extension_encountered = false;
             for( const auto& field : st.fields ) {
                if( vo.contains( string(field.name).c_str() ) ) {
-                  if( missing_extension )
-                     EOS_THROW( pack_exception, "Unexpected '${f}' in variant object", ("f",field.name) );
+                  if( extension_encountered )
+                     EOS_THROW( pack_exception, "Unexpected field '${f}' found in input object while processing struct '${p}'", ("f",field.name)("p",ctx.get_path_string()) );
                   {
                      auto h2 = ctx.disallow_extensions_unless( &field == &st.fields.back() );
+                     auto h3 = ctx.push_to_path( field.name );
                      _variant_to_binary(_remove_bin_extension(field.type), vo[field.name], ds, ctx);
                   }
                } else if( ends_with(field.type, "$") && ctx.extensions_allowed() ) {
-                  missing_extension = true;
+                  extension_encountered = true;
+               } else if( extension_encountered ) {
+                  EOS_THROW( pack_exception, "Encountered field '${f}' without binary extension designation while processing struct '${p}'", ("f",field.name)("p",ctx.get_path_string()) );
                } else {
-                  EOS_THROW( pack_exception, "Missing '${f}' in variant object", ("f",field.name) );
+                  EOS_THROW( pack_exception, "Missing field '${f}' in input object while processing struct '${p}'", ("f",field.name)("p",ctx.get_path_string()) );
                }
             }
          } else if( var.is_array() ) {
             const auto& va = var.get_array();
-            EOS_ASSERT( st.base == type_name(), invalid_type_inside_abi, "support for base class as array not yet implemented" );
+            EOS_ASSERT( st.base == type_name(), invalid_type_inside_abi,
+                        "Using input array to specify the fields of the derived struct '${p}'; input arrays are currently only allowed for structs without a base",
+                        ("p",ctx.get_path_string()) );
             uint32_t i = 0;
             for( const auto& field : st.fields ) {
                if( va.size() > i ) {
                   auto h2 = ctx.disallow_extensions_unless( &field == &st.fields.back() );
+                  auto h3 = ctx.push_to_path( field.name );
                   _variant_to_binary(_remove_bin_extension(field.type), va[i], ds, ctx);
                } else if( ends_with(field.type, "$") && ctx.extensions_allowed() ) {
                   break;
                } else {
-                  EOS_THROW( pack_exception, "Early end to array specifying the fields of struct '${t}'; require input for field '${f}'",
-                             ("t", st.name)("f", field.name) );
+                  EOS_THROW( pack_exception, "Early end to input array specifying the fields of struct '${p}'; require input for field '${f}'",
+                             ("p", ctx.get_path_string())("f", field.name) );
                }
                ++i;
             }
          } else {
-            EOS_THROW( pack_exception, "Failed to serialize struct '${t}' in variant object", ("t", st.name));
+            EOS_THROW( pack_exception, "Unexpected input encountered while processing struct '${p}'", ("p",ctx.get_path_string()) );
          }
       }
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }

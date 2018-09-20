@@ -181,10 +181,58 @@ namespace impl {
          return {std::move(callback)};
       }
 
+      fc::scoped_exit<std::function<void()>> push_to_path( const string& n, bool condition = true ) {
+
+         if( !condition ) {
+            fc::scoped_exit<std::function<void()>> h([](){});
+            h.cancel();
+            return h;
+         }
+
+         std::function<void()> callback = [this](){
+            EOS_ASSERT( path.size() > 0 && path_array_index.size() > 0, abi_exception,
+                        "invariant failure in variant_to_binary_context: path is empty on scope exit" );
+            path.pop_back();
+            path_array_index.pop_back();
+         };
+
+         path.push_back( n );
+         path_array_index.push_back( -1 );
+
+         return {std::move(callback)};
+      }
+
+      void set_array_index_of_path_back( int64_t i ) {
+         EOS_ASSERT( path_array_index.size() > 0, abi_exception, "path is empty" );
+         path_array_index.back() = i;
+      }
+
       bool extensions_allowed()const { return allow_extensions; }
 
+      bool is_path_empty()const { return path.size() == 0; }
+
+      string get_path_string()const {
+         EOS_ASSERT( path.size() == path_array_index.size(), abi_exception,
+                     "invariant failure in variant_to_binary_context: mismatch in path vector sizes" );
+
+         std::stringstream s;
+         for( size_t i = 0, n = path.size(); i < n; ++i ) {
+            s << path[i];
+            if( path_array_index[i] >= 0 ) {
+               s << "[" << path_array_index[i] << "]";
+            }
+            if( (i + 1) != n ) { // if not the last element in the path
+               s << ".";
+            }
+         }
+
+         return s.str();
+      }
+
    protected:
-      bool allow_extensions = true;
+      bool            allow_extensions = true;
+      vector<string>  path;
+      vector<int64_t> path_array_index;
    };
 
    /**
