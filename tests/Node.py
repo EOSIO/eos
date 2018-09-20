@@ -282,7 +282,6 @@ class Node(object):
         if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
         try:
             trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
-            Node.logCmdTransaction(trans)
             if trans is not None:
                 return trans
         except subprocess.CalledProcessError as ex:
@@ -1051,13 +1050,12 @@ class Node(object):
         cmd="curl %s/v1/test_control/kill_node_on_producer -d '{ \"producer\":\"%s\", \"where_in_sequence\":%d, \"based_on_lib\":\"%s\" }' -X POST -H \"Content-Type: application/json\"" % \
             (self.endpointHttp, producer, whereInSequence, basedOnLib)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        trans=None
+        rtn=None
         try:
             if returnType==ReturnType.json:
-                trans=Utils.runCmdReturnJson(cmd, silentErrors=silentErrors)
-                Node.logCmdTransaction(trans)
+                rtn=Utils.runCmdReturnJson(cmd, silentErrors=silentErrors)
             elif returnType==ReturnType.raw:
-                trans=Utils.runCmdReturnStr(cmd)
+                rtn=Utils.runCmdReturnStr(cmd)
             else:
                 unhandledEnumType(returnType)
         except subprocess.CalledProcessError as ex:
@@ -1075,11 +1073,11 @@ class Node(object):
             exitMsg=": " + exitMsg
         else:
             exitMsg=""
-        if exitOnError and trans is None:
+        if exitOnError and rtn is None:
             Utils.cmdError("could not \"%s\" - %s" % (cmd,exitMsg))
             Utils.errorExit("Failed to \"%s\"" % (cmd))
 
-        return trans
+        return rtn
 
     def waitForTransBlockIfNeeded(self, trans, waitForTransBlock, exitOnError=False):
         if not waitForTransBlock:
