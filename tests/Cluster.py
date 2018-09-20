@@ -30,6 +30,7 @@ class Cluster(object):
     __BiosHost="localhost"
     __BiosPort=8788
     __LauncherCmdArr=[]
+    __bootlog="eosio-ignition-wd/bootlog.txt"
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
@@ -81,6 +82,8 @@ class Cluster(object):
         self.defproduceraAccount.activePrivateKey=defproduceraPrvtKey
         self.defproducerbAccount.ownerPrivateKey=defproducerbPrvtKey
         self.defproducerbAccount.activePrivateKey=defproducerbPrvtKey
+
+        self.useBiosBootFile=False
 
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
@@ -333,6 +336,7 @@ class Cluster(object):
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False
         else:
+            self.useBiosBootFile=True
             self.biosNode=Cluster.bios_bootstrap(totalNodes, Cluster.__BiosHost, Cluster.__BiosPort, dontKill)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
@@ -833,8 +837,7 @@ class Cluster(object):
             return None
 
         p = re.compile('error', re.IGNORECASE)
-        bootlog="eosio-ignition-wd/bootlog.txt"
-        with open(bootlog) as bootFile:
+        with open(Cluster.__bootlog) as bootFile:
             for line in bootFile:
                 if p.search(line):
                     Utils.Print("ERROR: bios_boot.sh script resulted in errors. See %s" % (bootlog))
@@ -1288,6 +1291,9 @@ class Cluster(object):
             Cluster.dumpErrorDetailImpl(fileName)
             fileName="var/lib/node_%02d/stderr.txt" % (i)
             Cluster.dumpErrorDetailImpl(fileName)
+
+        if self.useBiosBootFile:
+            Cluster.dumpErrorDetailImpl(Cluster.__bootlog)
 
     def killall(self, silent=True, allInstances=False):
         """Kill cluster nodeos instances. allInstances will kill all nodeos instances running on the system."""
