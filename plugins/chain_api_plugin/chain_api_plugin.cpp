@@ -79,7 +79,10 @@ void chain_api_plugin::plugin_startup() {
    auto ro_api = app().get_plugin<chain_plugin>().get_read_only_api();
    auto rw_api = app().get_plugin<chain_plugin>().get_read_write_api();
 
-   app().get_plugin<http_plugin>().add_api({
+   auto& _http_plugin = app().get_plugin<http_plugin>();
+   ro_api.set_shorten_abi_errors( !_http_plugin.verbose_errors() );
+
+   _http_plugin.add_api({
       CHAIN_RO_CALL(get_info, 200l),
       CHAIN_RO_CALL(get_block, 200),
       CHAIN_RO_CALL(get_block_header_state, 200),

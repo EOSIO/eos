@@ -385,6 +385,7 @@ namespace impl {
                if (!type.empty()) {
                   try {
                      binary_to_variant_context _ctx(*abi, ctx, type);
+                     _ctx.short_path = true; // Just to be safe while avoiding the complexity of threading an override boolean all over the place
                      mvo( "data", abi->_binary_to_variant( type, act.data, _ctx ));
                      mvo("hex_data", act.data);
                   } catch(...) {
@@ -548,6 +549,7 @@ namespace impl {
                   auto type = abi->get_action_type(act.name);
                   if (!type.empty()) {
                      variant_to_binary_context _ctx(*abi, ctx, type);
+                     _ctx.short_path = true; // Just to be safe while avoiding the complexity of threading an override boolean all over the place
                      act.data = std::move( abi->_variant_to_binary( type, data, _ctx ));
                      valid_empty_data = act.data.empty();
                   }
