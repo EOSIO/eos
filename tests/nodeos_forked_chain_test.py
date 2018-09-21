@@ -212,7 +212,7 @@ try:
         transferAmount="100000000.0000 {0}".format(CORE_SYMBOL)
         Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
         node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer")
-        trans=node.delegatebw(account, 20000000.0000, 20000000.0000, exitOnError=True)
+        trans=node.delegatebw(account, 20000000.0000, 20000000.0000, waitForTransBlock=True, exitOnError=True)
 
 
     # ***   vote using accounts   ***
@@ -222,7 +222,7 @@ try:
     index=0
     for account in accounts:
         Print("Vote for producers=%s" % (producers))
-        trans=prodNodes[index % len(prodNodes)].vote(account, producers)
+        trans=prodNodes[index % len(prodNodes)].vote(account, producers, waitForTransBlock=True)
         index+=1
 
 
