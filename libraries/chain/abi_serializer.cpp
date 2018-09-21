@@ -346,12 +346,12 @@ namespace eosio { namespace chain {
    }
 
    fc::variant abi_serializer::binary_to_variant(const type_name& type, const bytes& binary, const fc::microseconds& max_serialization_time)const {
-      impl::binary_to_variant_context ctx(max_serialization_time);
+      impl::binary_to_variant_context ctx(*this, max_serialization_time, type);
       return _binary_to_variant(type, binary, ctx);
    }
 
    fc::variant abi_serializer::binary_to_variant(const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time)const {
-      impl::binary_to_variant_context ctx(max_serialization_time);
+      impl::binary_to_variant_context ctx(*this, max_serialization_time, type);
       return _binary_to_variant(type, binary, ctx);
    }
 
@@ -360,23 +360,29 @@ namespace eosio { namespace chain {
       auto h = ctx.enter_scope();
       auto rtype = resolve_type(type);
 
+      auto v_itr = variants.end();
+      auto s_itr = structs.end();
+
       auto btype = built_in_types.find(fundamental_type(rtype));
       if( btype != built_in_types.end() ) {
          btype->second.second(var, ds, is_array(rtype), is_optional(rtype));
       } else if ( is_array(rtype) ) {
+         ctx.hint_array_type_if_in_array();
          vector<fc::variant> vars = var.get_array();
          fc::raw::pack(ds, (fc::unsigned_int)vars.size());
-         auto h1 = ctx.push_to_path( fundamental_type(rtype), ctx.is_path_empty() );
+
+         auto h1 = ctx.push_to_path( impl::array_index_path_item{} );
+         auto h2 = ctx.disallow_extensions_unless(false);
+
          int64_t i = 0;
          for (const auto& var : vars) {
             ctx.set_array_index_of_path_back(i);
-            auto h2 = ctx.disallow_extensions_unless(false);
            _variant_to_binary(fundamental_type(rtype), var, ds, ctx);
            ++i;
          }
-      } else if ( variants.find(rtype) != variants.end() ) {
-         auto& v = variants.find(rtype)->second;
-         auto h1 = ctx.push_to_path( v.name, ctx.is_path_empty() );
+      } else if( (v_itr = variants.find(rtype)) != variants.end() ) {
+         ctx.hint_variant_type_if_in_array( v_itr );
+         auto& v = v_itr->second;
          EOS_ASSERT( var.is_array() && var.size() == 2, pack_exception,
                     "Expected input to be an array of two items while processing variant '${p}'", ("p", ctx.get_path_string()) );
          EOS_ASSERT( var[size_t(0)].is_string(), pack_exception,
@@ -385,16 +391,13 @@ namespace eosio { namespace chain {
          auto it = find(v.types.begin(), v.types.end(), variant_type_str);
          EOS_ASSERT( it != v.types.end(), pack_exception,
                      "Specified type '${t}' in input array is not valid within the variant '${p}'",
-                     ("t", variant_type_str)("p", ctx.get_path_string()) );
+                     ("t", ctx.maybe_shorten(variant_type_str))("p", ctx.get_path_string()) );
          fc::raw::pack(ds, fc::unsigned_int(it - v.types.begin()));
-         std::stringstream s;
-         s << "<variant(" << (it - v.types.begin()) << ")=" << *it << ">";
-         auto h3 = ctx.push_to_path(s.str());
+         auto h1 = ctx.push_to_path( impl::variant_path_item{ .variant_itr = v_itr, .variant_ordinal = static_cast<uint32_t>(it - v.types.begin()) } );
          _variant_to_binary( *it, var[size_t(1)], ds, ctx );
-      } else {
-         const auto& st = get_struct(rtype);
-
-         auto h1 = ctx.push_to_path( st.name, ctx.is_path_empty() );
+      } else if( (s_itr = structs.find(rtype)) != structs.end() ) {
+         ctx.hint_struct_type_if_in_array( s_itr );
+         const auto& st = s_itr->second;
 
          if( var.is_object() ) {
             const auto& vo = var.get_object();
@@ -404,22 +407,27 @@ namespace eosio { namespace chain {
                _variant_to_binary(resolve_type(st.base), var, ds, ctx);
             }
             bool extension_encountered = false;
+            uint32_t i = 0;
             for( const auto& field : st.fields ) {
                if( vo.contains( string(field.name).c_str() ) ) {
                   if( extension_encountered )
-                     EOS_THROW( pack_exception, "Unexpected field '${f}' found in input object while processing struct '${p}'", ("f",field.name)("p",ctx.get_path_string()) );
+                     EOS_THROW( pack_exception, "Unexpected field '${f}' found in input object while processing struct '${p}'",
+                                ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
                   {
+                     auto h1 = ctx.push_to_path( impl::field_path_item{ .parent_struct_itr = s_itr, .field_ordinal = i } );
                      auto h2 = ctx.disallow_extensions_unless( &field == &st.fields.back() );
-                     auto h3 = ctx.push_to_path( field.name );
                      _variant_to_binary(_remove_bin_extension(field.type), vo[field.name], ds, ctx);
                   }
                } else if( ends_with(field.type, "$") && ctx.extensions_allowed() ) {
                   extension_encountered = true;
                } else if( extension_encountered ) {
-                  EOS_THROW( pack_exception, "Encountered field '${f}' without binary extension designation while processing struct '${p}'", ("f",field.name)("p",ctx.get_path_string()) );
+                  EOS_THROW( pack_exception, "Encountered field '${f}' without binary extension designation while processing struct '${p}'",
+                             ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
                } else {
-                  EOS_THROW( pack_exception, "Missing field '${f}' in input object while processing struct '${p}'", ("f",field.name)("p",ctx.get_path_string()) );
+                  EOS_THROW( pack_exception, "Missing field '${f}' in input object while processing struct '${p}'",
+                             ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
                }
+               ++i;
             }
          } else if( var.is_array() ) {
             const auto& va = var.get_array();
@@ -429,20 +437,22 @@ namespace eosio { namespace chain {
             uint32_t i = 0;
             for( const auto& field : st.fields ) {
                if( va.size() > i ) {
+                  auto h1 = ctx.push_to_path( impl::field_path_item{ .parent_struct_itr = s_itr, .field_ordinal = i } );
                   auto h2 = ctx.disallow_extensions_unless( &field == &st.fields.back() );
-                  auto h3 = ctx.push_to_path( field.name );
                   _variant_to_binary(_remove_bin_extension(field.type), va[i], ds, ctx);
                } else if( ends_with(field.type, "$") && ctx.extensions_allowed() ) {
                   break;
                } else {
                   EOS_THROW( pack_exception, "Early end to input array specifying the fields of struct '${p}'; require input for field '${f}'",
-                             ("p", ctx.get_path_string())("f", field.name) );
+                             ("p", ctx.get_path_string())("f", ctx.maybe_shorten(field.name)) );
                }
                ++i;
             }
          } else {
             EOS_THROW( pack_exception, "Unexpected input encountered while processing struct '${p}'", ("p",ctx.get_path_string()) );
          }
+      } else {
+         EOS_THROW( invalid_type_inside_abi, "Unknown type ${type}", ("type",type) );
       }
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
 
@@ -460,13 +470,15 @@ namespace eosio { namespace chain {
       return temp;
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
 
-   bytes abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time)const {
-      impl::variant_to_binary_context ctx(max_serialization_time);
+   bytes abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time, bool short_path)const {
+      impl::variant_to_binary_context ctx(*this, max_serialization_time, type);
+      ctx.short_path = short_path;
       return _variant_to_binary(type, var, ctx);
    }
 
-   void  abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time)const {
-      impl::variant_to_binary_context ctx(max_serialization_time);
+   void  abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time, bool short_path)const {
+      impl::variant_to_binary_context ctx(*this, max_serialization_time, type);
+      ctx.short_path = short_path;
       _variant_to_binary(type, var, ds, ctx);
    }
 
@@ -487,6 +499,278 @@ namespace eosio { namespace chain {
          return optional<string>();
 
       return itr->second;
+   }
+
+   namespace impl {
+
+      void abi_traverse_context::check_deadline()const {
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+      }
+
+      fc::scoped_exit<std::function<void()>> abi_traverse_context::enter_scope() {
+         std::function<void()> callback = [old_recursion_depth=recursion_depth, this](){
+            recursion_depth = old_recursion_depth;
+         };
+
+         ++recursion_depth;
+         EOS_ASSERT( recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception,
+                     "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
+
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception,
+                     "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+
+         return {std::move(callback)};
+      }
+
+      void abi_traverse_context_with_path::set_path_root( const type_name& type ) {
+         auto rtype = abis.resolve_type(type);
+
+         if( abis.is_array(rtype) ) {
+            root_of_path =  array_type_path_root{};
+         } else {
+            auto itr1 = abis.structs.find(rtype);
+            if( itr1 != abis.structs.end() ) {
+               root_of_path = struct_type_path_root{ .struct_itr = itr1 };
+            } else {
+               auto itr2 = abis.variants.find(rtype);
+               if( itr2 != abis.variants.end() ) {
+                  root_of_path = variant_type_path_root{ .variant_itr = itr2 };
+               }
+            }
+         }
+      }
+
+      fc::scoped_exit<std::function<void()>> abi_traverse_context_with_path::push_to_path( const path_item& item ) {
+         std::function<void()> callback = [this](){
+            EOS_ASSERT( path.size() > 0, abi_exception,
+                        "invariant failure in variant_to_binary_context: path is empty on scope exit" );
+            path.pop_back();
+         };
+
+         path.push_back( item );
+
+         return {std::move(callback)};
+      }
+
+      void abi_traverse_context_with_path::set_array_index_of_path_back( uint32_t i ) {
+         EOS_ASSERT( path.size() > 0, abi_exception, "path is empty" );
+
+         auto& b = path.back();
+
+         EOS_ASSERT( b.contains<array_index_path_item>(), abi_exception, "trying to set array index without first pushing new array index item" );
+
+         b.get<array_index_path_item>().array_index = i;
+      }
+
+      void abi_traverse_context_with_path::hint_array_type_if_in_array() {
+         if( path.size() == 0 || !path.back().contains<array_index_path_item>() )
+            return;
+
+         path.back().get<array_index_path_item>().type_hint = array_type_path_root{};
+      }
+
+      void abi_traverse_context_with_path::hint_struct_type_if_in_array( const map<type_name, struct_def>::const_iterator& itr ) {
+         if( path.size() == 0 || !path.back().contains<array_index_path_item>() )
+            return;
+
+         path.back().get<array_index_path_item>().type_hint = struct_type_path_root{ .struct_itr = itr };
+      }
+
+      void abi_traverse_context_with_path::hint_variant_type_if_in_array( const map<type_name, variant_def>::const_iterator& itr ) {
+         if( path.size() == 0 || !path.back().contains<array_index_path_item>() )
+            return;
+
+         path.back().get<array_index_path_item>().type_hint = variant_type_path_root{ .variant_itr = itr };
+      }
+
+      constexpr size_t const_strlen( const char* str )
+      {
+          return (*str == 0) ? 0 : const_strlen(str + 1) + 1;
+      }
+
+      void output_name( std::ostream& s, const string& str, bool shorten, size_t max_length = 64 ) {
+         constexpr size_t min_num_characters_at_ends = 4;
+         constexpr size_t preferred_num_tail_end_characters = 6;
+         constexpr const char* fill_in = "...";
+
+         static_assert( min_num_characters_at_ends <= preferred_num_tail_end_characters,
+                        "preferred number of tail end characters cannot be less than the imposed absolute minimum" );
+
+         constexpr size_t fill_in_length = const_strlen( fill_in );
+         constexpr size_t min_length = fill_in_length + 2*min_num_characters_at_ends;
+         constexpr size_t preferred_min_length = fill_in_length + 2*preferred_num_tail_end_characters;
+
+         max_length = std::max( max_length, min_length );
+
+         if( !shorten || str.size() <= max_length ) {
+            s << str;
+            return;
+         }
+
+         size_t actual_num_tail_end_characters = preferred_num_tail_end_characters;
+         if( max_length < preferred_min_length ) {
+            actual_num_tail_end_characters = min_num_characters_at_ends + (max_length - min_length)/2;
+         }
+
+         s.write( str.data(), max_length - fill_in_length - actual_num_tail_end_characters );
+         s.write( fill_in, fill_in_length );
+         s.write( str.data() + (str.size() - actual_num_tail_end_characters), actual_num_tail_end_characters );
+      }
+
+      struct generate_path_string_visitor {
+         using result_type = void;
+
+         generate_path_string_visitor( bool shorten_names, bool track_only )
+         : shorten_names(shorten_names), track_only( track_only )
+         {}
+
+         std::stringstream s;
+         bool              shorten_names = false;
+         bool              track_only     = false;
+         path_item         last_non_array_path_item;
+
+         void add_dot() {
+            s << ".";
+         }
+
+         void operator()( const empty_path_item& item ) {
+         }
+
+         void operator()( const array_index_path_item& item ) {
+            if( track_only ) {
+               last_non_array_path_item = item; // ?????
+               return;
+            }
+
+            s << "[" << item.array_index << "]";
+         }
+
+         void operator()( const field_path_item& item ) {
+            if( track_only ) {
+               last_non_array_path_item = item;
+               return;
+            }
+
+            const auto& str = item.parent_struct_itr->second.fields.at(item.field_ordinal).name;
+            output_name( s, str, shorten_names );
+         }
+
+         void operator()( const variant_path_item& item ) {
+            if( track_only ) {
+               last_non_array_path_item = item;
+               return;
+            }
+
+            s << "<variant(" << item.variant_ordinal << ")=";
+            const auto& str = item.variant_itr->second.types.at(item.variant_ordinal);
+            output_name( s, str, shorten_names );
+            s << ">";
+         }
+
+         void operator()( const empty_path_root& item ) {
+         }
+
+         void operator()( const array_type_path_root& item ) {
+            s << "ARRAY";
+         }
+
+         void operator()( const struct_type_path_root& item ) {
+            const auto& str = item.struct_itr->first;
+            output_name( s, str, shorten_names );
+         }
+
+         void operator()( const variant_type_path_root& item ) {
+            const auto& str = item.variant_itr->first;
+            output_name( s, str, shorten_names );
+         }
+      };
+
+      struct path_item_type_visitor {
+         using result_type = void;
+
+         path_item_type_visitor( std::stringstream& s, bool shorten_names )
+         : s(s), shorten_names(shorten_names)
+         {}
+
+         std::stringstream& s;
+         bool               shorten_names = false;
+
+         void operator()( const empty_path_item& item ) {
+         }
+
+         void operator()( const array_index_path_item& item ) {
+            const auto& th = item.type_hint;
+            if( th.contains<struct_type_path_root>() ) {
+               const auto& str = th.get<struct_type_path_root>().struct_itr->first;
+               output_name( s, str, shorten_names );
+            } else if( th.contains<variant_type_path_root>() ) {
+               const auto& str = th.get<variant_type_path_root>().variant_itr->first;
+               output_name( s, str, shorten_names );
+            } else if( th.contains<array_type_path_root>() ) {
+               s << "ARRAY";
+            } else {
+               s << "UNKNOWN";
+            }
+         }
+
+         void operator()( const field_path_item& item ) {
+            const auto& str = item.parent_struct_itr->second.fields.at(item.field_ordinal).type;
+            output_name( s, str, shorten_names );
+         }
+
+         void operator()( const variant_path_item& item ) {
+            const auto& str = item.variant_itr->second.types.at(item.variant_ordinal);
+            output_name( s, str, shorten_names );
+         }
+      };
+
+      string abi_traverse_context_with_path::get_path_string()const {
+         bool full_path = !short_path;
+         bool shorten_names = short_path;
+
+         generate_path_string_visitor visitor(shorten_names, !full_path);
+         if( full_path )
+            root_of_path.visit( visitor );
+         for( size_t i = 0, n = path.size(); i < n; ++i ) {
+            if( full_path && !path[i].contains<array_index_path_item>() )
+               visitor.add_dot();
+
+            path[i].visit( visitor );
+
+         }
+
+         if( !full_path ) {
+            if( visitor.last_non_array_path_item.contains<empty_path_item>() ) {
+               root_of_path.visit( visitor );
+            } else {
+               path_item_type_visitor vis2(visitor.s, shorten_names);
+               visitor.last_non_array_path_item.visit(vis2);
+            }
+         }
+
+         return visitor.s.str();
+      }
+
+      string abi_traverse_context_with_path::maybe_shorten( const string& str ) {
+         if( !short_path )
+            return str;
+
+         std::stringstream s;
+         output_name( s, str, true );
+         return s.str();
+      }
+
+      fc::scoped_exit<std::function<void()>> variant_to_binary_context::disallow_extensions_unless( bool condition ) {
+         std::function<void()> callback = [old_recursion_depth=recursion_depth, old_allow_extensions=allow_extensions, this](){
+            allow_extensions = old_allow_extensions;
+         };
+
+         if( !condition ) {
+            allow_extensions = false;
+         }
+
+         return {std::move(callback)};
+      }
    }
 
 } }

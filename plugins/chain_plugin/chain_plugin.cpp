@@ -1727,7 +1727,7 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
       auto action_type = abis.get_action_type(params.action);
       EOS_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action} in contract ${contract}", ("action", params.action)("contract", params.code));
       try {
-         result.binargs = abis.variant_to_binary(action_type, params.args, abi_serializer_max_time);
+         result.binargs = abis.variant_to_binary(action_type, params.args, abi_serializer_max_time, true); // TODO: Allow configuration to output verbose error messages
       } EOS_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
                                 "'${args}' is invalid args for action '${action}' code '${code}'. expected '${proto}'",
                                 ("args", params.args)("action", params.action)("code", params.code)("proto", action_abi_to_variant(abi, action_type)))

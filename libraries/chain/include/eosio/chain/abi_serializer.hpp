@@ -18,12 +18,13 @@ using std::pair;
 using namespace fc;
 
 namespace impl {
-  struct abi_from_variant;
-  struct abi_to_variant;
+   struct abi_from_variant;
+   struct abi_to_variant;
 
-  struct abi_traverse_context;
-  struct binary_to_variant_context;
-  struct variant_to_binary_context;
+   struct abi_traverse_context;
+   struct abi_traverse_context_with_path;
+   struct binary_to_variant_context;
+   struct variant_to_binary_context;
 }
 
 /**
@@ -52,11 +53,11 @@ struct abi_serializer {
 
    optional<string>  get_error_message( uint64_t error_code )const;
 
-   fc::variant binary_to_variant(const type_name& type, const bytes& binary, const fc::microseconds& max_serialization_time)const;
-   fc::variant binary_to_variant(const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time)const;
+   fc::variant binary_to_variant( const type_name& type, const bytes& binary, const fc::microseconds& max_serialization_time )const;
+   fc::variant binary_to_variant( const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time )const;
 
-   bytes       variant_to_binary(const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time)const;
-   void        variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time)const;
+   bytes       variant_to_binary( const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time, bool short_path = false )const;
+   void        variant_to_binary( const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time, bool short_path = false )const;
 
    template<typename T, typename Resolver>
    static void to_variant( const T& o, fc::variant& vo, Resolver resolver, const fc::microseconds& max_serialization_time );
@@ -116,6 +117,7 @@ private:
 
    friend struct impl::abi_from_variant;
    friend struct impl::abi_to_variant;
+   friend struct impl::abi_traverse_context_with_path;
 };
 
 namespace impl {
@@ -129,24 +131,9 @@ namespace impl {
       : max_serialization_time( max_serialization_time ), deadline( deadline ), recursion_depth(0)
       {}
 
-      void check_deadline()const {
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-      }
+      void check_deadline()const;
 
-      fc::scoped_exit<std::function<void()>> enter_scope() {
-         std::function<void()> callback = [old_recursion_depth=recursion_depth, this](){
-            recursion_depth = old_recursion_depth;
-         };
-
-         ++recursion_depth;
-         EOS_ASSERT( recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception,
-                     "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
-
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception,
-                     "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-
-         return {std::move(callback)};
-      }
+      fc::scoped_exit<std::function<void()>> enter_scope();
 
    protected:
       fc::microseconds max_serialization_time;
@@ -154,85 +141,93 @@ namespace impl {
       size_t           recursion_depth;
    };
 
-   struct binary_to_variant_context : public abi_traverse_context {
-      using abi_traverse_context::abi_traverse_context;
+   struct empty_path_root {};
 
-      binary_to_variant_context( const abi_traverse_context& ctx )
-      : abi_traverse_context(ctx)
-      {}
+   struct array_type_path_root {
    };
 
-   struct variant_to_binary_context : public abi_traverse_context {
-      using abi_traverse_context::abi_traverse_context;
+   struct struct_type_path_root {
+      map<type_name, struct_def>::const_iterator  struct_itr;
+   };
 
-      variant_to_binary_context( const abi_traverse_context& ctx )
-      : abi_traverse_context(ctx)
-      {}
+   struct variant_type_path_root {
+      map<type_name, variant_def>::const_iterator variant_itr;
+   };
 
-      fc::scoped_exit<std::function<void()>> disallow_extensions_unless( bool condition ) {
-         std::function<void()> callback = [old_recursion_depth=recursion_depth, old_allow_extensions=allow_extensions, this](){
-            allow_extensions = old_allow_extensions;
-         };
+   using path_root = static_variant<empty_path_root, array_type_path_root, struct_type_path_root, variant_type_path_root>;
 
-         if( !condition ) {
-            allow_extensions = false;
-         }
+   struct empty_path_item {};
 
-         return {std::move(callback)};
+   struct array_index_path_item {
+      path_root                                   type_hint;
+      uint32_t                                    array_index = 0;
+   };
+
+   struct field_path_item {
+      map<type_name, struct_def>::const_iterator  parent_struct_itr;
+      uint32_t                                    field_ordinal = 0;
+   };
+
+   struct variant_path_item {
+      map<type_name, variant_def>::const_iterator variant_itr;
+      uint32_t                                    variant_ordinal = 0;
+   };
+
+   using path_item = static_variant<empty_path_item, array_index_path_item, field_path_item, variant_path_item>;
+
+   struct abi_traverse_context_with_path : public abi_traverse_context {
+      abi_traverse_context_with_path( const abi_serializer& abis, fc::microseconds max_serialization_time, const type_name& type )
+      : abi_traverse_context( max_serialization_time ), abis(abis)
+      {
+         set_path_root(type);
       }
 
-      fc::scoped_exit<std::function<void()>> push_to_path( const string& n, bool condition = true ) {
-
-         if( !condition ) {
-            fc::scoped_exit<std::function<void()>> h([](){});
-            h.cancel();
-            return h;
-         }
-
-         std::function<void()> callback = [this](){
-            EOS_ASSERT( path.size() > 0 && path_array_index.size() > 0, abi_exception,
-                        "invariant failure in variant_to_binary_context: path is empty on scope exit" );
-            path.pop_back();
-            path_array_index.pop_back();
-         };
-
-         path.push_back( n );
-         path_array_index.push_back( -1 );
-
-         return {std::move(callback)};
+      abi_traverse_context_with_path( const abi_serializer& abis, fc::microseconds max_serialization_time, fc::time_point deadline, const type_name& type )
+      : abi_traverse_context( max_serialization_time, deadline ), abis(abis)
+      {
+         set_path_root(type);
       }
 
-      void set_array_index_of_path_back( int64_t i ) {
-         EOS_ASSERT( path_array_index.size() > 0, abi_exception, "path is empty" );
-         path_array_index.back() = i;
+      abi_traverse_context_with_path( const abi_serializer& abis, const abi_traverse_context& ctx, const type_name& type )
+      : abi_traverse_context(ctx), abis(abis)
+      {
+         set_path_root(type);
       }
+
+      void set_path_root( const type_name& type );
+
+      fc::scoped_exit<std::function<void()>> push_to_path( const path_item& item );
+
+      void set_array_index_of_path_back( uint32_t i );
+      void hint_array_type_if_in_array();
+      void hint_struct_type_if_in_array( const map<type_name, struct_def>::const_iterator& itr );
+      void hint_variant_type_if_in_array( const map<type_name, variant_def>::const_iterator& itr );
+
+      string get_path_string()const;
+
+      string maybe_shorten( const string& str );
+
+   protected:
+      const abi_serializer&  abis;
+      path_root              root_of_path;
+      vector<path_item>      path;
+   public:
+      bool                   short_path = false;
+   };
+
+   struct binary_to_variant_context : public abi_traverse_context_with_path {
+      using abi_traverse_context_with_path::abi_traverse_context_with_path;
+   };
+
+   struct variant_to_binary_context : public abi_traverse_context_with_path {
+      using abi_traverse_context_with_path::abi_traverse_context_with_path;
+
+      fc::scoped_exit<std::function<void()>> disallow_extensions_unless( bool condition );
 
       bool extensions_allowed()const { return allow_extensions; }
 
-      bool is_path_empty()const { return path.size() == 0; }
-
-      string get_path_string()const {
-         EOS_ASSERT( path.size() == path_array_index.size(), abi_exception,
-                     "invariant failure in variant_to_binary_context: mismatch in path vector sizes" );
-
-         std::stringstream s;
-         for( size_t i = 0, n = path.size(); i < n; ++i ) {
-            s << path[i];
-            if( path_array_index[i] >= 0 ) {
-               s << "[" << path_array_index[i] << "]";
-            }
-            if( (i + 1) != n ) { // if not the last element in the path
-               s << ".";
-            }
-         }
-
-         return s.str();
-      }
-
    protected:
-      bool            allow_extensions = true;
-      vector<string>  path;
-      vector<int64_t> path_array_index;
+      bool                   allow_extensions = true;
    };
 
    /**
@@ -389,7 +384,7 @@ namespace impl {
                auto type = abi->get_action_type(act.name);
                if (!type.empty()) {
                   try {
-                     binary_to_variant_context _ctx(ctx);
+                     binary_to_variant_context _ctx(*abi, ctx, type);
                      mvo( "data", abi->_binary_to_variant( type, act.data, _ctx ));
                      mvo("hex_data", act.data);
                   } catch(...) {
@@ -552,7 +547,7 @@ namespace impl {
                if (abi.valid()) {
                   auto type = abi->get_action_type(act.name);
                   if (!type.empty()) {
-                     variant_to_binary_context _ctx(ctx);
+                     variant_to_binary_context _ctx(*abi, ctx, type);
                      act.data = std::move( abi->_variant_to_binary( type, data, _ctx ));
                      valid_empty_data = act.data.empty();
                   }
