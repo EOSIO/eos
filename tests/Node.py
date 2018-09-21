@@ -1321,8 +1321,10 @@ class Node(object):
 
         if trans is None:
             Utils.Print("  cmd returned transaction: %s" % (trans))
+            return
 
         if ignoreNonTrans and not Node.isTrans(trans):
+            Utils.Print("  cmd returned a non-transaction")
             return
 
         transId=Node.getTransId(trans)
