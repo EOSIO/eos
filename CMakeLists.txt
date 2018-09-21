@@ -46,6 +46,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     endif()
 endif()
 
+# test
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
