@@ -543,7 +543,8 @@ namespace eosio { namespace chain {
    namespace impl {
 
       void abi_traverse_context::check_deadline()const {
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception,
+                     "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
       }
 
       fc::scoped_exit<std::function<void()>> abi_traverse_context::enter_scope() {
@@ -555,8 +556,7 @@ namespace eosio { namespace chain {
          EOS_ASSERT( recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception,
                      "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth) );
 
-         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception,
-                     "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
+         check_deadline();
 
          return {std::move(callback)};
       }
