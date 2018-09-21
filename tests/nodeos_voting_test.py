@@ -216,7 +216,7 @@ try:
         transferAmount="100000000.0000 {0}".format(CORE_SYMBOL)
         Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
         node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer")
-        trans=node.delegatebw(account, 20000000.0000, 20000000.0000, exitOnError=True)
+        trans=node.delegatebw(account, 20000000.0000, 20000000.0000, waitForTransBlock=True, exitOnError=True)
 
     # containers for tracking producers
     prodsActive={}
@@ -229,7 +229,7 @@ try:
     #first account will vote for node0 producers, all others will vote for node1 producers
     node=node0
     for account in accounts:
-        trans=node.vote(account, node.producers)
+        trans=node.vote(account, node.producers, waitForTransBlock=True)
         node=node1
 
     setActiveProducers(prodsActive, node1.producers)
@@ -240,7 +240,7 @@ try:
     # first account will vote for node2 producers, all others will vote for node3 producers
     node1
     for account in accounts:
-        trans=node.vote(account, node.producers)
+        trans=node.vote(account, node.producers, waitForTransBlock=True)
         node=node2
 
     setActiveProducers(prodsActive, node2.producers)

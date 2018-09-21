@@ -126,7 +126,7 @@ try:
         transferAmount="70000000.0000 {0}".format(CORE_SYMBOL)
         Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
         nodes[0].transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer")
-        trans=nodes[0].delegatebw(account, 1000000.0000, 68000000.0000, exitOnError=True)
+        trans=nodes[0].delegatebw(account, 1000000.0000, 68000000.0000, waitForTransBlock=True, exitOnError=True)
 
     contractAccount=cluster.createAccountKeys(1)[0]
     contractAccount.name="contracttest"
@@ -136,7 +136,7 @@ try:
     transferAmount="90000000.0000 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, contractAccount.name))
     nodes[0].transferFunds(cluster.eosioAccount, contractAccount, transferAmount, "test transfer")
-    trans=nodes[0].delegatebw(contractAccount, 1000000.0000, 88000000.0000, exitOnError=True)
+    trans=nodes[0].delegatebw(contractAccount, 1000000.0000, 88000000.0000, waitForTransBlock=True, exitOnError=True)
 
     contractDir="contracts/integration_test"
     wasmFile="integration_test.wasm"
