@@ -1230,7 +1230,7 @@ static fc::variant get_global_row( const database& db, const abi_def& abi, const
 
    vector<char> data;
    read_only::copy_inline_row(*it, data);
-   return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_ms);
+   return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_ms, true ); // TODO: Allow configuration to output verbose error messages
 }
 
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
@@ -1275,7 +1275,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
       }
       copy_inline_row(*kv_index.find(boost::make_tuple(table_id->id, it->primary_key)), data);
       if (p.json)
-         result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
+         result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time, true)); // TODO: Allow configuration to output verbose error messages
       else
          result.rows.emplace_back(fc::variant(data));
    }
@@ -1668,7 +1668,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.total_resources = abis.binary_to_variant( "user_resources", data, abi_serializer_max_time );
+            result.total_resources = abis.binary_to_variant( "user_resources", data, abi_serializer_max_time, true ); // TODO: Allow configuration to output verbose error messages
          }
       }
 
@@ -1679,7 +1679,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data, abi_serializer_max_time );
+            result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data, abi_serializer_max_time, true ); // TODO: Allow configuration to output verbose error messages
          }
       }
 
@@ -1690,7 +1690,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.refund_request = abis.binary_to_variant( "refund_request", data, abi_serializer_max_time );
+            result.refund_request = abis.binary_to_variant( "refund_request", data, abi_serializer_max_time, true ); // TODO: Allow configuration to output verbose error messages
          }
       }
 
@@ -1701,7 +1701,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.voter_info = abis.binary_to_variant( "voter_info", data, abi_serializer_max_time );
+            result.voter_info = abis.binary_to_variant( "voter_info", data, abi_serializer_max_time, true ); // TODO: Allow configuration to output verbose error messages
          }
       }
    }
@@ -1744,7 +1744,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
    abi_def abi;
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi, abi_serializer_max_time );
-      result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs, abi_serializer_max_time );
+      result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs, abi_serializer_max_time, true ); // TODO: Allow configuration to output verbose error messages
    } else {
       EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
    }

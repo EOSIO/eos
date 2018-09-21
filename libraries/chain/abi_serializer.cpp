@@ -283,14 +283,32 @@ namespace eosio { namespace chain {
                                             fc::mutable_variant_object& obj, impl::binary_to_variant_context& ctx )const
    {
       auto h = ctx.enter_scope();
-      const auto& st = get_struct(type);
+      auto s_itr = structs.find(type);
+      EOS_ASSERT( s_itr != structs.end(), invalid_type_inside_abi, "Unknown type ${type}", ("type",ctx.maybe_shorten(type)) );
+      ctx.hint_struct_type_if_in_array( s_itr );
+      const auto& st = s_itr->second;
       if( st.base != type_name() ) {
          _binary_to_variant(resolve_type(st.base), stream, obj, ctx);
       }
-      for( const auto& field : st.fields ) {
-         if( !stream.remaining() && ends_with(field.type, "$") )
-            continue;
-         obj( field.name, _binary_to_variant(resolve_type(_remove_bin_extension(field.type)), stream, ctx) );
+      bool encountered_extension = false;
+      for( uint32_t i = 0; i < st.fields.size(); ++i ) {
+         const auto& field = st.fields[i];
+         bool extension = ends_with(field.type, "$");
+         encountered_extension |= extension;
+         if( !stream.remaining() ) {
+            if( extension ) {
+               continue;
+            }
+            if( encountered_extension ) {
+               EOS_THROW( abi_exception, "Encountered field '${f}' without binary extension designation while processing struct '${p}'",
+                          ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
+            }
+            EOS_THROW( unpack_exception, "Stream unexpectedly ended; unable to unpack field '${f}' of struct '${p}'",
+                       ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
+
+         }
+         auto h1 = ctx.push_to_path( impl::field_path_item{ .parent_struct_itr = s_itr, .field_ordinal = i } );
+         obj( field.name, _binary_to_variant(resolve_type( extension ? _remove_bin_extension(field.type) : field.type ), stream, ctx) );
       }
    }
 
@@ -302,39 +320,60 @@ namespace eosio { namespace chain {
       auto ftype = fundamental_type(rtype);
       auto btype = built_in_types.find(ftype );
       if( btype != built_in_types.end() ) {
-         return btype->second.first(stream, is_array(rtype), is_optional(rtype));
+         try {
+            return btype->second.first(stream, is_array(rtype), is_optional(rtype));
+         } EOS_RETHROW_EXCEPTIONS( unpack_exception, "Unable to unpack ${class} type '${type}' while processing '${p}'",
+                                   ("class", is_array(rtype) ? "array of built-in" : is_optional(rtype) ? "optional of built-in" : "built-in")
+                                   ("type", ftype)("p", ctx.get_path_string()) )
       }
       if ( is_array(rtype) ) {
-        fc::unsigned_int size;
-        fc::raw::unpack(stream, size);
-        vector<fc::variant> vars;
-        for( decltype(size.value) i = 0; i < size; ++i ) {
-           auto v = _binary_to_variant(ftype, stream, ctx);
-           EOS_ASSERT( !v.is_null(), unpack_exception, "Invalid packed array" );
-           vars.emplace_back(std::move(v));
-        }
-        EOS_ASSERT( vars.size() == size.value,
-                    unpack_exception,
-                    "packed size does not match unpacked array size, packed size ${p} actual size ${a}",
-                    ("p", size)("a", vars.size()) );
-        return fc::variant( std::move(vars) );
+         ctx.hint_array_type_if_in_array();
+         fc::unsigned_int size;
+         try {
+            fc::raw::unpack(stream, size);
+         } EOS_RETHROW_EXCEPTIONS( unpack_exception, "Unable to unpack size of array '${p}'", ("p", ctx.get_path_string()) )
+         vector<fc::variant> vars;
+         auto h1 = ctx.push_to_path( impl::array_index_path_item{} );
+         for( decltype(size.value) i = 0; i < size; ++i ) {
+            ctx.set_array_index_of_path_back(i);
+            auto v = _binary_to_variant(ftype, stream, ctx);
+            // QUESTION: Is it actually desired behavior to require the returned variant to not be null?
+            //           This would disallow arrays of optionals in general (though if all optionals in the array were present it would be allowed).
+            //           Is there any scenario in which the returned variant would be null other than in the case of an empty optional?
+            EOS_ASSERT( !v.is_null(), unpack_exception, "Invalid packed array '${p}'", ("p", ctx.get_path_string()) );
+            vars.emplace_back(std::move(v));
+         }
+         // QUESTION: Why would the assert below ever fail?
+         EOS_ASSERT( vars.size() == size.value,
+                     unpack_exception,
+                     "packed size does not match unpacked array size, packed size ${p} actual size ${a}",
+                     ("p", size)("a", vars.size()) );
+         return fc::variant( std::move(vars) );
       } else if ( is_optional(rtype) ) {
-        char flag;
-        fc::raw::unpack(stream, flag);
-        return flag ? _binary_to_variant(ftype, stream, ctx) : fc::variant();
+         char flag;
+         try {
+            fc::raw::unpack(stream, flag);
+         } EOS_RETHROW_EXCEPTIONS( unpack_exception, "Unable to unpack presence flag of optional '${p}'", ("p", ctx.get_path_string()) )
+         return flag ? _binary_to_variant(ftype, stream, ctx) : fc::variant();
       } else {
-         auto v = variants.find(rtype);
-         if( v != variants.end() ) {
+         auto v_itr = variants.find(rtype);
+         if( v_itr != variants.end() ) {
+            ctx.hint_variant_type_if_in_array( v_itr );
             fc::unsigned_int select;
-            fc::raw::unpack(stream, select);
-            EOS_ASSERT( (size_t)select < v->second.types.size(), unpack_exception, "Invalid packed variant" );
-            return vector<fc::variant>{v->second.types[select], _binary_to_variant(v->second.types[select], stream, ctx)};
+            try {
+               fc::raw::unpack(stream, select);
+            } EOS_RETHROW_EXCEPTIONS( unpack_exception, "Unable to unpack tag of variant '${p}'", ("p", ctx.get_path_string()) )
+            EOS_ASSERT( (size_t)select < v_itr->second.types.size(), unpack_exception,
+                        "Unpacked invalid tag (${select}) for variant '${p}'", ("select", select.value)("p",ctx.get_path_string()) );
+            auto h1 = ctx.push_to_path( impl::variant_path_item{ .variant_itr = v_itr, .variant_ordinal = static_cast<uint32_t>(select) } );
+            return vector<fc::variant>{v_itr->second.types[select], _binary_to_variant(v_itr->second.types[select], stream, ctx)};
          }
       }
 
       fc::mutable_variant_object mvo;
       _binary_to_variant(rtype, stream, mvo, ctx);
-      EOS_ASSERT( mvo.size() > 0, unpack_exception, "Unable to unpack stream ${type}", ("type", type) );
+      // QUESTION: Is this assert actually desired? It disallows unpacking empty structs from datastream.
+      EOS_ASSERT( mvo.size() > 0, unpack_exception, "Unable to unpack '${p}' from stream", ("p", ctx.get_path_string()) );
       return fc::variant( std::move(mvo) );
    }
 
@@ -345,13 +384,15 @@ namespace eosio { namespace chain {
       return _binary_to_variant(type, ds, ctx);
    }
 
-   fc::variant abi_serializer::binary_to_variant(const type_name& type, const bytes& binary, const fc::microseconds& max_serialization_time)const {
+   fc::variant abi_serializer::binary_to_variant( const type_name& type, const bytes& binary, const fc::microseconds& max_serialization_time, bool short_path )const {
       impl::binary_to_variant_context ctx(*this, max_serialization_time, type);
+      ctx.short_path = short_path;
       return _binary_to_variant(type, binary, ctx);
    }
 
-   fc::variant abi_serializer::binary_to_variant(const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time)const {
+   fc::variant abi_serializer::binary_to_variant( const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time, bool short_path )const {
       impl::binary_to_variant_context ctx(*this, max_serialization_time, type);
+      ctx.short_path = short_path;
       return _binary_to_variant(type, binary, ctx);
    }
 
@@ -406,11 +447,11 @@ namespace eosio { namespace chain {
                auto h2 = ctx.disallow_extensions_unless(false);
                _variant_to_binary(resolve_type(st.base), var, ds, ctx);
             }
-            bool extension_encountered = false;
-            uint32_t i = 0;
-            for( const auto& field : st.fields ) {
+            bool disallow_additional_fields = false;
+            for( uint32_t i = 0; i < st.fields.size(); ++i ) {
+               const auto& field = st.fields[i];
                if( vo.contains( string(field.name).c_str() ) ) {
-                  if( extension_encountered )
+                  if( disallow_additional_fields )
                      EOS_THROW( pack_exception, "Unexpected field '${f}' found in input object while processing struct '${p}'",
                                 ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
                   {
@@ -419,23 +460,22 @@ namespace eosio { namespace chain {
                      _variant_to_binary(_remove_bin_extension(field.type), vo[field.name], ds, ctx);
                   }
                } else if( ends_with(field.type, "$") && ctx.extensions_allowed() ) {
-                  extension_encountered = true;
-               } else if( extension_encountered ) {
-                  EOS_THROW( pack_exception, "Encountered field '${f}' without binary extension designation while processing struct '${p}'",
+                  disallow_additional_fields = true;
+               } else if( disallow_additional_fields ) {
+                  EOS_THROW( abi_exception, "Encountered field '${f}' without binary extension designation while processing struct '${p}'",
                              ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
                } else {
                   EOS_THROW( pack_exception, "Missing field '${f}' in input object while processing struct '${p}'",
                              ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
                }
-               ++i;
             }
          } else if( var.is_array() ) {
             const auto& va = var.get_array();
             EOS_ASSERT( st.base == type_name(), invalid_type_inside_abi,
                         "Using input array to specify the fields of the derived struct '${p}'; input arrays are currently only allowed for structs without a base",
                         ("p",ctx.get_path_string()) );
-            uint32_t i = 0;
-            for( const auto& field : st.fields ) {
+            for( uint32_t i = 0; i < st.fields.size(); ++i ) {
+               const auto& field = st.fields[i];
                if( va.size() > i ) {
                   auto h1 = ctx.push_to_path( impl::field_path_item{ .parent_struct_itr = s_itr, .field_ordinal = i } );
                   auto h2 = ctx.disallow_extensions_unless( &field == &st.fields.back() );
@@ -446,13 +486,12 @@ namespace eosio { namespace chain {
                   EOS_THROW( pack_exception, "Early end to input array specifying the fields of struct '${p}'; require input for field '${f}'",
                              ("p", ctx.get_path_string())("f", ctx.maybe_shorten(field.name)) );
                }
-               ++i;
             }
          } else {
             EOS_THROW( pack_exception, "Unexpected input encountered while processing struct '${p}'", ("p",ctx.get_path_string()) );
          }
       } else {
-         EOS_THROW( invalid_type_inside_abi, "Unknown type ${type}", ("type",type) );
+         EOS_THROW( invalid_type_inside_abi, "Unknown type ${type}", ("type",ctx.maybe_shorten(type)) );
       }
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
 
@@ -470,13 +509,13 @@ namespace eosio { namespace chain {
       return temp;
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
 
-   bytes abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time, bool short_path)const {
+   bytes abi_serializer::variant_to_binary( const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time, bool short_path )const {
       impl::variant_to_binary_context ctx(*this, max_serialization_time, type);
       ctx.short_path = short_path;
       return _variant_to_binary(type, var, ctx);
    }
 
-   void  abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time, bool short_path)const {
+   void  abi_serializer::variant_to_binary( const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time, bool short_path )const {
       impl::variant_to_binary_context ctx(*this, max_serialization_time, type);
       ctx.short_path = short_path;
       _variant_to_binary(type, var, ds, ctx);
@@ -627,7 +666,7 @@ namespace eosio { namespace chain {
          std::stringstream s;
          bool              shorten_names = false;
          bool              track_only     = false;
-         path_item         last_non_array_path_item;
+         path_item         last_path_item;
 
          void add_dot() {
             s << ".";
@@ -638,7 +677,7 @@ namespace eosio { namespace chain {
 
          void operator()( const array_index_path_item& item ) {
             if( track_only ) {
-               last_non_array_path_item = item; // ?????
+               last_path_item = item;
                return;
             }
 
@@ -647,7 +686,7 @@ namespace eosio { namespace chain {
 
          void operator()( const field_path_item& item ) {
             if( track_only ) {
-               last_non_array_path_item = item;
+               last_path_item = item;
                return;
             }
 
@@ -657,7 +696,7 @@ namespace eosio { namespace chain {
 
          void operator()( const variant_path_item& item ) {
             if( track_only ) {
-               last_non_array_path_item = item;
+               last_path_item = item;
                return;
             }
 
@@ -740,11 +779,11 @@ namespace eosio { namespace chain {
          }
 
          if( !full_path ) {
-            if( visitor.last_non_array_path_item.contains<empty_path_item>() ) {
+            if( visitor.last_path_item.contains<empty_path_item>() ) {
                root_of_path.visit( visitor );
             } else {
                path_item_type_visitor vis2(visitor.s, shorten_names);
-               visitor.last_non_array_path_item.visit(vis2);
+               visitor.last_path_item.visit(vis2);
             }
          }
 

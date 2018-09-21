@@ -53,8 +53,8 @@ struct abi_serializer {
 
    optional<string>  get_error_message( uint64_t error_code )const;
 
-   fc::variant binary_to_variant( const type_name& type, const bytes& binary, const fc::microseconds& max_serialization_time )const;
-   fc::variant binary_to_variant( const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time )const;
+   fc::variant binary_to_variant( const type_name& type, const bytes& binary, const fc::microseconds& max_serialization_time, bool short_path = false )const;
+   fc::variant binary_to_variant( const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time, bool short_path = false )const;
 
    bytes       variant_to_binary( const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time, bool short_path = false )const;
    void        variant_to_binary( const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time, bool short_path = false )const;

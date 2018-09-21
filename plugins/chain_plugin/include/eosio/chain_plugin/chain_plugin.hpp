@@ -434,7 +434,7 @@ public:
             copy_inline_row(*itr2, data);
 
             if (p.json) {
-               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data, abi_serializer_max_time));
+               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data, abi_serializer_max_time, true)); // TODO: Allow configuration to output verbose error messages);
             } else {
                result.rows.emplace_back(fc::variant(data));
             }
@@ -495,7 +495,7 @@ public:
             copy_inline_row(*itr, data);
 
             if (p.json) {
-               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data, abi_serializer_max_time));
+               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data, abi_serializer_max_time, true)); // TODO: Allow configuration to output verbose error messages
             } else {
                result.rows.emplace_back(fc::variant(data));
             }
