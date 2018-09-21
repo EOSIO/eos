@@ -74,6 +74,7 @@ namespace eosio { namespace chain {
             validation_mode          block_validation_mode  = validation_mode::FULL;
 
             flat_set<account_name>   resource_greylist;
+            flat_set<account_name>   trusted_producers;
          };
 
          enum class block_status {
@@ -107,6 +108,7 @@ namespace eosio { namespace chain {
           */
          vector<transaction_metadata_ptr> get_unapplied_transactions() const;
          void drop_unapplied_transaction(const transaction_metadata_ptr& trx);
+         void drop_all_unapplied_transactions();
 
          /**
           * These transaction IDs represent transactions available in the head chain state as scheduled
@@ -182,8 +184,9 @@ namespace eosio { namespace chain {
          time_point           fork_db_head_block_time()const;
          account_name         fork_db_head_block_producer()const;
 
-         time_point      pending_block_time()const;
-         block_state_ptr pending_block_state()const;
+         time_point              pending_block_time()const;
+         block_state_ptr         pending_block_state()const;
+         optional<block_id_type> pending_producer_block_id()const;
 
          const producer_schedule_type&    active_producers()const;
          const producer_schedule_type&    pending_producers()const;
@@ -305,4 +308,5 @@ FC_REFLECT( eosio::chain::controller::config,
             (genesis)
             (wasm_runtime)
             (resource_greylist)
+            (trusted_producers)
           )

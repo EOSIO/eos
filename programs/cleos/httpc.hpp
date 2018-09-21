@@ -42,9 +42,12 @@ namespace eosio { namespace client { namespace http {
       {
       }
 
+      //used for unix domain, where resolving and ports are nonapplicable
+      resolved_url(const parsed_url& url) : parsed_url(url) {}
+
       vector<string> resolved_addresses;
-      uint16_t resolved_port;
-      bool is_loopback;
+      uint16_t resolved_port = 0;
+      bool is_loopback = false;
    };
 
    resolved_url resolve_url( const http_context& context,
@@ -86,6 +89,7 @@ namespace eosio { namespace client { namespace http {
    const string get_block_header_state_func = chain_func_base + "/get_block_header_state";
    const string get_account_func = chain_func_base + "/get_account";
    const string get_table_func = chain_func_base + "/get_table_rows";
+   const string get_table_by_scope_func = chain_func_base + "/get_table_by_scope";
    const string get_code_func = chain_func_base + "/get_code";
    const string get_abi_func = chain_func_base + "/get_abi";
    const string get_raw_code_and_abi_func = chain_func_base + "/get_raw_code_and_abi";
