@@ -20,6 +20,7 @@ cursor_t chaindb_lower_bound(account_name_t code, account_name_t scope, table_na
 cursor_t chaindb_upper_bound(account_name_t code, account_name_t scope, table_name_t, index_name_t, void* key, size_t);
 cursor_t chaindb_find(account_name_t code, account_name_t scope, table_name_t, index_name_t, primary_key_t, void* key, size_t);
 cursor_t chaindb_end(account_name_t code, account_name_t scope, table_name_t, index_name_t);
+cursor_t chaindb_clone(cursor_t);
 
 void chaindb_close(cursor_t);
 
@@ -32,8 +33,8 @@ primary_key_t chaindb_data(cursor_t, void* data, const size_t size);
 
 primary_key_t chaindb_available_primary_key(account_name_t code, account_name_t scope, table_name_t table);
 
-cursor_t chaindb_insert(account_name_t code, account_name_t scope, table_name_t, primary_key_t, void* data, size_t);
-primary_key_t chaindb_update(account_name_t code, account_name_t scope, table_name_t, primary_key_t, void* data, size_t);
+cursor_t chaindb_insert(account_name_t code, account_name_t scope, account_name_t payer, table_name_t, primary_key_t, void* data, size_t);
+primary_key_t chaindb_update(account_name_t code, account_name_t scope, account_name_t payer, table_name_t, primary_key_t, void* data, size_t);
 primary_key_t chaindb_delete(account_name_t code, account_name_t scope, table_name_t, primary_key_t);
 
 #ifdef __cplusplus

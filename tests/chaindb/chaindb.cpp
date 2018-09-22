@@ -7,6 +7,7 @@
 #include <mongocxx/instance.hpp>
 #include <mongocxx/exception/operation_exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
+#include <mongocxx/exception/query_exception.hpp>
 
 #include <bson.h>
 
@@ -14,234 +15,844 @@
 
 #include "chaindb.h"
 
-using eosio::chain::abi_def;
-using eosio::chain::table_def;
-using eosio::chain::index_def;
-using eosio::chain::abi_serializer;
-using eosio::chain::name;
+#define _chaindb_internal_assert(_EXPR, ...) EOS_ASSERT(_EXPR, fc::assert_exception, __VA_ARGS__)
 
-using fc::variant;
-using fc::variants;
-using fc::variant_object;
+namespace _detail {
+    using eosio::chain::abi_def;
+    using eosio::chain::table_def;
+    using eosio::chain::index_def;
+    using eosio::chain::struct_def;
+    using eosio::chain::field_def;
+    using eosio::chain::abi_serializer;
+    using eosio::chain::name;
+    using eosio::chain::string_to_name;
+    using eosio::chain::bytes;
 
-using bsoncxx::builder::basic::make_document;
-using bsoncxx::builder::basic::document;
-using bsoncxx::builder::basic::sub_document;
-using bsoncxx::builder::basic::sub_array;
-using bsoncxx::builder::basic::kvp;
+    using fc::optional;
+    using fc::blob;
+    using fc::variant;
+    using fc::variants;
+    using fc::variant_object;
+    using fc::mutable_variant_object;
+    using fc::microseconds;
 
-using bsoncxx::types::b_oid;
-using bsoncxx::types::b_bool;
-using bsoncxx::types::b_double;
-using bsoncxx::types::b_int64;
-using bsoncxx::types::b_binary;
-using bsoncxx::types::b_array;
+    using bsoncxx::builder::basic::make_document;
+    using bsoncxx::builder::basic::document;
+    using bsoncxx::builder::basic::sub_document;
+    using bsoncxx::builder::basic::sub_array;
+    using bsoncxx::builder::basic::kvp;
 
-using bsoncxx::binary_sub_type;
-using bsoncxx::oid;
+    using bsoncxx::document::element;
+    using document_view = bsoncxx::document::view;
+    using array_view = bsoncxx::array::view;
 
-using mongocxx::model::insert_one;
-using mongocxx::model::update_one;
-using mongocxx::collection;
+    using bsoncxx::types::b_null;
+    using bsoncxx::types::b_oid;
+    using bsoncxx::types::b_bool;
+    using bsoncxx::types::b_double;
+    using bsoncxx::types::b_int64;
+    using bsoncxx::types::b_binary;
+    using bsoncxx::types::b_array;
+    using bsoncxx::types::b_document;
 
-using std::string;
+    using bsoncxx::type;
+    using bsoncxx::binary_sub_type;
+    using bsoncxx::oid;
 
-struct abi_info {
-    std::unordered_map<table_name_t, bool> verified_map;
-    abi_def abi;
-    abi_serializer serializer;
-};
+    using mongocxx::model::insert_one;
+    using mongocxx::model::update_one;
+    using mongocxx::collection;
+    using mongocxx::query_exception;
+    namespace options = mongocxx::options;
 
-struct abi_table_result {
-    const table_def* table;
-    abi_info* info;
-};
+    using std::string;
 
-struct abi_index_result {
-    const table_def* table;
-    const index_def* index;
-    abi_info* info;
-};
+    variant_object build_variant(const document_view&);
 
-struct mongodb_ctx {
-    mongocxx::instance mongo_inst;
-    mongocxx::client mongo_conn;
-    fc::microseconds max_time{15*1000*1000};
+    blob build_blob(const b_binary& src) {
+        blob dst;
+        if (src.sub_type != binary_sub_type::k_binary) return dst;
+        dst.data.assign(src.bytes, src.bytes + src.size);
+        return dst;
+    }
 
-    std::unordered_map<account_name_t /* code */, abi_info> abi_map;
+    variants build_variant(const array_view& src) {
+        variants dst;
+        for (auto& item: src) {
+            switch (item.type()) {
+                case type::k_null:
+                    dst.emplace_back(variant());
+                    break;
+                case type::k_int32:
+                    dst.emplace_back(item.get_int32().value);
+                    break;
+                case type::k_int64:
+                    dst.emplace_back(item.get_int64().value);
+                    break;
+                case type::k_decimal128:
+                    // TODO
+                    break;
+                case type::k_double:
+                    dst.emplace_back(item.get_double().value);
+                    break;
+                case type::k_utf8:
+                    dst.emplace_back(item.get_utf8().value.to_string());
+                    break;
+                case type::k_date:
+                    // TODO
+                    break;
+                case type::k_timestamp:
+                    // TODO
+                    break;
+                case type::k_document:
+                    dst.emplace_back(build_variant(item.get_document().value));
+                    break;
+                case type::k_array:
+                    dst.emplace_back(build_variant(item.get_array().value));
+                    break;
+                case type::k_binary:
+                    dst.emplace_back(build_blob(item.get_binary()));
+                    break;
+                case type::k_bool:
+                    dst.emplace_back(item.get_bool().value);
+                    break;
 
-    abi_table_result find_table(const account_name_t code, const string& table) {
-        auto itr = abi_map.find(code);
-        if (abi_map.end() == itr) return {nullptr, nullptr};
-
-        for (auto titr = itr->second.abi.tables.begin(); itr->second.abi.tables.end() != titr; ++titr) {
-            if (titr->name == table) return {&(*titr), &itr->second};
+                    // SKIP
+                case type::k_code:
+                case type::k_codewscope:
+                case type::k_symbol:
+                case type::k_dbpointer:
+                case type::k_regex:
+                case type::k_oid:
+                case type::k_maxkey:
+                case type::k_minkey:
+                case type::k_undefined:
+                    break;
+            }
         }
-        return {nullptr, nullptr};
+        return dst;
     }
 
-    abi_index_result find_index(const account_name_t code, const string& table, const string& index) {
-        auto info = find_table(code, table);
-        if (info.table == nullptr) return {nullptr, nullptr, nullptr};
+    void build_variant(mutable_variant_object& dst, string key, const element& src) {
+        switch (src.type()) {
+            case type::k_null:
+                dst.set(std::move(key), variant());
+                break;
+            case type::k_int32:
+                dst.set(std::move(key), src.get_int32().value);
+                break;
+            case type::k_int64:
+                dst.set(std::move(key), src.get_int64().value);
+                break;
+            case type::k_decimal128:
+                // TODO
+                break;
+            case type::k_double:
+                dst.set(std::move(key), src.get_double().value);
+                break;
+            case type::k_utf8:
+                dst.set(std::move(key), src.get_utf8().value.to_string());
+                break;
+            case type::k_date:
+                // TODO
+                break;
+            case type::k_timestamp:
+                // TODO
+                break;
+            case type::k_document:
+                dst.set(std::move(key), build_variant(src.get_document().value));
+                break;
+            case type::k_array:
+                dst.set(std::move(key), build_variant(src.get_array().value));
+                break;
+            case type::k_binary:
+                dst.set(std::move(key), build_blob(src.get_binary()));
+                break;
+            case type::k_bool:
+                dst.set(std::move(key), src.get_bool().value);
+                break;
 
-        for (auto itr = info.table->indexes.begin(); info.table->indexes.end() != itr; ++ itr) {
-            if (itr->name == index) return {info.table, &(*itr), info.info};
+            // SKIP
+            case type::k_code:
+            case type::k_codewscope:
+            case type::k_symbol:
+            case type::k_dbpointer:
+            case type::k_regex:
+            case type::k_oid:
+            case type::k_maxkey:
+            case type::k_minkey:
+            case type::k_undefined:
+                break;
         }
-        return {nullptr, nullptr, nullptr};
     }
-};
 
-static mongodb_ctx ctx;
-
-oid bsoncxx_oid(const account_name_t scope, const uint64_t pk) {
-    constexpr static unsigned int oid_size = 12;
-    uint8_t digest[16];
-    bson_md5_t md5;
-    char digest_str[33];
-    unsigned int i;
-    uint8_t input_data[sizeof(scope) + sizeof(pk)];
-
-    memcpy((void*)input_data, (void*)&scope, sizeof(scope));
-    memcpy((void*)&input_data[sizeof(scope)], (void*)&pk, sizeof(pk));
-    bson_md5_init(&md5);
-    bson_md5_append(&md5, input_data, sizeof(input_data));
-    bson_md5_finish(&md5, digest);
-
-    for (i = 0; i < oid_size; i++) {
-        bson_snprintf(&digest_str[i * 2], 3, "%02x", digest[i]);
+    variant_object build_variant(const document_view& src) {
+        mutable_variant_object dst;
+        for (auto& item: src) {
+            build_variant(dst, item.key().to_string(), item);
+        }
+        return dst;
     }
-    digest_str[oid_size * 2] = '\0';
 
-    return oid(string(digest_str));
-}
+    sub_document& build_document(sub_document&, const variant_object&);
 
-void build_document(sub_document&, const variant_object&);
+    b_binary build_binary(const blob& src) {
+        auto size = uint32_t(src.data.size());
+        auto data = (uint8_t*) src.data.data();
+        return b_binary{binary_sub_type::k_binary, size, data};
+    }
 
-void build_array(sub_array& array, const variants& obj) {
-    for (auto itr = obj.begin(); obj.end() != itr; ++itr) {
-        switch (itr->get_type()) {
+    sub_array& build_document(sub_array& dst, const variants& src) {
+        for (auto& item: src) {
+            switch (item.get_type()) {
+                case variant::null_type:
+                    dst.append(b_null());
+                    break;
+                case variant::int64_type:
+                    dst.append(b_int64{item.as_int64()});
+                    break;
+                case variant::uint64_type:
+                    dst.append(b_int64{int64_t(item.as_uint64())});
+                    break;
+                // TODO
+                // case variant::int128_type:
+                //     break;
+                // case variant::uint128_type:
+                //     break;
+                case variant::double_type:
+                    dst.append(b_double{item.as_double()});
+                    break;
+                case variant::bool_type:
+                    dst.append(b_bool{item.as_bool()});
+                    break;
+                case variant::string_type:
+                    dst.append(item.as_string());
+                    break;
+                // TODO
+                // case variant::time_point_type:
+                //     break;
+                // case variant::time_point_sec_type:
+                //     break;
+                case variant::array_type:
+                    dst.append([&](sub_array array){ build_document(array, item.get_array()); });
+                    break;
+                case variant::object_type:
+                    dst.append([&](sub_document sub_doc){ build_document(sub_doc, item.get_object()); });
+                    break;
+                case variant::blob_type:
+                    dst.append(build_binary(item.as_blob()));
+                    break;
+            }
+        }
+        return dst;
+    }
+
+    sub_document& build_document(sub_document& dst, const string& key, const variant& src) {
+        switch (src.get_type()) {
             case variant::null_type:
+                dst.append(kvp(key, b_null()));
                 break;
             case variant::int64_type:
-                array.append(b_int64{itr->as_int64()});
+                dst.append(kvp(key, b_int64{src.as_int64()}));
                 break;
             case variant::uint64_type:
-                array.append(b_int64{int64_t(itr->as_uint64())});
+                dst.append(kvp(key, b_int64{int64_t(src.as_uint64())}));
                 break;
+            // TODO
+            // case variant::int128_type:
+            //     break;
+            // case variant::uint128_type:
+            //     break;
             case variant::double_type:
-                array.append(b_double{itr->as_double()});
+                dst.append(kvp(key, b_double{src.as_double()}));
                 break;
             case variant::bool_type:
-                array.append(b_bool{itr->as_bool()});
+                dst.append(kvp(key, b_bool{src.as_bool()}));
                 break;
             case variant::string_type:
-                array.append(itr->as_string());
+                dst.append(kvp(key, src.as_string()));
                 break;
+            // TODO
+            // case variant::time_point_type:
+            //     break;
+            // case variant::time_point_sec_type:
+            //     break;
             case variant::array_type:
-                array.append([&](sub_array array){ build_array(array, itr->get_array()); });
+                dst.append(kvp(key, [&](sub_array array){ build_document(array, src.get_array()); }));
                 break;
             case variant::object_type:
-                array.append([&](sub_document sub_doc){ build_document(sub_doc, itr->get_object()); });
+                dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, src.get_object()); }));
                 break;
-            case variant::blob_type: {
-                    auto blob = itr->as_blob();
-                    auto size = uint32_t(blob.data.size());
-                    auto data = (uint8_t*) blob.data.data();
-                    array.append(b_binary{binary_sub_type::k_binary, size, data});
-                }
+            case variant::blob_type:
+                dst.append(kvp(key, build_binary(src.as_blob())));
                 break;
         }
+        return dst;
     }
-}
 
-void build_document(sub_document& doc, const string& name, const variant& obj) {
-    switch (obj.get_type()) {
-        case variant::null_type:
-            break;
-        case variant::int64_type:
-            doc.append(kvp(name, b_int64{obj.as_int64()}));
-            break;
-        case variant::uint64_type:
-            doc.append(kvp(name, b_int64{int64_t(obj.as_uint64())}));
-            break;
-        case variant::double_type:
-            doc.append(kvp(name, b_double{obj.as_double()}));
-            break;
-        case variant::bool_type:
-            doc.append(kvp(name, b_bool{obj.as_bool()}));
-            break;
-        case variant::string_type:
-            doc.append(kvp(name, obj.as_string()));
-            break;
-        case variant::array_type:
-            doc.append(kvp(name, [&](sub_array array){ build_array(array, obj.get_array()); }));
-            break;
-        case variant::object_type:
-            doc.append(kvp(name, [&](sub_document sub_doc){ build_document(sub_doc, obj.get_object()); }));
-            break;
-        case variant::blob_type: {
-                auto blob = obj.as_blob();
-                auto size = uint32_t(blob.data.size());
-                auto data = (uint8_t*)blob.data.data();
-                doc.append(kvp(name, b_binary{binary_sub_type::k_binary, size, data}));
+    sub_document& build_document(sub_document& dst, const variant_object& src) {
+        for (auto& item: src) {
+            build_document(dst, item.key(), item.value());
+        }
+        return dst;
+    }
+
+    const string& get_scope_name() {
+        static string name = "_SCOPE_";
+        return name;
+    }
+
+    const string& get_payer_name() {
+        static string name = "_PAYER_";
+        return name;
+    }
+
+    const string& get_primary_name() {
+        static string name = "primary";
+        return name;
+    }
+
+    const string& get_id_name() {
+        static string name = "id";
+        return name;
+    }
+
+    primary_key_t get_id_value(const document_view& view) {
+        return view[get_id_name()].get_int64();
+    }
+
+    string get_index_name(table_name_t table, const string& index) {
+        // types can't use '.', so it's valid custom type
+        return name(table).to_string().append(".").append(index);
+    }
+
+    string get_index_name(table_name_t table, index_name_t index) {
+        return get_index_name(table, name(index).to_string());
+    }
+
+    struct abi_info {
+        std::map<table_name_t, bool> verified_map;
+        account_name_t code;
+        abi_def abi;
+        abi_serializer serializer;
+
+        abi_info() = default;
+        abi_info(const account_name_t code, abi_def src, const fc::microseconds& max_time)
+            : code(code),
+              abi(std::move(src)) {
+
+            serializer.set_abi(abi, max_time);
+
+            for (auto& table: abi.tables) {
+                auto& src = serializer.get_struct(serializer.resolve_type(table.type));
+                for (auto& index: table.indexes) {
+                    abi.structs.emplace_back();
+                    auto& dst = abi.structs.back();
+                    dst.name = get_index_name(table.name.value, index.name);
+                    for (auto& key: index.key_names) {
+                        for (auto& field: src.fields) {
+                            if (field.name == key) {
+                                dst.fields.push_back(field);
+                                break;
+                            }
+                        }
+                    }
+                }
             }
-            break;
-    }
-}
 
-void build_document(sub_document& doc, const variant_object& obj) {
-    for (auto itr = obj.begin(); obj.end() != itr; ++itr) {
-        build_document(doc, itr->key(), itr->value());
-    }
-}
+            serializer.set_abi(abi, max_time);
+        }
+
+        variant_object to_object(
+            table_name_t table, const string& type, const void* data, size_t size, const microseconds& max_time
+        ) const {
+            return to_object_("table", [&]{return name(table).to_string();}, type, data, size, max_time);
+        }
+
+        variant_object to_object(
+            table_name_t table, index_name_t index, const void* data, size_t size, const microseconds& max_time
+        ) const {
+            auto type = get_index_name(table, index);
+            return to_object_("index", [&](){return type;}, type, data, size, max_time);
+        }
+
+        bytes to_bytes(
+            table_name_t table, const string& type, const variant& value, const microseconds& max_time
+        ) const {
+            return to_bytes_("table", [&]{return name(table).to_string();}, type, value, max_time);
+        }
+
+    private:
+        template<typename Type>
+        variant_object to_object_(
+            const char* object_type, Type&& db_type,
+            const string& type, const void* data, const size_t size, const microseconds& max_time
+        ) const {
+            // begin() case
+            if (nullptr == data && 0 == size) return variant_object();
+
+            fc::datastream<const char*> ds(static_cast<const char*>(data), size);
+            auto value = serializer.binary_to_variant(type, ds, max_time);
+
+//            ilog(
+//                "${object_type} ${db}.${type}: ${object}",
+//                ("object_type", object_type)("db", name(code).to_string())("type", db_type())("object", value));
+
+            _chaindb_internal_assert(
+                value.is_object(),
+                "ABI serializer returns bad type for the ${object_type} ${db}.${type}",
+                ("object_type", object_type)("db", name(code).to_string())("type", db_type()));
+
+            return value.get_object();
+        }
+
+        template<typename Type>
+        bytes to_bytes_(
+            const char* object_type, Type&& db_type,
+            const string& type, const variant& value, const microseconds& max_time
+        ) const {
+//            ilog(
+//                "${object_type} ${db}.${type}: ${object}",
+//                ("object_type", object_type)("db", name(code).to_string())("type", db_type())("object", value));
+
+            _chaindb_internal_assert(
+                value.is_object(),
+                "ABI serializer receive wrong type for the ${object_type} ${db}.${type}");
+            return serializer.variant_to_binary(type, value, max_time);
+        }
+    }; // struct abi_info
+
+    struct abi_table_result {
+        const table_def* table;
+        abi_info* info;
+
+        abi_table_result() = default;
+        abi_table_result(const table_def* table, abi_info* info)
+            : table(table),
+              info(info) { }
+    }; // struct abi_table_result
+
+    struct abi_index_result {
+        const table_def* table = nullptr;
+        const index_def* index = nullptr;
+        const abi_info* info = nullptr;
+
+        abi_index_result() = default;
+        abi_index_result(const abi_table_result& src, const index_def* idx)
+            : table(src.table),
+              index(idx),
+              info(src.info) { }
+
+    }; // struct abi_index_result
+
+    struct cursor_info {
+        const account_name_t code;
+        const account_name_t scope;
+        const table_def& table;
+        const index_def& index;
+        const abi_info& info;
+
+        cursor_info(
+            const account_name_t code, const account_name_t scope, collection db_table, const abi_index_result& src)
+            : code(code),
+              scope(scope),
+              table(*src.table),
+              index(*src.index),
+              info(*src.info),
+              db_table(db_table) { }
+
+        cursor_info(cursor_info&&) = default;
+
+        cursor_info(const cursor_info& src)
+            : code(src.code),
+              scope(src.scope),
+              table(src.table),
+              index(src.index),
+              info(src.info),
+              db_table(src.db_table) { }
+
+        void open(const char* fwd_cmp, const char* bwd_cmp, const variant_object& object) {
+            reset();
+            cursor_.reset();
+
+            find = document();
+
+            find.append(kvp(get_scope_name(), name(scope).to_string()));
+            if (!object.size()) return;
+
+            for (int i = 0; i < index.key_names.size(); ++i) {
+                auto& key = index.key_names[i];
+                const char* cmp = fwd_cmp;
+                if (index.key_orders[i].size() == 4 /* desc */) cmp = bwd_cmp;
+                find.append(kvp(key, [&](sub_document doc) { build_document(doc, cmp, object[key]); }));
+            }
+        }
+
+        primary_key_t next() {
+            if (direction_ == direction::Backward) {
+                change_direction("$gt", "$lt", direction::Forward);
+            }
+            return lazy_next();
+        }
+
+        primary_key_t prev() {
+            if (direction_ == direction::Forward) {
+                change_direction("$lt", "$gt", direction::Backward);
+            }
+            return lazy_next();
+        }
+
+        primary_key_t current() {
+            if (pk_.valid()) return *pk_;
+            lazy_open();
+            return get_primary_key();
+        }
+
+        const bytes& get_object(const microseconds& max_time) {
+            lazy_open();
+            if (object_.valid()) return *object_;
+
+            auto itr = cursor_->begin();
+            if (cursor_->end() != itr) {
+                auto& view = *itr;
+                auto value = build_variant(view);
+                pk_.emplace(get_id_value(view));
+                object_.emplace(info.to_bytes(table.name, table.type, value, max_time));
+            } else {
+                pk_.emplace(unset_primary_key);
+                object_.emplace(bytes());
+            }
+            return *object_;
+        }
+
+        const variant_object& get_key() {
+            lazy_open();
+            if (key_.valid()) return *key_;
+
+            auto itr = cursor_->begin();
+            if (cursor_->end() != itr) {
+                auto& view = *itr;
+                mutable_variant_object object;
+                for (auto& name: index.key_names) {
+                    build_variant(object, name, view[name]);
+                }
+                key_.emplace(object);
+            } else {
+                key_.emplace(variant_object());
+            }
+            return *key_;
+        }
+
+    private:
+        collection db_table;
+        document find;
+        optional<mongocxx::cursor> cursor_;
+
+        enum class direction: int {
+            Forward = 1,
+            Backward = -1
+        };
+
+        direction direction_ = direction::Forward;
+
+        optional<primary_key_t> pk_;
+        optional<bytes> object_;
+        optional<variant_object> key_;
+
+        void change_direction(const char* fwd_cmp, const char* bwd_cmp, const direction dir) {
+            auto key = get_key();
+            direction_ = dir;
+            open(fwd_cmp, bwd_cmp, key);
+        }
+
+        void reset() {
+            pk_.reset();
+            object_.reset();
+            key_.reset();
+        }
+
+        void lazy_open() {
+            if (cursor_) return;
+
+            document sort;
+
+            for (int i = 0; i < index.key_names.size(); ++i) {
+                auto order = static_cast<int>(direction_);
+                if (index.key_orders[i].size() == 4 /* desc */) {
+                    order = -static_cast<int>(direction_);
+                }
+                sort.append(kvp(index.key_names[i], order));
+            }
+
+            reset();
+            cursor_.emplace(db_table.find(find.view(), options::find().sort(sort.view())));
+        }
+
+        primary_key_t lazy_next() {
+            reset();
+            lazy_open();
+
+            auto itr = cursor_->begin();
+            ++itr;
+            return get_primary_key();
+        }
+
+        primary_key_t get_primary_key() {
+            auto itr = cursor_->begin();
+            if (cursor_->end() == itr) {
+                pk_.emplace(unset_primary_key);
+            } else {
+                pk_.emplace(get_id_value(*itr));
+            }
+            return *pk_;
+        }
+
+    }; // struct cursor_info
+
+    class mongodb_ctx {
+    private:
+        mongocxx::instance mongo_inst_;
+        mongocxx::client mongo_conn_;
+
+        std::map<account_name_t /* code */, abi_info> abi_map_;
+        std::map<account_name_t /* code */, std::set<cursor_t>> abi_cursor_map_;
+
+        cursor_t last_cursor_ = 0;
+        std::map<cursor_t, cursor_info> cursor_map_;
+
+        void verify_table_structure(abi_table_result result, const table_name_t table) {
+            if (result.info->verified_map.count(table)) return;
+            result.info->verified_map.emplace(table, true);
+
+            auto db_table = get_db_table(result.info->code, table);
+
+            // primary key
+            db_table.create_index(
+                make_document(
+                    kvp(get_scope_name(), 1),
+                    kvp(get_id_name(), 1)),
+                options::index().name(get_primary_name()).unique(true));
+
+            for (auto& index: result.table->indexes) {
+                if (index.name == get_primary_name() || index.key_names.empty()) continue;
+
+                document doc;
+                doc.append(kvp(get_scope_name(), 1));
+                for (int i = 0; i < index.key_names.size(); ++i) {
+                    if (index.key_orders[i].size() == 3 /* asc */) {
+                        doc.append(kvp(index.key_names[i], 1));
+                    } else {
+                        doc.append(kvp(index.key_names[i], -1));
+                    }
+                }
+                db_table.create_index(doc.view(), options::index().name(index.name));
+            }
+        }
+
+        abi_table_result find_table(const account_name_t code, const table_name_t table) {
+            auto itr = abi_map_.find(code);
+            if (abi_map_.end() == itr) return {};
+
+            for (auto& t: itr->second.abi.tables) {
+                if (t.name.value == table) {
+                    abi_table_result result(&t, &itr->second);
+                    verify_table_structure(result, table);
+                    return result;
+                }
+            }
+            return {};
+        }
+
+        abi_index_result find_index(abi_table_result info, const string& index) {
+            if (info.table == nullptr) return {};
+
+            for (auto& i: info.table->indexes) {
+                if (i.name == index) return {info, &i};
+            }
+            return {};
+        }
+
+    public:
+        const fc::microseconds max_time{15*1000*1000};
+        const size_t max_iters{100000};
+
+        void open_db(mongocxx::uri uri) {
+            mongo_conn_ = mongocxx::client{uri};
+            abi_map_.clear();
+        }
+
+        void set_abi(const account_name_t code, abi_def abi) {
+            abi_info info(code, std::move(abi), max_time);
+            abi_map_[code] = std::move(info);
+        }
+
+        void close_abi(const account_name_t code) {
+            close_code(code);
+            abi_map_.erase(code);
+        }
+
+        void close_code(const account_name_t code) {
+            auto itr = abi_cursor_map_.find(code);
+            if (abi_cursor_map_.end() != itr) {
+                for (auto id: itr->second) {
+                    cursor_map_.erase(id);
+                }
+                abi_cursor_map_.erase(itr);
+            }
+        }
+
+        collection get_db_table(const account_name_t code, const table_name_t table) {
+            return mongo_conn_[name(code).to_string()][name(table).to_string()];
+        }
+
+        abi_table_result get_table(const account_name_t code, const table_name_t table) {
+            auto result = find_table(code, table);
+            _chaindb_internal_assert(
+                result.info,
+                "ABI table ${db}.${table} doesn't exists",
+                ("db", name(code).to_string())("table", name(table).to_string()));
+            return result;
+        }
+
+        abi_index_result get_index(const account_name_t code, const table_name_t table, const string& index) {
+            auto result = find_index(find_table(code, table), index);
+            _chaindb_internal_assert(
+                result.info,
+                "ABI index ${db}.${table}.${index} doesn't exists",
+                ("db", name(code).to_string())("table", name(table).to_string())("index", index));
+            return result;
+        }
+
+        abi_index_result get_index(const account_name_t code, const table_name_t table, const index_name_t index) {
+            return get_index(code, table, name(index).to_string());
+        }
+
+        cursor_t add_cursor(cursor_info info) {
+            do {
+                ++last_cursor_;
+            } while (cursor_map_.count(last_cursor_));
+
+            cursor_map_.emplace(last_cursor_, std::move(info));
+            abi_cursor_map_[info.code].insert(last_cursor_);
+            return last_cursor_;
+        }
+
+        cursor_info create_cursor(
+            const account_name_t code, const account_name_t scope, const table_name_t table, const index_name_t index,
+            const char* fwd_cmp, const char* bwd_cmp, const void* key, const size_t size
+        ) {
+            auto result = get_index(code, table, index);
+            auto object = result.info->to_object(table, index, key, size, max_time);
+            cursor_info info(code, scope, get_db_table(code, table), result);
+            info.open(fwd_cmp, bwd_cmp, object);
+            return info;
+        }
+
+        cursor_info create_primary_cursor(
+            const account_name_t code, const account_name_t scope, const table_name_t table, const primary_key_t pk
+        ) {
+            auto result = get_index(code, table, get_primary_name());
+            cursor_info info(code, scope, get_db_table(code, table), result);
+            info.open("$gte", "$lte", variant_object(get_id_name(), pk));
+            return info;
+        }
+
+        cursor_info& get_cursor(const cursor_t id) {
+            auto itr = cursor_map_.find(id);
+            _chaindb_internal_assert(cursor_map_.end() != itr, "Cursor ${id} doesn't exist", ("id", id));
+            return itr->second;
+        }
+
+        void close_cursor(const cursor_t id) {
+            auto& info = get_cursor(id);
+            abi_cursor_map_[info.code].erase(id);
+            cursor_map_.erase(id);
+        }
+
+        static mongodb_ctx& get_impl() {
+            static mongodb_ctx impl;
+            return impl;
+        }
+
+        bool validate_primary_key(const variant_object& object, const primary_key_t pk) const {
+            _chaindb_internal_assert(
+                object.end() == object.find(get_scope_name()),
+                "Object can't have a field with name ${name}",
+                ("name", get_scope_name()));
+
+            _chaindb_internal_assert(
+                object.end() == object.find(get_payer_name()),
+                "Object can't have a field with name ${name}",
+                ("name", get_payer_name()));
+
+            auto itr = object.find(get_id_name());
+            if (object.end() != itr) {
+                _chaindb_internal_assert(variant::uint64_type == itr->value().get_type(), "Wrong type for primary key");
+                _chaindb_internal_assert(pk == itr->value().as_uint64(), "Wrong value for primary key");
+                return true;
+            }
+            return false;
+        }
+
+
+    }; // struct mongodb_ctx
+} // namespace _detail
 
 int32_t chaindb_init(const char* uri_str) {
+    using namespace _detail;
     try {
-        mongocxx::uri uri{uri_str};
-        ctx.mongo_conn = mongocxx::client{uri};
-        ctx.abi_map.clear();
+        _detail::mongodb_ctx::get_impl().open_db(mongocxx::uri{uri_str});
     } catch (mongocxx::exception & ex) {
         return 0;
     }
     return 1;
 }
 
-bool chaindb_set_abi(account_name_t code, abi_def abi) {
-    abi_info info;
-
-    info.abi = std::move(abi);
-    info.serializer.set_abi(info.abi, ctx.max_time);
-    ctx.abi_map[code] = std::move(info);
+bool chaindb_set_abi(account_name_t code, eosio::chain::abi_def abi) {
+    _detail::mongodb_ctx::get_impl().set_abi(code, std::move(abi));
     return true;
 }
 
-void verify_table_structure(collection& db_table, const table_name_t table, abi_table_result& result) {
-    if (result.info->verified_map.count(table)) return;
-    result.info->verified_map.emplace(table, true);
-    for (auto itr = result.table->indexes.begin(); result.table->indexes.end() != itr; ++itr) {
-        if (itr->key_names.empty()) continue;
-        document doc;
-        doc.append(kvp("scope", 1));
-        for (int i = 0; i < itr->key_names.size(); ++i) {
-            if (itr->key_orders[i].size() == 3) {
-                doc.append(kvp(itr->key_names[i], 1));
-            } else {
-                doc.append(kvp(itr->key_names[i], -1));
-            }
+bool chaindb_close_abi(account_name_t code) {
+    _detail::mongodb_ctx::get_impl().close_abi(code);
+    return true;
+}
+
+bool chaindb_close_code(account_name_t code) {
+    _detail::mongodb_ctx::get_impl().close_code(code);
+    return true;
+}
+
+cursor_t chaindb_lower_bound(
+    account_name_t code, account_name_t scope, table_name_t table, index_name_t index, void* key, size_t size
+) {
+    auto& ctx = _detail::mongodb_ctx::get_impl();
+    return ctx.add_cursor(ctx.create_cursor(code, scope, table, index, "$gte", "$lte", key, size));
+}
+
+cursor_t chaindb_upper_bound(
+    account_name_t code, account_name_t scope, table_name_t table, index_name_t index, void* key, size_t size
+) {
+    auto& ctx = _detail::mongodb_ctx::get_impl();
+    return ctx.add_cursor(ctx.create_cursor(code, scope, table, index, "$gt", "$lt", key, size));
+}
+
+cursor_t chaindb_find(
+    account_name_t code, account_name_t scope, table_name_t table, index_name_t index,
+    primary_key_t pk, void* key, size_t size
+) {
+    auto& ctx = _detail::mongodb_ctx::get_impl();
+    auto info = ctx.create_cursor(code, scope, table, index, "$gte", "$lte", key, size);
+    if (pk != info.current()) {
+        auto upper_pk = ctx.create_cursor(code, scope, table, index, "$gt", "$lt", key, size).current();
+        for (size_t i = 0; i < ctx.max_iters; ++i) {
+            auto info_pk = info.next();
+            if (info_pk == pk) return ctx.add_cursor(std::move(info));
+            if (info_pk == upper_pk) break;
         }
-        db_table.create_index(doc.view());
+    } else {
+        return ctx.add_cursor(std::move(info));
     }
-}
-
-cursor_t chaindb_lower_bound(account_name_t code, account_name_t scope, table_name_t, index_name_t, void* key, size_t) {
-    return invalid_cursor;
-}
-
-cursor_t chaindb_upper_bound(account_name_t code, account_name_t scope, table_name_t, index_name_t, void* key, size_t) {
-    return invalid_cursor;
-}
-
-cursor_t chaindb_find(account_name_t code, account_name_t scope, table_name_t, index_name_t, primary_key_t, void* key, size_t) {
     return invalid_cursor;
 }
 
@@ -249,66 +860,132 @@ cursor_t chaindb_end(account_name_t code, account_name_t scope, table_name_t, in
     return invalid_cursor;
 }
 
-void chaindb_close(cursor_t) {
+cursor_t chaindb_clone(cursor_t id) {
+    using namespace _detail;
+    if (invalid_cursor == id) return invalid_cursor;
 
+    auto& ctx = mongodb_ctx::get_impl();
+    auto& info = ctx.get_cursor(id);
+    cursor_info clone(info);
+
+    clone.open("$gte", "$lte", info.get_key());
+    return ctx.add_cursor(clone);
 }
 
-primary_key_t chaindb_current(cursor_t) {
-    return unset_primary_key;
+void chaindb_close(cursor_t id) {
+    _detail::mongodb_ctx::get_impl().close_cursor(id);
 }
 
-primary_key_t chaindb_next(cursor_t) {
-    return unset_primary_key;
+primary_key_t chaindb_current(cursor_t id) {
+    return _detail::mongodb_ctx::get_impl().get_cursor(id).current();
 }
 
-primary_key_t chaindb_prev(cursor_t) {
-    return unset_primary_key;
+primary_key_t chaindb_next(cursor_t id) {
+    return _detail::mongodb_ctx::get_impl().get_cursor(id).next();
 }
 
-int32_t chaindb_datasize(cursor_t) {
-    return 0;
+primary_key_t chaindb_prev(cursor_t id) {
+    return _detail::mongodb_ctx::get_impl().get_cursor(id).prev();
 }
 
-primary_key_t chaindb_data(cursor_t, void* data, const size_t size) {
-    return unset_primary_key;
+int32_t chaindb_datasize(cursor_t id) {
+    auto& ctx = _detail::mongodb_ctx::get_impl();
+    return int32_t(ctx.get_cursor(id).get_object(ctx.max_time).size());
+}
+
+primary_key_t chaindb_data(cursor_t id, void* data, const size_t size) {
+    auto& ctx = _detail::mongodb_ctx::get_impl();
+    auto& cursor = ctx.get_cursor(id);
+
+    auto& object = cursor.get_object(ctx.max_time);
+    _chaindb_internal_assert(
+        object.size() == size,
+        "Wrong data size (${data_size} != ${object_size}) for the cursor ${id}",
+        ("id", id)("data_size", size)("object_size", object.size()));
+
+    ::memcpy(data, object.data(), object.size());
+    return cursor.current();
 }
 
 primary_key_t chaindb_available_primary_key(account_name_t code, account_name_t scope, table_name_t table) {
+    using namespace _detail;
+
+    auto cursor = mongodb_ctx::get_impl().get_db_table(code, table).find(
+        make_document(kvp(get_scope_name(), name(scope).to_string())),
+        options::find()
+            .sort(make_document(kvp(get_id_name(), -1)))
+            .limit(1));
+
+    auto itr = cursor.begin();
+    if (cursor.end() != itr) return get_id_value(*itr) + 1;
     return 1;
 }
 
 cursor_t chaindb_insert(
-    account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk, void* data, size_t size
+    account_name_t code, account_name_t scope, account_name_t payer, table_name_t table,
+    primary_key_t pk, void* data, size_t size
 ) {
-    auto table_name = name(table).to_string();
-    auto result = ctx.find_table(code, table_name);
-    if (!result.table) return invalid_cursor;
+    using namespace _detail;
 
-    fc::datastream<const char*> ds(static_cast<const char*>(data), size);
-    auto obj = result.info->serializer.binary_to_variant(result.table->type, ds, ctx.max_time);
-    if (!obj.is_object()) return invalid_cursor;
+    auto& ctx = mongodb_ctx::get_impl();
+    auto result = ctx.get_table(code, table);
 
-    auto db_name = name(code).to_string();
-    auto db_table = ctx.mongo_conn[db_name][table_name];
-    document doc;
+    auto object = result.info->to_object(table, result.table->type, data, size, ctx.max_time);
+    bool has_pk = ctx.validate_primary_key(object, pk);
 
-//    ilog(
-//        "chaindb_insert to ${db}.${table}: ${object}",
-//        ("db", db_name)("table", table_name)(object", obj));
+    document insert;
+    insert.append(kvp(get_scope_name(), name(scope).to_string()));
+    insert.append(kvp(get_payer_name(), name(payer).to_string()));
+    if (!has_pk) insert.append(kvp(get_id_name(), static_cast<int64_t>(pk)));
+    build_document(insert, object);
 
-    doc.append(kvp("scope", name(scope).to_string()));
-    build_document(doc, obj.get_object());
+    ctx.get_db_table(code, table).insert_one(insert.view());
 
-    db_table.insert_one(doc.view());
-    verify_table_structure(db_table, table, result);
-
-    return invalid_cursor;
+    return ctx.add_cursor(ctx.create_primary_cursor(code, scope, table, pk));
 }
 
-primary_key_t chaindb_update(account_name_t code, account_name_t scope, table_name_t, primary_key_t, void* data, size_t) {
-    return unset_primary_key;
+primary_key_t chaindb_update(
+    account_name_t code, account_name_t scope, account_name_t payer, table_name_t table,
+    primary_key_t pk, void* data, size_t size
+) {
+    using namespace _detail;
+
+    auto& ctx = mongodb_ctx::get_impl();
+    auto result = ctx.get_table(code, table);
+
+    auto object = result.info->to_object(table, result.table->type, data, size, ctx.max_time);
+    ctx.validate_primary_key(object, pk);
+
+    document update;
+    if (payer != 0) update.append(kvp(get_payer_name(), name(payer).to_string()));
+    build_document(update, object);
+
+    auto matched = ctx.get_db_table(code, table).update_one(
+        make_document(
+            kvp(get_scope_name(), name(scope).to_string()),
+            kvp(get_id_name(), static_cast<int64_t>(pk))),
+        make_document(kvp("$set", update)));
+
+    _chaindb_internal_assert(
+        matched && matched->matched_count() == 1,
+        "Object ${object} wasn't found", ("obj", object));
+
+    return pk;
 }
 
-primary_key_t chaindb_delete(account_name_t code, account_name_t scope, table_name_t, primary_key_t) {
-    return unset_primary_key;
+primary_key_t chaindb_delete(account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk) {
+    using namespace _detail;
+
+    auto& ctx = mongodb_ctx::get_impl();
+
+    auto matched = ctx.get_db_table(code, table).delete_one(
+        make_document(
+            kvp(get_scope_name(), name(scope).to_string()),
+            kvp(get_id_name(), static_cast<int64_t>(pk))));
+
+    _chaindb_internal_assert(
+        matched && matched->deleted_count() == 1,
+        "Object ${pk} wasn't found", ("obj", pk));
+
+    return pk;
 }

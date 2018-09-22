@@ -35,7 +35,7 @@ using hello_index =
 
 int main() {
     if (!chaindb_init("mongodb://127.0.0.1:27017")) {
-        std::cerr << "Cannot connect to database" << std::endl;
+        elog("Cannot connect to database");
         return 1;
     }
 
@@ -69,18 +69,69 @@ int main() {
         hello_index hidx(N(test), N(test));
 
         auto idx = hidx.get_index<N(name)>();
-        auto itr = idx.find("monro");
+        std::vector<std::string> names = {"monro", "kennedy", "khrushchev", "cuba", "usa", "ussr"};
+        std::random_device rd;
+        std::mt19937 g(rd());
 
-        if (idx.end() == itr) {
-            hidx.emplace(N(test), [&](auto& o) {
-                o.id = hidx.available_primary_key();
-                o.name = "monro";
-                o.age = 10;
-                o.values = {{"first", 1}, {"second", 2}};
-            });
+        std::shuffle(names.begin(), names.end(), g);
+        uint64_t age = 10;
+        for (auto name: names) {
+            auto itr = idx.find(name);
+            if (idx.end() == itr) {
+                auto nitr = hidx.emplace(N(test), [&](auto& o) {
+                    o.id = hidx.available_primary_key();
+                    o.name = name;
+                    o.age = ++age;
+                    o.values = {{"first", age + 1}, {"second", age + 2}};
+                });
+
+                ilog("Insert object: ${object}", ("object", *nitr));
+            } else {
+                ilog("Object is already exists: ${object}", ("object", *itr));
+
+                hidx.modify(*itr, 0, [&](auto& o) {
+                    o.age += 1;
+                });
+
+                ilog("Change age: ${object}", ("object", *itr));
+            }
         }
+
+        ilog("by name:");
+        int i = 0;
+        for (auto& obj: idx) {
+            ilog("${idx}: ${object}", ("idx", ++i)("object", obj));
+        }
+
+        ilog("by id:");
+        i = 0;
+        for (auto& obj: hidx) {
+            ilog("${idx}: ${object}", ("idx", ++i)("object", obj));
+        }
+
+        {
+            std::shuffle(names.begin(), names.end(), g);
+            auto name = names.front();
+
+            ilog("remove ${name}", ("name", name));
+
+            auto itr = idx.find(name);
+            idx.erase(itr);
+        }
+
+        ilog("by name:");
+        i = 0;
+        for (auto& obj: idx) {
+            ilog("${idx}: ${object}", ("idx", ++i)("object", obj));
+        }
+
+//        ilog("by reverse name:");
+//        i = 0;
+//        for (auto itr = idx.rbegin(); itr != idx.rend(); ++itr) {
+//            ilog("${idx}: ${object}", ("idx", ++i)("object", *itr));
+//        }
     } catch (const fc::exception& e) {
-        std::cerr << e.to_detail_string() << std::endl;
+        elog("An error: ${what}", ("what", e));
     }
 
     return 0;

@@ -167,7 +167,40 @@ private:
             return *this;
         }
 
+
         const_iterator_impl() = default;
+
+        const_iterator_impl(const_iterator_impl&& src) {
+            this->operator=(std::move(src));
+        }
+        const_iterator_impl& operator=(const_iterator_impl&& src) {
+            if (this == &src) return *this;
+
+            multidx_ = src.multidx_;
+            cursor_ = src.cursor_;
+            primary_key_ = src.primary_key_;
+            item_ = src.item_;
+
+            src.cursor_ = invalid_cursor;
+            src.primary_key_ = unset_primary_key;
+            src.item_.reset();
+
+            return *this;
+        }
+
+        const_iterator_impl(const const_iterator_impl& src) {
+            this->operator=(src);
+        }
+        const_iterator_impl& operator=(const const_iterator_impl& src) {
+            if (this == &src) return *this;
+
+            multidx_ = src.multidx_;
+            cursor_ = chaindb_clone(src.cursor_);
+            primary_key_ = src.primary_key_;
+            item_ = src.item_;
+
+            return *this;
+        }
 
         ~const_iterator_impl() {
             if (cursor_ != invalid_cursor) chaindb_close(cursor_);
@@ -360,10 +393,11 @@ private:
 
     void remove_object_from_cache(const primary_key_t pk) const {
         auto itr = std::find_if(items_vector_.rbegin(), items_vector_.rend(), [&pk](const auto& itm) {
-            return primary_key_extractor_type()(itm) == pk;
+            return primary_key_extractor_type()(*itm) == pk;
         });
         if (items_vector_.rend() != itr) {
-            items_vector_.erase(itr);
+            (*itr)->deleted_ = true;
+            items_vector_.erase(itr.base());
         }
     }
 
@@ -384,7 +418,7 @@ private:
 
         auto ptr_pk = primary_key_extractor_type()(*ptr);
         chaindb_assert(ptr_pk == pk, "invalid primary key of object");
-        add_object_to_cache(std::move(ptr));
+        add_object_to_cache(ptr);
         return ptr;
     }
 public:
@@ -464,7 +498,7 @@ public:
         cursor_t cursor;
         safe_allocate(pack_size(obj), "invalid size of object", [&](auto& data, auto& size) {
             pack_object(obj, data, size);
-            cursor = chaindb_insert(get_code(), get_scope(), table_name(), pk, data, size);
+            cursor = chaindb_insert(get_code(), get_scope(), payer, table_name(), pk, data, size);
         });
 
         chaindb_assert(cursor != invalid_cursor, "unable to create object");
@@ -503,7 +537,7 @@ public:
         cursor_t cursor;
         safe_allocate(pack_size(obj), "invalid size of object", [&](auto& data, auto& size) {
             pack_object(obj, data, size);
-            auto upk = chaindb_update(get_code(), get_scope(), table_name(), pk, data, size);
+            auto upk = chaindb_update(get_code(), get_scope(), payer, table_name(), pk, data, size);
             chaindb_assert(upk == pk, "unable to update object");
         });
     }
