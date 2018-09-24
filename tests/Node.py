@@ -326,8 +326,14 @@ class Node(object):
         return self.isBlockPresent(blockNum, blockType=BlockType.lib)
 
     class BlockWalker:
-        def __init__(self, node, trans, startBlockNum=None, endBlockNum=None):
-            self.trans=trans
+        def __init__(self, node, transOrTransId, startBlockNum=None, endBlockNum=None):
+            assert(isinstance(transOrTransId, (str,dict)))
+            if isinstance(transOrTransId, str):
+                self.trans=None
+                self.transId=transOrTransId
+            else:
+                self.trans=transOrTransId
+                self.transId=Node.getTransId(trans)
             self.node=node
             self.startBlockNum=startBlockNum
             self.endBlockNum=endBlockNum
@@ -335,18 +341,34 @@ class Node(object):
         def walkBlocks(self):
             start=None
             end=None
-            blockNum=self.trans["processed"]["action_traces"][0]["block_num"]
+            if self.trans is not None:
+                cntxt=Node.Context(self.trans, "trans")
+                cntxt.add("processed")
+                cntxt.add("action_traces")
+                cntxt.index(0)
+                blockNum=cntxt.add("block_num")
+            else:
+                blockNum=None
             # it should be blockNum or later, but just in case the block leading up have any clues...
+            start=None
             if self.startBlockNum is not None:
                 start=self.startBlockNum
-            else:
+            elif blockNum is not None:
                 start=blockNum-5
             if self.endBlockNum is not None:
                 end=self.endBlockNum
             else:
                 info=self.node.getInfo()
                 end=info["head_block_num"]
-            msg="Original transaction=\n%s\nExpected block_num=%s\n" % (json.dumps(trans, indent=2, sort_keys=True), blockNum)
+            if start is None:
+                if end > 100:
+                    start=end-100
+                else:
+                    start=0
+            transDesc=" id =%s" % (self.transId)
+            if self.trans is not None:
+                transDesc="=%s" % (json.dumps(self.trans, indent=2, sort_keys=True))
+            msg="Original transaction%s\nExpected block_num=%s\n" % (transDesc, blockNum)
             for blockNum in range(start, end+1):
                 block=self.node.getBlock(blockNum)
                 msg+=json.dumps(block, indent=2, sort_keys=True)+"\n"
@@ -373,7 +395,7 @@ class Node(object):
                 if trans is not None or not delayedRetry:
                     return trans
                 if blockWalker is None:
-                    blockWalker=Node.BlockWalker(self, trans)
+                    blockWalker=Node.BlockWalker(self, transOrTransId)
                 if Utils.Debug: Utils.Print("Could not find transaction with id %s, delay and retry" % (transId))
                 time.sleep(timeout)
 
