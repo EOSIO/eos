@@ -65,9 +65,11 @@ class WalletMgr(object):
         # Give keosd time to warm up
         time.sleep(2)
 
-        if Utils.Debug:
+        try:
             psOut=Utils.checkOutput(pgrepCmd.split())
-            Utils.Print("Launched %s. %s - {%s}" % (Utils.EosWalletName, pgrepCmd, psOut))
+            if Utils.Debug: Utils.Print("Launched %s. %s - {%s}" % (Utils.EosWalletName, pgrepCmd, psOut))
+        except subprocess.CalledProcessError as ex:
+            Utils.errorExit("Failed to launch the wallet manager on")
 
         return True
 
