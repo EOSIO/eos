@@ -9,6 +9,9 @@
 
 namespace eosio { namespace chain {
 
+   volatile sig_atomic_t deadline_timer::expired = 0;
+   bool deadline_timer::initialized = false;
+
    transaction_context::transaction_context( controller& c,
                                              const signed_transaction& t,
                                              const transaction_id_type& trx_id,
@@ -131,6 +134,8 @@ namespace eosio { namespace chain {
          add_net_usage( initial_net_usage );  // Fail early if current net usage is already greater than the calculated limit
 
       checktime(); // Fail early if deadline has already been exceeded
+
+      _deadline_timer.start(_deadline);
 
       is_initialized = true;
    }
@@ -293,6 +298,8 @@ namespace eosio { namespace chain {
 
    void transaction_context::checktime()const {
       if (!control.skip_trx_checks()) {
+         if(BOOST_LIKELY(_deadline_timer.expired == false))
+            return;
          auto now = fc::time_point::now();
          if( BOOST_UNLIKELY( now > _deadline ) ) {
             // edump((now-start)(now-pseudo_start));
@@ -330,6 +337,7 @@ namespace eosio { namespace chain {
       billed_time = now - pseudo_start;
       deadline_exception_code = deadline_exception::code_value; // Other timeout exceptions cannot be thrown while billable timer is paused.
       pseudo_start = fc::time_point();
+      _deadline_timer.stop();
    }
 
    void transaction_context::resume_billing_timer() {
@@ -344,6 +352,7 @@ namespace eosio { namespace chain {
          _deadline = deadline;
          deadline_exception_code = deadline_exception::code_value;
       }
+      _deadline_timer.start(_deadline);
    }
 
    void transaction_context::validate_cpu_usage_to_bill( int64_t billed_us, bool check_minimum )const {

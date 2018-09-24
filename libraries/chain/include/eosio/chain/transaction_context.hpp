@@ -1,8 +1,49 @@
 #pragma once
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/trace.hpp>
+#include <signal.h>
 
 namespace eosio { namespace chain {
+
+   struct deadline_timer {
+         deadline_timer() {
+            if(initialized)
+               return;
+            struct sigaction act;
+            act.sa_handler = timer_expired;
+            sigemptyset(&act.sa_mask);
+            act.sa_flags = 0;
+            sigaction(SIGALRM, &act, NULL);
+            initialized = true;
+         }
+
+         void start(fc::time_point tp) {
+            microseconds x = tp.time_since_epoch() - fc::time_point::now().time_since_epoch();
+            if(x.count() < 18)
+               expired = 1;
+            else if(x.count() < 1000000) {
+               struct itimerval enable = {{0, 0}, {0, (int)x.count()-15}};
+               expired = 0;
+               setitimer(ITIMER_REAL, &enable, NULL);
+            }
+         }
+
+         void stop() {
+            struct itimerval disable = {{0, 0}, {0, 0}};
+            setitimer(ITIMER_REAL, &disable, NULL);
+         }
+
+         ~deadline_timer() {
+            stop();
+         }
+
+         static volatile sig_atomic_t expired;
+      private:
+         static void timer_expired(int) {
+            expired = 1;
+         }
+         static bool initialized;
+   };
 
    class transaction_context {
       private:
@@ -108,6 +149,8 @@ namespace eosio { namespace chain {
          fc::time_point                pseudo_start;
          fc::microseconds              billed_time;
          fc::microseconds              billing_timer_duration_limit;
+
+         deadline_timer                _deadline_timer;
    };
 
 } }
