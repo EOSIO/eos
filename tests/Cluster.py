@@ -840,7 +840,7 @@ class Cluster(object):
         with open(Cluster.__bootlog) as bootFile:
             for line in bootFile:
                 if p.search(line):
-                    Utils.Print("ERROR: bios_boot.sh script resulted in errors. See %s" % (bootlog))
+                    Utils.Print("ERROR: bios_boot.sh script resulted in errors. See %s" % (Cluster.__bootlog))
                     Utils.Print(line)
                     return None
 

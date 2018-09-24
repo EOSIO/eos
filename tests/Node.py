@@ -49,6 +49,7 @@ class Node(object):
         self.infoValid=None
         self.lastRetrievedHeadBlockNum=None
         self.lastRetrievedLIB=None
+        self.transCache={}
         if self.enableMongo:
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
@@ -565,7 +566,7 @@ class Node(object):
             account.activePublicKey, stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL)
         msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
         trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
-        Node.logCmdTransaction(trans)
+        self.trackCmdTransaction(trans)
         transId=Node.getTransId(trans)
 
         if stakedDeposit > 0:
@@ -583,13 +584,13 @@ class Node(object):
             cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey, account.activePublicKey)
         msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
         trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
-        Node.logCmdTransaction(trans)
+        self.trackCmdTransaction(trans)
         transId=Node.getTransId(trans)
 
         if stakedDeposit > 0:
             self.waitForTransInBlock(transId) # seems like account creation needs to be finlized before transfer can happen
             trans = self.transferFunds(creatorAccount, account, "%0.04f %s" % (stakedDeposit/10000, CORE_SYMBOL), "init")
-            Node.logCmdTransaction(trans)
+            self.trackCmdTransaction(trans)
             transId=Node.getTransId(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
@@ -740,7 +741,7 @@ class Node(object):
         trans=None
         try:
             trans=Utils.runCmdArrReturnJson(cmdArr)
-            Node.logCmdTransaction(trans)
+            self.trackCmdTransaction(trans)
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during funds transfer. %s" % (msg))
@@ -922,7 +923,7 @@ class Node(object):
         trans=None
         try:
             trans=Utils.runCmdReturnJson(cmd, trace=False)
-            Node.logCmdTransaction(trans)
+            self.trackCmdTransaction(trans)
         except subprocess.CalledProcessError as ex:
             if not shouldFail:
                 msg=ex.output.decode("utf-8")
@@ -980,7 +981,7 @@ class Node(object):
         if Utils.Debug: Utils.Print("cmd: %s" % (cmdArr))
         try:
             trans=Utils.runCmdArrReturnJson(cmdArr)
-            Node.logCmdTransaction(trans, ignoreNonTrans=True)
+            self.trackCmdTransaction(trans, ignoreNonTrans=True)
             return (True, trans)
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -992,7 +993,7 @@ class Node(object):
         cmdDesc="set action permission"
         cmd="%s -j %s %s %s %s" % (cmdDesc, account, code, pType, requirement)
         trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError)
-        Node.logCmdTransaction(trans)
+        self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -1006,7 +1007,7 @@ class Node(object):
             cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
         trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
-        Node.logCmdTransaction(trans)
+        self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -1016,7 +1017,7 @@ class Node(object):
             cmdDesc, producer.name, producer.activePublicKey, url, location)
         msg="producer=%s" % (producer.name);
         trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
-        Node.logCmdTransaction(trans)
+        self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -1026,7 +1027,7 @@ class Node(object):
             cmdDesc, account.name, " ".join(producers))
         msg="account=%s, producers=[ %s ]" % (account.name, ", ".join(producers));
         trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
-        Node.logCmdTransaction(trans)
+        self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -1336,23 +1337,25 @@ class Node(object):
         self.killed=False
         return True
 
-    @staticmethod
-    def logCmdTransaction(trans, ignoreNonTrans=False):
-        if not Utils.Debug:
-            return
-
+    def trackCmdTransaction(self, trans, ignoreNonTrans=False):
         if trans is None:
-            Utils.Print("  cmd returned transaction: %s" % (trans))
+            if Utils.Debug: Utils.Print("  cmd returned transaction: %s" % (trans))
             return
 
         if ignoreNonTrans and not Node.isTrans(trans):
-            Utils.Print("  cmd returned a non-transaction")
+            if Utils.Debug: Utils.Print("  cmd returned a non-transaction")
             return
 
         transId=Node.getTransId(trans)
         status=Node.getTransStatus(trans)
         blockNum=Node.getTransBlockNum(trans)
-        Utils.Print("  cmd returned transaction id: %s, status: %s, (possible) block num: %s" % (transId, status, blockNum))
+        if Utils.Debug:
+            if transId in self.transCache.keys():
+                replaceMsg="replacing previous trans=\n%s" % json.dumps(self.transCache[transId], indent=2, sort_keys=True)
+            else:
+                replaceMsg=""
+            Utils.Print("  cmd returned transaction id: %s, status: %s, (possible) block num: %s" % (transId, status, blockNum))
+        self.transCache[transId]=trans
 
     def reportStatus(self):
         Utils.Print("Node State:")
