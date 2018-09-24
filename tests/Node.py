@@ -338,7 +338,7 @@ class Node(object):
         def walkBlocks(self):
             start=None
             end=None
-            if self.trans is None and self.transId in self.transCache:
+            if self.trans is None and self.transId in self.transCache.keys():
                 self.trans=self.transCache[self.transId]
             if self.trans is not None:
                 cntxt=Node.Context(self.trans, "trans")
