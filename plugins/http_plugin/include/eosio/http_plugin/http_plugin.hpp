@@ -60,12 +60,12 @@ namespace eosio {
     *  called with the response code and body.
     *
     *  The handler will be called from the appbase application io_service
-    *  thread.  The callback can be called from any thread and will 
+    *  thread.  The callback can be called from any thread and will
     *  automatically propagate the call to the http thread.
     *
     *  The HTTP service will run in its own thread with its own io_service to
     *  make sure that HTTP request processing does not interfer with other
-    *  plugins.  
+    *  plugins.
     */
    class http_plugin : public appbase::plugin<http_plugin>
    {
@@ -85,7 +85,7 @@ namespace eosio {
 
         void add_handler(const string& url, const url_handler&);
         void add_api(const api_description& api) {
-           for (const auto& call : api) 
+           for (const auto& call : api)
               add_handler(call.first, call.second);
         }
 
@@ -94,6 +94,8 @@ namespace eosio {
 
         bool is_on_loopback() const;
         bool is_secure() const;
+
+        bool verbose_errors()const;
 
       private:
         std::unique_ptr<class http_plugin_impl> my;
