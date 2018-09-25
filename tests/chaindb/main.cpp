@@ -57,10 +57,9 @@ int main() {
 
     abi.tables.emplace_back( eosio::chain::table_def {
        "hello",
-       "", {}, {}, // should be removed from abi
        "hello",
-       {{"primary", {"id"}, {"asc"}},
-        {"name", {"name"}, {"asc"}}}
+       {{"primary", true, {"id"}, {"asc"}},
+        {"name", false, {"name"}, {"asc"}}}
     });
 
     try {

@@ -658,6 +658,7 @@ namespace _detail {
             for (auto& index: result.table->indexes) {
                 if (index.name == get_primary_name() || index.key_names.empty()) continue;
 
+                bool was_primary;
                 document doc;
                 doc.append(kvp(get_scope_name(), 1));
                 for (int i = 0; i < index.key_names.size(); ++i) {
@@ -666,8 +667,16 @@ namespace _detail {
                     } else {
                         doc.append(kvp(index.key_names[i], -1));
                     }
+                    if (index.key_names[i] == get_id_name()) was_primary = true;
                 }
-                db_table.create_index(doc.view(), options::index().name(index.name));
+
+                if (!was_primary && !index.unique) doc.append(kvp(get_id_name(), 1));
+                try {
+                    db_table.create_index(doc.view(), options::index().name(index.name).unique(index.unique));
+                } catch (const mongocxx::operation_exception& e) {
+                    db_table.indexes().drop_one(index.name);
+                    db_table.create_index(doc.view(), options::index().name(index.name).unique(index.unique));
+                }
             }
         }
 
