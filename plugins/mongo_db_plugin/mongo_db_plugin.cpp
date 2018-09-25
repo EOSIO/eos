@@ -146,6 +146,10 @@ public:
    mongocxx::collection _blocks;
    mongocxx::collection _pub_keys;
    mongocxx::collection _account_controls;
+   mongocxx::collection _regaction;
+
+   map<string, mongocxx::collection> register_collections;
+
 
    size_t max_queue_size = 0;
    int queue_sleep_time = 0;
@@ -199,6 +203,7 @@ public:
    static const std::string accounts_col;
    static const std::string pub_keys_col;
    static const std::string account_controls_col;
+   static const std::string regaction_col;
 };
 
 const action_name mongo_db_plugin_impl::newaccount = chain::newaccount::get_name();
@@ -216,6 +221,7 @@ const std::string mongo_db_plugin_impl::action_traces_col = "action_traces";
 const std::string mongo_db_plugin_impl::accounts_col = "accounts";
 const std::string mongo_db_plugin_impl::pub_keys_col = "pub_keys";
 const std::string mongo_db_plugin_impl::account_controls_col = "account_controls";
+const std::string mongo_db_plugin_impl::regaction_col = "regaction";
 
 bool mongo_db_plugin_impl::filter_include( const chain::action_trace& action_trace ) const {
    bool include = false;
@@ -373,6 +379,7 @@ void mongo_db_plugin_impl::consume_blocks() {
       _block_states = mongo_conn[db_name][block_states_col];
       _pub_keys = mongo_conn[db_name][pub_keys_col];
       _account_controls = mongo_conn[db_name][account_controls_col];
+      _regaction = mongo_conn[db_name][regaction_col];
 
       while (true) {
          boost::mutex::scoped_lock lock(mtx);
@@ -763,6 +770,191 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
 
 }
 
+static inline void print_debug(account_name receiver, const eosio::chain::action_trace& ar) {
+   if (!ar.console.empty()) {
+      auto prefix = fc::format_string(
+            "\n[(${a},${n})->${r}]",
+            fc::mutable_variant_object()
+                  ("a", ar.act.account)
+                  ("n", ar.act.name)
+                  ("r", receiver));
+      dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+           + ar.console
+           + prefix + ": CONSOLE OUTPUT END   =====================" );
+   }
+}
+
+static string del_quote( const string & source ) {
+   return source.substr(1, source.length()-2);
+}
+
+static std::string replace(const char *pszSrc, const char *pszOld, const char *pszNew) {
+   std::string strContent, strTemp;
+   strContent.assign(pszSrc);
+   std::string::size_type nPos = 0;
+   while (true) {
+      nPos = strContent.find(pszOld, nPos);
+      strTemp = strContent.substr(nPos + strlen(pszOld), strContent.length());
+      if (nPos == std::string::npos) { break; }
+      strContent.replace(nPos, strContent.length(), pszNew);
+      strContent.append(strTemp);
+      nPos += strlen(pszNew) - strlen(pszOld) + 1;
+   }
+
+   return strContent;
+}
+
+static string replace_qutoe( const string & source ) {
+   return replace(source.c_str(), "\\\"", "\"");
+}
+
+void from_json_to_doc(bsoncxx::builder::basic::document & doc, const string & json_tmp) {
+   using bsoncxx::types::b_bool;
+   using bsoncxx::builder::basic::kvp;
+
+   string json = json_tmp;
+   try {
+      const auto& value = bsoncxx::from_json( json );
+      doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
+   } catch( bsoncxx::exception& ) {
+      try {
+         json = fc::prune_invalid_utf8( json );
+         const auto& value = bsoncxx::from_json( json );
+         doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
+         doc.append( kvp( "non-utf8-purged", b_bool{true} ) );
+      } catch( bsoncxx::exception& e ) {
+         elog( "Unable to convert action trace JSON to MongoDB JSON: ${e}", ("e", e.what()) );
+         elog( "  JSON: ${j}", ("j", json) );
+      }
+   }
+}
+
+void insert_document( mongocxx::collection & coll, const bsoncxx::builder::basic::document & doc ) {
+   coll.insert_one(doc.view());
+}
+
+void update_document( mongocxx::collection & coll, const bsoncxx::builder::basic::document & filter,
+                      const bsoncxx::builder::basic::document & update ) {
+   coll.update_one(filter.view(), update.view());
+}
+
+void delete_document( mongocxx::collection & coll, const bsoncxx::builder::basic::document & filter ) {
+   coll.delete_one(filter.view());
+}
+
+mongocxx::collection get_collection(mongo_db_plugin_impl * plugin, const string & coll_name) {
+   auto mongo_client = plugin->mongo_pool->acquire();
+   auto& mongo_conn = *mongo_client;
+
+   return mongo_conn[plugin->db_name][coll_name];
+}
+
+class mongo_regactoin {
+public:
+   mongo_regactoin( mongo_db_plugin_impl * plugin ) {
+      this->plugin = plugin;
+   }
+
+   bool
+   is_regreceiver( const chain::action_trace &action_trace ) {
+      if ( action_trace.receipt.receiver == N(reg) ) {
+         return true;
+      } else {
+         return false;
+      }
+   }
+
+   void
+   handle_regaction( const chain::action_trace &action_trace ) {
+      using namespace bsoncxx::types;
+      using bsoncxx::builder::basic::kvp;
+
+      const chain::base_action_trace& base = action_trace;
+      auto v = plugin->to_variant_with_abi( base );
+
+      string actname = fc::json::to_string( v["act"]["name"] );
+      if (del_quote(actname) == "addaction") {
+         auto doc = bsoncxx::builder::basic::document{};
+         from_json_to_doc(doc, fc::json::to_string( v["act"]["data"]));
+         insert_document(plugin->_regaction, doc);
+      }
+   }
+
+   bool
+   filter_include( const chain::action_trace &action_trace ){
+      using bsoncxx::builder::basic::document;
+      using bsoncxx::builder::basic::kvp;
+
+      const chain::base_action_trace& base = action_trace;
+      auto v = plugin->to_variant_with_abi( base );
+
+      auto filter_data = document{};
+      string receiver = fc::json::to_string( v["act"]["account"] );
+      string actname = fc::json::to_string( v["act"]["name"] );
+
+      filter_data.append(kvp("receiver", del_quote(receiver)),
+                         kvp("action", del_quote(actname)));
+
+      action_info = plugin->_regaction.find_one(filter_data.view());
+
+      if(action_info) {
+         return true;
+      } else {
+         return false;
+      }
+   }
+
+   mongo_db_plugin_impl*
+   get_plguin() {
+      return plugin;
+   }
+
+   bsoncxx::stdx::optional<bsoncxx::document::value>
+   get_action_info() {
+      return action_info;
+   }
+
+private:
+   mongo_db_plugin_impl * plugin;
+   bsoncxx::stdx::optional<bsoncxx::document::value> action_info;
+};
+
+void
+handle_action( mongo_regactoin & regact, const chain::action_trace &action_trace ) {
+   using bsoncxx::builder::basic::document;
+   using bsoncxx::builder::basic::kvp;
+
+   const chain::base_action_trace& base = action_trace;
+   auto v = regact.get_plguin()->to_variant_with_abi( base );
+
+   string op = regact.get_action_info()->view()["operation"].get_utf8().value.to_string();
+   if ( op == "insert" ) {
+      auto doc = document{};
+      from_json_to_doc(doc, del_quote(replace_qutoe(fc::json::to_string( v["act"]["data"]["document"]))));
+
+      auto coll = get_collection(regact.get_plguin(), regact.get_action_info()->view()["tablename"].get_utf8().value.to_string());
+      insert_document(coll, doc);
+   } else if ( op == "update" ) {
+      auto filter = document{};
+      auto update = document{};
+      from_json_to_doc(filter, del_quote(replace_qutoe(fc::json::to_string( v["act"]["data"]["filter"] ))));
+      from_json_to_doc(update, del_quote(replace_qutoe(fc::json::to_string( v["act"]["data"]["update"] ))));
+
+      auto coll = get_collection(regact.get_plguin(), regact.get_action_info()->view()["tablename"].get_utf8().value.to_string());
+      update_document(coll, filter, update);
+   } else if ( op == "delete" ) {
+      auto filter = document{};
+      from_json_to_doc(filter, del_quote(replace_qutoe(fc::json::to_string( v["act"]["data"]["filter"] ))));
+
+      auto coll = get_collection(regact.get_plguin(), regact.get_action_info()->view()["tablename"].get_utf8().value.to_string());
+      delete_document(coll, filter);
+   } else {
+      // error
+   }
+}
+
+
+
 bool
 mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces, const chain::action_trace& atrace,
                                         const chain::transaction_trace_ptr& t,
@@ -776,6 +968,15 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
    }
 
    bool added = false;
+   mongo_regactoin regact(this);
+   if (start_block_reached && store_action_traces && regact.is_regreceiver( atrace ) ) {
+      regact.handle_regaction( atrace );
+   }
+
+   if (start_block_reached && store_action_traces && regact.filter_include( atrace )) {
+      handle_action( regact, atrace );
+   }
+
    if( start_block_reached && store_action_traces && filter_include( atrace ) ) {
       auto action_traces_doc = bsoncxx::builder::basic::document{};
       const chain::base_action_trace& base = atrace; // without inline action traces
@@ -1307,6 +1508,7 @@ void mongo_db_plugin_impl::wipe_database() {
    auto accounts = mongo_conn[db_name][accounts_col];
    auto pub_keys = mongo_conn[db_name][pub_keys_col];
    auto account_controls = mongo_conn[db_name][account_controls_col];
+   // I do not think we need to wipe regaction table
 
    block_states.drop();
    blocks.drop();
