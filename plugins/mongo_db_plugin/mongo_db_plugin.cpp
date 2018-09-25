@@ -785,7 +785,12 @@ static inline void print_debug(account_name receiver, const eosio::chain::action
 }
 
 static string del_quote( const string & source ) {
-   return source.substr(1, source.length()-2);
+   if ( source[0] == '\"' && source[source.length() - 1] == '\"') {
+      return source.substr(1, source.length()-2);
+   } else {
+      return source;
+   }
+
 }
 
 static std::string replace(const char *pszSrc, const char *pszOld, const char *pszNew) {
@@ -830,7 +835,12 @@ void from_json_to_doc(bsoncxx::builder::basic::document & doc, const string & js
 }
 
 void insert_document( mongocxx::collection & coll, const bsoncxx::builder::basic::document & doc ) {
-   coll.insert_one(doc.view());
+   try {
+      coll.insert_one(doc.view());
+   } catch (...) {
+      handle_mongo_exception( "mongo db insert", __LINE__ );
+   }
+
 }
 
 void update_document( mongocxx::collection & coll, const bsoncxx::builder::basic::document & filter,
@@ -840,6 +850,11 @@ void update_document( mongocxx::collection & coll, const bsoncxx::builder::basic
 
 void delete_document( mongocxx::collection & coll, const bsoncxx::builder::basic::document & filter ) {
    coll.delete_one(filter.view());
+}
+
+void create_index( mongocxx::collection & coll, const bsoncxx::builder::basic::document & keys,
+      const bsoncxx::builder::basic::document & options ) {
+   coll.create_index( keys.view(), options.view() );
 }
 
 mongocxx::collection get_collection(mongo_db_plugin_impl * plugin, const string & coll_name) {
@@ -866,18 +881,35 @@ public:
 
    void
    handle_regaction( const chain::action_trace &action_trace ) {
-      using namespace bsoncxx::types;
+      using bsoncxx::types::b_bool;
       using bsoncxx::builder::basic::kvp;
+      using bsoncxx::builder::basic::document;
 
       const chain::base_action_trace& base = action_trace;
       auto v = plugin->to_variant_with_abi( base );
 
       string actname = fc::json::to_string( v["act"]["name"] );
-      if (del_quote(actname) == "addaction") {
-         auto doc = bsoncxx::builder::basic::document{};
+      if ( del_quote( actname ) == "addaction" ) {
+         auto doc = document{};
          from_json_to_doc(doc, fc::json::to_string( v["act"]["data"]));
-         insert_document(plugin->_regaction, doc);
+         insert_document( plugin->_regaction, doc );
+      } else if ( del_quote( actname ) == "delaction" ) {
+         auto filter = document{};
+         from_json_to_doc( filter, fc::json::to_string( v["act"]["data"] ) );
+         delete_document( plugin->_regaction, filter );
+      } else if ( del_quote(actname) == "createindex" ) {
+         auto keys = document{};
+         auto options = document{};
+
+         from_json_to_doc( keys, del_quote( replace_qutoe( fc::json::to_string( v["act"]["data"]["keys"] ) ) ) );
+         from_json_to_doc( options, del_quote( replace_qutoe( fc::json::to_string( v["act"]["data"]["options"] ) ) ) );
+
+         auto coll = get_collection( plugin, del_quote( fc::json::to_string( v["act"]["data"]["tablename"] ) ) );
+         create_index( coll, keys, options );
+      } else {
+         // error
       }
+
    }
 
    bool
@@ -1584,6 +1616,11 @@ void mongo_db_plugin_impl::init() {
             account_controls.create_index(
                   bsoncxx::from_json( R"xxx({ "controlled_account" : 1, "controlled_permission" : 1 })xxx" ));
             account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlling_account" : 1 })xxx" ));
+
+            // regaction indexes
+            auto regaction = mongo_conn[db_name][regaction_col];
+            regaction.create_index( bsoncxx::from_json( R"xxx({ "receiver" : 1, "action" : 1 })xxx" ),
+                  bsoncxx::from_json( R"xxx({ "unique" : "true" })xxx" ));
 
          } catch (...) {
             handle_mongo_exception( "create indexes", __LINE__ );
