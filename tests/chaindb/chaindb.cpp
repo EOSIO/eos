@@ -297,6 +297,30 @@ namespace _detail {
         return dst;
     }
 
+    struct cmp_info {
+        const char* forward;
+        const char* backward;
+    };
+
+    const cmp_info& start_from() {
+        static cmp_info value = { "$gte", "$lte" };
+        return value;
+    }
+
+    const cmp_info& start_after() {
+        static cmp_info value = { "$gt", "$lt" };
+        return value;
+    }
+
+    const cmp_info& start_before() {
+        static cmp_info value = { "$lt", "$gt" };
+        return value;
+    }
+
+    bool is_asc_order(const string& name) {
+        return name.size() == 3; // asc (vs desc)
+    }
+
     const string& get_scope_name() {
         static string name = "_SCOPE_";
         return name;
@@ -471,10 +495,9 @@ namespace _detail {
               info(src.info),
               db_table(src.db_table) { }
 
-        void open(const char* fwd_cmp, const char* bwd_cmp, const variant_object& object) {
+        void open(const cmp_info& cmp, const variant_object& object) {
             reset();
             cursor_.reset();
-
             find = document();
 
             find.append(kvp(get_scope_name(), name(scope).to_string()));
@@ -482,22 +505,23 @@ namespace _detail {
 
             for (int i = 0; i < index.key_names.size(); ++i) {
                 auto& key = index.key_names[i];
-                const char* cmp = fwd_cmp;
-                if (index.key_orders[i].size() == 4 /* desc */) cmp = bwd_cmp;
-                find.append(kvp(key, [&](sub_document doc) { build_document(doc, cmp, object[key]); }));
+                auto func = is_asc_order(index.key_orders[i]) ? cmp.forward : cmp.backward;
+                find.append(kvp(key, [&](sub_document doc) { build_document(doc, func, object[key]); }));
             }
         }
 
         primary_key_t next() {
             if (direction_ == direction::Backward) {
-                change_direction("$gt", "$lt", direction::Forward);
+                change_direction(start_after(), direction::Forward);
+                return current();
             }
             return lazy_next();
         }
 
         primary_key_t prev() {
             if (direction_ == direction::Forward) {
-                change_direction("$lt", "$gt", direction::Backward);
+                change_direction(start_before(), direction::Backward);
+                return current();
             }
             return lazy_next();
         }
@@ -559,10 +583,10 @@ namespace _detail {
         optional<bytes> object_;
         optional<variant_object> key_;
 
-        void change_direction(const char* fwd_cmp, const char* bwd_cmp, const direction dir) {
+        void change_direction(const cmp_info& cmp, const direction dir) {
             auto key = get_key();
             direction_ = dir;
-            open(fwd_cmp, bwd_cmp, key);
+            open(cmp, key);
         }
 
         void reset() {
@@ -578,9 +602,7 @@ namespace _detail {
 
             for (int i = 0; i < index.key_names.size(); ++i) {
                 auto order = static_cast<int>(direction_);
-                if (index.key_orders[i].size() == 4 /* desc */) {
-                    order = -static_cast<int>(direction_);
-                }
+                if (!is_asc_order(index.key_orders[i])) order = -static_cast<int>(direction_);
                 sort.append(kvp(index.key_names[i], order));
             }
 
@@ -639,7 +661,7 @@ namespace _detail {
                 document doc;
                 doc.append(kvp(get_scope_name(), 1));
                 for (int i = 0; i < index.key_names.size(); ++i) {
-                    if (index.key_orders[i].size() == 3 /* asc */) {
+                    if (is_asc_order(index.key_orders[i])) {
                         doc.append(kvp(index.key_names[i], 1));
                     } else {
                         doc.append(kvp(index.key_names[i], -1));
@@ -739,12 +761,12 @@ namespace _detail {
 
         cursor_info create_cursor(
             const account_name_t code, const account_name_t scope, const table_name_t table, const index_name_t index,
-            const char* fwd_cmp, const char* bwd_cmp, const void* key, const size_t size
+            const cmp_info& cmp, const void* key, const size_t size
         ) {
             auto result = get_index(code, table, index);
             auto object = result.info->to_object(table, index, key, size, max_time);
             cursor_info info(code, scope, get_db_table(code, table), result);
-            info.open(fwd_cmp, bwd_cmp, object);
+            info.open(cmp, object);
             return info;
         }
 
@@ -753,7 +775,7 @@ namespace _detail {
         ) {
             auto result = get_index(code, table, get_primary_name());
             cursor_info info(code, scope, get_db_table(code, table), result);
-            info.open("$gte", "$lte", variant_object(get_id_name(), pk));
+            info.open(start_from(), variant_object(get_id_name(), pk));
             return info;
         }
 
@@ -826,25 +848,28 @@ bool chaindb_close_code(account_name_t code) {
 cursor_t chaindb_lower_bound(
     account_name_t code, account_name_t scope, table_name_t table, index_name_t index, void* key, size_t size
 ) {
-    auto& ctx = _detail::mongodb_ctx::get_impl();
-    return ctx.add_cursor(ctx.create_cursor(code, scope, table, index, "$gte", "$lte", key, size));
+    using namespace _detail;
+    auto& ctx = mongodb_ctx::get_impl();
+    return ctx.add_cursor(ctx.create_cursor(code, scope, table, index, start_from(), key, size));
 }
 
 cursor_t chaindb_upper_bound(
     account_name_t code, account_name_t scope, table_name_t table, index_name_t index, void* key, size_t size
 ) {
-    auto& ctx = _detail::mongodb_ctx::get_impl();
-    return ctx.add_cursor(ctx.create_cursor(code, scope, table, index, "$gt", "$lt", key, size));
+    using namespace _detail;
+    auto& ctx = mongodb_ctx::get_impl();
+    return ctx.add_cursor(ctx.create_cursor(code, scope, table, index, start_after(), key, size));
 }
 
 cursor_t chaindb_find(
     account_name_t code, account_name_t scope, table_name_t table, index_name_t index,
     primary_key_t pk, void* key, size_t size
 ) {
-    auto& ctx = _detail::mongodb_ctx::get_impl();
-    auto info = ctx.create_cursor(code, scope, table, index, "$gte", "$lte", key, size);
+    using namespace _detail;
+    auto& ctx = mongodb_ctx::get_impl();
+    auto info = ctx.create_cursor(code, scope, table, index, start_from(), key, size);
     if (pk != info.current()) {
-        auto upper_pk = ctx.create_cursor(code, scope, table, index, "$gt", "$lt", key, size).current();
+        auto upper_pk = ctx.create_cursor(code, scope, table, index, start_after(), key, size).current();
         for (size_t i = 0; i < ctx.max_iters; ++i) {
             auto info_pk = info.next();
             if (info_pk == pk) return ctx.add_cursor(std::move(info));
@@ -868,7 +893,7 @@ cursor_t chaindb_clone(cursor_t id) {
     auto& info = ctx.get_cursor(id);
     cursor_info clone(info);
 
-    clone.open("$gte", "$lte", info.get_key());
+    clone.open(start_from(), info.get_key());
     return ctx.add_cursor(clone);
 }
 
