@@ -1964,23 +1964,9 @@ BOOST_FIXTURE_TEST_CASE(new_api_feature_tests, TESTER) { try {
       });
 
    // change privilege
-   {
-      chainbase::database &db = control->db();
-      const account_object &account = db.get<account_object, by_name>(N(testapi));
-      db.modify(account, [&](account_object &v) {
-         v.privileged = true;
-      });
-   }
-
-#ifndef NON_VALIDATING_TEST
-   {
-      chainbase::database &db = validating_node->db();
-      const account_object &account = db.get<account_object, by_name>(N(testapi));
-      db.modify(account, [&](account_object &v) {
-         v.privileged = true;
-      });
-   }
-#endif
+   push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
+                                                       ("account", "testapi")
+                                                       ("is_priv", 1));
 
    CALL_TEST_FUNCTION( *this, "test_transaction", "new_feature", {} );
 

@@ -1051,7 +1051,7 @@ struct controller_impl {
          // on replay irreversible is not emitted by fork database, so emit it explicitly here
          if( s == controller::block_status::irreversible )
             emit( self.irreversible_block, new_header_state );
-            
+
       } FC_LOG_AND_RETHROW( )
    }
 
@@ -1399,9 +1399,11 @@ void controller::startup() {
    my->init();
 }
 
-chainbase::database& controller::db()const { return my->db; }
+const chainbase::database& controller::db()const { return my->db; }
 
-fork_database& controller::fork_db()const { return my->fork_db; }
+chainbase::database& controller::mutable_db()const { return my->db; }
+
+const fork_database& controller::fork_db()const { return my->fork_db; }
 
 
 void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count) {
