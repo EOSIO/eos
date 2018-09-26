@@ -784,35 +784,6 @@ static inline void print_debug(account_name receiver, const eosio::chain::action
    }
 }
 
-static string del_quote( const string & source ) {
-   if ( source[0] == '\"' && source[source.length() - 1] == '\"') {
-      return source.substr(1, source.length()-2);
-   } else {
-      return source;
-   }
-
-}
-
-static std::string replace(const char *pszSrc, const char *pszOld, const char *pszNew) {
-   std::string strContent, strTemp;
-   strContent.assign(pszSrc);
-   std::string::size_type nPos = 0;
-   while (true) {
-      nPos = strContent.find(pszOld, nPos);
-      strTemp = strContent.substr(nPos + strlen(pszOld), strContent.length());
-      if (nPos == std::string::npos) { break; }
-      strContent.replace(nPos, strContent.length(), pszNew);
-      strContent.append(strTemp);
-      nPos += strlen(pszNew) - strlen(pszOld) + 1;
-   }
-
-   return strContent;
-}
-
-static string replace_qutoe( const string & source ) {
-   return replace(source.c_str(), "\\\"", "\"");
-}
-
 void from_json_to_doc(bsoncxx::builder::basic::document & doc, const string & json_tmp) {
    using bsoncxx::types::b_bool;
    using bsoncxx::builder::basic::kvp;
@@ -888,23 +859,30 @@ public:
       const chain::base_action_trace& base = action_trace;
       auto v = plugin->to_variant_with_abi( base );
 
-      string actname = fc::json::to_string( v["act"]["name"] );
-      if ( del_quote( actname ) == "addaction" ) {
+      string actname = v["act"]["name"].get_string();
+      if ( actname == "addaction" ) {
          auto doc = document{};
          from_json_to_doc(doc, fc::json::to_string( v["act"]["data"]));
+
+         auto filter = document{};
+         filter.append( kvp( "receiver", v["act"]["data"]["receiver"].get_string() ),
+               kvp( "action", v["act"]["data"]["action"].get_string() ) );
+
+         delete_document( plugin->_regaction, filter );
+
          insert_document( plugin->_regaction, doc );
-      } else if ( del_quote( actname ) == "delaction" ) {
+      } else if ( actname == "delaction" ) {
          auto filter = document{};
          from_json_to_doc( filter, fc::json::to_string( v["act"]["data"] ) );
          delete_document( plugin->_regaction, filter );
-      } else if ( del_quote(actname) == "createindex" ) {
+      } else if ( actname == "createindex" ) {
          auto keys = document{};
          auto options = document{};
 
-         from_json_to_doc( keys, del_quote( replace_qutoe( fc::json::to_string( v["act"]["data"]["keys"] ) ) ) );
-         from_json_to_doc( options, del_quote( replace_qutoe( fc::json::to_string( v["act"]["data"]["options"] ) ) ) );
+         from_json_to_doc( keys, v["act"]["data"]["keys"].get_string() );
+         from_json_to_doc( options, v["act"]["data"]["options"].get_string() );
 
-         auto coll = get_collection( plugin, del_quote( fc::json::to_string( v["act"]["data"]["tablename"] ) ) );
+         auto coll = get_collection( plugin, v["act"]["data"]["tablename"].get_string() );
          create_index( coll, keys, options );
       } else {
          // error
@@ -921,11 +899,8 @@ public:
       auto v = plugin->to_variant_with_abi( base );
 
       auto filter_data = document{};
-      string receiver = fc::json::to_string( v["act"]["account"] );
-      string actname = fc::json::to_string( v["act"]["name"] );
-
-      filter_data.append(kvp("receiver", del_quote(receiver)),
-                         kvp("action", del_quote(actname)));
+      filter_data.append( kvp( "receiver", v["act"]["account"].get_string() ),
+            kvp( "action", v["act"]["name"].get_string() ) );
 
       action_info = plugin->_regaction.find_one(filter_data.view());
 
@@ -962,21 +937,21 @@ handle_action( mongo_regactoin & regact, const chain::action_trace &action_trace
    string op = regact.get_action_info()->view()["operation"].get_utf8().value.to_string();
    if ( op == "insert" ) {
       auto doc = document{};
-      from_json_to_doc(doc, del_quote(replace_qutoe(fc::json::to_string( v["act"]["data"]["document"]))));
+      from_json_to_doc( doc, v["act"]["data"]["document"].get_string() );
 
       auto coll = get_collection(regact.get_plguin(), regact.get_action_info()->view()["tablename"].get_utf8().value.to_string());
       insert_document(coll, doc);
    } else if ( op == "update" ) {
       auto filter = document{};
       auto update = document{};
-      from_json_to_doc(filter, del_quote(replace_qutoe(fc::json::to_string( v["act"]["data"]["filter"] ))));
-      from_json_to_doc(update, del_quote(replace_qutoe(fc::json::to_string( v["act"]["data"]["update"] ))));
+      from_json_to_doc( filter, v["act"]["data"]["filter"].get_string() );
+      from_json_to_doc( update, v["act"]["data"]["update"].get_string() );
 
       auto coll = get_collection(regact.get_plguin(), regact.get_action_info()->view()["tablename"].get_utf8().value.to_string());
       update_document(coll, filter, update);
    } else if ( op == "delete" ) {
       auto filter = document{};
-      from_json_to_doc(filter, del_quote(replace_qutoe(fc::json::to_string( v["act"]["data"]["filter"] ))));
+      from_json_to_doc( filter, v["act"]["data"]["filter"].get_string() );
 
       auto coll = get_collection(regact.get_plguin(), regact.get_action_info()->view()["tablename"].get_utf8().value.to_string());
       delete_document(coll, filter);
@@ -1620,8 +1595,7 @@ void mongo_db_plugin_impl::init() {
             // regaction indexes
             auto regaction = mongo_conn[db_name][regaction_col];
             regaction.create_index( bsoncxx::from_json( R"xxx({ "receiver" : 1, "action" : 1 })xxx" ),
-                  bsoncxx::from_json( R"xxx({ "unique" : "true" })xxx" ));
-
+                                    bsoncxx::from_json( R"xxx({ "unique" : "true" })xxx" ) );
          } catch (...) {
             handle_mongo_exception( "create indexes", __LINE__ );
          }
