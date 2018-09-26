@@ -1707,6 +1707,13 @@ launcher_def::bounce (const string& node_numbers) {
       const string node_num = node.get_node_num();
       cout << "Bouncing " << node.name << endl;
       string cmd = "./scripts/eosio-tn_bounce.sh " + eosd_extra_args;
+      if (node_num != "bios" && !specific_nodeos_args.empty()) {
+         const auto node_num_i = boost::lexical_cast<uint16_t,string>(node_num);
+         if (specific_nodeos_args.count(node_num_i)) {
+            cmd += " " + specific_nodeos_args[node_num_i];
+         }
+      }
+
       do_command(host, node.name, { { "EOSIO_HOME", host.eosio_home }, { "EOSIO_NODE", node_num } }, cmd);
    }
 }

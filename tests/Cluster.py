@@ -4,7 +4,6 @@ import time
 import glob
 import shutil
 import os
-import platform
 import re
 import string
 import signal
@@ -12,7 +11,6 @@ import datetime
 import sys
 import random
 import json
-import socket
 import errno
 
 from core_symbol import CORE_SYMBOL
@@ -32,6 +30,7 @@ class Cluster(object):
     __BiosHost="localhost"
     __BiosPort=8788
     __LauncherCmdArr=[]
+    __bootlog="eosio-ignition-wd/bootlog.txt"
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
@@ -84,6 +83,8 @@ class Cluster(object):
         self.defproducerbAccount.ownerPrivateKey=defproducerbPrvtKey
         self.defproducerbAccount.activePrivateKey=defproducerbPrvtKey
 
+        self.useBiosBootFile=False
+
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
         self.__chainSyncStrategy=self.__chainSyncStrategies.get(chainSyncStrategy)
@@ -131,7 +132,7 @@ class Cluster(object):
             producerFlag="--producers %s" % (totalProducers)
 
         tries = 30
-        while not Cluster.arePortsAvailable(set(range(self.port, self.port+totalNodes+1))):
+        while not Utils.arePortsAvailable(set(range(self.port, self.port+totalNodes+1))):
             Utils.Print("ERROR: Another process is listening on nodeos default port. wait...")
             if tries == 0:
                 return False
@@ -335,6 +336,7 @@ class Cluster(object):
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False
         else:
+            self.useBiosBootFile=True
             self.biosNode=Cluster.bios_bootstrap(totalNodes, Cluster.__BiosHost, Cluster.__BiosPort, dontKill)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
@@ -365,34 +367,6 @@ class Cluster(object):
         self.defproducerbAccount=self.defProducerAccounts["defproducerb"]
 
         return True
-
-    @staticmethod
-    def arePortsAvailable(ports):
-        """Check if specified ports are available for listening on."""
-        assert(ports)
-        assert(isinstance(ports, set))
-
-        for port in ports:
-            if Utils.Debug: Utils.Print("Checking if port %d is available." % (port))
-            assert(isinstance(port, int))
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-            try:
-                s.bind(("127.0.0.1", port))
-            except socket.error as e:
-                if e.errno == errno.EADDRINUSE:
-                    Utils.Print("ERROR: Port %d is already in use" % (port))
-                else:
-                    # something else raised the socket.error exception
-                    Utils.Print("ERROR: Unknown exception while trying to listen on port %d" % (port))
-                    Utils.Print(e)
-                return False
-            finally:
-                s.close()
-
-        return True
-
 
     # Initialize the default nodes (at present just the root node)
     def initializeNodes(self, defproduceraPrvtKey=None, defproducerbPrvtKey=None, onlyBios=False):
@@ -863,11 +837,10 @@ class Cluster(object):
             return None
 
         p = re.compile('error', re.IGNORECASE)
-        bootlog="eosio-ignition-wd/bootlog.txt"
-        with open(bootlog) as bootFile:
+        with open(Cluster.__bootlog) as bootFile:
             for line in bootFile:
                 if p.search(line):
-                    Utils.Print("ERROR: bios_boot.sh script resulted in errors. See %s" % (bootlog))
+                    Utils.Print("ERROR: bios_boot.sh script resulted in errors. See %s" % (Cluster.__bootlog))
                     Utils.Print(line)
                     return None
 
@@ -1204,12 +1177,7 @@ class Cluster(object):
 
     @staticmethod
     def pgrepEosServers(timeout=None):
-        pgrepOpts="-fl"
-        # pylint: disable=deprecated-method
-        if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
-            pgrepOpts="-a"
-
-        cmd="pgrep %s %s" % (pgrepOpts, Utils.EosServerName)
+        cmd=Utils.pgrepCmd(Utils.EosServerName)
 
         def myFunc():
             psOut=None
@@ -1323,6 +1291,9 @@ class Cluster(object):
             Cluster.dumpErrorDetailImpl(fileName)
             fileName="var/lib/node_%02d/stderr.txt" % (i)
             Cluster.dumpErrorDetailImpl(fileName)
+
+        if self.useBiosBootFile:
+            Cluster.dumpErrorDetailImpl(Cluster.__bootlog)
 
     def killall(self, silent=True, allInstances=False):
         """Kill cluster nodeos instances. allInstances will kill all nodeos instances running on the system."""
