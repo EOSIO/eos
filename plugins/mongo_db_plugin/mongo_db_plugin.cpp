@@ -770,20 +770,6 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
 
 }
 
-static inline void print_debug(account_name receiver, const eosio::chain::action_trace& ar) {
-   if (!ar.console.empty()) {
-      auto prefix = fc::format_string(
-            "\n[(${a},${n})->${r}]",
-            fc::mutable_variant_object()
-                  ("a", ar.act.account)
-                  ("n", ar.act.name)
-                  ("r", receiver));
-      dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
-           + ar.console
-           + prefix + ": CONSOLE OUTPUT END   =====================" );
-   }
-}
-
 void from_json_to_doc(bsoncxx::builder::basic::document & doc, const string & json_tmp) {
    using bsoncxx::types::b_bool;
    using bsoncxx::builder::basic::kvp;
@@ -859,6 +845,8 @@ public:
       const chain::base_action_trace& base = action_trace;
       auto v = plugin->to_variant_with_abi( base );
 
+      dlog( fc::json::to_string( v ) );
+
       string actname = v["act"]["name"].get_string();
       if ( actname == "addaction" ) {
          auto doc = document{};
@@ -933,6 +921,9 @@ handle_action( mongo_regactoin & regact, const chain::action_trace &action_trace
 
    const chain::base_action_trace& base = action_trace;
    auto v = regact.get_plguin()->to_variant_with_abi( base );
+
+   dlog( bsoncxx::to_json( *( regact.get_action_info() ) ) );
+   dlog( fc::json::to_string( v ) );
 
    string op = regact.get_action_info()->view()["operation"].get_utf8().value.to_string();
    if ( op == "insert" ) {
