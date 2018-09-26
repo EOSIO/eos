@@ -47,7 +47,6 @@ else()
    find_library(libfc fc @CMAKE_INSTALL_FULL_LIBDIR@)
 endif()
 
-find_library(libbinaryen binaryen @CMAKE_INSTALL_FULL_LIBDIR@)
 find_library(libwasm WASM @CMAKE_INSTALL_FULL_LIBDIR@)
 find_library(libwast WAST @CMAKE_INSTALL_FULL_LIBDIR@)
 find_library(libwabt wabt @CMAKE_INSTALL_FULL_LIBDIR@)
@@ -75,7 +74,6 @@ macro(add_eosio_test test_name)
        ${libtester}
        ${libchain}
        ${libfc}
-       ${libbinaryen}
        ${libwast}
        ${libwasm}
        ${libwabt}
