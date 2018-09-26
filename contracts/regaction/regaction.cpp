@@ -10,8 +10,8 @@ class regaction : public contract {
       using contract::contract;
 
       /// @abi action 
-      void addaction( string receiver, string action, string tablename, string operation ) {
-         print( receiver, " ", tablename, " ", action, " ", operation );
+      void addaction( string receiver, string action, string collection, string operation ) {
+         print( receiver, " ", collection, " ", action, " ", operation );
       }
 
       /// @abi action
@@ -20,8 +20,8 @@ class regaction : public contract {
       }
 
       /// @abi action
-      void createindex( string tablename, string keys, string options ) {
-         print( tablename, " ", keys, " ", options);
+      void createindex( string collection, string keys, string options ) {
+         print( collection, " ", keys, " ", options);
       }
 };
 

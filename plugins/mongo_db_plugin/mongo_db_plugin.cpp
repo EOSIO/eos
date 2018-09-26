@@ -875,7 +875,7 @@ public:
          from_json_to_doc( keys, v["act"]["data"]["keys"].get_string() );
          from_json_to_doc( options, v["act"]["data"]["options"].get_string() );
 
-         create_index( plugin->get_custom_collection( v["act"]["data"]["tablename"].get_string()),
+         create_index( plugin->get_custom_collection( v["act"]["data"]["collection"].get_string()),
                        keys, options );
       } else {
          // error
@@ -920,43 +920,39 @@ private:
 };
 
 void
-handle_action( mongo_regactoin & regact, const chain::action_trace &action_trace ) {
+handle_action( mongo_regactoin &regact, const chain::action_trace &action_trace ) {
    using bsoncxx::builder::basic::document;
    using bsoncxx::builder::basic::kvp;
 
-   const chain::base_action_trace& base = action_trace;
+   const chain::base_action_trace &base = action_trace;
    auto v = regact.get_plguin()->to_variant_with_abi( base );
 
-   dlog( bsoncxx::to_json( *( regact.get_action_info() ) ) );
-   dlog( fc::json::to_string( v ) );
+   dlog( bsoncxx::to_json( *( regact.get_action_info())));
+   dlog( fc::json::to_string( v ));
 
-   string op = regact.get_action_info()->view()["operation"].get_utf8().value.to_string();
+   auto coll_name = regact.get_action_info()->view()["collection"].get_utf8().value.to_string();
+   auto op = regact.get_action_info()->view()["operation"].get_utf8().value.to_string();
    if ( op == "insert" ) {
       auto doc = document{};
-      from_json_to_doc( doc, v["act"]["data"]["document"].get_string() );
+      from_json_to_doc( doc, v["act"]["data"]["document"].get_string());
 
-      auto coll_name = regact.get_action_info()->view()["tablename"].get_utf8().value.to_string();
       insert_document( regact.get_plguin()->get_custom_collection( coll_name ), doc );
    } else if ( op == "update" ) {
       auto filter = document{};
       auto update = document{};
-      from_json_to_doc( filter, v["act"]["data"]["filter"].get_string() );
-      from_json_to_doc( update, v["act"]["data"]["update"].get_string() );
+      from_json_to_doc( filter, v["act"]["data"]["filter"].get_string());
+      from_json_to_doc( update, v["act"]["data"]["update"].get_string());
 
-      auto coll_name = regact.get_action_info()->view()["tablename"].get_utf8().value.to_string();
       update_document( regact.get_plguin()->get_custom_collection( coll_name ), filter, update );
    } else if ( op == "delete" ) {
       auto filter = document{};
-      from_json_to_doc( filter, v["act"]["data"]["filter"].get_string() );
+      from_json_to_doc( filter, v["act"]["data"]["filter"].get_string());
 
-      auto coll_name = regact.get_action_info()->view()["tablename"].get_utf8().value.to_string();
       delete_document( regact.get_plguin()->get_custom_collection( coll_name ), filter );
    } else {
       // error
    }
 }
-
-
 
 bool
 mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces, const chain::action_trace& atrace,
