@@ -17,7 +17,7 @@ namespace eosio { namespace testing {
       std::ifstream wast_file(fn);
       FC_ASSERT( wast_file.is_open(), "wast file cannot be found" );
       wast_file.seekg(0, std::ios::end);
-      std::vector<char> wast; 
+      std::vector<char> wast;
       int len = wast_file.tellg();
       FC_ASSERT( len >= 0, "wast file length is -1" );
       wast.resize(len+1);
@@ -32,7 +32,7 @@ namespace eosio { namespace testing {
       std::ifstream wasm_file(fn, std::ios::binary);
       FC_ASSERT( wasm_file.is_open(), "wasm file cannot be found" );
       wasm_file.seekg(0, std::ios::end);
-      std::vector<uint8_t> wasm; 
+      std::vector<uint8_t> wasm;
       int len = wasm_file.tellg();
       FC_ASSERT( len >= 0, "wasm file length is -1" );
       wasm.resize(len);
@@ -46,7 +46,7 @@ namespace eosio { namespace testing {
       std::ifstream abi_file(fn);
       FC_ASSERT( abi_file.is_open(), "abi file cannot be found" );
       abi_file.seekg(0, std::ios::end);
-      std::vector<char> abi; 
+      std::vector<char> abi;
       int len = abi_file.tellg();
       FC_ASSERT( len >= 0, "abi file length is -1" );
       abi.resize(len+1);
@@ -127,6 +127,7 @@ namespace eosio { namespace testing {
 
    void base_tester::open() {
       control.reset( new controller(cfg) );
+      control->add_indices();
       control->startup();
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){

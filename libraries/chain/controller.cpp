@@ -1388,12 +1388,11 @@ controller::~controller() {
    my->fork_db.close();
 }
 
+void controller::add_indices() {
+   my->add_indices();
+}
 
 void controller::startup() {
-
-   // ilog( "${c}", ("c",fc::json::to_pretty_string(cfg)) );
-   my->add_indices();
-
    my->head = my->fork_db.head();
    if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
