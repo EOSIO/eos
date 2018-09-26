@@ -275,9 +275,10 @@ struct controller_impl {
             std::cerr<< "\n";
             ilog( "${n} blocks replayed", ("n", head->block_num) );
 
-            // the irreverible log is played without undo sessions enabled, so we need to sync the
+            // if the irreverible log is played without undo sessions enabled, we need to sync the
             // revision ordinal to the appropriate expected value here.
-            db.set_revision(head->block_num);
+            if( self.skip_db_sessions( controller::block_status::irreversible ) )
+               db.set_revision(head->block_num);
 
             int rev = 0;
             while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
@@ -1051,7 +1052,7 @@ struct controller_impl {
          // on replay irreversible is not emitted by fork database, so emit it explicitly here
          if( s == controller::block_status::irreversible )
             emit( self.irreversible_block, new_header_state );
-            
+
       } FC_LOG_AND_RETHROW( )
    }
 
