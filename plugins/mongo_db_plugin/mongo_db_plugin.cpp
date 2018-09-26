@@ -118,6 +118,20 @@ public:
 
    template<typename Queue, typename Entry> void queue(Queue& queue, const Entry& e);
 
+   mongocxx::collection *get_custom_collection( const string &coll_name ) {
+      if ( this->_custom_collections.find( coll_name ) == this->_custom_collections.end()) {
+         auto mongo_client = this->mongo_pool->acquire();
+         auto &mongo_conn = *mongo_client;
+
+         auto coll = mongo_conn[this->db_name][coll_name];
+         this->_custom_collections.insert( std::make_pair( coll_name, std::move( coll )));
+      } else {
+         // nothing to do
+      }
+
+      return &( this->_custom_collections[coll_name] );
+   }
+
    bool configured{false};
    bool wipe_database_on_startup{false};
    uint32_t start_block_num = 0;
@@ -148,8 +162,7 @@ public:
    mongocxx::collection _account_controls;
    mongocxx::collection _regaction;
 
-   map<string, mongocxx::collection> register_collections;
-
+   map<string, mongocxx::collection> _custom_collections;
 
    size_t max_queue_size = 0;
    int queue_sleep_time = 0;
@@ -791,34 +804,26 @@ void from_json_to_doc(bsoncxx::builder::basic::document & doc, const string & js
    }
 }
 
-void insert_document( mongocxx::collection & coll, const bsoncxx::builder::basic::document & doc ) {
+void insert_document( mongocxx::collection *coll, const bsoncxx::builder::basic::document & doc ) {
    try {
-      coll.insert_one(doc.view());
+      coll->insert_one(doc.view());
    } catch (...) {
       handle_mongo_exception( "mongo db insert", __LINE__ );
    }
-
 }
 
-void update_document( mongocxx::collection & coll, const bsoncxx::builder::basic::document & filter,
+void update_document( mongocxx::collection *coll, const bsoncxx::builder::basic::document & filter,
                       const bsoncxx::builder::basic::document & update ) {
-   coll.update_one(filter.view(), update.view());
+   coll->update_one(filter.view(), update.view());
 }
 
-void delete_document( mongocxx::collection & coll, const bsoncxx::builder::basic::document & filter ) {
-   coll.delete_one(filter.view());
+void delete_document( mongocxx::collection *coll, const bsoncxx::builder::basic::document & filter ) {
+   coll->delete_one(filter.view());
 }
 
-void create_index( mongocxx::collection & coll, const bsoncxx::builder::basic::document & keys,
+void create_index( mongocxx::collection *coll, const bsoncxx::builder::basic::document & keys,
       const bsoncxx::builder::basic::document & options ) {
-   coll.create_index( keys.view(), options.view() );
-}
-
-mongocxx::collection get_collection(mongo_db_plugin_impl * plugin, const string & coll_name) {
-   auto mongo_client = plugin->mongo_pool->acquire();
-   auto& mongo_conn = *mongo_client;
-
-   return mongo_conn[plugin->db_name][coll_name];
+   coll->create_index( keys.view(), options.view() );
 }
 
 class mongo_regactoin {
@@ -856,13 +861,13 @@ public:
          filter.append( kvp( "receiver", v["act"]["data"]["receiver"].get_string() ),
                kvp( "action", v["act"]["data"]["action"].get_string() ) );
 
-         delete_document( plugin->_regaction, filter );
+         delete_document( &(plugin->_regaction), filter );
 
-         insert_document( plugin->_regaction, doc );
+         insert_document( &(plugin->_regaction), doc );
       } else if ( actname == "delaction" ) {
          auto filter = document{};
          from_json_to_doc( filter, fc::json::to_string( v["act"]["data"] ) );
-         delete_document( plugin->_regaction, filter );
+         delete_document( &(plugin->_regaction), filter );
       } else if ( actname == "createindex" ) {
          auto keys = document{};
          auto options = document{};
@@ -870,8 +875,8 @@ public:
          from_json_to_doc( keys, v["act"]["data"]["keys"].get_string() );
          from_json_to_doc( options, v["act"]["data"]["options"].get_string() );
 
-         auto coll = get_collection( plugin, v["act"]["data"]["tablename"].get_string() );
-         create_index( coll, keys, options );
+         create_index( plugin->get_custom_collection( v["act"]["data"]["tablename"].get_string()),
+                       keys, options );
       } else {
          // error
       }
@@ -930,22 +935,22 @@ handle_action( mongo_regactoin & regact, const chain::action_trace &action_trace
       auto doc = document{};
       from_json_to_doc( doc, v["act"]["data"]["document"].get_string() );
 
-      auto coll = get_collection(regact.get_plguin(), regact.get_action_info()->view()["tablename"].get_utf8().value.to_string());
-      insert_document(coll, doc);
+      auto coll_name = regact.get_action_info()->view()["tablename"].get_utf8().value.to_string();
+      insert_document( regact.get_plguin()->get_custom_collection( coll_name ), doc );
    } else if ( op == "update" ) {
       auto filter = document{};
       auto update = document{};
       from_json_to_doc( filter, v["act"]["data"]["filter"].get_string() );
       from_json_to_doc( update, v["act"]["data"]["update"].get_string() );
 
-      auto coll = get_collection(regact.get_plguin(), regact.get_action_info()->view()["tablename"].get_utf8().value.to_string());
-      update_document(coll, filter, update);
+      auto coll_name = regact.get_action_info()->view()["tablename"].get_utf8().value.to_string();
+      update_document( regact.get_plguin()->get_custom_collection( coll_name ), filter, update );
    } else if ( op == "delete" ) {
       auto filter = document{};
       from_json_to_doc( filter, v["act"]["data"]["filter"].get_string() );
 
-      auto coll = get_collection(regact.get_plguin(), regact.get_action_info()->view()["tablename"].get_utf8().value.to_string());
-      delete_document(coll, filter);
+      auto coll_name = regact.get_action_info()->view()["tablename"].get_utf8().value.to_string();
+      delete_document( regact.get_plguin()->get_custom_collection( coll_name ), filter );
    } else {
       // error
    }
