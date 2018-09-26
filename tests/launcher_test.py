@@ -38,7 +38,7 @@ testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
 
-WalletdName="keosd"
+WalletdName=Utils.EosWalletName
 ClientName="cleos"
 timeout = .5 * 12 * 2 + 60 # time for finalization with 1 producer + 60 seconds padding
 Utils.setIrreversibleTimeout(timeout)
@@ -191,7 +191,7 @@ try:
 
     node.waitForTransInBlock(transId)
 
-    transaction=node.getTransaction(trans, exitOnError=True, delayedRetry=False)
+    transaction=node.getTransaction(transId, exitOnError=True, delayedRetry=False)
 
     typeVal=None
     amountVal=None

@@ -48,7 +48,7 @@ killEosInstances=not dontKill
 killWallet=not dontKill
 dontBootstrap=sanityTest
 
-WalletdName="keosd"
+WalletdName=Utils.EosWalletName
 ClientName="cleos"
 timeout = .5 * 12 * 2 + 60 # time for finalization with 1 producer + 60 seconds padding
 Utils.setIrreversibleTimeout(timeout)
@@ -282,7 +282,7 @@ try:
 
     node.waitForTransInBlock(transId)
 
-    transaction=node.getTransaction(trans, exitOnError=True, delayedRetry=False)
+    transaction=node.getTransaction(transId, exitOnError=True, delayedRetry=False)
 
     typeVal=None
     amountVal=None
@@ -467,7 +467,7 @@ try:
         raise
 
     Print("Test for block decoded packed transaction (issue 2932)")
-    blockId=node.getBlockIdByTransId(trans[1])
+    blockId=node.getBlockIdByTransId(transId)
     assert(blockId)
     block=node.getBlock(blockId, exitOnError=True)
 

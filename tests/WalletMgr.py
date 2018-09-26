@@ -36,6 +36,25 @@ class WalletMgr(object):
             Utils.Print("ERROR: Wallet Manager wasn't configured to launch keosd")
             return False
 
+        if Utils.Debug:
+            portStatus="N/A"
+            portTaken=False
+            if self.host=="localhost" or self.host=="127.0.0.1":
+                if Utils.arePortsAvailable(self.port):
+                    portStatus="AVAILABLE"
+                    portTaken=True
+                else:
+                    portStatus="NOT AVAILABLE"
+            pgrepCmd=Utils.pgrepCmd(Utils.EosWalletName)
+            psOut=Utils.checkOutput(pgrepCmd.split(), ignoreError=True)
+            if psOut or portTaken:
+                statusMsg=""
+                if psOut:
+                    statusMsg+=" %s - {%s}." % (pgrepCmd, psOut)
+                if portTaken:
+                    statusMsg+=" port %d is NOT available." % (self.port)
+                Utils.Print("Launching %s, note similar processes running. %s" % (Utils.EosWalletName, statusMsg))
+
         cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d --verbose-http-errors" % (
             Utils.EosWalletPath, WalletMgr.__walletDataDir, WalletMgr.__walletDataDir, self.host, self.port)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
@@ -45,6 +64,13 @@ class WalletMgr(object):
 
         # Give keosd time to warm up
         time.sleep(2)
+
+        try:
+            psOut=Utils.checkOutput(pgrepCmd.split())
+            if Utils.Debug: Utils.Print("Launched %s. %s - {%s}" % (Utils.EosWalletName, pgrepCmd, psOut))
+        except subprocess.CalledProcessError as ex:
+            Utils.errorExit("Failed to launch the wallet manager on")
+
         return True
 
     def create(self, name, accounts=None, exitOnError=True):
@@ -67,7 +93,15 @@ class WalletMgr(object):
                 retryCount+=1
                 if retryCount<maxRetryCount:
                     delay=10
-                    if Utils.Debug: Utils.Print("%s was not accepted, delaying for %d seconds and trying again" % (cmdDesc, delay))
+                    pgrepCmd=Utils.pgrepCmd(Utils.EosWalletName)
+                    psOut=Utils.checkOutput(pgrepCmd.split())
+                    portStatus="N/A"
+                    if self.host=="localhost" or self.host=="127.0.0.1":
+                        if Utils.arePortsAvailable(self.port):
+                            portStatus="AVAILABLE"
+                        else:
+                            portStatus="NOT AVAILABLE"
+                    if Utils.Debug: Utils.Print("%s was not accepted, delaying for %d seconds and trying again. port %d is %s. %s - {%s}" % (cmdDesc, delay, self.port, pgrepCmd, psOut))
                     time.sleep(delay)
                     continue
 

@@ -49,6 +49,7 @@ class Node(object):
         self.infoValid=None
         self.lastRetrievedHeadBlockNum=None
         self.lastRetrievedLIB=None
+        self.transCache={}
         if self.enableMongo:
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
@@ -64,11 +65,80 @@ class Node(object):
         assert trans
         assert isinstance(trans, dict), print("Input type is %s" % type(trans))
 
-        def printTrans(trans):
-            Utils.Print("ERROR: Failure in transaction validation.")
+        executed="executed"
+        def printTrans(trans, status):
+            Utils.Print("ERROR: Valid transaction should be \"%s\" but it was \"%s\"." % (executed, status))
             Utils.Print("Transaction: %s" % (json.dumps(trans, indent=1)))
 
-        assert trans["processed"]["receipt"]["status"] == "executed", printTrans(trans)
+        transStatus=Node.getTransStatus(trans)
+        assert transStatus == executed, printTrans(trans, transStatus)
+
+    @staticmethod
+    def __printTransStructureError(trans, context):
+        Utils.Print("ERROR: Failure in expected transaction structure. Missing trans%s." % (context))
+        Utils.Print("Transaction: %s" % (json.dumps(trans, indent=1)))
+
+    class Context:
+        def __init__(self, obj, desc):
+            self.obj=obj
+            self.sections=[obj]
+            self.keyContext=[]
+            self.desc=desc
+
+        def __json(self):
+            return "%s=\n%s" % (self.desc, json.dumps(self.obj, indent=1))
+
+        def __keyContext(self):
+            msg=""
+            for key in self.keyContext:
+                if msg=="":
+                    msg="["
+                else:
+                    msg+="]["
+                msg+=key
+            if msg!="":
+                msg+="]"
+            return msg
+
+        def __contextDesc(self):
+            return "%s%s" % (self.desc, self.__keyContext())
+
+        def add(self, newKey):
+            assert isinstance(newKey, str), print("ERROR: Trying to use %s as a key" % (newKey))
+            subSection=self.sections[-1]
+            assert isinstance(subSection, dict), print("ERROR: Calling \"add\" method when context is not a dictionary. %s in %s" % (self.__contextDesc(), self.__json()))
+            assert newKey in subSection, print("ERROR: %s%s does not contain key \"%s\". %s" % (self.__contextDesc(), key, self.__json()))
+            current=subSection[newKey]
+            self.sections.append(current)
+            self.keyContext.append(newKey)
+            return current
+
+        def index(self, i):
+            assert isinstance(i, int), print("ERROR: Trying to use \"%s\" as a list index" % (i))
+            cur=self.getCurrent()
+            assert isinstance(cur, list), print("ERROR: Calling \"index\" method when context is not a list.  %s in %s" % (self.__contextDesc(), self.__json()))
+            listLen=len(cur)
+            assert i < listLen, print("ERROR: Index %s is beyond the size of the current list (%s).  %s in %s" % (i, listLen, self.__contextDesc(), self.__json()))
+            return self.sections.append(cur[i])
+
+        def getCurrent(self):
+            return self.sections[-1]
+
+    @staticmethod
+    def getTransStatus(trans):
+        cntxt=Node.Context(trans, "trans")
+        cntxt.add("processed")
+        cntxt.add("receipt")
+        return cntxt.add("status")
+
+    @staticmethod
+    def getTransBlockNum(trans):
+        cntxt=Node.Context(trans, "trans")
+        cntxt.add("processed")
+        cntxt.add("action_traces")
+        cntxt.index(0)
+        return cntxt.add("block_num")
+
 
     @staticmethod
     def stdinAndCheckOutput(cmd, subcommand):
@@ -140,9 +210,17 @@ class Node(object):
         assert trans
         assert isinstance(trans, dict), print("Input type is %s" % type(trans))
 
-        #Utils.Print("%s" % trans)
+        assert "transaction_id" in trans, print("trans does not contain key %s. trans={%s}" % ("transaction_id", json.dumps(trans, indent=2, sort_keys=True)))
         transId=trans["transaction_id"]
         return transId
+
+    @staticmethod
+    def isTrans(obj):
+        """Identify if this is a transaction dictionary."""
+        if obj is None or not isinstance(obj, dict):
+            return False
+
+        return True if "transaction_id" in obj else False
 
     @staticmethod
     def byteArrToStr(arr):
@@ -249,8 +327,10 @@ class Node(object):
         return self.isBlockPresent(blockNum, blockType=BlockType.lib)
 
     class BlockWalker:
-        def __init__(self, node, trans, startBlockNum=None, endBlockNum=None):
-            self.trans=trans
+        def __init__(self, node, transId, startBlockNum=None, endBlockNum=None):
+            assert(isinstance(transId, str))
+            self.trans=None
+            self.transId=transId
             self.node=node
             self.startBlockNum=startBlockNum
             self.endBlockNum=endBlockNum
@@ -258,32 +338,45 @@ class Node(object):
         def walkBlocks(self):
             start=None
             end=None
-            blockNum=self.trans["processed"]["action_traces"][0]["block_num"]
+            if self.trans is None and self.transId in self.transCache.keys():
+                self.trans=self.transCache[self.transId]
+            if self.trans is not None:
+                cntxt=Node.Context(self.trans, "trans")
+                cntxt.add("processed")
+                cntxt.add("action_traces")
+                cntxt.index(0)
+                blockNum=cntxt.add("block_num")
+            else:
+                blockNum=None
             # it should be blockNum or later, but just in case the block leading up have any clues...
+            start=None
             if self.startBlockNum is not None:
                 start=self.startBlockNum
-            else:
+            elif blockNum is not None:
                 start=blockNum-5
             if self.endBlockNum is not None:
                 end=self.endBlockNum
             else:
                 info=self.node.getInfo()
                 end=info["head_block_num"]
-            msg="Original transaction=\n%s\nExpected block_num=%s\n" % (json.dumps(trans, indent=2, sort_keys=True), blockNum)
+            if start is None:
+                if end > 100:
+                    start=end-100
+                else:
+                    start=0
+            transDesc=" id =%s" % (self.transId)
+            if self.trans is not None:
+                transDesc="=%s" % (json.dumps(self.trans, indent=2, sort_keys=True))
+            msg="Original transaction%s\nExpected block_num=%s\n" % (transDesc, blockNum)
             for blockNum in range(start, end+1):
                 block=self.node.getBlock(blockNum)
                 msg+=json.dumps(block, indent=2, sort_keys=True)+"\n"
 
+            return msg
+
     # pylint: disable=too-many-branches
-    def getTransaction(self, transOrTransId, silentErrors=False, exitOnError=False, delayedRetry=True):
-        transId=None
-        trans=None
-        assert(isinstance(transOrTransId, (str,dict)))
-        if isinstance(transOrTransId, str):
-            transId=transOrTransId
-        else:
-            trans=transOrTransId
-            transId=Node.getTransId(trans)
+    def getTransaction(self, transId, silentErrors=False, exitOnError=False, delayedRetry=True):
+        assert(isinstance(transId, str))
         exitOnErrorForDelayed=not delayedRetry and exitOnError
         timeout=3
         blockWalker=None
@@ -296,7 +389,7 @@ class Node(object):
                 if trans is not None or not delayedRetry:
                     return trans
                 if blockWalker is None:
-                    blockWalker=Node.BlockWalker(self, trans)
+                    blockWalker=Node.BlockWalker(self, transId)
                 if Utils.Debug: Utils.Print("Could not find transaction with id %s, delay and retry" % (transId))
                 time.sleep(timeout)
 
@@ -367,16 +460,11 @@ class Node(object):
 
         return False
 
-    def getBlockIdByTransId(self, transOrTransId, delayedRetry=True):
-        """Given a transaction (dictionary) or transaction Id (string), will return the actual block id (int) containing the transaction"""
-        assert(transOrTransId)
-        transId=None
-        assert(isinstance(transOrTransId, (str,dict)))
-        if isinstance(transOrTransId, str):
-            transId=transOrTransId
-        else:
-            transId=Node.getTransId(transOrTransId)
-        trans=self.getTransaction(transOrTransId, exitOnError=True, delayedRetry=delayedRetry)
+    def getBlockIdByTransId(self, transId, delayedRetry=True):
+        """Given a transaction Id (string), will return the actual block id (int) containing the transaction"""
+        assert(transId)
+        assert(isinstance(transId, str))
+        trans=self.getTransaction(transId, exitOnError=True, delayedRetry=delayedRetry)
 
         refBlockNum=None
         key=""
@@ -466,6 +554,7 @@ class Node(object):
             account.activePublicKey, stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL)
         msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
         trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
+        self.trackCmdTransaction(trans)
         transId=Node.getTransId(trans)
 
         if stakedDeposit > 0:
@@ -483,11 +572,13 @@ class Node(object):
             cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey, account.activePublicKey)
         msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
         trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
+        self.trackCmdTransaction(trans)
         transId=Node.getTransId(trans)
 
         if stakedDeposit > 0:
             self.waitForTransInBlock(transId) # seems like account creation needs to be finlized before transfer can happen
             trans = self.transferFunds(creatorAccount, account, "%0.04f %s" % (stakedDeposit/10000, CORE_SYMBOL), "init")
+            self.trackCmdTransaction(trans)
             transId=Node.getTransId(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
@@ -638,6 +729,7 @@ class Node(object):
         trans=None
         try:
             trans=Utils.runCmdArrReturnJson(cmdArr)
+            self.trackCmdTransaction(trans)
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during funds transfer. %s" % (msg))
@@ -819,6 +911,7 @@ class Node(object):
         trans=None
         try:
             trans=Utils.runCmdReturnJson(cmd, trace=False)
+            self.trackCmdTransaction(trans)
         except subprocess.CalledProcessError as ex:
             if not shouldFail:
                 msg=ex.output.decode("utf-8")
@@ -876,6 +969,7 @@ class Node(object):
         if Utils.Debug: Utils.Print("cmd: %s" % (cmdArr))
         try:
             trans=Utils.runCmdArrReturnJson(cmdArr)
+            self.trackCmdTransaction(trans, ignoreNonTrans=True)
             return (True, trans)
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
@@ -887,6 +981,7 @@ class Node(object):
         cmdDesc="set action permission"
         cmd="%s -j %s %s %s %s" % (cmdDesc, account, code, pType, requirement)
         trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError)
+        self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -895,11 +990,12 @@ class Node(object):
             toAccount=fromAccount
 
         cmdDesc="system delegatebw"
-        transferStr="--transfer" if transferTo else "" 
+        transferStr="--transfer" if transferTo else ""
         cmd="%s -j %s %s \"%s %s\" \"%s %s\" %s" % (
             cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
         trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -909,6 +1005,7 @@ class Node(object):
             cmdDesc, producer.name, producer.activePublicKey, url, location)
         msg="producer=%s" % (producer.name);
         trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -918,6 +1015,7 @@ class Node(object):
             cmdDesc, account.name, " ".join(producers))
         msg="account=%s, producers=[ %s ]" % (account.name, ", ".join(producers));
         trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
@@ -949,7 +1047,7 @@ class Node(object):
             return None
 
         if exitOnError and trans is None:
-            Utils.cmdError("could not \"%s\" - %s" % (cmdDesc,exitMsg))
+            Utils.cmdError("could not \"%s\". %s" % (cmdDesc,exitMsg))
             errorExit("Failed to \"%s\"" % (cmdDesc))
 
         return trans
@@ -963,12 +1061,12 @@ class Node(object):
         cmd="curl %s/v1/test_control/kill_node_on_producer -d '{ \"producer\":\"%s\", \"where_in_sequence\":%d, \"based_on_lib\":\"%s\" }' -X POST -H \"Content-Type: application/json\"" % \
             (self.endpointHttp, producer, whereInSequence, basedOnLib)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        trans=None
+        rtn=None
         try:
             if returnType==ReturnType.json:
-                trans=Utils.runCmdReturnJson(cmd, silentErrors=silentErrors)
+                rtn=Utils.runCmdReturnJson(cmd, silentErrors=silentErrors)
             elif returnType==ReturnType.raw:
-                trans=Utils.runCmdReturnStr(cmd)
+                rtn=Utils.runCmdReturnStr(cmd)
             else:
                 unhandledEnumType(returnType)
         except subprocess.CalledProcessError as ex:
@@ -986,11 +1084,11 @@ class Node(object):
             exitMsg=": " + exitMsg
         else:
             exitMsg=""
-        if exitOnError and trans is None:
+        if exitOnError and rtn is None:
             Utils.cmdError("could not \"%s\" - %s" % (cmd,exitMsg))
             Utils.errorExit("Failed to \"%s\"" % (cmd))
 
-        return trans
+        return rtn
 
     def waitForTransBlockIfNeeded(self, trans, waitForTransBlock, exitOnError=False):
         if not waitForTransBlock:
@@ -1166,7 +1264,7 @@ class Node(object):
 
         cmdArr=[]
         myCmd=self.cmd
-        toAddOrSwap=copy.deepcopy(addOrSwapFlags) if addOrSwapFlags is not None else {} 
+        toAddOrSwap=copy.deepcopy(addOrSwapFlags) if addOrSwapFlags is not None else {}
         if not newChain:
             skip=False
             swapValue=None
@@ -1226,6 +1324,26 @@ class Node(object):
         self.cmd=cmd
         self.killed=False
         return True
+
+    def trackCmdTransaction(self, trans, ignoreNonTrans=False):
+        if trans is None:
+            if Utils.Debug: Utils.Print("  cmd returned transaction: %s" % (trans))
+            return
+
+        if ignoreNonTrans and not Node.isTrans(trans):
+            if Utils.Debug: Utils.Print("  cmd returned a non-transaction")
+            return
+
+        transId=Node.getTransId(trans)
+        if Utils.Debug:
+            status=Node.getTransStatus(trans)
+            blockNum=Node.getTransBlockNum(trans)
+            if transId in self.transCache.keys():
+                replaceMsg="replacing previous trans=\n%s" % json.dumps(self.transCache[transId], indent=2, sort_keys=True)
+            else:
+                replaceMsg=""
+            Utils.Print("  cmd returned transaction id: %s, status: %s, (possible) block num: %s %s" % (transId, status, blockNum, replaceMsg))
+        self.transCache[transId]=trans
 
     def reportStatus(self):
         Utils.Print("Node State:")
