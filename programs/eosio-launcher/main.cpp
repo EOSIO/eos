@@ -1157,7 +1157,7 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
 
 void
 launcher_def::init_genesis () {
-  bfs::path genesis_path = bfs::current_path() / "genesis.json";
+   bfs::path genesis_path = genesis.is_complete() ? genesis : bfs::current_path() / genesis;
    bfs::ifstream src(genesis_path);
    if (!src.good()) {
       cout << "generating default genesis file " << genesis_path << endl;
