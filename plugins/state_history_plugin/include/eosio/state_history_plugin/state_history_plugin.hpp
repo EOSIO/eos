@@ -18,6 +18,7 @@ using std::shared_ptr;
 typedef shared_ptr<class state_history_plugin_impl> impl_ptr;
 
 struct table_delta {
+   fc::unsigned_int                        struct_version = 0;
    std::string                             name{};
    std::vector<std::pair<uint64_t, bytes>> rows{};
    std::vector<uint64_t>                   removed{};
@@ -42,4 +43,4 @@ class state_history_plugin : public plugin<state_history_plugin> {
 
 } // namespace eosio
 
-FC_REFLECT(eosio::table_delta, (name)(rows)(removed));
+FC_REFLECT(eosio::table_delta, (struct_version)(name)(rows)(removed));
