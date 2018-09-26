@@ -12,7 +12,16 @@
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/state_history_plugin/state_history_plugin.hpp>
 
+#include <boost/asio/bind_executor.hpp>
+#include <boost/asio/ip/host_name.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/strand.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/websocket.hpp>
 #include <boost/signals2/connection.hpp>
+
+using tcp    = boost::asio::ip::tcp;
+namespace ws = boost::beast::websocket;
 
 template <typename T>
 struct history_serial_wrapper {
@@ -487,20 +496,170 @@ static void for_each_table(chainbase::database& db, F f) {
    f("resource_limits_config_index", db.get_index<resource_limits::resource_limits_config_index>());
 }
 
-class state_history_plugin_impl {
- public:
+template <typename F>
+auto catch_and_log(F f) {
+   try {
+      return f();
+   } catch (const fc::exception& e) {
+      elog("${e}", ("e", e.to_detail_string()));
+   } catch (const std::exception& e) {
+      elog("${e}", ("e", e.what()));
+   } catch (...) {
+      elog("unknown exception");
+   }
+}
+
+struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                   chain_plug = nullptr;
    fc::optional<scoped_connection> accepted_block_connection;
+   string                          endpoint_address = "0.0.0.0";
+   uint16_t                        endpoint_port    = 4321;
+   std::unique_ptr<tcp::acceptor>  acceptor;
+
+   struct session : std::enable_shared_from_this<session> {
+      std::shared_ptr<state_history_plugin_impl> plugin;
+      std::unique_ptr<ws::stream<tcp::socket>>   stream;
+      boost::beast::flat_buffer                  in_buffer;
+
+      session(std::shared_ptr<state_history_plugin_impl> plugin)
+          : plugin(std::move(plugin)) {}
+
+      void start(tcp::socket socket) {
+         ilog("incoming connection");
+         stream = std::make_unique<ws::stream<tcp::socket>>(std::move(socket));
+         stream->binary(true);
+         stream->next_layer().set_option(boost::asio::ip::tcp::no_delay(true));
+         stream->next_layer().set_option(boost::asio::socket_base::send_buffer_size(1024 * 1024));
+         stream->next_layer().set_option(boost::asio::socket_base::receive_buffer_size(1024 * 1024));
+         stream->async_accept([self = shared_from_this(), this](boost::system::error_code ec) {
+            callback(ec, "async_accept", [&] { start_read(); });
+         });
+      }
+
+      void start_read() {
+         stream->async_read(in_buffer, [self = shared_from_this(), this](boost::system::error_code ec, size_t bytes) {
+            callback(ec, "async_read", [&] {
+               ilog("read");
+               auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer.data()));
+               auto s = boost::asio::buffer_size(in_buffer.data());
+               fc::datastream<const char*> ds(d, s);
+               state_request               req;
+               fc::raw::unpack(ds, req);
+               req.visit(*this);
+               start_read();
+            });
+         });
+      }
+
+      template <typename T>
+      void send(const T obj) {
+         auto bin = std::make_shared<std::vector<char>>(fc::raw::pack(state_result{std::move(obj)}));
+         stream->async_write( //
+             boost::asio::buffer(*bin),
+             [self = shared_from_this(), this, bin](boost::system::error_code ec, size_t bytes) {
+                callback(ec, "async_write", [] {});
+             });
+      }
+
+      using result_type = void;
+      void operator()(get_state_request_v0&) {
+         ilog("get_state_request_v0");
+         get_state_result_v0 result;
+         auto&               ind = plugin->chain_plug->chain().db().get_index<state_history_index>().indices();
+         if (!ind.empty())
+            result.last_block_num = (--ind.end())->id._id;
+         send(std::move(result));
+      }
+
+      template <typename F>
+      void catch_and_close(F f) {
+         try {
+            f();
+         } catch (const fc::exception& e) {
+            elog("${e}", ("e", e.to_detail_string()));
+            close();
+         } catch (const std::exception& e) {
+            elog("${e}", ("e", e.what()));
+            close();
+         } catch (...) {
+            elog("unknown exception");
+            close();
+         }
+      }
+
+      template <typename F>
+      void callback(boost::system::error_code ec, const char* what, F f) {
+         if (ec)
+            return on_fail(ec, what);
+         catch_and_close(f);
+      }
+
+      void on_fail(boost::system::error_code ec, const char* what) {
+         try {
+            elog("${w}: ${m}", ("w", what)("m", ec.message()));
+            close();
+         } catch (...) {
+            elog("uncaught exception on close");
+         }
+      }
+
+      void close() {
+         stream->next_layer().close();
+         plugin->sessions.erase(this);
+      }
+   };
+   std::map<session*, std::shared_ptr<session>> sessions;
+
+   void listen() {
+      boost::system::error_code ec;
+      auto                      address  = boost::asio::ip::make_address(endpoint_address);
+      auto                      endpoint = tcp::endpoint{address, endpoint_port};
+      acceptor                           = std::make_unique<tcp::acceptor>(app().get_io_service());
+
+      auto check_ec = [&](const char* what) {
+         if (!ec)
+            return;
+         elog("${w}: ${m}", ("w", what)("m", ec.message()));
+         EOS_ASSERT(false, plugin_exception, "unable top open listen socket");
+      };
+
+      acceptor->open(endpoint.protocol(), ec);
+      check_ec("open");
+      acceptor->bind(endpoint, ec);
+      check_ec("bind");
+      acceptor->listen(boost::asio::socket_base::max_listen_connections, ec);
+      check_ec("listen");
+      do_accept();
+   }
+
+   void do_accept() {
+      auto socket = std::make_shared<tcp::socket>(app().get_io_service());
+      acceptor->async_accept(*socket, [self = shared_from_this(), socket, this](auto ec) {
+         if (ec) {
+            if (ec == boost::system::errc::too_many_files_open)
+               catch_and_log([&] { do_accept(); });
+            return;
+         }
+         catch_and_log([&] {
+            auto s            = std::make_shared<session>(self);
+            sessions[s.get()] = s;
+            s->start(std::move(*socket));
+         });
+         do_accept();
+      });
+   }
+
+   void on_accept(boost::system::error_code ec) {}
 
    void on_accepted_block(const block_state_ptr& block_state) {
       auto& chain = chain_plug->chain();
       auto& db    = chain.db();
-      dlog("${i}: ${n} transactions",
-           ("i", block_state->block->block_num())("n", block_state->block->transactions.size()));
+      // dlog("${i}: ${n} transactions",
+      //      ("i", block_state->block->block_num())("n", block_state->block->transactions.size()));
       db.create<state_history_object>([&](state_history_object& hist) {
          hist.id = block_state->block->block_num();
          std::vector<table_delta> deltas;
-         for_each_table(db, [&](auto* name, auto& index) {
+         for_each_table(db, [&, this](auto* name, auto& index) {
             if (index.stack().empty())
                return;
             auto& undo = index.stack().back();
@@ -509,9 +668,9 @@ class state_history_plugin_impl {
             deltas.push_back({});
             auto& delta = deltas.back();
             delta.name  = name;
-            dlog("    ${name} rev=${r} old=${o} new=${n} rem=${rem}",
-                 ("name", name)("r", undo.revision)("o", undo.old_values.size())("n", undo.new_ids.size())(
-                     "rem", undo.removed_values.size()));
+            // dlog("    ${name} rev=${r} old=${o} new=${n} rem=${rem}",
+            //      ("name", name)("r", undo.revision)("o", undo.old_values.size())("n", undo.new_ids.size())(
+            //          "rem", undo.removed_values.size()));
             for (auto& old : undo.old_values)
                delta.rows.emplace_back(old.first._id, fc::raw::pack(make_history_serial_wrapper(index.get(old.first))));
             for (auto id : undo.new_ids)
@@ -520,7 +679,7 @@ class state_history_plugin_impl {
                delta.removed.push_back(old.first._id);
          });
          auto bin = fc::raw::pack(deltas);
-         dlog("    ${s} bytes", ("s", bin.size()));
+         // dlog("    ${s} bytes", ("s", bin.size()));
          hist.deltas.insert(hist.deltas.end(), bin.begin(), bin.end());
       });
    }
@@ -531,7 +690,10 @@ state_history_plugin::state_history_plugin()
 
 state_history_plugin::~state_history_plugin() {}
 
-void state_history_plugin::set_program_options(options_description& cli, options_description& cfg) {}
+void state_history_plugin::set_program_options(options_description& cli, options_description& cfg) {
+   cfg.add_options()("state-endpoint", bpo::value<string>()->default_value("0.0.0.0:8080"),
+                     "the endpoint upon which to listen for incoming connections");
+}
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {
    try {
@@ -541,12 +703,41 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       chain.db().add_index<state_history_index>();
       my->accepted_block_connection.emplace(
           chain.accepted_block.connect([&](const block_state_ptr& p) { my->on_accepted_block(p); }));
+
+      if (options.count("state-endpoint")) {
+         auto ip_port         = options.at("state-endpoint").as<string>();
+         auto port            = ip_port.substr(ip_port.find(':') + 1, ip_port.size());
+         auto host            = ip_port.substr(0, ip_port.find(':'));
+         my->endpoint_address = host;
+         my->endpoint_port    = std::stoi(port);
+         idump((ip_port)(host)(port));
+      }
+
+      // auto&  ind   = chain.db().get_index<state_history_index>().indices();
+      // size_t total = 0, max_size = 0, max_block = 0, num = 0;
+      // for (auto& x : ind) {
+      //    if (!(x.id._id % 10000))
+      //       dlog("    ${i}: ${s} bytes", ("i", x.id._id)("s", x.deltas.size()));
+      //    total += x.deltas.size();
+      //    if (x.deltas.size() > max_size) {
+      //       max_block = x.id._id;
+      //       max_size  = x.deltas.size();
+      //    }
+      //    ++num;
+      // }
+      // dlog("total: ${s} bytes", ("s", total));
+      // dlog("max:   ${s} bytes in ${b}", ("s", max_size)("b", max_block));
+      // dlog("num:   ${s}", ("s", num));
    }
    FC_LOG_AND_RETHROW()
 }
 
-void state_history_plugin::plugin_startup() {}
+void state_history_plugin::plugin_startup() { my->listen(); }
 
-void state_history_plugin::plugin_shutdown() { my->accepted_block_connection.reset(); }
+void state_history_plugin::plugin_shutdown() {
+   my->accepted_block_connection.reset();
+   while (!my->sessions.empty())
+      my->sessions.begin()->second->close();
+}
 
 } // namespace eosio

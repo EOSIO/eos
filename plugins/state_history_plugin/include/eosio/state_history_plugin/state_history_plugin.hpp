@@ -15,7 +15,7 @@ namespace eosio {
 using chain::bytes;
 using std::shared_ptr;
 
-typedef shared_ptr<class state_history_plugin_impl> impl_ptr;
+typedef shared_ptr<struct state_history_plugin_impl> state_history_ptr;
 
 struct table_delta {
    fc::unsigned_int                        struct_version = 0;
@@ -23,6 +23,15 @@ struct table_delta {
    std::vector<std::pair<uint64_t, bytes>> rows{};
    std::vector<uint64_t>                   removed{};
 };
+
+struct get_state_request_v0 {};
+
+struct get_state_result_v0 {
+   uint32_t last_block_num = 0;
+};
+
+using state_request = fc::static_variant<get_state_request_v0>;
+using state_result  = fc::static_variant<get_state_result_v0>;
 
 class state_history_plugin : public plugin<state_history_plugin> {
  public:
@@ -38,9 +47,11 @@ class state_history_plugin : public plugin<state_history_plugin> {
    void plugin_shutdown();
 
  private:
-   impl_ptr my;
+   state_history_ptr my;
 };
 
 } // namespace eosio
 
 FC_REFLECT(eosio::table_delta, (struct_version)(name)(rows)(removed));
+FC_REFLECT_EMPTY(eosio::get_state_request_v0);
+FC_REFLECT(eosio::get_state_result_v0, (last_block_num));
