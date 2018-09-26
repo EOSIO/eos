@@ -84,6 +84,7 @@ class Cluster(object):
         self.defproducerbAccount.activePrivateKey=defproducerbPrvtKey
 
         self.useBiosBootFile=False
+        self.filesToCleanup=[]
 
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
@@ -146,7 +147,7 @@ class Cluster(object):
         if self.staging:
             cmdArr.append("--nogen")
 
-        nodeosArgs="--max-transaction-time 990000 --abi-serializer-max-time-ms 990000 --filter-on * --p2p-max-nodes-per-host %d" % (totalNodes)
+        nodeosArgs="--max-transaction-time -1 --abi-serializer-max-time-ms 990000 --filter-on * --p2p-max-nodes-per-host %d" % (totalNodes)
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
@@ -170,6 +171,23 @@ class Cluster(object):
                 cmdArr.append(str(nodeNum))
                 cmdArr.append("--specific-nodeos")
                 cmdArr.append(arg)
+
+        genesisFile=open("./genesis.json", "r")
+        genesisJsonStr=genesisFile.read()
+        genesisFile.close()
+        genesisObject=json.loads(genesisJsonStr)
+        initialConfiguration=genesisObject["initial_configuration"]
+        maxBlockCpuUsage=initialConfiguration.get("max_block_cpu_usage",200000)
+        initialConfiguration["max_block_cpu_usage"]=maxBlockCpuUsage*10
+
+
+        tempGenesisFileName="./tempGenesis.json"
+        genesisFile=open(tempGenesisFileName,"w")
+        genesisFile.write(json.dumps(genesisObject, indent=2))
+        genesisFile.close()
+        self.filesToCleanup.append(tempGenesisFileName)
+        cmdArr.append("--genesis")
+        cmdArr.append(tempGenesisFileName)
 
         # must be last cmdArr.append before subprocess.call, so that everything is on the command line
         # before constructing the shape.json file for "bridge"
@@ -1365,6 +1383,9 @@ class Cluster(object):
             shutil.rmtree(f)
         for f in glob.glob("etc/eosio/node_*"):
             shutil.rmtree(f)
+
+        for f in self.filesToCleanup:
+            os.remove(f)
 
         if self.enableMongo:
             cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
