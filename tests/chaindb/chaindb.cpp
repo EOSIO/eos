@@ -16,6 +16,9 @@
 #include "chaindb.h"
 
 #define _chaindb_internal_assert(_EXPR, ...) EOS_ASSERT(_EXPR, fc::assert_exception, __VA_ARGS__)
+#define scope_kvp(__SCOPE) _detail::kvp(_detail::get_scope_key(), _detail::name(__SCOPE).to_string())
+#define payer_kvp(__PAYER) _detail::kvp(_detail::get_payer_key(), _detail::name(__PAYER).to_string())
+#define id_kvp(__PK) _detail::kvp(_detail::get_id_key(), _detail::b_int64{static_cast<int64_t>(__PK)})
 
 namespace _detail {
     using eosio::chain::abi_def;
@@ -66,6 +69,7 @@ namespace _detail {
     namespace options = mongocxx::options;
 
     using std::string;
+    using std::tuple;
 
     variant_object build_variant(const document_view&);
 
@@ -297,23 +301,40 @@ namespace _detail {
         return dst;
     }
 
+    enum class direction: int {
+        Forward = 1,
+        Backward = -1
+    };
+
     struct cmp_info {
-        const char* forward;
-        const char* backward;
+        const direction order;
+        const char* from_forward;
+        const char* from_backward;
+        const char* to_forward;
+        const char* to_backward;
     };
 
     const cmp_info& start_from() {
-        static cmp_info value = { "$gte", "$lte" };
+        static cmp_info value = {
+            direction::Forward,
+            "$gte", "$lte",
+            "$gt",  "$lt" };
         return value;
     }
 
     const cmp_info& start_after() {
-        static cmp_info value = { "$gt", "$lt" };
+        static cmp_info value = {
+            direction::Forward,
+            "$gt", "$lt",
+            nullptr, nullptr };
         return value;
     }
 
-    const cmp_info& start_before() {
-        static cmp_info value = { "$lt", "$gt" };
+    const cmp_info& reverse_start_from() {
+        static cmp_info value = {
+            direction::Backward,
+            "$lte", "$gte",
+            "$lt",  "$gt" };
         return value;
     }
 
@@ -321,49 +342,68 @@ namespace _detail {
         return name.size() == 3; // asc (vs desc)
     }
 
-    const string& get_scope_name() {
+    const string& get_scope_key() {
         static string name = "_SCOPE_";
         return name;
     }
 
-    const string& get_payer_name() {
+    const string& get_payer_key() {
         static string name = "_PAYER_";
         return name;
     }
 
-    const string& get_primary_name() {
+    const string& get_primary_index_name() {
         static string name = "primary";
         return name;
     }
 
-    const string& get_id_name() {
+    const string& get_id_key() {
         static string name = "id";
         return name;
     }
 
+
     primary_key_t get_id_value(const document_view& view) {
-        return view[get_id_name()].get_int64();
+        return static_cast<primary_key_t>(view[get_id_key()].get_int64().value);
     }
 
-    string get_index_name(table_name_t table, const string& index) {
+    string get_index_name(const table_name_t table, const string& index) {
         // types can't use '.', so it's valid custom type
         return name(table).to_string().append(".").append(index);
     }
 
-    string get_index_name(table_name_t table, index_name_t index) {
+    string get_index_name(const table_name_t table, const index_name_t index) {
         return get_index_name(table, name(index).to_string());
     }
 
+    struct abi_table_request {
+        const account_name_t code;
+        const account_name_t scope;
+        const table_name_t table;
+
+        string code_name() const {
+            return name(code).to_string();
+        }
+
+        string scope_name() const {
+            return name(scope).to_string();
+        }
+
+        string table_name() const {
+            return name(table).to_string();
+        }
+    }; // struct abi_table_request
+
     struct abi_info {
         std::map<table_name_t, bool> verified_map;
-        account_name_t code;
+        const account_name_t code = 0;
         abi_def abi;
         abi_serializer serializer;
 
         abi_info() = default;
-        abi_info(const account_name_t code, abi_def src, const fc::microseconds& max_time)
-            : code(code),
-              abi(std::move(src)) {
+        abi_info(const account_name_t code, abi_def def, const fc::microseconds& max_time)
+        : code(code),
+          abi(std::move(def)) {
 
             serializer.set_abi(abi, max_time);
 
@@ -387,23 +427,28 @@ namespace _detail {
             serializer.set_abi(abi, max_time);
         }
 
-        variant_object to_object(
-            table_name_t table, const string& type, const void* data, size_t size, const microseconds& max_time
-        ) const {
-            return to_object_("table", [&]{return name(table).to_string();}, type, data, size, max_time);
+        string code_name() const {
+            return name(code).to_string();
         }
 
         variant_object to_object(
-            table_name_t table, index_name_t index, const void* data, size_t size, const microseconds& max_time
+            const table_def& table, const void* data, size_t size, const microseconds& max_time
         ) const {
-            auto type = get_index_name(table, index);
+            return to_object_("table", [&]{return table.name.to_string();}, table.type, data, size, max_time);
+        }
+
+        variant_object to_object(
+            const abi_table_request& request, const index_name_t index,
+            const void* data, size_t size, const microseconds& max_time
+        ) const {
+            auto type = get_index_name(request.table, index);
             return to_object_("index", [&](){return type;}, type, data, size, max_time);
         }
 
         bytes to_bytes(
-            table_name_t table, const string& type, const variant& value, const microseconds& max_time
+            const table_def& table, const variant& value, const microseconds& max_time
         ) const {
-            return to_bytes_("table", [&]{return name(table).to_string();}, type, value, max_time);
+            return to_bytes_("table", [&]{return table.name.to_string();}, table.type, value, max_time);
         }
 
     private:
@@ -412,7 +457,7 @@ namespace _detail {
             const char* object_type, Type&& db_type,
             const string& type, const void* data, const size_t size, const microseconds& max_time
         ) const {
-            // begin() case
+            // begin()
             if (nullptr == data && 0 == size) return variant_object();
 
             fc::datastream<const char*> ds(static_cast<const char*>(data), size);
@@ -420,12 +465,12 @@ namespace _detail {
 
 //            ilog(
 //                "${object_type} ${db}.${type}: ${object}",
-//                ("object_type", object_type)("db", name(code).to_string())("type", db_type())("object", value));
+//                ("object_type", object_type)("db", code_name())("type", db_type())("object", value));
 
             _chaindb_internal_assert(
                 value.is_object(),
                 "ABI serializer returns bad type for the ${object_type} ${db}.${type}",
-                ("object_type", object_type)("db", name(code).to_string())("type", db_type()));
+                ("object_type", object_type)("db", code_name())("type", db_type()));
 
             return value.get_object();
         }
@@ -437,7 +482,7 @@ namespace _detail {
         ) const {
 //            ilog(
 //                "${object_type} ${db}.${type}: ${object}",
-//                ("object_type", object_type)("db", name(code).to_string())("type", db_type())("object", value));
+//                ("object_type", object_type)("db", code_name())("type", db_type())("object", value));
 
             _chaindb_internal_assert(
                 value.is_object(),
@@ -447,81 +492,81 @@ namespace _detail {
     }; // struct abi_info
 
     struct abi_table_result {
-        const table_def* table;
-        abi_info* info;
+        const account_name_t code = 0;
+        const account_name_t scope = 0;
+        const table_def* table = nullptr;
+        const abi_info* info = nullptr;
 
         abi_table_result() = default;
-        abi_table_result(const table_def* table, abi_info* info)
-            : table(table),
-              info(info) { }
+        abi_table_result(const abi_table_request src, const table_def* table, const abi_info* info)
+        : code(src.code),
+          scope(src.scope),
+          table(table),
+          info(info) { }
     }; // struct abi_table_result
 
     struct abi_index_result {
+        const account_name_t code = 0;
+        const account_name_t scope = 0;
         const table_def* table = nullptr;
         const index_def* index = nullptr;
         const abi_info* info = nullptr;
 
         abi_index_result() = default;
         abi_index_result(const abi_table_result& src, const index_def* idx)
-            : table(src.table),
-              index(idx),
-              info(src.info) { }
+        : code(src.code),
+          scope(src.scope),
+          table(src.table),
+          index(idx),
+          info(src.info) { }
 
     }; // struct abi_index_result
 
     struct cursor_info {
         const account_name_t code;
         const account_name_t scope;
-        const table_def& table;
-        const index_def& index;
-        const abi_info& info;
 
-        cursor_info(
-            const account_name_t code, const account_name_t scope, collection db_table, const abi_index_result& src)
-            : code(code),
-              scope(scope),
-              table(*src.table),
-              index(*src.index),
-              info(*src.info),
-              db_table(db_table) { }
+        cursor_info(const abi_index_result& src, collection db_table)
+        : code(src.code),
+          scope(src.scope),
+          table_(*src.table),
+          index_(*src.index),
+          info_(*src.info),
+          db_table_(std::move(db_table)) { }
 
         cursor_info(cursor_info&&) = default;
 
         cursor_info(const cursor_info& src)
-            : code(src.code),
-              scope(src.scope),
-              table(src.table),
-              index(src.index),
-              info(src.info),
-              db_table(src.db_table) { }
+        : code(src.code),
+          scope(src.scope),
+          table_(src.table_),
+          index_(src.index_),
+          info_(src.info_),
+          db_table_(src.db_table_) { }
 
-        void open(const cmp_info& cmp, const variant_object& object) {
-            reset();
+        void open(const cmp_info& find_cmp, const variant_object& key, const primary_key_t pk) {
             cursor_.reset();
-            find = document();
+            reset();
 
-            find.append(kvp(get_scope_name(), name(scope).to_string()));
-            if (!object.size()) return;
+            find_cmp_ = &find_cmp;
+            find_key_ = key;
+            find_pk_ = pk;
+        }
 
-            for (int i = 0; i < index.key_names.size(); ++i) {
-                auto& key = index.key_names[i];
-                auto func = is_asc_order(index.key_orders[i]) ? cmp.forward : cmp.backward;
-                find.append(kvp(key, [&](sub_document doc) { build_document(doc, func, object[key]); }));
-            }
+        void open_end() {
+
         }
 
         primary_key_t next() {
-            if (direction_ == direction::Backward) {
-                change_direction(start_after(), direction::Forward);
-                return current();
+            if (find_cmp_->order == direction::Backward) {
+                change_direction(start_from());
             }
             return lazy_next();
         }
 
         primary_key_t prev() {
-            if (direction_ == direction::Forward) {
-                change_direction(start_before(), direction::Backward);
-                return current();
+            if (find_cmp_->order == direction::Forward) {
+                change_direction(reverse_start_from());
             }
             return lazy_next();
         }
@@ -541,7 +586,7 @@ namespace _detail {
                 auto& view = *itr;
                 auto value = build_variant(view);
                 pk_.emplace(get_id_value(view));
-                object_.emplace(info.to_bytes(table.name, table.type, value, max_time));
+                object_.emplace(info_.to_bytes(table_, value, max_time));
             } else {
                 pk_.emplace(unset_primary_key);
                 object_.emplace(bytes());
@@ -557,7 +602,7 @@ namespace _detail {
             if (cursor_->end() != itr) {
                 auto& view = *itr;
                 mutable_variant_object object;
-                for (auto& name: index.key_names) {
+                for (auto& name: index_.key_names) {
                     build_variant(object, name, view[name]);
                 }
                 key_.emplace(object);
@@ -568,46 +613,104 @@ namespace _detail {
         }
 
     private:
-        collection db_table;
-        document find;
+
+        const table_def& table_;
+        const index_def& index_;
+        const abi_info& info_;
+
+        collection db_table_;
+
+        const cmp_info* find_cmp_ = &start_from();
+        variant_object find_key_;
+        primary_key_t find_pk_ = unset_primary_key;
+
         optional<mongocxx::cursor> cursor_;
 
-        enum class direction: int {
-            Forward = 1,
-            Backward = -1
-        };
-
-        direction direction_ = direction::Forward;
-
+        optional<variant_object> key_;
         optional<primary_key_t> pk_;
         optional<bytes> object_;
-        optional<variant_object> key_;
 
-        void change_direction(const cmp_info& cmp, const direction dir) {
-            auto key = get_key();
-            direction_ = dir;
-            open(cmp, key);
+        void change_direction(const cmp_info& find_cmp) {
+            find_cmp_ = &find_cmp;
+            find_key_ = get_key();
+            find_pk_ = current();
+
+            cursor_.reset();
+            lazy_open();
         }
 
         void reset() {
+            key_.reset();
             pk_.reset();
             object_.reset();
-            key_.reset();
+        }
+
+        document create_find_document(const char* forward, const char* backward) const {
+            document find;
+
+            find.append(scope_kvp(scope));
+            if (!find_key_.size()) return find;
+
+            for (int i = 0; i < index_.key_names.size(); ++i) {
+                auto& key = index_.key_names[i];
+                auto cmp = is_asc_order(index_.key_orders[i]) ? forward : backward;
+                find.append(kvp(key, [&](sub_document doc) { build_document(doc, cmp, find_key_[key]); }));
+            }
+            return find;
+        }
+
+        document create_sort_document() const {
+            document sort;
+            auto order = static_cast<int>(find_cmp_->order);
+
+            for (int i = 0; i < index_.key_names.size(); ++i) {
+                if (is_asc_order(index_.key_orders[i])) {
+                    sort.append(kvp(index_.key_names[i], order));
+                } else {
+                    sort.append(kvp(index_.key_names[i], -order));
+                }
+            }
+            if (!index_.unique) sort.append(kvp(get_id_key(), order));
+            return sort;
         }
 
         void lazy_open() {
             if (cursor_) return;
 
-            document sort;
+            reset();
+            auto find = create_find_document(find_cmp_->from_forward, find_cmp_->from_backward);
+            auto sort = create_sort_document();
+            auto find_pk = find_pk_;
 
-            for (int i = 0; i < index.key_names.size(); ++i) {
-                auto order = static_cast<int>(direction_);
-                if (!is_asc_order(index.key_orders[i])) order = -static_cast<int>(direction_);
-                sort.append(kvp(index.key_names[i], order));
+            find_pk_ = unset_primary_key;
+
+            cursor_.emplace(db_table_.find(find.view(), options::find().sort(sort.view())));
+            if (unset_primary_key == find_pk || get_primary_key() == find_pk) return;
+            if (index_.unique || !find_cmp_->to_forward) return;
+
+            // locate cursor to primary key
+
+            auto to_find = create_find_document(find_cmp_->to_forward, find_cmp_->to_backward);
+            auto to_cursor = db_table_.find(to_find.view(), options::find().sort(sort.view()).limit(1));
+
+            auto to_pk = unset_primary_key;
+            auto to_itr = to_cursor.begin();
+            if (to_itr != to_cursor.end()) to_pk = get_id_value(*to_itr);
+
+            auto itr = cursor_->begin();
+            for (int i = 0; i < 10000; ++i, ++itr) {
+                if (cursor_->end() == itr) break;
+
+                pk_.emplace(get_id_value(*itr));
+                if (to_pk == *pk_) break;
+                if (find_pk == *pk_) return;
             }
 
-            reset();
-            cursor_.emplace(db_table.find(find.view(), options::find().sort(sort.view())));
+            lazy_open_end();
+        }
+
+        void lazy_open_end() {
+
         }
 
         primary_key_t lazy_next() {
@@ -642,35 +745,35 @@ namespace _detail {
         cursor_t last_cursor_ = 0;
         std::map<cursor_t, cursor_info> cursor_map_;
 
-        void verify_table_structure(abi_table_result result, const table_name_t table) {
-            if (result.info->verified_map.count(table)) return;
-            result.info->verified_map.emplace(table, true);
+        void verify_table_structure(const abi_table_request& request, abi_info& info, const table_def& table) {
+            if (info.verified_map.count(request.table)) return;
+            info.verified_map.emplace(request.table, true);
 
-            auto db_table = get_db_table(result.info->code, table);
+            auto db_table = get_db_table(request);
 
             // primary key
             db_table.create_index(
                 make_document(
-                    kvp(get_scope_name(), 1),
-                    kvp(get_id_name(), 1)),
-                options::index().name(get_primary_name()).unique(true));
+                    kvp(get_scope_key(), 1),
+                    kvp(get_id_key(), 1)),
+                options::index().name(get_primary_index_name()).unique(true));
 
-            for (auto& index: result.table->indexes) {
-                if (index.name == get_primary_name() || index.key_names.empty()) continue;
+            for (auto& index: table.indexes) {
+                if (index.name == get_primary_index_name() || index.key_names.empty()) continue;
 
-                bool was_primary;
+                bool was_primary = false;
                 document doc;
-                doc.append(kvp(get_scope_name(), 1));
+                doc.append(kvp(get_scope_key(), 1));
                 for (int i = 0; i < index.key_names.size(); ++i) {
                     if (is_asc_order(index.key_orders[i])) {
                         doc.append(kvp(index.key_names[i], 1));
                     } else {
                         doc.append(kvp(index.key_names[i], -1));
                     }
-                    if (index.key_names[i] == get_id_name()) was_primary = true;
+                    was_primary |= (index.key_names[i] == get_id_key());
                 }
+                if (!was_primary && !index.unique) doc.append(kvp(get_id_key(), 1));
 
-                if (!was_primary && !index.unique) doc.append(kvp(get_id_name(), 1));
                 try {
                     db_table.create_index(doc.view(), options::index().name(index.name).unique(index.unique));
                 } catch (const mongocxx::operation_exception& e) {
@@ -680,32 +783,32 @@ namespace _detail {
             }
         }
 
-        abi_table_result find_table(const account_name_t code, const table_name_t table) {
-            auto itr = abi_map_.find(code);
+        abi_table_result find_table(const abi_table_request& request) {
+            auto itr = abi_map_.find(request.code);
             if (abi_map_.end() == itr) return {};
 
             for (auto& t: itr->second.abi.tables) {
-                if (t.name.value == table) {
-                    abi_table_result result(&t, &itr->second);
-                    verify_table_structure(result, table);
-                    return result;
+                if (t.name.value == request.table) {
+                    verify_table_structure(request, itr->second, t);
+                    return {request, &t, &itr->second};
                 }
             }
             return {};
         }
 
-        abi_index_result find_index(abi_table_result info, const string& index) {
+        template<typename Index>
+        abi_index_result find_index(const abi_table_result& info, Index&& index) {
             if (info.table == nullptr) return {};
 
+            const auto& index_name = index();
             for (auto& i: info.table->indexes) {
-                if (i.name == index) return {info, &i};
+                if (i.name == index_name) return {info, &i};
             }
             return {};
         }
 
     public:
         const fc::microseconds max_time{15*1000*1000};
-        const size_t max_iters{100000};
 
         void open_db(mongocxx::uri uri) {
             mongo_conn_ = mongocxx::client{uri};
@@ -714,7 +817,8 @@ namespace _detail {
 
         void set_abi(const account_name_t code, abi_def abi) {
             abi_info info(code, std::move(abi), max_time);
-            abi_map_[code] = std::move(info);
+            abi_map_.erase(code);
+            abi_map_.emplace(code, std::move(info));
         }
 
         void close_abi(const account_name_t code) {
@@ -732,30 +836,27 @@ namespace _detail {
             }
         }
 
-        collection get_db_table(const account_name_t code, const table_name_t table) {
-            return mongo_conn_[name(code).to_string()][name(table).to_string()];
+        collection get_db_table(const abi_table_request& request) {
+            return mongo_conn_[request.code_name()][request.table_name()];
         }
 
-        abi_table_result get_table(const account_name_t code, const table_name_t table) {
-            auto result = find_table(code, table);
+        abi_table_result get_table(const abi_table_request& request) {
+            auto result = find_table(request);
             _chaindb_internal_assert(
                 result.info,
                 "ABI table ${db}.${table} doesn't exists",
-                ("db", name(code).to_string())("table", name(table).to_string()));
+                ("db", request.code_name())("table", request.table_name()));
             return result;
         }
 
-        abi_index_result get_index(const account_name_t code, const table_name_t table, const string& index) {
-            auto result = find_index(find_table(code, table), index);
+        template<typename Index>
+        abi_index_result get_index(const abi_table_request& request, Index&& index) {
+            auto result = find_index(find_table(request), std::forward<Index>(index));
             _chaindb_internal_assert(
                 result.info,
                 "ABI index ${db}.${table}.${index} doesn't exists",
-                ("db", name(code).to_string())("table", name(table).to_string())("index", index));
+                ("db", request.code_name())("table", request.table_name())("index", index()));
             return result;
-        }
-
-        abi_index_result get_index(const account_name_t code, const table_name_t table, const index_name_t index) {
-            return get_index(code, table, name(index).to_string());
         }
 
         cursor_t add_cursor(cursor_info info) {
@@ -763,29 +864,27 @@ namespace _detail {
                 ++last_cursor_;
             } while (cursor_map_.count(last_cursor_));
 
-            cursor_map_.emplace(last_cursor_, std::move(info));
             abi_cursor_map_[info.code].insert(last_cursor_);
+            cursor_map_.emplace(last_cursor_, std::move(info));
             return last_cursor_;
         }
 
-        cursor_info create_cursor(
-            const account_name_t code, const account_name_t scope, const table_name_t table, const index_name_t index,
-            const cmp_info& cmp, const void* key, const size_t size
+        cursor_t create_cursor(
+            const abi_table_request& request, const index_name_t index,
+            const cmp_info& cmp, const void* key, const size_t size, const primary_key_t pk = unset_primary_key
         ) {
-            auto result = get_index(code, table, index);
-            auto object = result.info->to_object(table, index, key, size, max_time);
-            cursor_info info(code, scope, get_db_table(code, table), result);
-            info.open(cmp, object);
-            return info;
+            auto result = get_index(request, [&](){ return name(index).to_string(); });
+            auto object = result.info->to_object(request, index, key, size, max_time);
+            cursor_info info(result, get_db_table(request));
+            info.open(cmp, object, pk);
+            return add_cursor(std::move(info));
         }
 
-        cursor_info create_primary_cursor(
-            const account_name_t code, const account_name_t scope, const table_name_t table, const primary_key_t pk
-        ) {
-            auto result = get_index(code, table, get_primary_name());
-            cursor_info info(code, scope, get_db_table(code, table), result);
-            info.open(start_from(), variant_object(get_id_name(), pk));
-            return info;
+        cursor_t create_primary_cursor(const abi_table_request& request, const primary_key_t pk) {
+            auto result = get_index(request, get_primary_index_name);
+            cursor_info info(result, get_db_table(request));
+            info.open(start_from(), variant_object(get_id_key(), pk), unset_primary_key);
+            return add_cursor(std::move(info));
         }
 
         cursor_info& get_cursor(const cursor_t id) {
@@ -807,16 +906,16 @@ namespace _detail {
 
         bool validate_primary_key(const variant_object& object, const primary_key_t pk) const {
             _chaindb_internal_assert(
-                object.end() == object.find(get_scope_name()),
+                object.end() == object.find(get_scope_key()),
                 "Object can't have a field with name ${name}",
-                ("name", get_scope_name()));
+                ("name", get_scope_key()));
 
             _chaindb_internal_assert(
-                object.end() == object.find(get_payer_name()),
+                object.end() == object.find(get_payer_key()),
                 "Object can't have a field with name ${name}",
-                ("name", get_payer_name()));
+                ("name", get_payer_key()));
 
-            auto itr = object.find(get_id_name());
+            auto itr = object.find(get_id_key());
             if (object.end() != itr) {
                 _chaindb_internal_assert(variant::uint64_type == itr->value().get_type(), "Wrong type for primary key");
                 _chaindb_internal_assert(pk == itr->value().as_uint64(), "Wrong value for primary key");
@@ -858,16 +957,14 @@ cursor_t chaindb_lower_bound(
     account_name_t code, account_name_t scope, table_name_t table, index_name_t index, void* key, size_t size
 ) {
     using namespace _detail;
-    auto& ctx = mongodb_ctx::get_impl();
-    return ctx.add_cursor(ctx.create_cursor(code, scope, table, index, start_from(), key, size));
+    return mongodb_ctx::get_impl().create_cursor({code, scope, table}, index, start_from(), key, size);
 }
 
 cursor_t chaindb_upper_bound(
     account_name_t code, account_name_t scope, table_name_t table, index_name_t index, void* key, size_t size
 ) {
     using namespace _detail;
-    auto& ctx = mongodb_ctx::get_impl();
-    return ctx.add_cursor(ctx.create_cursor(code, scope, table, index, start_after(), key, size));
+    return mongodb_ctx::get_impl().create_cursor({code, scope, table}, index, start_after(), key, size);
 }
 
 cursor_t chaindb_find(
@@ -875,22 +972,11 @@ cursor_t chaindb_find(
     primary_key_t pk, void* key, size_t size
 ) {
     using namespace _detail;
-    auto& ctx = mongodb_ctx::get_impl();
-    auto info = ctx.create_cursor(code, scope, table, index, start_from(), key, size);
-    if (pk != info.current()) {
-        auto upper_pk = ctx.create_cursor(code, scope, table, index, start_after(), key, size).current();
-        for (size_t i = 0; i < ctx.max_iters; ++i) {
-            auto info_pk = info.next();
-            if (info_pk == pk) return ctx.add_cursor(std::move(info));
-            if (info_pk == upper_pk) break;
-        }
-    } else {
-        return ctx.add_cursor(std::move(info));
-    }
-    return invalid_cursor;
+    return mongodb_ctx::get_impl().create_cursor({code, scope, table}, index, start_from(), key, size, pk);
 }
 
-cursor_t chaindb_end(account_name_t code, account_name_t scope, table_name_t, index_name_t) {
+cursor_t chaindb_end(account_name_t code, account_name_t scope, table_name_t table, index_name_t index) {
+    using namespace _detail;
     return invalid_cursor;
 }
 
@@ -902,7 +988,7 @@ cursor_t chaindb_clone(cursor_t id) {
     auto& info = ctx.get_cursor(id);
     cursor_info clone(info);
 
-    clone.open(start_from(), info.get_key());
+    clone.open(start_from(), info.get_key(), info.current());
     return ctx.add_cursor(clone);
 }
 
@@ -944,10 +1030,11 @@ primary_key_t chaindb_data(cursor_t id, void* data, const size_t size) {
 primary_key_t chaindb_available_primary_key(account_name_t code, account_name_t scope, table_name_t table) {
     using namespace _detail;
 
-    auto cursor = mongodb_ctx::get_impl().get_db_table(code, table).find(
-        make_document(kvp(get_scope_name(), name(scope).to_string())),
+    abi_table_request request{code, scope, table};
+    auto cursor = mongodb_ctx::get_impl().get_db_table(request).find(
+        make_document(scope_kvp(scope)),
         options::find()
-            .sort(make_document(kvp(get_id_name(), -1)))
+            .sort(make_document(kvp(get_id_key(), -1)))
             .limit(1));
 
     auto itr = cursor.begin();
@@ -961,21 +1048,21 @@ cursor_t chaindb_insert(
 ) {
     using namespace _detail;
 
+    abi_table_request request{code, scope, table};
     auto& ctx = mongodb_ctx::get_impl();
-    auto result = ctx.get_table(code, table);
+    auto result = ctx.get_table(request);
 
-    auto object = result.info->to_object(table, result.table->type, data, size, ctx.max_time);
-    bool has_pk = ctx.validate_primary_key(object, pk);
+    auto object = result.info->to_object(*result.table, data, size, ctx.max_time);
+    const bool has_pk = ctx.validate_primary_key(object, pk);
 
     document insert;
-    insert.append(kvp(get_scope_name(), name(scope).to_string()));
-    insert.append(kvp(get_payer_name(), name(payer).to_string()));
-    if (!has_pk) insert.append(kvp(get_id_name(), static_cast<int64_t>(pk)));
+    insert.append(scope_kvp(scope), payer_kvp(payer));
+    if (!has_pk) insert.append(id_kvp(pk));
     build_document(insert, object);
 
-    ctx.get_db_table(code, table).insert_one(insert.view());
+    ctx.get_db_table(request).insert_one(insert.view());
 
-    return ctx.add_cursor(ctx.create_primary_cursor(code, scope, table, pk));
+    return ctx.create_primary_cursor(request, pk);
 }
 
 primary_key_t chaindb_update(
@@ -984,20 +1071,19 @@ primary_key_t chaindb_update(
 ) {
     using namespace _detail;
 
+    abi_table_request request{code, scope, table};
     auto& ctx = mongodb_ctx::get_impl();
-    auto result = ctx.get_table(code, table);
+    auto result = ctx.get_table(request);
 
-    auto object = result.info->to_object(table, result.table->type, data, size, ctx.max_time);
+    auto object = result.info->to_object(*result.table, data, size, ctx.max_time);
     ctx.validate_primary_key(object, pk);
 
     document update;
-    if (payer != 0) update.append(kvp(get_payer_name(), name(payer).to_string()));
+    if (payer != 0) update.append(payer_kvp(payer));
     build_document(update, object);
 
-    auto matched = ctx.get_db_table(code, table).update_one(
-        make_document(
-            kvp(get_scope_name(), name(scope).to_string()),
-            kvp(get_id_name(), static_cast<int64_t>(pk))),
+    auto matched = ctx.get_db_table(request).update_one(
+        make_document(scope_kvp(scope), id_kvp(pk)),
         make_document(kvp("$set", update)));
 
     _chaindb_internal_assert(
@@ -1010,12 +1096,11 @@ primary_key_t chaindb_update(
 primary_key_t chaindb_delete(account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk) {
     using namespace _detail;
 
+    abi_table_request request{code, scope, table};
     auto& ctx = mongodb_ctx::get_impl();
 
-    auto matched = ctx.get_db_table(code, table).delete_one(
-        make_document(
-            kvp(get_scope_name(), name(scope).to_string()),
-            kvp(get_id_name(), static_cast<int64_t>(pk))));
+    auto matched = ctx.get_db_table(request).delete_one(
+        make_document(scope_kvp(scope), id_kvp(pk)));
 
     _chaindb_internal_assert(
         matched && matched->deleted_count() == 1,
