@@ -55,25 +55,30 @@ Utils.setIrreversibleTimeout(timeout)
 
 try:
     TestHelper.printSystemInfo("BEGIN")
+    cluster.setWalletMgr(walletMgr)
     Print("SERVER: %s" % (server))
     Print("PORT: %d" % (port))
 
     if enableMongo and not cluster.isMongodDbRunning():
         errorExit("MongoDb doesn't seem to be running.")
 
-    walletMgr.killall(allInstances=killAll)
-    walletMgr.cleanup()
-
     if localTest and not dontLaunch:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontKill=dontKill, dontBootstrap=dontBootstrap, p2pPlugin=p2pPlugin) is False:
+        if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, p2pPlugin=p2pPlugin) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
         killEosInstances=False
+        Print("Stand up %s" % (WalletdName))
+        walletMgr.killall(allInstances=killAll)
+        walletMgr.cleanup()
+        print("Stand up walletd")
+        if walletMgr.launch() is False:
+            cmdError("%s" % (WalletdName))
+            errorExit("Failed to stand up eos walletd.")
 
     if sanityTest:
         testSuccessful=True
@@ -104,13 +109,6 @@ try:
 
     exchangeAccount.ownerPrivateKey=PRV_KEY2
     exchangeAccount.ownerPublicKey=PUB_KEY2
-
-    Print("Stand up %s" % (WalletdName))
-    walletMgr.killall(allInstances=killAll)
-    walletMgr.cleanup()
-    if walletMgr.launch() is False:
-        cmdError("%s" % (WalletdName))
-        errorExit("Failed to stand up eos walletd.")
 
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
