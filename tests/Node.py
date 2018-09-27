@@ -31,7 +31,7 @@ class Node(object):
 
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
-    def __init__(self, host, port, pid=None, cmd=None, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
+    def __init__(self, host, port, pid=None, cmd=None, walletMgr=None, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
         self.host=host
         self.port=port
         self.pid=pid
@@ -49,12 +49,13 @@ class Node(object):
         self.lastRetrievedHeadBlockNum=None
         self.lastRetrievedLIB=None
         self.transCache={}
-        self.walletEndpointArgs=""
+        self.walletMgr=walletMgr
         if self.enableMongo:
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
     def eosClientArgs(self):
-        return self.endpointArgs + self.walletEndpointArgs + " " + Utils.MiscEosClientArgs
+        walletArgs=" " + self.walletMgr.getWalletEndpointArgs() if self.walletMgr is not None else ""
+        return self.endpointArgs + walletArgs + " " + Utils.MiscEosClientArgs
 
     def __str__(self):
         #return "Host: %s, Port:%d, Pid:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.cmd)
@@ -225,9 +226,6 @@ class Node(object):
     @staticmethod
     def byteArrToStr(arr):
         return arr.decode("utf-8")
-
-    def setWalletEndpointArgs(self, args):
-        self.walletEndpointArgs=args
 
     def validateAccounts(self, accounts):
         assert(accounts)
