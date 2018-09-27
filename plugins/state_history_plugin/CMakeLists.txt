@@ -1,6 +1,7 @@
 file(GLOB HEADERS "include/eosio/state_history_plugin/*.hpp")
 add_library( state_history_plugin
              state_history_plugin.cpp
+             state_history_plugin_abi.cpp
              ${HEADERS} )
 
 target_link_libraries( state_history_plugin chain_plugin eosio_chain appbase )

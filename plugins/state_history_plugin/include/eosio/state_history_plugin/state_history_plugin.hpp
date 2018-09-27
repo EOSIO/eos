@@ -30,8 +30,18 @@ struct get_state_result_v0 {
    uint32_t last_block_num = 0;
 };
 
-using state_request = fc::static_variant<get_state_request_v0>;
-using state_result  = fc::static_variant<get_state_result_v0>;
+struct get_block_request_v0 {
+   uint32_t block_num = 0;
+};
+
+struct get_block_result_v0 {
+   uint32_t block_num = 0;
+   bool     found     = false;
+   bytes    deltas;
+};
+
+using state_request = fc::static_variant<get_state_request_v0, get_block_request_v0>;
+using state_result  = fc::static_variant<get_state_result_v0, get_block_result_v0>;
 
 class state_history_plugin : public plugin<state_history_plugin> {
  public:
@@ -55,3 +65,5 @@ class state_history_plugin : public plugin<state_history_plugin> {
 FC_REFLECT(eosio::table_delta, (struct_version)(name)(rows)(removed));
 FC_REFLECT_EMPTY(eosio::get_state_request_v0);
 FC_REFLECT(eosio::get_state_result_v0, (last_block_num));
+FC_REFLECT(eosio::get_block_request_v0, (block_num));
+FC_REFLECT(eosio::get_block_result_v0, (block_num)(found)(deltas));

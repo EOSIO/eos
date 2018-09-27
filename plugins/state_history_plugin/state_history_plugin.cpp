@@ -23,6 +23,8 @@
 using tcp    = boost::asio::ip::tcp;
 namespace ws = boost::beast::websocket;
 
+extern const char* const state_history_plugin_abi;
+
 template <typename T>
 struct history_serial_wrapper {
    const T& obj;
@@ -42,14 +44,14 @@ static const T& as_type(const T& x) {
 
 template <typename ST, typename T>
 static void serialize_shared_vector(datastream<ST>& ds, const T& v) {
-   ds << fc::unsigned_int(v.size());
+   fc::raw::pack(ds, unsigned_int(v.size()));
    for (auto& x : v)
       ds << make_history_serial_wrapper(x);
 }
 
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::account_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.value));
    fc::raw::pack(ds, as_type<uint8_t>(obj.obj.vm_type));
@@ -66,7 +68,7 @@ static datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapp
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                      ds,
                                   const history_serial_wrapper<eosio::chain::account_sequence_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.value));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.recv_sequence));
@@ -79,7 +81,7 @@ static datastream<ST>& operator<<(datastream<ST>&                               
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                              ds,
                                   const history_serial_wrapper<eosio::chain::table_id_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.code.value));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.scope.value));
@@ -92,7 +94,7 @@ static datastream<ST>& operator<<(datastream<ST>&                               
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                               ds,
                                   const history_serial_wrapper<eosio::chain::key_value_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.t_id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.primary_key));
@@ -128,7 +130,7 @@ static void serialize_secondary_index_data(datastream<ST>& ds, const eosio::chai
 
 template <typename ST, typename T>
 static datastream<ST>& serialize_secondary_index(datastream<ST>& ds, const T& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.t_id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.primary_key));
@@ -168,7 +170,7 @@ static datastream<ST>& operator<<(datastream<ST>&                               
 
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::producer_key>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.producer_name.value));
    fc::raw::pack(ds, as_type<eosio::chain::public_key_type>(obj.obj.block_signing_key));
    return ds;
@@ -177,7 +179,7 @@ static datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapp
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                            ds,
                                   const history_serial_wrapper<eosio::chain::shared_producer_schedule_type>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.version));
    serialize_shared_vector(ds, obj.obj.producers);
    return ds;
@@ -185,7 +187,7 @@ static datastream<ST>& operator<<(datastream<ST>&                               
 
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::chain_config>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.max_block_net_usage));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.target_block_net_usage_pct));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_transaction_net_usage));
@@ -209,7 +211,7 @@ static datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapp
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                     ds,
                                   const history_serial_wrapper<eosio::chain::global_property_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
 
    fc::raw::pack(ds, as_type<optional<eosio::chain::block_num_type>>(obj.obj.proposed_schedule_block_num));
@@ -223,7 +225,7 @@ static datastream<ST>& operator<<(datastream<ST>&                               
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                             ds,
                                   const history_serial_wrapper<eosio::chain::dynamic_global_property_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.global_action_sequence));
    return ds;
@@ -232,7 +234,7 @@ static datastream<ST>& operator<<(datastream<ST>&                               
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                   ds,
                                   const history_serial_wrapper<eosio::chain::block_summary_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<eosio::chain::block_id_type>(obj.obj.block_id));
    return ds;
@@ -241,7 +243,7 @@ static datastream<ST>& operator<<(datastream<ST>&                               
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                 ds,
                                   const history_serial_wrapper<eosio::chain::transaction_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<fc::time_point_sec>(obj.obj.expiration));
    fc::raw::pack(ds, as_type<eosio::chain::transaction_id_type>(obj.obj.trx_id));
@@ -251,7 +253,7 @@ static datastream<ST>& operator<<(datastream<ST>&                               
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                           ds,
                                   const history_serial_wrapper<eosio::chain::generated_transaction_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<eosio::chain::transaction_id_type>(obj.obj.trx_id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.sender.value));
@@ -266,7 +268,7 @@ static datastream<ST>& operator<<(datastream<ST>&                               
 
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::key_weight>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<eosio::chain::public_key_type>(obj.obj.key));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.weight));
    return ds;
@@ -275,7 +277,7 @@ static datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapp
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                               ds,
                                   const history_serial_wrapper<eosio::chain::permission_level>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.actor.value));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.permission.value));
    return ds;
@@ -284,7 +286,7 @@ static datastream<ST>& operator<<(datastream<ST>&                               
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                      ds,
                                   const history_serial_wrapper<eosio::chain::permission_level_weight>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<eosio::chain::permission_level>(obj.obj.permission));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.weight));
    return ds;
@@ -292,7 +294,7 @@ static datastream<ST>& operator<<(datastream<ST>&                               
 
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::wait_weight>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.wait_sec));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.weight));
    return ds;
@@ -301,7 +303,7 @@ static datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapp
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                               ds,
                                   const history_serial_wrapper<eosio::chain::shared_authority>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.threshold));
    serialize_shared_vector(ds, obj.obj.keys);
    serialize_shared_vector(ds, obj.obj.accounts);
@@ -312,21 +314,21 @@ static datastream<ST>& operator<<(datastream<ST>&                               
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                ds,
                                   const history_serial_wrapper<eosio::chain::permission_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.usage_id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.parent._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.owner.value));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.value));
    fc::raw::pack(ds, as_type<fc::time_point>(obj.obj.last_updated));
-   fc::raw::pack(ds, as_type<eosio::chain::shared_authority>(obj.obj.auth));
+   fc::raw::pack(ds, make_history_serial_wrapper(as_type<eosio::chain::shared_authority>(obj.obj.auth)));
    return ds;
 }
 
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                      ds,
                                   const history_serial_wrapper<eosio::chain::permission_usage_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<fc::time_point>(obj.obj.last_used));
    return ds;
@@ -335,7 +337,7 @@ static datastream<ST>& operator<<(datastream<ST>&                               
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                     ds,
                                   const history_serial_wrapper<eosio::chain::permission_link_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.account.value));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.code.value));
@@ -348,7 +350,7 @@ template <typename ST>
 static datastream<ST>&
 operator<<(datastream<ST>&                                                                      ds,
            const history_serial_wrapper<eosio::chain::resource_limits::resource_limits_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.owner.value));
    fc::raw::pack(ds, as_type<bool>(obj.obj.pending));
@@ -361,7 +363,7 @@ operator<<(datastream<ST>&                                                      
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                                 ds,
                                   const history_serial_wrapper<eosio::chain::resource_limits::usage_accumulator>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.last_ordinal));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.value_ex));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.consumed));
@@ -372,7 +374,7 @@ template <typename ST>
 static datastream<ST>&
 operator<<(datastream<ST>&                                                                     ds,
            const history_serial_wrapper<eosio::chain::resource_limits::resource_usage_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.owner.value));
    fc::raw::pack(
@@ -387,7 +389,7 @@ template <typename ST>
 static datastream<ST>&
 operator<<(datastream<ST>&                                                                            ds,
            const history_serial_wrapper<eosio::chain::resource_limits::resource_limits_state_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, make_history_serial_wrapper(
                          as_type<eosio::chain::resource_limits::usage_accumulator>(obj.obj.average_block_net_usage)));
@@ -406,7 +408,7 @@ operator<<(datastream<ST>&                                                      
 template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                     ds,
                                   const history_serial_wrapper<eosio::chain::resource_limits::ratio>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.numerator));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.denominator));
    return ds;
@@ -416,7 +418,7 @@ template <typename ST>
 static datastream<ST>&
 operator<<(datastream<ST>&                                                                        ds,
            const history_serial_wrapper<eosio::chain::resource_limits::elastic_limit_parameters>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.target));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.max));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.periods));
@@ -430,7 +432,7 @@ template <typename ST>
 static datastream<ST>&
 operator<<(datastream<ST>&                                                                             ds,
            const history_serial_wrapper<eosio::chain::resource_limits::resource_limits_config_object>& obj) {
-   ds << fc::unsigned_int(0);
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, make_history_serial_wrapper(as_type<eosio::chain::resource_limits::elastic_limit_parameters>(
                          obj.obj.cpu_limit_parameters)));
@@ -519,7 +521,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    struct session : std::enable_shared_from_this<session> {
       std::shared_ptr<state_history_plugin_impl> plugin;
       std::unique_ptr<ws::stream<tcp::socket>>   stream;
-      boost::beast::flat_buffer                  in_buffer;
 
       session(std::shared_ptr<state_history_plugin_impl> plugin)
           : plugin(std::move(plugin)) {}
@@ -532,28 +533,39 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          stream->next_layer().set_option(boost::asio::socket_base::send_buffer_size(1024 * 1024));
          stream->next_layer().set_option(boost::asio::socket_base::receive_buffer_size(1024 * 1024));
          stream->async_accept([self = shared_from_this(), this](boost::system::error_code ec) {
-            callback(ec, "async_accept", [&] { start_read(); });
+            callback(ec, "async_accept", [&] {
+               start_read();
+               stream->async_write( //
+                   boost::asio::buffer(std::string{state_history_plugin_abi}),
+                   [self = shared_from_this(), this](boost::system::error_code ec, size_t bytes) {
+                      callback(ec, "async_write", [] {});
+                   });
+            });
          });
       }
 
       void start_read() {
-         stream->async_read(in_buffer, [self = shared_from_this(), this](boost::system::error_code ec, size_t bytes) {
-            callback(ec, "async_read", [&] {
-               ilog("read");
-               auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer.data()));
-               auto s = boost::asio::buffer_size(in_buffer.data());
-               fc::datastream<const char*> ds(d, s);
-               state_request               req;
-               fc::raw::unpack(ds, req);
-               req.visit(*this);
-               start_read();
-            });
-         });
+         auto in_buffer = std::make_shared<boost::beast::flat_buffer>();
+         stream->async_read(
+             *in_buffer, [self = shared_from_this(), this, in_buffer](boost::system::error_code ec, size_t) {
+                callback(ec, "async_read", [&] {
+                   ilog("read");
+                   auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer->data()));
+                   auto s = boost::asio::buffer_size(in_buffer->data());
+                   fc::datastream<const char*> ds(d, s);
+                   state_request               req;
+                   // ilog("request: ${b}", ("b", bytes(d, d + s)));
+                   fc::raw::unpack(ds, req);
+                   req.visit(*this);
+                   start_read();
+                });
+             });
       }
 
       template <typename T>
       void send(const T obj) {
          auto bin = std::make_shared<std::vector<char>>(fc::raw::pack(state_result{std::move(obj)}));
+         // dlog("    result: ${b}", ("b", *bin));
          stream->async_write( //
              boost::asio::buffer(*bin),
              [self = shared_from_this(), this, bin](boost::system::error_code ec, size_t bytes) {
@@ -568,6 +580,19 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          auto&               ind = plugin->chain_plug->chain().db().get_index<state_history_index>().indices();
          if (!ind.empty())
             result.last_block_num = (--ind.end())->id._id;
+         send(std::move(result));
+      }
+
+      void operator()(get_block_request_v0& req) {
+         ilog("get_block_request_v0");
+         get_block_result_v0 result{req.block_num};
+         auto&               ind = plugin->chain_plug->chain().db().get_index<state_history_index>().indices();
+         auto                it  = ind.find(req.block_num);
+         if (it != ind.end()) {
+            result.found = true;
+            result.deltas.assign(it->deltas.begin(), it->deltas.end());
+            // dlog("    bytes: ${b}", ("b", result.deltas));
+         }
          send(std::move(result));
       }
 
@@ -625,6 +650,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       acceptor->open(endpoint.protocol(), ec);
       check_ec("open");
+      acceptor->set_option(boost::asio::socket_base::reuse_address(true));
       acceptor->bind(endpoint, ec);
       check_ec("bind");
       acceptor->listen(boost::asio::socket_base::max_listen_connections, ec);
@@ -677,6 +703,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                delta.rows.emplace_back(id._id, fc::raw::pack(make_history_serial_wrapper(index.get(id))));
             for (auto& old : undo.removed_values)
                delta.removed.push_back(old.first._id);
+            // if (name == std::string("account_index")) {
+            //    dlog("account_sequence_index");
+            //    for (auto& r : delta.rows)
+            //       dlog("    ${id} ${bytes}", ("id", r.first)("bytes", r.second));
+            // }
          });
          auto bin = fc::raw::pack(deltas);
          // dlog("    ${s} bytes", ("s", bin.size()));
