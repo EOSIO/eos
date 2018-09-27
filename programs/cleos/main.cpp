@@ -166,7 +166,8 @@ bfs::path determine_home_directory()
 }
 
 string url = "http://127.0.0.1:8888/";
-string wallet_url = "http://127.0.0.1:8900/";
+string default_wallet_url = "unix://" + (determine_home_directory() / "eosio-wallet" / (string(key_store_executable_name) + ".sock")).string();
+string wallet_url; //to be set to default_wallet_url in main
 bool no_verify = false;
 vector<string> headers;
 
@@ -768,25 +769,22 @@ struct set_action_permission_subcommand {
 };
 
 
-bool local_port_used(const string& lo_address, uint16_t port) {
+bool local_port_used() {
     using namespace boost::asio;
 
     io_service ios;
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(lo_address), port);
-    boost::asio::ip::tcp::socket socket(ios);
-    boost::system::error_code ec = error::would_block;
-    //connecting/failing to connect to localhost should be always fast - don't care about timeouts
-    socket.async_connect(endpoint, [&](const boost::system::error_code& error) { ec = error; } );
-    do {
-        ios.run_one();
-    } while (ec == error::would_block);
+    local::stream_protocol::endpoint endpoint(wallet_url.substr(strlen("unix://")));
+    local::stream_protocol::socket socket(ios);
+    boost::system::error_code ec;
+    socket.connect(endpoint, ec);
+
     return !ec;
 }
 
-void try_local_port( const string& lo_address, uint16_t port, uint32_t duration ) {
+void try_local_port(uint32_t duration) {
    using namespace std::chrono;
    auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
-   while ( !local_port_used(lo_address, port)) {
+   while ( !local_port_used()) {
       if (duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration ) {
          std::cerr << "Unable to connect to keosd, if keosd is running please kill the process and try again.\n";
          throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to keosd")});
@@ -806,16 +804,11 @@ void ensure_keosd_running(CLI::App* app) {
        if (subapp->got_subcommand("listproducers") || subapp->got_subcommand("listbw") || subapp->got_subcommand("bidnameinfo")) // system list* do not require wallet
          return;
     }
+    if (wallet_url != default_wallet_url)
+      return;
 
-    auto parsed_url = parse_url(wallet_url);
-    auto resolved_url = resolve_url(context, parsed_url);
-
-    if (!resolved_url.is_loopback)
-        return;
-
-    for (const auto& addr: resolved_url.resolved_addresses)
-       if (local_port_used(addr, resolved_url.resolved_port))  // Hopefully taken by keosd
-          return;
+    if (local_port_used())
+       return;
 
     boost::filesystem::path binPath = boost::dll::program_location();
     binPath.remove_filename();
@@ -827,13 +820,15 @@ void ensure_keosd_running(CLI::App* app) {
         binPath.remove_filename().remove_filename().append("keosd").append(key_store_executable_name);
     }
 
-    const auto& lo_address = resolved_url.resolved_addresses.front();
     if (boost::filesystem::exists(binPath)) {
         namespace bp = boost::process;
         binPath = boost::filesystem::canonical(binPath);
 
         vector<std::string> pargs;
-        pargs.push_back("--http-server-address=" + lo_address + ":" + std::to_string(resolved_url.resolved_port));
+        pargs.push_back("--http-server-address");
+        pargs.push_back("");
+        pargs.push_back("--https-server-address");
+        pargs.push_back("");
 
         ::boost::process::child keos(binPath, pargs,
                                      bp::std_in.close(),
@@ -842,13 +837,12 @@ void ensure_keosd_running(CLI::App* app) {
         if (keos.running()) {
             std::cerr << binPath << " launched" << std::endl;
             keos.detach();
-            try_local_port(lo_address, resolved_url.resolved_port, 2000);
+            try_local_port(2000);
         } else {
-            std::cerr << "No wallet service listening on " << lo_address << ":"
-                      << std::to_string(resolved_url.resolved_port) << ". Failed to launch " << binPath << std::endl;
+            std::cerr << "No wallet service listening on " << wallet_url << ". Failed to launch " << binPath << std::endl;
         }
     } else {
-        std::cerr << "No wallet service listening on " << lo_address << ":" << std::to_string(resolved_url.resolved_port)
+        std::cerr << "No wallet service listening on "
                   << ". Cannot automatically start keosd because keosd was not found." << std::endl;
     }
 }
@@ -1745,6 +1739,7 @@ int main( int argc, char** argv ) {
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
    context = eosio::client::http::create_http_context();
+   wallet_url = default_wallet_url;
 
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
