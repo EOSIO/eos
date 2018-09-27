@@ -50,11 +50,12 @@ class Node(object):
         self.lastRetrievedHeadBlockNum=None
         self.lastRetrievedLIB=None
         self.transCache={}
+        self.walletEndpointArgs=""
         if self.enableMongo:
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
     def eosClientArgs(self):
-        return self.endpointArgs + " " + self.miscEosClientArgs
+        return self.endpointArgs + self.walletEndpointArgs + " " + self.miscEosClientArgs
 
     def __str__(self):
         #return "Host: %s, Port:%d, Pid:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.cmd)
@@ -227,7 +228,7 @@ class Node(object):
         return arr.decode("utf-8")
 
     def setWalletEndpointArgs(self, args):
-        self.endpointArgs="--url http://%s:%d %s" % (self.host, self.port, args)
+        self.walletEndpointArgs=args
 
     def validateAccounts(self, accounts):
         assert(accounts)
