@@ -14,6 +14,7 @@ Wallet=namedtuple("Wallet", "name password host port")
 class WalletMgr(object):
     __walletLogFile="test_keosd_output.log"
     __walletDataDir="test_wallet_0"
+    __MaxPort=9999
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] True=Launch wallet(keosd) process; False=Manage launch process externally.
@@ -27,7 +28,7 @@ class WalletMgr(object):
         self.__walletPid=None
 
     def getWalletEndpointArgs(self):
-        if not self.walletd:
+        if not self.walletd or not self.isLaunched():
             return ""
 
         return " --wallet-url http://%s:%d" % (self.host, self.port)
@@ -38,6 +39,20 @@ class WalletMgr(object):
     def isLaunched(self):
         return self.__walletPid is not None
 
+    def isLocal(self):
+        return self.host=="localhost" or self.host=="127.0.0.1"
+
+    def findAvailablePort(self):
+        for i in range(WalletMgr.__MaxPort):
+            port=self.port+i
+            if port > WalletMgr.__MaxPort:
+                port-=WalletMgr.__MaxPort
+            if Utils.arePortsAvailable(port):
+                return port
+            if Utils.Debug: Utils.Print("Port %d not available for %s" % (port, Utils.EosWalletPath))
+
+        Utils.errorExit("Failed to find free port to use for %s" % (Utils.EosWalletPath))
+
     def launch(self):
         if not self.walletd:
             Utils.Print("ERROR: Wallet Manager wasn't configured to launch keosd")
@@ -46,10 +61,13 @@ class WalletMgr(object):
         if self.isLaunched():
             return True
 
+        if self.isLocal():
+            self.port=self.findAvailablePort()
+
         if Utils.Debug:
             portStatus="N/A"
             portTaken=False
-            if self.host=="localhost" or self.host=="127.0.0.1":
+            if self.isLocal():
                 if Utils.arePortsAvailable(self.port):
                     portStatus="AVAILABLE"
                     portTaken=True
@@ -106,7 +124,7 @@ class WalletMgr(object):
                     pgrepCmd=Utils.pgrepCmd(Utils.EosWalletName)
                     psOut=Utils.checkOutput(pgrepCmd.split())
                     portStatus="N/A"
-                    if self.host=="localhost" or self.host=="127.0.0.1":
+                    if self.isLocal():
                         if Utils.arePortsAvailable(self.port):
                             portStatus="AVAILABLE"
                         else:
