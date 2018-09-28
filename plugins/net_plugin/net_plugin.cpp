@@ -853,7 +853,6 @@ namespace eosio {
       block_id_type head_id;
       block_id_type lib_id;
       block_id_type remote_head_id;
-      uint32_t lib_num = 0;
       uint32_t remote_head_num = 0;
       try {
          if (last_handshake_recv.generation >= 1) {
@@ -865,10 +864,8 @@ namespace eosio {
          // base our branch off of the last handshake we sent the peer instead of our current
          // LIB which could have moved forward in time as packets were in flight.
          if (last_handshake_sent.generation >= 1) {
-            lib_num = last_handshake_sent.last_irreversible_block_num;
             lib_id = last_handshake_sent.last_irreversible_block_id;
          } else {
-            lib_num = cc.last_irreversible_block_num();
             lib_id = cc.last_irreversible_block_id();
          }
          head_id = cc.fork_db_head_block_id();
@@ -890,7 +887,7 @@ namespace eosio {
 
             // if the last handshake received indicates that we are catching up on a fork
             // that the peer is already partially aware of, no need to resend blocks
-            if (block_header::num_from_id(bid) == remote_head_num && remote_head_id == bid) {
+            if (remote_head_id == bid) {
                break;
             }
 
