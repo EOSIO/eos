@@ -171,22 +171,8 @@ class Cluster(object):
                 cmdArr.append("--specific-nodeos")
                 cmdArr.append(arg)
 
-        genesisFile=open("./genesis.json", "r")
-        genesisJsonStr=genesisFile.read()
-        genesisFile.close()
-        genesisObject=json.loads(genesisJsonStr)
-        initialConfiguration=genesisObject["initial_configuration"]
-        maxBlockCpuUsage=initialConfiguration.get("max_block_cpu_usage",200000)
-        initialConfiguration["max_block_cpu_usage"]=maxBlockCpuUsage*10
-
-
-        tempGenesisFileName="./tempGenesis.json"
-        genesisFile=open(tempGenesisFileName,"w")
-        genesisFile.write(json.dumps(genesisObject, indent=2))
-        genesisFile.close()
-        self.filesToCleanup.append(tempGenesisFileName)
-        cmdArr.append("--genesis")
-        cmdArr.append(tempGenesisFileName)
+        cmdArr.append("--max-block-cpu-usage")
+        cmdArr.append(str(2000000))
 
         # must be last cmdArr.append before subprocess.call, so that everything is on the command line
         # before constructing the shape.json file for "bridge"
