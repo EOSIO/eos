@@ -346,6 +346,7 @@ namespace eosio { namespace testing {
          vcfg.trusted_producers = trusted_producers;
 
          validating_node = std::make_unique<controller>(vcfg);
+         validating_node->add_indices();
          validating_node->startup();
 
          init(true);
@@ -360,6 +361,7 @@ namespace eosio { namespace testing {
          vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
 
          validating_node = std::make_unique<controller>(vcfg);
+         validating_node->add_indices();
          validating_node->startup();
 
          init(config);
@@ -404,6 +406,7 @@ namespace eosio { namespace testing {
 
         validating_node.reset();
         validating_node = std::make_unique<controller>(vcfg);
+        validating_node->add_indices();
         validating_node->startup();
 
         return ok;
