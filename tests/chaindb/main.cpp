@@ -118,17 +118,43 @@ int main() {
             idx.erase(itr);
         }
 
+
         ilog("by name:");
         i = 0;
         for (auto& obj: idx) {
             ilog("${idx}: ${object}", ("idx", ++i)("object", obj));
         }
 
-//        ilog("by reverse name:");
-//        i = 0;
-//        for (auto itr = idx.rbegin(); itr != idx.rend(); ++itr) {
-//            ilog("${idx}: ${object}", ("idx", ++i)("object", *itr));
-//        }
+        {
+            ilog("by reverse name:");
+            i = 0;
+            auto etr = idx.rend();
+            for (auto itr = idx.rbegin(); itr != etr; ++itr) {
+                ilog("${idx}: ${object}", ("idx", ++i)("object", *itr));
+            }
+        }
+
+        {
+            ilog("by name iterator:");
+
+            i = 0;
+            auto itr = idx.begin();
+            auto etr = idx.end();
+
+            for (; itr != etr; ++itr) {
+                ilog("${idx}: ${object}", ("idx", ++i)("object", *itr));
+            }
+
+            i = 0;
+            etr = idx.begin();
+
+            ilog("by name iterator to back:");
+            for (--itr; itr != etr; --itr) {
+                ilog("${idx}: ${object}", ("idx", ++i)("object", *itr));
+            }
+            ilog("${idx}: ${object}", ("idx", ++i)("object", *itr));
+        }
+
     } catch (const fc::exception& e) {
         elog("An error: ${what}", ("what", e));
     }

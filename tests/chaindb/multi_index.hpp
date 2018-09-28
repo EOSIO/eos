@@ -222,7 +222,7 @@ private:
             : multidx_(midx), cursor_(cursor), primary_key_(pk) {}
 
         const multi_index* multidx_ = nullptr;
-        cursor_t cursor_ = invalid_cursor;
+        mutable cursor_t cursor_ = invalid_cursor;
         mutable primary_key_t primary_key_ = unset_primary_key;
         mutable item_ptr item_;
 
@@ -272,10 +272,10 @@ private:
         }
         const_iterator end() const  { return cend(); }
 
-        const_reverse_iterator crbegin() const { return std::make_reverse_iterator(cend()); }
+        const_reverse_iterator crbegin() const { return const_reverse_iterator(cend()); }
         const_reverse_iterator rbegin() const  { return crbegin(); }
 
-        const_reverse_iterator crend() const { return std::make_reverse_iterator(cbegin()); }
+        const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
         const_reverse_iterator rend() const  { return crend(); }
 
         const_iterator find(key_type&& key) const {

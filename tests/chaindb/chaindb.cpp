@@ -362,7 +362,6 @@ namespace _detail {
         return name;
     }
 
-
     primary_key_t get_id_value(const document_view& view) {
         return static_cast<primary_key_t>(view[get_id_key()].get_int64().value);
     }
@@ -542,7 +541,19 @@ namespace _detail {
           table_(src.table_),
           index_(src.index_),
           info_(src.info_),
-          db_table_(src.db_table_) { }
+          db_table_(src.db_table_) {
+            if (src.find_cmp_->order == direction::Forward) {
+                find_cmp_ = &start_from();
+            } else {
+                find_cmp_ = &reverse_start_from();
+            }
+            find_key_ = const_cast<cursor_info&>(src).get_key();
+            key_ = find_key_;
+            find_pk_ = const_cast<cursor_info&>(src).current();
+            pk_ = find_pk_;
+            object_ = src.object_;
+            is_end_ = false;
+        }
 
         void open(const cmp_info& find_cmp, const variant_object& key, const primary_key_t pk) {
             cursor_.reset();
@@ -551,10 +562,17 @@ namespace _detail {
             find_cmp_ = &find_cmp;
             find_key_ = key;
             find_pk_ = pk;
+            is_end_ = false;
         }
 
         void open_end() {
+            cursor_.reset();
+            reset();
 
+            find_cmp_ = &reverse_start_from();
+            find_key_ = variant_object();
+            find_pk_ = unset_primary_key;
+            is_end_ = true;
         }
 
         primary_key_t next() {
@@ -567,6 +585,10 @@ namespace _detail {
         primary_key_t prev() {
             if (find_cmp_->order == direction::Forward) {
                 change_direction(reverse_start_from());
+            } else if (is_end_) {
+                is_end_ = false;
+                reset();
+                return current();
             }
             return lazy_next();
         }
@@ -613,7 +635,6 @@ namespace _detail {
         }
 
     private:
-
         const table_def& table_;
         const index_def& index_;
         const abi_info& info_;
@@ -624,6 +645,7 @@ namespace _detail {
         variant_object find_key_;
         primary_key_t find_pk_ = unset_primary_key;
 
+        bool is_end_ = false;
         optional<mongocxx::cursor> cursor_;
 
         optional<variant_object> key_;
@@ -680,11 +702,13 @@ namespace _detail {
             reset();
             auto find = create_find_document(find_cmp_->from_forward, find_cmp_->from_backward);
             auto sort = create_sort_document();
-            auto find_pk = find_pk_;
-
-            find_pk_ = unset_primary_key;
 
             cursor_.emplace(db_table_.find(find.view(), options::find().sort(sort.view())));
+
+            const auto find_pk = find_pk_;
+            find_pk_ = unset_primary_key;
+
+            if (is_end_) return;
             if (unset_primary_key == find_pk || get_primary_key() == find_pk) return;
             if (index_.unique || !find_cmp_->to_forward) return;
 
@@ -697,20 +721,17 @@ namespace _detail {
             auto to_itr = to_cursor.begin();
             if (to_itr != to_cursor.end()) to_pk = get_id_value(*to_itr);
 
+            static constexpr int max_iters = 10000;
             auto itr = cursor_->begin();
-            for (int i = 0; i < 10000; ++i, ++itr) {
-                if (cursor_->end() == itr) break;
-
+            auto etr = cursor_->end();
+            for (int i = 0; i < max_iters && itr != etr; ++i, ++itr) {
                 pk_.emplace(get_id_value(*itr));
                 if (to_pk == *pk_) break;
+                // ok, key is found
                 if (find_pk == *pk_) return;
             }
 
-            lazy_open_end();
-        }
-
-        void lazy_open_end() {
-
+            open_end();
         }
 
         primary_key_t lazy_next() {
@@ -723,8 +744,16 @@ namespace _detail {
         }
 
         primary_key_t get_primary_key() {
+            if (is_end_) {
+                pk_.emplace(unset_primary_key);
+                return *pk_;
+            }
+
             auto itr = cursor_->begin();
             if (cursor_->end() == itr) {
+                if (find_cmp_->order == direction::Forward) {
+                    open_end();
+                }
                 pk_.emplace(unset_primary_key);
             } else {
                 pk_.emplace(get_id_value(*itr));
@@ -880,6 +909,13 @@ namespace _detail {
             return add_cursor(std::move(info));
         }
 
+        cursor_t create_end_cursor(const abi_table_request& request, const index_name_t index) {
+            auto result = get_index(request, [&](){ return name(index).to_string(); });
+            cursor_info info(result, get_db_table(request));
+            info.open_end();
+            return add_cursor(std::move(info));
+        }
+
         cursor_t create_primary_cursor(const abi_table_request& request, const primary_key_t pk) {
             auto result = get_index(request, get_primary_index_name);
             cursor_info info(result, get_db_table(request));
@@ -977,7 +1013,7 @@ cursor_t chaindb_find(
 
 cursor_t chaindb_end(account_name_t code, account_name_t scope, table_name_t table, index_name_t index) {
     using namespace _detail;
-    return invalid_cursor;
+    return mongodb_ctx::get_impl().create_end_cursor({code, scope, table}, index);
 }
 
 cursor_t chaindb_clone(cursor_t id) {
@@ -985,11 +1021,7 @@ cursor_t chaindb_clone(cursor_t id) {
     if (invalid_cursor == id) return invalid_cursor;
 
     auto& ctx = mongodb_ctx::get_impl();
-    auto& info = ctx.get_cursor(id);
-    cursor_info clone(info);
-
-    clone.open(start_from(), info.get_key(), info.current());
-    return ctx.add_cursor(clone);
+    return ctx.add_cursor(cursor_info(ctx.get_cursor(id)));
 }
 
 void chaindb_close(cursor_t id) {
