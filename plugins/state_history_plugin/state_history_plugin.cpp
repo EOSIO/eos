@@ -521,6 +521,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    struct session : std::enable_shared_from_this<session> {
       std::shared_ptr<state_history_plugin_impl> plugin;
       std::unique_ptr<ws::stream<tcp::socket>>   stream;
+      bool                                       sending = false;
+      std::vector<std::vector<char>>             send_queue;
 
       session(std::shared_ptr<state_history_plugin_impl> plugin)
           : plugin(std::move(plugin)) {}
@@ -535,11 +537,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          stream->async_accept([self = shared_from_this(), this](boost::system::error_code ec) {
             callback(ec, "async_accept", [&] {
                start_read();
-               stream->async_write( //
-                   boost::asio::buffer(std::string{state_history_plugin_abi}),
-                   [self = shared_from_this(), this](boost::system::error_code ec, size_t bytes) {
-                      callback(ec, "async_write", [] {});
-                   });
+               send(state_history_plugin_abi);
             });
          });
       }
@@ -549,12 +547,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          stream->async_read(
              *in_buffer, [self = shared_from_this(), this, in_buffer](boost::system::error_code ec, size_t) {
                 callback(ec, "async_read", [&] {
-                   ilog("read");
                    auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer->data()));
                    auto s = boost::asio::buffer_size(in_buffer->data());
                    fc::datastream<const char*> ds(d, s);
                    state_request               req;
-                   // ilog("request: ${b}", ("b", bytes(d, d + s)));
                    fc::raw::unpack(ds, req);
                    req.visit(*this);
                    start_read();
@@ -562,20 +558,34 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
              });
       }
 
+      void send(const char* s) {
+         send_queue.push_back({s, s + strlen(s)});
+         send();
+      }
+
       template <typename T>
-      void send(const T obj) {
-         auto bin = std::make_shared<std::vector<char>>(fc::raw::pack(state_result{std::move(obj)}));
-         // dlog("    result: ${b}", ("b", *bin));
+      void send(T obj) {
+         send_queue.push_back(fc::raw::pack(state_result{std::move(obj)}));
+         send();
+      }
+
+      void send() {
+         if (sending || send_queue.empty())
+            return;
+         sending = true;
          stream->async_write( //
-             boost::asio::buffer(*bin),
-             [self = shared_from_this(), this, bin](boost::system::error_code ec, size_t bytes) {
-                callback(ec, "async_write", [] {});
+             boost::asio::buffer(send_queue[0]),
+             [self = shared_from_this(), this](boost::system::error_code ec, size_t) {
+                callback(ec, "async_write", [&] {
+                   send_queue.erase(send_queue.begin());
+                   sending = false;
+                   send();
+                });
              });
       }
 
       using result_type = void;
       void operator()(get_state_request_v0&) {
-         ilog("get_state_request_v0");
          get_state_result_v0 result;
          auto&               ind = plugin->chain_plug->chain().db().get_index<state_history_index>().indices();
          if (!ind.empty())
@@ -584,7 +594,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
 
       void operator()(get_block_request_v0& req) {
-         ilog("get_block_request_v0");
+         ilog("${b} get_block_request_v0", ("b", req.block_num));
          get_block_result_v0 result{req.block_num};
          auto&               ind = plugin->chain_plug->chain().db().get_index<state_history_index>().indices();
          auto                it  = ind.find(req.block_num);
