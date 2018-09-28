@@ -115,6 +115,7 @@ public:
 
    void init();
    void wipe_database();
+   void wipe_custom_collections();
 
    template<typename Queue, typename Entry> void queue(Queue& queue, const Entry& e);
 
@@ -134,6 +135,7 @@ public:
 
    bool configured{false};
    bool wipe_database_on_startup{false};
+   bool wipe_custom_collections_on_startup{false};
    uint32_t start_block_num = 0;
    std::atomic_bool start_block_reached{false};
 
@@ -1507,7 +1509,6 @@ void mongo_db_plugin_impl::wipe_database() {
    auto accounts = mongo_conn[db_name][accounts_col];
    auto pub_keys = mongo_conn[db_name][pub_keys_col];
    auto account_controls = mongo_conn[db_name][account_controls_col];
-   // I do not think we need to wipe regaction table
 
    block_states.drop();
    blocks.drop();
@@ -1518,6 +1519,31 @@ void mongo_db_plugin_impl::wipe_database() {
    pub_keys.drop();
    account_controls.drop();
    ilog("done wipe_database");
+}
+
+void mongo_db_plugin_impl::wipe_custom_collections() {
+   ilog( "mongo db wipe_custom_collections" );
+
+   auto client = mongo_pool->acquire();
+   auto& mongo_conn = *client;
+
+   auto regaction = mongo_conn[db_name][regaction_col];
+
+   auto colls_rt = regaction.distinct( { "collection" }, {} );
+   if ( colls_rt.begin() == colls_rt.end()) {
+      // nothing to do
+   } else {
+      auto view = ( *( colls_rt.begin()))["values"].get_array().value;
+      for ( auto itr = view.begin(); itr != view.end(); ++itr ) {
+         auto coll_name = itr->get_utf8().value.to_string();
+
+         mongo_conn[db_name][coll_name].drop();
+      }
+
+      regaction.drop();
+   }
+
+   ilog( "done wipe_custom_collections" );
 }
 
 void mongo_db_plugin_impl::init() {
@@ -1584,17 +1610,27 @@ void mongo_db_plugin_impl::init() {
                   bsoncxx::from_json( R"xxx({ "controlled_account" : 1, "controlled_permission" : 1 })xxx" ));
             account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlling_account" : 1 })xxx" ));
 
-            // regaction indexes
-            auto regaction = mongo_conn[db_name][regaction_col];
-            regaction.create_index( bsoncxx::from_json( R"xxx({ "receiver" : 1, "action" : 1 })xxx" ),
-                                    bsoncxx::from_json( R"xxx({ "unique" : "true" })xxx" ) );
          } catch (...) {
             handle_mongo_exception( "create indexes", __LINE__ );
          }
       }
+
+      // regaction indexes
+      auto regaction = mongo_conn[db_name][regaction_col];
+      if ( regaction.count( make_document()) == 0 ) {
+         try {
+            regaction.create_index( bsoncxx::from_json( R"xxx({ "receiver" : 1, "action" : 1 })xxx" ),
+                                    bsoncxx::from_json( R"xxx({ "unique" : "true" })xxx" ));
+            regaction.create_index( bsoncxx::from_json( R"xxx({ "collection" : 1})xxx" ));
+         } catch ( ... ) {
+            handle_mongo_exception( "create indexes", __LINE__ );
+         }
+      }
+
    } catch (...) {
       handle_mongo_exception( "mongo init", __LINE__ );
    }
+
 
    ilog("starting db plugin thread");
 
@@ -1657,6 +1693,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          my->configured = true;
 
          if( options.at( "replay-blockchain" ).as<bool>() || options.at( "hard-replay-blockchain" ).as<bool>() || options.at( "delete-all-blocks" ).as<bool>() ) {
+            my->wipe_custom_collections_on_startup = true;
             if( options.at( "mongodb-wipe" ).as<bool>()) {
                ilog( "Wiping mongo database on startup" );
                my->wipe_database_on_startup = true;
@@ -1761,6 +1798,11 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                chain.applied_transaction.connect( [&]( const chain::transaction_trace_ptr& t ) {
                   my->applied_transaction( t );
                } ));
+
+
+         if ( my->wipe_custom_collections_on_startup ) {
+            my->wipe_custom_collections();
+         }
 
          if( my->wipe_database_on_startup ) {
             my->wipe_database();
