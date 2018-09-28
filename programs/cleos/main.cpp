@@ -890,6 +890,7 @@ struct create_account_subcommand {
    string stake_net;
    string stake_cpu;
    uint32_t buy_ram_bytes_in_kbytes = 0;
+   uint32_t buy_ram_bytes = 0;
    string buy_ram_eos;
    bool transfer;
    bool simple;
@@ -907,7 +908,9 @@ struct create_account_subcommand {
          createAccount->add_option("--stake-cpu", stake_cpu,
                                    (localized("The amount of EOS delegated for CPU bandwidth")))->required();
          createAccount->add_option("--buy-ram-kbytes", buy_ram_bytes_in_kbytes,
-                                   (localized("The amount of RAM bytes to purchase for the new account in kibibytes (KiB), default is 8 KiB")));
+                                   (localized("The amount of RAM bytes to purchase for the new account in kibibytes (KiB)")));
+         createAccount->add_option("--buy-ram-bytes", buy_ram_bytes,
+                                   (localized("The amount of RAM bytes to purchase for the new account in bytes")));
          createAccount->add_option("--buy-ram", buy_ram_eos,
                                    (localized("The amount of RAM bytes to purchase for the new account in EOS")));
          createAccount->add_flag("--transfer", transfer,
@@ -928,12 +931,10 @@ struct create_account_subcommand {
             } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
             auto create = create_newaccount(creator, account_name, owner_key, active_key);
             if (!simple) {
-               if ( buy_ram_eos.empty() && buy_ram_bytes_in_kbytes == 0) {
-                  std::cerr << "ERROR: Either --buy-ram or --buy-ram-kbytes with non-zero value is required" << std::endl;
-                  return;
-               }
+               EOSC_ASSERT( buy_ram_eos.size() || buy_ram_bytes_in_kbytes || buy_ram_bytes, "ERROR: One of --buy-ram, --buy-ram-kbytes or --buy-ram-bytes should have non-zero value" );
+               EOSC_ASSERT( !buy_ram_bytes_in_kbytes || !buy_ram_bytes, "ERROR: --buy-ram-kbytes and --buy-ram-bytes cannot be set at the same time" );
                action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_eos))
-                  : create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024);
+                  : create_buyrambytes(creator, account_name, (buy_ram_bytes_in_kbytes) ? (buy_ram_bytes_in_kbytes * 1024) : buy_ram_bytes);
                auto net = to_asset(stake_net);
                auto cpu = to_asset(stake_cpu);
                if ( net.get_amount() != 0 || cpu.get_amount() != 0 ) {
@@ -1194,6 +1195,7 @@ struct delegate_bandwidth_subcommand {
    string stake_cpu_amount;
    string stake_storage_amount;
    string buy_ram_amount;
+   uint32_t buy_ram_bytes = 0;
    bool transfer = false;
 
    delegate_bandwidth_subcommand(CLI::App* actionRoot) {
@@ -1203,6 +1205,7 @@ struct delegate_bandwidth_subcommand {
       delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of EOS to stake for network bandwidth"))->required();
       delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of EOS to stake for CPU bandwidth"))->required();
       delegate_bandwidth->add_option("--buyram", buy_ram_amount, localized("The amount of EOS to buyram"));
+      delegate_bandwidth->add_option("--buy-ram-bytes", buy_ram_bytes, localized("The amount of RAM to buy in number of bytes"));
       delegate_bandwidth->add_flag("--transfer", transfer, localized("Transfer voting power and right to unstake EOS to receiver"));
       add_standard_transaction_options(delegate_bandwidth);
 
@@ -1214,12 +1217,11 @@ struct delegate_bandwidth_subcommand {
                   ("stake_cpu_quantity", to_asset(stake_cpu_amount))
                   ("transfer", transfer);
          std::vector<chain::action> acts{create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)};
-         if (buy_ram_amount.length()) {
-            fc::variant act_payload2 = fc::mutable_variant_object()
-               ("payer", from_str)
-               ("receiver", receiver_str)
-               ("quant", to_asset(buy_ram_amount));
-            acts.push_back(create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload2));
+         EOSC_ASSERT( !(buy_ram_amount.size()) || !buy_ram_bytes, "ERROR: --buyram and --buy-ram-bytes cannot be set at the same time" );
+         if (buy_ram_amount.size()) {
+            acts.push_back( create_buyram(from_str, receiver_str, to_asset(buy_ram_amount)) );
+         } else if (buy_ram_bytes) {
+            acts.push_back( create_buyrambytes(from_str, receiver_str, buy_ram_bytes) );
          }
          send_actions(std::move(acts));
       });
@@ -1347,27 +1349,22 @@ struct buyram_subcommand {
    string receiver_str;
    string amount;
    bool kbytes = false;
+   bool bytes = false;
 
    buyram_subcommand(CLI::App* actionRoot) {
       auto buyram = actionRoot->add_subcommand("buyram", localized("Buy RAM"));
       buyram->add_option("payer", from_str, localized("The account paying for RAM"))->required();
       buyram->add_option("receiver", receiver_str, localized("The account receiving bought RAM"))->required();
-      buyram->add_option("amount", amount, localized("The amount of EOS to pay for RAM, or number of kbytes of RAM if --kbytes is set"))->required();
-      buyram->add_flag("--kbytes,-k", kbytes, localized("buyram in number of kbytes"));
+      buyram->add_option("amount", amount, localized("The amount of EOS to pay for RAM, or number of bytes/kibibytes of RAM if --bytes/--kbytes is set"))->required();
+      buyram->add_flag("--kbytes,-k", kbytes, localized("buyram in number of kibibytes (KiB)"));
+      buyram->add_flag("--bytes,-b", bytes, localized("buyram in number of bytes"));
       add_standard_transaction_options(buyram);
       buyram->set_callback([this] {
-         if (kbytes) {
-            fc::variant act_payload = fc::mutable_variant_object()
-                  ("payer", from_str)
-                  ("receiver", receiver_str)
-                  ("bytes", fc::to_uint64(amount) * 1024ull);
-            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyrambytes), act_payload)});
+         EOSC_ASSERT( !kbytes || !bytes, "ERROR: --kbytes and --bytes cannot be set at the same time" );
+         if (kbytes || bytes) {
+            send_actions( { create_buyrambytes(from_str, receiver_str, fc::to_uint64(amount) * ((kbytes) ? 1024ull : 1ull)) } );
          } else {
-            fc::variant act_payload = fc::mutable_variant_object()
-               ("payer", from_str)
-               ("receiver", receiver_str)
-               ("quant", to_asset(amount));
-            send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(buyram), act_payload)});
+            send_actions( { create_buyram(from_str, receiver_str, to_asset(amount)) } );
          }
       });
    }
