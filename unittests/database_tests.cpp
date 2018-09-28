@@ -26,7 +26,9 @@ BOOST_AUTO_TEST_SUITE(database_tests)
    BOOST_AUTO_TEST_CASE(undo_test) {
       try {
          TESTER test;
-         auto &db = test.control->db();
+
+         // Bypass read-only restriction on state DB access for this unit test which really needs to mutate the DB to properly conduct its test.
+         eosio::chain::database& db = const_cast<eosio::chain::database&>( test.control->db() );
 
          auto ses = db.start_undo_session(true);
 

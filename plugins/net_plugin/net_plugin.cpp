@@ -1344,19 +1344,16 @@ namespace eosio {
             }
 
             //scan the list of peers looking for another able to provide sync blocks.
-            while (cptr != cend) {
+            auto cstart_it = cptr;
+            do {
                //select the first one which is current and break out.
-               if ((*cptr)->current()) {
+               if((*cptr)->current()) {
                   source = *cptr;
                   break;
                }
-               else {
-                  // advance the iterator in a round robin fashion.
-                  if (++cptr == my_impl->connections.end()) {
+               if(++cptr == my_impl->connections.end())
                      cptr = my_impl->connections.begin();
-                  }
-               }
-            }
+            } while(cptr != cstart_it);
             // no need to check the result, either source advanced or the whole list was checked and the old source is reused.
          }
       }
@@ -2491,11 +2488,7 @@ namespace eosio {
       dispatcher->recv_transaction(c, tid);
       chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          if (result.contains<fc::exception_ptr>()) {
-            auto e_ptr = result.get<fc::exception_ptr>();
-            if (e_ptr->code() != tx_duplicate::code_value && e_ptr->code() != expired_tx_exception::code_value) {
-               elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
-               peer_elog(c, "bad packed_transaction : ${m}", ("m",result.get<fc::exception_ptr>()->what()));
-            }
+            peer_dlog(c, "bad packed_transaction : ${m}", ("m",result.get<fc::exception_ptr>()->what()));
          } else {
             auto trace = result.get<transaction_trace_ptr>();
             if (!trace->except) {

@@ -13,7 +13,7 @@ extern "C" {
     *
     *
     * Deferred transactions will not be processed until a future block.  They
-    * can therefore have no effect on the success of failure of their parent
+    * can therefore have no effect on the success or failure of their parent
     * transaction so long as they appear well formed.  If any other condition
     * causes the parent transaction to be marked as failing, then the deferred
     * transaction will never be processed.
@@ -27,7 +27,7 @@ extern "C" {
     * ends such that the success or failure of the parent transaction is
     * dependent on the success of the message. If an inline message fails in
     * processing then the whole tree of transactions and actions rooted in the
-    * block will me marked as failing and none of effects on the database will
+    * block will be marked as failing and none of effects on the database will
     * persist.
     *
     * Inline actions and Deferred transactions must adhere to the permissions
@@ -68,7 +68,7 @@ extern "C" {
      *  @return 1 if transaction was canceled, 0 if transaction was not found
      *
      *  Example:
-*
+     *
      *  @code
      *  id = 0xffffffffffffffff
      *  cancel_deferred( id );

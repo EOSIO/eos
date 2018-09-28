@@ -54,6 +54,28 @@
         {"name":"waits",     "type":"wait_weight[]"}
       ]
     },{
+      "name": "blockchain_parameters",
+      "base": "",
+      "fields": [
+         {"name":"max_block_net_usage",                 "type":"uint64"},
+         {"name":"target_block_net_usage_pct",          "type":"uint32"},
+         {"name":"max_transaction_net_usage",           "type":"uint32"},
+         {"name":"base_per_transaction_net_usage",      "type":"uint32"},
+         {"name":"net_usage_leeway",                    "type":"uint32"},
+         {"name":"context_free_discount_net_usage_num", "type":"uint32"},
+         {"name":"context_free_discount_net_usage_den", "type":"uint32"},
+         {"name":"max_block_cpu_usage",                 "type":"uint32"},
+         {"name":"target_block_cpu_usage_pct",          "type":"uint32"},
+         {"name":"max_transaction_cpu_usage",           "type":"uint32"},
+         {"name":"min_transaction_cpu_usage",           "type":"uint32"},
+         {"name":"max_transaction_lifetime",            "type":"uint32"},
+         {"name":"deferred_trx_expiration_window",      "type":"uint32"},
+         {"name":"max_transaction_delay",               "type":"uint32"},
+         {"name":"max_inline_action_size",              "type":"uint32"},
+         {"name":"max_inline_action_depth",             "type":"uint16"},
+         {"name":"max_authority_depth",                 "type":"uint16"}
+      ]
+    },{
       "name": "newaccount",
       "base": "",
       "fields": [
@@ -161,6 +183,12 @@
         {"name":"schedule",   "type":"producer_key[]"}
       ]
     },{
+      "name": "setparams",
+      "base": "",
+      "fields": [
+        {"name":"params", "type":"blockchain_parameters"}
+      ]
+    },{
       "name": "require_auth",
       "base": "",
       "fields": [
@@ -218,6 +246,10 @@
     },{
       "name": "setprods",
       "type": "set_producers",
+      "ricardian_contract": ""
+    },{
+      "name": "setparams",
+      "type": "setparams",
       "ricardian_contract": ""
     },{
       "name": "reqauth",
