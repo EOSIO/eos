@@ -49,6 +49,14 @@
    DOXYGEN=false
    ENABLE_COVERAGE_TESTING=false
    CORE_SYMBOL_NAME="SYS"
+   # Use current directory's tmp directory if noexec is enabled for /tmp
+   if (mount | grep "/tmp " | grep --quiet noexec); then
+        mkdir -p $SOURCE_DIR/tmp
+        TEMP_DIR="${SOURCE_DIR}/tmp"
+        rm -rf $SOURCE_DIR/tmp/*
+   else # noexec wasn't found
+        TEMP_DIR="/tmp"
+   fi
    START_MAKE=true
    TEMP_DIR="/tmp"
    TIME_BEGIN=$( date -u +%s )
