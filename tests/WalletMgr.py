@@ -12,7 +12,8 @@ from testUtils import Utils
 Wallet=namedtuple("Wallet", "name password host port")
 # pylint: disable=too-many-instance-attributes
 class WalletMgr(object):
-    __walletLogFile="test_keosd_output.log"
+    __walletLogOutFile="test_keosd_out.log"
+    __walletLogErrFile="test_keosd_err.log"
     __walletDataDir="test_wallet_0"
     __MaxPort=9999
 
@@ -70,9 +71,9 @@ class WalletMgr(object):
             if self.isLocal():
                 if Utils.arePortsAvailable(self.port):
                     portStatus="AVAILABLE"
-                    portTaken=True
                 else:
                     portStatus="NOT AVAILABLE"
+                    portTaken=True
             pgrepCmd=Utils.pgrepCmd(Utils.EosWalletName)
             psOut=Utils.checkOutput(pgrepCmd.split(), ignoreError=True)
             if psOut or portTaken:
@@ -86,7 +87,7 @@ class WalletMgr(object):
         cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d --verbose-http-errors" % (
             Utils.EosWalletPath, WalletMgr.__walletDataDir, WalletMgr.__walletDataDir, self.host, self.port)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        with open(WalletMgr.__walletLogFile, 'w') as sout, open(WalletMgr.__walletLogFile, 'w') as serr:
+        with open(WalletMgr.__walletLogOutFile, 'w') as sout, open(WalletMgr.__walletLogErrFile, 'w') as serr:
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
             self.__walletPid=popen.pid
 
@@ -276,9 +277,13 @@ class WalletMgr(object):
     def dumpErrorDetails(self):
         Utils.Print("=================================================================")
         if self.__walletPid is not None:
-            Utils.Print("Contents of %s:" % (WalletMgr.__walletLogFile))
+            Utils.Print("Contents of %s:" % (WalletMgr.__walletLogOutFile))
             Utils.Print("=================================================================")
-            with open(WalletMgr.__walletLogFile, "r") as f:
+            with open(WalletMgr.__walletLogOutFile, "r") as f:
+                shutil.copyfileobj(f, sys.stdout)
+            Utils.Print("Contents of %s:" % (WalletMgr.__walletLogErrFile))
+            Utils.Print("=================================================================")
+            with open(WalletMgr.__walletLogErrFile, "r") as f:
                 shutil.copyfileobj(f, sys.stdout)
 
     def killall(self, allInstances=False):
