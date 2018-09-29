@@ -48,14 +48,6 @@
    DISK_MIN=20
    DOXYGEN=false
    ENABLE_COVERAGE_TESTING=false
-   # Use current directory's tmp directory if noexec is enabled for /tmp
-   if (mount | grep "/tmp " | grep --quiet noexec); then
-        mkdir -p $SOURCE_DIR/tmp
-        TEMP_DIR="${SOURCE_DIR}/tmp"
-        rm -rf $SOURCE_DIR/tmp/*
-   else # noexec wasn't found
-        TEMP_DIR="/tmp"
-   fi
    CORE_SYMBOL_NAME="SYS"
    START_MAKE=true
    TEMP_DIR="/tmp"
@@ -276,7 +268,7 @@
       printf "\\n\\t>>>>>>>>>>>>>>>>>>>> EOSIO has been successfully configured but not yet built.\\n\\n"
       exit 0
    fi
-   if [ $CPU_CORE -gt 4 ]; then CPU_CORE=$((CPU_CORE / 2)); fi
+
    if ! make -j"${CPU_CORE}"
    then
       printf "\\n\\t>>>>>>>>>>>>>>>>>>>> MAKE building EOSIO has exited with the above error.\\n\\n"
