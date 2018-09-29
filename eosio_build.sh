@@ -50,7 +50,13 @@
    ENABLE_COVERAGE_TESTING=false
    CORE_SYMBOL_NAME="SYS"
    START_MAKE=true
-   TEMP_DIR="/tmp"
+   # Use current directory's tmp directory if noexec is enabled for /tmp
+   if (mount | grep "/tmp " | grep --quiet noexec); then
+        mkdir -p $SOURCE_DIR/tmp
+        TEMP_DIR="${SOURCE_DIR}/tmp"
+   else # noexec wasn't found
+        TEMP_DIR="/tmp"
+   fi
    TIME_BEGIN=$( date -u +%s )
    VERSION=1.2
 
@@ -151,6 +157,8 @@
       fi
 
       OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
+
+      printf "\\tUsing temporary directory: ${TEMP_DIR}\\n"
 
       case "$OS_NAME" in
          "Amazon Linux AMI")
