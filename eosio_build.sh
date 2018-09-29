@@ -276,7 +276,7 @@
       printf "\\n\\t>>>>>>>>>>>>>>>>>>>> EOSIO has been successfully configured but not yet built.\\n\\n"
       exit 0
    fi
-   if [ $CPU_CORE -gt 6 ]; then CPU_CORE=$((CPU_CORE / 3)); fi
+   if [ $CPU_CORE -gt 4 ]; then CPU_CORE=$((CPU_CORE / 2)); fi
    if ! make -j"${CPU_CORE}"
    then
       printf "\\n\\t>>>>>>>>>>>>>>>>>>>> MAKE building EOSIO has exited with the above error.\\n\\n"
