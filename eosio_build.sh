@@ -277,7 +277,8 @@
       exit 0
    fi
 
-   if ! make -j"${CPU_CORE}"
+   if [ -z ${JOBS} ]; then JOBS=$CPU_CORE; fi # Future proofing: Ensure $JOBS is set (usually set in scripts/eosio_build_*.sh scripts)
+   if ! make -j"${JOBS}"
    then
       printf "\\n\\t>>>>>>>>>>>>>>>>>>>> MAKE building EOSIO has exited with the above error.\\n\\n"
       exit -1
