@@ -172,7 +172,9 @@ class Cluster(object):
                 cmdArr.append(arg)
 
         cmdArr.append("--max-block-cpu-usage")
-        cmdArr.append(str(2000000))
+        cmdArr.append(str(160000000))
+        cmdArr.append("--max-transaction-cpu-usage")
+        cmdArr.append(str(150000000))
 
         # must be last cmdArr.append before subprocess.call, so that everything is on the command line
         # before constructing the shape.json file for "bridge"
@@ -1273,6 +1275,8 @@ class Cluster(object):
 
         for i in range(0, len(self.nodes)):
             fileName="etc/eosio/node_%02d/config.ini" % (i)
+            Cluster.dumpErrorDetailImpl(fileName)
+            fileName="etc/eosio/node_%02d/genesis.json" % (i)
             Cluster.dumpErrorDetailImpl(fileName)
             fileName="var/lib/node_%02d/stderr.txt" % (i)
             Cluster.dumpErrorDetailImpl(fileName)
