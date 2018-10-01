@@ -61,10 +61,22 @@ struct action_def {
    string      ricardian_contract;
 };
 
+struct index_def {
+    index_def() = default;
+    index_def(const type_name& name, const bool unique, const vector<field_name>& key_names, const vector<type_name>& key_orders)
+    : name(name), unique(unique), key_names(key_names), key_orders(key_orders)
+    { }
+
+    type_name          name;
+    bool               unique = false;
+    vector<field_name> key_names;
+    vector<type_name>  key_orders; // asc/desc
+};
+
 struct table_def {
    table_def() = default;
-   table_def(const table_name& name, const type_name& index_type, const vector<field_name>& key_names, const vector<type_name>& key_types, const type_name& type)
-   :name(name), index_type(index_type), key_names(key_names), key_types(key_types), type(type)
+   table_def(const table_name& name, const type_name& type, const vector<index_def>& indexes)
+   :name(name), type(type), indexes(indexes)
    {}
 
    table_name         name;        // the name of the table
@@ -72,6 +84,7 @@ struct table_def {
    vector<field_name> key_names;   // names for the keys defined by key_types
    vector<type_name>  key_types;   // the type of key parameters
    type_name          type;        // type of binary data stored in this table
+   vector<index_def>  indexes;     //
 };
 
 struct clause_pair {
@@ -115,7 +128,7 @@ struct abi_def {
    ,error_messages(error_msgs)
    {}
 
-   string                              version = "";
+   string                              version = "cyberway::abi/1.0";
    vector<type_def>                    types;
    vector<struct_def>                  structs;
    vector<action_def>                  actions;
@@ -162,7 +175,8 @@ FC_REFLECT( eosio::chain::type_def                         , (new_type_name)(typ
 FC_REFLECT( eosio::chain::field_def                        , (name)(type) )
 FC_REFLECT( eosio::chain::struct_def                       , (name)(base)(fields) )
 FC_REFLECT( eosio::chain::action_def                       , (name)(type)(ricardian_contract) )
-FC_REFLECT( eosio::chain::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
+FC_REFLECT( eosio::chain::index_def                        , (name)(unique)(key_names)(key_orders) )
+FC_REFLECT( eosio::chain::table_def                        , (name)(type)(indexes) )
 FC_REFLECT( eosio::chain::clause_pair                      , (id)(body) )
 FC_REFLECT( eosio::chain::error_message                    , (error_code)(error_msg) )
 FC_REFLECT( eosio::chain::variant_def                      , (name)(types) )

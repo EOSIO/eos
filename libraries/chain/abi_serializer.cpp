@@ -126,8 +126,17 @@ namespace eosio { namespace chain {
       for( const auto& a : abi.actions )
          actions[a.name] = a.type;
 
-      for( const auto& t : abi.tables )
+      for( const auto& t : abi.tables ) {
          tables[t.name] = t.type;
+         for( const auto& i : t.indexes ) {
+            EOS_ASSERT( i.key_names.size() == i.key_orders.size(), abi_serialization_table_index_items_size,
+                "key_names has different size than key_orders");
+            for( const auto& o : i.key_orders ) {
+                EOS_ASSERT( o == "asc" || o == "desc", abi_serialization_index_order_type,
+                    "invalid type of index order" );
+            }
+         }
+      }
 
       for( const auto& e : abi.error_messages )
          error_messages[e.error_code] = e.error_msg;
