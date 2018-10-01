@@ -21,6 +21,8 @@ namespace eosio { namespace chain {
    void apply_eosio_linkauth(apply_context&);
    void apply_eosio_unlinkauth(apply_context&);
 
+   void apply_eosio_providebw(apply_context&);
+
    /*
    void apply_eosio_postrecovery(apply_context&);
    void apply_eosio_passrecovery(apply_context&);

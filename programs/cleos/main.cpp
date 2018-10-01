@@ -184,6 +184,7 @@ bool   no_auto_keosd = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
+vector<string> bandwidth_provider;
 
 uint32_t delaysec = 0;
 
@@ -219,6 +220,8 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
 
    cmd->add_option("--delay-sec", delaysec, localized("set the delay_sec seconds, defaults to 0s"));
+
+   cmd->add_option("-b,--bandwidth-provider", bandwidth_provider, localized("set an account which provide own bandwidth for transaction"));
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
@@ -231,6 +234,24 @@ vector<chain::permission_level> get_account_permissions(const vector<string>& pe
    vector<chain::permission_level> accountPermissions;
    boost::range::copy(fixedPermissions, back_inserter(accountPermissions));
    return accountPermissions;
+}
+
+typedef vector<std::pair<account_name,chain::permission_level>> bandwidth_providers;
+bandwidth_providers get_bandwidth_providers(const vector<string>& providers) {
+   bandwidth_providers bandwidthProviders;
+   for( const auto& p : providers ) {
+      vector<string> pieces;
+      split(pieces, p, boost::algorithm::is_any_of("/"));
+      if( pieces.size() != 2 ) {
+         std::cerr << localized("Bandwidth provider ${p} not in 'account/provider[@permission]' form", ("p", p)) << std::endl;
+         continue;
+      }
+      const auto account = pieces[0];
+      split(pieces, pieces[1], boost::algorithm::is_any_of("@"));
+      if (pieces.size() == 1) pieces.push_back( "active" );
+      bandwidthProviders.emplace_back( account, chain::permission_level{ .actor = pieces[0], .permission = pieces[1] });
+   }
+   return bandwidthProviders;
 }
 
 template<typename T>
@@ -320,6 +341,13 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
       trx.max_cpu_usage_ms = tx_max_cpu_usage;
       trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
       trx.delay_sec = delaysec;
+   }
+
+   if( !bandwidth_provider.empty() ) {
+      auto providers = get_bandwidth_providers({bandwidth_provider});
+      for (const auto& prov: providers) {
+         trx.actions.emplace_back(vector<chain::permission_level>{prov.second}, providebw{prov.first, prov.second.actor} );
+      }
    }
 
    if (!tx_skip_sign) {

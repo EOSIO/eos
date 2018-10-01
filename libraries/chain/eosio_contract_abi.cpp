@@ -194,6 +194,13 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    });
 
    eos_abi.structs.emplace_back( struct_def {
+      "providebw", "", {
+         {"provider", "account_name"},
+         {"account", "account_name"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
       "canceldelay", "", {
          {"canceling_auth", "permission_level"},
          {"trx_id", "transaction_id_type"},
