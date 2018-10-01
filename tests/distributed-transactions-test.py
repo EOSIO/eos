@@ -11,7 +11,7 @@ Print=Utils.Print
 errorExit=Utils.errorExit
 
 args=TestHelper.parse_args({"-p","-n","-d","-s","--nodes-file","--seed"
-                              ,"--dump-error-details","-v","--leave-running","--clean-run"})
+                              ,"--dump-error-details","-v","--leave-running","--clean-run","--keep-logs"})
 
 pnodes=args.p
 topo=args.s
@@ -23,6 +23,7 @@ seed=args.seed
 dontKill=args.leave_running
 dumpErrorDetails=args.dump_error_details
 killAll=args.clean_run
+keepLogs=args.keep_logs
 
 killWallet=not dontKill
 killEosInstances=not dontKill
@@ -97,6 +98,6 @@ try:
     
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, False, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)

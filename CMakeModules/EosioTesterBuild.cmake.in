@@ -51,6 +51,7 @@ find_library(libbinaryen binaryen @CMAKE_BINARY_DIR@/externals/binaryen/lib)
 find_library(libwasm WASM @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WASM)
 find_library(libwast WAST @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WAST)
 find_library(libir IR     @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/IR)
+find_library(libwabt wabt @CMAKE_BINARY_DIR@/libraries/wabt)
 find_library(libplatform Platform @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Platform)
 find_library(liblogging Logging @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Logging)
 find_library(libruntime Runtime @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Runtime)
@@ -59,7 +60,13 @@ find_library(liboscrypto crypto @OPENSSL_ROOT_DIR@/lib)
 find_library(libosssl ssl @OPENSSL_ROOT_DIR@/lib)
 find_library(libchainbase chainbase @CMAKE_BINARY_DIR@/libraries/chainbase)
 find_library(libbuiltins builtins @CMAKE_BINARY_DIR@/libraries/builtins)
-find_library(libsecp256k1 secp256k1 @Secp256k1_ROOT_DIR@/lib)
+find_library(libsecp256k1 secp256k1 @CMAKE_BINARY_DIR@/libraries/fc/secp256k1)
+find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
+    HINTS ENV GMP_LIB_DIR
+          ENV GMP_DIR
+    PATH_SUFFIXES lib
+    DOC "Path to the GMP library"
+)
 
 macro(add_eosio_test test_name)
    add_executable( ${test_name} ${ARGN} )
@@ -71,6 +78,7 @@ macro(add_eosio_test test_name)
        ${libbinaryen}
        ${libwast}
        ${libwasm}
+       ${libwabt}
        ${libruntime}
        ${libplatform}
        ${libir}
@@ -80,6 +88,7 @@ macro(add_eosio_test test_name)
        ${liblogging}
        ${libchainbase}
        ${libbuiltins}
+       ${GMP_LIBRARIES}
        ${libsecp256k1}
 
        LLVMX86Disassembler

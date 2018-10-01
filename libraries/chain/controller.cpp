@@ -83,6 +83,8 @@ struct pending_state {
 
    controller::block_status           _block_status = controller::block_status::incomplete;
 
+   optional<block_id_type>            _producer_block_id;
+
    void push() {
       _db_session.push();
    }
@@ -106,6 +108,7 @@ struct controller_impl {
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
    optional<fc::microseconds>     subjective_cpu_leeway;
+   bool                           trusted_producer_light_validation = false;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -629,6 +632,9 @@ struct controller_impl {
       if( gtrx.expiration < self.pending_block_time() ) {
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
+         trace->block_num = self.pending_block_state()->block_num;
+         trace->block_time = self.pending_block_time();
+         trace->producer_block_id = self.pending_producer_block_id();
          trace->scheduled = true;
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
          emit( self.accepted_transaction, trx );
@@ -868,7 +874,9 @@ struct controller_impl {
    } /// push_transaction
 
 
-   void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s ) {
+   void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s,
+                     const optional<block_id_type>& producer_block_id )
+   {
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
 
       auto guard_pending = fc::make_scoped_exit([this](){
@@ -885,6 +893,7 @@ struct controller_impl {
       }
 
       pending->_block_status = s;
+      pending->_producer_block_id = producer_block_id;
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
 
@@ -953,7 +962,8 @@ struct controller_impl {
    void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
       try {
          EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
-         start_block( b->timestamp, b->confirmed, s );
+         auto producer_block_id = b->id();
+         start_block( b->timestamp, b->confirmed, s , producer_block_id);
 
          transaction_trace_ptr trace;
 
@@ -993,9 +1003,9 @@ struct controller_impl {
          finalize_block();
 
          // this implicitly asserts that all header fields (less the signature) are identical
-         EOS_ASSERT(b->id() == pending->_pending_block_state->header.id(),
+         EOS_ASSERT(producer_block_id == pending->_pending_block_state->header.id(),
                    block_validate_exception, "Block ID does not match",
-                   ("producer_block_id",b->id())("validator_block_id",pending->_pending_block_state->header.id()));
+                   ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id()));
 
          // We need to fill out the pending block state's block because that gets serialized in the reversible block log
          // in the future we can optimize this by serializing the original and not the copy
@@ -1018,22 +1028,30 @@ struct controller_impl {
 
 
    void push_block( const signed_block_ptr& b, controller::block_status s ) {
-    //  idump((fc::json::to_pretty_string(*b)));
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
+
+      auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
+         trusted_producer_light_validation = old_value;
+      });
       try {
          EOS_ASSERT( b, block_validate_exception, "trying to push empty block" );
          EOS_ASSERT( s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block" );
          emit( self.pre_accepted_block, b );
          bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
          auto new_header_state = fork_db.add( b, trust );
+         if (conf.trusted_producers.count(b->producer)) {
+            trusted_producer_light_validation = true;
+         };
          emit( self.accepted_block_header, new_header_state );
-         // on replay irreversible is not emitted by fork database, so emit it explicitly here
-         if( s == controller::block_status::irreversible )
-            emit( self.irreversible_block, new_header_state );
 
          if ( read_mode != db_read_mode::IRREVERSIBLE ) {
             maybe_switch_forks( s );
          }
+
+         // on replay irreversible is not emitted by fork database, so emit it explicitly here
+         if( s == controller::block_status::irreversible )
+            emit( self.irreversible_block, new_header_state );
+            
       } FC_LOG_AND_RETHROW( )
    }
 
@@ -1389,7 +1407,7 @@ fork_database& controller::fork_db()const { return my->fork_db; }
 
 void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count) {
    validate_db_available_size();
-   my->start_block(when, confirm_block_count, block_status::incomplete );
+   my->start_block(when, confirm_block_count, block_status::incomplete, optional<block_id_type>() );
 }
 
 void controller::finalize_block() {
@@ -1519,6 +1537,11 @@ block_state_ptr controller::pending_block_state()const {
 time_point controller::pending_block_time()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
    return my->pending->_pending_block_state->header.timestamp;
+}
+
+optional<block_id_type> controller::pending_producer_block_id()const {
+   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+   return my->pending->_producer_block_id;
 }
 
 uint32_t controller::last_irreversible_block_num() const {
@@ -1657,13 +1680,14 @@ bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) c
       return false;
    }
 
-   auto pb_status = my->pending->_block_status;
+   const auto pb_status = my->pending->_block_status;
 
    // in a pending irreversible or previously validated block and we have forcing all checks
-   bool consider_skipping_on_replay = (pb_status == block_status::irreversible || pb_status == block_status::validated) && !replay_opts_disabled_by_policy;
+   const bool consider_skipping_on_replay = (pb_status == block_status::irreversible || pb_status == block_status::validated) && !replay_opts_disabled_by_policy;
 
    // OR in a signed block and in light validation mode
-   bool consider_skipping_on_validate = (pb_status == block_status::complete && my->conf.block_validation_mode == validation_mode::LIGHT);
+   const bool consider_skipping_on_validate = (pb_status == block_status::complete &&
+         (my->conf.block_validation_mode == validation_mode::LIGHT || my->trusted_producer_light_validation));
 
    return consider_skipping_on_replay || consider_skipping_on_validate;
 }

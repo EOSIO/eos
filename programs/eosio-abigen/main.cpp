@@ -86,6 +86,7 @@ int main(int argc, const char **argv) { abi_def output; try {
    vector<string> actions;
    int result = Tool.run(create_find_macro_factory(contract, actions, abi_context).get());
    if(!result) {
+      output.version = "eosio::abi/1.0";
       result = Tool.run(create_factory(abi_verbose, abi_opt_sfs, abi_context, output, contract, actions).get());
       if(!result) {
          abi_serializer abis(output, fc::seconds(1)); // No risk to client side serialization taking a long time

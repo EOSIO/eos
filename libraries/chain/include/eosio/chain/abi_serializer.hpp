@@ -53,14 +53,14 @@ struct abi_serializer {
       return _binary_to_variant(type, binary, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
    }
    bytes       variant_to_binary(const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time)const {
-      return _variant_to_binary(type, var, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
+      return _variant_to_binary(type, var, true, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
    }
 
    fc::variant binary_to_variant(const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time)const {
       return _binary_to_variant(type, binary, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
    }
    void        variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time)const {
-      _variant_to_binary(type, var, ds, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
+      _variant_to_binary(type, var, ds, true, 0, fc::time_point::now() + max_serialization_time, max_serialization_time);
    }
 
    template<typename T, typename Resolver>
@@ -95,28 +95,30 @@ struct abi_serializer {
 
 private:
 
-   map<type_name, type_name>  typedefs;
-   map<type_name, struct_def> structs;
-   map<name,type_name>        actions;
-   map<name,type_name>        tables;
-   map<uint64_t, string>      error_messages;
+   map<type_name, type_name>     typedefs;
+   map<type_name, struct_def>    structs;
+   map<name,type_name>           actions;
+   map<name,type_name>           tables;
+   map<uint64_t, string>         error_messages;
+   map<type_name, variant_def>   variants;
 
    map<type_name, pair<unpack_function, pack_function>> built_in_types;
    void configure_built_in_types();
 
    fc::variant _binary_to_variant(const type_name& type, const bytes& binary,
                                   size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
-   bytes       _variant_to_binary(const type_name& type, const fc::variant& var,
+   bytes       _variant_to_binary(const type_name& type, const fc::variant& var, bool allow_extensions,
                                   size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
 
    fc::variant _binary_to_variant(const type_name& type, fc::datastream<const char*>& binary,
                                   size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
-   void        _variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds,
+   void        _variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, bool allow_extensions,
                                   size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
 
    void _binary_to_variant(const type_name& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj,
                            size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
 
+   static type_name _remove_bin_extension(const type_name& type);
    bool _is_type(const type_name& type, size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
 
    void validate(const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
@@ -470,7 +472,7 @@ namespace impl {
                if (abi.valid()) {
                   auto type = abi->get_action_type(act.name);
                   if (!type.empty()) {
-                     act.data = std::move( abi->_variant_to_binary( type, data, recursion_depth, deadline, max_serialization_time ));
+                     act.data = std::move( abi->_variant_to_binary( type, data, true, recursion_depth, deadline, max_serialization_time ));
                      valid_empty_data = act.data.empty();
                   }
                }
