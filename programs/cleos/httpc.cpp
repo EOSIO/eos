@@ -104,6 +104,13 @@ namespace eosio { namespace client { namespace http {
    parsed_url parse_url( const string& server_url ) {
       parsed_url res;
 
+      //unix socket doesn't quite follow classical "URL" rules so deal with it manually
+      if(boost::algorithm::starts_with(server_url, "unix://")) {
+         res.scheme = "unix";
+         res.server = server_url.substr(strlen("unix://"));
+         return res;
+      }
+
       //via rfc3986 and modified a bit to suck out the port number
       //Sadly this doesn't work for ipv6 addresses
       std::regex rgx(R"xx(^(([^:/?#]+):)?(//([^:/?#]*)(:(\d+))?)?([^?#]*)(\?([^#]*))?(#(.*))?)xx");
@@ -125,11 +132,14 @@ namespace eosio { namespace client { namespace http {
    }
 
    resolved_url resolve_url( const http_context& context, const parsed_url& url ) {
+      if(url.scheme == "unix")
+         return resolved_url(url);
+
       tcp::resolver resolver(context->ios);
       boost::system::error_code ec;
       auto result = resolver.resolve(tcp::v4(), url.server, url.port, ec);
       if (ec) {
-         EOS_THROW(fail_to_resolve_host, "Error resolving \"${server}:${url}\" : ${m}", ("server", url.server)("port",url.port)("m",ec.message()));
+         EOS_THROW(fail_to_resolve_host, "Error resolving \"${server}:${port}\" : ${m}", ("server", url.server)("port",url.port)("m",ec.message()));
       }
 
       // non error results are guaranteed to return a non-empty range
@@ -207,7 +217,12 @@ namespace eosio { namespace client { namespace http {
    std::string re;
 
    try {
-      if(url.scheme == "http") {
+      if(url.scheme == "unix") {
+         boost::asio::local::stream_protocol::socket unix_socket(cp.context->ios);
+         unix_socket.connect(boost::asio::local::stream_protocol::endpoint(url.server));
+         re = do_txrx(unix_socket, request, status_code);
+      }
+      else if(url.scheme == "http") {
          tcp::socket socket(cp.context->ios);
          do_connect(socket, url);
          re = do_txrx(socket, request, status_code);

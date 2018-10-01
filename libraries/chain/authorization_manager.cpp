@@ -12,6 +12,7 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
+#include <boost/tuple/tuple_io.hpp>
 
 namespace eosio { namespace chain {
 
@@ -402,7 +403,8 @@ namespace eosio { namespace chain {
          EOS_ASSERT( checker.satisfied( p.first, p.second ), unsatisfied_authorization,
                      "transaction declares authority '${auth}', "
                      "but does not have signatures for it under a provided delay of ${provided_delay} ms, "
-                     "provided permissions ${provided_permissions}, and provided keys ${provided_keys}",
+                     "provided permissions ${provided_permissions}, provided keys ${provided_keys}, "
+                     "and a delay max limit of ${delay_max_limit_ms} ms",
                      ("auth", p.first)
                      ("provided_delay", provided_delay.count()/1000)
                      ("provided_permissions", provided_permissions)
@@ -443,7 +445,8 @@ namespace eosio { namespace chain {
 
       EOS_ASSERT( checker.satisfied({account, permission}), unsatisfied_authorization,
                   "permission '${auth}' was not satisfied under a provided delay of ${provided_delay} ms, "
-                  "provided permissions ${provided_permissions}, and provided keys ${provided_keys}",
+                  "provided permissions ${provided_permissions}, provided keys ${provided_keys}, "
+                  "and a delay max limit of ${delay_max_limit_ms} ms",
                   ("auth", permission_level{account, permission})
                   ("provided_delay", provided_delay.count()/1000)
                   ("provided_permissions", provided_permissions)

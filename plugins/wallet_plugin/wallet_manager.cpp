@@ -43,7 +43,7 @@ void wallet_manager::set_timeout(const std::chrono::seconds& t) {
    timeout = t;
    auto now = std::chrono::system_clock::now();
    timeout_time = now + timeout;
-   EOS_ASSERT(timeout_time >= now, invalid_lock_timeout_exception, "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
+   EOS_ASSERT(timeout_time >= now && timeout_time.time_since_epoch().count() > 0, invalid_lock_timeout_exception, "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
              ("t", t.count())("now", now.time_since_epoch().count())("timeout_time", timeout_time.time_since_epoch().count()));
 }
 

@@ -17,6 +17,7 @@
 #pragma GCC diagnostic ignored "-Wunused-result"
 #include <boost/process/child.hpp>
 #pragma GCC diagnostic pop
+#include <boost/process/env.hpp>
 #include <boost/process/system.hpp>
 #include <boost/process/io.hpp>
 #include <boost/lexical_cast.hpp>
@@ -162,7 +163,7 @@ public:
      return base_http_port - 100;
   }
 
-  bool is_local( ) {
+  bool is_local( ) const {
     return local_id.contains( host_name );
   }
 
@@ -230,6 +231,9 @@ public:
     return dot_label_str;
   }
 
+  string get_node_num() const {
+     return name.substr( name.length() - 2 );
+  }
 private:
   string dot_label_str;
 };
@@ -345,8 +349,7 @@ enum allowed_connection : char {
 
 class producer_names {
 public:
-   producer_names(int total_producers);
-   string producer_name(unsigned int producer_number) const;
+   static string producer_name(unsigned int producer_number);
 private:
    static const int total_chars = 12;
    static const char slot_chars[];
@@ -358,11 +361,7 @@ const char producer_names::valid_char_range = sizeof(producer_names::slot_chars)
 
 // for 26 or fewer total producers create "defproducera" .. "defproducerz"
 // above 26 produce  "defproducera" .. "defproducerz",  "defproduceaa" .. "defproducerb", etc.
-producer_names::producer_names(int total_producers)
-{
-}
-
-string producer_names::producer_name(unsigned int producer_number) const {
+string producer_names::producer_name(unsigned int producer_number) {
    // keeping legacy "defproducer[a-z]", but if greater than valid_char_range, will use "defpraaaaaaa"
    char prod_name[] = "defproducera";
    if (producer_number > valid_char_range) {
@@ -407,6 +406,7 @@ struct launcher_def {
   bfs::path data_dir_base;
   bool skip_transaction_signatures = false;
   string eosd_extra_args;
+  std::map<uint,string> specific_nodeos_args;
   testnet_def network;
   string gelf_endpoint;
   vector <string> aliases;
@@ -457,10 +457,12 @@ struct launcher_def {
   void make_custom ();
   void write_dot_file ();
   void format_ssh (const string &cmd, const string &host_name, string &ssh_cmd_line);
+  void do_command(const host_def& host, const string& name, vector<pair<string, string>> env_pairs, const string& cmd);
   bool do_ssh (const string &cmd, const string &host_name);
   void prep_remote_config_dir (eosd_def &node, host_def *host);
   void launch (eosd_def &node, string &gts);
   void kill (launch_modes mode, string sig_opt);
+  static string get_node_num(uint16_t node_num);
   pair<host_def, eosd_def> find_node(uint16_t node_num);
   vector<pair<host_def, eosd_def>> get_nodes(const string& node_number_list);
   void bounce (const string& node_numbers);
@@ -482,7 +484,9 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("p2p-plugin", bpo::value<string>()->default_value("net"),"select a p2p plugin to use (either net or bnet). Defaults to net.")
     ("genesis,g",bpo::value<bfs::path>(&genesis)->default_value("./genesis.json"),"set the path to genesis.json")
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "nodeos does not require transaction signatures.")
-    ("nodeos", bpo::value<string>(&eosd_extra_args), "forward nodeos command line argument(s) to each instance of nodeos, enclose arg in quotes")
+    ("nodeos", bpo::value<string>(&eosd_extra_args), "forward nodeos command line argument(s) to each instance of nodeos, enclose arg(s) in quotes")
+    ("specific-num", bpo::value<vector<uint>>()->composing(), "forward nodeos command line argument(s) (using \"--specific-nodeos\" flag) to this specific instance of nodeos. This parameter can be entered multiple times and requires a paired \"--specific-nodeos\" flag")
+    ("specific-nodeos", bpo::value<vector<string>>()->composing(), "forward nodeos command line argument(s) to its paired specific instance of nodeos(using \"--specific-num\"), enclose arg(s) in quotes")
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
     ("boot",bpo::bool_switch(&boot)->default_value(false),"After deploying the nodes and generating a boot script, invoke it.")
     ("nogen",bpo::bool_switch(&nogen)->default_value(false),"launch nodes without writing new config files")
@@ -522,6 +526,25 @@ launcher_def::initialize (const variables_map &vmap) {
         cerr << "unrecognized connection mode: " << m << endl;
         exit (-1);
       }
+    }
+  }
+
+  if (vmap.count("specific-num")) {
+    const auto specific_nums = vmap["specific-num"].as<vector<uint>>();
+    const auto specific_args = vmap["specific-nodeos"].as<vector<string>>();
+    if (specific_nums.size() != specific_args.size()) {
+      cerr << "ERROR: every specific-num argument must be paired with a specific-nodeos argument" << endl;
+      exit (-1);
+    }
+    const auto total_nodes = vmap["nodes"].as<size_t>();
+    for(uint i = 0; i < specific_nums.size(); ++i)
+    {
+      const auto& num = specific_nums[i];
+      if (num >= total_nodes) {
+        cerr << "\"--specific-num\" provided value= " << num << " is higher than \"--nodes\" provided value=" << total_nodes << endl;
+        exit (-1);
+      }
+      specific_nodeos_args[num] = specific_args[i];
     }
   }
 
@@ -806,11 +829,11 @@ launcher_def::bind_nodes () {
       cerr << "Unable to allocate producers due to insufficient prod_nodes = " << prod_nodes << "\n";
       exit (10);
    }
-   producer_names names(producers);
    int non_bios = prod_nodes - 1;
    int per_node = producers / non_bios;
    int extra = producers % non_bios;
    unsigned int i = 0;
+   unsigned int producer_number = 0;
    for (auto &h : bindings) {
       for (auto &inst : h.instances) {
          bool is_bios = inst.name == "bios";
@@ -834,12 +857,11 @@ launcher_def::bind_nodes () {
                  ++count;
                  --extra;
               }
-              char ext = i;
               while (count--) {
-                 const auto prodname = names.producer_name(ext);
+                 const auto prodname = producer_names::producer_name(producer_number);
                  node.producers.push_back(prodname);
                  producer_set.schedule.push_back({prodname,pubkey});
-                 ext += non_bios;
+                 ++producer_number;
               }
            }
         }
@@ -1023,8 +1045,6 @@ launcher_def::write_config_file (tn_node_def &node) {
    }
 
    cfg << "blocks-dir = " << block_dir << "\n";
-   cfg << "readonly = 0\n";
-   cfg << "send-whole-blocks = true\n";
    cfg << "http-server-address = " << host->host_name << ":" << instance.http_port << "\n";
    cfg << "http-validate-host = false\n";
    if (p2p == p2p_plugin::NET) {
@@ -1498,6 +1518,12 @@ launcher_def::launch (eosd_def &instance, string &gts) {
        eosdcmd += eosd_extra_args + " ";
     }
   }
+  if (instance.name != "bios" && !specific_nodeos_args.empty()) {
+     const auto node_num = boost::lexical_cast<uint16_t,string>(instance.get_node_num());
+     if (specific_nodeos_args.count(node_num)) {
+        eosdcmd += specific_nodeos_args[node_num] + " ";
+     }
+  }
 
   if( add_enable_stale_production ) {
     eosdcmd += "--enable-stale-production true ";
@@ -1595,11 +1621,16 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
   }
 }
 
+string
+launcher_def::get_node_num(uint16_t node_num) {
+   string node_num_str = node_num < 10 ? "0":"";
+   node_num_str += boost::lexical_cast<string,uint16_t>(node_num);
+   return node_num_str;
+}
+
 pair<host_def, eosd_def>
 launcher_def::find_node(uint16_t node_num) {
-   string dex = node_num < 10 ? "0":"";
-   dex += boost::lexical_cast<string,uint16_t>(node_num);
-   string node_name = network.name + dex;
+   const string node_name = network.name + get_node_num(node_num);
    for (const auto& host: bindings) {
       for (const auto& node: host.instances) {
          if (node_name == node.name) {
@@ -1644,21 +1675,39 @@ launcher_def::get_nodes(const string& node_number_list) {
 }
 
 void
+launcher_def::do_command(const host_def& host, const string& name,
+                         vector<pair<string, string>> env_pairs, const string& cmd) {
+   if (!host.is_local()) {
+      string rcmd = "cd " + host.eosio_home + "; ";
+      for (auto& env_pair : env_pairs) {
+         rcmd += "export " + env_pair.first + "=" + env_pair.second + "; ";
+      }
+      rcmd += cmd;
+      if (!do_ssh(rcmd, host.host_name)) {
+         cerr << "Remote command failed for " << name << endl;
+         exit (-1);
+      }
+   }
+   else {
+      bp::environment e;
+      for (auto& env_pair : env_pairs) {
+         e.emplace(env_pair.first, env_pair.second);
+      }
+      bp::child c(cmd, e);
+      c.wait();
+   }
+}
+
+void
 launcher_def::bounce (const string& node_numbers) {
    auto node_list = get_nodes(node_numbers);
    for (auto node_pair: node_list) {
       const host_def& host = node_pair.first;
       const eosd_def& node = node_pair.second;
-      string node_num = node.name.substr( node.name.length() - 2 );
-      string cmd = "cd " + host.eosio_home + "; "
-                 + "export EOSIO_HOME=" + host.eosio_home + string("; ")
-                 + "export EOSIO_NODE=" + node_num + "; "
-                 + "./scripts/eosio-tn_bounce.sh " + eosd_extra_args;
+      const string node_num = node.get_node_num();
       cout << "Bouncing " << node.name << endl;
-      if (!do_ssh(cmd, host.host_name)) {
-         cerr << "Unable to bounce " << node.name << endl;
-         exit (-1);
-      }
+      string cmd = "./scripts/eosio-tn_bounce.sh " + eosd_extra_args;
+      do_command(host, node.name, { { "EOSIO_HOME", host.eosio_home }, { "EOSIO_NODE", node_num } }, cmd);
    }
 }
 
@@ -1668,17 +1717,12 @@ launcher_def::down (const string& node_numbers) {
    for (auto node_pair: node_list) {
       const host_def& host = node_pair.first;
       const eosd_def& node = node_pair.second;
-      string node_num = node.name.substr( node.name.length() - 2 );
-      string cmd = "cd " + host.eosio_home + "; "
-                 + "export EOSIO_HOME=" + host.eosio_home + "; "
-                 + "export EOSIO_NODE=" + node_num + "; "
-         + "export EOSIO_TN_RESTART_CONFIG_DIR=" + node.config_dir_name + "; "
-                 + "./scripts/eosio-tn_down.sh";
+      const string node_num = node.get_node_num();
       cout << "Taking down " << node.name << endl;
-      if (!do_ssh(cmd, host.host_name)) {
-         cerr << "Unable to down " << node.name << endl;
-         exit (-1);
-      }
+      string cmd = "./scripts/eosio-tn_down.sh ";
+      do_command(host, node.name,
+                 { { "EOSIO_HOME", host.eosio_home }, { "EOSIO_NODE", node_num }, { "EOSIO_TN_RESTART_CONFIG_DIR", node.config_dir_name } },
+                 cmd);
    }
 }
 
@@ -1689,13 +1733,8 @@ launcher_def::roll (const string& host_names) {
    for (string host_name: hosts) {
       cout << "Rolling " << host_name << endl;
       auto host = find_host_by_name_or_address(host_name);
-      string cmd = "cd " + host->eosio_home + "; "
-                 + "export EOSIO_HOME=" + host->eosio_home + "; "
-                 + "./scripts/eosio-tn_roll.sh";
-      if (!do_ssh(cmd, host_name)) {
-         cerr << "Unable to roll " << host << endl;
-         exit (-1);
-      }
+      string cmd = "./scripts/eosio-tn_roll.sh ";
+      do_command(*host, host_name, { { "EOSIO_HOME", host->eosio_home } }, cmd);
    }
 }
 

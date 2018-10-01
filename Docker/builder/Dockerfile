@@ -50,13 +50,6 @@ RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/l
     && cmake --build build --target install \
     && cd .. && rm -rf llvm
 
-RUN git clone --depth 1 https://github.com/cryptonomex/secp256k1-zkp \
-    && cd secp256k1-zkp \
-    && ./autogen.sh \
-    && ./configure --prefix=/usr/local \
-    && make -j$(nproc) install \
-    && cd .. && rm -rf secp256k1-zkp
-
 RUN git clone --depth 1 -b releases/v3.3 https://github.com/mongodb/mongo-cxx-driver \
     && cd mongo-cxx-driver/build \
     && cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local .. \
