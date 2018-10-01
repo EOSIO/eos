@@ -58,7 +58,6 @@
         TEMP_DIR="/tmp"
    fi
    START_MAKE=true
-   TEMP_DIR="/tmp"
    TIME_BEGIN=$( date -u +%s )
    VERSION=1.2
 
