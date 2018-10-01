@@ -396,62 +396,6 @@
 		printf "\\tMongo C++ driver found at /usr/local/lib/libmongocxx-static.a.\\n"
 	fi
 
-	printf "\\n\\tChecking secp256k1-zkp installation.\\n"
-    # install secp256k1-zkp (Cryptonomex branch)
-    if [ ! -e "/usr/local/lib/libsecp256k1.a" ]; then
-		if ! cd "${TEMP_DIR}"
-		then
-			printf "\\tUnable to enter directory %s.\\n" "${TEMP_DIR}"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		if ! git clone https://github.com/cryptonomex/secp256k1-zkp.git
-		then
-			printf "\\tUnable to clone repo secp256k1-zkp @ https://github.com/cryptonomex/secp256k1-zkp.git.\\n"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		if ! cd "${TEMP_DIR}/secp256k1-zkp"
-		then
-			printf "\\tUnable to enter directory %s/secp256k1-zkp.\\n" "${TEMP_DIR}"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		if ! ./autogen.sh
-		then
-			printf "\\tError running autogen.\\n"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		if ! ./configure
-		then
-			printf "\\tConfiguring secp256k1-zkp has returned the above error.\\n"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		if ! make -j"${CPU_CORE}"
-		then
-			printf "\\tError compiling secp256k1-zkp.\\n"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		if ! sudo make install
-		then
-			printf "\\tInstalling secp256k1-zkp has returned the above error.\\n"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		if ! rm -rf "${TEMP_DIR}/secp256k1-zkp"
-		then
-			printf "\\tUnable to remove directory %s/secp256k1-zkp56k1-zkp.\\n" "${TEMP_DIR}"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		printf "\\n\\n\\tSuccessffully installed secp256k1 @ /usr/local/lib/.\\n\\n"
-	else
-		printf "\\tsecp256k1 found at /usr/local/lib/.\\n"
-	fi
-
 	printf "\\n\\tChecking LLVM with WASM support.\\n"
 	if [ ! -d /usr/local/wasm/bin ]; then
 		if ! cd "${TEMP_DIR}"

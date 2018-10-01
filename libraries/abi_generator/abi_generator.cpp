@@ -112,14 +112,19 @@ bool abi_generator::inspect_type_methods_for_actions(const Decl* decl) { try {
 
     // Try to get "action" annotation from method comment
     bool raw_comment_is_action = false;
+    string action_name_from_comment;
     const RawComment* raw_comment = ast_context->getRawCommentForDeclNoCache(method);
     if(raw_comment != nullptr) {
       SourceManager& source_manager = ast_context->getSourceManager();
       string raw_text = raw_comment->getRawText(source_manager);
-      regex r(R"(@abi (action)((?: [a-z0-9]+)*))");
+      regex r(R"(@abi (action) ?((?:[a-z0-9]+)*))");
       smatch smatch;
       regex_search(raw_text, smatch, r);
       raw_comment_is_action = smatch.size() == 3;
+
+      if (raw_comment_is_action) {
+        action_name_from_comment = smatch[2];
+      }
     }
 
     // Check if current method is listed the EOSIO_ABI macro
@@ -156,7 +161,8 @@ bool abi_generator::inspect_type_methods_for_actions(const Decl* decl) { try {
 
     full_types[method_name] = method_name;
 
-    output->actions.push_back({method_name, method_name, rc[method_name]});
+    string action_name = action_name_from_comment.empty() ? method_name : action_name_from_comment;
+    output->actions.push_back({action_name, method_name, rc[method_name]});
     at_least_one_action = true;
   };
 

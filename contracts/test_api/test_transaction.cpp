@@ -317,3 +317,23 @@ void test_transaction::new_feature() {
 void test_transaction::active_new_feature() {
    activate_feature((int64_t)N(newfeature));
 }
+
+void test_transaction::repeat_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action) {
+   using namespace eosio;
+
+   uint128_t sender_id = 0;
+
+   uint32_t payload = unpack_action_data<uint32_t>();
+   print( "repeat_deferred_transaction called: payload = ", payload );
+
+   bool res = cancel_deferred( sender_id );
+
+   print( "\nrepeat_deferred_transaction cancelled trx with sender_id = ", sender_id, ", result is ", res );
+
+   if( payload == 0 ) return;
+
+   --payload;
+   transaction trx;
+   trx.actions.emplace_back( permission_level{receiver, N(active)}, code, action, payload );
+   trx.send( sender_id, receiver );
+}
