@@ -512,11 +512,12 @@ auto catch_and_log(F f) {
 }
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
-   chain_plugin*                   chain_plug = nullptr;
-   fc::optional<scoped_connection> accepted_block_connection;
-   string                          endpoint_address = "0.0.0.0";
-   uint16_t                        endpoint_port    = 4321;
-   std::unique_ptr<tcp::acceptor>  acceptor;
+   chain_plugin*                        chain_plug = nullptr;
+   std::unique_ptr<chainbase::database> db;
+   fc::optional<scoped_connection>      accepted_block_connection;
+   string                               endpoint_address = "0.0.0.0";
+   uint16_t                             endpoint_port    = 4321;
+   std::unique_ptr<tcp::acceptor>       acceptor;
 
    struct session : std::enable_shared_from_this<session> {
       std::shared_ptr<state_history_plugin_impl> plugin;
@@ -559,6 +560,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
 
       void send(const char* s) {
+         // todo: send as string
          send_queue.push_back({s, s + strlen(s)});
          send();
       }
@@ -587,7 +589,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       using result_type = void;
       void operator()(get_state_request_v0&) {
          get_state_result_v0 result;
-         auto&               ind = plugin->chain_plug->chain().db().get_index<state_history_index>().indices();
+         auto&               ind = plugin->db->get_index<state_history_index>().indices();
          if (!ind.empty())
             result.last_block_num = (--ind.end())->id._id;
          send(std::move(result));
@@ -596,7 +598,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       void operator()(get_block_request_v0& req) {
          ilog("${b} get_block_request_v0", ("b", req.block_num));
          get_block_result_v0 result{req.block_num};
-         auto&               ind = plugin->chain_plug->chain().db().get_index<state_history_index>().indices();
+         auto&               ind = plugin->db->get_index<state_history_index>().indices();
          auto                it  = ind.find(req.block_num);
          if (it != ind.end()) {
             result.found = true;
@@ -689,13 +691,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
    void on_accepted_block(const block_state_ptr& block_state) {
       auto& chain = chain_plug->chain();
-      auto& db    = chain.db();
       // dlog("${i}: ${n} transactions",
       //      ("i", block_state->block->block_num())("n", block_state->block->transactions.size()));
-      db.create<state_history_object>([&](state_history_object& hist) {
+      db->create<state_history_object>([&](state_history_object& hist) {
          hist.id = block_state->block->block_num();
          std::vector<table_delta> deltas;
-         for_each_table(db, [&, this](auto* name, auto& index) {
+         for_each_table(chain.db(), [&, this](auto* name, auto& index) {
             if (index.stack().empty())
                return;
             auto& undo = index.stack().back();
@@ -732,8 +733,14 @@ state_history_plugin::state_history_plugin()
 state_history_plugin::~state_history_plugin() {}
 
 void state_history_plugin::set_program_options(options_description& cli, options_description& cfg) {
-   cfg.add_options()("state-endpoint", bpo::value<string>()->default_value("0.0.0.0:8080"),
-                     "the endpoint upon which to listen for incoming connections");
+   auto options = cfg.add_options();
+   options("state-history-dir", bpo::value<bfs::path>()->default_value("state-history"),
+           "the location of the state-history directory (absolute path or relative to application data dir)");
+   options("state-history-db-size-mb", bpo::value<uint64_t>()->default_value(1024),
+           "Maximum size (in MiB) of the state history database");
+   options("delete-state-history", bpo::bool_switch()->default_value(false), "clear state history database");
+   options("state-history-endpoint", bpo::value<string>()->default_value("0.0.0.0:8080"),
+           "the endpoint upon which to listen for incoming connections");
 }
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {
@@ -743,20 +750,33 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       my->chain_plug = app().find_plugin<chain_plugin>();
       EOS_ASSERT(my->chain_plug, chain::missing_chain_plugin_exception, "");
       auto& chain = my->chain_plug->chain();
-      chain.db().add_index<state_history_index>();
       my->accepted_block_connection.emplace(
           chain.accepted_block.connect([&](const block_state_ptr& p) { my->on_accepted_block(p); }));
 
-      if (options.count("state-endpoint")) {
-         auto ip_port         = options.at("state-endpoint").as<string>();
-         auto port            = ip_port.substr(ip_port.find(':') + 1, ip_port.size());
-         auto host            = ip_port.substr(0, ip_port.find(':'));
-         my->endpoint_address = host;
-         my->endpoint_port    = std::stoi(port);
-         idump((ip_port)(host)(port));
+      auto                    dir_option = options.at("state-history-dir").as<bfs::path>();
+      boost::filesystem::path state_history_dir;
+      if (dir_option.is_relative())
+         state_history_dir = app().data_dir() / dir_option;
+      else
+         state_history_dir = dir_option;
+      auto state_history_size = options.at("state-history-db-size-mb").as<uint64_t>() * 1024 * 1024;
+
+      auto ip_port         = options.at("state-history-endpoint").as<string>();
+      auto port            = ip_port.substr(ip_port.find(':') + 1, ip_port.size());
+      auto host            = ip_port.substr(0, ip_port.find(':'));
+      my->endpoint_address = host;
+      my->endpoint_port    = std::stoi(port);
+      idump((ip_port)(host)(port));
+
+      if (options.at("delete-state-history").as<bool>()) {
+         ilog("Deleting state history");
+         boost::filesystem::remove_all(state_history_dir);
       }
 
-      // auto&  ind   = chain.db().get_index<state_history_index>().indices();
+      my->db = std::make_unique<chainbase::database>(state_history_dir, database::read_write, state_history_size);
+      my->db->add_index<state_history_index>();
+
+      // auto&  ind   = my->db->get_index<state_history_index>().indices();
       // size_t total = 0, max_size = 0, max_block = 0, num = 0;
       // for (auto& x : ind) {
       //    if (!(x.id._id % 10000))
