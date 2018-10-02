@@ -257,11 +257,6 @@ def myTest(transWillEnterBlock):
         currencyAccount=accounts[0]
         currencyAccount.name="currency0000"
 
-        Print("Stand up walletd")
-        if walletMgr.launch() is False:
-            error("Failed to stand up eos walletd.")
-            return False
-
         testWalletName="test"
         Print("Creating wallet \"%s\"." % (testWalletName))
         testWallet=walletMgr.create(testWalletName)

@@ -300,7 +300,7 @@ se_wallet::se_wallet() : my(new detail::se_wallet_impl()) {
       }
       unsigned int major, minor;
       if(sscanf(model, "MacBookPro%u,%u", &major, &minor) == 2) {
-         if(major >= 13 && minor >= 2) {
+         if((major >= 15) || (major >= 13 && minor >= 2)) {
             my->populate_existing_keys();
             return;
          }

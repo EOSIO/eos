@@ -1,3 +1,4 @@
+import errno
 import subprocess
 import time
 import os
@@ -18,6 +19,7 @@ class Utils:
     FNull = open(os.devnull, 'w')
 
     EosClientPath="programs/cleos/cleos"
+    MiscEosClientArgs="--no-auto-keosd"
 
     EosWalletName="keosd"
     EosWalletPath="programs/keosd/"+ EosWalletName

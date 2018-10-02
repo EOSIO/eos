@@ -87,6 +87,7 @@ namespace eosio { namespace chain {
          controller( const config& cfg );
          ~controller();
 
+         void add_indices();
          void startup();
 
          /**
@@ -145,9 +146,9 @@ namespace eosio { namespace chain {
           */
          void push_confirmation( const header_confirmation& c );
 
-         chainbase::database& db()const;
+         const chainbase::database& db()const;
 
-         fork_database& fork_db()const;
+         const fork_database& fork_db()const;
 
          const account_object&                 get_account( account_name n )const;
          const global_property_object&         get_global_properties()const;
@@ -285,6 +286,10 @@ namespace eosio { namespace chain {
          }
 
       private:
+         friend class apply_context;
+         friend class transaction_context;
+
+         chainbase::database& mutable_db()const;
 
          std::unique_ptr<controller_impl> my;
 
