@@ -1,3 +1,4 @@
+#include "../../../chain/include/eosio/chain/wasm_eosio_constraints.hpp"
 #include "Inline/BasicTypes.h"
 #include "Inline/Serialization.h"
 #include "Inline/UTF8.h"
@@ -249,7 +250,7 @@ namespace WASM
 	}
 	void serialize(OutputStream& stream,BranchTableImm& imm,FunctionDef& functionDef)
 	{
-		assert(imm.branchTableIndex < functionDef.branchTables.size());
+		WAVM_ASSERT_THROW(imm.branchTableIndex < functionDef.branchTables.size());
 		std::vector<U32>& branchTable = functionDef.branchTables[imm.branchTableIndex];
 		serializeArray(stream,branchTable,[](OutputStream& stream,U32& targetDepth){serializeVarUInt32(stream,targetDepth);});
 		serializeVarUInt32(stream,imm.defaultTargetDepth);
@@ -366,7 +367,7 @@ namespace WASM
 	template<typename SerializeSection>
 	void serializeSection(InputStream& stream,SectionType expectedType,SerializeSection serializeSectionBody)
 	{
-		assert((SectionType)*stream.peek(sizeof(SectionType)) == expectedType);
+		WAVM_ASSERT_THROW((SectionType)*stream.peek(sizeof(SectionType)) == expectedType);
 		stream.advance(sizeof(SectionType));
 		Uptr numSectionBytes = 0;
 		serializeVarUInt32(stream,numSectionBytes);
@@ -380,9 +381,11 @@ namespace WASM
 		serializeConstant(stream,"expected user section (section ID 0)",(U8)SectionType::user);
 		ArrayOutputStream sectionStream;
 		serialize(sectionStream,userSection.name);
+		userSection.data.resize( sectionStream.capacity() ? sectionStream.capacity() : 1 );
 		serializeBytes(sectionStream,userSection.data.data(),userSection.data.size());
 		std::vector<U8> sectionBytes = sectionStream.getBytes();
 		serialize(stream,sectionBytes);
+		if( !sectionStream.capacity() ) throw FatalSerializationException( "empty section" );
 	}
 	
 	void serialize(InputStream& stream,UserSection& userSection)
@@ -396,7 +399,7 @@ namespace WASM
 		throwIfNotValidUTF8(userSection.name);
 		userSection.data.resize(sectionStream.capacity());
 		serializeBytes(sectionStream,userSection.data.data(),userSection.data.size());
-		assert(!sectionStream.capacity());
+		WAVM_ASSERT_THROW(!sectionStream.capacity());
 	}
 
 	struct LocalSet
@@ -485,10 +488,22 @@ namespace WASM
 		// Deserialize local sets and unpack them into a linear array of local types.
 		Uptr numLocalSets = 0;
 		serializeVarUInt32(bodyStream,numLocalSets);
+
+		constexpr size_t max_size = eosio::chain::wasm_constraints::maximum_code_size;
+		if (numBodyBytes >= max_size)
+			throw FatalSerializationException(std::string("Function body too large"));
+		if (numLocalSets >= 1024)
+			throw FatalSerializationException(std::string("too many local sets"));
+		size_t locals_accum = 0;
+
 		for(Uptr setIndex = 0;setIndex < numLocalSets;++setIndex)
 		{
 			LocalSet localSet;
 			serialize(bodyStream,localSet);
+			locals_accum += localSet.num*4;
+			if( locals_accum > eosio::chain::wasm_constraints::maximum_func_local_bytes )
+				throw FatalSerializationException( "too many locals" );
+
 			for(Uptr index = 0;index < localSet.num;++index) { functionDef.nonParameterLocalTypes.push_back(localSet.type); }
 		}
 
@@ -517,7 +532,6 @@ namespace WASM
 			};
 		};
 		codeValidationStream.finish();
-
 		functionDef.code = std::move(irCodeByteStream.getBytes());
 	}
 	
@@ -555,6 +569,7 @@ namespace WASM
 				+ module.memories.imports.size()
 				+ module.globals.imports.size();
 			serializeVarUInt32(sectionStream,size);
+			constexpr size_t max_size = eosio::chain::wasm_constraints::maximum_section_elements;
 			if(Stream::isInput)
 			{
 				for(Uptr index = 0;index < size;++index)
@@ -578,6 +593,8 @@ namespace WASM
 							throw FatalSerializationException("invalid import function type index");
 						}
 						module.functions.imports.push_back({{functionTypeIndex},std::move(moduleName),std::move(exportName)});
+						if (module.functions.imports.size() >= max_size)
+							throw FatalSerializationException(std::string("Too many function imports"));
 						break;
 					}
 					case ObjectKind::table:
@@ -585,6 +602,8 @@ namespace WASM
 						TableType tableType;
 						serialize(sectionStream,tableType);
 						module.tables.imports.push_back({tableType,std::move(moduleName),std::move(exportName)});
+						if (module.functions.imports.size() >= max_size)
+							throw FatalSerializationException(std::string("Too many table imports"));
 						break;
 					}
 					case ObjectKind::memory:
@@ -592,6 +611,8 @@ namespace WASM
 						MemoryType memoryType;
 						serialize(sectionStream,memoryType);
 						module.memories.imports.push_back({memoryType,std::move(moduleName),std::move(exportName)});
+						if (module.functions.imports.size() >= max_size)
+							throw FatalSerializationException(std::string("Too many memory imports"));
 						break;
 					}
 					case ObjectKind::global:
@@ -599,6 +620,8 @@ namespace WASM
 						GlobalType globalType;
 						serialize(sectionStream,globalType);
 						module.globals.imports.push_back({globalType,std::move(moduleName),std::move(exportName)});
+						if (module.functions.imports.size() >= max_size)
+							throw FatalSerializationException(std::string("Too many global imports"));
 						break;
 					}
 					default: throw FatalSerializationException("invalid ObjectKind");
@@ -655,6 +678,9 @@ namespace WASM
 				// Grow the vector one element at a time:
 				// try to get a serialization exception before making a huge allocation for malformed input.
 				module.functions.defs.clear();
+				constexpr size_t max_size = eosio::chain::wasm_constraints::maximum_section_elements;
+				if ( numFunctions >= max_size )
+					throw FatalSerializationException(std::string("Too many function defs"));
 				for(Uptr functionIndex = 0;functionIndex < numFunctions;++functionIndex)
 				{
 					U32 functionTypeIndex = 0;

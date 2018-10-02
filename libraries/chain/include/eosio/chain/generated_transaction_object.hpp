@@ -34,7 +34,15 @@ namespace eosio { namespace chain {
          time_point                    delay_until; /// this generated transaction will not be applied until the specified time
          time_point                    expiration; /// this generated transaction will not be applied after this time
          time_point                    published;
-         shared_vector<char>           packed_trx;
+         shared_string                 packed_trx;
+
+         uint32_t set( const transaction& trx ) {
+            auto trxsize = fc::raw::pack_size( trx );
+            packed_trx.resize( trxsize );
+            fc::datastream<char*> ds( packed_trx.data(), trxsize );
+            fc::raw::pack( ds, trx );
+            return trxsize;
+         }
    };
 
    struct by_trx_id;
@@ -48,13 +56,13 @@ namespace eosio { namespace chain {
       indexed_by<
          ordered_unique< tag<by_id>, BOOST_MULTI_INDEX_MEMBER(generated_transaction_object, generated_transaction_object::id_type, id)>,
          ordered_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, transaction_id_type, trx_id)>,
-         ordered_unique< tag<by_expiration>, 
+         ordered_unique< tag<by_expiration>,
             composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, time_point, expiration),
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
             >
          >,
-         ordered_unique< tag<by_delay>, 
+         ordered_unique< tag<by_delay>,
             composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, time_point, delay_until),
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
@@ -69,7 +77,33 @@ namespace eosio { namespace chain {
       >
    >;
 
-   typedef chainbase::generic_index<generated_transaction_multi_index> generated_transaction_index;
+   class generated_transaction
+   {
+      public:
+         generated_transaction(const generated_transaction_object& gto)
+         :trx_id(gto.trx_id)
+         ,sender(gto.sender)
+         ,sender_id(gto.sender_id)
+         ,payer(gto.payer)
+         ,delay_until(gto.delay_until)
+         ,expiration(gto.expiration)
+         ,published(gto.published)
+         ,packed_trx(gto.packed_trx.begin(), gto.packed_trx.end())
+         {}
+
+         generated_transaction(const generated_transaction& gt) = default;
+         generated_transaction(generated_transaction&& gt) = default;
+
+         transaction_id_type           trx_id;
+         account_name                  sender;
+         uint128_t                     sender_id;
+         account_name                  payer;
+         time_point                    delay_until; /// this generated transaction will not be applied until the specified time
+         time_point                    expiration; /// this generated transaction will not be applied after this time
+         time_point                    published;
+         vector<char>                  packed_trx;
+
+   };
 
    namespace config {
       template<>
@@ -81,4 +115,3 @@ namespace eosio { namespace chain {
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_multi_index)
-

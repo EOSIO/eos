@@ -3,16 +3,9 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <fc/exception/exception.hpp>
+#include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/symbol.hpp>
-
-/// eos with 8 digits of precision
-#define EOS_SYMBOL_VALUE  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('O') << 16) | (uint64_t('S') << 24))
-static const eosio::chain::symbol EOS_SYMBOL(EOS_SYMBOL_VALUE);
-
-/// Defined to be largest power of 10 that fits in 53 bits of precision
-#define EOS_MAX_SHARE_SUPPLY   int64_t(1'000'000'000'000'000ll)
 
 namespace eosio { namespace chain {
 
@@ -25,14 +18,17 @@ with amount = 10 and symbol(4,"CUR")
 
 */
 
-
 struct asset
 {
-   explicit asset(share_type a = 0, symbol id = EOS_SYMBOL)
-      :amount(a), sym(id){}
+   static constexpr int64_t max_amount = (1LL << 62) - 1;
 
-   share_type amount;
-   symbol     sym;
+   explicit asset(share_type a = 0, symbol id = symbol(CORE_SYMBOL)) :amount(a), sym(id) {
+      EOS_ASSERT( is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62" );
+      EOS_ASSERT( sym.valid(), asset_type_exception, "invalid symbol" );
+   }
+
+   bool is_amount_within_range()const { return -max_amount <= amount && amount <= max_amount; }
+   bool is_valid()const               { return is_amount_within_range() && sym.valid(); }
 
    double to_real()const { return static_cast<double>(amount) / precision(); }
 
@@ -40,20 +36,21 @@ struct asset
    string      symbol_name()const;
    int64_t     precision()const;
    const symbol& get_symbol() const { return sym; }
+   share_type get_amount()const { return amount; }
 
    static asset from_string(const string& from);
    string       to_string()const;
 
    asset& operator += (const asset& o)
    {
-      FC_ASSERT(get_symbol() == o.get_symbol());
+      EOS_ASSERT(get_symbol() == o.get_symbol(), asset_type_exception, "addition between two different asset is not allowed");
       amount += o.amount;
       return *this;
    }
 
    asset& operator -= (const asset& o)
    {
-      FC_ASSERT(get_symbol() == o.get_symbol());
+      EOS_ASSERT(get_symbol() == o.get_symbol(), asset_type_exception, "subtraction between two different asset is not allowed");
       amount -= o.amount;
       return *this;
    }
@@ -65,7 +62,7 @@ struct asset
    }
    friend bool operator < (const asset& a, const asset& b)
    {
-      FC_ASSERT(a.get_symbol() == b.get_symbol());
+      EOS_ASSERT(a.get_symbol() == b.get_symbol(), asset_type_exception, "logical operation between two different asset is not allowed");
       return std::tie(a.amount,a.get_symbol()) < std::tie(b.amount,b.get_symbol());
    }
    friend bool operator <= (const asset& a, const asset& b) { return (a == b) || (a < b); }
@@ -74,16 +71,27 @@ struct asset
    friend bool operator >= (const asset& a, const asset& b) { return !(a < b);  }
 
    friend asset operator - (const asset& a, const asset& b) {
-      FC_ASSERT(a.get_symbol() == b.get_symbol());
+      EOS_ASSERT(a.get_symbol() == b.get_symbol(), asset_type_exception, "subtraction between two different asset is not allowed");
       return asset(a.amount - b.amount, a.get_symbol());
    }
 
    friend asset operator + (const asset& a, const asset& b) {
-      FC_ASSERT(a.get_symbol() == b.get_symbol());
+      EOS_ASSERT(a.get_symbol() == b.get_symbol(), asset_type_exception, "addition between two different asset is not allowed");
       return asset(a.amount + b.amount, a.get_symbol());
    }
 
    friend std::ostream& operator << (std::ostream& out, const asset& a) { return out << a.to_string(); }
+
+   friend struct fc::reflector<asset>;
+
+   void reflector_verify()const {
+      EOS_ASSERT( is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62" );
+      EOS_ASSERT( sym.valid(), asset_type_exception, "invalid symbol" );
+   }
+
+private:
+   share_type amount;
+   symbol     sym;
 
 };
 

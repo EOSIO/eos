@@ -7,10 +7,10 @@
 #include <eosio/http_plugin/http_plugin.hpp>
 
 #include <appbase/application.hpp>
-#include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/controller.hpp>
 
 namespace eosio {
-   using eosio::chain::chain_controller;
+   using eosio::chain::controller;
    using std::unique_ptr;
    using namespace appbase;
 

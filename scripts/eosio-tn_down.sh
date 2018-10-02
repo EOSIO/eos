@@ -20,7 +20,7 @@ running=`ps -e | grep $runtest | grep -cv grep `
 if [ $running -ne 0 ]; then
     echo killing $prog
 
-    pkill -15 $prog
+    kill -15 $runtest
 
     for (( a = 1;11-$a; a = $(($a + 1)) )); do
         echo waiting for safe termination, pass $a

@@ -2,72 +2,45 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
+
 #include <eosio/chain/chain_config.hpp>
-
-#include <boost/range/algorithm/nth_element.hpp>
-
-#include <fc/io/json.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 namespace eosio { namespace chain {
 
+   void chain_config::validate()const {
+      EOS_ASSERT( target_block_net_usage_pct <= config::percent_100, action_validate_exception,
+                  "target block net usage percentage cannot exceed 100%" );
+      EOS_ASSERT( target_block_net_usage_pct >= config::percent_1/10, action_validate_exception,
+                  "target block net usage percentage must be at least 0.1%" );
+      EOS_ASSERT( target_block_cpu_usage_pct <= config::percent_100, action_validate_exception,
+                  "target block cpu usage percentage cannot exceed 100%" );
+      EOS_ASSERT( target_block_cpu_usage_pct >= config::percent_1/10, action_validate_exception,
+                  "target block cpu usage percentage must be at least 0.1%" );
 
-template <typename T, typename Range>
-struct properties_median_calculator_visitor {
-   properties_median_calculator_visitor (T& medians, Range votes)
-      : medians(medians), votes(votes)
-   {}
+      EOS_ASSERT( max_transaction_net_usage < max_block_net_usage, action_validate_exception,
+                  "max transaction net usage must be less than max block net usage" );
+      EOS_ASSERT( max_transaction_cpu_usage < max_block_cpu_usage, action_validate_exception,
+                  "max transaction cpu usage must be less than max block cpu usage" );
 
-   template <typename Member, class Class, Member (Class::*member)>
-   void operator() (const char*) const {
-      auto median_itr = boost::begin(votes) + boost::distance(votes)/2;
-      boost::nth_element(votes, median_itr, [](const T& a, const T& b) { return a.*member < b.*member; });
-      medians.*member = (*median_itr).*member;
-   }
+      EOS_ASSERT( base_per_transaction_net_usage < max_transaction_net_usage, action_validate_exception,
+                  "base net usage per transaction must be less than the max transaction net usage" );
+      EOS_ASSERT( (max_transaction_net_usage - base_per_transaction_net_usage) >= config::min_net_usage_delta_between_base_and_max_for_trx,
+                  action_validate_exception,
+                  "max transaction net usage must be at least ${delta} bytes larger than base net usage per transaction",
+                  ("delta", config::min_net_usage_delta_between_base_and_max_for_trx) );
+      EOS_ASSERT( context_free_discount_net_usage_den > 0, action_validate_exception,
+                  "net usage discount ratio for context free data cannot have a 0 denominator" );
+      EOS_ASSERT( context_free_discount_net_usage_num <= context_free_discount_net_usage_den, action_validate_exception,
+                  "net usage discount ratio for context free data cannot exceed 1" );
 
-   T& medians;
-   mutable Range votes;
-};
+      EOS_ASSERT( min_transaction_cpu_usage <= max_transaction_cpu_usage, action_validate_exception,
+                  "min transaction cpu usage cannot exceed max transaction cpu usage" );
+      EOS_ASSERT( max_transaction_cpu_usage < (max_block_cpu_usage - min_transaction_cpu_usage), action_validate_exception,
+                  "max transaction cpu usage must be at less than the difference between the max block cpu usage and the min transaction cpu usage" );
 
-
-template <typename T, typename Range>
-properties_median_calculator_visitor<T, Range> get_median_properties_calculator(T& medians, Range&& votes) {
-   return properties_median_calculator_visitor<T, Range>(medians, std::move(votes));
-}
-
-chain_config chain_config::get_median_values( vector<chain_config> votes) {
-   chain_config results;
-   fc::reflector<chain_config>::visit(get_median_properties_calculator(results, std::move(votes)));
-   return results;
-}
-
-template <typename T>
-struct comparison_visitor {
-   const T& a;
-   const T& b;
-
-   template <typename Member, class Class, Member (Class::*member)>
-   void operator() (const char*) const {
-      if (a.*member != b.*member)
-         // Throw to stop comparing fields: the structs are unequal
-         throw false;
-   }
-};
-
-bool operator==(const chain_config& a, const chain_config& b) {
-   // Yes, it's gross, I'm using a boolean exception to direct normal control flow... that's why it's buried deep in an
-   // implementation detail file. I think it's worth it for the generalization, though: this code keeps working no
-   // matter what updates happen to chain_config
-   //
-   // TODO: this hack gives us short circuit evaluation when we could just use &= on a mutable variable and check at the
-   // end, but that would require visiting all members rather than aborting on first fail.
-   if (&a != &b) {
-      try {
-         fc::reflector<chain_config>::visit(comparison_visitor<chain_config>{a, b});
-      } catch (bool) {
-         return false;
-      }
-   }
-   return true;
+      EOS_ASSERT( 1 <= max_authority_depth, action_validate_exception,
+                  "max authority depth should be at least 1" );
 }
 
 } } // namespace eosio::chain

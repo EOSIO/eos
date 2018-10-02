@@ -18,8 +18,8 @@ struct action_proof_data {
    scope_name                scope;
    action_name               name;
    bytes                     data;
-   uint32_t                  region_id;
-   uint32_t                  cycle_index;
+   uint64_t                  region_id;
+   uint64_t                  cycle_index;
    vector<data_access_info>  data_access;
 };
 FC_REFLECT(action_proof_data, (receiver)(scope)(name)(data)(region_id)(cycle_index)(data_access));
@@ -200,10 +200,14 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, validating_tester ) { try {
       nodes.emplace_back(merkle_node{bt.block.id()});
       size_t block_leaf = nodes.size() - 1;
       block_leaves.push_back(block_leaf);
-      vector<size_t> shard_leaves;
+
+      vector<size_t> region_leaves;
 
       for (uint32_t r_idx = 0; r_idx < bt.region_traces.size(); r_idx++) {
          const auto& rt = bt.region_traces.at(r_idx);
+
+         vector<size_t> shard_leaves;
+
          for (uint32_t c_idx = 0; c_idx < rt.cycle_traces.size(); c_idx++) {
             const auto& ct = rt.cycle_traces.at(c_idx);
 
@@ -219,8 +223,8 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, validating_tester ) { try {
                         at.act.account,
                         at.act.name,
                         at.act.data,
-                        at.region_id,
-                        at.cycle_index,
+                        tt.region_id,
+                        tt.cycle_index,
                         at.data_access
                      };
                      fc::raw::pack(enc, a_data);
@@ -239,9 +243,17 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, validating_tester ) { try {
                shard_leaves.emplace_back(nodes.size() - 1);
             }
          }
+
+         if (shard_leaves.size() > 0) {
+            process_merkle(nodes, move(shard_leaves));
+         } else {
+            nodes.emplace_back(merkle_node{digest_type()});
+         }
+
+         region_leaves.emplace_back(nodes.size() - 1);
       }
 
-      digest_type action_mroot = process_merkle(nodes, move(shard_leaves));
+      digest_type action_mroot = process_merkle(nodes, move(region_leaves));
       BOOST_REQUIRE_EQUAL((std::string)bt.block.action_mroot, (std::string)action_mroot);
 
       last_block_header = bt.block;

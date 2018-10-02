@@ -42,7 +42,7 @@ namespace Platform
 	{
 		U32 preferredVirtualPageSize = sysconf(_SC_PAGESIZE);
 		// Verify our assumption that the virtual page size is a power of two.
-		assert(!(preferredVirtualPageSize & (preferredVirtualPageSize - 1)));
+		WAVM_ASSERT_THROW(!(preferredVirtualPageSize & (preferredVirtualPageSize - 1)));
 		return floorLogTwo(preferredVirtualPageSize);
 	}
 	Uptr getPageSizeLog2()
@@ -278,7 +278,7 @@ namespace Platform
 
 	CallStack captureCallStack(Uptr numOmittedFramesFromTop)
 	{
-		#if defined __linux__ || defined __FreeBSD__
+		#if 0
 			// Unwind the callstack.
 			enum { maxCallStackSize = signalStackNumBytes / sizeof(void*) / 8 };
 			void* callstackAddresses[maxCallStackSize];

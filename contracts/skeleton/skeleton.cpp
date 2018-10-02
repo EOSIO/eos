@@ -1,18 +1,15 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
-#include <skeleton.hpp>
+#include <eosiolib/eosio.hpp>
 
-/**
- *  The init() and apply() methods must have C calling convention so that the blockchain can lookup and
- *  call these methods.
- */
-extern "C" {
+using namespace eosio;
 
-    /// The apply method implements the dispatch of events to this contract
-    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-       eosio::print( "Hello World: ", eosio::name(code), "->", eosio::name(action), "\n" );
-    }
+class hello : public eosio::contract {
+  public:
+      using contract::contract;
 
-} // extern "C"
+      /// @abi action 
+      void hi( account_name user ) {
+         print( "Hello, ", name{user} );
+      }
+};
+
+EOSIO_ABI( hello, (hi) )

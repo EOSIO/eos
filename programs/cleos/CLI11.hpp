@@ -861,13 +861,16 @@ class Option {
     ///@{
 
     /// Set the option as required
-    Option *required(bool value = true) {
-        required_ = value;
+    Option *required() {
+        if( !required_ ) {
+            description_ += " (required)";
+        }
+        required_ = true;
         return this;
     }
 
     /// Support Plubmum term
-    Option *mandatory(bool value = true) { return required(value); }
+    Option *mandatory() { return required(); }
 
     /// Set the number of expected arguments (Flags bypass this)
     Option *expected(int value) {
@@ -1190,7 +1193,7 @@ using App_p = std::unique_ptr<App>;
 /** To use, create a new `Program()` instance with `argc`, `argv`, and a help description. The templated
 *  add_option methods make it easy to prepare options. Remember to call `.start` before starting your
 * program, so that the options can be evaluated and the help option doesn't accidentally run your program. */
-class App {
+class App final {
     friend Option;
     friend detail::AppFriend;
 

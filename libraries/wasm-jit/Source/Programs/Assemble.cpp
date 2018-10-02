@@ -7,7 +7,7 @@ int commandMain(int argc,char** argv)
 {
 	if(argc < 3)
 	{
-		std::cerr << "Usage: Assemble in.wast out.wasm [switches]" << std::endl;
+		std::cerr << "Usage: eosio-wast2wasm in.wast out.wasm [switches]" << std::endl;
 		std::cerr << "  -n|--omit-names\t\tOmits WAST function and local names from the output" << std::endl;
 		return EXIT_FAILURE;
 	}

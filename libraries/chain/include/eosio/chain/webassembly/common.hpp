@@ -10,6 +10,7 @@ using namespace fc;
 namespace eosio { namespace chain { 
 
    class apply_context;
+   class transaction_context;
 
    template<typename T>
    struct class_from_wasm {
@@ -20,6 +21,19 @@ namespace eosio { namespace chain {
        */
       static auto value(apply_context& ctx) {
          return T(ctx);
+      }
+   };
+   
+   template<>
+   struct class_from_wasm<transaction_context> {
+      /**
+       * by default this is just constructing an object
+       * @param wasm - the wasm_interface to use
+       * @return
+       */
+      template <typename ApplyCtx>
+      static auto &value(ApplyCtx& ctx) {
+         return ctx.trx_context;
       }
    };
 
@@ -60,7 +74,7 @@ namespace eosio { namespace chain {
       }
 
       T *value;
-   };
+   }; 
 
    /**
     * class to represent an in-wasm-memory char array that must be null terminated

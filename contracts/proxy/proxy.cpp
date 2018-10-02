@@ -3,9 +3,8 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <proxy/proxy.hpp>
-#include <eosio.system/eosio.system.hpp>
 #include <eosiolib/transaction.hpp>
-#include <eosiolib/currency.hpp>
+#include <eosio.token/eosio.token.hpp>
 
 namespace proxy {
    using namespace eosio;
@@ -34,7 +33,7 @@ namespace proxy {
    };
 
    template<typename T>
-   void apply_transfer(uint64_t receiver, account_name code, const T& transfer) {
+   void apply_transfer(uint64_t receiver, account_name /* code */, const T& transfer) {
       config code_config;
       const auto self = receiver;
       auto get_res = configs::get(code_config, self);
@@ -51,7 +50,7 @@ namespace proxy {
          configs::store(code_config, self);
 
          transaction out;
-         out.actions.emplace_back(permission_level{self, N(active)}, N(currency), N(transfer), new_transfer);
+         out.actions.emplace_back(permission_level{self, N(active)}, N(eosio.token), N(transfer), new_transfer);
          out.delay_sec = code_config.delay;
          out.send(id, self);
       }
@@ -69,7 +68,7 @@ namespace proxy {
    }
 
    template<size_t ...Args>
-   void apply_onerror(uint64_t receiver, const deferred_transaction& failed_dtrx ) {
+   void apply_onerror(uint64_t receiver, const onerror& error ) {
       eosio::print("starting onerror\n");
       const auto self = receiver;
       config code_config;
@@ -78,10 +77,10 @@ namespace proxy {
       auto id = code_config.next_id++;
       configs::store(code_config, self);
 
-      eosio::print("Resending Transaction: ", failed_dtrx.sender_id, " as ", id, "\n");
-      deferred_transaction failed_dtrx_copy = failed_dtrx;
-      failed_dtrx_copy.delay_sec = code_config.delay;
-      failed_dtrx_copy.send(id, self);
+      eosio::print("Resending Transaction: ", error.sender_id, " as ", id, "\n");
+      transaction dtrx = error.unpack_sent_trx();
+      dtrx.delay_sec = code_config.delay;
+      dtrx.send(id, self);
    }
 }
 
@@ -92,20 +91,16 @@ extern "C" {
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-       if ( code == N(eosio)) {
-          if (action == N(onerror)) {
-             apply_onerror(receiver, deferred_transaction::from_current_action());
-          } if( action == N(transfer) ) {
-             apply_transfer(receiver, code, unpack_action_data<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
-          }
-       } else if ( code == N(currency) ) {
-          if( action == N(transfer) ) {
-             apply_transfer(receiver, code, unpack_action_data<eosio::currency::transfer>());
-          }
-       } else if (code == receiver ) {
-          if ( action == N(setowner)) {
-             apply_setowner(receiver, current_action_data<set_owner>());
-          }
-       }
-    }
+      if( code == N(eosio) && action == N(onerror) ) {
+         apply_onerror( receiver, onerror::from_current_action() );
+      } else if( code == N(eosio.token) ) {
+         if( action == N(transfer) ) {
+            apply_transfer(receiver, code, unpack_action_data<eosio::token::transfer_args>());
+         }
+      } else if( code == receiver ) {
+         if( action == N(setowner) ) {
+            apply_setowner(receiver, unpack_action_data<set_owner>());
+         }
+      }
+   }
 }

@@ -14,6 +14,10 @@ extern "C" {
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_general);
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_store_only);
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_check_without_storing);
+      WASM_TEST_HANDLER_EX(test_multi_index, idx64_require_find_fail);
+      WASM_TEST_HANDLER_EX(test_multi_index, idx64_require_find_fail_with_msg);
+      WASM_TEST_HANDLER_EX(test_multi_index, idx64_require_find_sk_fail);
+      WASM_TEST_HANDLER_EX(test_multi_index, idx64_require_find_sk_fail_with_msg);
       WASM_TEST_HANDLER_EX(test_multi_index, idx128_general);
       WASM_TEST_HANDLER_EX(test_multi_index, idx128_store_only);
       WASM_TEST_HANDLER_EX(test_multi_index, idx128_check_without_storing);
@@ -22,6 +26,7 @@ extern "C" {
       WASM_TEST_HANDLER_EX(test_multi_index, idx128_autoincrement_test_part2);
       WASM_TEST_HANDLER_EX(test_multi_index, idx256_general);
       WASM_TEST_HANDLER_EX(test_multi_index, idx_double_general);
+      WASM_TEST_HANDLER_EX(test_multi_index, idx_long_double_general);
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_pk_iterator_exceed_end);
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_sk_iterator_exceed_end);
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_pk_iterator_exceed_begin);

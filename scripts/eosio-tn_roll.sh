@@ -5,7 +5,7 @@
 # all instances are restarted.
 # usage: eosio-tn_roll.sh [arglist]
 # arglist will be passed to the node's command line. First with no modifiers
-# then with --replay and then a third time with --resync
+# then with --hard-replay-blockchain and then a third time with --delete-all-blocks
 #
 # The data directory and log file are set by this script. Do not pass them on
 # the command line.
@@ -82,10 +82,10 @@ cp $SDIR/$RD/$prog $RD/$prog
 
 if [ $DD = "all" ]; then
     for EOSIO_RESTART_DATA_DIR in `ls -d var/lib/node_??`; do
-        bash $EOSIO_HOME/scripts/eosio-tn_up.sh $*
+        bash $EOSIO_HOME/scripts/eosio-tn_up.sh "$*"
     done
 else
-    bash $EOSIO_HOME/scripts/eosio-tn_up.sh $*
+    bash $EOSIO_HOME/scripts/eosio-tn_up.sh "$*"
 fi
 unset EOSIO_RESTART_DATA_DIR
 

@@ -98,7 +98,12 @@ class incremental_merkle_impl {
       :_node_count(0)
       {}
 
-      template<typename Allocator>
+      incremental_merkle_impl( const incremental_merkle_impl& ) = default;
+      incremental_merkle_impl( incremental_merkle_impl&& ) = default;
+      incremental_merkle_impl& operator= (const incremental_merkle_impl& ) = default;
+      incremental_merkle_impl& operator= ( incremental_merkle_impl&& ) = default;
+
+      template<typename Allocator, std::enable_if_t<!std::is_same<std::decay_t<Allocator>, incremental_merkle_impl>::value, int> = 0>
       incremental_merkle_impl( Allocator&& alloc ):_active_nodes(forward<Allocator>(alloc)){}
 
       /*
@@ -233,7 +238,7 @@ class incremental_merkle_impl {
          }
       }
 
-   private:
+//   private:
       uint64_t                         _node_count;
       Container<DigestType, Args...>   _active_nodes;
 };
@@ -242,3 +247,5 @@ typedef incremental_merkle_impl<digest_type>               incremental_merkle;
 typedef incremental_merkle_impl<digest_type,shared_vector> shared_incremental_merkle;
 
 } } /// eosio::chain
+
+FC_REFLECT( eosio::chain::incremental_merkle, (_active_nodes)(_node_count) );

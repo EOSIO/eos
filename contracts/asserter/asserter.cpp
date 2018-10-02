@@ -11,26 +11,14 @@ static int global_variable = 45;
 
 extern "C" {
     /// The apply method implements the dispatch of events to this contract
-    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
+   void apply( uint64_t /* receiver */, uint64_t code, uint64_t action ) {
        require_auth(code);
        if( code == N(asserter) ) {
           if( action == N(procassert) ) {
-             assertdef check;
-             read_action_data(&check, sizeof(assertdef));
-
-             unsigned char buffer[256];
-             size_t actsize = read_action_data(buffer, 256);
-             assertdef *def = reinterpret_cast<assertdef *>(buffer);
-
-             // make sure to null term the string
-             if (actsize < 255) {
-                buffer[actsize] = 0;
-             } else {
-                buffer[255] = 0;
-             }
+             assertdef def = eosio::unpack_action_data<assertdef>();
 
              // maybe assert?
-             eosio_assert((uint32_t)def->condition, def->message);
+             eosio_assert((uint32_t)def.condition, def.message.c_str());
           } else if( action == N(provereset) ) {
              eosio_assert(global_variable == 45, "Global Variable Initialized poorly");
              global_variable = 100;

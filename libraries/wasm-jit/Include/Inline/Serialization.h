@@ -2,6 +2,7 @@
 
 #include "Platform/Platform.h"
 
+#include "../../../chain/include/eosio/chain/wasm_eosio_constraints.hpp"
 #include <string>
 #include <vector>
 #include <string.h>
@@ -31,7 +32,7 @@ namespace Serialization
 		inline U8* advance(Uptr numBytes)
 		{
 			if(next + numBytes > end) { extendBuffer(numBytes); }
-			assert(next + numBytes <= end);
+			WAVM_ASSERT_THROW(next + numBytes <= end);
 
 			U8* data = next;
 			next += numBytes;
@@ -128,7 +129,12 @@ namespace Serialization
 	FORCEINLINE void serializeBytes(OutputStream& stream,const U8* bytes,Uptr numBytes)
 	{ memcpy(stream.advance(numBytes),bytes,numBytes); }
 	FORCEINLINE void serializeBytes(InputStream& stream,U8* bytes,Uptr numBytes)
-	{ memcpy(bytes,stream.advance(numBytes),numBytes); }
+	{ 
+      if ( numBytes < eosio::chain::wasm_constraints::wasm_page_size )
+         memcpy(bytes,stream.advance(numBytes),numBytes); 
+      else
+         throw FatalSerializationException(std::string("Trying to deserialize bytes of size : " + std::to_string((uint64_t)numBytes)));
+   }
 	
 	// Serialize basic C++ types.
 	template<typename Stream,typename Value>
@@ -185,12 +191,29 @@ namespace Serialization
 		};
 
 		// Ensure that the input does not encode more than maxBits of data.
-		enum { numUsedBitsInHighestByte = maxBits - (maxBytes-1) * 7 };
-		enum { highestByteUsedBitmask = U8(1<<numUsedBitsInHighestByte)-U8(1) };
-		enum { highestByteSignedBitmask = U8(~U8(highestByteUsedBitmask) & ~U8(0x80)) };
-		if((bytes[maxBytes-1] & ~highestByteUsedBitmask) != 0
-		&& ((bytes[maxBytes-1] & ~highestByteUsedBitmask) != U8(highestByteSignedBitmask) || !std::is_signed<Value>::value))
-		{ throw FatalSerializationException("Invalid LEB encoding: invalid final byte"); }
+		enum { numUsedBitsInLastByte = maxBits - (maxBytes-1) * 7 };
+		enum { numUnusedBitsInLast = 8 - numUsedBitsInLastByte };
+		enum { lastBitUsedMask = U8(1<<(numUsedBitsInLastByte-1)) };
+		enum { lastByteUsedMask = U8(1<<numUsedBitsInLastByte)-U8(1) };
+		enum { lastByteSignedMask = U8(~U8(lastByteUsedMask) & ~U8(0x80)) };
+		const U8 lastByte = bytes[maxBytes-1];
+		if(!std::is_signed<Value>::value)
+		{
+			if((lastByte & ~lastByteUsedMask) != 0)
+			{
+				throw FatalSerializationException("Invalid unsigned LEB encoding: unused bits in final byte must be 0");
+			}
+		}
+		else
+		{
+			const I8 signBit = I8((lastByte & lastBitUsedMask) << numUnusedBitsInLast);
+			const I8 signExtendedLastBit = signBit >> numUnusedBitsInLast;
+			if((lastByte & ~lastByteUsedMask) != (signExtendedLastBit & lastByteSignedMask))
+			{
+				throw FatalSerializationException(
+					"Invalid signed LEB encoding: unused bits in final byte must match the most-significant used bit");
+			}
+		}
 
 		// Decode the buffer's bytes into the output integer.
 		value = 0;
@@ -236,6 +259,7 @@ namespace Serialization
 	template<typename Stream>
 	void serialize(Stream& stream,std::string& string)
 	{
+      constexpr size_t max_size = eosio::chain::wasm_constraints::maximum_func_local_bytes;
 		Uptr size = string.size();
 		serializeVarUInt32(stream,size);
 		if(Stream::isInput)
@@ -243,6 +267,8 @@ namespace Serialization
 			// Advance the stream before resizing the string:
 			// try to get a serialization exception before making a huge allocation for malformed input.
 			const U8* inputBytes = stream.advance(size);
+         if (size >= max_size)
+            throw FatalSerializationException(std::string("Trying to deserialize string of size : " + std::to_string((uint64_t)size) + ", which is over by "+std::to_string(size - max_size )+" bytes"));
 			string.resize(size);
 			memcpy(const_cast<char*>(string.data()),inputBytes,size);
 			string.shrink_to_fit();
@@ -253,6 +279,7 @@ namespace Serialization
 	template<typename Stream,typename Element,typename Allocator,typename SerializeElement>
 	void serializeArray(Stream& stream,std::vector<Element,Allocator>& vector,SerializeElement serializeElement)
 	{
+      constexpr size_t max_size = eosio::chain::wasm_constraints::maximum_func_local_bytes;
 		Uptr size = vector.size();
 		serializeVarUInt32(stream,size);
 		if(Stream::isInput)
@@ -260,12 +287,14 @@ namespace Serialization
 			// Grow the vector one element at a time:
 			// try to get a serialization exception before making a huge allocation for malformed input.
 			vector.clear();
+         if (size >= max_size)
+            throw FatalSerializationException(std::string("Trying to deserialize array of size : " + std::to_string((uint64_t)size) + ", which is over by "+std::to_string(size - max_size )+" bytes"));
 			for(Uptr index = 0;index < size;++index)
 			{
 				vector.push_back(Element());
 				serializeElement(stream,vector.back());
 			}
-			vector.shrink_to_fit();
+         vector.shrink_to_fit();
 		}
 		else
 		{

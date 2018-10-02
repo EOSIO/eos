@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <eosiolib/eos.hpp>
+#include <eosiolib/eosio.hpp>
 #include <eosiolib/token.hpp>
 #include <eosiolib/reflect.hpp>
 #include <eosiolib/generic_currency.hpp>

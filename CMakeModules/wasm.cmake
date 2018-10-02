@@ -22,7 +22,7 @@ macro(compile_wast)
   endif()
   set(outfiles "")
   foreach(srcfile ${SOURCE_FILES})
-    
+
     get_filename_component(outfile ${srcfile} NAME)
     get_filename_component(extension ${srcfile} EXT)
     get_filename_component(infile ${srcfile} ABSOLUTE)
@@ -54,7 +54,7 @@ macro(compile_wast)
     endif()
 
     set(WASM_COMMAND ${WASM_CLANG} -emit-llvm -O3 ${STDFLAG} --target=wasm32 -ffreestanding
-              -nostdlib -nostdlibinc -fno-threadsafe-statics -fno-rtti -fno-exceptions  
+              -nostdlib -nostdlibinc -DBOOST_DISABLE_ASSERTS -DBOOST_EXCEPTION_DISABLE -fno-threadsafe-statics -fno-rtti -fno-exceptions
               -c ${infile} -o ${outfile}.bc
     )
     if (${ARG_NOWARNINGS})
@@ -71,10 +71,6 @@ macro(compile_wast)
     if ("${ARG_SYSTEM_INCLUDE_FOLDERS}" STREQUAL "")
        set (ARG_SYSTEM_INCLUDE_FOLDERS ${DEFAULT_SYSTEM_INCLUDE_FOLDERS})
     endif()
-    foreach(folder ${ARG_SYSTEM_INCLUDE_FOLDERS})
-       list(APPEND WASM_COMMAND -isystem ${folder})
-    endforeach()
-
     foreach(folder ${ARG_SYSTEM_INCLUDE_FOLDERS})
        list(APPEND WASM_COMMAND -isystem ${folder})
     endforeach()
@@ -111,8 +107,6 @@ macro(add_wast_library)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
   )
-  #TODO: Fix this path on pending cmake install changes
-  install(FILES ${${ARG_TARGET}_BC_FILENAME} DESTINATION usr/share/eosio/contractsdk/lib)
 
 endmacro(add_wast_library)
 
@@ -151,12 +145,22 @@ macro(add_wast_executable)
 
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast
     DEPENDS ${target}.s
-    COMMAND $<TARGET_FILE:eosio-s2wasm> -o ${DESTINATION_FOLDER}/${target}.wast -s 4096 ${MAX_MEMORY_PARAM} ${target}.s
+    COMMAND $<TARGET_FILE:eosio-s2wasm> -o ${DESTINATION_FOLDER}/${target}.wast -s 10240 ${MAX_MEMORY_PARAM} ${target}.s
     COMMENT "Generating WAST ${target}.wast"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
   )
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.wast)
+
+  add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wasm
+    DEPENDS ${target}.wast
+    COMMAND $<TARGET_FILE:eosio-wast2wasm> ${DESTINATION_FOLDER}/${target}.wast ${DESTINATION_FOLDER}/${target}.wasm -n
+    COMMENT "Generating WASM ${target}.wasm"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    VERBATIM
+  )
+  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.wasm)
+
   STRING (REPLACE "." "_" TARGET_VARIABLE "${target}")
 
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast.hpp
@@ -167,7 +171,7 @@ macro(add_wast_executable)
     COMMENT "Generating ${target}.wast.hpp"
     VERBATIM
   )
-  
+
   if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${target}.abi )
     add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.abi.hpp
       DEPENDS ${DESTINATION_FOLDER}/${target}.abi
@@ -181,14 +185,26 @@ macro(add_wast_executable)
     set(extra_target_dependency   ${DESTINATION_FOLDER}/${target}.abi.hpp)
   else()
   endif()
-  
-  add_custom_target(${target} ALL DEPENDS ${DESTINATION_FOLDER}/${target}.wast.hpp ${extra_target_dependency})
-  
+
+  add_custom_target(${target} ALL DEPENDS ${DESTINATION_FOLDER}/${target}.wast.hpp ${extra_target_dependency} ${DESTINATION_FOLDER}/${target}.wasm)
+
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${DESTINATION_FOLDER}/${target}.wast.hpp)
 
   set_property(TARGET ${target} PROPERTY INCLUDE_DIRECTORIES ${ARG_INCLUDE_FOLDERS})
 
   set(extra_target_dependency)
+
+  # For CLion code insight
+  foreach(folder ${ARG_INCLUDE_FOLDERS})
+    include_directories(${folder})
+  endforeach()
+  include_directories(${Boost_INCLUDE_DIR})
+
+  if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${target}.hpp)
+    set(HEADER_FILE ${CMAKE_CURRENT_SOURCE_DIR}/${target}.hpp)
+  endif()
+  file(GLOB HEADER_FILES ${ARG_INCLUDE_FOLDERS}/*.hpp ${SYSTEM_INCLUDE_FOLDERS}/*.hpp)
+  add_executable(${target}.tmp EXCLUDE_FROM_ALL ${SOURCE_FILES} ${HEADER_FILE} ${HEADER_FILES})
 
   add_test(NAME "validate_${target}_abi"
            COMMAND ${CMAKE_BINARY_DIR}/scripts/abi_is_json.py ${ABI_FILES})

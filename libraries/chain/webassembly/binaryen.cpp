@@ -43,7 +43,7 @@ class binaryen_instantiated_module : public wasm_instantiated_module_interface {
          memset(_shared_linear_memory.data, 0, initial_memory_size);
          //copy back in the initial data
          memcpy(_shared_linear_memory.data, _initial_memory.data(), _initial_memory.size());
-
+         
          //be aware that construction of the ModuleInstance implictly fires the start function
          ModuleInstance instance(*_module.get(), &local_interface);
          instance.callExport(Name(entry_point), args);
@@ -61,7 +61,7 @@ std::unique_ptr<wasm_instantiated_module_interface> binaryen_runtime::instantiat
       WasmBinaryBuilder builder(*module, code, false);
       builder.read();
 
-      FC_ASSERT(module->memory.initial * Memory::kPageSize <= wasm_constraints::maximum_linear_memory);
+      EOS_ASSERT(module->memory.initial * Memory::kPageSize <= wasm_constraints::maximum_linear_memory, binaryen_exception, "exceeds maximum linear memory");
 
       // create a temporary globals to  use
       TrivialGlobalManager globals;
@@ -73,7 +73,7 @@ std::unique_ptr<wasm_instantiated_module_interface> binaryen_runtime::instantiat
       table.resize(module->table.initial);
       for (auto& segment : module->table.segments) {
          Address offset = ConstantExpressionRunner<TrivialGlobalManager>(globals).visit(segment.offset).value.geti32();
-         assert(offset + segment.data.size() <= module->table.initial);
+         EOS_ASSERT( uint64_t(offset) + segment.data.size() <= module->table.initial, binaryen_exception, "");
          for (size_t i = 0; i != segment.data.size(); ++i) {
             table[offset + i] = segment.data[i];
          }
@@ -93,7 +93,7 @@ std::unique_ptr<wasm_instantiated_module_interface> binaryen_runtime::instantiat
             }
          }
 
-         FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",import->module.c_str())("export",import->base.c_str()) );
+         EOS_ASSERT( !"unresolvable", wasm_exception, "${module}.${export} unresolveable", ("module",import->module.c_str())("export",import->base.c_str()) );
       }
 
       return std::make_unique<binaryen_instantiated_module>(_memory, initial_memory, move(table), move(import_lut), move(module));

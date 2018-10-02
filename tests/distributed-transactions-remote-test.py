@@ -1,56 +1,64 @@
 #!/usr/bin/env python3
 
-import testUtils
+from testUtils import Utils
+from Cluster import Cluster
+from TestHelper import TestHelper
 
-import argparse
 import subprocess
+import tempfile
+import os
 
-Print=testUtils.Utils.Print
+###############################################################
+# distributed-transactions-remote-test
+#  Tests remote capability of the distributed-transactions-test. Test will setup cluster and pass nodes info to distributed-transactions-test. E.g.
+#  distributed-transactions-remote-test.py -v --clean-run --dump-error-detail
+###############################################################
 
-def errorExit(msg="", errorCode=1):
-    Print("ERROR:", msg)
-    exit(errorCode)
+Print=Utils.Print
+errorExit=Utils.errorExit
 
-pnodes=3
-nodesFile="tests/sample-cluster-map.json"
-parser = argparse.ArgumentParser()
-parser.add_argument("-p", type=int, help="producing nodes count", default=pnodes)
-parser.add_argument("-v", help="verbose", action='store_true')
-parser.add_argument("--nodes-file", type=str, help="File containing nodes info in JSON format.", default=nodesFile)
-parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
-parser.add_argument("--dump-error-details",
-                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
-                    action='store_true')
-
-args = parser.parse_args()
+args = TestHelper.parse_args({"-p","--dump-error-details","-v","--leave-running","--clean-run"})
 pnodes=args.p
-nodesFile=args.nodes_file
 debug=args.v
-amINoon=not args.not_noon
+dontKill=args.leave_running
 dumpErrorDetails=args.dump_error_details
+killAll=args.clean_run
 
-testUtils.Utils.Debug=debug
+Utils.Debug=debug
 
-killEosInstances=True
+killEosInstances=not dontKill
 topo="mesh"
 delay=1
-total_nodes=pnodes
+prodCount=1 # producers per producer node
+total_nodes=pnodes+3
 actualTest="tests/distributed-transactions-test.py"
 testSuccessful=False
 
-if not amINoon:
-    testUtils.Utils.iAmNotNoon()
-cluster=testUtils.Cluster()
+clusterMapJsonTemplate="""{
+    "keys": {
+        "defproduceraPrivateKey": "%s",
+        "defproducerbPrivateKey": "%s"
+    },
+    "nodes": [
+        {"port": 8888, "host": "localhost"},
+        {"port": 8889, "host": "localhost"},
+        {"port": 8890, "host": "localhost"}
+    ]
+}
+"""
 
+cluster=Cluster()
+
+(fd, nodesFile) = tempfile.mkstemp()
 try:
-    Print("BEGIN")
-    cluster.killall()
+    TestHelper.printSystemInfo("BEGIN")
+    cluster.killall(allInstances=killAll)
     cluster.cleanup()
 
     Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" %
            (pnodes, total_nodes-pnodes, topo, delay))
     Print("Stand up cluster")
-    if cluster.launch(pnodes, total_nodes, topo, delay) is False:
+    if cluster.launch(pnodes, total_nodes, prodCount, topo, delay) is False:
         errorExit("Failed to stand up eos cluster.")
 
     Print ("Wait for Cluster stabilization")
@@ -58,7 +66,17 @@ try:
     if not cluster.waitOnClusterBlockNumSync(3):
         errorExit("Cluster never stabilized")
 
-    cmd="%s --nodes-file %s %s %s" % (actualTest, nodesFile, "-v" if debug else "", "" if amINoon else "--not-noon")
+    producerKeys=Cluster.parseClusterKeys(total_nodes)
+    defproduceraPrvtKey=producerKeys["defproducera"]["private"]
+    defproducerbPrvtKey=producerKeys["defproducerb"]["private"]
+
+    clusterMapJson = clusterMapJsonTemplate % (defproduceraPrvtKey, defproducerbPrvtKey)
+
+    tfile = os.fdopen(fd, "w")
+    tfile.write(clusterMapJson)
+    tfile.close()
+
+    cmd="%s --nodes-file %s %s %s" % (actualTest, nodesFile, "-v" if debug else "", "--dont-kill" if dontKill else "")
     Print("Starting up distributed transactions test: %s" % (actualTest))
     Print("cmd: %s\n" % (cmd))
     if 0 != subprocess.call(cmd, shell=True):
@@ -67,13 +85,7 @@ try:
     testSuccessful=True
     Print("\nEND")
 finally:
-    if not testSuccessful and dumpErrorDetails:
-        cluster.dumpErrorDetails()
-        Print("== Errors see above ==")
-
-    if killEosInstances:
-        Print("Shut down the cluster and cleanup.")
-        cluster.killall()
-        cluster.cleanup()
+    os.remove(nodesFile)
+    TestHelper.shutdown(cluster, None, testSuccessful, killEosInstances, False, False, killAll, dumpErrorDetails)
 
 exit(0)

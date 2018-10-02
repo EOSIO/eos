@@ -139,8 +139,7 @@ struct limit_order {
 
                   print("Items sorted by val (secondary key):\n");
                   for( const auto& item : validx ) {
-                     print(" ID=", item.primary_key(), ", val=");
-                     cout << item.val << "\n";
+                     print(" ID=", item.primary_key(), ", val=", item.val, "\n");
                   }
 
                   auto upper = validx.upper_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL));
@@ -152,8 +151,7 @@ struct limit_order {
 
                   print("Items sorted by primary key:\n");
                   for( const auto& item : testtable ) {
-                     print(" ID=", item.primary_key(), ", val=");
-                     cout << item.val << "\n";
+                     print(" ID=", item.primary_key(), ", val=", item.val, "\n");
                   }
 
                }
@@ -170,7 +168,7 @@ struct limit_order {
 namespace multi_index_test {
    extern "C" {
       /// The apply method implements the dispatch of events to this contract
-      void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
+      void apply( uint64_t /* receiver */, uint64_t code, uint64_t action ) {
          require_auth(code);
          eosio_assert(eosio::dispatch<multi_index_test, multi_index_test::trigger>(code, action),
                       "Could not dispatch");

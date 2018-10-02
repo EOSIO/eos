@@ -1,8 +1,7 @@
 #pragma once
 
 #include "BasicTypes.h"
-
-#include <assert.h>
+#include "Errors.h"
 
 namespace UTF8
 {
@@ -90,7 +89,7 @@ namespace UTF8
 		}
 		else
 		{
-			assert(codepoint < 0x200000);
+			WAVM_ASSERT_THROW(codepoint < 0x200000);
 			outString += char((codepoint >> 18) & 0x07) | 0xF0;
 			outString += char((codepoint >> 12) & 0x3F) | 0x80;
 			outString += char((codepoint >> 6) & 0x3F) | 0x80;

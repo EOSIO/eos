@@ -38,7 +38,7 @@ namespace IR
 		{
 			std::string result = " " + std::to_string(imm.defaultTargetDepth);
 			const char* prefix = " [";
-			assert(imm.branchTableIndex < functionDef.branchTables.size());
+			WAVM_ASSERT_THROW(imm.branchTableIndex < functionDef.branchTables.size());
 			for(auto depth : functionDef.branchTables[imm.branchTableIndex]) { result += prefix + std::to_string(depth); prefix = ","; }
 			result += "]";
 			return result;

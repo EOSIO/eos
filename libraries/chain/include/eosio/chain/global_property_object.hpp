@@ -16,14 +16,6 @@
 
 namespace eosio { namespace chain {
 
-   struct blocknum_producer_schedule {
-      blocknum_producer_schedule( allocator<char> a )
-      :second(a){}
-
-      block_num_type                first;
-      shared_producer_schedule_type second;
-   };
-
    /**
     * @class global_property_object
     * @brief Maintains global state information (committee_member list, current fees)
@@ -34,19 +26,12 @@ namespace eosio { namespace chain {
     */
    class global_property_object : public chainbase::object<global_property_object_type, global_property_object>
    {
-      OBJECT_CTOR(global_property_object, (active_producers)(new_active_producers)(pending_active_producers) )
+      OBJECT_CTOR(global_property_object, (proposed_schedule))
 
-      id_type                                                  id;
-      chain_config                                             configuration;
-      shared_producer_schedule_type                            active_producers;
-      shared_producer_schedule_type                            new_active_producers;
-
-      /** every block that has change in producer schedule gets inserted into this list, this includes
-       * all blocks that see a change in producer signing keys or vote order.
-       *
-       * TODO: consider moving this to a more effeicent datatype
-       */
-      shared_vector< blocknum_producer_schedule > pending_active_producers;
+      id_type                           id;
+      optional<block_num_type>          proposed_schedule_block_num;
+      shared_producer_schedule_type     proposed_schedule;
+      chain_config                      configuration;
    };
 
 
@@ -62,45 +47,10 @@ namespace eosio { namespace chain {
     */
    class dynamic_global_property_object : public chainbase::object<dynamic_global_property_object_type, dynamic_global_property_object>
    {
-        OBJECT_CTOR(dynamic_global_property_object, (block_merkle_root))
+        OBJECT_CTOR(dynamic_global_property_object)
 
-        id_type              id;
-        uint32_t             head_block_number = 0;
-        block_id_type        head_block_id;
-        time_point           time;
-        account_name         current_producer;
-
-        /**
-         * The current absolute slot number.  Equal to the total
-         * number of slots since genesis.  Also equal to the total
-         * number of missed slots plus head_block_number.
-         */
-        uint64_t          current_absolute_slot = 0;
-
-        /**
-         * Bitmap used to compute producer participation. Stores
-         * a high bit for each generated block, a low bit for
-         * each missed block. Least significant bit is most
-         * recent block.
-         *
-         * NOTE: This bitmap always excludes the head block,
-         * which, by definition, exists. The least significant
-         * bit corresponds to the block with number
-         * head_block_num()-1
-         *
-         * e.g. if the least significant 5 bits were 10011, it
-         * would indicate that the last two blocks prior to the
-         * head block were produced, the two before them were
-         * missed, and the one before that was produced.
-         */
-        //uint64_t recent_slots_filled;
-
-        uint32_t last_irreversible_block_num = 0;
-
-        /**
-         * Used to calculate the merkle root over all blocks
-         */
-        shared_incremental_merkle  block_merkle_root;
+        id_type    id;
+        uint64_t   global_action_sequence = 0;
    };
 
    using global_property_multi_index = chainbase::shared_multi_index_container<
@@ -128,16 +78,9 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::dynamic_global_property_object,
                          eosio::chain::dynamic_global_property_multi_index)
 
 FC_REFLECT(eosio::chain::dynamic_global_property_object,
-           (head_block_number)
-           (head_block_id)
-           (time)
-           (current_producer)
-           (current_absolute_slot)
-           /* (recent_slots_filled) */
-           (last_irreversible_block_num)
+           (global_action_sequence)
           )
 
 FC_REFLECT(eosio::chain::global_property_object,
-           (configuration)
-           (active_producers)
+           (proposed_schedule_block_num)(proposed_schedule)(configuration)
           )

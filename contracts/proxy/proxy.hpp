@@ -2,14 +2,18 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
+#pragma once
+
 #include <eosiolib/eosio.hpp>
 
 namespace proxy {
-   
+
    //@abi action
-   struct PACKED( set_owner ) {
+   struct set_owner {
       account_name owner;
       uint32_t     delay;
+
+      EOSLIB_SERIALIZE( set_owner, (owner)(delay) )
    };
 
    //@abi table

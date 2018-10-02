@@ -136,7 +136,6 @@
 #include <stdexcept>
 */
 //include <eosiolib/eos.hpp>
-#include <eosiolib/token.hpp>
 #include <eosiolib/dispatcher.hpp>
 
 using namespace eosio;
@@ -159,9 +158,6 @@ namespace stltest {
     
     class contract {
     public:
-        typedef eosio::token<N(mycurrency),S(4,MYCUR)> token_type;
-        static const uint64_t code                = token_type::code;
-        static const uint64_t symbol              = token_type::symbol;
         static const uint64_t sent_table_name = N(sent);
         static const uint64_t received_table_name = N(received);
 
