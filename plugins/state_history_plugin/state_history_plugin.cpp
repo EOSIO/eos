@@ -471,31 +471,31 @@ namespace eosio {
 
 template <typename F>
 static void for_each_table(chainbase::database& db, F f) {
-   f("account_index", db.get_index<account_index>());
-   f("account_sequence_index", db.get_index<account_sequence_index>());
+   f("account", db.get_index<account_index>());
+   f("account_sequence", db.get_index<account_sequence_index>());
 
-   f("table_id_multi_index", db.get_index<table_id_multi_index>());
-   f("key_value_index", db.get_index<key_value_index>());
-   f("index64_index", db.get_index<index64_index>());
-   f("index128_index", db.get_index<index128_index>());
-   f("index256_index", db.get_index<index256_index>());
-   f("index_double_index", db.get_index<index_double_index>());
-   f("index_long_double_index", db.get_index<index_long_double_index>());
+   f("table_id", db.get_index<table_id_multi_index>());
+   f("key_value", db.get_index<key_value_index>());
+   f("index64", db.get_index<index64_index>());
+   f("index128", db.get_index<index128_index>());
+   f("index256", db.get_index<index256_index>());
+   f("index_double", db.get_index<index_double_index>());
+   f("index_long_double", db.get_index<index_long_double_index>());
 
-   f("global_property_multi_index", db.get_index<global_property_multi_index>());
-   f("dynamic_global_property_multi_index", db.get_index<dynamic_global_property_multi_index>());
-   f("block_summary_multi_index", db.get_index<block_summary_multi_index>());
-   f("transaction_multi_index", db.get_index<transaction_multi_index>());
-   f("generated_transaction_multi_index", db.get_index<generated_transaction_multi_index>());
+   f("global_property", db.get_index<global_property_multi_index>());
+   f("dynamic_global_property", db.get_index<dynamic_global_property_multi_index>());
+   f("block_summary", db.get_index<block_summary_multi_index>());
+   f("transaction", db.get_index<transaction_multi_index>());
+   f("generated_transaction", db.get_index<generated_transaction_multi_index>());
 
-   f("permission_index", db.get_index<permission_index>());
-   f("permission_usage_index", db.get_index<permission_usage_index>());
-   f("permission_link_index", db.get_index<permission_link_index>());
+   f("permission", db.get_index<permission_index>());
+   f("permission_usage", db.get_index<permission_usage_index>());
+   f("permission_link", db.get_index<permission_link_index>());
 
-   f("resource_limits_index", db.get_index<resource_limits::resource_limits_index>());
-   f("resource_usage_index", db.get_index<resource_limits::resource_usage_index>());
-   f("resource_limits_state_index", db.get_index<resource_limits::resource_limits_state_index>());
-   f("resource_limits_config_index", db.get_index<resource_limits::resource_limits_config_index>());
+   f("resource_limits", db.get_index<resource_limits::resource_limits_index>());
+   f("resource_usage", db.get_index<resource_limits::resource_usage_index>());
+   f("resource_limits_state", db.get_index<resource_limits::resource_limits_state_index>());
+   f("resource_limits_config", db.get_index<resource_limits::resource_limits_config_index>());
 }
 
 template <typename F>
@@ -738,6 +738,8 @@ void state_history_plugin::set_program_options(options_description& cli, options
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {
    try {
+      // todo: check for --disable-replay-opts
+
       my->chain_plug = app().find_plugin<chain_plugin>();
       EOS_ASSERT(my->chain_plug, chain::missing_chain_plugin_exception, "");
       auto& chain = my->chain_plug->chain();

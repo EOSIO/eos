@@ -35,7 +35,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "account_object_v0", "fields": [
+            "name": "account_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "name", "name": "name" },
                 { "type": "uint8", "name": "vm_type" },
@@ -49,7 +49,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "account_sequence_object_v0", "fields": [
+            "name": "account_sequence_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "name", "name": "name" },
                 { "type": "uint64", "name": "recv_sequence" },
@@ -59,7 +59,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "table_id_object_v0", "fields": [
+            "name": "table_id_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "name", "name": "code" },
                 { "type": "name", "name": "scope" },
@@ -69,7 +69,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "key_value_object_v0", "fields": [
+            "name": "key_value_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "uint64", "name": "t_id" },
                 { "type": "uint64", "name": "primary_key" },
@@ -78,7 +78,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "index64_object_v0", "fields": [
+            "name": "index64_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "uint64", "name": "t_id" },
                 { "type": "uint64", "name": "primary_key" },
@@ -87,7 +87,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "index128_object_v0", "fields": [
+            "name": "index128_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "uint64", "name": "t_id" },
                 { "type": "uint64", "name": "primary_key" },
@@ -102,7 +102,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "index256_object_v0", "fields": [
+            "name": "index256_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "uint64", "name": "t_id" },
                 { "type": "uint64", "name": "primary_key" },
@@ -111,7 +111,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "index_double_object_v0", "fields": [
+            "name": "index_double_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "uint64", "name": "t_id" },
                 { "type": "uint64", "name": "primary_key" },
@@ -120,7 +120,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "index_long_double_object_v0", "fields": [
+            "name": "index_long_double_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "uint64", "name": "t_id" },
                 { "type": "uint64", "name": "primary_key" },
@@ -162,7 +162,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "global_property_object_v0", "fields": [
+            "name": "global_property_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "uint32?", "name": "proposed_schedule_block_num" },
                 { "type": "shared_producer_schedule_type", "name": "proposed_schedule" },
@@ -170,26 +170,26 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "dynamic_global_property_object_v0", "fields": [
+            "name": "dynamic_global_property_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "uint64", "name": "global_action_sequence" }
             ]
         },
         {
-            "name": "block_summary_object_v0", "fields": [
+            "name": "block_summary_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "checksum256", "name": "block_id" }
             ]
         },
         {
-            "name": "transaction_object_v0", "fields": [
+            "name": "transaction_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "time_point_sec", "name": " expiration" },
                 { "type": "checksum256", "name": "trx_id" }
             ]
         },
         {
-            "name": "generated_transaction_object_v0", "fields": [
+            "name": "generated_transaction_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "checksum256", "name": "trx_id" },
                 { "type": "name", "name": "sender" },
@@ -234,7 +234,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "permission_object_v0", "fields": [
+            "name": "permission_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "uint64", "name": "usage_id" },
                 { "type": "uint64", "name": "parent" },
@@ -245,13 +245,13 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "permission_usage_object_v0", "fields": [
+            "name": "permission_usage_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "time_point", "name": " last_used" }
             ]
         },
         {
-            "name": "permission_link_object_v0", "fields": [
+            "name": "permission_link_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "name", "name": "account" },
                 { "type": "name", "name": "code" },
@@ -260,7 +260,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "resource_limits_object_v0", "fields": [
+            "name": "resource_limits_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "name", "name": "owner" },
                 { "type": "bool", "name": "pending" },
@@ -277,7 +277,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "resource_usage_object_v0", "fields": [
+            "name": "resource_usage_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "name", "name": "owner" },
                 { "type": "usage_accumulator", "name": "net_usage" },
@@ -286,7 +286,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "resource_limits_state_object_v0", "fields": [
+            "name": "resource_limits_state_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "usage_accumulator", "name": "average_block_net_usage" },
                 { "type": "usage_accumulator", "name": "average_block_cpu_usage" },
@@ -316,7 +316,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "resource_limits_config_object_v0", "fields": [
+            "name": "resource_limits_config_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "elastic_limit_parameters", "name": "cpu_limit_parameters" },
                 { "type": "elastic_limit_parameters", "name": "net_limit_parameters" },
@@ -330,60 +330,60 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "result", "types": ["get_state_result_v0", "get_block_result_v0"] },
 
         { "name": "table_delta", "types": ["table_delta_v0"] },
-        { "name": "account_object", "types": ["account_object_v0"] },
-        { "name": "account_sequence_object", "types": ["account_sequence_object_v0"] },
-        { "name": "table_id_object", "types": ["table_id_object_v0"] },
-        { "name": "key_value_object", "types": ["key_value_object_v0"] },
-        { "name": "index64_object", "types": ["index64_object_v0"] },
-        { "name": "index128_object", "types": ["index128_object_v0"] },
-        { "name": "index256_object", "types": ["index256_object_v0"] },
-        { "name": "index_double_object", "types": ["index_double_object_v0"] },
-        { "name": "index_long_double_object", "types": ["index_long_double_object_v0"] },
+        { "name": "account", "types": ["account_v0"] },
+        { "name": "account_sequence", "types": ["account_sequence_v0"] },
+        { "name": "table_id", "types": ["table_id_v0"] },
+        { "name": "key_value", "types": ["key_value_v0"] },
+        { "name": "index64", "types": ["index64_v0"] },
+        { "name": "index128", "types": ["index128_v0"] },
+        { "name": "index256", "types": ["index256_v0"] },
+        { "name": "index_double", "types": ["index_double_v0"] },
+        { "name": "index_long_double", "types": ["index_long_double_v0"] },
         { "name": "producer_key", "types": ["producer_key_v0"] },
         { "name": "shared_producer_schedule_type", "types": ["shared_producer_schedule_type_v0"] },
         { "name": "chain_config", "types": ["chain_config_v0"] },
-        { "name": "global_property_object", "types": ["global_property_object_v0"] },
-        { "name": "dynamic_global_property_object", "types": ["dynamic_global_property_object_v0"] },
-        { "name": "block_summary_object", "types": ["block_summary_object_v0"] },
-        { "name": "transaction_object", "types": ["transaction_object_v0"] },
-        { "name": "generated_transaction_object", "types": ["generated_transaction_object_v0"] },
+        { "name": "global_property", "types": ["global_property_v0"] },
+        { "name": "dynamic_global_property", "types": ["dynamic_global_property_v0"] },
+        { "name": "block_summary", "types": ["block_summary_v0"] },
+        { "name": "transaction", "types": ["transaction_v0"] },
+        { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
         { "name": "key_weight", "types": ["key_weight_v0"] },
         { "name": "permission_level", "types": ["permission_level_v0"] },
         { "name": "permission_level_weight", "types": ["permission_level_weight_v0"] },
         { "name": "wait_weight", "types": ["wait_weight_v0"] },
         { "name": "shared_authority", "types": ["shared_authority_v0"] },
-        { "name": "permission_object", "types": ["permission_object_v0"] },
-        { "name": "permission_usage_object", "types": ["permission_usage_object_v0"] },
-        { "name": "permission_link_object", "types": ["permission_link_object_v0"] },
-        { "name": "resource_limits_object", "types": ["resource_limits_object_v0"] },
+        { "name": "permission", "types": ["permission_v0"] },
+        { "name": "permission_usage", "types": ["permission_usage_v0"] },
+        { "name": "permission_link", "types": ["permission_link_v0"] },
+        { "name": "resource_limits", "types": ["resource_limits_v0"] },
         { "name": "usage_accumulator", "types": ["usage_accumulator_v0"] },
-        { "name": "resource_usage_object", "types": ["resource_usage_object_v0"] },
-        { "name": "resource_limits_state_object", "types": ["resource_limits_state_object_v0"] },
+        { "name": "resource_usage", "types": ["resource_usage_v0"] },
+        { "name": "resource_limits_state", "types": ["resource_limits_state_v0"] },
         { "name": "resource_limits_ratio", "types": ["resource_limits_ratio_v0"] },
         { "name": "elastic_limit_parameters", "types": ["elastic_limit_parameters_v0"] },
-        { "name": "resource_limits_config_object", "types": ["resource_limits_config_object_v0"] }
+        { "name": "resource_limits_config", "types": ["resource_limits_config_v0"] }
     ],
     "tables": [
-        { "name": "account_index", "type": "account_object" },
-        { "name": "account_sequence_index", "type": "account_sequence_object" },
-        { "name": "table_id_multi_index", "type": "table_id_object" },
-        { "name": "key_value_index", "type": "key_value_object" },
-        { "name": "index64_index", "type": "index64_object" },
-        { "name": "index128_index", "type": "index128_object" },
-        { "name": "index256_index", "type": "index256_object" },
-        { "name": "index_double_index", "type": "index_double_object" },
-        { "name": "index_long_double_index", "type": "index_long_double_object" },
-        { "name": "global_property_multi_index", "type": "global_property_object" },
-        { "name": "dynamic_global_property_multi_index", "type": "dynamic_global_property_object" },
-        { "name": "block_summary_multi_index", "type": "block_summary_object" },
-        { "name": "transaction_multi_index", "type": "transaction_object" },
-        { "name": "generated_transaction_multi_index", "type": "generated_transaction_object" },
-        { "name": "permission_index", "type": "permission_object" },
-        { "name": "permission_usage_index", "type": "permission_usage_object" },
-        { "name": "permission_link_index", "type": "permission_link_object" },
-        { "name": "resource_limits_index", "type": "resource_limits_object" },
-        { "name": "resource_usage_index", "type": "resource_usage_object" },
-        { "name": "resource_limits_state_index", "type": "resource_limits_state_object" },
-        { "name": "resource_limits_config_index", "type": "resource_limits_config_object" }
+        { "name": "account", "type": "account" },
+        { "name": "account_sequence", "type": "account_sequence" },
+        { "name": "table_id", "type": "table_id" },
+        { "name": "key_value", "type": "key_value" },
+        { "name": "index64", "type": "index64" },
+        { "name": "index128", "type": "index128" },
+        { "name": "index256", "type": "index256" },
+        { "name": "index_double", "type": "index_double" },
+        { "name": "index_long_double", "type": "index_long_double" },
+        { "name": "global_property", "type": "global_property" },
+        { "name": "dynamic_global_property", "type": "dynamic_global_property" },
+        { "name": "block_summary", "type": "block_summary" },
+        { "name": "transaction", "type": "transaction" },
+        { "name": "generated_transaction", "type": "generated_transaction" },
+        { "name": "permission", "type": "permission" },
+        { "name": "permission_usage", "type": "permission_usage" },
+        { "name": "permission_link", "type": "permission_link" },
+        { "name": "resource_limits", "type": "resource_limits" },
+        { "name": "resource_usage", "type": "resource_usage" },
+        { "name": "resource_limits_state", "type": "resource_limits_state" },
+        { "name": "resource_limits_config", "type": "resource_limits_config" }
     ]
 })";
