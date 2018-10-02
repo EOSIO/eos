@@ -451,7 +451,14 @@ using boost::signals2::scoped_connection;
 
 static appbase::abstract_plugin& _state_history_plugin = app().register_plugin<state_history_plugin>();
 
-struct state_history_object : public chainbase::object<state_history_object_type, state_history_object> {
+enum class state_history_db_object_type {
+   null_object_type = 0,
+   state_history_object_type,
+};
+
+struct state_history_object
+    : public chainbase::object<(uint16_t)state_history_db_object_type::state_history_object_type,
+                               state_history_object> {
    OBJECT_CTOR(state_history_object, (deltas))
 
    id_type       id;
