@@ -49,8 +49,15 @@
    DOXYGEN=false
    ENABLE_COVERAGE_TESTING=false
    CORE_SYMBOL_NAME="SYS"
+   # Use current directory's tmp directory if noexec is enabled for /tmp
+   if (mount | grep "/tmp " | grep --quiet noexec); then
+        mkdir -p $SOURCE_DIR/tmp
+        TEMP_DIR="${SOURCE_DIR}/tmp"
+        rm -rf $SOURCE_DIR/tmp/*
+   else # noexec wasn't found
+        TEMP_DIR="/tmp"
+   fi
    START_MAKE=true
-   TEMP_DIR="/tmp"
    TIME_BEGIN=$( date -u +%s )
    VERSION=1.2
 
@@ -153,7 +160,7 @@
       OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
 
       case "$OS_NAME" in
-         "Amazon Linux AMI")
+         "Amazon Linux AMI"|"Amazon Linux")
             FILE="${SOURCE_DIR}/scripts/eosio_build_amazon.sh"
             CXX_COMPILER=g++
             C_COMPILER=gcc
@@ -269,7 +276,8 @@
       exit 0
    fi
 
-   if ! make -j"${CPU_CORE}"
+   if [ -z ${JOBS} ]; then JOBS=$CPU_CORE; fi # Future proofing: Ensure $JOBS is set (usually set in scripts/eosio_build_*.sh scripts)
+   if ! make -j"${JOBS}"
    then
       printf "\\n\\t>>>>>>>>>>>>>>>>>>>> MAKE building EOSIO has exited with the above error.\\n\\n"
       exit -1
