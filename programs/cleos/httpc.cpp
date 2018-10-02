@@ -21,6 +21,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <boost/asio/ssl/rfc2818_verification.hpp>
 #include "httpc.hpp"
 
 using boost::asio::ip::tcp;
@@ -240,9 +241,10 @@ namespace eosio { namespace client { namespace http {
 
          boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(cp.context->ios, ssl_context);
          SSL_set_tlsext_host_name(socket.native_handle(), url.server.c_str());
-         if(cp.verify_cert)
+         if(cp.verify_cert) {
             socket.set_verify_mode(boost::asio::ssl::verify_peer);
-
+            socket.set_verify_callback(boost::asio::ssl::rfc2818_verification(url.server));
+         }
          do_connect(socket.next_layer(), url);
          socket.handshake(boost::asio::ssl::stream_base::client);
          re = do_txrx(socket, request, status_code);
