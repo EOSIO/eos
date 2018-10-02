@@ -3083,6 +3083,7 @@ int main( int argc, char** argv ) {
       if (verbose_errors) {
          elog("connect error: ${e}", ("e", e.to_detail_string()));
       }
+      return 1;
    } catch (const fc::exception& e) {
       // attempt to extract the error code if one is present
       if (!print_recognized_errors(e, verbose_errors)) {
