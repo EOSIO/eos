@@ -91,7 +91,9 @@ namespace eosio { namespace client { namespace http {
    const string get_table_func = chain_func_base + "/get_table_rows";
    const string get_table_by_scope_func = chain_func_base + "/get_table_by_scope";
    const string get_code_func = chain_func_base + "/get_code";
+   const string get_code_hash_func = chain_func_base + "/get_code_hash";
    const string get_abi_func = chain_func_base + "/get_abi";
+   const string get_raw_abi_func = chain_func_base + "/get_raw_abi";
    const string get_raw_code_and_abi_func = chain_func_base + "/get_raw_code_and_abi";
    const string get_currency_balance_func = chain_func_base + "/get_currency_balance";
    const string get_currency_stats_func = chain_func_base + "/get_currency_stats";
