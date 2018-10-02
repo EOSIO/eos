@@ -2446,6 +2446,8 @@ int main( int argc, char** argv ) {
       if (actions.size()) {
          std::cerr << localized("Publishing contract...") << std::endl;
          send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      } else {
+         std::cout << "no transaction is sent" << std::endl;
       }
    });
    codeSubcommand->set_callback(set_code_callback);
