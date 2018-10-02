@@ -698,34 +698,51 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
    void on_accepted_block(const block_state_ptr& block_state) {
       auto& chain = chain_plug->chain();
-      // dlog("${i}: ${n} transactions",
-      //      ("i", block_state->block->block_num())("n", block_state->block->transactions.size()));
+      auto& idx   = db->get_index<state_history_index>();
+
+      uint64_t num_removed = 0;
+      while (!idx.indices().empty() && (--idx.indices().end())->id._id >= block_state->block->block_num()) {
+         db->remove(*--idx.indices().end());
+         ++num_removed;
+      }
+      if (num_removed)
+         ilog("fork: removed ${n} blocks", ("n", num_removed));
+      EOS_ASSERT(idx.indices().empty() || (--idx.indices().end())->id._id + 1 == block_state->block->block_num(),
+                 plugin_exception, "missed a fork switch");
+
+      bool fresh = idx.indices().empty();
+      if (fresh)
+         ilog("start fresh at block ${n}", ("n", block_state->block->block_num()));
+
       db->create<state_history_object>([&](state_history_object& hist) {
          hist.id = block_state->block->block_num();
          std::vector<table_delta> deltas;
          for_each_table(chain.db(), [&, this](auto* name, auto& index) {
-            if (index.stack().empty())
-               return;
-            auto& undo = index.stack().back();
-            if (undo.old_values.empty() && undo.new_ids.empty() && undo.removed_values.empty())
-               return;
-            deltas.push_back({});
-            auto& delta = deltas.back();
-            delta.name  = name;
-            // dlog("    ${name} rev=${r} old=${o} new=${n} rem=${rem}",
-            //      ("name", name)("r", undo.revision)("o", undo.old_values.size())("n", undo.new_ids.size())(
-            //          "rem", undo.removed_values.size()));
-            for (auto& old : undo.old_values)
-               delta.rows.emplace_back(old.first._id, fc::raw::pack(make_history_serial_wrapper(index.get(old.first))));
-            for (auto id : undo.new_ids)
-               delta.rows.emplace_back(id._id, fc::raw::pack(make_history_serial_wrapper(index.get(id))));
-            for (auto& old : undo.removed_values)
-               delta.removed.push_back(old.first._id);
-            // if (name == std::string("account_index")) {
-            //    dlog("account_sequence_index");
-            //    for (auto& r : delta.rows)
-            //       dlog("    ${id} ${bytes}", ("id", r.first)("bytes", r.second));
-            // }
+            if (fresh) {
+               if (index.indices().empty())
+                  return;
+               deltas.push_back({});
+               auto& delta = deltas.back();
+               delta.name  = name;
+               for (auto& row : index.indices())
+                  delta.rows.emplace_back(row.id._id, fc::raw::pack(make_history_serial_wrapper(row)));
+            } else {
+               if (index.stack().empty())
+                  return;
+               auto& undo = index.stack().back();
+               if (undo.old_values.empty() && undo.new_ids.empty() && undo.removed_values.empty())
+                  return;
+               deltas.push_back({});
+               auto& delta = deltas.back();
+               delta.name  = name;
+               for (auto& old : undo.old_values)
+                  delta.rows.emplace_back(old.first._id,
+                                          fc::raw::pack(make_history_serial_wrapper(index.get(old.first))));
+               for (auto id : undo.new_ids)
+                  delta.rows.emplace_back(id._id, fc::raw::pack(make_history_serial_wrapper(index.get(id))));
+               for (auto& old : undo.removed_values)
+                  delta.removed.push_back(old.first._id);
+            }
          });
          auto bin = fc::raw::pack(deltas);
          // dlog("    ${s} bytes", ("s", bin.size()));
