@@ -65,16 +65,12 @@ class WalletMgr(object):
         if self.isLocal():
             self.port=self.findAvailablePort()
 
+        pgrepCmd=Utils.pgrepCmd(Utils.EosWalletName)
         if Utils.Debug:
-            portStatus="N/A"
             portTaken=False
             if self.isLocal():
-                if Utils.arePortsAvailable(self.port):
-                    portStatus="AVAILABLE"
-                else:
-                    portStatus="NOT AVAILABLE"
+                if not Utils.arePortsAvailable(self.port):
                     portTaken=True
-            pgrepCmd=Utils.pgrepCmd(Utils.EosWalletName)
             psOut=Utils.checkOutput(pgrepCmd.split(), ignoreError=True)
             if psOut or portTaken:
                 statusMsg=""
@@ -95,10 +91,11 @@ class WalletMgr(object):
         time.sleep(2)
 
         try:
+            if Utils.Debug: Utils.Print("Checking if %s launched. %s" % (Utils.EosWalletName, pgrepCmd))
             psOut=Utils.checkOutput(pgrepCmd.split())
-            if Utils.Debug: Utils.Print("Launched %s. %s - {%s}" % (Utils.EosWalletName, pgrepCmd, psOut))
+            if Utils.Debug: Utils.Print("Launched %s. {%s}" % (Utils.EosWalletName, psOut))
         except subprocess.CalledProcessError as ex:
-            Utils.errorExit("Failed to launch the wallet manager on")
+            Utils.errorExit("Failed to launch the wallet manager")
 
         return True
 
