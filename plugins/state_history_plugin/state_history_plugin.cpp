@@ -477,32 +477,34 @@ CHAINBASE_SET_INDEX_TYPE(eosio::state_history_object, eosio::state_history_index
 namespace eosio {
 
 template <typename F>
-static void for_each_table(chainbase::database& db, F f) {
-   f("account", db.get_index<account_index>());
-   f("account_sequence", db.get_index<account_sequence_index>());
+static void for_each_table(const chainbase::database& db, F f) {
+   f("account", db.get_index<account_index>(), [](auto&) { return true; });
+   f("account_sequence", db.get_index<account_sequence_index>(), [](auto&) { return true; });
 
-   f("table_id", db.get_index<table_id_multi_index>());
-   f("key_value", db.get_index<key_value_index>());
-   f("index64", db.get_index<index64_index>());
-   f("index128", db.get_index<index128_index>());
-   f("index256", db.get_index<index256_index>());
-   f("index_double", db.get_index<index_double_index>());
-   f("index_long_double", db.get_index<index_long_double_index>());
+   f("table_id", db.get_index<table_id_multi_index>(), [](auto&) { return true; });
+   f("key_value", db.get_index<key_value_index>(), [](auto&) { return true; });
+   f("index64", db.get_index<index64_index>(), [](auto&) { return true; });
+   f("index128", db.get_index<index128_index>(), [](auto&) { return true; });
+   f("index256", db.get_index<index256_index>(), [](auto&) { return true; });
+   f("index_double", db.get_index<index_double_index>(), [](auto&) { return true; });
+   f("index_long_double", db.get_index<index_long_double_index>(), [](auto&) { return true; });
 
-   f("global_property", db.get_index<global_property_multi_index>());
-   f("dynamic_global_property", db.get_index<dynamic_global_property_multi_index>());
-   f("block_summary", db.get_index<block_summary_multi_index>());
-   f("transaction", db.get_index<transaction_multi_index>());
-   f("generated_transaction", db.get_index<generated_transaction_multi_index>());
+   f("global_property", db.get_index<global_property_multi_index>(), [](auto&) { return true; });
+   f("dynamic_global_property", db.get_index<dynamic_global_property_multi_index>(), [](auto&) { return true; });
+   f("block_summary", db.get_index<block_summary_multi_index>(),
+     [](auto& row) { return row.block_id != block_id_type(); });
+   f("transaction", db.get_index<transaction_multi_index>(), [](auto&) { return true; });
+   f("generated_transaction", db.get_index<generated_transaction_multi_index>(), [](auto&) { return true; });
 
-   f("permission", db.get_index<permission_index>());
-   f("permission_usage", db.get_index<permission_usage_index>());
-   f("permission_link", db.get_index<permission_link_index>());
+   f("permission", db.get_index<permission_index>(), [](auto&) { return true; });
+   f("permission_usage", db.get_index<permission_usage_index>(), [](auto&) { return true; });
+   f("permission_link", db.get_index<permission_link_index>(), [](auto&) { return true; });
 
-   f("resource_limits", db.get_index<resource_limits::resource_limits_index>());
-   f("resource_usage", db.get_index<resource_limits::resource_usage_index>());
-   f("resource_limits_state", db.get_index<resource_limits::resource_limits_state_index>());
-   f("resource_limits_config", db.get_index<resource_limits::resource_limits_config_index>());
+   f("resource_limits", db.get_index<resource_limits::resource_limits_index>(), [](auto&) { return true; });
+   f("resource_usage", db.get_index<resource_limits::resource_usage_index>(), [](auto&) { return true; });
+   f("resource_limits_state", db.get_index<resource_limits::resource_limits_state_index>(), [](auto&) { return true; });
+   f("resource_limits_config", db.get_index<resource_limits::resource_limits_config_index>(),
+     [](auto&) { return true; });
 }
 
 template <typename F>
@@ -543,6 +545,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          stream->next_layer().set_option(boost::asio::socket_base::send_buffer_size(1024 * 1024));
          stream->next_layer().set_option(boost::asio::socket_base::receive_buffer_size(1024 * 1024));
          stream->async_accept([self = shared_from_this(), this](boost::system::error_code ec) {
+            if (!plugin->db)
+               return;
             callback(ec, "async_accept", [&] {
                start_read();
                send(state_history_plugin_abi);
@@ -554,6 +558,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          auto in_buffer = std::make_shared<boost::beast::flat_buffer>();
          stream->async_read(
              *in_buffer, [self = shared_from_this(), this, in_buffer](boost::system::error_code ec, size_t) {
+                if (!plugin->db)
+                   return;
                 callback(ec, "async_read", [&] {
                    auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer->data()));
                    auto s = boost::asio::buffer_size(in_buffer->data());
@@ -585,6 +591,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          stream->async_write( //
              boost::asio::buffer(send_queue[0]),
              [self = shared_from_this(), this](boost::system::error_code ec, size_t) {
+                if (!plugin->db)
+                   return;
                 callback(ec, "async_write", [&] {
                    send_queue.erase(send_queue.begin());
                    sending = false;
@@ -680,6 +688,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    void do_accept() {
       auto socket = std::make_shared<tcp::socket>(app().get_io_service());
       acceptor->async_accept(*socket, [self = shared_from_this(), socket, this](auto ec) {
+         if (!db)
+            return;
          if (ec) {
             if (ec == boost::system::errc::too_many_files_open)
                catch_and_log([&] { do_accept(); });
@@ -717,7 +727,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       db->create<state_history_object>([&](state_history_object& hist) {
          hist.id = block_state->block->block_num();
          std::vector<table_delta> deltas;
-         for_each_table(chain.db(), [&, this](auto* name, auto& index) {
+         for_each_table(chain.db(), [&, this](auto* name, auto& index, auto filter) {
             if (fresh) {
                if (index.indices().empty())
                   return;
@@ -725,7 +735,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                auto& delta = deltas.back();
                delta.name  = name;
                for (auto& row : index.indices())
-                  delta.rows.emplace_back(row.id._id, fc::raw::pack(make_history_serial_wrapper(row)));
+                  if (filter(row))
+                     delta.rows.emplace_back(row.id._id, fc::raw::pack(make_history_serial_wrapper(row)));
             } else {
                if (index.stack().empty())
                   return;
@@ -735,13 +746,19 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                deltas.push_back({});
                auto& delta = deltas.back();
                delta.name  = name;
-               for (auto& old : undo.old_values)
-                  delta.rows.emplace_back(old.first._id,
-                                          fc::raw::pack(make_history_serial_wrapper(index.get(old.first))));
-               for (auto id : undo.new_ids)
-                  delta.rows.emplace_back(id._id, fc::raw::pack(make_history_serial_wrapper(index.get(id))));
+               for (auto& old : undo.old_values) {
+                  auto& row = index.get(old.first);
+                  if (filter(row))
+                     delta.rows.emplace_back(old.first._id, fc::raw::pack(make_history_serial_wrapper(row)));
+               }
+               for (auto id : undo.new_ids) {
+                  auto& row = index.get(id);
+                  if (filter(row))
+                     delta.rows.emplace_back(id._id, fc::raw::pack(make_history_serial_wrapper(row)));
+               }
                for (auto& old : undo.removed_values)
-                  delta.removed.push_back(old.first._id);
+                  if (filter(old.second))
+                     delta.removed.push_back(old.first._id);
             }
          });
          auto bin = fc::raw::pack(deltas);
@@ -825,6 +842,7 @@ void state_history_plugin::plugin_shutdown() {
    my->accepted_block_connection.reset();
    while (!my->sessions.empty())
       my->sessions.begin()->second->close();
+   my->db.reset();
 }
 
 } // namespace eosio
