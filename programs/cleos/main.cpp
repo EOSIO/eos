@@ -2333,12 +2333,14 @@ int main( int argc, char** argv ) {
 
       std::vector<char> old_wasm;
       bool duplicate = false;
+      fc::sha256 old_hash, new_hash;
       if (!suppress_duplicate_check) {
          try {
-            const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", account));
-            old_wasm = result["wasm"].as_blob().data;
+            const auto result = call(get_code_hash_func, fc::mutable_variant_object("account_name", account));
+            old_hash = fc::sha256(result["code_hash"].as_string());
          } catch (...) {
-            std::cout << "Failed to get old contract, continue without duplicate check..." << std::endl;
+            std::cerr << "Failed to get existing code hash, continue without duplicate check..." << std::endl;
+            suppress_duplicate_check = true;
          }
       }
 
@@ -2362,12 +2364,15 @@ int main( int argc, char** argv ) {
         if(wasm.compare(0, 8, binary_wasm_header))
            std::cerr << localized("WARNING: ") << wasmPath << localized(" doesn't look like a binary WASM file. Is it something else, like WAST? Trying anyways...") << std::endl;
         code_bytes = bytes(wasm.begin(), wasm.end());
-
-        if (code_bytes.size() > 0 && code_bytes.size() == old_wasm.size()) {
-           duplicate = (memcmp(&(code_bytes[0]), &(old_wasm[0]), code_bytes.size()) == 0);
-        }
       } else {
         code_bytes = bytes();
+      }
+
+      if (!suppress_duplicate_check) {
+         if (code_bytes.size()) {
+            new_hash = fc::sha256::hash(&(code_bytes[0]), code_bytes.size());
+         }
+         duplicate = (old_hash == new_hash);
       }
 
       if (!duplicate) {
@@ -2387,14 +2392,11 @@ int main( int argc, char** argv ) {
       bool duplicate = false;
       if (!suppress_duplicate_check) {
          try {
-            const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", account));
-            const std::vector<char> abi_v = result["abi"].as_blob().data;
-            abi_def abi_d;
-            if (abi_serializer::to_abi(abi_v, abi_d)) {
-               old_abi = fc::raw::pack(abi_d);
-            }
+            const auto result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
+            old_abi = result["abi"].as_blob().data;
          } catch (...) {
-            std::cout << "Failed to get old contract, continue without duplicate check..." << std::endl;
+            std::cerr << "Failed to get existing raw abi, continue without duplicate check..." << std::endl;
+            suppress_duplicate_check = true;
          }
       }
 
@@ -2412,11 +2414,12 @@ int main( int argc, char** argv ) {
         EOS_ASSERT( fc::exists( abiPath ), abi_file_not_found, "no abi file found ${f}", ("f", abiPath)  );
 
         abi_bytes = fc::raw::pack(fc::json::from_file(abiPath).as<abi_def>());
-        if (abi_bytes.size() > 0 && abi_bytes.size() == old_abi.size()) {
-           duplicate = (memcmp(&(abi_bytes[0]), &(old_abi[0]), abi_bytes.size()) == 0);
-        }
       } else {
         abi_bytes = bytes();
+      }
+
+      if (!suppress_duplicate_check) {
+         duplicate = (old_abi.size() == abi_bytes.size() && std::equal(old_abi.begin(), old_abi.end(), abi_bytes.begin()));
       }
 
       if (!duplicate) {
