@@ -287,7 +287,7 @@ template <typename ST>
 static datastream<ST>& operator<<(datastream<ST>&                                                      ds,
                                   const history_serial_wrapper<eosio::chain::permission_level_weight>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<eosio::chain::permission_level>(obj.obj.permission));
+   fc::raw::pack(ds, make_history_serial_wrapper(as_type<eosio::chain::permission_level>(obj.obj.permission)));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.weight));
    return ds;
 }
