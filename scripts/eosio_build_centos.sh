@@ -502,7 +502,7 @@ mongodconf
 			exit 1;
 		fi
 		MONGODRIVERTGZ="mongo-c-driver-1.10.2.tar.gz"
-		MONGODRIVEURL="https://github.com/mongodb/mongo-c-driver/releases/download/1.10.2/${MONGODRIVERTGZ}"
+		MONGODRIVERURL="https://github.com/mongodb/mongo-c-driver/releases/download/1.10.2/${MONGODRIVERTGZ}"
 		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 "${MONGODRIVERURL}" )
 		if [ "${STATUS}" -ne 200 ]; then
 			if ! rm -f "${TEMP_DIR}/${MONGODRIVERTGZ}"; then
@@ -523,7 +523,7 @@ mongodconf
 			exit 1;
 		fi
 		MONGODRIVERFOLDER=$(echo $MONGODRIVERTGZ | sed 's/.tar.gz//g')
-		if ! cd "${TEMP_DIR}/${MONGORIVERFOLDER}"; then
+		if ! cd "${TEMP_DIR}/${MONGODRIVERFOLDER}"; then
 			printf "\\t!! Unable to cd into directory %s/${MONGODRIVERFOLDER} !!\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n"
 			exit 1;
