@@ -127,6 +127,7 @@ public:
    bool filter_on_star = true;
    std::set<filter_entry> filter_on;
    std::set<filter_entry> filter_out;
+   bool update_blocks_via_block_num = false;
    bool store_blocks = true;
    bool store_block_states = true;
    bool store_transactions = true;
@@ -930,9 +931,16 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       block_state_doc.append( kvp( "createdAt", b_date{now} ) );
 
       try {
-         if( !_block_states.update_one( make_document( kvp( "block_id", block_id_str ) ),
-                                        make_document( kvp( "$set", block_state_doc.view() ) ), update_opts ) ) {
-            EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block_state ${bid}", ("bid", block_id) );
+         if( update_blocks_via_block_num ) {
+            if( !_block_states.update_one( make_document( kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ) ),
+                                           make_document( kvp( "$set", block_state_doc.view() ) ), update_opts ) ) {
+               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block_state ${num}", ("num", block_num) );
+            }
+         } else {
+            if( !_block_states.update_one( make_document( kvp( "block_id", block_id_str ) ),
+                                           make_document( kvp( "$set", block_state_doc.view() ) ), update_opts ) ) {
+               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block_state ${bid}", ("bid", block_id) );
+            }
          }
       } catch( ... ) {
          handle_mongo_exception( "block_states insert: " + json, __LINE__ );
@@ -963,9 +971,16 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       block_doc.append( kvp( "createdAt", b_date{now} ) );
 
       try {
-         if( !_blocks.update_one( make_document( kvp( "block_id", block_id_str ) ),
-                                  make_document( kvp( "$set", block_doc.view() ) ), update_opts ) ) {
-            EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block ${bid}", ("bid", block_id) );
+         if( update_blocks_via_block_num ) {
+            if( !_blocks.update_one( make_document( kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ) ),
+                                     make_document( kvp( "$set", block_doc.view() ) ), update_opts ) ) {
+               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block ${num}", ("num", block_num) );
+            }
+         } else {
+            if( !_blocks.update_one( make_document( kvp( "block_id", block_id_str ) ),
+                                     make_document( kvp( "$set", block_doc.view() ) ), update_opts ) ) {
+               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block ${bid}", ("bid", block_id) );
+            }
          }
       } catch( ... ) {
          handle_mongo_exception( "blocks insert: " + json, __LINE__ );
@@ -1427,6 +1442,8 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
          "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
                " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI."
                " Example: mongodb://127.0.0.1:27017/EOS")
+         ("mongodb-update-via-block-num", bpo::value<bool>()->default_value(false),
+          "Update blocks/block_state with latest via block number so that duplicates are overwritten.")
          ("mongodb-store-blocks", bpo::value<bool>()->default_value(true),
           "Enables storing blocks in mongodb.")
          ("mongodb-store-block-states", bpo::value<bool>()->default_value(true),
@@ -1475,6 +1492,9 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          }
          if( options.count( "mongodb-block-start" )) {
             my->start_block_num = options.at( "mongodb-block-start" ).as<uint32_t>();
+         }
+         if( options.count( "mongodb-update-via-block-num" )) {
+            my->update_blocks_via_block_num = options.at( "mongodb-update-via-block-num" ).as<bool>();
          }
          if( options.count( "mongodb-store-blocks" )) {
             my->store_blocks = options.at( "mongodb-store-blocks" ).as<bool>();
