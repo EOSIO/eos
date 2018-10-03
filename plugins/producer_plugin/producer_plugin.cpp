@@ -311,7 +311,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             elog((e.to_detail_string()));
             except = true;
          } catch ( boost::interprocess::bad_alloc& ) {
-            raise(SIGUSR1);
+            chain_plugin::handle_db_exhaustion();
             return;
          }
 
@@ -421,7 +421,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          } catch ( const guard_exception& e ) {
             app().get_plugin<chain_plugin>().handle_guard_exception(e);
          } catch ( boost::interprocess::bad_alloc& ) {
-            raise(SIGUSR1);
+            chain_plugin::handle_db_exhaustion();
          } CATCH_AND_CALL(send_response);
       }
 
@@ -1240,7 +1240,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
          }
 
       } catch ( boost::interprocess::bad_alloc& ) {
-         raise(SIGUSR1);
+         chain_plugin::handle_db_exhaustion();
          return start_block_result::failed;
       }
 
@@ -1363,7 +1363,7 @@ bool producer_plugin_impl::maybe_produce_block() {
       app().get_plugin<chain_plugin>().handle_guard_exception(e);
       return false;
    } catch ( boost::interprocess::bad_alloc& ) {
-      raise(SIGUSR1);
+      chain_plugin::handle_db_exhaustion();
       return false;
    } FC_LOG_AND_DROP();
 
