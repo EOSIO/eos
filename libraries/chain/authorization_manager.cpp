@@ -56,10 +56,10 @@ namespace eosio { namespace chain {
    void authorization_manager::read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
       authorization_index_set::walk_indices([this, &snapshot]( auto utils ){
          snapshot->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
-            bool done = section.empty();
-            while(!done) {
-               decltype(utils)::create(_db, [&section]( auto &row ) {
-                  section.read_row(row);
+            bool more = !section.empty();
+            while(more) {
+               decltype(utils)::create(_db, [&section, &more]( auto &row ) {
+                  more = section.read_row(row);
                });
             }
          });

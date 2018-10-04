@@ -102,16 +102,16 @@ namespace eosio { namespace testing {
             cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
       }
 
-      open();
+      open(nullptr);
 
       if (push_genesis)
          push_genesis_block();
    }
 
 
-   void base_tester::init(controller::config config) {
+   void base_tester::init(controller::config config, const snapshot_reader_ptr& snapshot) {
       cfg = config;
-      open();
+      open(snapshot);
    }
 
 
@@ -121,10 +121,10 @@ namespace eosio { namespace testing {
    }
 
 
-   void base_tester::open() {
+   void base_tester::open( const snapshot_reader_ptr& snapshot) {
       control.reset( new controller(cfg) );
       control->add_indices();
-      control->startup();
+      control->startup(snapshot);
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
         FC_ASSERT( block_state->block );

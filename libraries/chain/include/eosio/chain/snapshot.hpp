@@ -90,6 +90,8 @@ namespace eosio { namespace chain {
             write_end_section();
          }
 
+      virtual ~snapshot_writer(){};
+
       protected:
          virtual void write_start_section( const std::string& section_name ) = 0;
          virtual void write_row( const detail::abstract_snapshot_row_writer& row_writer ) = 0;
@@ -167,6 +169,8 @@ namespace eosio { namespace chain {
          clear_section();
       }
 
+      virtual ~snapshot_reader(){};
+
       protected:
          virtual void set_section( const std::string& section_name ) = 0;
          virtual bool read_row( detail::abstract_snapshot_row_reader& row_reader ) = 0;
@@ -175,5 +179,77 @@ namespace eosio { namespace chain {
    };
 
    using snapshot_reader_ptr = std::shared_ptr<snapshot_reader>;
+
+   class variant_snapshot_writer : public snapshot_writer {
+      public:
+         variant_snapshot_writer()
+         : snapshot(fc::mutable_variant_object()("sections", fc::variants()))
+         {
+
+         }
+
+         void write_start_section( const std::string& section_name ) override {
+            current_rows.clear();
+            current_section_name = section_name;
+         }
+
+         void write_row( const detail::abstract_snapshot_row_writer& row_writer ) override {
+            current_rows.emplace_back(row_writer.to_variant());
+         }
+
+         void write_end_section( ) override {
+            snapshot["sections"].get_array().emplace_back(fc::mutable_variant_object()("name", std::move(current_section_name))("rows", std::move(current_rows)));
+         }
+
+         fc::variant finalize() {
+            fc::variant result = std::move(snapshot);
+            return result;
+         }
+      private:
+         fc::mutable_variant_object snapshot;
+         std::string current_section_name;
+         fc::variants current_rows;
+   };
+
+   class variant_snapshot_reader : public snapshot_reader {
+      public:
+         variant_snapshot_reader(const fc::variant& snapshot)
+         :snapshot(snapshot)
+         ,cur_row(0)
+         {
+
+         }
+
+         void set_section( const string& section_name ) override {
+            const auto& sections = snapshot["sections"].get_array();
+            for( const auto& section: sections ) {
+               if (section["name"].as_string() == section_name) {
+                  cur_section = &section.get_object();
+                  break;
+               }
+            }
+         }
+
+         bool read_row( detail::abstract_snapshot_row_reader& row_reader ) override {
+            const auto& rows = (*cur_section)["rows"].get_array();
+            row_reader.provide(rows.at(cur_row++));
+            return cur_row < rows.size();
+         }
+
+         bool empty ( ) override {
+            const auto& rows = (*cur_section)["rows"].get_array();
+            return rows.empty();
+         }
+
+         void clear_section() override {
+            cur_section = nullptr;
+            cur_row = 0;
+         }
+
+      private:
+         const fc::variant& snapshot;
+         const fc::variant_object* cur_section;
+         int cur_row;
+   };
 
 }}

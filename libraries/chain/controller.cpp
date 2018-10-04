@@ -236,20 +236,30 @@ struct controller_impl {
          blog.read_head();
 
       const auto& log_head = blog.head();
-      EOS_ASSERT( log_head, block_log_exception, "block log head can not be found" );
-      auto lh_block_num = log_head->block_num();
+      bool append_to_blog = false;
+      if (!log_head) {
+         if (s->block) {
+            EOS_ASSERT(s->block_num == blog.first_block_num(), block_log_exception, "block log has no blocks and is appending the wrong first block.  Expected ${expecgted}, but received: ${actual}",
+                      ("expected", blog.first_block_num())("actual", s->block_num));
+            append_to_blog = true;
+         } else {
+            EOS_ASSERT(s->block_num == blog.first_block_num() - 1, block_log_exception, "block log has no blocks and is not properly set up to start after the snapshot");
+         }
+      } else {
+         auto lh_block_num = log_head->block_num();
+         if (s->block_num > lh_block_num) {
+            EOS_ASSERT(s->block_num - 1 == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num", s->block_num)("lh_block_num", lh_block_num));
+            EOS_ASSERT(s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head");
+            append_to_blog = true;
+         }
+      }
+
 
       db.commit( s->block_num );
 
-      if( s->block_num <= lh_block_num ) {
-//         edump((s->block_num)("double call to on_irr"));
-//         edump((s->block_num)(s->block->previous)(log_head->id()));
-         return;
+      if( append_to_blog ) {
+         blog.append(s->block);
       }
-
-      EOS_ASSERT( s->block_num - 1  == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num",s->block_num)("lh_block_num", lh_block_num) );
-      EOS_ASSERT( s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head" );
-      blog.append(s->block);
 
       const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
       auto objitr = ubi.begin();
@@ -258,13 +268,54 @@ struct controller_impl {
          objitr = ubi.begin();
       }
 
-      if ( read_mode == db_read_mode::IRREVERSIBLE ) {
-         apply_block( s->block, controller::block_status::complete );
-         fork_db.mark_in_current_chain( s, true );
-         fork_db.set_validity( s, true );
-         head = s;
+      // the "head" block when a snapshot is loaded is virtual and has no block data, all of its effects
+      // should already have been loaded from the snapshot so, it cannot be applied
+      if (s->block) {
+         if (read_mode == db_read_mode::IRREVERSIBLE) {
+            apply_block(s->block, controller::block_status::complete);
+            fork_db.mark_in_current_chain(s, true);
+            fork_db.set_validity(s, true);
+            head = s;
+         }
+         emit(self.irreversible_block, s);
       }
-      emit( self.irreversible_block, s );
+   }
+
+   void replay() {
+      auto blog_head = blog.read_head();
+      auto blog_head_time = blog_head->timestamp.to_time_point();
+      replaying = true;
+      replay_head_time = blog_head_time;
+      ilog( "existing block log, attempting to replay ${n} blocks", ("n",blog_head->block_num()) );
+
+      auto start = fc::time_point::now();
+      while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
+         self.push_block( next, controller::block_status::irreversible );
+         if( next->block_num() % 100 == 0 ) {
+            std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
+         }
+      }
+      std::cerr<< "\n";
+      ilog( "${n} blocks replayed", ("n", head->block_num) );
+
+      // if the irreverible log is played without undo sessions enabled, we need to sync the
+      // revision ordinal to the appropriate expected value here.
+      if( self.skip_db_sessions( controller::block_status::irreversible ) )
+         db.set_revision(head->block_num);
+
+      int rev = 0;
+      while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
+         ++rev;
+         self.push_block( obj->get_block(), controller::block_status::validated );
+      }
+
+      ilog( "${n} reversible blocks replayed", ("n",rev) );
+      auto end = fc::time_point::now();
+      ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
+            ("n", head->block_num)("duration", (end-start).count()/1000000)
+            ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
+      replaying = false;
+      replay_head_time.reset();
    }
 
    void init(const snapshot_reader_ptr& snapshot) {
@@ -274,47 +325,21 @@ struct controller_impl {
 
          read_from_snapshot(snapshot);
 
+         auto end = blog.read_head();
+         if( !end ) {
+            blog.reset(conf.genesis, signed_block_ptr(), head->block_num + 1);
+         } else if ( end->block_num() > head->block_num) {
+            replay();
+         }
+
       } else if( !head ) {
          initialize_fork_db(); // set head to genesis state
 
          auto end = blog.read_head();
          if( end && end->block_num() > 1 ) {
-            auto end_time = end->timestamp.to_time_point();
-            replaying = true;
-            replay_head_time = end_time;
-            ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
-
-            auto start = fc::time_point::now();
-            while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-               self.push_block( next, controller::block_status::irreversible );
-               if( next->block_num() % 100 == 0 ) {
-                  std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
-               }
-            }
-            std::cerr<< "\n";
-            ilog( "${n} blocks replayed", ("n", head->block_num) );
-
-            // if the irreverible log is played without undo sessions enabled, we need to sync the
-            // revision ordinal to the appropriate expected value here.
-            if( self.skip_db_sessions( controller::block_status::irreversible ) )
-               db.set_revision(head->block_num);
-
-            int rev = 0;
-            while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
-               ++rev;
-               self.push_block( obj->get_block(), controller::block_status::validated );
-            }
-
-            ilog( "${n} reversible blocks replayed", ("n",rev) );
-            auto end = fc::time_point::now();
-            ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
-                  ("n", head->block_num)("duration", (end-start).count()/1000000)
-                  ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
-            replaying = false;
-            replay_head_time.reset();
-
+            replay();
          } else if( !end ) {
-            blog.reset_to_genesis( conf.genesis, head->block );
+            blog.reset( conf.genesis, head->block );
          }
       }
 
@@ -388,70 +413,6 @@ struct controller_impl {
       return enc.result();
    }
 
-   struct json_snapshot_writer : public snapshot_writer {
-      json_snapshot_writer()
-      : snapshot(fc::mutable_variant_object()("sections", fc::variants()))
-      {
-
-      }
-
-      void write_start_section( const string& section_name ) override {
-         current_rows.clear();
-         current_section_name = section_name;
-      }
-
-      void write_row( const detail::abstract_snapshot_row_writer& row_writer ) override {
-         current_rows.emplace_back(row_writer.to_variant());
-      }
-
-      void write_end_section( ) override {
-         snapshot["sections"].get_array().emplace_back(mutable_variant_object()("name", std::move(current_section_name))("rows", std::move(current_rows)));
-      }
-
-      fc::mutable_variant_object snapshot;
-      string current_section_name;
-      fc::variants current_rows;
-   };
-
-   struct json_snapshot_reader : public snapshot_reader {
-      json_snapshot_reader(const fc::variant& snapshot)
-      :snapshot(snapshot)
-      ,cur_row(0)
-      {
-
-      }
-
-      void set_section( const string& section_name ) override {
-         const auto& sections = snapshot["sections"].get_array();
-         for( const auto& section: sections ) {
-            if (section["name"].as_string() == section_name) {
-               cur_section = &section.get_object();
-               break;
-            }
-         }
-      }
-
-      bool read_row( detail::abstract_snapshot_row_reader& row_reader ) override {
-         const auto& rows = (*cur_section)["rows"].get_array();
-         row_reader.provide(rows.at(cur_row++));
-         return cur_row < rows.size();
-      }
-
-      bool empty ( ) override {
-         const auto& rows = (*cur_section)["rows"].get_array();
-         return rows.empty();
-      }
-
-      void clear_section() override {
-         cur_section = nullptr;
-         cur_row = 0;
-      }
-
-      const fc::variant& snapshot;
-      const fc::variant_object* cur_section;
-      int cur_row;
-   };
-
    void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
       snapshot->write_section<block_state>([this]( auto &section ){
          section.template add_row<block_header_state>(*fork_db.head());
@@ -469,13 +430,6 @@ struct controller_impl {
       resource_limits.add_to_snapshot(snapshot);
    }
 
-   void print_json_snapshot() const {
-      json_snapshot_writer snapshot;
-      auto snapshot_ptr = shared_ptr<snapshot_writer>(&snapshot, [](snapshot_writer *) {});
-      add_to_snapshot(snapshot_ptr);
-      std::cerr << fc::json::to_pretty_string(snapshot.snapshot) << std::endl;
-   }
-
    void read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
       snapshot->read_section<block_state>([this]( auto &section ){
          block_header_state head_header_state;
@@ -490,10 +444,10 @@ struct controller_impl {
 
       controller_index_set::walk_indices([this, &snapshot]( auto utils ){
          snapshot->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
-            bool done = section.empty();
-            while(!done) {
-               decltype(utils)::create(db, [&section]( auto &row ) {
-                  section.read_row(row);
+            bool more = !section.empty();
+            while(more) {
+               decltype(utils)::create(db, [&section, &more]( auto &row ) {
+                  more = section.read_row(row);
                });
             }
          });
@@ -1748,6 +1702,11 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
 sha256 controller::calculate_integrity_hash()const { try {
    return my->calculate_integrity_hash();
 } FC_LOG_AND_RETHROW() }
+
+void controller::write_snapshot( const snapshot_writer_ptr& snapshot ) const {
+   EOS_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent snapshot with a pending block" );
+   return my->add_to_snapshot(snapshot);
+}
 
 void controller::pop_block() {
    my->pop_block();
