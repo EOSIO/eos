@@ -624,6 +624,17 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
    }
 
+   void get_irreversible(uint32_t block_num, irrev_state_log_header& header, bytes& deltas) {
+      uint64_t pos;
+      irreversible_index.seekg((block_num - irreversible_begin_block) * sizeof(pos));
+      irreversible_index.read((char*)&pos, sizeof(pos));
+      irreversible_log.seekg(pos);
+      irreversible_log.read((char*)&header, sizeof(header));
+      deltas.resize(header.size);
+      if (header.size)
+         irreversible_log.read(deltas.data(), header.size);
+   }
+
    struct session : std::enable_shared_from_this<session> {
       std::shared_ptr<state_history_plugin_impl> plugin;
       std::unique_ptr<ws::stream<tcp::socket>>   stream;
@@ -715,6 +726,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             result.found = true;
             result.deltas.assign(it->deltas.begin(), it->deltas.end());
             // dlog("    bytes: ${b}", ("b", result.deltas));
+         } else if (req.block_num >= plugin->irreversible_begin_block &&
+                    req.block_num < plugin->irreversible_end_block) {
+            irrev_state_log_header header;
+            plugin->get_irreversible(req.block_num, header, result.deltas);
+            result.found = true;
          }
          send(std::move(result));
       }
