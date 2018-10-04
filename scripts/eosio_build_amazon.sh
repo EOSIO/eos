@@ -23,7 +23,7 @@
 		exit 1
 	fi
 
-	if [ "${OS_VER}" -lt 2017 ]; then
+	if [[ "${OS_NAME}" == "Amazon Linux AMI" && "${OS_VER}" -lt 2017 ]]; then
 		printf "\\tYou must be running Amazon Linux 2017.09 or higher to install EOSIO.\\n"
 		printf "\\texiting now.\\n"
 		exit 1
@@ -53,9 +53,15 @@
 	fi
 	printf "\\t%s\\n" "${UPDATE}"
 
-	DEP_ARRAY=( git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 \
-	bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++72.x86_64 \
-	python27.x86_64 python36-devel.x86_64 libedit-devel.x86_64 doxygen.x86_64 graphviz.x86_64)
+	if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
+		DEP_ARRAY=( git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 \
+		bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++72.x86_64 \
+		python27.x86_64 python36-devel.x86_64 libedit-devel.x86_64 doxygen.x86_64 graphviz.x86_64)
+	else
+		DEP_ARRAY=( git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make bzip2 \
+		bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++.x86_64 \
+		python3.x86_64 python3-devel.x86_64 libedit-devel.x86_64 doxygen.x86_64 graphviz.x86_64)
+	fi
 	COUNT=1
 	DISPLAY=""
 	DEP=""

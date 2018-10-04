@@ -639,11 +639,9 @@ public:
                                         const fc::path& reversible_blocks_file
                                        );
 
-   // Only call this in plugin_initialize() to modify controller constructor configuration
-   controller::config& chain_config();
-   // Only call this after plugin_startup()!
+   // Only call this after plugin_initialize()!
    controller& chain();
-   // Only call this after plugin_startup()!
+   // Only call this after plugin_initialize()!
    const controller& chain() const;
 
    chain::chain_id_type get_chain_id() const;

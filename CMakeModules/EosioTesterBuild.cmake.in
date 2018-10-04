@@ -41,10 +41,13 @@ find_package(Boost 1.67 REQUIRED COMPONENTS
 
 find_library(libtester eosio_testing @CMAKE_BINARY_DIR@/libraries/testing)
 find_library(libchain eosio_chain @CMAKE_BINARY_DIR@/libraries/chain)
-if ( "${CMAKE_BUILD_TYPE}" EQUAL "Debug" )
+if ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
    find_library(libfc fc_debug @CMAKE_BINARY_DIR@/libraries/fc)
+   find_library(libsecp256k1 secp256k1_debug @CMAKE_BINARY_DIR@/libraries/fc/secp256k1)
+   
 else()
    find_library(libfc fc @CMAKE_BINARY_DIR@/libraries/fc)
+   find_library(libsecp256k1 secp256k1 @CMAKE_BINARY_DIR@/libraries/fc/secp256k1)
 endif()
 
 find_library(libbinaryen binaryen @CMAKE_BINARY_DIR@/externals/binaryen/lib)
@@ -60,7 +63,6 @@ find_library(liboscrypto crypto @OPENSSL_ROOT_DIR@/lib)
 find_library(libosssl ssl @OPENSSL_ROOT_DIR@/lib)
 find_library(libchainbase chainbase @CMAKE_BINARY_DIR@/libraries/chainbase)
 find_library(libbuiltins builtins @CMAKE_BINARY_DIR@/libraries/builtins)
-find_library(libsecp256k1 secp256k1 @CMAKE_BINARY_DIR@/libraries/fc/secp256k1)
 find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
     HINTS ENV GMP_LIB_DIR
           ENV GMP_DIR
