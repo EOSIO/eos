@@ -56,7 +56,6 @@ namespace snapshot_test {
 
       } else {
          data.modify( current, self, [&]( auto& r ) {
-            r.id         += value;
             r.index_f64  += value;
             r.index_f128 += value;
             r.index_i64  += value;

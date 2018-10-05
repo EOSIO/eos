@@ -349,6 +349,12 @@ namespace eosio { namespace chain {
       genesis_state gs;
       fc::raw::unpack(my->block_stream, gs);
 
+      // skip the totem
+      if (my->version > 1) {
+         uint64_t totem;
+         my->block_stream.read((char*) &totem, sizeof(totem));
+      }
+
       while( pos < end_pos ) {
          fc::raw::unpack(my->block_stream, tmp);
          my->block_stream.read((char*)&pos, sizeof(pos));

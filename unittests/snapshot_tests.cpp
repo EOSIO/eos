@@ -31,6 +31,24 @@ public:
       init(copied_config, snapshot);
    }
 
+   snapshotted_tester(controller::config config, const snapshot_reader_ptr& snapshot, int ordinal, int copy_block_log_from_ordinal) {
+      FC_ASSERT(config.blocks_dir.filename().generic_string() != "."
+         && config.state_dir.filename().generic_string() != ".", "invalid path names in controller::config");
+
+      controller::config copied_config = config;
+      copied_config.blocks_dir =
+              config.blocks_dir.parent_path() / std::to_string(ordinal).append(config.blocks_dir.filename().generic_string());
+      copied_config.state_dir =
+              config.state_dir.parent_path() / std::to_string(ordinal).append(config.state_dir.filename().generic_string());
+
+      // create a copy of the desired block log and reversible
+      auto block_log_path = config.blocks_dir.parent_path() / std::to_string(copy_block_log_from_ordinal).append(config.blocks_dir.filename().generic_string());
+      fc::create_directories(copied_config.blocks_dir);
+      fc::copy(block_log_path / "blocks.log", copied_config.blocks_dir / "blocks.log");
+      fc::copy(block_log_path / config::reversible_blocks_dir_name, copied_config.blocks_dir / config::reversible_blocks_dir_name );
+
+      init(copied_config, snapshot);
+   }
    signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ )override {
       return _produce_block(skip_time, false, skip_flag);
    }
@@ -45,7 +63,7 @@ public:
 
 BOOST_AUTO_TEST_SUITE(snapshot_tests)
 
-BOOST_AUTO_TEST_CASE(test_multi_index_snapshot)
+BOOST_AUTO_TEST_CASE(test_exhaustive_snapshot)
 {
    tester chain;
 
@@ -56,8 +74,7 @@ BOOST_AUTO_TEST_CASE(test_multi_index_snapshot)
    chain.produce_blocks(1);
    chain.control->abort_block();
 
-
-   static const int generation_count = 20;
+   static const int generation_count = 8;
    std::list<snapshotted_tester> sub_testers;
 
    for (int generation = 0; generation < generation_count; generation++) {
@@ -71,6 +88,9 @@ BOOST_AUTO_TEST_CASE(test_multi_index_snapshot)
       sub_testers.emplace_back(chain.get_config(), std::make_shared<variant_snapshot_reader>(snapshot), generation);
 
       // increment the test contract
+      chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+         ( "value", 1 )
+      );
 
       // produce block
       auto new_block = chain.produce_block();
@@ -86,6 +106,64 @@ BOOST_AUTO_TEST_CASE(test_multi_index_snapshot)
          BOOST_REQUIRE_EQUAL(integrity_value.str(), other.control->calculate_integrity_hash().str());
       }
    }
+}
+
+BOOST_AUTO_TEST_CASE(test_replay_over_snapshot)
+{
+   tester chain;
+
+   chain.create_account(N(snapshot));
+   chain.produce_blocks(1);
+   chain.set_code(N(snapshot), snapshot_test_wast);
+   chain.set_abi(N(snapshot), snapshot_test_abi);
+   chain.produce_blocks(1);
+   chain.control->abort_block();
+
+   static const int pre_snapshot_block_count = 12;
+   static const int post_snapshot_block_count = 12;
+
+   for (int itr = 0; itr < pre_snapshot_block_count; itr++) {
+      // increment the contract
+      chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+         ( "value", 1 )
+      );
+
+      // produce block
+      chain.produce_block();
+   }
+
+   chain.control->abort_block();
+   auto expected_pre_integrity_hash = chain.control->calculate_integrity_hash();
+
+   // create a new snapshot child
+   variant_snapshot_writer writer;
+   auto writer_p = std::shared_ptr<snapshot_writer>(&writer, [](snapshot_writer *){});
+   chain.control->write_snapshot(writer_p);
+   auto snapshot = writer.finalize();
+
+   // create a new child at this snapshot
+   snapshotted_tester snap_chain(chain.get_config(), std::make_shared<variant_snapshot_reader>(snapshot), 1);
+   BOOST_REQUIRE_EQUAL(expected_pre_integrity_hash.str(), snap_chain.control->calculate_integrity_hash().str());
+
+   // push more blocks to build up a block log
+   for (int itr = 0; itr < post_snapshot_block_count; itr++) {
+      // increment the contract
+      chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
+         ( "value", 1 )
+      );
+
+      // produce & push block
+      snap_chain.push_block(chain.produce_block());
+   }
+
+   // verify the hash at the end
+   chain.control->abort_block();
+   auto expected_post_integrity_hash = chain.control->calculate_integrity_hash();
+   BOOST_REQUIRE_EQUAL(expected_post_integrity_hash.str(), snap_chain.control->calculate_integrity_hash().str());
+
+   // replay the block log from the snapshot child, from the snapshot
+   snapshotted_tester replay_chain(chain.get_config(), std::make_shared<variant_snapshot_reader>(snapshot), 2, 1);
+   BOOST_REQUIRE_EQUAL(expected_post_integrity_hash.str(), snap_chain.control->calculate_integrity_hash().str());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
