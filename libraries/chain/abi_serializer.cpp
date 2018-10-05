@@ -119,7 +119,7 @@ namespace eosio { namespace chain {
          structs[st.name] = st;
 
       for( const auto& td : abi.types ) {
-         EOS_ASSERT(_is_type(td.type, ctx), invalid_type_inside_abi, "invalid type", ("type",td.type));
+         EOS_ASSERT(_is_type(td.type, ctx), invalid_type_inside_abi, "invalid type ${type}", ("type",td.type));
          EOS_ASSERT(!_is_type(td.new_type_name, ctx), duplicate_abi_type_def_exception, "type already exists", ("new_type_name",td.new_type_name));
          typedefs[td.new_type_name] = td.type;
       }
@@ -231,7 +231,7 @@ namespace eosio { namespace chain {
          }
       } FC_CAPTURE_AND_RETHROW( (t) ) }
       for( const auto& t : typedefs ) { try {
-         EOS_ASSERT(_is_type(t.second, ctx), invalid_type_inside_abi, "", ("type",t.second) );
+         EOS_ASSERT(_is_type(t.second, ctx), invalid_type_inside_abi, "${type}", ("type",t.second) );
       } FC_CAPTURE_AND_RETHROW( (t) ) }
       for( const auto& s : structs ) { try {
          if( s.second.base != type_name() ) {
@@ -247,23 +247,23 @@ namespace eosio { namespace chain {
          }
          for( const auto& field : s.second.fields ) { try {
             ctx.check_deadline();
-            EOS_ASSERT(_is_type(_remove_bin_extension(field.type), ctx), invalid_type_inside_abi, "", ("type",field.type) );
+            EOS_ASSERT(_is_type(_remove_bin_extension(field.type), ctx), invalid_type_inside_abi, "${type}", ("type",field.type) );
          } FC_CAPTURE_AND_RETHROW( (field) ) }
       } FC_CAPTURE_AND_RETHROW( (s) ) }
       for( const auto& s : variants ) { try {
          for( const auto& type : s.second.types ) { try {
             ctx.check_deadline();
-            EOS_ASSERT(_is_type(type, ctx), invalid_type_inside_abi, "", ("type",type) );
+            EOS_ASSERT(_is_type(type, ctx), invalid_type_inside_abi, "${type}", ("type",type) );
          } FC_CAPTURE_AND_RETHROW( (type) ) }
       } FC_CAPTURE_AND_RETHROW( (s) ) }
       for( const auto& a : actions ) { try {
         ctx.check_deadline();
-        EOS_ASSERT(_is_type(a.second, ctx), invalid_type_inside_abi, "", ("type",a.second) );
+        EOS_ASSERT(_is_type(a.second, ctx), invalid_type_inside_abi, "${type}", ("type",a.second) );
       } FC_CAPTURE_AND_RETHROW( (a)  ) }
 
       for( const auto& t : tables ) { try {
         ctx.check_deadline();
-        EOS_ASSERT(_is_type(t.second, ctx), invalid_type_inside_abi, "", ("type",t.second) );
+        EOS_ASSERT(_is_type(t.second, ctx), invalid_type_inside_abi, "${type}", ("type",t.second) );
       } FC_CAPTURE_AND_RETHROW( (t)  ) }
    }
 
