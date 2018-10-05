@@ -10,30 +10,36 @@
 #include <ostream>
 
 namespace eosio { namespace chain {
-   template<typename T>
-   struct snapshot_section_traits {
-      static std::string section_name() {
-         return boost::core::demangle(typeid(T).name());
-      }
-   };
-
-   template<typename T>
-   struct snapshot_row_traits {
-      using row_type = std::decay_t<T>;
-      using value_type = const row_type&;
-   };
-
-   template<typename T>
-   auto to_snapshot_row( const T& value ) -> typename snapshot_row_traits<T>::value_type {
-      return value;
-   };
-
-   template<typename T>
-   auto from_snapshot_row( typename snapshot_row_traits<T>::value_type&& row, T& value ) {
-      value = row;
-   }
+   /**
+    * History:
+    * Version 1: initial version with string identified sections and rows
+    */
+   static const uint32_t current_snapshot_version = 1;
 
    namespace detail {
+      template<typename T>
+      struct snapshot_section_traits {
+         static std::string section_name() {
+            return boost::core::demangle(typeid(T).name());
+         }
+      };
+
+      template<typename T>
+      struct snapshot_row_traits {
+         using row_type = std::decay_t<T>;
+         using value_type = const row_type&;
+      };
+
+      template<typename T>
+      auto to_snapshot_row( const T& value ) -> typename snapshot_row_traits<T>::value_type {
+         return value;
+      };
+
+      template<typename T>
+      auto from_snapshot_row( typename snapshot_row_traits<T>::value_type&& row, T& value ) {
+         value = row;
+      }
+
       struct abstract_snapshot_row_writer {
          virtual void write(std::ostream& out) const = 0;
          virtual variant to_variant() const = 0;
@@ -69,7 +75,7 @@ namespace eosio { namespace chain {
             public:
                template<typename T>
                void add_row( const T& row ) {
-                  _writer.write_row(detail::make_row_writer(to_snapshot_row(row)));
+                  _writer.write_row(detail::make_row_writer(detail::to_snapshot_row(row)));
                }
 
             private:
@@ -84,7 +90,7 @@ namespace eosio { namespace chain {
 
          template<typename T, typename F>
          void write_section(F f) {
-            write_start_section(snapshot_section_traits<T>::section_name());
+            write_start_section(detail::snapshot_section_traits<T>::section_name());
             auto section = section_writer(*this);
             f(section);
             write_end_section();
@@ -133,17 +139,17 @@ namespace eosio { namespace chain {
          class section_reader {
             public:
                template<typename T>
-               auto read_row( T& out ) -> std::enable_if_t<std::is_same<std::decay_t<T>, typename snapshot_row_traits<T>::row_type>::value,bool> {
+               auto read_row( T& out ) -> std::enable_if_t<std::is_same<std::decay_t<T>, typename detail::snapshot_row_traits<T>::row_type>::value,bool> {
                   auto reader = detail::make_row_reader(out);
                   return _reader.read_row(reader);
                }
 
                template<typename T>
-               auto read_row( T& out ) -> std::enable_if_t<!std::is_same<std::decay_t<T>, typename snapshot_row_traits<T>::row_type>::value,bool> {
-                  auto temp = typename snapshot_row_traits<T>::row_type();
+               auto read_row( T& out ) -> std::enable_if_t<!std::is_same<std::decay_t<T>, typename detail::snapshot_row_traits<T>::row_type>::value,bool> {
+                  auto temp = typename detail::snapshot_row_traits<T>::row_type();
                   auto reader = detail::make_row_reader(temp);
                   bool result = _reader.read_row(reader);
-                  from_snapshot_row(std::move(temp), out);
+                  detail::from_snapshot_row(std::move(temp), out);
                   return result;
                }
 
@@ -163,11 +169,13 @@ namespace eosio { namespace chain {
 
       template<typename T, typename F>
       void read_section(F f) {
-         set_section(snapshot_section_traits<T>::section_name());
+         set_section(detail::snapshot_section_traits<T>::section_name());
          auto section = section_reader(*this);
          f(section);
          clear_section();
       }
+
+      virtual void validate() const = 0;
 
       virtual ~snapshot_reader(){};
 
@@ -182,29 +190,13 @@ namespace eosio { namespace chain {
 
    class variant_snapshot_writer : public snapshot_writer {
       public:
-         variant_snapshot_writer()
-         : snapshot(fc::mutable_variant_object()("sections", fc::variants()))
-         {
+         variant_snapshot_writer();
 
-         }
+         void write_start_section( const std::string& section_name ) override;
+         void write_row( const detail::abstract_snapshot_row_writer& row_writer ) override;
+         void write_end_section( ) override;
+         fc::variant finalize();
 
-         void write_start_section( const std::string& section_name ) override {
-            current_rows.clear();
-            current_section_name = section_name;
-         }
-
-         void write_row( const detail::abstract_snapshot_row_writer& row_writer ) override {
-            current_rows.emplace_back(row_writer.to_variant());
-         }
-
-         void write_end_section( ) override {
-            snapshot["sections"].get_array().emplace_back(fc::mutable_variant_object()("name", std::move(current_section_name))("rows", std::move(current_rows)));
-         }
-
-         fc::variant finalize() {
-            fc::variant result = std::move(snapshot);
-            return result;
-         }
       private:
          fc::mutable_variant_object snapshot;
          std::string current_section_name;
@@ -213,38 +205,13 @@ namespace eosio { namespace chain {
 
    class variant_snapshot_reader : public snapshot_reader {
       public:
-         variant_snapshot_reader(const fc::variant& snapshot)
-         :snapshot(snapshot)
-         ,cur_row(0)
-         {
+         variant_snapshot_reader(const fc::variant& snapshot);
 
-         }
-
-         void set_section( const string& section_name ) override {
-            const auto& sections = snapshot["sections"].get_array();
-            for( const auto& section: sections ) {
-               if (section["name"].as_string() == section_name) {
-                  cur_section = &section.get_object();
-                  break;
-               }
-            }
-         }
-
-         bool read_row( detail::abstract_snapshot_row_reader& row_reader ) override {
-            const auto& rows = (*cur_section)["rows"].get_array();
-            row_reader.provide(rows.at(cur_row++));
-            return cur_row < rows.size();
-         }
-
-         bool empty ( ) override {
-            const auto& rows = (*cur_section)["rows"].get_array();
-            return rows.empty();
-         }
-
-         void clear_section() override {
-            cur_section = nullptr;
-            cur_row = 0;
-         }
+         void validate() const override;
+         void set_section( const string& section_name ) override;
+         bool read_row( detail::abstract_snapshot_row_reader& row_reader ) override;
+         bool empty ( ) override;
+         void clear_section() override;
 
       private:
          const fc::variant& snapshot;

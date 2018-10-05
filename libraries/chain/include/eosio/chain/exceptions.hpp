@@ -510,4 +510,9 @@ namespace eosio { namespace chain {
                                     3230002, "Database API Exception" )
       FC_DECLARE_DERIVED_EXCEPTION( arithmetic_exception,   contract_api_exception,
                                     3230003, "Arithmetic Exception" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( snapshot_exception,    chain_exception,
+                                 3240000, "Snapshot exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( snapshot_validation_exception,   snapshot_exception,
+                                    3240001, "Snapshot Validation Exception" )
 } } // eosio::chain

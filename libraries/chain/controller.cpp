@@ -322,6 +322,7 @@ struct controller_impl {
 
       if (snapshot) {
          EOS_ASSERT(!head, fork_database_exception, "");
+         snapshot->validate();
 
          read_from_snapshot(snapshot);
 
