@@ -718,7 +718,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
 
       void operator()(get_block_request_v0& req) {
-         ilog("${b} get_block_request_v0", ("b", req.block_num));
+         // ilog("${b} get_block_request_v0", ("b", req.block_num));
          get_block_result_v0 result{req.block_num};
          auto&               ind = plugin->db->get_index<state_history_index>().indices();
          auto                it  = ind.find(req.block_num);
@@ -822,6 +822,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       // ilog("block ${n}", ("n", block_state->block->block_num()));
       auto& chain = chain_plug->chain();
       auto& idx   = db->get_index<state_history_index>();
+
+      // todo: ignore blocks already in irreversible_state.log
 
       uint64_t num_removed = 0;
       while (!idx.indices().empty() && (--idx.indices().end())->id._id >= block_state->block->block_num()) {

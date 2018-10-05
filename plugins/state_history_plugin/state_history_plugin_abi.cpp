@@ -41,7 +41,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "uint8", "name": "vm_type" },
                 { "type": "uint8", "name": "vm_version" },
                 { "type": "bool", "name": "privileged" },
-                { "type": "time_point", "name": " last_code_update" },
+                { "type": "time_point", "name": "last_code_update" },
                 { "type": "checksum256", "name": "code_version" },
                 { "type": "block_timestamp_type", "name": "creation_date" },
                 { "type": "bytes", "name": "code" },
@@ -184,7 +184,7 @@ extern const char* const state_history_plugin_abi = R"({
         {
             "name": "transaction_v0", "fields": [
                 { "type": "uint64", "name": "id" },
-                { "type": "time_point_sec", "name": " expiration" },
+                { "type": "time_point_sec", "name": "expiration" },
                 { "type": "checksum256", "name": "trx_id" }
             ]
         },
@@ -195,9 +195,9 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "name", "name": "sender" },
                 { "type": "uint128", "name": "sender_id" },
                 { "type": "name", "name": "payer" },
-                { "type": "time_point", "name": " delay_until" },
-                { "type": "time_point", "name": " expiration" },
-                { "type": "time_point", "name": " published" },
+                { "type": "time_point", "name": "delay_until" },
+                { "type": "time_point", "name": "expiration" },
+                { "type": "time_point", "name": "published" },
                 { "type": "bytes", "name": "packed_trx" }
             ]
         },
@@ -240,14 +240,14 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "uint64", "name": "parent" },
                 { "type": "name", "name": "owner" },
                 { "type": "name", "name": "name" },
-                { "type": "time_point", "name": " last_updated" },
+                { "type": "time_point", "name": "last_updated" },
                 { "type": "shared_authority", "name": "auth" }
             ]
         },
         {
             "name": "permission_usage_v0", "fields": [
                 { "type": "uint64", "name": "id" },
-                { "type": "time_point", "name": " last_used" }
+                { "type": "time_point", "name": "last_used" }
             ]
         },
         {
