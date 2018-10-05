@@ -5,6 +5,7 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/block_log.hpp>
 #include <eosio/chain/config.hpp>
+#include <eosio/chain/reversible_block_object.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/filesystem.hpp>
@@ -42,8 +43,30 @@ void blocklog::read_log() {
    EOS_ASSERT( end, block_log_exception, "No blocks found in block log" );
    EOS_ASSERT( end->block_num() > 1, block_log_exception, "Only one block found in block log" );
 
-   auto end_time = end->timestamp.to_time_point();
-   ilog( "existing block log with ${n} blocks", ("n",end->block_num()) );
+   ilog( "existing block log contains block num 1 through block num ${n}", ("n",end->block_num()) );
+
+   optional<chainbase::database> reversible_blocks;
+   try {
+      reversible_blocks.emplace(blocks_dir / config::reversible_blocks_dir_name, chainbase::database::read_only, config::default_reversible_cache_size);
+      reversible_blocks->add_index<reversible_block_index>();
+      const auto& idx = reversible_blocks->get_index<reversible_block_index,by_num>();
+      auto first = idx.lower_bound(end->block_num());
+      auto last = idx.rbegin();
+      if (first != idx.end() && last != idx.rend())
+         ilog( "existing reversible block num ${first} through block num ${last} ", ("first",first->get_block()->block_num())("last",last->get_block()->block_num()) );
+      else {
+         elog( "no blocks available in reversible block database: only block_log blocks are available" );
+         reversible_blocks.reset();
+      }
+   } catch( const std::runtime_error& e ) {
+      if( std::string(e.what()) == "database dirty flag set" ) {
+         elog( "database dirty flag set (likely due to unclean shutdown): only block_log blocks are available" );
+      } else if( std::string(e.what()) == "database metadata dirty flag set" ) {
+         elog( "database metadata dirty flag set (likely due to unclean shutdown): only block_log blocks are available" );
+      } else {
+         throw;
+      }
+   }
 
    std::ofstream output_blocks;
    std::ostream* out;
@@ -60,11 +83,10 @@ void blocklog::read_log() {
       out = &std::cout;
 
    uint32_t block_num = (first_block < 1) ? 1 : first_block;
-   const uint32_t end_block = (last_block < end->block_num() ? last_block : end->block_num()) + 1;
    signed_block_ptr next;
    fc::variant pretty_output;
    const fc::microseconds deadline = fc::seconds(10);
-   while((block_num < end_block) && (next = block_logger.read_block_by_num( block_num ))) {
+   auto print_block = [&](signed_block_ptr& next) {
       abi_serializer::to_variant(*next,
                                  pretty_output,
                                  []( account_name n ) { return optional<abi_serializer>(); },
@@ -81,7 +103,19 @@ void blocklog::read_log() {
          fc::json::to_stream(*out, v, fc::json::stringify_large_ints_and_doubles);
       else
          *out << fc::json::to_pretty_string(v) << "\n";
-
+   };
+   while((block_num <= last_block) && (next = block_logger.read_block_by_num( block_num ))) {
+      print_block(next);
+      ++block_num;
+      out->flush();
+   }
+   if (!reversible_blocks) {
+      return;
+   }
+   const reversible_block_object* obj = nullptr;
+   while( (block_num <= last_block) && (obj = reversible_blocks->find<reversible_block_object,by_num>(block_num)) ) {
+      auto next = obj->get_block();
+      print_block(next);
       ++block_num;
    }
 }
