@@ -3,8 +3,8 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
-#include <eosio.msig/eosio.msig.wast.hpp>
-#include <eosio.msig/eosio.msig.abi.hpp>
+#include <arisen.msig/arisen.msig.wast.hpp>
+#include <arisen.msig/arisen.msig.abi.hpp>
 
 #include <test_api/test_api.wast.hpp>
 
@@ -30,20 +30,20 @@ class eosio_msig_tester : public tester {
 public:
 
    eosio_msig_tester() {
-      create_accounts( { N(eosio.msig), N(eosio.stake), N(eosio.ram), N(eosio.ramfee), N(alice), N(bob), N(carol) } );
+      create_accounts( { N(arisen.msig), N(eosio.stake), N(eosio.ram), N(eosio.ramfee), N(alice), N(bob), N(carol) } );
       produce_block();
 
       auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
                                             config::system_account_name,  mutable_variant_object()
-                                            ("account", "eosio.msig")
+                                            ("account", "arisen.msig")
                                             ("is_priv", 1)
       );
 
-      set_code( N(eosio.msig), eosio_msig_wast );
-      set_abi( N(eosio.msig), eosio_msig_abi );
+      set_code( N(arisen.msig), eosio_msig_wast );
+      set_abi( N(arisen.msig), eosio_msig_abi );
 
       produce_blocks();
-      const auto& accnt = control->db().get<account_object,by_name>( N(eosio.msig) );
+      const auto& accnt = control->db().get<account_object,by_name>( N(arisen.msig) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi, abi_serializer_max_time);
@@ -137,7 +137,7 @@ public:
       vector<account_name> accounts;
       if( auth )
          accounts.push_back( signer );
-      auto trace = base_tester::push_action( N(eosio.msig), name, accounts, data );
+      auto trace = base_tester::push_action( N(arisen.msig), name, accounts, data );
       produce_block();
       BOOST_REQUIRE_EQUAL( true, chain_has_transaction(trace->id) );
       return trace;

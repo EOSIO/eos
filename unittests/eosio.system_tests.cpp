@@ -1692,7 +1692,7 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) 
          string action_type_name = msig_abi_ser.get_action_type(name);
 
          action act;
-         act.account = N(eosio.msig);
+         act.account = N(arisen.msig);
          act.name = name;
          act.data = msig_abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
 
@@ -2453,7 +2453,7 @@ BOOST_FIXTURE_TEST_CASE( setparams, eosio_system_tester ) try {
          string action_type_name = msig_abi_ser.get_action_type(name);
 
          action act;
-         act.account = N(eosio.msig);
+         act.account = N(arisen.msig);
          act.name = name;
          act.data = msig_abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
 

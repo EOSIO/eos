@@ -13,8 +13,8 @@
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
 
-#include <eosio.msig/eosio.msig.wast.hpp>
-#include <eosio.msig/eosio.msig.abi.hpp>
+#include <arisen.msig/arisen.msig.wast.hpp>
+#include <arisen.msig/arisen.msig.abi.hpp>
 
 #include <fc/variant_object.hpp>
 
@@ -407,21 +407,21 @@ public:
    abi_serializer initialize_multisig() {
       abi_serializer msig_abi_ser;
       {
-         create_account_with_resources( N(eosio.msig), config::system_account_name );
-         BOOST_REQUIRE_EQUAL( success(), buyram( "eosio", "eosio.msig", core_from_string("5000.0000") ) );
+         create_account_with_resources( N(arisen.msig), config::system_account_name );
+         BOOST_REQUIRE_EQUAL( success(), buyram( "eosio", "arisen.msig", core_from_string("5000.0000") ) );
          produce_block();
 
          auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
                                                config::system_account_name,  mutable_variant_object()
-                                               ("account", "eosio.msig")
+                                               ("account", "arisen.msig")
                                                ("is_priv", 1)
          );
 
-         set_code( N(eosio.msig), eosio_msig_wast );
-         set_abi( N(eosio.msig), eosio_msig_abi );
+         set_code( N(arisen.msig), eosio_msig_wast );
+         set_abi( N(arisen.msig), eosio_msig_abi );
 
          produce_blocks();
-         const auto& accnt = control->db().get<account_object,by_name>( N(eosio.msig) );
+         const auto& accnt = control->db().get<account_object,by_name>( N(arisen.msig) );
          abi_def msig_abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, msig_abi), true);
          msig_abi_ser.set_abi(msig_abi, abi_serializer_max_time);

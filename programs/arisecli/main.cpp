@@ -2889,7 +2889,7 @@ int main( int argc, char** argv ) {
          ("requested", requested_perm_var)
          ("trx", trx_var);
 
-      send_actions({chain::action{accountPermissions, "eosio.msig", "propose", variant_to_bin( N(eosio.msig), N(propose), args ) }});
+      send_actions({chain::action{accountPermissions, "arisen.msig", "propose", variant_to_bin( N(arisen.msig), N(propose), args ) }});
    });
 
    //multisige propose transaction
@@ -2929,7 +2929,7 @@ int main( int argc, char** argv ) {
          ("requested", requested_perm_var)
          ("trx", trx_var);
 
-      send_actions({chain::action{accountPermissions, "eosio.msig", "propose", variant_to_bin( N(eosio.msig), N(propose), args ) }});
+      send_actions({chain::action{accountPermissions, "arisen.msig", "propose", variant_to_bin( N(arisen.msig), N(propose), args ) }});
    });
 
 
@@ -2940,7 +2940,7 @@ int main( int argc, char** argv ) {
 
    review->set_callback([&] {
       auto result = call(get_table_func, fc::mutable_variant_object("json", true)
-                         ("code", "eosio.msig")
+                         ("code", "arisen.msig")
                          ("scope", proposer)
                          ("table", "proposal")
                          ("table_key", "")
@@ -2985,7 +2985,7 @@ int main( int argc, char** argv ) {
          ("level", perm_var);
 
       auto accountPermissions = tx_permission.empty() ? vector<chain::permission_level>{{sender,config::active_name}} : get_account_permissions(tx_permission);
-      send_actions({chain::action{accountPermissions, "eosio.msig", action, variant_to_bin( N(eosio.msig), action, args ) }});
+      send_actions({chain::action{accountPermissions, "arisen.msig", action, variant_to_bin( N(arisen.msig), action, args ) }});
    };
 
    // multisig approve
@@ -3028,7 +3028,7 @@ int main( int argc, char** argv ) {
          ("proposal_name", proposal_name)
          ("canceler", canceler);
 
-      send_actions({chain::action{accountPermissions, "eosio.msig", "cancel", variant_to_bin( N(eosio.msig), N(cancel), args ) }});
+      send_actions({chain::action{accountPermissions, "arisen.msig", "cancel", variant_to_bin( N(arisen.msig), N(cancel), args ) }});
       }
    );
 
@@ -3057,7 +3057,7 @@ int main( int argc, char** argv ) {
          ("proposal_name", proposal_name)
          ("executer", executer);
 
-      send_actions({chain::action{accountPermissions, "eosio.msig", "exec", variant_to_bin( N(eosio.msig), N(exec), args ) }});
+      send_actions({chain::action{accountPermissions, "arisen.msig", "exec", variant_to_bin( N(arisen.msig), N(exec), args ) }});
       }
    );
 

@@ -84,7 +84,7 @@ prisyskey=`grep "^Private key:" $logfile | tail -1 | sed "s/^Private key://"`
 echo eosio.* keys: $prisyskey $pubsyskey >> $logfile
 wcmd import -n ignition --private-key $prisyskey
 ecmd create account eosio eosio.bpay $pubsyskey $pubsyskey
-ecmd create account eosio eosio.msig $pubsyskey $pubsyskey
+ecmd create account eosio arisen.msig $pubsyskey $pubsyskey
 ecmd create account eosio eosio.names $pubsyskey $pubsyskey
 ecmd create account eosio eosio.ram $pubsyskey $pubsyskey
 ecmd create account eosio eosio.ramfee $pubsyskey $pubsyskey
@@ -95,7 +95,7 @@ ecmd create account eosio eosio.vpay $pubsyskey $pubsyskey
 ecmd create account eosio eosio.sudo $pubsyskey $pubsyskey
 
 ecmd set contract eosio.token contracts/eosio.token eosio.token.wasm eosio.token.abi
-ecmd set contract eosio.msig contracts/eosio.msig eosio.msig.wasm eosio.msig.abi
+ecmd set contract arisen.msig contracts/arisen.msig arisen.msig.wasm arisen.msig.abi
 ecmd set contract eosio.sudo contracts/eosio.sudo eosio.sudo.wasm eosio.sudo.abi
 
 echo ===== Start: $step ============ >> $logfile

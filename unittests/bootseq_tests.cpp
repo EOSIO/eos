@@ -9,8 +9,8 @@
 #include <arisen.bios/arisen.bios.abi.hpp>
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
-#include <eosio.msig/eosio.msig.wast.hpp>
-#include <eosio.msig/eosio.msig.abi.hpp>
+#include <arisen.msig/arisen.msig.wast.hpp>
+#include <arisen.msig/arisen.msig.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -181,22 +181,22 @@ BOOST_AUTO_TEST_SUITE(bootseq_tests)
 BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
-        // Create eosio.msig and eosio.token
-        create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+        // Create arisen.msig and eosio.token
+        create_accounts({N(arisen.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
 
         // Set code for the following accounts:
         //  - eosio (code: arisen.bios) (already set by tester constructor)
-        //  - eosio.msig (code: eosio.msig)
+        //  - arisen.msig (code: arisen.msig)
         //  - eosio.token (code: eosio.token)
-        set_code_abi(N(eosio.msig), eosio_msig_wast, eosio_msig_abi);//, &eosio_active_pk);
+        set_code_abi(N(arisen.msig), eosio_msig_wast, eosio_msig_abi);//, &eosio_active_pk);
         set_code_abi(N(eosio.token), eosio_token_wast, eosio_token_abi); //, &eosio_active_pk);
 
-        // Set privileged for eosio.msig and eosio.token
-        set_privileged(N(eosio.msig));
+        // Set privileged for arisen.msig and eosio.token
+        set_privileged(N(arisen.msig));
         set_privileged(N(eosio.token));
 
-        // Verify eosio.msig and eosio.token is privileged
-        const auto& eosio_msig_acc = get<account_object, by_name>(N(eosio.msig));
+        // Verify arisen.msig and eosio.token is privileged
+        const auto& eosio_msig_acc = get<account_object, by_name>(N(arisen.msig));
         BOOST_TEST(eosio_msig_acc.privileged == true);
         const auto& eosio_token_acc = get<account_object, by_name>(N(eosio.token));
         BOOST_TEST(eosio_token_acc.privileged == true);

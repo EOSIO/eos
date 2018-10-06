@@ -18,7 +18,7 @@ fastUnstakeSystem = './fast.refund/arisen.system/arisen.system.wasm'
 
 systemAccounts = [
     'eosio.bpay',
-    'eosio.msig',
+    'arisen.msig',
     'eosio.names',
     'eosio.ram',
     'eosio.ramfee',
@@ -285,7 +285,7 @@ def stepStartBoot():
     sleep(1.5)
 def stepInstallSystemContracts():
     run(args.arisecli + 'set contract eosio.token ' + args.contracts_dir + 'eosio.token/')
-    run(args.arisecli + 'set contract eosio.msig ' + args.contracts_dir + 'eosio.msig/')
+    run(args.arisecli + 'set contract arisen.msig ' + args.contracts_dir + 'arisen.msig/')
 def stepCreateTokens():
     run(args.arisecli + 'push action eosio.token create \'["eosio", "10000000000.0000 %s"]\' -p eosio.token' % (args.symbol))
     totalAllocation = allocateFunds(0, len(accounts))
@@ -294,7 +294,7 @@ def stepCreateTokens():
 def stepSetSystemContract():
     retry(args.arisecli + 'set contract eosio ' + args.contracts_dir + 'arisen.system/')
     sleep(1)
-    run(args.arisecli + 'push action eosio setpriv' + jsonArg(['eosio.msig', 1]) + '-p eosio@active')
+    run(args.arisecli + 'push action eosio setpriv' + jsonArg(['arisen.msig', 1]) + '-p eosio@active')
 def stepCreateStakedAccounts():
     createStakedAccounts(0, len(accounts))
 def stepRegProducers():

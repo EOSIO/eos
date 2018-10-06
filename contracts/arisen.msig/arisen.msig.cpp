@@ -1,4 +1,4 @@
-#include <eosio.msig/eosio.msig.hpp>
+#include <arisen.msig/arisen.msig.hpp>
 #include <arisenlib/action.hpp>
 #include <arisenlib/permission.hpp>
 
