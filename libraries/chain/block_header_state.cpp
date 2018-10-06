@@ -1,5 +1,5 @@
-#include <eosio/chain/block_header_state.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/chain/block_header_state.hpp>
+#include <arisen/chain/exceptions.hpp>
 #include <limits>
 
 namespace arisen { namespace chain {

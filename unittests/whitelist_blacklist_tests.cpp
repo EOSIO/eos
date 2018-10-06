@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
-#include <eosio/testing/tester_network.hpp>
+#include <arisen/testing/tester.hpp>
+#include <arisen/testing/tester_network.hpp>
 
 #include <fc/variant_object.hpp>
 

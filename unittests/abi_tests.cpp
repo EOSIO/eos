@@ -15,11 +15,11 @@
 #include <fc/log/logger.hpp>
 #include <fc/scoped_exit.hpp>
 
-#include <eosio/chain/contract_types.hpp>
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/eosio_contract.hpp>
-#include <eosio/abi_generator/abi_generator.hpp>
-#include <eosio/testing/tester.hpp>
+#include <arisen/chain/contract_types.hpp>
+#include <arisen/chain/abi_serializer.hpp>
+#include <arisen/chain/eosio_contract.hpp>
+#include <arisen/abi_generator/abi_generator.hpp>
+#include <arisen/testing/tester.hpp>
 
 #include <boost/test/framework.hpp>
 

@@ -3,15 +3,15 @@
  *  @copyright defined in arisen/LICENSE.txt
  */
 
-#include <eosio/chain/authorization_manager.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/permission_object.hpp>
-#include <eosio/chain/permission_link_object.hpp>
-#include <eosio/chain/authority_checker.hpp>
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/contract_types.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
+#include <arisen/chain/authorization_manager.hpp>
+#include <arisen/chain/exceptions.hpp>
+#include <arisen/chain/permission_object.hpp>
+#include <arisen/chain/permission_link_object.hpp>
+#include <arisen/chain/authority_checker.hpp>
+#include <arisen/chain/controller.hpp>
+#include <arisen/chain/global_property_object.hpp>
+#include <arisen/chain/contract_types.hpp>
+#include <arisen/chain/generated_transaction_object.hpp>
 #include <boost/tuple/tuple_io.hpp>
 
 namespace arisen { namespace chain {

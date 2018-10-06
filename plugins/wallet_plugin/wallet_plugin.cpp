@@ -2,10 +2,10 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/wallet_plugin/wallet_plugin.hpp>
-#include <eosio/wallet_plugin/wallet_manager.hpp>
-#include <eosio/wallet_plugin/yubihsm_wallet.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/wallet_plugin/wallet_plugin.hpp>
+#include <arisen/wallet_plugin/wallet_manager.hpp>
+#include <arisen/wallet_plugin/yubihsm_wallet.hpp>
+#include <arisen/chain/exceptions.hpp>
 #include <boost/filesystem/path.hpp>
 #include <chrono>
 

@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/http_plugin/http_plugin.hpp>
-#include <eosio/http_plugin/local_endpoint.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/http_plugin/http_plugin.hpp>
+#include <arisen/http_plugin/local_endpoint.hpp>
+#include <arisen/chain/exceptions.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/log/logger_config.hpp>

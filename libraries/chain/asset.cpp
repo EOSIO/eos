@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/chain/asset.hpp>
+#include <arisen/chain/asset.hpp>
 #include <boost/rational.hpp>
 #include <fc/reflect/variant.hpp>
 

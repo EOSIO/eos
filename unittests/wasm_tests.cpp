@@ -1,12 +1,12 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/wasm_eosio_constraints.hpp>
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
+#include <arisen/testing/tester.hpp>
+#include <arisen/chain/abi_serializer.hpp>
+#include <arisen/chain/wasm_eosio_constraints.hpp>
+#include <arisen/chain/resource_limits.hpp>
+#include <arisen/chain/exceptions.hpp>
+#include <arisen/chain/wast_to_wasm.hpp>
 #include <asserter/asserter.wast.hpp>
 #include <asserter/asserter.abi.hpp>
 

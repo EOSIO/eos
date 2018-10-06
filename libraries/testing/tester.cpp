@@ -1,8 +1,8 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
-#include <eosio/chain/eosio_contract.hpp>
+#include <arisen/testing/tester.hpp>
+#include <arisen/chain/wast_to_wasm.hpp>
+#include <arisen/chain/eosio_contract.hpp>
 
 #include <arisen.bios/arisen.bios.wast.hpp>
 #include <arisen.bios/arisen.bios.abi.hpp>

@@ -6,7 +6,7 @@
 #include "localize.hpp"
 #include <regex>
 #include <fc/io/json.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/chain/exceptions.hpp>
 
 using namespace arisen::client::localize;
 using namespace arisen::chain;

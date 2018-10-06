@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/chain_api_plugin/chain_api_plugin.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/chain_api_plugin/chain_api_plugin.hpp>
+#include <arisen/chain/exceptions.hpp>
 
 #include <fc/io/json.hpp>
 

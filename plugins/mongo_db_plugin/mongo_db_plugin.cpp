@@ -2,12 +2,12 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/mongo_db_plugin/mongo_db_plugin.hpp>
-#include <eosio/chain/eosio_contract.hpp>
-#include <eosio/chain/config.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/transaction.hpp>
-#include <eosio/chain/types.hpp>
+#include <arisen/mongo_db_plugin/mongo_db_plugin.hpp>
+#include <arisen/chain/eosio_contract.hpp>
+#include <arisen/chain/config.hpp>
+#include <arisen/chain/exceptions.hpp>
+#include <arisen/chain/transaction.hpp>
+#include <arisen/chain/types.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/utf8.hpp>

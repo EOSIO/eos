@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/template_plugin/template_plugin.hpp>
+#include <arisen/template_plugin/template_plugin.hpp>
 
 namespace arisen {
    static appbase::abstract_plugin& _template_plugin = app().register_plugin<template_plugin>();

@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/net_api_plugin/net_api_plugin.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/transaction.hpp>
+#include <arisen/net_api_plugin/net_api_plugin.hpp>
+#include <arisen/chain/exceptions.hpp>
+#include <arisen/chain/transaction.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>

@@ -1,8 +1,8 @@
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/resource_limits_private.hpp>
-#include <eosio/chain/transaction_metadata.hpp>
-#include <eosio/chain/transaction.hpp>
+#include <arisen/chain/exceptions.hpp>
+#include <arisen/chain/resource_limits.hpp>
+#include <arisen/chain/resource_limits_private.hpp>
+#include <arisen/chain/transaction_metadata.hpp>
+#include <arisen/chain/transaction.hpp>
 #include <boost/tuple/tuple_io.hpp>
 #include <algorithm>
 

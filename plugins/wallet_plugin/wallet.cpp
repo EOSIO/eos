@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/wallet_plugin/wallet.hpp>
+#include <arisen/wallet_plugin/wallet.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -27,7 +27,7 @@
 #ifndef WIN32
 # include <sys/types.h>
 # include <sys/stat.h>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/chain/exceptions.hpp>
 
 #endif
 

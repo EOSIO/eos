@@ -1,4 +1,4 @@
-#include <eosio/chain/abi_def.hpp>
+#include <arisen/chain/abi_def.hpp>
 #include <fc/utility.hpp>
 
 namespace arisen { namespace chain {

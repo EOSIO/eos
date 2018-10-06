@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/wallet_plugin/se_wallet.hpp>
-#include <eosio/wallet_plugin/macos_user_auth.h>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/wallet_plugin/se_wallet.hpp>
+#include <arisen/wallet_plugin/macos_user_auth.h>
+#include <arisen/chain/exceptions.hpp>
 
 #include <fc/crypto/openssl.hpp>
 

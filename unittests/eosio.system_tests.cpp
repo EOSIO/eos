@@ -1,8 +1,8 @@
 #include <boost/test/unit_test.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
+#include <arisen/chain/contract_table_objects.hpp>
+#include <arisen/chain/global_property_object.hpp>
+#include <arisen/chain/resource_limits.hpp>
+#include <arisen/chain/wast_to_wasm.hpp>
 
 #include <Runtime/Runtime.h>
 

@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/producer_api_plugin/producer_api_plugin.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/producer_api_plugin/producer_api_plugin.hpp>
+#include <arisen/chain/exceptions.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>

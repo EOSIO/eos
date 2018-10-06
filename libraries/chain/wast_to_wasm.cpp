@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/chain/wast_to_wasm.hpp>
+#include <arisen/chain/wast_to_wasm.hpp>
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
 #include <IR/Validate.h>
@@ -12,7 +12,7 @@
 #include <sstream>
 #include <iomanip>
 #include <fc/exception/exception.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/chain/exceptions.hpp>
 
 namespace arisen { namespace chain {
 

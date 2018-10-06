@@ -2,27 +2,27 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/chain/eosio_contract.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
+#include <arisen/chain/eosio_contract.hpp>
+#include <arisen/chain/contract_table_objects.hpp>
 
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/transaction_context.hpp>
-#include <eosio/chain/apply_context.hpp>
-#include <eosio/chain/transaction.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/chain/controller.hpp>
+#include <arisen/chain/transaction_context.hpp>
+#include <arisen/chain/apply_context.hpp>
+#include <arisen/chain/transaction.hpp>
+#include <arisen/chain/exceptions.hpp>
 
-#include <eosio/chain/account_object.hpp>
-#include <eosio/chain/permission_object.hpp>
-#include <eosio/chain/permission_link_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/contract_types.hpp>
-#include <eosio/chain/producer_object.hpp>
+#include <arisen/chain/account_object.hpp>
+#include <arisen/chain/permission_object.hpp>
+#include <arisen/chain/permission_link_object.hpp>
+#include <arisen/chain/global_property_object.hpp>
+#include <arisen/chain/contract_types.hpp>
+#include <arisen/chain/producer_object.hpp>
 
-#include <eosio/chain/wasm_interface.hpp>
-#include <eosio/chain/abi_serializer.hpp>
+#include <arisen/chain/wasm_interface.hpp>
+#include <arisen/chain/abi_serializer.hpp>
 
-#include <eosio/chain/authorization_manager.hpp>
-#include <eosio/chain/resource_limits.hpp>
+#include <arisen/chain/authorization_manager.hpp>
+#include <arisen/chain/resource_limits.hpp>
 
 namespace arisen { namespace chain {
 

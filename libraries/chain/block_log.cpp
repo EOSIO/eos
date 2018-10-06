@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/chain/block_log.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/chain/block_log.hpp>
+#include <arisen/chain/exceptions.hpp>
 #include <fstream>
 #include <fc/io/raw.hpp>
 

@@ -1,7 +1,7 @@
 #include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
+#include <arisen/testing/tester.hpp>
+#include <arisen/chain/abi_serializer.hpp>
+#include <arisen/chain/wast_to_wasm.hpp>
 
 #include <arisen.msig/arisen.msig.wast.hpp>
 #include <arisen.msig/arisen.msig.abi.hpp>

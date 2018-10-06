@@ -3,8 +3,8 @@
  *  @copyright defined in arisen/LICENSE.txt
  */
 
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/global_property_object.hpp>
+#include <arisen/testing/tester.hpp>
+#include <arisen/chain/global_property_object.hpp>
 #include <fc/crypto/digest.hpp>
 
 #include <boost/test/unit_test.hpp>

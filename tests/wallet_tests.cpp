@@ -2,15 +2,15 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/utilities/key_conversion.hpp>
-#include <eosio/utilities/rand.hpp>
-#include <eosio/chain/genesis_state.hpp>
-#include <eosio/wallet_plugin/wallet.hpp>
-#include <eosio/wallet_plugin/wallet_manager.hpp>
+#include <arisen/utilities/key_conversion.hpp>
+#include <arisen/utilities/rand.hpp>
+#include <arisen/chain/genesis_state.hpp>
+#include <arisen/wallet_plugin/wallet.hpp>
+#include <arisen/wallet_plugin/wallet_manager.hpp>
 
 #include <boost/test/unit_test.hpp>
-#include <eosio/chain/authority.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/chain/authority.hpp>
+#include <arisen/chain/exceptions.hpp>
 
 namespace arisen {
 

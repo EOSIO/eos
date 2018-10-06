@@ -2,13 +2,13 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/contract_types.hpp>
-#include <eosio/chain/authority.hpp>
-#include <eosio/chain/chain_config.hpp>
-#include <eosio/chain/transaction.hpp>
-#include <eosio/chain/asset.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/chain/abi_serializer.hpp>
+#include <arisen/chain/contract_types.hpp>
+#include <arisen/chain/authority.hpp>
+#include <arisen/chain/chain_config.hpp>
+#include <arisen/chain/transaction.hpp>
+#include <arisen/chain/asset.hpp>
+#include <arisen/chain/exceptions.hpp>
 #include <fc/io/raw.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <fc/io/varint.hpp>

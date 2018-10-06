@@ -3,7 +3,7 @@
  *  @copyright defined in arisen/LICENSE.txt
  */
 
-#include <eosio/utilities/string_escape.hpp>
+#include <arisen/utilities/string_escape.hpp>
 #include <sstream>
 
 namespace arisen { namespace utilities {

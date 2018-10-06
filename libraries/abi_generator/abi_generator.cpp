@@ -1,5 +1,5 @@
-#include <eosio/abi_generator/abi_generator.hpp>
-#include <eosio/chain/abi_def.hpp>
+#include <arisen/abi_generator/abi_generator.hpp>
+#include <arisen/chain/abi_def.hpp>
 
 namespace arisen {
 

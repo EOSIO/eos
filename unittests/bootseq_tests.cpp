@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/abi_serializer.hpp>
+#include <arisen/testing/tester.hpp>
+#include <arisen/chain/abi_serializer.hpp>
 
 #include <arisen.system/arisen.system.wast.hpp>
 #include <arisen.system/arisen.system.abi.hpp>

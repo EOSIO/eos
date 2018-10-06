@@ -1,9 +1,9 @@
 #include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
-#include <eosio/chain/fixed_key.hpp>
-#include <eosio/chain/global_property_object.hpp>
+#include <arisen/testing/tester.hpp>
+#include <arisen/chain/abi_serializer.hpp>
+#include <arisen/chain/contract_table_objects.hpp>
+#include <arisen/chain/fixed_key.hpp>
+#include <arisen/chain/global_property_object.hpp>
 #include <chainbase/chainbase.hpp>
 
 #include <identity/identity.wast.hpp>

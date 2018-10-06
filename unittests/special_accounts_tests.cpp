@@ -7,14 +7,14 @@
 #include <iterator>
 #include <boost/test/unit_test.hpp>
 
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/permission_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
+#include <arisen/chain/controller.hpp>
+#include <arisen/chain/exceptions.hpp>
+#include <arisen/chain/permission_object.hpp>
+#include <arisen/chain/global_property_object.hpp>
 
-#include <eosio/testing/tester.hpp>
+#include <arisen/testing/tester.hpp>
 
-#include <eosio/utilities/tempdir.hpp>
+#include <arisen/utilities/tempdir.hpp>
 
 #include <fc/crypto/digest.hpp>
 

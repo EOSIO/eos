@@ -1,8 +1,8 @@
 #include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester_network.hpp>
-#include <eosio/chain/producer_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
+#include <arisen/testing/tester_network.hpp>
+#include <arisen/chain/producer_object.hpp>
+#include <arisen/chain/global_property_object.hpp>
+#include <arisen/chain/generated_transaction_object.hpp>
 #include <arisen.system/arisen.system.wast.hpp>
 #include <arisen.system/arisen.system.abi.hpp>
 #include <arisen.token/arisen.token.wast.hpp>

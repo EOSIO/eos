@@ -18,14 +18,14 @@
 #include <boost/iostreams/stream_buffer.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/account_object.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
-#include <eosio/chain/block_summary_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/wasm_interface.hpp>
-#include <eosio/chain/resource_limits.hpp>
+#include <arisen/testing/tester.hpp>
+#include <arisen/chain/exceptions.hpp>
+#include <arisen/chain/account_object.hpp>
+#include <arisen/chain/contract_table_objects.hpp>
+#include <arisen/chain/block_summary_object.hpp>
+#include <arisen/chain/global_property_object.hpp>
+#include <arisen/chain/wasm_interface.hpp>
+#include <arisen/chain/resource_limits.hpp>
 
 #include <fc/crypto/digest.hpp>
 #include <fc/crypto/sha256.hpp>

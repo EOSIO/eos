@@ -1,7 +1,7 @@
 #include <boost/test/unit_test.hpp>
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/config.hpp>
-#include <eosio/testing/chainbase_fixture.hpp>
+#include <arisen/chain/resource_limits.hpp>
+#include <arisen/chain/config.hpp>
+#include <arisen/testing/chainbase_fixture.hpp>
 
 #include <algorithm>
 

@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/chain/authorization_manager.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/login_plugin/login_plugin.hpp>
+#include <arisen/chain/authorization_manager.hpp>
+#include <arisen/chain/exceptions.hpp>
+#include <arisen/login_plugin/login_plugin.hpp>
 
 #include <fc/io/json.hpp>
 

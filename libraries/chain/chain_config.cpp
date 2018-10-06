@@ -3,8 +3,8 @@
  *  @copyright defined in arisen/LICENSE.txt
  */
 
-#include <eosio/chain/chain_config.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/chain/chain_config.hpp>
+#include <arisen/chain/exceptions.hpp>
 
 namespace arisen { namespace chain {
 

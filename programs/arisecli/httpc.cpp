@@ -18,9 +18,9 @@
 #include <boost/asio/ssl.hpp>
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/http_plugin/http_plugin.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <arisen/chain/exceptions.hpp>
+#include <arisen/http_plugin/http_plugin.hpp>
+#include <arisen/chain_plugin/chain_plugin.hpp>
 #include <boost/asio/ssl/rfc2818_verification.hpp>
 #include "httpc.hpp"
 

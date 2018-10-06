@@ -4,7 +4,7 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
+#include <arisen/testing/tester.hpp>
 
 using namespace arisen;
 using namespace testing;

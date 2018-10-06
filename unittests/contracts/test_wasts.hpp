@@ -1,5 +1,5 @@
 #pragma once
-#include <eosio/chain/webassembly/common.hpp>
+#include <arisen/chain/webassembly/common.hpp>
 
 static const char huge_tables_wast[] = R"=====(
 (module

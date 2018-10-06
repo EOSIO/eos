@@ -2,15 +2,15 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/chain/chain_config.hpp>
-#include <eosio/chain/authority_checker.hpp>
-#include <eosio/chain/authority.hpp>
-#include <eosio/chain/types.hpp>
-#include <eosio/chain/asset.hpp>
-#include <eosio/testing/tester.hpp>
+#include <arisen/chain/chain_config.hpp>
+#include <arisen/chain/authority_checker.hpp>
+#include <arisen/chain/authority.hpp>
+#include <arisen/chain/types.hpp>
+#include <arisen/chain/asset.hpp>
+#include <arisen/testing/tester.hpp>
 
-#include <eosio/utilities/key_conversion.hpp>
-#include <eosio/utilities/rand.hpp>
+#include <arisen/utilities/key_conversion.hpp>
+#include <arisen/utilities/rand.hpp>
 
 #include <fc/io/json.hpp>
 

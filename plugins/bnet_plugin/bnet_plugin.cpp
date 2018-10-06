@@ -45,10 +45,10 @@
  *
  */
 
-#include <eosio/bnet_plugin/bnet_plugin.hpp>
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/trace.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <arisen/bnet_plugin/bnet_plugin.hpp>
+#include <arisen/chain/controller.hpp>
+#include <arisen/chain/trace.hpp>
+#include <arisen/chain_plugin/chain_plugin.hpp>
 
 #include <fc/io/json.hpp>
 
@@ -61,7 +61,7 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
-#include <eosio/chain/plugin_interface.hpp>
+#include <arisen/chain/plugin_interface.hpp>
 
 using tcp = boost::asio::ip::tcp;
 namespace ws  = boost::beast::websocket;

@@ -84,14 +84,14 @@ Options:
 #include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
-#include <eosio/utilities/key_conversion.hpp>
+#include <arisen/utilities/key_conversion.hpp>
 
-#include <eosio/chain/name.hpp>
-#include <eosio/chain/config.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
-#include <eosio/chain/trace.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/chain/contract_types.hpp>
+#include <arisen/chain/name.hpp>
+#include <arisen/chain/config.hpp>
+#include <arisen/chain/wast_to_wasm.hpp>
+#include <arisen/chain/trace.hpp>
+#include <arisen/chain_plugin/chain_plugin.hpp>
+#include <arisen/chain/contract_types.hpp>
 
 #pragma push_macro("N")
 #undef N

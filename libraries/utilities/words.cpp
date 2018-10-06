@@ -3,7 +3,7 @@
  *  @copyright defined in arisen/LICENSE.txt
  */
 #include <stdint.h>
-#include <eosio/utilities/words.hpp>
+#include <arisen/utilities/words.hpp>
 
 namespace arisen { namespace words {
 

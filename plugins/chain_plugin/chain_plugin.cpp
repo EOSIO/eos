@@ -2,24 +2,24 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/chain/fork_database.hpp>
-#include <eosio/chain/block_log.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/authorization_manager.hpp>
-#include <eosio/chain/producer_object.hpp>
-#include <eosio/chain/config.hpp>
-#include <eosio/chain/wasm_interface.hpp>
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/reversible_block_object.hpp>
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
+#include <arisen/chain_plugin/chain_plugin.hpp>
+#include <arisen/chain/fork_database.hpp>
+#include <arisen/chain/block_log.hpp>
+#include <arisen/chain/exceptions.hpp>
+#include <arisen/chain/authorization_manager.hpp>
+#include <arisen/chain/producer_object.hpp>
+#include <arisen/chain/config.hpp>
+#include <arisen/chain/wasm_interface.hpp>
+#include <arisen/chain/resource_limits.hpp>
+#include <arisen/chain/reversible_block_object.hpp>
+#include <arisen/chain/controller.hpp>
+#include <arisen/chain/generated_transaction_object.hpp>
 
-#include <eosio/chain/eosio_contract.hpp>
+#include <arisen/chain/eosio_contract.hpp>
 
-#include <eosio/utilities/key_conversion.hpp>
-#include <eosio/utilities/common.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
+#include <arisen/utilities/key_conversion.hpp>
+#include <arisen/utilities/common.hpp>
+#include <arisen/chain/wast_to_wasm.hpp>
 
 #include <boost/signals2/connection.hpp>
 #include <boost/algorithm/string.hpp>

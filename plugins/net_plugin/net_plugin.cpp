@@ -2,17 +2,17 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/chain/types.hpp>
+#include <arisen/chain/types.hpp>
 
-#include <eosio/net_plugin/net_plugin.hpp>
-#include <eosio/net_plugin/protocol.hpp>
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/block.hpp>
-#include <eosio/chain/plugin_interface.hpp>
-#include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/utilities/key_conversion.hpp>
-#include <eosio/chain/contract_types.hpp>
+#include <arisen/net_plugin/net_plugin.hpp>
+#include <arisen/net_plugin/protocol.hpp>
+#include <arisen/chain/controller.hpp>
+#include <arisen/chain/exceptions.hpp>
+#include <arisen/chain/block.hpp>
+#include <arisen/chain/plugin_interface.hpp>
+#include <arisen/producer_plugin/producer_plugin.hpp>
+#include <arisen/utilities/key_conversion.hpp>
+#include <arisen/chain/contract_types.hpp>
 
 #include <fc/network/message_buffer.hpp>
 #include <fc/network/ip.hpp>

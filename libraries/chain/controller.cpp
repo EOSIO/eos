@@ -1,26 +1,26 @@
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/transaction_context.hpp>
+#include <arisen/chain/controller.hpp>
+#include <arisen/chain/transaction_context.hpp>
 
-#include <eosio/chain/block_log.hpp>
-#include <eosio/chain/fork_database.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <arisen/chain/block_log.hpp>
+#include <arisen/chain/fork_database.hpp>
+#include <arisen/chain/exceptions.hpp>
 
-#include <eosio/chain/account_object.hpp>
-#include <eosio/chain/block_summary_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/transaction_object.hpp>
-#include <eosio/chain/reversible_block_object.hpp>
+#include <arisen/chain/account_object.hpp>
+#include <arisen/chain/block_summary_object.hpp>
+#include <arisen/chain/global_property_object.hpp>
+#include <arisen/chain/contract_table_objects.hpp>
+#include <arisen/chain/generated_transaction_object.hpp>
+#include <arisen/chain/transaction_object.hpp>
+#include <arisen/chain/reversible_block_object.hpp>
 
-#include <eosio/chain/authorization_manager.hpp>
-#include <eosio/chain/resource_limits.hpp>
+#include <arisen/chain/authorization_manager.hpp>
+#include <arisen/chain/resource_limits.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
 
-#include <eosio/chain/eosio_contract.hpp>
+#include <arisen/chain/eosio_contract.hpp>
 
 namespace arisen { namespace chain {
 

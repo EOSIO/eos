@@ -3,7 +3,7 @@
  *  @copyright defined in arisen/LICENSE.txt
  */
 
-#include <eosio/chain/genesis_state.hpp>
+#include <arisen/chain/genesis_state.hpp>
 
 // these are required to serialize a genesis_state
 #include <fc/smart_ref_impl.hpp>   // required for gcc in release mode

@@ -2,11 +2,11 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/chain/producer_object.hpp>
-#include <eosio/chain/plugin_interface.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/transaction_object.hpp>
+#include <arisen/producer_plugin/producer_plugin.hpp>
+#include <arisen/chain/producer_object.hpp>
+#include <arisen/chain/plugin_interface.hpp>
+#include <arisen/chain/global_property_object.hpp>
+#include <arisen/chain/transaction_object.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>

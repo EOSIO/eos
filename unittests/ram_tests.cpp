@@ -7,9 +7,9 @@
 #include <boost/test/unit_test.hpp>
 #pragma GCC diagnostic pop
 
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/resource_limits.hpp>
+#include <arisen/testing/tester.hpp>
+#include <arisen/chain/exceptions.hpp>
+#include <arisen/chain/resource_limits.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>

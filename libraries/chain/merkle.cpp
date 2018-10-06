@@ -1,4 +1,4 @@
-#include <eosio/chain/merkle.hpp>
+#include <arisen/chain/merkle.hpp>
 #include <fc/io/raw.hpp>
 
 namespace arisen { namespace chain {
