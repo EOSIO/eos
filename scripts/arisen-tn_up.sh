@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# eosio-tn_up is a helper script used to start a node that was previously stopped.
+# arisen-tn_up is a helper script used to start a node that was previously stopped.
 # It is not intended to be run stand-alone; it is a companion to the
-# eosio-tn_bounce.sh and eosio-tn_roll.sh scripts.
+# arisen-tn_bounce.sh and arisen-tn_roll.sh scripts.
 
 connected="0"
 
