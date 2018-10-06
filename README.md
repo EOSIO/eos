@@ -39,7 +39,7 @@ ARISEN currently supports the following operating systems:
 1. [Arisen Developer Docs](https://docs.arising.io)
 1. [ArisenBank Telegram Group](https://t.me/arisenbank)
 1. [Arisen Developer Telegram Group](https://t.me/arisendevs)
-1. [FictionPaper](https://github.com/ARISEN/Documentation/blob/master/TechnicalWhitePaper.md)
+1. [FictionPaper](https://github.com/ARISENIO/Documentation/blob/master/TechnicalWhitePaper.md)
 1. [Arisen Projects Roadmap](https://arising.io/projects)
 
 <a name="gettingstarted"></a>
