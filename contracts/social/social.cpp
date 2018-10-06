@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <eos.hpp>
+#include <rsn.hpp>
 
 /**
  *  The purpose of this contract is to implement something like Steem on EOS, this
@@ -56,14 +56,14 @@ struct account {
  * nothing.
  *
  * This method only does something when called in the context of the author, if
- * any other contexts are notified 
+ * any other contexts are notified
  */
 void apply_social_post() {
    const auto& post   = current_action<post_action>();
    require_auth( post.author );
 
    arisen_assert( current_context() == post.author, "cannot call from any other context" );
-   
+
    static post_record& existing;
    if( !Db::get( post.postid, existing ) )
       Db::store( post.postid, post_record( now() ) );
@@ -72,7 +72,7 @@ void apply_social_post() {
 /**
  * This action is called when a user casts a vote, it requires that this code is executed
  * in the context of both the voter and the author. When executed in the author's context it
- * updates the vote total.  When executed 
+ * updates the vote total.  When executed
  */
 void apply_social_vote() {
    const auto& vote  = current_action<vote_action>();
@@ -88,7 +88,7 @@ void apply_social_vote() {
       arisen_assert( now() - post.created < days(7), "cannot vote after 7 days" );
       post.votes += vote.vote_power;
       Db::store( vote.postid, post );
-   } 
+   }
    else if( context == vote.voter ) {
       static account vote_account;
       Db::get( "account", vote_account );
@@ -104,4 +104,3 @@ void apply_social_vote() {
       arisen_assert( false, "invalid context for execution of this vote" );
    }
 }
-

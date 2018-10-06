@@ -135,7 +135,7 @@
 #include <string>
 #include <stdexcept>
 */
-//include <arisenlib/eos.hpp>
+//include <arisenlib/rsn.hpp>
 #include <arisenlib/dispatcher.hpp>
 
 using namespace arisen;
@@ -155,7 +155,7 @@ namespace stltest {
          prints("~MSTR");
       }
    };
-    
+
     class contract {
     public:
         static const uint64_t sent_table_name = N(sent);

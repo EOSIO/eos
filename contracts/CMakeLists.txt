@@ -40,10 +40,10 @@ file(GLOB SKELETONS RELATIVE ${CMAKE_SOURCE_DIR}/contracts "skeleton/*")
 
 # Documented multiple output support is broken, so properly setting up the multiple
 # dependencies in the custom target is not possible.  (CMake 3.5)
-add_custom_command(OUTPUT share/eosio/skeleton/skeleton.cpp
-                   COMMAND ${CMAKE_COMMAND} -E make_directory ../share/eosio/skeleton
-                   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/skeleton ../share/eosio/skeleton
+add_custom_command(OUTPUT share/arisen/skeleton/skeleton.cpp
+                   COMMAND ${CMAKE_COMMAND} -E make_directory ../share/arisen/skeleton
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/skeleton ../share/arisen/skeleton
                    DEPENDS ${SKELETONS}
                    COMMENT Copying skeleton contract...
                    VERBATIM)
-add_custom_target(copy_skeleton_contract ALL DEPENDS share/eosio/skeleton/skeleton.cpp)
+add_custom_target(copy_skeleton_contract ALL DEPENDS share/arisen/skeleton/skeleton.cpp)
