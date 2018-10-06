@@ -1,32 +1,32 @@
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
-	url = https://github.com/eosio/chainbase
+	url = https://github.com/arisen/chainbase
         ignore = dirty
 [submodule "libraries/appbase"]
 	path = libraries/appbase
-	url = https://github.com/eosio/appbase
+	url = https://github.com/arisen/appbase
         ignore = dirty
 [submodule "contracts/musl/upstream"]
 	path = contracts/musl/upstream
-	url = https://github.com/EOSIO/musl.git
-	branch = eosio
+	url = https://github.com/arisen/musl.git
+	branch = arisen
 [submodule "contracts/libc++/upstream"]
 	path = contracts/libc++/upstream
-	url = https://github.com/EOSIO/libcxx.git
-	branch = eosio
+	url = https://github.com/arisen/libcxx.git
+	branch = arisen
 [submodule "externals/binaryen"]
 	path = externals/binaryen
-	url = https://github.com/EOSIO/binaryen
+	url = https://github.com/arisen/binaryen
 
 [submodule "libraries/softfloat"]
 	path = libraries/softfloat
-	url = https://github.com/eosio/berkeley-softfloat-3
+	url = https://github.com/arisen/berkeley-softfloat-3
 [submodule "externals/magic_get"]
 	path = externals/magic_get
-	url = https://github.com/EOSIO/magic_get
+	url = https://github.com/arisen/magic_get
 [submodule "libraries/fc"]
 	path = libraries/fc
-	url = https://github.com/EOSIO/fc
+	url = https://github.com/arisen/fc
 [submodule "libraries/wabt"]
 	path = libraries/wabt
-	url = http://github.com/EOSIO/wabt
+	url = http://github.com/arisen/wabt
