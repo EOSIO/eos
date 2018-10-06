@@ -49,5 +49,5 @@ namespace eosio { namespace chain {
    typedef chainbase::generic_index<transaction_multi_index> transaction_index;
 } }
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::transaction_object, eosio::chain::transaction_multi_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::transaction_object, arisen::chain::transaction_multi_index)
 

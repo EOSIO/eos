@@ -42,7 +42,7 @@
  *  @{
  */
 
-class tic_tac_toe : public eosio::contract {
+class tic_tac_toe : public arisen::contract {
    public:
       tic_tac_toe( account_name self ):contract(self){}
       /**
@@ -80,7 +80,7 @@ class tic_tac_toe : public eosio::contract {
       /**
        * @brief The table definition, used to store existing games and their current state
        */
-      typedef eosio::multi_index< N(games), game> games;
+      typedef arisen::multi_index< N(games), game> games;
 
       /// @abi action
       /// Create a new game

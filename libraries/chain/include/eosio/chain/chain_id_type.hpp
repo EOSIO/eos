@@ -43,18 +43,18 @@ namespace chain {
          template<typename T>
          friend T fc::variant::as()const;
 
-         friend class eosio::chain_apis::read_only;
+         friend class arisen::chain_apis::read_only;
 
-         friend class eosio::net_plugin_impl;
-         friend struct eosio::handshake_message;
+         friend class arisen::net_plugin_impl;
+         friend struct arisen::handshake_message;
 
          friend struct ::hello; // TODO: Rushed hack to support bnet_plugin. Need a better solution.
    };
 
-} }  // namespace eosio::chain
+} }  // namespace arisen::chain
 
 namespace fc {
   class variant;
-  void to_variant(const eosio::chain::chain_id_type& cid, fc::variant& v);
-  void from_variant(const fc::variant& v, eosio::chain::chain_id_type& cid);
+  void to_variant(const arisen::chain::chain_id_type& cid, fc::variant& v);
+  void from_variant(const fc::variant& v, arisen::chain::chain_id_type& cid);
 } // fc

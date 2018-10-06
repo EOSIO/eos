@@ -105,14 +105,14 @@ struct extended_asset  {
 bool  operator <  (const asset& a, const asset& b);
 bool  operator <= (const asset& a, const asset& b);
 
-}} // namespace eosio::chain
+}} // namespace arisen::chain
 
 namespace fc {
-inline void to_variant(const eosio::chain::asset& var, fc::variant& vo) { vo = var.to_string(); }
-inline void from_variant(const fc::variant& var, eosio::chain::asset& vo) {
-   vo = eosio::chain::asset::from_string(var.get_string());
+inline void to_variant(const arisen::chain::asset& var, fc::variant& vo) { vo = var.to_string(); }
+inline void from_variant(const fc::variant& var, arisen::chain::asset& vo) {
+   vo = arisen::chain::asset::from_string(var.get_string());
 }
 }
 
-FC_REFLECT(eosio::chain::asset, (amount)(sym))
-FC_REFLECT(eosio::chain::extended_asset, (quantity)(contract) )
+FC_REFLECT(arisen::chain::asset, (amount)(sym))
+FC_REFLECT(arisen::chain::extended_asset, (quantity)(contract) )

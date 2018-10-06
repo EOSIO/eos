@@ -12,7 +12,7 @@ namespace eosio { namespace chain { namespace webassembly { namespace binaryen {
 
 using namespace fc;
 using namespace wasm;
-using namespace eosio::chain::webassembly::common;
+using namespace arisen::chain::webassembly::common;
 
 
 using linear_memory_type = fc::array<char, wasm_constraints::maximum_linear_memory>;
@@ -139,7 +139,7 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
    apply_context&               context;
 };
 
-class binaryen_runtime : public eosio::chain::wasm_runtime_interface {
+class binaryen_runtime : public arisen::chain::wasm_runtime_interface {
    public:
       binaryen_runtime();
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) override;
@@ -692,10 +692,10 @@ struct intrinsic_function_invoker_wrapper<Ret (Cls::*)(Params...) const volatile
 #define _INTRINSIC_NAME(LABEL, SUFFIX) __INTRINSIC_NAME(LABEL,SUFFIX)
 
 #define _REGISTER_BINARYEN_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
-   static eosio::chain::webassembly::binaryen::intrinsic_registrator _INTRINSIC_NAME(__binaryen_intrinsic_fn, __COUNTER__) (\
+   static arisen::chain::webassembly::binaryen::intrinsic_registrator _INTRINSIC_NAME(__binaryen_intrinsic_fn, __COUNTER__) (\
       MOD "." NAME,\
-      eosio::chain::webassembly::binaryen::intrinsic_function_invoker_wrapper<SIG>::type::fn<&CLS::METHOD>()\
+      arisen::chain::webassembly::binaryen::intrinsic_function_invoker_wrapper<SIG>::type::fn<&CLS::METHOD>()\
    );\
 
 
-} } } }// eosio::chain::webassembly::wavm
+} } } }// arisen::chain::webassembly::wavm

@@ -25,7 +25,7 @@
 
 using namespace eosio;
 using namespace chain;
-using tester = eosio::testing::tester;
+using tester = arisen::testing::tester;
 
 BOOST_AUTO_TEST_SUITE(special_account_tests)
 

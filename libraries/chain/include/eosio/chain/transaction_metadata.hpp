@@ -49,4 +49,4 @@ class transaction_metadata {
 
 using transaction_metadata_ptr = std::shared_ptr<transaction_metadata>;
 
-} } // eosio::chain
+} } // arisen::chain

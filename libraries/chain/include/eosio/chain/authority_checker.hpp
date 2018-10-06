@@ -290,4 +290,4 @@ namespace detail {
                                                             checktime );
    }
 
-} } // namespace eosio::chain
+} } // namespace arisen::chain

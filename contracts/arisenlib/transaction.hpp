@@ -89,7 +89,7 @@ namespace eosio {
       char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
       auto size2 = ::get_action( type, index, buffer, size );
       eosio_assert( size == static_cast<size_t>(size2), "get_action failed" );
-      return eosio::unpack<eosio::action>( buffer, size );
+      return arisen::unpack<arisen::action>( buffer, size );
    }
 
    ///@} transactioncpp api

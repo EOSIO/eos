@@ -19,7 +19,7 @@ struct test_action_action {
       return action_name(NAME);
    }
 
-   eosio::vector<char> data;
+   arisen::vector<char> data;
 
    template <typename DataStream>
    friend DataStream& operator << ( DataStream& ds, const test_action_action& a ) {
@@ -67,7 +67,7 @@ struct test_dummy_action {
 };
 #pragma pack(pop)
 
-void copy_data(char* data, size_t data_len, eosio::vector<char>& data_out) {
+void copy_data(char* data, size_t data_len, arisen::vector<char>& data_out) {
    for (unsigned int i=0; i < data_len; i++)
       data_out.push_back(data[i]);
 }
@@ -75,7 +75,7 @@ void copy_data(char* data, size_t data_len, eosio::vector<char>& data_out) {
 void test_transaction::send_action() {
    using namespace eosio;
    test_dummy_action<N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal")> test_action = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
-   action act(eosio::vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   action act(arisen::vector<permission_level>{{N(testapi), N(active)}}, test_action);
    act.send();
 }
 
@@ -83,7 +83,7 @@ void test_transaction::send_action_empty() {
    using namespace eosio;
    test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "assert_true")> test_action;
 
-   action act(eosio::vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   action act(arisen::vector<permission_level>{{N(testapi), N(active)}}, test_action);
 
    act.send();
 }
@@ -202,7 +202,7 @@ void test_transaction::send_transaction_trigger_error_handler(uint64_t receiver,
    trx.send(0, receiver);
 }
 
-void test_transaction::assert_false_error_handler(const eosio::transaction& dtrx) {
+void test_transaction::assert_false_error_handler(const arisen::transaction& dtrx) {
    eosio_assert(dtrx.actions.size() == 1, "transaction should only have one action");
    eosio_assert(dtrx.actions[0].account == N(testapi), "transaction has wrong code");
    eosio_assert(dtrx.actions[0].name == WASM_TEST_ACTION("test_action", "assert_false"), "transaction has wrong name");
@@ -233,7 +233,7 @@ void test_transaction::send_transaction_large(uint64_t receiver, uint64_t, uint6
  * deferred transaction
  */
 void test_transaction::deferred_print() {
-   eosio::print("deferred executed\n");
+   arisen::print("deferred executed\n");
 }
 
 void test_transaction::send_deferred_transaction(uint64_t receiver, uint64_t, uint64_t) {

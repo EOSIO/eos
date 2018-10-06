@@ -97,7 +97,7 @@ namespace eosio { namespace chain {
       account_name receiver;
    };
 
-} } /// namespace eosio::chain
+} } /// namespace arisen::chain
 
-FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
-FC_REFLECT( eosio::chain::action, (account)(name)(authorization)(data) )
+FC_REFLECT( arisen::chain::permission_level, (actor)(permission) )
+FC_REFLECT( arisen::chain::action, (account)(name)(authorization)(data) )

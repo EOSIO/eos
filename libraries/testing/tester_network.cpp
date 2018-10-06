@@ -37,8 +37,8 @@ namespace eosio { namespace testing {
     //  for (const auto &pair : blockchains) {
     //     if (pair.first == &skip_blockchain) continue;
     //     boost::signals2::shared_connection_block blocker(pair.second);
-    //     pair.first->control->push_block(block, eosio::chain::validation_steps::created_block);
+    //     pair.first->control->push_block(block, arisen::chain::validation_steps::created_block);
     //  }
    }
 
-} } /// eosio::testing
+} } /// arisen::testing

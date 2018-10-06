@@ -37,7 +37,7 @@ namespace eosio { namespace chain {
       return name;
    }
 
-#define N(X) eosio::chain::string_to_name(#X)
+#define N(X) arisen::chain::string_to_name(#X)
 
    struct name {
       uint64_t value = 0;
@@ -97,11 +97,11 @@ namespace eosio { namespace chain {
       return names;
    }
 
-} } // eosio::chain
+} } // arisen::chain
 
 namespace std {
-   template<> struct hash<eosio::chain::name> : private hash<uint64_t> {
-      typedef eosio::chain::name argument_type;
+   template<> struct hash<arisen::chain::name> : private hash<uint64_t> {
+      typedef arisen::chain::name argument_type;
       typedef typename hash<uint64_t>::result_type result_type;
       result_type operator()(const argument_type& name) const noexcept
       {
@@ -112,9 +112,9 @@ namespace std {
 
 namespace fc {
   class variant;
-  void to_variant(const eosio::chain::name& c, fc::variant& v);
-  void from_variant(const fc::variant& v, eosio::chain::name& check);
+  void to_variant(const arisen::chain::name& c, fc::variant& v);
+  void from_variant(const fc::variant& v, arisen::chain::name& check);
 } // fc
 
 
-FC_REFLECT( eosio::chain::name, (value) )
+FC_REFLECT( arisen::chain::name, (value) )

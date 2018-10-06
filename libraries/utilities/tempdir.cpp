@@ -17,4 +17,4 @@ fc::path temp_directory_path()
    return fc::temp_directory_path() / "eos-tmp";
 }
 
-} } // eosio::utilities
+} } // arisen::utilities

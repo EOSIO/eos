@@ -1,7 +1,7 @@
 #include <arisenlib/eosio.hpp>
 using namespace eosio;
 
-struct integration_test : public eosio::contract {
+struct integration_test : public arisen::contract {
       using contract::contract;
 
       struct payload {
@@ -10,7 +10,7 @@ struct integration_test : public eosio::contract {
 
          uint64_t primary_key()const { return key; }
       };
-      typedef eosio::multi_index<N(payloads), payload> payloads;
+      typedef arisen::multi_index<N(payloads), payload> payloads;
 
       /// @abi action 
       void store( account_name from,

@@ -28,14 +28,14 @@ namespace eosio { namespace chain {
       shared_string  code;
       shared_string  abi;
 
-      void set_abi( const eosio::chain::abi_def& a ) {
+      void set_abi( const arisen::chain::abi_def& a ) {
          abi.resize( fc::raw::pack_size( a ) );
          fc::datastream<char*> ds( abi.data(), abi.size() );
          fc::raw::pack( ds, a );
       }
 
-      eosio::chain::abi_def get_abi()const {
-         eosio::chain::abi_def a;
+      arisen::chain::abi_def get_abi()const {
+         arisen::chain::abi_def a;
          EOS_ASSERT( abi.size() != 0, abi_not_found_exception, "No ABI set on account ${n}", ("n",name) );
 
          fc::datastream<const char*> ds( abi.data(), abi.size() );
@@ -75,10 +75,10 @@ namespace eosio { namespace chain {
       >
    >;
 
-} } // eosio::chain
+} } // arisen::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_sequence_object, eosio::chain::account_sequence_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::account_object, arisen::chain::account_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::account_sequence_object, arisen::chain::account_sequence_index)
 
 
-FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(code_version)(code)(creation_date))
+FC_REFLECT(arisen::chain::account_object, (name)(vm_type)(vm_version)(code_version)(code)(creation_date))

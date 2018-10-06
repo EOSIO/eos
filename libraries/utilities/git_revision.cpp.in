@@ -11,4 +11,4 @@ const char* const git_revision_sha = EOS_GIT_REVISION_SHA;
 const uint32_t git_revision_unix_timestamp = EOS_GIT_REVISION_UNIX_TIMESTAMP;
 const char* const git_revision_description = EOS_GIT_REVISION_DESCRIPTION;
 
-} } // end namespace eosio::utilities
+} } // end namespace arisen::utilities

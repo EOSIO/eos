@@ -2,7 +2,7 @@
 #include <arisenlib/print.hpp>
 using namespace eosio;
 
-class payloadless : public eosio::contract {
+class payloadless : public arisen::contract {
   public:
       using contract::contract;
 

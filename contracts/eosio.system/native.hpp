@@ -14,8 +14,8 @@
 #include <arisenlib/contract.hpp>
 
 namespace eosiosystem {
-   using eosio::permission_level;
-   using eosio::public_key;
+   using arisen::permission_level;
+   using arisen::public_key;
 
    typedef std::vector<char> bytes;
 
@@ -53,7 +53,7 @@ namespace eosiosystem {
       checksum256                               transaction_mroot;
       checksum256                               action_mroot;
       uint32_t                                  schedule_version = 0;
-      eosio::optional<eosio::producer_schedule> new_producers;
+      arisen::optional<arisen::producer_schedule> new_producers;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE(block_header, (timestamp)(producer)(confirmed)(previous)(transaction_mroot)(action_mroot)
@@ -64,10 +64,10 @@ namespace eosiosystem {
    /*
     * Method parameters commented out to prevent generation of code that parses input data.
     */
-   class native : public eosio::contract {
+   class native : public arisen::contract {
       public:
 
-         using eosio::contract::contract;
+         using arisen::contract::contract;
 
          /**
           *  Called after a new account is created. This code enforces resource-limits rules

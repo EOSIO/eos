@@ -28,4 +28,4 @@ struct chainbase_fixture {
    std::unique_ptr<chainbase::database>  _db;
 };
 
-} }  // eosio::testing
+} }  // arisen::testing

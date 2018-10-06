@@ -34,4 +34,4 @@ void sudo::exec() {
 
 } /// namespace eosio
 
-EOSIO_ABI( eosio::sudo, (exec) )
+EOSIO_ABI( arisen::sudo, (exec) )

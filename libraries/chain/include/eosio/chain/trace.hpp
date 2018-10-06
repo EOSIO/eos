@@ -64,18 +64,18 @@ namespace eosio { namespace chain {
       std::exception_ptr                         except_ptr;
    };
 
-} }  /// namespace eosio::chain
+} }  /// namespace arisen::chain
 
-FC_REFLECT( eosio::chain::account_delta,
+FC_REFLECT( arisen::chain::account_delta,
             (account)(delta) )
 
-FC_REFLECT( eosio::chain::base_action_trace,
+FC_REFLECT( arisen::chain::base_action_trace,
                     (receipt)(act)(context_free)(elapsed)(cpu_usage)(console)(total_cpu_usage)(trx_id)
                     (block_num)(block_time)(producer_block_id)(account_ram_deltas) )
 
-FC_REFLECT_DERIVED( eosio::chain::action_trace,
-                    (eosio::chain::base_action_trace), (inline_traces) )
+FC_REFLECT_DERIVED( arisen::chain::action_trace,
+                    (arisen::chain::base_action_trace), (inline_traces) )
 
-FC_REFLECT( eosio::chain::transaction_trace, (id)(block_num)(block_time)(producer_block_id)
+FC_REFLECT( arisen::chain::transaction_trace, (id)(block_num)(block_time)(producer_block_id)
                                              (receipt)(elapsed)(net_usage)(scheduled)
                                              (action_traces)(failed_dtrx_trace)(except) )

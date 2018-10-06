@@ -291,9 +291,9 @@ namespace eosio { namespace chain {
 
    };
 
-} }  /// eosio::chain
+} }  /// arisen::chain
 
-FC_REFLECT( eosio::chain::controller::config,
+FC_REFLECT( arisen::chain::controller::config,
             (actor_whitelist)
             (actor_blacklist)
             (contract_whitelist)

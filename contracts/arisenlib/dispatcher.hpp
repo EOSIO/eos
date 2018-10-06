@@ -6,7 +6,7 @@
 #include <boost/fusion/include/std_tuple.hpp>
 
 #include <boost/mp11/tuple.hpp>
-#define N(X) ::eosio::string_to_name(#X)
+#define N(X) ::arisen::string_to_name(#X)
 namespace eosio {
 
    template<typename Contract, typename FirstAction>
@@ -26,7 +26,7 @@ namespace eosio {
     * static Contract::on( ActionType )
     * ```
     *
-    * For this to work the Actions must be derived from eosio::contract
+    * For this to work the Actions must be derived from arisen::contract
     *
     */
    template<typename Contract, typename FirstAction, typename SecondAction, typename... Actions>
@@ -35,7 +35,7 @@ namespace eosio {
          Contract().on( unpack_action_data<FirstAction>() );
          return true;
       }
-      return eosio::dispatch<Contract,SecondAction,Actions...>( code, act );
+      return arisen::dispatch<Contract,SecondAction,Actions...>( code, act );
    }
 
    /**
@@ -55,7 +55,7 @@ namespace eosio {
     * Unpack the received action and execute the correponding action handler
     * 
     * @brief Unpack the received action and execute the correponding action handler
-    * @tparam T - The contract class that has the correponding action handler, this contract should be derived from eosio::contract
+    * @tparam T - The contract class that has the correponding action handler, this contract should be derived from arisen::contract
     * @tparam Q - The namespace of the action handler function 
     * @tparam Args - The arguments that the action handler accepts, i.e. members of the action
     * @param obj - The contract object that has the correponding action handler
@@ -91,8 +91,8 @@ namespace eosio {
 
 // Helper macro for EOSIO_API
 #define EOSIO_API_CALL( r, OP, elem ) \
-   case ::eosio::string_to_name( BOOST_PP_STRINGIZE(elem) ): \
-      eosio::execute_action( &thiscontract, &OP::elem ); \
+   case ::arisen::string_to_name( BOOST_PP_STRINGIZE(elem) ): \
+      arisen::execute_action( &thiscontract, &OP::elem ); \
       break;
 
 // Helper macro for EOSIO_ABI
@@ -106,7 +106,7 @@ namespace eosio {
 
 /** 
  * Convenient macro to create contract apply handler
- * To be able to use this macro, the contract needs to be derived from eosio::contract
+ * To be able to use this macro, the contract needs to be derived from arisen::contract
  * 
  * @brief Convenient macro to create contract apply handler 
  * @param TYPE - The class name of the contract
@@ -114,7 +114,7 @@ namespace eosio {
  * 
  * Example:
  * @code
- * EOSIO_ABI( eosio::bios, (setpriv)(setalimits)(setglimits)(setprods)(reqauth) )
+ * EOSIO_ABI( arisen::bios, (setpriv)(setalimits)(setglimits)(setprods)(reqauth) )
  * @endcode
  */
 #define EOSIO_ABI( TYPE, MEMBERS ) \

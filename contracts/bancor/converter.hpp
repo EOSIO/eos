@@ -16,8 +16,8 @@ namespace bancor {
          };
 
          struct converter_args {
-            eosio::account_name    to_currency_account;
-            eosio::symbol_name     to_currency_symbol;
+            arisen::account_name    to_currency_account;
+            arisen::symbol_name     to_currency_symbol;
             uint64_t               min_return_currency;
          };
 

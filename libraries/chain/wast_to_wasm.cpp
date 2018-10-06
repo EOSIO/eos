@@ -78,4 +78,4 @@ namespace eosio { namespace chain {
    } FC_CAPTURE_AND_RETHROW() } /// wasm_to_wast
 
 
-} } // eosio::chain
+} } // arisen::chain

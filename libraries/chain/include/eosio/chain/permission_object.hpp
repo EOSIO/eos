@@ -105,13 +105,13 @@ namespace eosio { namespace chain {
          static const uint64_t  value = (config::billable_size_v<shared_authority> + 64) + overhead;  ///< fixed field size + overhead
       };
    }
-} } // eosio::chain
+} } // arisen::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_object, eosio::chain::permission_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_usage_object, eosio::chain::permission_usage_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::permission_object, arisen::chain::permission_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::permission_usage_object, arisen::chain::permission_usage_index)
 
-FC_REFLECT(chainbase::oid<eosio::chain::permission_object>, (_id))
-FC_REFLECT(eosio::chain::permission_object, (id)(usage_id)(parent)(owner)(name)(last_updated)(auth))
+FC_REFLECT(chainbase::oid<arisen::chain::permission_object>, (_id))
+FC_REFLECT(arisen::chain::permission_object, (id)(usage_id)(parent)(owner)(name)(last_updated)(auth))
 
-FC_REFLECT(chainbase::oid<eosio::chain::permission_usage_object>, (_id))
-FC_REFLECT(eosio::chain::permission_usage_object, (id)(last_used))
+FC_REFLECT(chainbase::oid<arisen::chain::permission_usage_object>, (_id))
+FC_REFLECT(arisen::chain::permission_usage_object, (id)(last_used))

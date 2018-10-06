@@ -15,10 +15,10 @@
 
 namespace eosiosystem {
 
-   using eosio::asset;
-   using eosio::indexed_by;
-   using eosio::const_mem_fun;
-   using eosio::block_timestamp;
+   using arisen::asset;
+   using arisen::indexed_by;
+   using arisen::const_mem_fun;
+   using arisen::block_timestamp;
 
    struct name_bid {
      account_name            newname;
@@ -30,12 +30,12 @@ namespace eosiosystem {
      uint64_t by_high_bid()const { return static_cast<uint64_t>(-high_bid); }
    };
 
-   typedef eosio::multi_index< N(namebids), name_bid,
+   typedef arisen::multi_index< N(namebids), name_bid,
                                indexed_by<N(highbid), const_mem_fun<name_bid, uint64_t, &name_bid::by_high_bid>  >
                                >  name_bid_table;
 
 
-   struct eosio_global_state : eosio::blockchain_parameters {
+   struct eosio_global_state : arisen::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
       uint64_t             max_ram_size = 64ll*1024 * 1024 * 1024;
@@ -54,7 +54,7 @@ namespace eosiosystem {
       block_timestamp      last_name_close;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio::blockchain_parameters,
+      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, arisen::blockchain_parameters,
                                 (max_ram_size)(total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)(last_pervote_bucket_fill)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
@@ -64,7 +64,7 @@ namespace eosiosystem {
    struct producer_info {
       account_name          owner;
       double                total_votes = 0;
-      eosio::public_key     producer_key; /// a packed public key object
+      arisen::public_key     producer_key; /// a packed public key object
       bool                  is_active = true;
       std::string           url;
       uint32_t              unpaid_blocks = 0;
@@ -104,7 +104,7 @@ namespace eosiosystem {
 
       uint32_t                    reserved1 = 0;
       time                        reserved2 = 0;
-      eosio::asset                reserved3;
+      arisen::asset                reserved3;
 
       uint64_t primary_key()const { return owner; }
 
@@ -112,14 +112,14 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(proxied_vote_weight)(is_proxy)(reserved1)(reserved2)(reserved3) )
    };
 
-   typedef eosio::multi_index< N(voters), voter_info>  voters_table;
+   typedef arisen::multi_index< N(voters), voter_info>  voters_table;
 
 
-   typedef eosio::multi_index< N(producers), producer_info,
+   typedef arisen::multi_index< N(producers), producer_info,
                                indexed_by<N(prototalvote), const_mem_fun<producer_info, double, &producer_info::by_votes>  >
                                >  producers_table;
 
-   typedef eosio::singleton<N(global), eosio_global_state> global_state_singleton;
+   typedef arisen::singleton<N(global), eosio_global_state> global_state_singleton;
 
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t     seconds_per_day = 24 * 3600;
@@ -205,7 +205,7 @@ namespace eosiosystem {
 
          void regproxy( const account_name proxy, bool isproxy );
 
-         void setparams( const eosio::blockchain_parameters& params );
+         void setparams( const arisen::blockchain_parameters& params );
 
          // functions defined in producer_pay.cpp
          void claimrewards( const account_name& owner );

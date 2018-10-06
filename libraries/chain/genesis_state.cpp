@@ -21,4 +21,4 @@ chain::chain_id_type genesis_state::compute_chain_id() const {
    return chain_id_type{enc.result()};
 }
 
-} } // namespace eosio::chain
+} } // namespace arisen::chain

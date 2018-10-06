@@ -101,10 +101,10 @@ p2p-peer-address = localhost:9877
 required-participation = true
 private-key = ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]
 producer-name = initu
-plugin = eosio::producer_plugin
-plugin = eosio::chain_api_plugin
-plugin = eosio::history_plugin
-plugin = eosio::history_api_plugin"""
+plugin = arisen::producer_plugin
+plugin = arisen::chain_api_plugin
+plugin = arisen::history_plugin
+plugin = arisen::history_api_plugin"""
 
 
 config01="""genesis-json = ./genesis.json
@@ -121,10 +121,10 @@ p2p-peer-address = localhost:9876
 required-participation = true
 private-key = ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]
 producer-name = defproducerb
-plugin = eosio::producer_plugin
-plugin = eosio::chain_api_plugin
-plugin = eosio::history_plugin
-plugin = eosio::history_api_plugin"""
+plugin = arisen::producer_plugin
+plugin = arisen::chain_api_plugin
+plugin = arisen::history_plugin
+plugin = arisen::history_api_plugin"""
 
 
 producers="""producer-name = defproducerd

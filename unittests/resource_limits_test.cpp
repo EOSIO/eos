@@ -5,9 +5,9 @@
 
 #include <algorithm>
 
-using namespace eosio::chain::resource_limits;
-using namespace eosio::testing;
-using namespace eosio::chain;
+using namespace arisen::chain::resource_limits;
+using namespace arisen::testing;
+using namespace arisen::chain;
 
 
 

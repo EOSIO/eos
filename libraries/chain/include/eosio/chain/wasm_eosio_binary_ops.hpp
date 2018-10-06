@@ -137,9 +137,9 @@ template <typename Field>
 struct field_specific_params {
    static constexpr int skip_ahead = sizeof(uint16_t) + sizeof(Field);
    static auto unpack( char* opcode, Field& f ) { f = *reinterpret_cast<Field*>(opcode); }
-   static void pack(instruction_stream* stream, Field& f) { return eosio::chain::wasm_ops::pack(stream, f); }
+   static void pack(instruction_stream* stream, Field& f) { return arisen::chain::wasm_ops::pack(stream, f); }
    static auto to_string(Field& f) { return std::string(" ")+
-                                       eosio::chain::wasm_ops::to_string(f); }
+                                       arisen::chain::wasm_ops::to_string(f); }
 };
 template <>
 struct field_specific_params<voidtype> {
@@ -706,7 +706,7 @@ const std::vector<instr*>* EOSIO_OperatorDecoderStream<Op_Types>::_cached_ops;
 
 }}} // namespace eosio, chain, wasm_ops
 
-FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::block< T >, (code)(rt) )
-FC_REFLECT( eosio::chain::wasm_ops::memarg, (a)(o) )
-FC_REFLECT( eosio::chain::wasm_ops::blocktype, (result) )
-FC_REFLECT( eosio::chain::wasm_ops::memoryoptype, (end) )
+FC_REFLECT_TEMPLATE( (typename T), arisen::chain::wasm_ops::block< T >, (code)(rt) )
+FC_REFLECT( arisen::chain::wasm_ops::memarg, (a)(o) )
+FC_REFLECT( arisen::chain::wasm_ops::blocktype, (result) )
+FC_REFLECT( arisen::chain::wasm_ops::memoryoptype, (end) )

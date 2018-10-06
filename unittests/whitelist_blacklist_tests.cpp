@@ -17,8 +17,8 @@
 #endif
 
 using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace arisen::chain;
+using namespace arisen::testing;
 
 using mvo = fc::mutable_variant_object;
 
@@ -435,7 +435,7 @@ BOOST_AUTO_TEST_CASE( blacklist_onerror ) { try {
    );
 
    BOOST_CHECK_EXCEPTION( tester1.chain->produce_blocks(), fc::exception,
-                          fc_exception_message_is("action 'eosio::onerror' is on the action blacklist")
+                          fc_exception_message_is("action 'arisen::onerror' is on the action blacklist")
                         );
 
 } FC_LOG_AND_RETHROW() }

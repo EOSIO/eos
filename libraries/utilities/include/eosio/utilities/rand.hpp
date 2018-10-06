@@ -39,6 +39,6 @@ public:
     }
 };
 
-} } } //eosio::utilities::rand
+} } } //arisen::utilities::rand
 
 #endif // RAND_HPP

@@ -12,4 +12,4 @@ namespace eosio { namespace utilities {
 
 fc::path temp_directory_path();
 
-} } // eosio::utilities
+} } // arisen::utilities

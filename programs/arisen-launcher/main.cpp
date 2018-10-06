@@ -1101,18 +1101,18 @@ launcher_def::write_config_file (tn_node_def &node) {
     for (auto &p : node.producers) {
       cfg << "producer-name = " << p << "\n";
     }
-    cfg << "plugin = eosio::producer_plugin\n";
+    cfg << "plugin = arisen::producer_plugin\n";
   }
   if( instance.has_db ) {
-    cfg << "plugin = eosio::mongo_db_plugin\n";
+    cfg << "plugin = arisen::mongo_db_plugin\n";
   }
   if ( p2p == p2p_plugin::NET ) {
-    cfg << "plugin = eosio::net_plugin\n";
+    cfg << "plugin = arisen::net_plugin\n";
   } else {
-    cfg << "plugin = eosio::bnet_plugin\n";
+    cfg << "plugin = arisen::bnet_plugin\n";
   }
-  cfg << "plugin = eosio::chain_api_plugin\n"
-      << "plugin = eosio::history_api_plugin\n";
+  cfg << "plugin = arisen::chain_api_plugin\n"
+      << "plugin = arisen::history_api_plugin\n";
   cfg.close();
 }
 
@@ -1161,7 +1161,7 @@ launcher_def::init_genesis () {
    bfs::ifstream src(genesis_path);
    if (!src.good()) {
       cout << "generating default genesis file " << genesis_path << endl;
-      eosio::chain::genesis_state default_genesis;
+      arisen::chain::genesis_state default_genesis;
       fc::json::save_to_file( default_genesis, genesis_path, true );
       src.open(genesis_path);
    }
@@ -1508,7 +1508,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
     if (instance.name == "bios") {
        // Strip the mongo-related options out of the bios node so
        // the plugins don't conflict between 00 and bios.
-       regex r("--plugin +eosio::mongo_db_plugin");
+       regex r("--plugin +arisen::mongo_db_plugin");
        string args = std::regex_replace (eosd_extra_args,r,"");
        regex r2("--mongodb-uri +[^ ]+");
        args = std::regex_replace (args,r2,"");
@@ -1905,7 +1905,7 @@ int main (int argc, char *argv[]) {
       return 0;
     }
     if (vmap.count("version") > 0) {
-      cout << eosio::launcher::config::version_str << endl;
+      cout << arisen::launcher::config::version_str << endl;
       return 0;
     }
 

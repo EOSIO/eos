@@ -3,8 +3,8 @@
 #include <arisenlib/asset.hpp>
 
 namespace eosiosystem {
-   using eosio::asset;
-   using eosio::symbol_type;
+   using arisen::asset;
+   using arisen::symbol_type;
 
    typedef double real_type;
 
@@ -35,6 +35,6 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE( exchange_state, (supply)(base)(quote) )
    };
 
-   typedef eosio::multi_index<N(rammarket), exchange_state> rammarket;
+   typedef arisen::multi_index<N(rammarket), exchange_state> rammarket;
 
 } /// namespace eosiosystem

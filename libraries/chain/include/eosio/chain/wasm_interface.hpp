@@ -68,13 +68,13 @@ namespace eosio { namespace chain {
 
       private:
          unique_ptr<struct wasm_interface_impl> my;
-         friend class eosio::chain::webassembly::common::intrinsics_accessor;
+         friend class arisen::chain::webassembly::common::intrinsics_accessor;
    };
 
-} } // eosio::chain
+} } // arisen::chain
 
 namespace eosio{ namespace chain {
    std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime);
 }}
 
-FC_REFLECT_ENUM( eosio::chain::wasm_interface::vm_type, (wavm)(binaryen)(wabt) )
+FC_REFLECT_ENUM( arisen::chain::wasm_interface::vm_type, (wavm)(binaryen)(wabt) )

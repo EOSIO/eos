@@ -22,7 +22,7 @@ namespace eosiosystem {
       auto itr = _rammarket.find(S(4,RAMCORE));
 
       if( itr == _rammarket.end() ) {
-         auto system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
+         auto system_token_supply   = arisen::token(N(eosio.token)).get_supply(arisen::symbol_type(system_token_symbol).name()).amount;
          if( system_token_supply > 0 ) {
             itr = _rammarket.emplace( _self, [&]( auto& m ) {
                m.supply.amount = 100000000000000ll;
@@ -73,9 +73,9 @@ namespace eosiosystem {
       _global.set( _gstate, _self );
    }
 
-   void system_contract::setparams( const eosio::blockchain_parameters& params ) {
+   void system_contract::setparams( const arisen::blockchain_parameters& params ) {
       require_auth( N(eosio) );
-      (eosio::blockchain_parameters&)(_gstate) = params;
+      (arisen::blockchain_parameters&)(_gstate) = params;
       eosio_assert( 3 <= _gstate.max_authority_depth, "max_authority_depth should be at least 3" );
       set_blockchain_parameters( params );
    }
@@ -96,7 +96,7 @@ namespace eosiosystem {
 
    void system_contract::bidname( account_name bidder, account_name newname, asset bid ) {
       require_auth( bidder );
-      eosio_assert( eosio::name_suffix(newname) == newname, "you can only bid on top-level suffix" );
+      eosio_assert( arisen::name_suffix(newname) == newname, "you can only bid on top-level suffix" );
       eosio_assert( newname != 0, "the empty name is not a valid account name to bid on" );
       eosio_assert( (newname & 0xFull) == 0, "13 character names are not valid account names to bid on" );
       eosio_assert( (newname & 0x1F0ull) == 0, "accounts with 12 character names and no dots can be created without bidding required" );
@@ -104,7 +104,7 @@ namespace eosiosystem {
       eosio_assert( bid.symbol == asset().symbol, "asset must be system token" );
       eosio_assert( bid.amount > 0, "insufficient bid" );
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {bidder,N(active)},
+      INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {bidder,N(active)},
                                                     { bidder, N(eosio.names), bid, std::string("bid name ")+(name{newname}).to_string()  } );
 
       name_bid_table bids(_self,_self);
@@ -122,7 +122,7 @@ namespace eosiosystem {
          eosio_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
          eosio_assert( current->high_bidder != bidder, "account is already highest bidder" );
 
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.names),N(active)},
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {N(eosio.names),N(active)},
                                                        { N(eosio.names), current->high_bidder, asset(current->high_bid),
                                                        std::string("refund bid on name ")+(name{newname}).to_string()  } );
 
@@ -158,7 +158,7 @@ namespace eosiosystem {
            tmp >>= 5;
          }
          if( has_dot ) { // or is less than 12 characters
-            auto suffix = eosio::name_suffix(newact);
+            auto suffix = arisen::name_suffix(newact);
             if( suffix == newact ) {
                name_bid_table bids(_self,_self);
                auto current = bids.find( newact );

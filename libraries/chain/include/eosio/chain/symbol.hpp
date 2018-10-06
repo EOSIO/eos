@@ -35,7 +35,7 @@ namespace eosio {
          return result;
       }
 
-#define SY(P,X) ::eosio::chain::string_to_symbol_c(P,#X)
+#define SY(P,X) ::arisen::chain::string_to_symbol_c(P,#X)
 
       static uint64_t string_to_symbol(uint8_t precision, const char* str) {
          try {
@@ -124,7 +124,7 @@ namespace eosio {
             {
                uint64_t v = m_value;
                uint8_t p = v & 0xFF;
-               string ret = eosio::chain::to_string(p);
+               string ret = arisen::chain::to_string(p);
                ret += ',';
                ret += name();
                return ret;
@@ -173,21 +173,21 @@ namespace eosio {
 } // namespace eosio
 
 namespace fc {
-   inline void to_variant(const eosio::chain::symbol& var, fc::variant& vo) { vo = var.to_string(); }
-   inline void from_variant(const fc::variant& var, eosio::chain::symbol& vo) {
-      vo = eosio::chain::symbol::from_string(var.get_string());
+   inline void to_variant(const arisen::chain::symbol& var, fc::variant& vo) { vo = var.to_string(); }
+   inline void from_variant(const fc::variant& var, arisen::chain::symbol& vo) {
+      vo = arisen::chain::symbol::from_string(var.get_string());
    }
 }
 
 namespace fc {
-   inline void to_variant(const eosio::chain::symbol_code& var, fc::variant& vo) {
-      vo = eosio::chain::symbol(var.value << 8).name();
+   inline void to_variant(const arisen::chain::symbol_code& var, fc::variant& vo) {
+      vo = arisen::chain::symbol(var.value << 8).name();
    }
-   inline void from_variant(const fc::variant& var, eosio::chain::symbol_code& vo) {
-      vo = eosio::chain::symbol(0, var.get_string().c_str()).to_symbol_code();
+   inline void from_variant(const fc::variant& var, arisen::chain::symbol_code& vo) {
+      vo = arisen::chain::symbol(0, var.get_string().c_str()).to_symbol_code();
    }
 }
 
-FC_REFLECT(eosio::chain::symbol_code, (value))
-FC_REFLECT(eosio::chain::symbol, (m_value))
-FC_REFLECT(eosio::chain::extended_symbol, (sym)(contract))
+FC_REFLECT(arisen::chain::symbol_code, (value))
+FC_REFLECT(arisen::chain::symbol, (m_value))
+FC_REFLECT(arisen::chain::extended_symbol, (sym)(contract))

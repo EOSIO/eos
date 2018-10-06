@@ -426,10 +426,10 @@ namespace eosio {
          *  @param ds - The stream to write
          *  @param op - The value to serialize
          *  @tparam Stream - Type of datastream 
-         *  @return eosio::datastream<Stream>& - Reference to the datastream
+         *  @return arisen::datastream<Stream>& - Reference to the datastream
          */
          template<typename Stream>
-         friend inline eosio::datastream<Stream>& operator>> (eosio::datastream<Stream>& ds, optional& op)
+         friend inline arisen::datastream<Stream>& operator>> (arisen::datastream<Stream>& ds, optional& op)
          {
             char valid = 0;
             ds >> valid;
@@ -447,10 +447,10 @@ namespace eosio {
          *  @param ds - The stream to read
          *  @param op - The destination for deserialized value
          *  @tparam Stream - Type of datastream
-         *  @return eosio::datastream<Stream>& - Reference to the datastream
+         *  @return arisen::datastream<Stream>& - Reference to the datastream
          */
          template<typename Stream>
-         friend inline eosio::datastream<Stream>& operator<< (eosio::datastream<Stream>& ds, const optional& op)
+         friend inline arisen::datastream<Stream>& operator<< (arisen::datastream<Stream>& ds, const optional& op)
          {
             char valid = op._valid;
             ds << valid;

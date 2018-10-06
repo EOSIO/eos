@@ -16,7 +16,7 @@ namespace eosio { namespace chain { namespace webassembly { namespace wabt_runti
 using namespace fc;
 using namespace wabt;
 using namespace wabt::interp;
-using namespace eosio::chain::webassembly::common;
+using namespace arisen::chain::webassembly::common;
 
 struct wabt_apply_instance_vars {
    Memory* memory;
@@ -47,7 +47,7 @@ struct intrinsic_registrator {
    }
 };
 
-class wabt_runtime : public eosio::chain::wasm_runtime_interface {
+class wabt_runtime : public arisen::chain::wasm_runtime_interface {
    public:
       wabt_runtime();
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) override;
@@ -702,11 +702,11 @@ struct intrinsic_function_invoker_wrapper<Ret (Cls::*)(Params...) const volatile
 #define _INTRINSIC_NAME(LABEL, SUFFIX) __INTRINSIC_NAME(LABEL,SUFFIX)
 
 #define _REGISTER_WABT_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
-   static eosio::chain::webassembly::wabt_runtime::intrinsic_registrator _INTRINSIC_NAME(__wabt_intrinsic_fn, __COUNTER__) (\
+   static arisen::chain::webassembly::wabt_runtime::intrinsic_registrator _INTRINSIC_NAME(__wabt_intrinsic_fn, __COUNTER__) (\
       MOD,\
       NAME,\
-      eosio::chain::webassembly::wabt_runtime::wabt_function_type_provider<WASM_SIG>::type(),\
-      eosio::chain::webassembly::wabt_runtime::intrinsic_function_invoker_wrapper<SIG>::type::fn<&CLS::METHOD>()\
+      arisen::chain::webassembly::wabt_runtime::wabt_function_type_provider<WASM_SIG>::type(),\
+      arisen::chain::webassembly::wabt_runtime::intrinsic_function_invoker_wrapper<SIG>::type::fn<&CLS::METHOD>()\
    );\
 
-} } } }// eosio::chain::webassembly::wabt_runtime
+} } } }// arisen::chain::webassembly::wabt_runtime

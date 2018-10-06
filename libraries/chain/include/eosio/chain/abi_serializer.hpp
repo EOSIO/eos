@@ -610,4 +610,4 @@ void abi_serializer::from_variant( const variant& v, T& o, Resolver resolver, co
 } FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant",v))
 
 
-} } // eosio::chain
+} } // arisen::chain

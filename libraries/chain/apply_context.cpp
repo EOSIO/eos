@@ -650,4 +650,4 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta ) {
 }
 
 
-} } /// eosio::chain
+} } /// arisen::chain

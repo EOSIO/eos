@@ -181,6 +181,6 @@ namespace eosio { namespace chain {
    typedef vector<std::pair<uint16_t,vector<char>>> extensions_type;
 
 
-} }  // eosio::chain
+} }  // arisen::chain
 
-FC_REFLECT( eosio::chain::void_t, )
+FC_REFLECT( arisen::chain::void_t, )

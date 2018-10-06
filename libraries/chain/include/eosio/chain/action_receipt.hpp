@@ -23,6 +23,6 @@ namespace eosio { namespace chain {
       digest_type digest()const { return digest_type::hash(*this); }
    };
 
-} }  /// namespace eosio::chain
+} }  /// namespace arisen::chain
 
-FC_REFLECT( eosio::chain::action_receipt, (receiver)(act_digest)(global_sequence)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence) )
+FC_REFLECT( arisen::chain::action_receipt, (receiver)(act_digest)(global_sequence)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence) )

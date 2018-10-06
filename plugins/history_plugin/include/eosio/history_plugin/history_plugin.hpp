@@ -137,20 +137,20 @@ class history_plugin : public plugin<history_plugin> {
 
 } /// namespace eosio
 
-FC_REFLECT( eosio::history_apis::read_only::get_actions_params, (account_name)(pos)(offset) )
-FC_REFLECT( eosio::history_apis::read_only::get_actions_result, (actions)(last_irreversible_block)(time_limit_exceeded_error) )
-FC_REFLECT( eosio::history_apis::read_only::ordered_action_result, (global_action_seq)(account_action_seq)(block_num)(block_time)(action_trace) )
+FC_REFLECT( arisen::history_apis::read_only::get_actions_params, (account_name)(pos)(offset) )
+FC_REFLECT( arisen::history_apis::read_only::get_actions_result, (actions)(last_irreversible_block)(time_limit_exceeded_error) )
+FC_REFLECT( arisen::history_apis::read_only::ordered_action_result, (global_action_seq)(account_action_seq)(block_num)(block_time)(action_trace) )
 
-FC_REFLECT( eosio::history_apis::read_only::get_transaction_params, (id)(block_num_hint) )
-FC_REFLECT( eosio::history_apis::read_only::get_transaction_result, (id)(trx)(block_time)(block_num)(last_irreversible_block)(traces) )
+FC_REFLECT( arisen::history_apis::read_only::get_transaction_params, (id)(block_num_hint) )
+FC_REFLECT( arisen::history_apis::read_only::get_transaction_result, (id)(trx)(block_time)(block_num)(last_irreversible_block)(traces) )
 /*
-FC_REFLECT(eosio::history_apis::read_only::get_transaction_params, (transaction_id) )
-FC_REFLECT(eosio::history_apis::read_only::get_transaction_results, (transaction_id)(transaction) )
-FC_REFLECT(eosio::history_apis::read_only::get_transactions_params, (account_name)(skip_seq)(num_seq) )
-FC_REFLECT(eosio::history_apis::read_only::ordered_transaction_results, (seq_num)(transaction_id)(transaction) )
-FC_REFLECT(eosio::history_apis::read_only::get_transactions_results, (transactions)(time_limit_exceeded_error) )
+FC_REFLECT(arisen::history_apis::read_only::get_transaction_params, (transaction_id) )
+FC_REFLECT(arisen::history_apis::read_only::get_transaction_results, (transaction_id)(transaction) )
+FC_REFLECT(arisen::history_apis::read_only::get_transactions_params, (account_name)(skip_seq)(num_seq) )
+FC_REFLECT(arisen::history_apis::read_only::ordered_transaction_results, (seq_num)(transaction_id)(transaction) )
+FC_REFLECT(arisen::history_apis::read_only::get_transactions_results, (transactions)(time_limit_exceeded_error) )
 */
-FC_REFLECT(eosio::history_apis::read_only::get_key_accounts_params, (public_key) )
-FC_REFLECT(eosio::history_apis::read_only::get_key_accounts_results, (account_names) )
-FC_REFLECT(eosio::history_apis::read_only::get_controlled_accounts_params, (controlling_account) )
-FC_REFLECT(eosio::history_apis::read_only::get_controlled_accounts_results, (controlled_accounts) )
+FC_REFLECT(arisen::history_apis::read_only::get_key_accounts_params, (public_key) )
+FC_REFLECT(arisen::history_apis::read_only::get_key_accounts_results, (account_names) )
+FC_REFLECT(arisen::history_apis::read_only::get_controlled_accounts_params, (controlling_account) )
+FC_REFLECT(arisen::history_apis::read_only::get_controlled_accounts_results, (controlled_accounts) )

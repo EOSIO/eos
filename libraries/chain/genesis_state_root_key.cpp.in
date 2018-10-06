@@ -9,4 +9,4 @@ namespace eosio { namespace chain {
 
 const string genesis_state::eosio_root_key = "${EOSIO_ROOT_KEY}";
 
-} } // namespace eosio::chain
+} } // namespace arisen::chain

@@ -9,7 +9,7 @@ template <typename T>
 struct testtype {
     static void run(const T &v, const char *errmsg = "") {
         char buf[128];
-        eosio::datastream<char *> ds(buf, sizeof(buf));
+        arisen::datastream<char *> ds(buf, sizeof(buf));
         ds << v;
         T v2;
         ds.seekp(0);
@@ -22,7 +22,7 @@ template <>
 struct testtype<double> {
    static void run(const double &v, const char *errmsg = "") {
       char buf[128];
-      eosio::datastream<char *> ds(buf, sizeof(buf));
+      arisen::datastream<char *> ds(buf, sizeof(buf));
       ds << v;
       double v2;
       ds.seekp(0);
@@ -35,7 +35,7 @@ template <>
 struct testtype<float> {
    static void run(const float &v, const char *errmsg = "") {
       char buf[128];
-      eosio::datastream<char *> ds(buf, sizeof(buf));
+      arisen::datastream<char *> ds(buf, sizeof(buf));
       ds << v;
       float v2;
       ds.seekp(0);

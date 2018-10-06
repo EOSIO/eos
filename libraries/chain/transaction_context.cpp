@@ -480,4 +480,4 @@ namespace eosio { namespace chain {
    } /// record_transaction
 
 
-} } /// eosio::chain
+} } /// arisen::chain

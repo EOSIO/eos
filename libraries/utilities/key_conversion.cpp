@@ -50,4 +50,4 @@ fc::optional<fc::ecc::private_key> wif_to_key( const std::string& wif_key )
   return fc::optional<fc::ecc::private_key>();
 }
 
-} } // end namespace eosio::utilities
+} } // end namespace arisen::utilities

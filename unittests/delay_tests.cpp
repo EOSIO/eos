@@ -15,8 +15,8 @@
 #endif
 
 using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace arisen::chain;
+using namespace arisen::testing;
 
 
 BOOST_AUTO_TEST_SUITE(delay_tests)

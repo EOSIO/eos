@@ -8,8 +8,8 @@
 #include <fc/io/json.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-using namespace eosio::client::localize;
-using namespace eosio::chain;
+using namespace arisen::client::localize;
+using namespace arisen::chain;
 
 const char* transaction_help_text_header = _("An error occurred while submitting the transaction for this command!");
 
@@ -72,7 +72,7 @@ const char* failed_to_find_transaction_text = _("Failed to fetch information for
 
 const char* failed_to_find_transaction_with_block_text = _("Failed to fetch information for transaction: \033[1m${1}\033[0m from the history plugin and the transaction was not present in block \033[1m${2}\033[0m\n");
 
-const char* history_plugin_advice_text = _("\033[32mPlease ensure that the \033[2meosio::history_plugin\033[22m is enabled on the RPC node you are connecting to and that an account involved in this transaction was configured in the \033[2mfilter-on\033[22m setting.\033[0m\n");
+const char* history_plugin_advice_text = _("\033[32mPlease ensure that the \033[2marisen::history_plugin\033[22m is enabled on the RPC node you are connecting to and that an account involved in this transaction was configured in the \033[2mfilter-on\033[22m setting.\033[0m\n");
 
 const char* help_regex_error = _("Error locating help text: ${code} ${what}");
 
@@ -214,11 +214,11 @@ const char* error_advice_missing_auth_exception =  R"=====(Ensure that you have 
 If you are currently using 'arisecli push action' command, try to add the relevant authority using -p option.)=====";
 const char* error_advice_irrelevant_auth_exception =  "Please remove the unnecessary authority from your action!";
 
-const char* error_advice_missing_chain_api_plugin_exception =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration!";
-const char* error_advice_missing_wallet_api_plugin_exception =  "Ensure that you have \033[2meosio::wallet_api_plugin\033[0m\033[32m added to your node's configuration!\n"\
+const char* error_advice_missing_chain_api_plugin_exception =  "Ensure that you have \033[2marisen::chain_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_missing_wallet_api_plugin_exception =  "Ensure that you have \033[2marisen::wallet_api_plugin\033[0m\033[32m added to your node's configuration!\n"\
                                     "Otherwise specify your wallet location with \033[2m--wallet-url\033[0m\033[32m argument!";
-const char* error_advice_missing_history_api_plugin_exception =  "Ensure that you have \033[2meosio::history_api_plugin\033[0m\033[32m added to your node's configuration!";
-const char* error_advice_missing_net_api_plugin_exception =  "Ensure that you have \033[2meosio::net_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_missing_history_api_plugin_exception =  "Ensure that you have \033[2marisen::history_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_missing_net_api_plugin_exception =  "Ensure that you have \033[2marisen::net_api_plugin\033[0m\033[32m added to your node's configuration!";
 
 const char* error_advice_wallet_exist_exception =  "Try to use different wallet name.";
 const char* error_advice_wallet_nonexistent_exception =  "Are you sure you typed the wallet name correctly?";

@@ -130,4 +130,4 @@ namespace eosio { namespace chain {
                                                            )const;
    };
 
-} } /// namespace eosio::chain
+} } /// namespace arisen::chain

@@ -93,7 +93,7 @@ enum return_codes {
 int main(int argc, char** argv)
 {
    try {
-      app().set_version(eosio::aos::config::version);
+      app().set_version(arisen::aos::config::version);
       app().register_plugin<history_plugin>();
 
       auto root = fc::app_path();

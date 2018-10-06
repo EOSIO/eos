@@ -76,10 +76,10 @@ namespace eosio {
         static time_point_sec maximum() { return time_point_sec(0xffffffff); }
         static time_point_sec min() { return time_point_sec(0); }
 
-        operator time_point()const { return time_point( eosio::seconds( utc_seconds) ); }
+        operator time_point()const { return time_point( arisen::seconds( utc_seconds) ); }
         uint32_t sec_since_epoch()const { return utc_seconds; }
 
-        time_point_sec operator = ( const eosio::time_point& t )
+        time_point_sec operator = ( const arisen::time_point& t )
         {
           utc_seconds = uint32_t(t.time_since_epoch().count() / 1000000ll);
           return *this;

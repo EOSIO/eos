@@ -19,12 +19,12 @@
 #include <map>
 
 namespace eosiosystem {
-   using eosio::asset;
-   using eosio::indexed_by;
-   using eosio::const_mem_fun;
-   using eosio::bytes;
-   using eosio::print;
-   using eosio::permission_level;
+   using arisen::asset;
+   using arisen::indexed_by;
+   using arisen::const_mem_fun;
+   using arisen::bytes;
+   using arisen::print;
+   using arisen::permission_level;
    using std::map;
    using std::pair;
 
@@ -63,8 +63,8 @@ namespace eosiosystem {
    struct refund_request {
       account_name  owner;
       time          request_time;
-      eosio::asset  net_amount;
-      eosio::asset  cpu_amount;
+      arisen::asset  net_amount;
+      arisen::asset  cpu_amount;
 
       uint64_t  primary_key()const { return owner; }
 
@@ -76,9 +76,9 @@ namespace eosiosystem {
     *  These tables are designed to be constructed in the scope of the relevant user, this
     *  facilitates simpler API for per-user queries
     */
-   typedef eosio::multi_index< N(userres), user_resources>      user_resources_table;
-   typedef eosio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_table;
-   typedef eosio::multi_index< N(refunds), refund_request>      refunds_table;
+   typedef arisen::multi_index< N(userres), user_resources>      user_resources_table;
+   typedef arisen::multi_index< N(delband), delegated_bandwidth> del_bandwidth_table;
+   typedef arisen::multi_index< N(refunds), refund_request>      refunds_table;
 
 
 
@@ -117,11 +117,11 @@ namespace eosiosystem {
       // quant_after_fee.amount should be > 0 if quant.amount > 1.
       // If quant.amount == 1, then quant_after_fee.amount == 0 and the next inline transfer will fail causing the buyram action to fail.
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
+      INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {payer,N(active)},
          { payer, N(eosio.ram), quant_after_fee, std::string("buy ram") } );
 
       if( fee.amount > 0 ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {payer,N(active)},
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {payer,N(active)},
                                                        { payer, N(eosio.ramfee), fee, std::string("ram fee") } );
       }
 
@@ -188,14 +188,14 @@ namespace eosiosystem {
       });
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.ram),N(active)},
+      INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {N(eosio.ram),N(active)},
                                                        { N(eosio.ram), account, asset(tokens_out), std::string("sell ram") } );
 
       auto fee = ( tokens_out.amount + 199 ) / 200; /// .5% fee (round up)
       // since tokens_out.amount was asserted to be at least 2 earlier, fee.amount < tokens_out.amount
       
       if( fee > 0 ) {
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {account,N(active)},
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {account,N(active)},
             { account, N(eosio.ramfee), asset(fee), std::string("sell ram fee") } );
       }
    }
@@ -339,7 +339,7 @@ namespace eosiosystem {
          } /// end if is_delegating_to_self || is_undelegating
 
          if ( need_deferred_trx ) {
-            eosio::transaction out;
+            arisen::transaction out;
             out.actions.emplace_back( permission_level{ from, N(active) }, _self, N(refund), from );
             out.delay_sec = refund_delay;
             cancel_deferred( from ); // TODO: Remove this line when replacing deferred trxs is fixed
@@ -350,7 +350,7 @@ namespace eosiosystem {
 
          auto transfer_amount = net_balance + cpu_balance;
          if ( asset(0) < transfer_amount ) {
-            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {source_stake_from, N(active)},
+            INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {source_stake_from, N(active)},
                { source_stake_from, N(eosio.stake), asset(transfer_amount), std::string("stake bandwidth") } );
          }
       }
@@ -416,7 +416,7 @@ namespace eosiosystem {
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.stake),N(active)},
+      INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {N(eosio.stake),N(active)},
                                                     { N(eosio.stake), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );

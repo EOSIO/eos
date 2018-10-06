@@ -10,7 +10,7 @@
 
 namespace _test_multi_index {
 
-   using eosio::key256;
+   using arisen::key256;
 
    struct record_idx64 {
       uint64_t id;

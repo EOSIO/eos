@@ -13,18 +13,18 @@
 #pragma clang diagnostic ignored "-Wshorten-64-to-32"
 #pragma clang diagnostic ignored "-Wsign-compare"
 
-class test_ram_limit : public eosio::contract {
+class test_ram_limit : public arisen::contract {
    public:
       const uint32_t FIVE_MINUTES = 5*60;
 
       test_ram_limit(account_name self)
-      :eosio::contract(self)
+      :arisen::contract(self)
       {}
 
       //@abi action
       void setentry(account_name payer, uint64_t from, uint64_t to, uint64_t size) {
          const auto self = get_self();
-         eosio::print("test_ram_limit::setentry ", eosio::name{self}, "\n");
+         arisen::print("test_ram_limit::setentry ", arisen::name{self}, "\n");
          test_table table(self, self);
          for (int key = from; key <=to; ++key) {
             auto itr = table.find(key);
@@ -44,7 +44,7 @@ class test_ram_limit : public eosio::contract {
       //@abi action
       void rmentry(uint64_t from, uint64_t to) {
          const auto self = get_self();
-         eosio::print("test_ram_limit::rmentry ", eosio::name{self}, "\n");
+         arisen::print("test_ram_limit::rmentry ", arisen::name{self}, "\n");
          test_table table(self, self);
          for (int key = from; key <=to; ++key) {
             auto itr = table.find(key);
@@ -56,13 +56,13 @@ class test_ram_limit : public eosio::contract {
       //@abi action
       void printentry(uint64_t from, uint64_t to) {
          const auto self = get_self();
-         eosio::print("test_ram_limit::printout ", eosio::name{self}, ":");
+         arisen::print("test_ram_limit::printout ", arisen::name{self}, ":");
          test_table table(self, self);
          for (int key = from; key <=to; ++key) {
             auto itr = table.find(key);
-            eosio::print("\nkey=", key);
+            arisen::print("\nkey=", key);
             eosio_assert (itr != table.end(), "could not find test_table entry");
-            eosio::print(" size=", itr->data.size());
+            arisen::print(" size=", itr->data.size());
          }
       }
 
@@ -75,7 +75,7 @@ class test_ram_limit : public eosio::contract {
 
          EOSLIB_SERIALIZE( test, (key)(data) )
       };
-      typedef eosio::multi_index< N(test.table), test> test_table;
+      typedef arisen::multi_index< N(test.table), test> test_table;
 };
 
 #pragma clang diagnostic pop

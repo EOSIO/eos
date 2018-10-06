@@ -19,12 +19,12 @@
 #include <cmath>
 
 namespace eosiosystem {
-   using eosio::indexed_by;
-   using eosio::const_mem_fun;
-   using eosio::bytes;
-   using eosio::print;
-   using eosio::singleton;
-   using eosio::transaction;
+   using arisen::indexed_by;
+   using arisen::const_mem_fun;
+   using arisen::bytes;
+   using arisen::print;
+   using arisen::singleton;
+   using arisen::transaction;
 
    /**
     *  This method will create a producer_config and producer_info object for 'producer'
@@ -34,9 +34,9 @@ namespace eosiosystem {
     *  @pre authority of producer to register
     *
     */
-   void system_contract::regproducer( const account_name producer, const eosio::public_key& producer_key, const std::string& url, uint16_t location ) {
+   void system_contract::regproducer( const account_name producer, const arisen::public_key& producer_key, const std::string& url, uint16_t location ) {
       eosio_assert( url.size() < 512, "url too long" );
-      eosio_assert( producer_key != eosio::public_key(), "public key should not be the default value" );
+      eosio_assert( producer_key != arisen::public_key(), "public key should not be the default value" );
       require_auth( producer );
 
       auto prod = _producers.find( producer );
@@ -75,11 +75,11 @@ namespace eosiosystem {
 
       auto idx = _producers.get_index<N(prototalvote)>();
 
-      std::vector< std::pair<eosio::producer_key,uint16_t> > top_producers;
+      std::vector< std::pair<arisen::producer_key,uint16_t> > top_producers;
       top_producers.reserve(21);
 
       for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes && it->active(); ++it ) {
-         top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}) );
+         top_producers.emplace_back( std::pair<arisen::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}) );
       }
 
       if ( top_producers.size() < _gstate.last_producer_schedule_size ) {
@@ -89,7 +89,7 @@ namespace eosiosystem {
       /// sort by producer name
       std::sort( top_producers.begin(), top_producers.end() );
 
-      std::vector<eosio::producer_key> producers;
+      std::vector<arisen::producer_key> producers;
 
       producers.reserve(top_producers.size());
       for( const auto& item : top_producers )

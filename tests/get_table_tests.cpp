@@ -38,8 +38,8 @@
 #endif
 
 using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace arisen::chain;
+using namespace arisen::testing;
 using namespace fc;
 
 BOOST_AUTO_TEST_SUITE(get_table_tests)
@@ -61,23 +61,23 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
    // create currency 
    auto act = mutable_variant_object()
          ("issuer",       "eosio")
-         ("maximum_supply", eosio::chain::asset::from_string("1000000000.0000 SYS"));
+         ("maximum_supply", arisen::chain::asset::from_string("1000000000.0000 SYS"));
    push_action(N(eosio.token), N(create), N(eosio.token), act );
 
    // issue
    for (account_name a: accs) {
       push_action( N(eosio.token), N(issue), "eosio", mutable_variant_object()
                   ("to",      name(a) )
-                  ("quantity", eosio::chain::asset::from_string("999.0000 SYS") )
+                  ("quantity", arisen::chain::asset::from_string("999.0000 SYS") )
                   ("memo", "")
                   );
    }
    produce_blocks(1);
 
    // iterate over scope
-   eosio::chain_apis::read_only plugin(*(this->control), fc::microseconds(INT_MAX));
-   eosio::chain_apis::read_only::get_table_by_scope_params param{N(eosio.token), N(accounts), "inita", "", 10};
-   eosio::chain_apis::read_only::get_table_by_scope_result result = plugin.read_only::get_table_by_scope(param);
+   arisen::chain_apis::read_only plugin(*(this->control), fc::microseconds(INT_MAX));
+   arisen::chain_apis::read_only::get_table_by_scope_params param{N(eosio.token), N(accounts), "inita", "", 10};
+   arisen::chain_apis::read_only::get_table_by_scope_result result = plugin.read_only::get_table_by_scope(param);
 
    BOOST_REQUIRE_EQUAL(4, result.rows.size());
    BOOST_REQUIRE_EQUAL("", result.more);

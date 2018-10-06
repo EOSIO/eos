@@ -17,7 +17,7 @@
 #include "IR/Validate.h"
 
 using namespace fc;
-using namespace eosio::chain::webassembly;
+using namespace arisen::chain::webassembly;
 using namespace IR;
 using namespace Runtime;
 
@@ -133,4 +133,4 @@ namespace eosio { namespace chain {
 #define REGISTER_INJECTED_INTRINSICS(CLS, MEMBERS)\
    BOOST_PP_SEQ_FOR_EACH(_REGISTER_INJECTED_INTRINSIC, CLS, _WRAPPED_SEQ(MEMBERS))
 
-} } // eosio::chain
+} } // arisen::chain

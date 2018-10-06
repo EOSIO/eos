@@ -129,42 +129,42 @@ struct abi_def {
 abi_def eosio_contract_abi(const abi_def& eosio_system_abi);
 vector<type_def> common_type_defs();
 
-} } /// namespace eosio::chain
+} } /// namespace arisen::chain
 
 namespace fc {
 
 template<typename ST, typename T>
-datastream<ST>& operator << (datastream<ST>& s, const eosio::chain::may_not_exist<T>& v) {
+datastream<ST>& operator << (datastream<ST>& s, const arisen::chain::may_not_exist<T>& v) {
    raw::pack(s, v.value);
    return s;
 }
 
 template<typename ST, typename T>
-datastream<ST>& operator >> (datastream<ST>& s, eosio::chain::may_not_exist<T>& v) {
+datastream<ST>& operator >> (datastream<ST>& s, arisen::chain::may_not_exist<T>& v) {
    if (s.remaining())
       raw::unpack(s, v.value);
    return s;
 }
 
 template<typename T>
-void to_variant(const eosio::chain::may_not_exist<T>& e, fc::variant& v) {
+void to_variant(const arisen::chain::may_not_exist<T>& e, fc::variant& v) {
    to_variant( e.value, v);
 }
 
 template<typename T>
-void from_variant(const fc::variant& v, eosio::chain::may_not_exist<T>& e) {
+void from_variant(const fc::variant& v, arisen::chain::may_not_exist<T>& e) {
    from_variant( v, e.value );
 }
 
 } // namespace fc
 
-FC_REFLECT( eosio::chain::type_def                         , (new_type_name)(type) )
-FC_REFLECT( eosio::chain::field_def                        , (name)(type) )
-FC_REFLECT( eosio::chain::struct_def                       , (name)(base)(fields) )
-FC_REFLECT( eosio::chain::action_def                       , (name)(type)(ricardian_contract) )
-FC_REFLECT( eosio::chain::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
-FC_REFLECT( eosio::chain::clause_pair                      , (id)(body) )
-FC_REFLECT( eosio::chain::error_message                    , (error_code)(error_msg) )
-FC_REFLECT( eosio::chain::variant_def                      , (name)(types) )
-FC_REFLECT( eosio::chain::abi_def                          , (version)(types)(structs)(actions)(tables)
+FC_REFLECT( arisen::chain::type_def                         , (new_type_name)(type) )
+FC_REFLECT( arisen::chain::field_def                        , (name)(type) )
+FC_REFLECT( arisen::chain::struct_def                       , (name)(base)(fields) )
+FC_REFLECT( arisen::chain::action_def                       , (name)(type)(ricardian_contract) )
+FC_REFLECT( arisen::chain::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
+FC_REFLECT( arisen::chain::clause_pair                      , (id)(body) )
+FC_REFLECT( arisen::chain::error_message                    , (error_code)(error_msg) )
+FC_REFLECT( arisen::chain::variant_def                      , (name)(types) )
+FC_REFLECT( arisen::chain::abi_def                          , (version)(types)(structs)(actions)(tables)
                                                              (ricardian_clauses)(error_messages)(abi_extensions)(variants) )

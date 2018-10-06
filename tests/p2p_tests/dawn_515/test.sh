@@ -41,10 +41,10 @@ EOF
 
 read -d '' configbios << EOF
 p2p-server-address = localhost:9876
-plugin = eosio::producer_plugin
-plugin = eosio::chain_api_plugin
-plugin = eosio::net_plugin
-plugin = eosio::history_api_plugin
+plugin = arisen::producer_plugin
+plugin = arisen::chain_api_plugin
+plugin = arisen::net_plugin
+plugin = arisen::history_api_plugin
 http-server-address = 127.0.0.1:8888
 blocks-dir = blocks
 p2p-listen-endpoint = 0.0.0.0:9876
@@ -66,7 +66,7 @@ p2p-listen-endpoint = 0.0.0.0:9877
 p2p-server-address = localhost:9877
 allowed-connection = any
 p2p-peer-address = localhost:9876
-plugin = eosio::chain_api_plugin
+plugin = arisen::chain_api_plugin
 EOF
 
 read -d '' config01 << EOF
@@ -78,7 +78,7 @@ p2p-listen-endpoint = 0.0.0.0:9878
 p2p-server-address = localhost:9877
 allowed-connection = any
 p2p-peer-address = localhost:9876
-plugin = eosio::chain_api_plugin
+plugin = arisen::chain_api_plugin
 EOF
 
 read -d '' loggingbios << EOF

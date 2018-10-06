@@ -9,7 +9,7 @@
 
 using namespace eosio;
 
-class deferred_test : public eosio::contract {
+class deferred_test : public arisen::contract {
    public:
       using contract::contract;
 

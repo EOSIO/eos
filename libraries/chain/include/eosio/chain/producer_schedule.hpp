@@ -80,7 +80,7 @@ namespace eosio { namespace chain {
    }
 
 
-} } /// eosio::chain
+} } /// arisen::chain
 
-FC_REFLECT( eosio::chain::producer_key, (producer_name)(block_signing_key) )
-FC_REFLECT( eosio::chain::producer_schedule_type, (version)(producers) )
+FC_REFLECT( arisen::chain::producer_key, (producer_name)(block_signing_key) )
+FC_REFLECT( arisen::chain::producer_schedule_type, (version)(producers) )

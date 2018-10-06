@@ -17,8 +17,8 @@
 #endif
 
 using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace arisen::chain;
+using namespace arisen::testing;
 
 BOOST_AUTO_TEST_SUITE(auth_tests)
 
@@ -357,7 +357,7 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
    chain.link_authority( "alice", "eosio", "eosio.any", "reqauth" );
    chain.link_authority( "bob", "eosio", "eosio.any", "reqauth" );
 
-   /// this should succeed because eosio::reqauth is linked to any permission
+   /// this should succeed because arisen::reqauth is linked to any permission
    chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key });
 
    /// this should fail because bob cannot authorize for alice, the permission given must be one-of alices
@@ -385,8 +385,8 @@ try {
 
    chainbase::database &db = chain.control->db();
 
-   using resource_usage_object = eosio::chain::resource_limits::resource_usage_object;
-   using by_owner = eosio::chain::resource_limits::by_owner;
+   using resource_usage_object = arisen::chain::resource_limits::resource_usage_object;
+   using by_owner = arisen::chain::resource_limits::by_owner;
 
    auto create_acc = [&](account_name a) {
 
@@ -506,7 +506,7 @@ BOOST_AUTO_TEST_CASE( linkauth_special ) { try {
                ("type", type)
                ("requirement", "first")),
          action_validate_exception,
-         fc_exception_message_is(std::string("Cannot link eosio::") + std::string(type) + std::string(" to a minimum permission"))
+         fc_exception_message_is(std::string("Cannot link arisen::") + std::string(type) + std::string(" to a minimum permission"))
       );
    };
 

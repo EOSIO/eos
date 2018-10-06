@@ -19,4 +19,4 @@ namespace eosio { namespace chain {
     */
    digest_type merkle( vector<digest_type> ids );
 
-} } /// eosio::chain
+} } /// arisen::chain

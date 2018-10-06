@@ -11,21 +11,21 @@
 #include <arisenlib/contract.hpp>
 #include <arisenlib/crypto.h>
 
-using eosio::key256;
-using eosio::indexed_by;
-using eosio::const_mem_fun;
-using eosio::asset;
-using eosio::permission_level;
-using eosio::action;
-using eosio::print;
-using eosio::name;
+using arisen::key256;
+using arisen::indexed_by;
+using arisen::const_mem_fun;
+using arisen::asset;
+using arisen::permission_level;
+using arisen::action;
+using arisen::print;
+using arisen::name;
 
-class dice : public eosio::contract {
+class dice : public arisen::contract {
    public:
       const uint32_t FIVE_MINUTES = 5*60;
 
       dice(account_name self)
-      :eosio::contract(self),
+      :arisen::contract(self),
        offers(_self, _self),
        games(_self, _self),
        global_dices(_self, _self),
@@ -87,7 +87,7 @@ class dice : public eosio::contract {
             auto game_itr = games.emplace(_self, [&](auto& new_game){
                new_game.id       = gdice_itr->nextgameid;
                new_game.bet      = new_offer_itr->bet;
-               new_game.deadline = eosio::time_point_sec(0);
+               new_game.deadline = arisen::time_point_sec(0);
 
                new_game.player1.commitment = matched_offer_itr->commitment;
                memset(&new_game.player1.reveal, 0, sizeof(checksum256));
@@ -185,7 +185,7 @@ class dice : public eosio::contract {
                else
                   game.player2.reveal = source;
 
-               game.deadline = eosio::time_point_sec(now() + FIVE_MINUTES);
+               game.deadline = arisen::time_point_sec(now() + FIVE_MINUTES);
             });
          }
       }
@@ -196,7 +196,7 @@ class dice : public eosio::contract {
          auto game_itr = games.find(gameid);
 
          eosio_assert(game_itr != games.end(), "game not found");
-         eosio_assert(game_itr->deadline != eosio::time_point_sec(0) && eosio::time_point_sec(now()) > game_itr->deadline, "game not expired");
+         eosio_assert(game_itr->deadline != arisen::time_point_sec(0) && arisen::time_point_sec(now()) > game_itr->deadline, "game not expired");
 
          auto idx = offers.template get_index<N(commitment)>();
          auto player1_offer = idx.find( offer::get_commitment(game_itr->player1.commitment) );
@@ -285,7 +285,7 @@ class dice : public eosio::contract {
          EOSLIB_SERIALIZE( offer, (id)(owner)(bet)(commitment)(gameid) )
       };
 
-      typedef eosio::multi_index< N(offer), offer,
+      typedef arisen::multi_index< N(offer), offer,
          indexed_by< N(bet), const_mem_fun<offer, uint64_t, &offer::by_bet > >,
          indexed_by< N(commitment), const_mem_fun<offer, key256,  &offer::by_commitment> >
       > offer_index;
@@ -301,7 +301,7 @@ class dice : public eosio::contract {
       struct game {
          uint64_t id;
          asset    bet;
-         eosio::time_point_sec deadline;
+         arisen::time_point_sec deadline;
          player   player1;
          player   player2;
 
@@ -310,7 +310,7 @@ class dice : public eosio::contract {
          EOSLIB_SERIALIZE( game, (id)(bet)(deadline)(player1)(player2) )
       };
 
-      typedef eosio::multi_index< N(game), game> game_index;
+      typedef arisen::multi_index< N(game), game> game_index;
 
       //@abi table global i64
       struct global_dice {
@@ -322,7 +322,7 @@ class dice : public eosio::contract {
          EOSLIB_SERIALIZE( global_dice, (id)(nextgameid) )
       };
 
-      typedef eosio::multi_index< N(global), global_dice> global_dice_index;
+      typedef arisen::multi_index< N(global), global_dice> global_dice_index;
 
       //@abi table account i64
       struct account {
@@ -340,7 +340,7 @@ class dice : public eosio::contract {
          EOSLIB_SERIALIZE( account, (owner)(eos_balance)(open_offers)(open_games) )
       };
 
-      typedef eosio::multi_index< N(account), account> account_index;
+      typedef arisen::multi_index< N(account), account> account_index;
 
       offer_index       offers;
       game_index        games;

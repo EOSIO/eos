@@ -5,9 +5,9 @@
 #include <arisenlib/vector.hpp>
 
 namespace identity {
-   using eosio::action_meta;
-   using eosio::singleton;
-   using eosio::key256;
+   using arisen::action_meta;
+   using arisen::singleton;
+   using arisen::key256;
    using std::string;
    using std::vector;
 

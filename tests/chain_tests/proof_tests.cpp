@@ -10,8 +10,8 @@
 #endif
 
 using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace arisen::chain;
+using namespace arisen::testing;
 
 struct action_proof_data {
    account_name              receiver;

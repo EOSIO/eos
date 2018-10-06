@@ -25,7 +25,7 @@
 #include "httpc.hpp"
 
 using boost::asio::ip::tcp;
-using namespace eosio::chain;
+using namespace arisen::chain;
 namespace eosio { namespace client { namespace http {
 
    namespace detail {
@@ -278,7 +278,7 @@ namespace eosio { namespace client { namespace http {
          throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
       }
    } else {
-      auto &&error_info = response_result.as<eosio::error_results>().error;
+      auto &&error_info = response_result.as<arisen::error_results>().error;
       // Construct fc exception from error
       const auto &error_details = error_info.details;
 

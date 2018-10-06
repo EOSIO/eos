@@ -413,4 +413,4 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
    return arl;
 }
 
-} } } /// eosio::chain::resource_limits
+} } } /// arisen::chain::resource_limits

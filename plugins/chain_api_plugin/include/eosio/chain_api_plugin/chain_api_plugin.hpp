@@ -10,7 +10,7 @@
 #include <eosio/chain/controller.hpp>
 
 namespace eosio {
-   using eosio::chain::controller;
+   using arisen::chain::controller;
    using std::unique_ptr;
    using namespace appbase;
 

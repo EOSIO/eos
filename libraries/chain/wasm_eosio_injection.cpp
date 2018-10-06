@@ -9,7 +9,7 @@
 
 namespace eosio { namespace chain { namespace wasm_injections {
 using namespace IR;
-using namespace eosio::chain::wasm_constraints;
+using namespace arisen::chain::wasm_constraints;
 
 std::map<std::vector<uint16_t>, uint32_t> injector_utils::type_slots;
 std::map<std::string, uint32_t>           injector_utils::registered_injected;

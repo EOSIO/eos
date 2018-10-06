@@ -149,21 +149,21 @@ namespace eosio {
 
 } // namespace eosio
 
-FC_REFLECT( eosio::select_ids<fc::sha256>, (mode)(pending)(ids) )
-FC_REFLECT( eosio::chain_size_message,
+FC_REFLECT( arisen::select_ids<fc::sha256>, (mode)(pending)(ids) )
+FC_REFLECT( arisen::chain_size_message,
             (last_irreversible_block_num)(last_irreversible_block_id)
             (head_num)(head_id))
-FC_REFLECT( eosio::handshake_message,
+FC_REFLECT( arisen::handshake_message,
             (network_version)(chain_id)(node_id)(key)
             (time)(token)(sig)(p2p_address)
             (last_irreversible_block_num)(last_irreversible_block_id)
             (head_num)(head_id)
             (os)(agent)(generation) )
-FC_REFLECT( eosio::go_away_message, (reason)(node_id) )
-FC_REFLECT( eosio::time_message, (org)(rec)(xmt)(dst) )
-FC_REFLECT( eosio::notice_message, (known_trx)(known_blocks) )
-FC_REFLECT( eosio::request_message, (req_trx)(req_blocks) )
-FC_REFLECT( eosio::sync_request_message, (start_block)(end_block) )
+FC_REFLECT( arisen::go_away_message, (reason)(node_id) )
+FC_REFLECT( arisen::time_message, (org)(rec)(xmt)(dst) )
+FC_REFLECT( arisen::notice_message, (known_trx)(known_blocks) )
+FC_REFLECT( arisen::request_message, (req_trx)(req_blocks) )
+FC_REFLECT( arisen::sync_request_message, (start_block)(end_block) )
 
 /**
  *

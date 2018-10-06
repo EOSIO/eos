@@ -4,7 +4,7 @@
 #include <eosio/wallet_plugin/wallet_api.hpp>
 
 using namespace std;
-using namespace eosio::chain;
+using namespace arisen::chain;
 
 namespace eosio { namespace wallet {
 

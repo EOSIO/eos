@@ -73,14 +73,14 @@ namespace eosio { namespace chain {
 
 }}
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::global_property_object, eosio::chain::global_property_multi_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::dynamic_global_property_object,
-                         eosio::chain::dynamic_global_property_multi_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::global_property_object, arisen::chain::global_property_multi_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::dynamic_global_property_object,
+                         arisen::chain::dynamic_global_property_multi_index)
 
-FC_REFLECT(eosio::chain::dynamic_global_property_object,
+FC_REFLECT(arisen::chain::dynamic_global_property_object,
            (global_action_sequence)
           )
 
-FC_REFLECT(eosio::chain::global_property_object,
+FC_REFLECT(arisen::chain::global_property_object,
            (proposed_schedule_block_num)(proposed_schedule)(configuration)
           )

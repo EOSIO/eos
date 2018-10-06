@@ -1897,4 +1897,4 @@ const flat_set<account_name> &controller::get_resource_greylist() const {
    return  my->conf.resource_greylist;
 }
 
-} } /// eosio::chain
+} } /// arisen::chain

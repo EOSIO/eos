@@ -253,7 +253,7 @@ namespace stltest {
         }
 
         static void apply( account_name c, action_name act) {
-            eosio::dispatch<stltest::contract, message>(c,act);
+            arisen::dispatch<stltest::contract, message>(c,act);
         }
     };
 

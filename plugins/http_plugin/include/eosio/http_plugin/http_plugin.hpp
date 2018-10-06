@@ -147,6 +147,6 @@ namespace eosio {
    };
 }
 
-FC_REFLECT(eosio::error_results::error_info::error_detail, (message)(file)(line_number)(method))
-FC_REFLECT(eosio::error_results::error_info, (code)(name)(what)(details))
-FC_REFLECT(eosio::error_results, (code)(message)(error))
+FC_REFLECT(arisen::error_results::error_info::error_detail, (message)(file)(line_number)(method))
+FC_REFLECT(arisen::error_results::error_info, (code)(name)(what)(details))
+FC_REFLECT(arisen::error_results, (code)(message)(error))

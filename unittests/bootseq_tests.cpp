@@ -24,8 +24,8 @@
 
 
 using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace arisen::chain;
+using namespace arisen::testing;
 using namespace fc;
 
 using mvo = fc::mutable_variant_object;

@@ -33,4 +33,4 @@ namespace eosio { namespace chain {
    void apply_eosio_canceldelay(apply_context&);
    ///@}  end action handlers
 
-} } /// namespace eosio::chain
+} } /// namespace arisen::chain

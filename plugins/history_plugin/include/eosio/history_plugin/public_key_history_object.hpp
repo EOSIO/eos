@@ -49,7 +49,7 @@ typedef chainbase::generic_index<public_key_history_multi_index> public_key_hist
 
 }
 
-CHAINBASE_SET_INDEX_TYPE( eosio::public_key_history_object, eosio::public_key_history_multi_index )
+CHAINBASE_SET_INDEX_TYPE( arisen::public_key_history_object, arisen::public_key_history_multi_index )
 
-FC_REFLECT( eosio::public_key_history_object, (public_key)(name)(permission) )
+FC_REFLECT( arisen::public_key_history_object, (public_key)(name)(permission) )
 

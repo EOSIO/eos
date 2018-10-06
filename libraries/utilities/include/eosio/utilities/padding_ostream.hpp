@@ -35,5 +35,5 @@ private:
    size_t bytes_out = 0;
 };
 
-} } //eosio::utilities
+} } //arisen::utilities
 

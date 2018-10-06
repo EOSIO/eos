@@ -1438,7 +1438,7 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
          ("mongodb-store-action-traces", bpo::value<bool>()->default_value(true),
           "Enables storing action traces in mongodb.")
          ("mongodb-filter-on", bpo::value<vector<string>>()->composing(),
-          "Track actions which match receiver:action:actor. Receiver, Action, & Actor may be blank to include all. i.e. eosio:: or :transfer:  Use * or leave unspecified to include all.")
+          "Track actions which match receiver:action:actor. Receiver, Action, & Actor may be blank to include all. i.e. arisen:: or :transfer:  Use * or leave unspecified to include all.")
          ("mongodb-filter-out", bpo::value<vector<string>>()->composing(),
           "Do not track actions which match receiver:action:actor. Receiver, Action, & Actor may be blank to exclude all.")
          ;
@@ -1562,7 +1562,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          }
          my->init();
       } else {
-         wlog( "eosio::mongo_db_plugin configured, but no --mongodb-uri specified." );
+         wlog( "arisen::mongo_db_plugin configured, but no --mongodb-uri specified." );
          wlog( "mongo_db_plugin disabled." );
       }
    } FC_LOG_AND_RETHROW()

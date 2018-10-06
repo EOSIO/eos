@@ -85,9 +85,9 @@ string abi_generator::translate_type(const string& type_name) {
   else if (type_name == "char"               || type_name == "int8_t")   built_in_type = "int8";
   else if (type_name == "double")   built_in_type = "float64";
   else {
-     static auto types = eosio::chain::common_type_defs();
+     static auto types = arisen::chain::common_type_defs();
      auto itr = std::find_if( types.begin(), types.end(),
-                              [&type_name]( const eosio::chain::type_def& t ) { return t.new_type_name == type_name; } );
+                              [&type_name]( const arisen::chain::type_def& t ) { return t.new_type_name == type_name; } );
      if( itr != types.end()) {
         built_in_type = itr->type;
      }

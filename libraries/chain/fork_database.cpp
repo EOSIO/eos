@@ -346,4 +346,4 @@ namespace eosio { namespace chain {
       }
    }
 
-} } /// eosio::chain
+} } /// arisen::chain

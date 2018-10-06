@@ -32,9 +32,9 @@ namespace eosio { namespace chain {
       return str;
    }
 
-} } /// eosio::chain
+} } /// arisen::chain
 
 namespace fc {
-  void to_variant(const eosio::chain::name& c, fc::variant& v) { v = std::string(c); }
-  void from_variant(const fc::variant& v, eosio::chain::name& check) { check = v.get_string(); }
+  void to_variant(const arisen::chain::name& c, fc::variant& v) { v = std::string(c); }
+  void from_variant(const fc::variant& v, arisen::chain::name& check) { check = v.get_string(); }
 } // fc

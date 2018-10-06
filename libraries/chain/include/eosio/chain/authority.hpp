@@ -186,11 +186,11 @@ inline bool validate( const Authority& auth ) {
    return total_weight >= auth.threshold;
 }
 
-} } // namespace eosio::chain
+} } // namespace arisen::chain
 
 
-FC_REFLECT(eosio::chain::permission_level_weight, (permission)(weight) )
-FC_REFLECT(eosio::chain::key_weight, (key)(weight) )
-FC_REFLECT(eosio::chain::wait_weight, (wait_sec)(weight) )
-FC_REFLECT(eosio::chain::authority, (threshold)(keys)(accounts)(waits) )
-FC_REFLECT(eosio::chain::shared_authority, (threshold)(keys)(accounts)(waits) )
+FC_REFLECT(arisen::chain::permission_level_weight, (permission)(weight) )
+FC_REFLECT(arisen::chain::key_weight, (key)(weight) )
+FC_REFLECT(arisen::chain::wait_weight, (wait_sec)(weight) )
+FC_REFLECT(arisen::chain::authority, (threshold)(keys)(accounts)(waits) )
+FC_REFLECT(arisen::chain::shared_authority, (threshold)(keys)(accounts)(waits) )

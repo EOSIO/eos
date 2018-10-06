@@ -63,13 +63,13 @@ namespace proxy {
       configs::get(code_config, self);
       code_config.owner = params.owner;
       code_config.delay = params.delay;
-      eosio::print("Setting owner to: ", name{params.owner}, " with delay: ", params.delay, "\n");
+      arisen::print("Setting owner to: ", name{params.owner}, " with delay: ", params.delay, "\n");
       configs::store(code_config, self);
    }
 
    template<size_t ...Args>
    void apply_onerror(uint64_t receiver, const onerror& error ) {
-      eosio::print("starting onerror\n");
+      arisen::print("starting onerror\n");
       const auto self = receiver;
       config code_config;
       eosio_assert(configs::get(code_config, self), "Attempting use of unconfigured proxy");
@@ -77,7 +77,7 @@ namespace proxy {
       auto id = code_config.next_id++;
       configs::store(code_config, self);
 
-      eosio::print("Resending Transaction: ", error.sender_id, " as ", id, "\n");
+      arisen::print("Resending Transaction: ", error.sender_id, " as ", id, "\n");
       transaction dtrx = error.unpack_sent_trx();
       dtrx.delay_sec = code_config.delay;
       dtrx.send(id, self);
@@ -95,7 +95,7 @@ extern "C" {
          apply_onerror( receiver, onerror::from_current_action() );
       } else if( code == N(eosio.token) ) {
          if( action == N(transfer) ) {
-            apply_transfer(receiver, code, unpack_action_data<eosio::token::transfer_args>());
+            apply_transfer(receiver, code, unpack_action_data<arisen::token::transfer_args>());
          }
       } else if( code == receiver ) {
          if( action == N(setowner) ) {

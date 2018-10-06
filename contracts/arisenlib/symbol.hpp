@@ -50,7 +50,7 @@ namespace eosio {
     * @param precision - precision of symbol
     * @param str - the string representation of the symbol
     */
-   #define S(P,X) ::eosio::string_to_symbol(P,#X)
+   #define S(P,X) ::arisen::string_to_symbol(P,#X)
 
    /**
     * uint64_t representation of a symbol name
@@ -147,7 +147,7 @@ namespace eosio {
        */
       void print(bool show_precision=true)const {
          if( show_precision ){
-            ::eosio::print(precision());
+            ::arisen::print(precision());
             prints(",");
          }
 

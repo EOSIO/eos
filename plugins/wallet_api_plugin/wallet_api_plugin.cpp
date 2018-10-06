@@ -16,7 +16,7 @@ namespace eosio { namespace detail {
   struct wallet_api_plugin_empty {};
 }}
 
-FC_REFLECT(eosio::detail::wallet_api_plugin_empty, );
+FC_REFLECT(arisen::detail::wallet_api_plugin_empty, );
 
 namespace eosio {
 
@@ -52,21 +52,21 @@ using namespace eosio;
 
 #define INVOKE_V_R(api_handle, call_name, in_param) \
      api_handle.call_name(fc::json::from_string(body).as<in_param>()); \
-     eosio::detail::wallet_api_plugin_empty result;
+     arisen::detail::wallet_api_plugin_empty result;
 
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
-     eosio::detail::wallet_api_plugin_empty result;
+     arisen::detail::wallet_api_plugin_empty result;
 
 #define INVOKE_V_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>()); \
-     eosio::detail::wallet_api_plugin_empty result;
+     arisen::detail::wallet_api_plugin_empty result;
 
 #define INVOKE_V_V(api_handle, call_name) \
      api_handle.call_name(); \
-     eosio::detail::wallet_api_plugin_empty result;
+     arisen::detail::wallet_api_plugin_empty result;
 
 
 void wallet_api_plugin::plugin_startup() {

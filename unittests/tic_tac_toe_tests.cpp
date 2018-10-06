@@ -26,8 +26,8 @@
 #endif
 
 using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::testing;
+using namespace arisen::chain;
+using namespace arisen::testing;
 using namespace fc;
 
 const static uint32_t board_len = 9;

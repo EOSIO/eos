@@ -29,7 +29,7 @@ namespace identity {
       std::string         type;
       std::vector<char>   data;
       uint64_t primary_key() const { return id; }
-      /* constexpr */ static eosio::key256 key(uint64_t property, uint64_t trusted, uint64_t certifier) {
+      /* constexpr */ static arisen::key256 key(uint64_t property, uint64_t trusted, uint64_t certifier) {
          /*
            key256 key;
            key.uint64s[0] = property;
@@ -37,9 +37,9 @@ namespace identity {
            key.uint64s[2] = certifier;
            key.uint64s[3] = 0;
          */
-         return eosio::key256::make_from_word_sequence<uint64_t>(property, trusted, certifier);
+         return arisen::key256::make_from_word_sequence<uint64_t>(property, trusted, certifier);
       }
-      eosio::key256 get_key() const { return key(property, trusted, certifier); }
+      arisen::key256 get_key() const { return key(property, trusted, certifier); }
 
       EOSLIB_SERIALIZE( certrow , (property)(trusted)(certifier)(confidence)(type)(data)(id) )
    };
@@ -61,12 +61,12 @@ namespace identity {
       EOSLIB_SERIALIZE( trustrow, (account) )
    };
 
-   typedef eosio::multi_index<N(certs), certrow,
-                              eosio::indexed_by< N(bytuple), eosio::const_mem_fun<certrow, eosio::key256, &certrow::get_key> >
+   typedef arisen::multi_index<N(certs), certrow,
+                              arisen::indexed_by< N(bytuple), arisen::const_mem_fun<certrow, arisen::key256, &certrow::get_key> >
                               > certs_table;
-   typedef eosio::multi_index<N(ident), identrow> idents_table;
-   typedef eosio::singleton<N(account), identity_name>  accounts_table;
-   typedef eosio::multi_index<N(trust), trustrow> trust_table;
+   typedef arisen::multi_index<N(ident), identrow> idents_table;
+   typedef arisen::singleton<N(account), identity_name>  accounts_table;
+   typedef arisen::multi_index<N(trust), trustrow> trust_table;
 
    class identity_base {
       public:

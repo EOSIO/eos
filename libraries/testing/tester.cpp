@@ -8,8 +8,8 @@
 #include <arisen.bios/arisen.bios.abi.hpp>
 #include <fstream>
 
-eosio::chain::asset core_from_string(const std::string& s) {
-  return eosio::chain::asset::from_string(s + " " CORE_SYMBOL_NAME);
+arisen::chain::asset core_from_string(const std::string& s) {
+  return arisen::chain::asset::from_string(s + " " CORE_SYMBOL_NAME);
 }
 
 namespace eosio { namespace testing {
@@ -800,7 +800,7 @@ namespace eosio { namespace testing {
             auto block = a.control->fetch_block_by_number(i);
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
                b.control->abort_block();
-               b.control->push_block(block); //, eosio::chain::validation_steps::created_block);
+               b.control->push_block(block); //, arisen::chain::validation_steps::created_block);
             }
          }
       };
@@ -911,7 +911,7 @@ namespace eosio { namespace testing {
       return match;
    }
 
-} }  /// eosio::testing
+} }  /// arisen::testing
 
 std::ostream& operator<<( std::ostream& osm, const fc::variant& v ) {
    //fc::json::to_stream( osm, v );

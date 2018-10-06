@@ -43,6 +43,6 @@ namespace eosio { namespace chain {
       >
    >;
 
-} } // eosio::chain
+} } // arisen::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::reversible_block_object, eosio::chain::reversible_block_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::reversible_block_object, arisen::chain::reversible_block_index)

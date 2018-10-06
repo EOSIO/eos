@@ -45,4 +45,4 @@ namespace eosio { namespace testing {
       std::map<base_tester *, scoped_connection> blockchains;
    };
 
-} } /// eosio::testing
+} } /// arisen::testing

@@ -21,7 +21,7 @@ namespace eosio {
 
             auto primary_key()const { return proposal_name.value; }
          };
-         typedef eosio::multi_index<N(proposal),proposal> proposals;
+         typedef arisen::multi_index<N(proposal),proposal> proposals;
 
          struct approvals_info {
             name                       proposal_name;
@@ -30,7 +30,7 @@ namespace eosio {
 
             auto primary_key()const { return proposal_name.value; }
          };
-         typedef eosio::multi_index<N(approvals),approvals_info> approvals;
+         typedef arisen::multi_index<N(approvals),approvals_info> approvals;
    };
 
 } /// namespace eosio

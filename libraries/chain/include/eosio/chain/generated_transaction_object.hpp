@@ -112,6 +112,6 @@ namespace eosio { namespace chain {
          static const uint64_t value = 96 + 4 + overhead; ///< 96 bytes for our constant size fields, 4 bytes for a varint for packed_trx size and 96 bytes of implementation overhead
       };
    }
-} } // eosio::chain
+} } // arisen::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_multi_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::generated_transaction_object, arisen::chain::generated_transaction_multi_index)

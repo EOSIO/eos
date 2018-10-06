@@ -63,5 +63,5 @@ private:
 
 }
 
-FC_REFLECT(eosio::test_control_apis::empty, )
-FC_REFLECT(eosio::test_control_apis::read_write::kill_node_on_producer_params, (producer)(where_in_sequence)(based_on_lib) )
+FC_REFLECT(arisen::test_control_apis::empty, )
+FC_REFLECT(arisen::test_control_apis::read_write::kill_node_on_producer_params, (producer)(where_in_sequence)(based_on_lib) )

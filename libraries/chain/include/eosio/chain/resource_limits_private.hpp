@@ -258,9 +258,9 @@ namespace eosio { namespace chain { namespace resource_limits {
       >
    >;
 
-} } } /// eosio::chain::resource_limits
+} } } /// arisen::chain::resource_limits
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_object,        eosio::chain::resource_limits::resource_limits_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_usage_object,         eosio::chain::resource_limits::resource_usage_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_config_object, eosio::chain::resource_limits::resource_limits_config_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_state_object,  eosio::chain::resource_limits::resource_limits_state_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::resource_limits::resource_limits_object,        arisen::chain::resource_limits::resource_limits_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::resource_limits::resource_usage_object,         arisen::chain::resource_limits::resource_usage_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::resource_limits::resource_limits_config_object, arisen::chain::resource_limits::resource_limits_config_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::resource_limits::resource_limits_state_object,  arisen::chain::resource_limits::resource_limits_state_index)

@@ -40,10 +40,10 @@ using producer_multi_index = chainbase::shared_multi_index_container<
    >
 >;
 
-} } // eosio::chain
+} } // arisen::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::producer_object, eosio::chain::producer_multi_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::producer_object, arisen::chain::producer_multi_index)
 
-FC_REFLECT(eosio::chain::producer_object::id_type, (_id))
-FC_REFLECT(eosio::chain::producer_object, (id)(owner)(last_aslot)(signing_key)(total_missed)(last_confirmed_block_num)
+FC_REFLECT(arisen::chain::producer_object::id_type, (_id))
+FC_REFLECT(arisen::chain::producer_object, (id)(owner)(last_aslot)(signing_key)(total_missed)(last_confirmed_block_num)
            (configuration))

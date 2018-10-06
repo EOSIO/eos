@@ -53,8 +53,8 @@ struct genesis_state {
    chain_id_type compute_chain_id() const;
 };
 
-} } // namespace eosio::chain
+} } // namespace arisen::chain
 
 
-FC_REFLECT(eosio::chain::genesis_state,
+FC_REFLECT(arisen::chain::genesis_state,
            (initial_timestamp)(initial_key)(initial_configuration))

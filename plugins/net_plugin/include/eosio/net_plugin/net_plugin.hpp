@@ -44,4 +44,4 @@ namespace eosio {
 
 }
 
-FC_REFLECT( eosio::connection_status, (peer)(connecting)(syncing)(last_handshake) )
+FC_REFLECT( arisen::connection_status, (peer)(connecting)(syncing)(last_handshake) )

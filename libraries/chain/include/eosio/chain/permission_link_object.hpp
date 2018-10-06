@@ -75,8 +75,8 @@ namespace eosio { namespace chain {
          static const uint64_t value = 40 + overhead; ///< fixed field + overhead
       };
    }
-} } // eosio::chain
+} } // arisen::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_link_object, eosio::chain::permission_link_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::chain::permission_link_object, arisen::chain::permission_link_index)
 
-FC_REFLECT(eosio::chain::permission_link_object, (id)(account)(code)(message_type)(required_permission))
+FC_REFLECT(arisen::chain::permission_link_object, (id)(account)(code)(message_type)(required_permission))

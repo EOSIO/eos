@@ -14,7 +14,7 @@ static wabt_apply_instance_vars* static_wabt_vars;
 
 using namespace wabt;
 using namespace wabt::interp;
-namespace wasm_constraints = eosio::chain::wasm_constraints;
+namespace wasm_constraints = arisen::chain::wasm_constraints;
 
 class wabt_instantiated_module : public wasm_instantiated_module_interface {
    public:

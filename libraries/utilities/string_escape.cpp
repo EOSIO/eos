@@ -51,5 +51,5 @@ namespace eosio { namespace utilities {
     return escaped_string.str();
   }
 
-} } // end namespace eosio::utilities
+} } // end namespace arisen::utilities
 

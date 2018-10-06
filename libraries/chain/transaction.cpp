@@ -381,4 +381,4 @@ void packed_transaction::set_transaction(const transaction& t, const vector<byte
 }
 
 
-} } // eosio::chain
+} } // arisen::chain

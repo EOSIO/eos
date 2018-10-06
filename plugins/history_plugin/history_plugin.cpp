@@ -75,8 +75,8 @@ namespace eosio {
 
 } /// namespace eosio
 
-CHAINBASE_SET_INDEX_TYPE(eosio::account_history_object, eosio::account_history_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::action_history_object, eosio::action_history_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::account_history_object, arisen::account_history_index)
+CHAINBASE_SET_INDEX_TYPE(arisen::action_history_object, arisen::action_history_index)
 
 namespace eosio {
 

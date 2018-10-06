@@ -106,14 +106,14 @@ std::string peer_log_format;
   FC_MULTILINE_MACRO_END
 
 
-using eosio::public_key_type;
-using eosio::chain_id_type;
-using eosio::block_id_type;
-using eosio::block_timestamp_type;
+using arisen::public_key_type;
+using arisen::chain_id_type;
+using arisen::block_id_type;
+using arisen::block_timestamp_type;
 using std::string;
-using eosio::sha256;
-using eosio::signed_block_ptr;
-using eosio::packed_transaction_ptr;
+using arisen::sha256;
+using arisen::signed_block_ptr;
+using arisen::packed_transaction_ptr;
 using std::vector;
 
 struct hello {

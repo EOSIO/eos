@@ -13,7 +13,7 @@
 #include <eosio/chain/trace.hpp>
 
 namespace eosio { namespace chain { namespace plugin_interface {
-   using namespace eosio::chain;
+   using namespace arisen::chain;
    using namespace appbase;
 
    template<typename T>

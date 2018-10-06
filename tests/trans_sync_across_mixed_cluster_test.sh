@@ -113,8 +113,8 @@ cleanup
 
 # stand up aOS cluster
 launcherOpts="-p $pnodes -n $total_nodes -s $topo -d $delay"
-echo Launcher options: --aos \"--plugin eosio::wallet_api_plugin\" $launcherOpts
-programs/arisen-launcher/arisen-launcher --aos "--plugin eosio::wallet_api_plugin" $launcherOpts
+echo Launcher options: --aos \"--plugin arisen::wallet_api_plugin\" $launcherOpts
+programs/arisen-launcher/arisen-launcher --aos "--plugin arisen::wallet_api_plugin" $launcherOpts
 sleep 7
 
 startPort=8888

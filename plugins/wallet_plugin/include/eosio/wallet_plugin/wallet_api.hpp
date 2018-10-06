@@ -8,7 +8,7 @@
 #include <eosio/chain/transaction.hpp>
 
 using namespace std;
-using namespace eosio::chain;
+using namespace arisen::chain;
 
 namespace eosio { namespace wallet {
 

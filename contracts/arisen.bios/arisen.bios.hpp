@@ -23,7 +23,7 @@ namespace eosio {
             require_auth( _self );
          }
 
-         void setprods( std::vector<eosio::producer_key> schedule ) {
+         void setprods( std::vector<arisen::producer_key> schedule ) {
             (void)schedule; // schedule argument just forces the deserialization of the action data into vector<producer_key> (necessary check)
             require_auth( _self );
 

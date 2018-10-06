@@ -281,7 +281,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       }
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          if ( global_idx == -1 ) {
-            arg.module->globals.defs.push_back({{ValueType::i32, true}, {(I32) eosio::chain::wasm_constraints::maximum_call_depth}});
+            arg.module->globals.defs.push_back({{ValueType::i32, true}, {(I32) arisen::chain::wasm_constraints::maximum_call_depth}});
          }
 
          global_idx = arg.module->globals.size()-1;
@@ -460,7 +460,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             return u8"_eosio_ui64_to_f64";
 
          default:
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, unknown opcode in injection ${op}", ("op", opcode));
+            FC_THROW_EXCEPTION( arisen::chain::wasm_execution_error, "Error, unknown opcode in injection ${op}", ("op", opcode));
       }
    }
 

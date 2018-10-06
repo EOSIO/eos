@@ -482,4 +482,4 @@ namespace eosio { namespace chain {
       return gs;
    }
 
-} } /// eosio::chain
+} } /// arisen::chain

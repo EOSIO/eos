@@ -71,7 +71,7 @@ namespace eosio {
     * @return constexpr uint64_t - 64-bit unsigned integer representation of the name
     * @ingroup types
     */
-   #define N(X) ::eosio::string_to_name(#X)
+   #define N(X) ::arisen::string_to_name(#X)
 
 
    static constexpr uint64_t name_suffix( uint64_t n ) {
