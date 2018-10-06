@@ -1171,7 +1171,7 @@ BOOST_FIXTURE_TEST_CASE(arisen_abi, TESTER) try {
    auto result = push_transaction( trx );
 
    fc::variant pretty_output;
-   // verify to_variant works on eos native contract type: newaccount
+   // verify to_variant works on RSN native contract type: newaccount
    // see abi_serializer::to_abi()
    abi_serializer::to_variant(*result, pretty_output, get_resolver(), abi_serializer_max_time);
 

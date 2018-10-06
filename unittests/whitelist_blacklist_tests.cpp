@@ -327,7 +327,7 @@ BOOST_AUTO_TEST_CASE( action_blacklist ) { try {
    test.chain->produce_blocks();
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE( blacklist_eosio ) { try {
+BOOST_AUTO_TEST_CASE( blacklist_arisen ) { try {
    whitelist_blacklist_tester<tester> tester1;
    tester1.init();
    tester1.chain->produce_blocks();
