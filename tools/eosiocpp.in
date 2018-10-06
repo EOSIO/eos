@@ -4,24 +4,24 @@ EOSIO_BIN_INSTALL_DIR=`dirname $0`
 if [ "${EOSIO_BIN_INSTALL_DIR}" == "." ]; then
   EOSIO_BIN_INSTALL_DIR=`pwd`
 fi
-EOSIO_INSTALL_DIR=`dirname ${EOSIO_BIN_INSTALL_DIR}`
+ARISEN_INSTALL_DIR=`dirname ${EOSIO_BIN_INSTALL_DIR}`
 if [ -x "@CMAKE_BINARY_DIR@/programs/arisen-abigen/arisen-abigen" ]; then
     ABIGEN="@CMAKE_BINARY_DIR@/programs/arisen-abigen/arisen-abigen"
-elif [ -x "${EOSIO_INSTALL_DIR}/bin/arisen-abigen" ]; then
-    ABIGEN=${EOSIO_INSTALL_DIR}/bin/arisen-abigen
+elif [ -x "${ARISEN_INSTALL_DIR}/bin/arisen-abigen" ]; then
+    ABIGEN=${ARISEN_INSTALL_DIR}/bin/arisen-abigen
 fi
 if [ -x "@CMAKE_BINARY_DIR@/externals/binaryen/bin/eosio-s2wasm" ]; then
     EOSIO_S2WASM="@CMAKE_BINARY_DIR@/externals/binaryen/bin/eosio-s2wasm"
-elif [ -x "${EOSIO_INSTALL_DIR}/bin/eosio-s2wasm" ]; then
-    EOSIO_S2WASM="${EOSIO_INSTALL_DIR}/bin/eosio-s2wasm"
+elif [ -x "${ARISEN_INSTALL_DIR}/bin/eosio-s2wasm" ]; then
+    EOSIO_S2WASM="${ARISEN_INSTALL_DIR}/bin/eosio-s2wasm"
 else
     echo "eosio-s2wasm not found either built or installed"
     exit 12
 fi
 if [ -x "@CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Programs/eosio-wast2wasm" ]; then
     EOSIO_WAST2WASM="@CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Programs/eosio-wast2wasm"
-elif [ -x "${EOSIO_INSTALL_DIR}/bin/eosio-wast2wasm" ]; then
-    EOSIO_WAST2WASM="${EOSIO_INSTALL_DIR}/bin/eosio-wast2wasm"
+elif [ -x "${ARISEN_INSTALL_DIR}/bin/eosio-wast2wasm" ]; then
+    EOSIO_WAST2WASM="${ARISEN_INSTALL_DIR}/bin/eosio-wast2wasm"
 else
     echo "eosio-wast2wasm not found either built or installed"
     exit 14
@@ -29,7 +29,7 @@ fi
 BOOST_INCLUDE_DIR=@Boost_INCLUDE_DIR@
 function copy_skeleton {
     set -e
-    cp -r "${EOSIO_INSTALL_DIR}/share/eosio/skeleton/." $newname
+    cp -r "${ARISEN_INSTALL_DIR}/share/eosio/skeleton/." $newname
 
     for file in $(find ./$newname -name 'skeleton.*')
     do
@@ -68,9 +68,9 @@ function build_contract {
                                    -I @CMAKE_SOURCE_DIR@/contracts/libc++/upstream/include \
                                    -I @CMAKE_SOURCE_DIR@/contracts/musl/upstream/include \
                                    -I @CMAKE_SOURCE_DIR@/externals/magic_get/include \
-                                   -I ${EOSIO_INSTALL_DIR}/include \
-                                   -I${EOSIO_INSTALL_DIR}/include/libc++/upstream/include \
-                                   -I${EOSIO_INSTALL_DIR}/include/musl/upstream/include \
+                                   -I ${ARISEN_INSTALL_DIR}/include \
+                                   -I${ARISEN_INSTALL_DIR}/include/libc++/upstream/include \
+                                   -I${ARISEN_INSTALL_DIR}/include/musl/upstream/include \
                                    -I${BOOST_INCLUDE_DIR} \
                                    -I $filePath \
                                    ${EOSIOCPP_CFLAGS} \
@@ -82,9 +82,9 @@ function build_contract {
     declare -a possible_libs=("@CMAKE_BINARY_DIR@/contracts/arisenlib/arisenlib.bc"
                               "@CMAKE_BINARY_DIR@/contracts/libc++/libc++.bc"
                               "@CMAKE_BINARY_DIR@/contracts/musl/libc.bc"
-                              "${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/arisenlib.bc"
-                              "${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc++.bc"
-                              "${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc.bc")
+                              "${ARISEN_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/arisenlib.bc"
+                              "${ARISEN_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc++.bc"
+                              "${ARISEN_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc.bc")
     declare libs=""
     for lib in "${possible_libs[@]}"; do
         if [ -f "${lib}" ]; then
@@ -116,11 +116,11 @@ function generate_abi {
         -extra-arg=-I@CMAKE_SOURCE_DIR@/contracts/libc++/upstream/include \
         -extra-arg=-I@CMAKE_SOURCE_DIR@/contracts/musl/upstream/include \
         -extra-arg=-I@CMAKE_SOURCE_DIR@/externals/magic_get/include \
-        -extra-arg=-I${EOSIO_INSTALL_DIR}/include/libc++/upstream/include \
-        -extra-arg=-I${EOSIO_INSTALL_DIR}/include/musl/upstream/include \
+        -extra-arg=-I${ARISEN_INSTALL_DIR}/include/libc++/upstream/include \
+        -extra-arg=-I${ARISEN_INSTALL_DIR}/include/musl/upstream/include \
         -extra-arg=-I${BOOST_INCLUDE_DIR} \
         -extra-arg=${EOSIOCPP_CFLAGS}  \
-        -extra-arg=-I${EOSIO_INSTALL_DIR}/include -extra-arg=-I$context_folder \
+        -extra-arg=-I${ARISEN_INSTALL_DIR}/include -extra-arg=-I$context_folder \
         -extra-arg=-fparse-all-comments -destination-file=${outname} -verbose=0 \
         -context=$context_folder $1 --
 
