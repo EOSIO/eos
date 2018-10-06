@@ -581,7 +581,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
    template<then_type Then, typename U=T>
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
-      EOS_ASSERT((U32)ptr != 0, wasm_exception, "references cannot be created for null pointers");
+      RSN_ASSERT((U32)ptr != 0, wasm_exception, "references cannot be created for null pointers");
       MemoryInstance* mem = ctx.memory;
       if(!mem || (U32)ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
          Runtime::causeException(Exception::Cause::accessViolation);
@@ -599,7 +599,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
    template<then_type Then, typename U=T>
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
-      EOS_ASSERT((U32)ptr != 0, wasm_exception, "reference cannot be created for null pointers");
+      RSN_ASSERT((U32)ptr != 0, wasm_exception, "reference cannot be created for null pointers");
       MemoryInstance* mem = ctx.memory;
       if(!mem || (U32)ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
          Runtime::causeException(Exception::Cause::accessViolation);

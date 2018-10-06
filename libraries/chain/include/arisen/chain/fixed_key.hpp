@@ -58,7 +58,7 @@ namespace arisen {
                    continue;
                }
 
-               EOS_ASSERT( sub_words_left == 1, chain::fixed_key_type_exception, "unexpected error in fixed_key constructor" );
+               RSN_ASSERT( sub_words_left == 1, chain::fixed_key_type_exception, "unexpected error in fixed_key constructor" );
                temp_word |= static_cast<word_t>(w);
                sub_words_left = num_sub_words;
 

@@ -44,7 +44,7 @@ namespace arisen {
             uint64_t result = 0;
             for (uint32_t i = 0; i < len; ++i) {
                // All characters must be upper case alphabets
-               EOS_ASSERT (str[i] >= 'A' && str[i] <= 'Z', symbol_type_exception, "invalid character in symbol name");
+               RSN_ASSERT (str[i] >= 'A' && str[i] <= 'Z', symbol_type_exception, "invalid character in symbol name");
                result |= (uint64_t(str[i]) << (8*(i+1)));
             }
             result |= uint64_t(precision);
@@ -64,22 +64,22 @@ namespace arisen {
             static constexpr uint8_t max_precision = 18;
 
             explicit symbol(uint8_t p, const char* s): m_value(string_to_symbol(p, s)) {
-               EOS_ASSERT(valid(), symbol_type_exception, "invalid symbol: ${s}", ("s",s));
+               RSN_ASSERT(valid(), symbol_type_exception, "invalid symbol: ${s}", ("s",s));
             }
             explicit symbol(uint64_t v = CORE_SYMBOL): m_value(v) {
-               EOS_ASSERT(valid(), symbol_type_exception, "invalid symbol: ${name}", ("name",name()));
+               RSN_ASSERT(valid(), symbol_type_exception, "invalid symbol: ${name}", ("name",name()));
             }
             static symbol from_string(const string& from)
             {
                try {
                   string s = fc::trim(from);
-                  EOS_ASSERT(!s.empty(), symbol_type_exception, "creating symbol from empty string");
+                  RSN_ASSERT(!s.empty(), symbol_type_exception, "creating symbol from empty string");
                   auto comma_pos = s.find(',');
-                  EOS_ASSERT(comma_pos != string::npos, symbol_type_exception, "missing comma in symbol");
+                  RSN_ASSERT(comma_pos != string::npos, symbol_type_exception, "missing comma in symbol");
                   auto prec_part = s.substr(0, comma_pos);
                   uint8_t p = fc::to_int64(prec_part);
                   string name_part = s.substr(comma_pos + 1);
-                  EOS_ASSERT( p <= max_precision, symbol_type_exception, "precision ${p} should be <= 18", ("p", p));
+                  RSN_ASSERT( p <= max_precision, symbol_type_exception, "precision ${p} should be <= 18", ("p", p));
                   return symbol(string_to_symbol(p, name_part.c_str()));
                } FC_CAPTURE_LOG_AND_RETHROW((from))
             }
@@ -97,7 +97,7 @@ namespace arisen {
             uint8_t decimals() const { return m_value & 0xFF; }
             uint64_t precision() const
             {
-               EOS_ASSERT( decimals() <= max_precision, symbol_type_exception, "precision ${p} should be <= 18", ("p", decimals()) );
+               RSN_ASSERT( decimals() <= max_precision, symbol_type_exception, "precision ${p} should be <= 18", ("p", decimals()) );
                uint64_t p10 = 1;
                uint64_t p = decimals();
                while( p > 0  ) {
@@ -138,8 +138,8 @@ namespace arisen {
             }
 
             void reflector_verify()const {
-               EOS_ASSERT( decimals() <= max_precision, symbol_type_exception, "precision ${p} should be <= 18", ("p", decimals()) );
-               EOS_ASSERT( valid_name(name()), symbol_type_exception, "invalid symbol: ${name}", ("name",name()));
+               RSN_ASSERT( decimals() <= max_precision, symbol_type_exception, "precision ${p} should be <= 18", ("p", decimals()) );
+               RSN_ASSERT( valid_name(name()), symbol_type_exception, "invalid symbol: ${name}", ("name",name()));
             }
 
          private:

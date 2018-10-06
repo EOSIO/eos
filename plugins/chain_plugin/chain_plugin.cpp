@@ -351,7 +351,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          auto& list = my->chain_config->action_blacklist;
          for( const auto& a : acts ) {
             auto pos = a.find( "::" );
-            EOS_ASSERT( pos != std::string::npos, plugin_config_exception, "Invalid entry in action-blacklist: '${a}'", ("a", a));
+            RSN_ASSERT( pos != std::string::npos, plugin_config_exception, "Invalid entry in action-blacklist: '${a}'", ("a", a));
             account_name code( a.substr( 0, pos ));
             action_name act( a.substr( pos + 2 ));
             list.emplace( code.value, act.value );
@@ -381,7 +381,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             auto item = fc::json::from_string(cp).as<std::pair<uint32_t,block_id_type>>();
             auto itr = my->loaded_checkpoints.find(item.first);
             if( itr != my->loaded_checkpoints.end() ) {
-               EOS_ASSERT( itr->second == item.second,
+               RSN_ASSERT( itr->second == item.second,
                            plugin_config_exception,
                           "redefining existing checkpoint at block number ${num}: original: ${orig} new: ${new}",
                           ("num", item.first)("orig", itr->second)("new", item.second)
@@ -531,7 +531,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
 
       if( options.count( "genesis-json" )) {
-         EOS_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+         RSN_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
                      plugin_config_exception,
                     "Genesis state can only be set on a fresh blockchain." );
 
@@ -540,7 +540,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             genesis_file = bfs::current_path() / genesis_file;
          }
 
-         EOS_ASSERT( fc::is_regular_file( genesis_file ),
+         RSN_ASSERT( fc::is_regular_file( genesis_file ),
                      plugin_config_exception,
                     "Specified genesis file '${genesis}' does not exist.",
                     ("genesis", genesis_file.generic_string()));
@@ -556,7 +556,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
          wlog( "Starting up fresh ARISEN blockchain with provided genesis state." );
       } else if( options.count( "genesis-timestamp" )) {
-         EOS_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+         RSN_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
                      plugin_config_exception,
                     "Genesis state can only be set on a fresh blockchain." );
 
@@ -572,7 +572,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if ( options.count("read-mode") ) {
          my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
-         EOS_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported." );
+         RSN_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported." );
       }
 
       if ( options.count("validation-mode") ) {
@@ -607,7 +607,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          auto itr = my->loaded_checkpoints.find( blk->block_num() );
          if( itr != my->loaded_checkpoints.end() ) {
             auto id = blk->id();
-            EOS_ASSERT( itr->second == id, checkpoint_exception,
+            RSN_ASSERT( itr->second == id, checkpoint_exception,
                         "Checkpoint does not match for block number ${num}: expected: ${expected} actual: ${actual}",
                         ("num", blk->block_num())("expected", itr->second)("actual", id)
             );
@@ -688,7 +688,7 @@ chain_apis::read_write::read_write(controller& db, const fc::microseconds& abi_s
 }
 
 void chain_apis::read_write::validate() const {
-   EOS_ASSERT( db.get_read_mode() != chain::db_read_mode::READ_ONLY, missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
+   RSN_ASSERT( db.get_read_mode() != chain::db_read_mode::READ_ONLY, missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
 }
 
 chain_apis::read_write chain_plugin::get_read_write_api() {
@@ -742,10 +742,10 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
       reversible_dir = *new_db_dir;
    } else {
       auto reversible_dir_name = reversible_dir.filename().generic_string();
-      EOS_ASSERT( reversible_dir_name != ".", invalid_reversible_blocks_dir, "Invalid path to reversible directory" );
+      RSN_ASSERT( reversible_dir_name != ".", invalid_reversible_blocks_dir, "Invalid path to reversible directory" );
       backup_dir = reversible_dir.parent_path() / reversible_dir_name.append("-").append( now );
 
-      EOS_ASSERT( !fc::exists(backup_dir),
+      RSN_ASSERT( !fc::exists(backup_dir),
                   reversible_blocks_backup_dir_exist,
                  "Cannot move existing reversible directory to already existing directory '${backup_dir}'",
                  ("backup_dir", backup_dir) );
@@ -781,7 +781,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    }
    try {
       for( ; itr != ubi.end(); ++itr ) {
-         EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
+         RSN_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
                      "gap in reversible block database between ${end} and ${blocknum}",
                      ("end", end)("blocknum", itr->blocknum)
                    );
@@ -837,7 +837,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
          if( start == 0 ) {
             start = num;
          } else {
-            EOS_ASSERT( num == end + 1, gap_in_reversible_blocks_db,
+            RSN_ASSERT( num == end + 1, gap_in_reversible_blocks_db,
                         "gap in reversible block database between ${end} and ${num}",
                         ("end", end)("num", num)
                       );
@@ -880,7 +880,7 @@ bool chain_plugin::export_reversible_blocks( const fc::path& reversible_dir,
    }
    try {
       for( ; itr != ubi.end(); ++itr ) {
-         EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
+         RSN_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
                      "gap in reversible block database between ${end} and ${blocknum}",
                      ("end", end)("blocknum", itr->blocknum)
                    );
@@ -912,7 +912,7 @@ controller& chain_plugin::chain() { return *my->chain; }
 const controller& chain_plugin::chain() const { return *my->chain; }
 
 chain::chain_id_type chain_plugin::get_chain_id()const {
-   EOS_ASSERT( my->chain_id.valid(), chain_id_type_exception, "chain ID has not been initialized yet" );
+   RSN_ASSERT( my->chain_id.valid(), chain_id_type_exception, "chain ID has not been initialized yet" );
    return *my->chain_id;
 }
 
@@ -969,7 +969,7 @@ uint64_t read_only::get_table_index_name(const read_only::get_table_rows_params&
    // see multi_index packing of index name
    const uint64_t table = p.table;
    uint64_t index = table & 0xFFFFFFFFFFFFFFF0ULL;
-   EOS_ASSERT( index == table, chain::contract_table_query_exception, "Unsupported table name: ${n}", ("n", p.table) );
+   RSN_ASSERT( index == table, chain::contract_table_query_exception, "Unsupported table name: ${n}", ("n", p.table) );
 
    primary = false;
    uint64_t pos = 0;
@@ -996,7 +996,7 @@ uint64_t read_only::get_table_index_name(const read_only::get_table_rows_params&
       try {
          pos = fc::to_uint64( p.index_position );
       } catch(...) {
-         EOS_ASSERT( false, chain::contract_table_query_exception, "Invalid index_position: ${p}", ("p", p.index_position));
+         RSN_ASSERT( false, chain::contract_table_query_exception, "Invalid index_position: ${p}", ("p", p.index_position));
       }
       if (pos < 2) {
          primary = true;
@@ -1028,7 +1028,7 @@ uint64_t convert_to_type(const string& str, const string& desc) {
             try {
                value = ( arisen::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
             } catch( ... ) {
-               EOS_ASSERT( false, chain_type_exception, "Could not convert ${desc} string '${str}' to any of the following: "
+               RSN_ASSERT( false, chain_type_exception, "Could not convert ${desc} string '${str}' to any of the following: "
                                  "uint64_t, valid name, or valid symbol (with or without the precision)",
                           ("desc", desc)("str", str));
             }
@@ -1041,7 +1041,7 @@ uint64_t convert_to_type(const string& str, const string& desc) {
 abi_def get_abi( const controller& db, const name& account ) {
    const auto &d = db.db();
    const account_object *code_accnt = d.find<account_object, by_name>(account);
-   EOS_ASSERT(code_accnt != nullptr, chain::account_query_exception, "Fail to retrieve account for ${account}", ("account", account) );
+   RSN_ASSERT(code_accnt != nullptr, chain::account_query_exception, "Fail to retrieve account for ${account}", ("account", account) );
    abi_def abi;
    abi_serializer::to_abi(code_accnt->abi, abi);
    return abi;
@@ -1053,7 +1053,7 @@ string get_table_type( const abi_def& abi, const name& table_name ) {
          return t.index_type;
       }
    }
-   EOS_ASSERT( false, chain::contract_table_query_exception, "Table ${table} is not specified in the ABI", ("table",table_name) );
+   RSN_ASSERT( false, chain::contract_table_query_exception, "Table ${table} is not specified in the ABI", ("table",table_name) );
 }
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
@@ -1062,14 +1062,14 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
    bool primary = false;
    auto table_with_index = get_table_index_name( p, primary );
    if( primary ) {
-      EOS_ASSERT( p.table == table_with_index, chain::contract_table_query_exception, "Invalid table name ${t}", ( "t", p.table ));
+      RSN_ASSERT( p.table == table_with_index, chain::contract_table_query_exception, "Invalid table name ${t}", ( "t", p.table ));
       auto table_type = get_table_type( abi, p.table );
       if( table_type == KEYi64 || p.key_type == "i64" || p.key_type == "name" ) {
          return get_table_rows_ex<key_value_index>(p,abi);
       }
-      EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
+      RSN_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
    } else {
-      EOS_ASSERT( !p.key_type.empty(), chain::contract_table_query_exception, "key type required for non-primary index" );
+      RSN_ASSERT( !p.key_type.empty(), chain::contract_table_query_exception, "key type required for non-primary index" );
 
       if (p.key_type == chain_apis::i64 || p.key_type == "name") {
          return get_table_rows_by_seckey<index64_index, uint64_t>(p, abi, [](uint64_t v)->uint64_t {
@@ -1111,7 +1111,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
          using  conv = keytype_converter<chain_apis::ripemd160,chain_apis::hex>;
          return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
       }
-      EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: ${t}", ("t", p.key_type));
+      RSN_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: ${t}", ("t", p.key_type));
    }
 }
 
@@ -1164,13 +1164,13 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
 
    vector<asset> results;
    walk_key_value_table(p.code, p.account, N(accounts), [&](const key_value_object& obj){
-      EOS_ASSERT( obj.value.size() >= sizeof(asset), chain::asset_type_exception, "Invalid data on table");
+      RSN_ASSERT( obj.value.size() >= sizeof(asset), chain::asset_type_exception, "Invalid data on table");
 
       asset cursor;
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       fc::raw::unpack(ds, cursor);
 
-      EOS_ASSERT( cursor.get_symbol().valid(), chain::asset_type_exception, "Invalid asset");
+      RSN_ASSERT( cursor.get_symbol().valid(), chain::asset_type_exception, "Invalid asset");
 
       if( !p.symbol || boost::iequals(cursor.symbol_name(), *p.symbol) ) {
         results.emplace_back(cursor);
@@ -1192,7 +1192,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    uint64_t scope = ( arisen::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
 
    walk_key_value_table(p.code, scope, N(stat), [&](const key_value_object& obj){
-      EOS_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
+      RSN_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
 
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       read_only::get_currency_stats_result result;
@@ -1216,14 +1216,14 @@ static float64_t to_softfloat64( double d ) {
 
 static fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms ) {
    const auto table_type = get_table_type(abi, N(global));
-   EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
+   RSN_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
 
    const auto* const table_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(config::system_account_name, config::system_account_name, N(global)));
-   EOS_ASSERT(table_id, chain::contract_table_query_exception, "Missing table global");
+   RSN_ASSERT(table_id, chain::contract_table_query_exception, "Missing table global");
 
    const auto& kv_index = db.get_index<key_value_index, by_scope_primary>();
    const auto it = kv_index.find(boost::make_tuple(table_id->id, N(global)));
-   EOS_ASSERT(it != kv_index.end(), chain::contract_table_query_exception, "Missing row in table global");
+   RSN_ASSERT(it != kv_index.end(), chain::contract_table_query_exception, "Missing row in table global");
 
    vector<char> data;
    read_only::copy_inline_row(*it, data);
@@ -1234,7 +1234,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    const abi_def abi = arisen::chain_apis::get_abi(db, config::system_account_name);
    const auto table_type = get_table_type(abi, N(producers));
    const abi_serializer abis{ abi, abi_serializer_max_time };
-   EOS_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
+   RSN_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
 
    const auto& d = db.db();
    const auto lower = name{p.lower_bound};
@@ -1244,7 +1244,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
            boost::make_tuple(config::system_account_name, config::system_account_name, N(producers)));
    const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
            boost::make_tuple(config::system_account_name, config::system_account_name, N(producers) | secondary_index_num));
-   EOS_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
+   RSN_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
 
    const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
    const auto& secondary_index = d.get_index<index_double_index>().indices();
@@ -1390,7 +1390,7 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
 
 fc::variant read_only::get_block(const read_only::get_block_params& params) const {
    signed_block_ptr block;
-   EOS_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64, chain::block_id_type_exception, "Invalid Block number or ID, must be greater than 0 and less than 64 characters" );
+   RSN_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64, chain::block_id_type_exception, "Invalid Block number or ID, must be greater than 0 and less than 64 characters" );
    try {
       block = db.fetch_block_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
       if (!block) {
@@ -1399,7 +1399,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 
    } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
 
-   EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
+   RSN_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
    fc::variant pretty_output;
    abi_serializer::to_variant(*block, pretty_output, make_resolver(this, abi_serializer_max_time), abi_serializer_max_time);
@@ -1428,7 +1428,7 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
       } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
    }
 
-   EOS_ASSERT( b, unknown_block_exception, "Could not find reversible block: ${block}", ("block", params.block_num_or_id));
+   RSN_ASSERT( b, unknown_block_exception, "Could not find reversible block: ${block}", ("block", params.block_num_or_id));
 
    fc::variant vo;
    fc::to_variant( static_cast<const block_header_state&>(*b), vo );
@@ -1502,7 +1502,7 @@ static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_w
 
 void read_write::push_transactions(const read_write::push_transactions_params& params, next_function<read_write::push_transactions_results> next) {
    try {
-      EOS_ASSERT( params.size() <= 1000, too_many_tx_at_once, "Attempt to push too many transactions at once" );
+      RSN_ASSERT( params.size() <= 1000, too_many_tx_at_once, "Attempt to push too many transactions at once" );
       auto params_copy = std::make_shared<read_write::push_transactions_params>(params.begin(), params.end());
       auto result = std::make_shared<read_write::push_transactions_results>();
       result->reserve(params.size());
@@ -1532,7 +1532,7 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    const auto& d = db.db();
    const auto& accnt  = d.get<account_object,by_name>( params.account_name );
 
-   EOS_ASSERT( params.code_as_wasm, unsupported_feature, "Returning WAST from get_code is no longer supported" );
+   RSN_ASSERT( params.code_as_wasm, unsupported_feature, "Returning WAST from get_code is no longer supported" );
 
    if( accnt.code.size() ) {
       if (params.code_as_wasm) {
@@ -1624,7 +1624,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       if( perm->parent._id ) {
          const auto* p = d.find<permission_object,by_id>( perm->parent );
          if( p ) {
-            EOS_ASSERT(perm->owner == p->owner, invalid_parent_permission, "Invalid parent permission");
+            RSN_ASSERT(perm->owner == p->owner, invalid_parent_permission, "Invalid parent permission");
             parent = p->name;
          }
       }
@@ -1716,20 +1716,20 @@ static variant action_abi_to_variant( const abi_def& abi, type_name action_type 
 read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const try {
    abi_json_to_bin_result result;
    const auto code_account = db.db().find<account_object,by_name>( params.code );
-   EOS_ASSERT(code_account != nullptr, contract_query_exception, "Contract can't be found ${contract}", ("contract", params.code));
+   RSN_ASSERT(code_account != nullptr, contract_query_exception, "Contract can't be found ${contract}", ("contract", params.code));
 
    abi_def abi;
    if( abi_serializer::to_abi(code_account->abi, abi) ) {
       abi_serializer abis( abi, abi_serializer_max_time );
       auto action_type = abis.get_action_type(params.action);
-      EOS_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action} in contract ${contract}", ("action", params.action)("contract", params.code));
+      RSN_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action} in contract ${contract}", ("action", params.action)("contract", params.code));
       try {
          result.binargs = abis.variant_to_binary(action_type, params.args, abi_serializer_max_time);
       } EOS_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
                                 "'${args}' is invalid args for action '${action}' code '${code}'. expected '${proto}'",
                                 ("args", params.args)("action", params.action)("code", params.code)("proto", action_abi_to_variant(abi, action_type)))
    } else {
-      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
+      RSN_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
    }
    return result;
 } FC_RETHROW_EXCEPTIONS( warn, "code: ${code}, action: ${action}, args: ${args}",
@@ -1743,7 +1743,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
       abi_serializer abis( abi, abi_serializer_max_time );
       result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs, abi_serializer_max_time );
    } else {
-      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
+      RSN_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
    }
    return result;
 }

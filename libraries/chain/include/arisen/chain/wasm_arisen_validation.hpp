@@ -113,7 +113,7 @@ namespace arisen { namespace chain { namespace wasm_validations {
                return;
             }
             depth++;
-            EOS_ASSERT(depth < 1024, wasm_execution_error, "Nested depth exceeded");
+            RSN_ASSERT(depth < 1024, wasm_execution_error, "Nested depth exceeded");
          }
       }
    };

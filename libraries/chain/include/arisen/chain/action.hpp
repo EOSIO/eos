@@ -87,8 +87,8 @@ namespace arisen { namespace chain {
 
       template<typename T>
       T data_as()const {
-         EOS_ASSERT( account == T::get_account(), action_type_exception, "account is not consistent with action struct" );
-         EOS_ASSERT( name == T::get_name(), action_type_exception, "action name is not consistent with action struct"  );
+         RSN_ASSERT( account == T::get_account(), action_type_exception, "account is not consistent with action struct" );
+         RSN_ASSERT( name == T::get_name(), action_type_exception, "action name is not consistent with action struct"  );
          return fc::raw::unpack<T>(data);
       }
    };

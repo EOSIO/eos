@@ -599,13 +599,13 @@ optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name 
                            abis.add_specialized_unpack_pack( "abi_def",
                                  std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
                                        []( fc::datastream<const char*>& stream, bool is_array, bool is_optional ) -> fc::variant {
-                                          EOS_ASSERT( !is_array && !is_optional, chain::mongo_db_exception, "unexpected abi_def");
+                                          RSN_ASSERT( !is_array && !is_optional, chain::mongo_db_exception, "unexpected abi_def");
                                           chain::bytes temp;
                                           fc::raw::unpack( stream, temp );
                                           return fc::variant( fc::raw::unpack<abi_def>( temp ) );
                                        },
                                        []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional ) {
-                                          EOS_ASSERT( false, chain::mongo_db_exception, "never called" );
+                                          RSN_ASSERT( false, chain::mongo_db_exception, "never called" );
                                        }
                                  ) );
                         }
@@ -755,7 +755,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       update_opts.upsert( true );
       if( !_trans.update_one( make_document( kvp( "trx_id", trx_id_str ) ),
                               make_document( kvp( "$set", trans_doc.view() ) ), update_opts ) ) {
-         EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert trans ${id}", ("id", trx_id) );
+         RSN_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert trans ${id}", ("id", trx_id) );
       }
    } catch( ... ) {
       handle_mongo_exception( "trans insert", __LINE__ );
@@ -864,7 +864,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
 
          try {
             if( !_trans_traces.insert_one( trans_traces_doc.view() ) ) {
-               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert trans ${id}", ("id", t->id) );
+               RSN_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert trans ${id}", ("id", t->id) );
             }
          } catch( ... ) {
             handle_mongo_exception( "trans_traces insert: " + json, __LINE__ );
@@ -877,7 +877,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
    // insert action_traces
    try {
       if( !bulk_action_traces.execute() ) {
-         EOS_ASSERT( false, chain::mongo_db_insert_fail,
+         RSN_ASSERT( false, chain::mongo_db_insert_fail,
                      "Bulk action traces insert failed for transaction trace: ${id}", ("id", t->id) );
       }
    } catch( ... ) {
@@ -932,7 +932,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       try {
          if( !_block_states.update_one( make_document( kvp( "block_id", block_id_str ) ),
                                         make_document( kvp( "$set", block_state_doc.view() ) ), update_opts ) ) {
-            EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block_state ${bid}", ("bid", block_id) );
+            RSN_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block_state ${bid}", ("bid", block_id) );
          }
       } catch( ... ) {
          handle_mongo_exception( "block_states insert: " + json, __LINE__ );
@@ -965,7 +965,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       try {
          if( !_blocks.update_one( make_document( kvp( "block_id", block_id_str ) ),
                                   make_document( kvp( "$set", block_doc.view() ) ), update_opts ) ) {
-            EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block ${bid}", ("bid", block_id) );
+            RSN_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block ${bid}", ("bid", block_id) );
          }
       } catch( ... ) {
          handle_mongo_exception( "blocks insert: " + json, __LINE__ );
@@ -1051,7 +1051,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
       if( transactions_in_block ) {
          try {
             if( !bulk.execute() ) {
-               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Bulk transaction insert failed for block: ${bid}", ("bid", block_id) );
+               RSN_ASSERT( false, chain::mongo_db_insert_fail, "Bulk transaction insert failed for block: ${bid}", ("bid", block_id) );
             }
          } catch( ... ) {
             handle_mongo_exception( "bulk transaction insert", __LINE__ );
@@ -1088,7 +1088,7 @@ void mongo_db_plugin_impl::add_pub_keys( const vector<chain::key_weight>& keys, 
 
    try {
       if( !bulk.execute()) {
-         EOS_ASSERT( false, chain::mongo_db_insert_fail,
+         RSN_ASSERT( false, chain::mongo_db_insert_fail,
                      "Bulk pub_keys insert failed for account: ${a}, permission: ${p}",
                      ("a", name)( "p", permission ));
       }
@@ -1106,7 +1106,7 @@ void mongo_db_plugin_impl::remove_pub_keys( const account_name& name, const perm
       auto result = _pub_keys.delete_many( make_document( kvp( "account", name.to_string()),
                                                          kvp( "permission", permission.to_string())));
       if( !result ) {
-         EOS_ASSERT( false, chain::mongo_db_update_fail,
+         RSN_ASSERT( false, chain::mongo_db_update_fail,
                      "pub_keys delete failed for account: ${a}, permission: ${p}",
                      ("a", name)( "p", permission ));
       }
@@ -1145,7 +1145,7 @@ void mongo_db_plugin_impl::add_account_control( const vector<chain::permission_l
 
    try {
       if( !bulk.execute()) {
-         EOS_ASSERT( false, chain::mongo_db_insert_fail,
+         RSN_ASSERT( false, chain::mongo_db_insert_fail,
                      "Bulk account_controls insert failed for account: ${a}, permission: ${p}",
                      ("a", name)( "p", permission ));
       }
@@ -1163,7 +1163,7 @@ void mongo_db_plugin_impl::remove_account_control( const account_name& name, con
       auto result = _account_controls.delete_many( make_document( kvp( "controlled_account", name.to_string()),
                                                                   kvp( "controlled_permission", permission.to_string())));
       if( !result ) {
-         EOS_ASSERT( false, chain::mongo_db_update_fail,
+         RSN_ASSERT( false, chain::mongo_db_update_fail,
                      "account_controls delete failed for account: ${a}, permission: ${p}",
                      ("a", name)( "p", permission ));
       }
@@ -1188,7 +1188,7 @@ void create_account( mongocxx::collection& accounts, const name& name, std::chro
                                      kvp( "createdAt", b_date{now} ))));
    try {
       if( !accounts.update_one( make_document( kvp( "name", name_str )), update.view(), update_opts )) {
-         EOS_ASSERT( false, chain::mongo_db_update_fail, "Failed to insert account ${n}", ("n", name));
+         RSN_ASSERT( false, chain::mongo_db_update_fail, "Failed to insert account ${n}", ("n", name));
       }
    } catch (...) {
       handle_mongo_exception( "create_account", __LINE__ );
@@ -1257,7 +1257,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
                try {
                   if( !_accounts.update_one( make_document( kvp( "_id", account->view()["_id"].get_oid())),
                                              update_from.view())) {
-                     EOS_ASSERT( false, chain::mongo_db_update_fail, "Failed to udpdate account ${n}", ("n", setabi.account));
+                     RSN_ASSERT( false, chain::mongo_db_update_fail, "Failed to udpdate account ${n}", ("n", setabi.account));
                   }
                } catch( ... ) {
                   handle_mongo_exception( "account update", __LINE__ );
@@ -1341,7 +1341,7 @@ void mongo_db_plugin_impl::init() {
 
          try {
             if( !accounts.insert_one( doc.view())) {
-               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert account ${n}",
+               RSN_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert account ${n}",
                            ("n", name( chain::config::system_account_name ).to_string()));
             }
          } catch (...) {
@@ -1456,13 +1456,13 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                ilog( "Wiping mongo database on startup" );
                my->wipe_database_on_startup = true;
             } else if( options.count( "mongodb-block-start" ) == 0 ) {
-               EOS_ASSERT( false, chain::plugin_config_exception, "--mongodb-wipe required with --replay-blockchain, --hard-replay-blockchain, or --delete-all-blocks"
+               RSN_ASSERT( false, chain::plugin_config_exception, "--mongodb-wipe required with --replay-blockchain, --hard-replay-blockchain, or --delete-all-blocks"
                                  " --mongodb-wipe will remove all EOS collections from mongodb." );
             }
          }
 
          if( options.count( "abi-serializer-max-time-ms") == 0 ) {
-            EOS_ASSERT(false, chain::plugin_config_exception, "--abi-serializer-max-time-ms required as default value not appropriate for parsing full blocks");
+            RSN_ASSERT(false, chain::plugin_config_exception, "--abi-serializer-max-time-ms required as default value not appropriate for parsing full blocks");
          }
          my->abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
 
@@ -1471,7 +1471,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          }
          if( options.count( "mongodb-abi-cache-size" )) {
             my->abi_cache_size = options.at( "mongodb-abi-cache-size" ).as<uint32_t>();
-            EOS_ASSERT( my->abi_cache_size > 0, chain::plugin_config_exception, "mongodb-abi-cache-size > 0 required" );
+            RSN_ASSERT( my->abi_cache_size > 0, chain::plugin_config_exception, "mongodb-abi-cache-size > 0 required" );
          }
          if( options.count( "mongodb-block-start" )) {
             my->start_block_num = options.at( "mongodb-block-start" ).as<uint32_t>();
@@ -1501,7 +1501,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                }
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
-               EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-on", ("s", s));
+               RSN_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-on", ("s", s));
                filter_entry fe{v[0], v[1], v[2]};
                my->filter_on.insert( fe );
             }
@@ -1513,7 +1513,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
             for( auto& s : fo ) {
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
-               EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-out", ("s", s));
+               RSN_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-out", ("s", s));
                filter_entry fe{v[0], v[1], v[2]};
                my->filter_out.insert( fe );
             }
@@ -1537,7 +1537,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
 
          // hook up to signals on controller
          chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
-         EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, ""  );
+         RSN_ASSERT( chain_plug, chain::missing_chain_plugin_exception, ""  );
          auto& chain = chain_plug->chain();
          my->chain_id.emplace( chain.get_chain_id());
 

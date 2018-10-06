@@ -1265,7 +1265,7 @@ namespace arisen {
       ,state(in_sync)
    {
       chain_plug = app( ).find_plugin<chain_plugin>( );
-      EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, ""  );
+      RSN_ASSERT( chain_plug, chain::missing_chain_plugin_exception, ""  );
    }
 
    constexpr auto sync_manager::stage_str(stages s ) {
@@ -2104,7 +2104,7 @@ namespace arisen {
                         elog("async_read_some callback: bytes_transfered = ${bt}, buffer.bytes_to_write = ${btw}",
                              ("bt",bytes_transferred)("btw",conn->pending_message_buffer.bytes_to_write()));
                      }
-                     EOS_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write(), plugin_exception, "");
+                     RSN_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write(), plugin_exception, "");
                      conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
                      while (conn->pending_message_buffer.bytes_to_read() > 0) {
                         uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
@@ -2980,7 +2980,7 @@ namespace arisen {
          }
 
          if( my->allowed_connections & net_plugin_impl::Specified )
-            EOS_ASSERT( options.count( "peer-key" ),
+            RSN_ASSERT( options.count( "peer-key" ),
                         plugin_config_exception,
                        "At least one peer-key must accompany 'allowed-connection=specified'" );
 
@@ -3001,7 +3001,7 @@ namespace arisen {
          }
 
          my->chain_plug = app().find_plugin<chain_plugin>();
-         EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
+         RSN_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
          my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
          ilog( "my node_id is ${id}", ("id", my->node_id));

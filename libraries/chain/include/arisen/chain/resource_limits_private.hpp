@@ -16,7 +16,7 @@ namespace arisen { namespace chain { namespace resource_limits {
 
       template<typename T>
       T operator* (T value, const ratio<T>& r) {
-         EOS_ASSERT(r.numerator == T(0) || std::numeric_limits<T>::max() / r.numerator >= value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
+         RSN_ASSERT(r.numerator == T(0) || std::numeric_limits<T>::max() / r.numerator >= value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
          return (value * r.numerator) / r.denominator;
       }
 
@@ -41,7 +41,7 @@ namespace arisen { namespace chain { namespace resource_limits {
       {
          const GreaterIntType max = std::numeric_limits<LesserIntType>::max();
          const GreaterIntType min = std::numeric_limits<LesserIntType>::min();
-         EOS_ASSERT( val >= min && val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, valid range is [${min}, ${max}]", ("v", val)("min", min)("max",max) );
+         RSN_ASSERT( val >= min && val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, valid range is [${min}, ${max}]", ("v", val)("min", min)("max",max) );
          return LesserIntType(val);
       };
 
@@ -54,7 +54,7 @@ namespace arisen { namespace chain { namespace resource_limits {
       {
          const GreaterIntType max = std::numeric_limits<LesserIntType>::max();
          const GreaterIntType min = 0;
-         EOS_ASSERT( val >= min && val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, valid range is [${min}, ${max}]", ("v", val)("min", min)("max",max) );
+         RSN_ASSERT( val >= min && val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, valid range is [${min}, ${max}]", ("v", val)("min", min)("max",max) );
          return LesserIntType(val);
       };
 
@@ -91,14 +91,14 @@ namespace arisen { namespace chain { namespace resource_limits {
          void add( uint64_t units, uint32_t ordinal, uint32_t window_size /* must be positive */ )
          {
             // check for some numerical limits before doing any state mutations
-            EOS_ASSERT(units <= max_raw_value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
-            EOS_ASSERT(std::numeric_limits<decltype(consumed)>::max() - consumed >= units, rate_limiting_state_inconsistent, "Overflow in tracked usage when adding usage!");
+            RSN_ASSERT(units <= max_raw_value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
+            RSN_ASSERT(std::numeric_limits<decltype(consumed)>::max() - consumed >= units, rate_limiting_state_inconsistent, "Overflow in tracked usage when adding usage!");
 
             auto value_ex_contrib = downgrade_cast<uint64_t>(integer_divide_ceil((uint128_t)units * Precision, (uint128_t)window_size));
-            EOS_ASSERT(std::numeric_limits<decltype(value_ex)>::max() - value_ex >= value_ex_contrib, rate_limiting_state_inconsistent, "Overflow in accumulated value when adding usage!");
+            RSN_ASSERT(std::numeric_limits<decltype(value_ex)>::max() - value_ex >= value_ex_contrib, rate_limiting_state_inconsistent, "Overflow in accumulated value when adding usage!");
 
             if( last_ordinal != ordinal ) {
-               EOS_ASSERT( ordinal > last_ordinal, resource_limit_exception, "new ordinal cannot be less than the previous ordinal" );
+               RSN_ASSERT( ordinal > last_ordinal, resource_limit_exception, "new ordinal cannot be less than the previous ordinal" );
                if( (uint64_t)last_ordinal + window_size > (uint64_t)ordinal ) {
                   const auto delta = ordinal - last_ordinal; // clearly 0 < delta < window_size
                   const auto decay = make_ratio(

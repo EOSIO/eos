@@ -59,7 +59,7 @@ bool transaction_header::verify_reference_block( const block_id_type& reference_
 }
 
 void transaction_header::validate()const {
-   EOS_ASSERT( max_net_usage_words.value < UINT32_MAX / 8UL, transaction_exception,
+   RSN_ASSERT( max_net_usage_words.value < UINT32_MAX / 8UL, transaction_exception,
                "declared max_net_usage_words overflows when expanded to max net usage" );
 }
 
@@ -106,7 +106,7 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
       }
       bool successful_insertion = false;
       std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
-      EOS_ASSERT( allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
+      RSN_ASSERT( allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
                   "transaction includes more than one signature signed using the same key associated with public key: ${key}",
                   ("key", recov)
                );
@@ -138,14 +138,14 @@ flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id
 uint32_t packed_transaction::get_unprunable_size()const {
    uint64_t size = config::fixed_net_overhead_of_packed_trx;
    size += packed_trx.size();
-   EOS_ASSERT( size <= std::numeric_limits<uint32_t>::max(), tx_too_big, "packed_transaction is too big" );
+   RSN_ASSERT( size <= std::numeric_limits<uint32_t>::max(), tx_too_big, "packed_transaction is too big" );
    return static_cast<uint32_t>(size);
 }
 
 uint32_t packed_transaction::get_prunable_size()const {
    uint64_t size = fc::raw::pack_size(signatures);
    size += packed_context_free_data.size();
-   EOS_ASSERT( size <= std::numeric_limits<uint32_t>::max(), tx_too_big, "packed_transaction is too big" );
+   RSN_ASSERT( size <= std::numeric_limits<uint32_t>::max(), tx_too_big, "packed_transaction is too big" );
    return static_cast<uint32_t>(size);
 }
 
@@ -172,7 +172,7 @@ struct read_limiter {
    template<typename Sink>
    size_t write(Sink &sink, const char* s, size_t count)
    {
-      EOS_ASSERT(_total + count <= Limit, tx_decompression_error, "Exceeded maximum decompressed transaction size");
+      RSN_ASSERT(_total + count <= Limit, tx_decompression_error, "Exceeded maximum decompressed transaction size");
       _total += count;
       return bio::write(sink, s, count);
    }

@@ -32,7 +32,7 @@ namespace arisen { namespace chain {
          static block_timestamp min() { return block_timestamp(0); }
 
          block_timestamp next() const {
-            EOS_ASSERT( std::numeric_limits<uint32_t>::max() - slot >= 1, fc::overflow_exception, "block timestamp overflow" );
+            RSN_ASSERT( std::numeric_limits<uint32_t>::max() - slot >= 1, fc::overflow_exception, "block timestamp overflow" );
             auto result = block_timestamp(*this);
             result.slot += 1;
             return result;

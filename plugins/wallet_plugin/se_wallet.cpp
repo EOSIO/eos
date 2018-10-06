@@ -324,7 +324,7 @@ bool se_wallet::is_locked() const {
    return my->locked;
 }
 void se_wallet::lock() {
-   EOS_ASSERT(!is_locked(), wallet_locked_exception, "You can not lock an already locked wallet");
+   RSN_ASSERT(!is_locked(), wallet_locked_exception, "You can not lock an already locked wallet");
    my->locked = true;
 }
 
@@ -361,7 +361,7 @@ string se_wallet::create_key(string key_type) {
 }
 
 bool se_wallet::remove_key(string key) {
-   EOS_ASSERT(!is_locked(), wallet_locked_exception, "You can not remove a key from a locked wallet");
+   RSN_ASSERT(!is_locked(), wallet_locked_exception, "You can not remove a key from a locked wallet");
    return my->remove_key(key);
 }
 

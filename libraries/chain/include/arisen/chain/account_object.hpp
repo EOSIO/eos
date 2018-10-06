@@ -36,7 +36,7 @@ namespace arisen { namespace chain {
 
       arisen::chain::abi_def get_abi()const {
          arisen::chain::abi_def a;
-         EOS_ASSERT( abi.size() != 0, abi_not_found_exception, "No ABI set on account ${n}", ("n",name) );
+         RSN_ASSERT( abi.size() != 0, abi_not_found_exception, "No ABI set on account ${n}", ("n",name) );
 
          fc::datastream<const char*> ds( abi.data(), abi.size() );
          fc::raw::unpack( ds, a );

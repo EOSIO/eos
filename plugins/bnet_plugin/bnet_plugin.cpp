@@ -1131,7 +1131,7 @@ namespace arisen {
         }
 
         void run() {
-           EOS_ASSERT( _acceptor.is_open(), plugin_exception, "unable top open listen socket" );
+           RSN_ASSERT( _acceptor.is_open(), plugin_exception, "unable top open listen socket" );
            do_accept();
         }
 
@@ -1457,7 +1457,7 @@ namespace arisen {
       wlog( "done joining threads" );
 
       my->for_each_session([](auto ses){
-         EOS_ASSERT( false, plugin_exception, "session ${ses} still active", ("ses", ses->_session_num) );
+         RSN_ASSERT( false, plugin_exception, "session ${ses} still active", ("ses", ses->_session_num) );
       });
 
       // lifetime of _ioc is guarded by shared_ptr of bnet_plugin_impl

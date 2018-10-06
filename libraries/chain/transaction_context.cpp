@@ -30,12 +30,12 @@ namespace arisen { namespace chain {
       trace->block_time = c.pending_block_time();
       trace->producer_block_id = c.pending_producer_block_id();
       executed.reserve( trx.total_actions() );
-      EOS_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature, "we don't support any extensions yet" );
+      RSN_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature, "we don't support any extensions yet" );
    }
 
    void transaction_context::init(uint64_t initial_net_usage)
    {
-      EOS_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
+      RSN_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
 
       const auto& cfg = control.get_global_properties().configuration;
@@ -189,7 +189,7 @@ namespace arisen { namespace chain {
    }
 
    void transaction_context::exec() {
-      EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
+      RSN_ASSERT( is_initialized, transaction_exception, "must first initialize" );
 
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
@@ -209,7 +209,7 @@ namespace arisen { namespace chain {
    }
 
    void transaction_context::finalize() {
-      EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
+      RSN_ASSERT( is_initialized, transaction_exception, "must first initialize" );
 
       if( is_input ) {
          auto& am = control.get_mutable_authorization_manager();
@@ -318,7 +318,7 @@ namespace arisen { namespace chain {
                           "but it is possible it could have succeeded if it were allowed to run to completion",
                           ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
             }
-            EOS_ASSERT( false,  transaction_exception, "unexpected deadline exception code" );
+            RSN_ASSERT( false,  transaction_exception, "unexpected deadline exception code" );
          }
       }
    }
@@ -350,27 +350,27 @@ namespace arisen { namespace chain {
       if (!control.skip_trx_checks()) {
          if( check_minimum ) {
             const auto& cfg = control.get_global_properties().configuration;
-            EOS_ASSERT( billed_us >= cfg.min_transaction_cpu_usage, transaction_exception,
+            RSN_ASSERT( billed_us >= cfg.min_transaction_cpu_usage, transaction_exception,
                         "cannot bill CPU time less than the minimum of ${min_billable} us",
                         ("min_billable", cfg.min_transaction_cpu_usage)("billed_cpu_time_us", billed_us)
                       );
          }
 
          if( billing_timer_exception_code == block_cpu_usage_exceeded::code_value ) {
-            EOS_ASSERT( billed_us <= objective_duration_limit.count(),
+            RSN_ASSERT( billed_us <= objective_duration_limit.count(),
                         block_cpu_usage_exceeded,
                         "billed CPU time (${billed} us) is greater than the billable CPU time left in the block (${billable} us)",
                         ("billed", billed_us)("billable", objective_duration_limit.count())
                       );
          } else {
             if (cpu_limit_due_to_greylist) {
-               EOS_ASSERT( billed_us <= objective_duration_limit.count(),
+               RSN_ASSERT( billed_us <= objective_duration_limit.count(),
                            greylist_cpu_usage_exceeded,
                            "billed CPU time (${billed} us) is greater than the maximum greylisted billable CPU time for the transaction (${billable} us)",
                            ("billed", billed_us)("billable", objective_duration_limit.count())
                );
             } else {
-               EOS_ASSERT( billed_us <= objective_duration_limit.count(),
+               RSN_ASSERT( billed_us <= objective_duration_limit.count(),
                            tx_cpu_usage_exceeded,
                            "billed CPU time (${billed} us) is greater than the maximum billable CPU time for the transaction (${billable} us)",
                            ("billed", billed_us)("billable", objective_duration_limit.count())
@@ -474,7 +474,7 @@ namespace arisen { namespace chain {
       } catch( const boost::interprocess::bad_alloc& ) {
          throw;
       } catch ( ... ) {
-          EOS_ASSERT( false, tx_duplicate,
+          RSN_ASSERT( false, tx_duplicate,
                      "duplicate transaction ${id}", ("id", id ) );
       }
    } /// record_transaction

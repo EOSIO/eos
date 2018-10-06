@@ -32,14 +32,14 @@ namespace arisen { namespace chain {
          //protect access to "private" injected functions; so for now just simply allow "env" since injected functions
          //  are in a different module
          if(validating && mod_name != "env")
-            EOS_ASSERT( false, wasm_exception, "importing from module that is not 'env': ${module}.${export}", ("module",mod_name)("export",export_name) );
+            RSN_ASSERT( false, wasm_exception, "importing from module that is not 'env': ${module}.${export}", ("module",mod_name)("export",export_name) );
 
          // Try to resolve an intrinsic first.
          if(Runtime::IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
             return true;
          }
 
-         EOS_ASSERT( false, wasm_exception, "${module}.${export} unresolveable", ("module",mod_name)("export",export_name) );
+         RSN_ASSERT( false, wasm_exception, "${module}.${export} unresolveable", ("module",mod_name)("export",export_name) );
          return false;
       } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
       };

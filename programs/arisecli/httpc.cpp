@@ -70,11 +70,11 @@ namespace arisen { namespace client { namespace http {
       response_stream >> http_version;
       response_stream >> status_code;
 
-      EOS_ASSERT( status_code != 400, invalid_http_request, "The server has rejected the request as invalid!");
+      RSN_ASSERT( status_code != 400, invalid_http_request, "The server has rejected the request as invalid!");
 
       std::string status_message;
       std::getline(response_stream, status_message);
-      EOS_ASSERT( !(!response_stream || http_version.substr(0, 5) != "HTTP/"), invalid_http_response, "Invalid Response" );
+      RSN_ASSERT( !(!response_stream || http_version.substr(0, 5) != "HTTP/"), invalid_http_response, "Invalid Response" );
 
       // Read the response headers, which are terminated by a blank line.
       boost::asio::read_until(socket, response, "\r\n\r\n");
@@ -88,7 +88,7 @@ namespace arisen { namespace client { namespace http {
          if(std::regex_search(header, match, clregex))
             response_content_length = std::stoi(match[1]);
       }
-      EOS_ASSERT(response_content_length >= 0, invalid_http_response, "Invalid content-length response");
+      RSN_ASSERT(response_content_length >= 0, invalid_http_response, "Invalid content-length response");
 
       std::stringstream re;
       // Write whatever content we already have to output.
@@ -157,7 +157,7 @@ namespace arisen { namespace client { namespace http {
          is_loopback = is_loopback && addr.is_loopback();
 
          if (resolved_port) {
-            EOS_ASSERT(*resolved_port == port, resolved_to_multiple_ports, "Service name \"${port}\" resolved to multiple ports and this is not supported!", ("port",url.port));
+            RSN_ASSERT(*resolved_port == port, resolved_to_multiple_ports, "Service name \"${port}\" resolved to multiple ports and this is not supported!", ("port",url.port));
          } else {
             resolved_port = port;
          }
@@ -291,7 +291,7 @@ namespace arisen { namespace client { namespace http {
       throw fc::exception(logs, error_info.code, error_info.name, error_info.what);
    }
 
-   EOS_ASSERT( status_code == 200, http_request_fail, "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re) );
+   RSN_ASSERT( status_code == 200, http_request_fail, "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re) );
    return response_result;
    }
 }}}

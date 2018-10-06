@@ -39,8 +39,8 @@ namespace arisen { namespace chain {
          std::vector<uint8_t> mem_image;
 
          for(const DataSegment& data_segment : module.dataSegments) {
-            EOS_ASSERT(data_segment.baseOffset.type == InitializerExpression::Type::i32_const, wasm_exception, "");
-            EOS_ASSERT(module.memories.defs.size(), wasm_exception, "");
+            RSN_ASSERT(data_segment.baseOffset.type == InitializerExpression::Type::i32_const, wasm_exception, "");
+            RSN_ASSERT(module.memories.defs.size(), wasm_exception, "");
             const U32 base_offset = data_segment.baseOffset.i32;
             const Uptr memory_size = (module.memories.defs[0].type.size.min << IR::numBytesPerPageLog2);
             if(base_offset >= memory_size || base_offset + data_segment.data.size() > memory_size)
@@ -69,9 +69,9 @@ namespace arisen { namespace chain {
                WASM::serialize(stream, module);
                module.userSections.clear();
             } catch(const Serialization::FatalSerializationException& e) {
-               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+               RSN_ASSERT(false, wasm_serialization_error, e.message.c_str());
             } catch(const IR::ValidationException& e) {
-               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+               RSN_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
 
             wasm_injections::wasm_binary_injection injector(module);
@@ -83,9 +83,9 @@ namespace arisen { namespace chain {
                WASM::serialize(outstream, module);
                bytes = outstream.getBytes();
             } catch(const Serialization::FatalSerializationException& e) {
-               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+               RSN_ASSERT(false, wasm_serialization_error, e.message.c_str());
             } catch(const IR::ValidationException& e) {
-               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+               RSN_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
             it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module))).first;
          }

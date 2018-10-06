@@ -23,8 +23,8 @@ struct wabt_apply_instance_vars {
    apply_context& ctx;
 
    char* get_validated_pointer(uint32_t offset, uint32_t size) {
-      EOS_ASSERT(memory, wasm_execution_error, "access violation");
-      EOS_ASSERT(offset + size <= memory->data.size() && offset + size >= offset, wasm_execution_error, "access violation");
+      RSN_ASSERT(memory, wasm_execution_error, "access violation");
+      RSN_ASSERT(offset + size <= memory->data.size() && offset + size >= offset, wasm_execution_error, "access violation");
       return memory->data.data() + offset;
    }
 };
@@ -66,7 +66,7 @@ class wabt_runtime : public arisen::chain::wasm_runtime_interface {
 template<typename T>
 inline array_ptr<T> array_ptr_impl (wabt_apply_instance_vars& vars, uint32_t ptr, uint32_t length)
 {
-   EOS_ASSERT( length < INT_MAX/(uint32_t)sizeof(T), binaryen_exception, "length will overflow" );
+   RSN_ASSERT( length < INT_MAX/(uint32_t)sizeof(T), binaryen_exception, "length will overflow" );
    return array_ptr<T>((T*)(vars.get_validated_pointer(ptr, length * (uint32_t)sizeof(T))));
 }
 
@@ -193,7 +193,7 @@ inline auto convert_native_to_literal(const wabt_apply_instance_vars&, const nam
 inline auto convert_native_to_literal(const wabt_apply_instance_vars& vars, char* ptr) {
    const char* base = vars.memory->data.data();
    const char* top_of_memory = base + vars.memory->data.size();
-   EOS_ASSERT(ptr >= base && ptr < top_of_memory, wasm_execution_error, "returning pointer not in linear memory");
+   RSN_ASSERT(ptr >= base && ptr < top_of_memory, wasm_execution_error, "returning pointer not in linear memory");
    Value v;
    v.i32 = (int)(ptr - base);
    return TypedValue(Type::I32, v);
@@ -600,7 +600,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
    static auto translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
       uint32_t ptr = args.at((uint32_t)offset).get_i32();
-      EOS_ASSERT(ptr != 0, binaryen_exception, "references cannot be created for null pointers");
+      RSN_ASSERT(ptr != 0, binaryen_exception, "references cannot be created for null pointers");
       T* base = array_ptr_impl<T>(vars, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          wlog( "misaligned const reference" );
@@ -616,7 +616,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
    static auto translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
       uint32_t ptr = args.at((uint32_t)offset).get_i32();
-      EOS_ASSERT(ptr != 0, binaryen_exception, "references cannot be created for null pointers");
+      RSN_ASSERT(ptr != 0, binaryen_exception, "references cannot be created for null pointers");
       T* base = array_ptr_impl<T>(vars, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          wlog( "misaligned reference" );

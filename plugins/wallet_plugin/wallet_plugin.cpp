@@ -52,7 +52,7 @@ void wallet_plugin::plugin_initialize(const variables_map& options) {
       }
       if (options.count("unlock-timeout")) {
          auto timeout = options.at("unlock-timeout").as<int64_t>();
-         EOS_ASSERT(timeout > 0, chain::invalid_lock_timeout_exception, "Please specify a positive timeout ${t}", ("t", timeout));
+         RSN_ASSERT(timeout > 0, chain::invalid_lock_timeout_exception, "Please specify a positive timeout ${t}", ("t", timeout));
          std::chrono::seconds t(timeout);
          wallet_manager_ptr->set_timeout(t);
       }

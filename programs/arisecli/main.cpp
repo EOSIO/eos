@@ -640,7 +640,7 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
    } else {
       auto result = parse_json_authority(authorityJsonOrFile);
-      EOS_ASSERT( arisen::chain::validate(result), authority_type_exception, "Authority failed validation! ensure that keys, accounts, and waits are sorted and that the threshold is valid and satisfiable!");
+      RSN_ASSERT( arisen::chain::validate(result), authority_type_exception, "Authority failed validation! ensure that keys, accounts, and waits are sorted and that the threshold is valid and satisfiable!");
       return result;
    }
 }
@@ -1039,7 +1039,7 @@ struct approve_producer_subcommand {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
-            EOS_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
+            RSN_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
             auto prod_vars = res.rows[0]["producers"].get_array();
             vector<arisen::name> prods;
             for ( auto& x : prod_vars ) {
@@ -1085,7 +1085,7 @@ struct unapprove_producer_subcommand {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
-            EOS_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
+            RSN_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
             auto prod_vars = res.rows[0]["producers"].get_array();
             vector<arisen::name> prods;
             for ( auto& x : prod_vars ) {
@@ -1883,7 +1883,7 @@ int main( int argc, char** argv ) {
    unpack_action_data->add_option("name", packed_action_data_name_string, localized("The name of the function that's called by this action"))->required();
    unpack_action_data->add_option("packed_action_data", packed_action_data_string, localized("The action data expressed as packed hex string"))->required();
    unpack_action_data->set_callback([&] {
-      EOS_ASSERT( packed_action_data_string.size() >= 2, transaction_type_exception, "No packed_action_data found" );
+      RSN_ASSERT( packed_action_data_string.size() >= 2, transaction_type_exception, "No packed_action_data found" );
       vector<char> packed_action_data_blob(packed_action_data_string.size()/2);
       fc::from_hex(packed_action_data_string, packed_action_data_blob.data(), packed_action_data_blob.size());
       fc::variant unpacked_action_data_json = bin_to_variant(packed_action_data_account_string, packed_action_data_name_string, packed_action_data_blob);
@@ -2358,7 +2358,7 @@ int main( int argc, char** argv ) {
 
         std::cerr << localized(("Reading WASM from " + wasmPath + "...").c_str()) << std::endl;
         fc::read_file_contents(wasmPath, wasm);
-        EOS_ASSERT( !wasm.empty(), wast_file_not_found, "no wasm file found ${f}", ("f", wasmPath) );
+        RSN_ASSERT( !wasm.empty(), wast_file_not_found, "no wasm file found ${f}", ("f", wasmPath) );
 
         const string binary_wasm_header("\x00\x61\x73\x6d\x01\x00\x00\x00", 8);
         if(wasm.compare(0, 8, binary_wasm_header))
@@ -2411,7 +2411,7 @@ int main( int argc, char** argv ) {
            abiPath = (cpath / abiPath).generic_string();
         }
 
-        EOS_ASSERT( fc::exists( abiPath ), abi_file_not_found, "no abi file found ${f}", ("f", abiPath)  );
+        RSN_ASSERT( fc::exists( abiPath ), abi_file_not_found, "no abi file found ${f}", ("f", abiPath)  );
 
         abi_bytes = fc::raw::pack(fc::json::from_file(abiPath).as<abi_def>());
       } else {
@@ -2439,7 +2439,7 @@ int main( int argc, char** argv ) {
    add_standard_transaction_options(codeSubcommand, "account@active");
    add_standard_transaction_options(abiSubcommand, "account@active");
    contractSubcommand->set_callback([&] {
-      if(!contract_clear) EOS_ASSERT( !contractPath.empty(), contract_exception, " contract-dir is null ", ("f", contractPath) );
+      if(!contract_clear) RSN_ASSERT( !contractPath.empty(), contract_exception, " contract-dir is null ", ("f", contractPath) );
       shouldSend = false;
       set_code_callback();
       set_abi_callback();

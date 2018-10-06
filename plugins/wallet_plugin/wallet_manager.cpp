@@ -43,7 +43,7 @@ void wallet_manager::set_timeout(const std::chrono::seconds& t) {
    timeout = t;
    auto now = std::chrono::system_clock::now();
    timeout_time = now + timeout;
-   EOS_ASSERT(timeout_time >= now && timeout_time.time_since_epoch().count() > 0, invalid_lock_timeout_exception, "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
+   RSN_ASSERT(timeout_time >= now && timeout_time.time_since_epoch().count() > 0, invalid_lock_timeout_exception, "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
              ("t", t.count())("now", now.time_since_epoch().count())("timeout_time", timeout_time.time_since_epoch().count()));
 }
 
@@ -60,7 +60,7 @@ void wallet_manager::check_timeout() {
 std::string wallet_manager::create(const std::string& name) {
    check_timeout();
 
-   EOS_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
+   RSN_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
 
    auto wallet_filename = dir / (name + file_ext);
 
@@ -94,7 +94,7 @@ std::string wallet_manager::create(const std::string& name) {
 void wallet_manager::open(const std::string& name) {
    check_timeout();
 
-   EOS_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
+   RSN_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
 
    wallet_data d;
    auto wallet = std::make_unique<soft_wallet>(d);
@@ -140,7 +140,7 @@ map<public_key_type,private_key_type> wallet_manager::list_keys(const string& na
 
 flat_set<public_key_type> wallet_manager::get_public_keys() {
    check_timeout();
-   EOS_ASSERT(!wallets.empty(), wallet_not_available_exception, "You don't have any wallet!");
+   RSN_ASSERT(!wallets.empty(), wallet_not_available_exception, "You don't have any wallet!");
    flat_set<public_key_type> result;
    bool is_all_wallet_locked = true;
    for (const auto& i : wallets) {
@@ -149,7 +149,7 @@ flat_set<public_key_type> wallet_manager::get_public_keys() {
       }
       is_all_wallet_locked &= i.second->is_locked();
    }
-   EOS_ASSERT(!is_all_wallet_locked, wallet_locked_exception, "You don't have any unlocked wallet!");
+   RSN_ASSERT(!is_all_wallet_locked, wallet_locked_exception, "You don't have any unlocked wallet!");
    return result;
 }
 
@@ -281,7 +281,7 @@ void wallet_manager::initialize_lock() {
    lock_path = dir / "wallet.lock";
    {
       std::ofstream x(lock_path.string());
-      EOS_ASSERT(!x.fail(), wallet_exception, "Failed to open wallet lock file at ${f}", ("f", lock_path.string()));
+      RSN_ASSERT(!x.fail(), wallet_exception, "Failed to open wallet lock file at ${f}", ("f", lock_path.string()));
    }
    wallet_dir_lock = std::make_unique<boost::interprocess::file_lock>(lock_path.string().c_str());
    if(!wallet_dir_lock->try_lock()) {
