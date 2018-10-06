@@ -1,8 +1,8 @@
 #include "common.hpp"
 
-#include <eosiolib/contract.hpp>
-#include <eosiolib/dispatcher.hpp>
-#include <eosiolib/vector.hpp>
+#include <arisenlib/contract.hpp>
+#include <arisenlib/dispatcher.hpp>
+#include <arisenlib/vector.hpp>
 
 namespace identity {
    using eosio::action_meta;

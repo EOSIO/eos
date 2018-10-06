@@ -1,6 +1,6 @@
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/dispatcher.hpp>
-#include <eosiolib/multi_index.hpp>
+#include <arisenlib/eosio.hpp>
+#include <arisenlib/dispatcher.hpp>
+#include <arisenlib/multi_index.hpp>
 
 using namespace eosio;
 

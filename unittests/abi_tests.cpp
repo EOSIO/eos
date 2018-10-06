@@ -549,12 +549,12 @@ struct abi_gen_helper {
 
   bool generate_abi(const char* source, const char* abi, bool opt_sfs=false) {
 
-    std::string include_param = std::string("-I") + eosiolib_path;
+    std::string include_param = std::string("-I") + arisenlib_path;
     std::string core_sym_include_param = std::string("-I") + core_symbol_path;
     std::string pfr_include_param = std::string("-I") + pfr_include_path;
     std::string boost_include_param = std::string("-I") + boost_include_path;
-    std::string stdcpp_include_param = std::string("-I") + eosiolib_path + "/libc++/upstream/include";
-    std::string stdc_include_param = std::string("-I") + eosiolib_path +  "/musl/upstream/include";
+    std::string stdcpp_include_param = std::string("-I") + arisenlib_path + "/libc++/upstream/include";
+    std::string stdc_include_param = std::string("-I") + arisenlib_path +  "/musl/upstream/include";
 
     abi_def output;
     output.version = "eosio::abi/1.0";
@@ -602,7 +602,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_unknown_type, abi_gen_helper)
 { try {
 
    const char* unknown_type = R"=====(
-   #include <eosiolib/types.h>
+   #include <arisenlib/types.h>
    //@abi action
    struct transfer {
       uint64_t param1;
@@ -619,10 +619,10 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
 
    const char* all_types = R"=====(
    #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
-   #include <eosiolib/types.hpp>
-   #include <eosiolib/varint.hpp>
-   #include <eosiolib/asset.hpp>
-   #include <eosiolib/time.hpp>
+   #include <arisenlib/types.hpp>
+   #include <arisenlib/varint.hpp>
+   #include <arisenlib/asset.hpp>
+   #include <arisenlib/time.hpp>
 
    using namespace eosio;
 
@@ -771,7 +771,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_double_base, abi_gen_helper)
 { try {
 
    const char* double_base = R"=====(
-   #include <eosiolib/types.h>
+   #include <arisenlib/types.h>
 
    struct A {
       uint64_t param3;
@@ -795,7 +795,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_double_action, abi_gen_helper)
 { try {
 
    const char* double_action = R"=====(
-   #include <eosiolib/types.h>
+   #include <arisenlib/types.h>
 
    struct A {
       uint64_t param3;
@@ -860,7 +860,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_indexes, abi_gen_helper)
 { try {
 
    const char* all_indexes = R"=====(
-   #include <eosiolib/types.hpp>
+   #include <arisenlib/types.hpp>
    #include <string>
 
    using namespace eosio;
@@ -913,7 +913,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_unable_to_determine_index, abi_gen_helper)
 { try {
 
    const char* unable_to_determine_index = R"=====(
-   #include <eosiolib/types.h>
+   #include <arisenlib/types.h>
 
    //@abi table
    struct table1 {
@@ -933,7 +933,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_long_field_name, abi_gen_helper)
    //TODO: full action / full table
   // typedef fixed_string16 FieldName;
    const char* long_field_name = R"=====(
-   #include <eosiolib/types.h>
+   #include <arisenlib/types.h>
 
    //@abi table
    struct table1 {
@@ -950,7 +950,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_long_type_name, abi_gen_helper)
 { try {
 
    const char* long_type_name = R"=====(
-   #include <eosiolib/types.h>
+   #include <arisenlib/types.h>
 
    struct this_is_a_very_very_very_very_long_type_name {
       uint64_t field;
@@ -972,7 +972,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_same_type_different_namespace, abi_gen_helper)
 { try {
 
    const char* same_type_different_namespace = R"=====(
-   #include <eosiolib/types.h>
+   #include <arisenlib/types.h>
 
    namespace A {
      //@abi table
@@ -998,7 +998,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_bad_index_type, abi_gen_helper)
 { try {
 
    const char* bad_index_type = R"=====(
-   #include <eosiolib/types.h>
+   #include <arisenlib/types.h>
 
    //@abi table table1 i128i128
    struct table1 {
@@ -1017,7 +1017,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_full_table_decl, abi_gen_helper)
 { try {
 
    const char* full_table_decl = R"=====(
-   #include <eosiolib/types.hpp>
+   #include <arisenlib/types.hpp>
 
    //@abi table table1 i64
    class table1 {
@@ -1072,7 +1072,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_union_table, abi_gen_helper)
 { try {
 
    const char* union_table = R"=====(
-   #include <eosiolib/types.h>
+   #include <arisenlib/types.h>
 
    //@abi table
    union table1 {
@@ -1090,7 +1090,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_same_action_different_type, abi_gen_helper)
 { try {
 
    const char* same_action_different_type = R"=====(
-   #include <eosiolib/types.h>
+   #include <arisenlib/types.h>
 
    //@abi action action1
    struct table1 {
@@ -1111,7 +1111,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_template_base, abi_gen_helper)
 { try {
 
    const char* template_base = R"=====(
-   #include <eosiolib/types.h>
+   #include <arisenlib/types.h>
 
    template<typename T>
    class base {
@@ -1172,7 +1172,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_action_and_table, abi_gen_helper)
 { try {
 
    const char* action_and_table = R"=====(
-   #include <eosiolib/types.h>
+   #include <arisenlib/types.h>
 
   /* @abi table
    * @abi action
@@ -1225,7 +1225,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_simple_typedef, abi_gen_helper)
 { try {
 
    const char* simple_typedef = R"=====(
-   #include <eosiolib/types.hpp>
+   #include <arisenlib/types.hpp>
 
    using namespace eosio;
 
@@ -1289,7 +1289,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_field_typedef, abi_gen_helper)
 { try {
 
    const char* field_typedef = R"=====(
-   #include <eosiolib/types.hpp>
+   #include <arisenlib/types.hpp>
 
    using namespace eosio;
 
@@ -1371,7 +1371,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_POD, abi_gen_helper)
    const char* abigen_vector_of_POD = R"=====(
    #include <vector>
    #include <string>
-   #include <eosiolib/types.hpp>
+   #include <arisenlib/types.hpp>
 
    using namespace eosio;
    using namespace std;
@@ -1440,7 +1440,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_structs, abi_gen_helper)
    const char* abigen_vector_of_structs = R"=====(
    #include <vector>
    #include <string>
-   #include <eosiolib/types.hpp>
+   #include <arisenlib/types.hpp>
 
    using namespace eosio;
    using namespace std;
@@ -1525,7 +1525,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_multidimension, abi_gen_helper)
    const char* abigen_vector_multidimension = R"=====(
    #include <vector>
    #include <string>
-   #include <eosiolib/types.hpp>
+   #include <arisenlib/types.hpp>
 
    using namespace eosio;
    using namespace std;
@@ -1548,8 +1548,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_alias, abi_gen_helper)
    const char* abigen_vector_alias = R"=====(
    #include <string>
    #include <vector>
-   #include <eosiolib/types.hpp>
-   #include <eosiolib/print.hpp>
+   #include <arisenlib/types.hpp>
+   #include <arisenlib/print.hpp>
 
    using namespace std;
 
@@ -1619,8 +1619,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_eosioabi_macro, abi_gen_helper)
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
 
-      #include <eosiolib/eosio.hpp>
-      #include <eosiolib/print.hpp>
+      #include <arisenlib/eosio.hpp>
+      #include <arisenlib/print.hpp>
 
 
       using namespace eosio;
@@ -1679,8 +1679,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_contract_inheritance, abi_gen_helper)
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
 
-      #include <eosiolib/eosio.hpp>
-      #include <eosiolib/print.hpp>
+      #include <arisenlib/eosio.hpp>
+      #include <arisenlib/print.hpp>
 
 
       using namespace eosio;
@@ -1752,8 +1752,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_no_eosioabi_macro, abi_gen_helper)
    const char* abigen_no_eosioabi_macro = R"=====(
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
-      #include <eosiolib/eosio.hpp>
-      #include <eosiolib/print.hpp>
+      #include <arisenlib/eosio.hpp>
+      #include <arisenlib/print.hpp>
       #pragma GCC diagnostic pop
 
       using namespace eosio;

@@ -4,15 +4,15 @@
  */
 #include "eosio.system.hpp"
 
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/crypto.h>
-#include <eosiolib/print.hpp>
-#include <eosiolib/datastream.hpp>
-#include <eosiolib/serialize.hpp>
-#include <eosiolib/multi_index.hpp>
-#include <eosiolib/privileged.hpp>
-#include <eosiolib/singleton.hpp>
-#include <eosiolib/transaction.hpp>
+#include <arisenlib/eosio.hpp>
+#include <arisenlib/crypto.h>
+#include <arisenlib/print.hpp>
+#include <arisenlib/datastream.hpp>
+#include <arisenlib/serialize.hpp>
+#include <arisenlib/multi_index.hpp>
+#include <arisenlib/privileged.hpp>
+#include <arisenlib/singleton.hpp>
+#include <arisenlib/transaction.hpp>
 #include <eosio.token/eosio.token.hpp>
 
 #include <algorithm>
@@ -113,7 +113,7 @@ namespace eosiosystem {
     *  @pre if proxy is set then proxy account must exist and be registered as a proxy
     *  @pre every listed producer or proxy must have been previously registered
     *  @pre voter must authorize this action
-    *  @pre voter must have previously staked some EOS for voting
+    *  @pre voter must have previously staked some RSN for voting
     *  @pre voter->staked must be up to date
     *
     *  @post every producer previously voted for will have vote reduced by previous vote weight

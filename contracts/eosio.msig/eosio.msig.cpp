@@ -1,6 +1,6 @@
 #include <eosio.msig/eosio.msig.hpp>
-#include <eosiolib/action.hpp>
-#include <eosiolib/permission.hpp>
+#include <arisenlib/action.hpp>
+#include <arisenlib/permission.hpp>
 
 namespace eosio {
 

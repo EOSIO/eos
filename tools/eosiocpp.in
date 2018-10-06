@@ -5,10 +5,10 @@ if [ "${EOSIO_BIN_INSTALL_DIR}" == "." ]; then
   EOSIO_BIN_INSTALL_DIR=`pwd`
 fi
 EOSIO_INSTALL_DIR=`dirname ${EOSIO_BIN_INSTALL_DIR}`
-if [ -x "@CMAKE_BINARY_DIR@/programs/eosio-abigen/eosio-abigen" ]; then
-    ABIGEN="@CMAKE_BINARY_DIR@/programs/eosio-abigen/eosio-abigen"
-elif [ -x "${EOSIO_INSTALL_DIR}/bin/eosio-abigen" ]; then
-    ABIGEN=${EOSIO_INSTALL_DIR}/bin/eosio-abigen
+if [ -x "@CMAKE_BINARY_DIR@/programs/arisen-abigen/arisen-abigen" ]; then
+    ABIGEN="@CMAKE_BINARY_DIR@/programs/arisen-abigen/arisen-abigen"
+elif [ -x "${EOSIO_INSTALL_DIR}/bin/arisen-abigen" ]; then
+    ABIGEN=${EOSIO_INSTALL_DIR}/bin/arisen-abigen
 fi
 if [ -x "@CMAKE_BINARY_DIR@/externals/binaryen/bin/eosio-s2wasm" ]; then
     EOSIO_S2WASM="@CMAKE_BINARY_DIR@/externals/binaryen/bin/eosio-s2wasm"
@@ -79,10 +79,10 @@ function build_contract {
 
     done
 
-    declare -a possible_libs=("@CMAKE_BINARY_DIR@/contracts/eosiolib/eosiolib.bc"
+    declare -a possible_libs=("@CMAKE_BINARY_DIR@/contracts/arisenlib/arisenlib.bc"
                               "@CMAKE_BINARY_DIR@/contracts/libc++/libc++.bc"
                               "@CMAKE_BINARY_DIR@/contracts/musl/libc.bc"
-                              "${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/eosiolib.bc"
+                              "${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/arisenlib.bc"
                               "${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc++.bc"
                               "${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc.bc")
     declare libs=""
@@ -106,9 +106,9 @@ function generate_abi {
         echo "You must specify a file"
         exit 1
     fi
-    
+
     context_folder=$(cd "$(dirname "$1")" ; pwd -P)
-    
+
     ${ABIGEN} -extra-arg=-c -extra-arg=--std=c++14 -extra-arg=--target=wasm32 \
         -extra-arg=-nostdinc -extra-arg=-nostdinc++ -extra-arg=-DABIGEN \
         -extra-arg=-I@CMAKE_SOURCE_DIR@/contracts \
@@ -126,7 +126,7 @@ function generate_abi {
 
     if [ "$?" -ne 0 ]; then
         exit 1
-    fi    
+    fi
 
     echo "Generated ${outname} ..."
 }

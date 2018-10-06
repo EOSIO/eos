@@ -49,7 +49,7 @@ class NamedAccounts:
         return retStr
 
 ###############################################################
-# nodeos_voting_test
+# aos_voting_test
 # --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
 # --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
@@ -68,8 +68,8 @@ testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
 
-WalletdName="keosd"
-ClientName="cleos"
+WalletdName="awallet"
+ClientName="arisecli"
 
 try:
     TestHelper.printSystemInfo("BEGIN")
@@ -81,8 +81,8 @@ try:
     minRAMValue=1002
     maxRAMFlag="--chain-state-db-size-mb"
     maxRAMValue=1010
-    extraNodeosArgs=" %s %d %s %d " % (minRAMFlag, minRAMValue, maxRAMFlag, maxRAMValue)
-    if cluster.launch(onlyBios=False, dontKill=dontKill, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes, extraNodeosArgs=extraNodeosArgs, useBiosBootFile=False) is False:
+    extraAosArgs=" %s %d %s %d " % (minRAMFlag, minRAMValue, maxRAMFlag, maxRAMValue)
+    if cluster.launch(onlyBios=False, dontKill=dontKill, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes, extraAosArgs=extraAosArgs, useBiosBootFile=False) is False:
         Utils.cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
 
@@ -234,7 +234,7 @@ try:
             count+=1
             fromIndex=fromIndexStart+fromIndexOffset
             if fromIndex>=namedAccounts.numAccounts:
-                fromIndex-=namedAccounts.numAccounts 
+                fromIndex-=namedAccounts.numAccounts
             toIndex=fromIndex+1
             if toIndex==namedAccounts.numAccounts:
                 toIndex=0
@@ -293,7 +293,7 @@ try:
            break
         fromIndex=fromIndexStart+fromIndexOffset
         if fromIndex>=namedAccounts.numAccounts:
-            fromIndex-=namedAccounts.numAccounts 
+            fromIndex-=namedAccounts.numAccounts
         toIndex=fromIndex+1
         if toIndex==namedAccounts.numAccounts:
             toIndex=0

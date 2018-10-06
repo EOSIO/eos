@@ -249,7 +249,7 @@ struct yubihsm_wallet_impl {
          FC_THROW_EXCEPTION(chain::wallet_exception, "Cannot create caps mask");
 
       try {
-         if((rc = api.util_generate_key_ec(session, &new_key_id, "keosd created key", authkey_domains, &creation_caps, YH_ALGO_EC_P256)))
+         if((rc = api.util_generate_key_ec(session, &new_key_id, "aWallet created key", authkey_domains, &creation_caps, YH_ALGO_EC_P256)))
             FC_THROW_EXCEPTION(chain::wallet_exception, "yh_util_generate_key_ec failed: ${m}", ("m", api.strerror(rc)));
          return populate_key_map_with_keyid(new_key_id)->first;
       }

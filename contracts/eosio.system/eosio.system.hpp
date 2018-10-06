@@ -5,10 +5,10 @@
 #pragma once
 
 #include <eosio.system/native.hpp>
-#include <eosiolib/asset.hpp>
-#include <eosiolib/time.hpp>
-#include <eosiolib/privileged.hpp>
-#include <eosiolib/singleton.hpp>
+#include <arisenlib/asset.hpp>
+#include <arisenlib/time.hpp>
+#include <arisenlib/privileged.hpp>
+#include <arisenlib/singleton.hpp>
 #include <eosio.system/exchange_state.hpp>
 
 #include <string>

@@ -51,19 +51,19 @@ EOF
 
 ### Launch producer
 ```bash
-$ ./nodeos -d ~/eos.data/producer_node --config-dir ~/eos.data/producer_node -l ~/eos.data/logging.json --http-server-address "" -p eosio -e
+$ ./aos -d ~/eos.data/producer_node --config-dir ~/eos.data/producer_node -l ~/eos.data/logging.json --http-server-address "" -p eosio -e
 ```
 
 ### Launch non-producer that will generate transactions
 ```bash
-$ ./nodeos -d ~/eos.data/generator_node --config-dir ~/eos.data/generator_node -l ~/eos.data/logging.json --plugin eosio::txn_test_gen_plugin --plugin eosio::chain_api_plugin --p2p-peer-address localhost:9876 --p2p-listen-endpoint localhost:5555
+$ ./aos -d ~/eos.data/generator_node --config-dir ~/eos.data/generator_node -l ~/eos.data/logging.json --plugin eosio::txn_test_gen_plugin --plugin eosio::chain_api_plugin --p2p-peer-address localhost:9876 --p2p-listen-endpoint localhost:5555
 ```
 
 ### Create a wallet on the non-producer and set bios contract
 ```bash
-$ ./cleos wallet create --to-console
-$ ./cleos wallet import --private-key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
-$ ./cleos set contract eosio ~/eos/build.release/contracts/eosio.bios/ 
+$ ./arisecli wallet create --to-console
+$ ./arisecli wallet import --private-key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
+$ ./arisecli set contract eosio ~/eos/build.release/contracts/eosio.bios/
 ```
 
 ### Initialize the accounts txn_test_gen_plugin uses

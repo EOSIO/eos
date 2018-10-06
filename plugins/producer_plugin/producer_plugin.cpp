@@ -136,7 +136,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       int32_t                                                   _produce_time_offset_us = 0;
       int32_t                                                   _last_block_time_offset_us = 0;
       fc::time_point                                            _irreversible_block_time;
-      fc::microseconds                                          _keosd_provider_timeout_us;
+      fc::microseconds                                          _awallet_provider_timeout_us;
 
       time_point _last_signed_block_time;
       time_point _start_time = fc::time_point::now();
@@ -506,11 +506,11 @@ void producer_plugin::set_program_options(
           "Where:\n"
           "   <public-key>    \tis a string form of a vaild EOSIO public key\n\n"
           "   <provider-spec> \tis a string in the form <provider-type>:<data>\n\n"
-          "   <provider-type> \tis KEY, or KEOSD\n\n"
+          "   <provider-type> \tis KEY, or AWALLET\n\n"
           "   KEY:<data>      \tis a string form of a valid EOSIO private key which maps to the provided public key\n\n"
-          "   KEOSD:<data>    \tis the URL where keosd is available and the approptiate wallet(s) are unlocked")
-         ("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
-          "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a keosd provider for signing")
+          "   AWALLET:<data>    \tis the URL where aWallet is available and the approptiate wallet(s) are unlocked")
+         ("awallet-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
+          "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a aWallet provider for signing")
          ("greylist-account", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "account that can not access to extended CPU/NET virtual resources")
          ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
@@ -563,23 +563,23 @@ make_key_signature_provider(const private_key_type& key) {
 }
 
 static producer_plugin_impl::signature_provider_type
-make_keosd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
-   fc::url keosd_url;
+make_awallet_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
+   fc::url awallet_url;
    if(boost::algorithm::starts_with(url_str, "unix://"))
       //send the entire string after unix:// to http_plugin. It'll auto-detect which part
       // is the unix socket path, and which part is the url to hit on the server
-      keosd_url = fc::url("unix", url_str.substr(7), ostring(), ostring(), ostring(), ostring(), ovariant_object(), fc::optional<uint16_t>());
+      awallet_url = fc::url("unix", url_str.substr(7), ostring(), ostring(), ostring(), ostring(), ovariant_object(), fc::optional<uint16_t>());
    else
-      keosd_url = fc::url(url_str);
+      awallet_url = fc::url(url_str);
    std::weak_ptr<producer_plugin_impl> weak_impl = impl;
 
-   return [weak_impl, keosd_url, pubkey]( const chain::digest_type& digest ) {
+   return [weak_impl, awallet_url, pubkey]( const chain::digest_type& digest ) {
       auto impl = weak_impl.lock();
       if (impl) {
          fc::variant params;
          fc::to_variant(std::make_pair(digest, pubkey), params);
-         auto deadline = impl->_keosd_provider_timeout_us.count() >= 0 ? fc::time_point::now() + impl->_keosd_provider_timeout_us : fc::time_point::maximum();
-         return app().get_plugin<http_client_plugin>().get_client().post_sync(keosd_url, params, deadline).as<chain::signature_type>();
+         auto deadline = impl->_awallet_provider_timeout_us.count() >= 0 ? fc::time_point::now() + impl->_awallet_provider_timeout_us : fc::time_point::maximum();
+         return app().get_plugin<http_client_plugin>().get_client().post_sync(awallet_url, params, deadline).as<chain::signature_type>();
       } else {
          return signature_type();
       }
@@ -625,8 +625,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
             if (spec_type_str == "KEY") {
                my->_signature_providers[pubkey] = make_key_signature_provider(private_key_type(spec_data));
-            } else if (spec_type_str == "KEOSD") {
-               my->_signature_providers[pubkey] = make_keosd_signature_provider(my, spec_data, pubkey);
+            } else if (spec_type_str == "AWALLET") {
+               my->_signature_providers[pubkey] = make_awallet_signature_provider(my, spec_data, pubkey);
             }
 
          } catch (...) {
@@ -635,7 +635,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       }
    }
 
-   my->_keosd_provider_timeout_us = fc::milliseconds(options.at("keosd-provider-timeout").as<int32_t>());
+   my->_awallet_provider_timeout_us = fc::milliseconds(options.at("awallet-provider-timeout").as<int32_t>());
 
    my->_produce_time_offset_us = options.at("produce-time-offset-us").as<int32_t>();
 

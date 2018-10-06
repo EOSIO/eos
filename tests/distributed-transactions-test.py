@@ -65,11 +65,11 @@ try:
         if not cluster.waitOnClusterBlockNumSync(3):
             errorExit("Cluster never stabilized")
 
-    Print("Stand up EOS wallet keosd")
+    Print("Stand up aWallet wallet awallet")
     walletMgr.killall(allInstances=killAll)
     walletMgr.cleanup()
     if walletMgr.launch() is False:
-        errorExit("Failed to stand up keosd.")
+        errorExit("Failed to stand up awallet.")
 
     accountsCount=total_nodes
     walletName="MyWallet-%d" % (random.randrange(10000))
@@ -95,7 +95,7 @@ try:
         errorExit("Failed to spread and validate funds.")
 
     print("Funds spread validated")
-    
+
     testSuccessful=True
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)

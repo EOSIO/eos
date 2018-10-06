@@ -58,7 +58,7 @@ class TestHelper(object):
             parser.add_argument("--kill-sig", type=str, choices=[Utils.SigKillTag, Utils.SigTermTag], help="kill signal.",
                     default=Utils.SigKillTag)
         if "--kill-count" in includeArgs:
-            parser.add_argument("--kill-count", type=int, help="nodeos instances to kill", default=-1)
+            parser.add_argument("--kill-count", type=int, help="aOS instances to kill", default=-1)
         if "--p2p-plugin" in includeArgs:
             parser.add_argument("--p2p-plugin", choices=["net", "bnet"], help="select a p2p plugin to use. Defaults to net.", default="net")
         if "--seed" in includeArgs:
@@ -95,9 +95,9 @@ class TestHelper(object):
         if "--only-bios" in includeArgs:
             parser.add_argument("--only-bios", help="Limit testing to bios node.", action='store_true')
         if "--clean-run" in includeArgs:
-            parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
+            parser.add_argument("--clean-run", help="Kill all aOS and kleos instances", action='store_true')
         if "--sanity-test" in includeArgs:
-            parser.add_argument("--sanity-test", help="Validates nodeos and kleos are in path and can be started up.", action='store_true')
+            parser.add_argument("--sanity-test", help="Validates aOS and kleos are in path and can be started up.", action='store_true')
 
         for arg in applicationSpecificArgs.args:
             parser.add_argument(arg.flag, type=arg.type, help=arg.help, choices=arg.choices, default=arg.default)
@@ -115,7 +115,7 @@ class TestHelper(object):
         Utils.Print("EOS Client version: %s" % (clientVersion))
         Utils.Print("Processor: %s" % (platform.processor()))
         Utils.Print("OS name: %s" % (platform.platform()))
-    
+
     @staticmethod
     # pylint: disable=too-many-arguments
     def shutdown(cluster, walletMgr, testSuccessful=True, killEosInstances=True, killWallet=True, keepLogs=False, cleanRun=True, dumpErrorDetails=False):
@@ -163,4 +163,3 @@ class TestHelper(object):
             if testSuccessful and not keepLogs:
                 Utils.Print("Cleanup wallet data.")
                 walletMgr.cleanup()
-

@@ -4,8 +4,8 @@
  */
 #pragma once
 
-#include <eosiolib/asset.hpp>
-#include <eosiolib/eosio.hpp>
+#include <arisenlib/asset.hpp>
+#include <arisenlib/eosio.hpp>
 
 #include <string>
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <eosiolib/singleton.hpp>
-#include <eosiolib/multi_index.hpp>
+#include <arisenlib/singleton.hpp>
+#include <arisenlib/multi_index.hpp>
 
 namespace identity {
 

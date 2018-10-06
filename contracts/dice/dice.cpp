@@ -5,11 +5,11 @@
 #include <utility>
 #include <vector>
 #include <string>
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/time.hpp>
-#include <eosiolib/asset.hpp>
-#include <eosiolib/contract.hpp>
-#include <eosiolib/crypto.h>
+#include <arisenlib/eosio.hpp>
+#include <arisenlib/time.hpp>
+#include <arisenlib/asset.hpp>
+#include <arisenlib/contract.hpp>
+#include <arisenlib/crypto.h>
 
 using eosio::key256;
 using eosio::indexed_by;

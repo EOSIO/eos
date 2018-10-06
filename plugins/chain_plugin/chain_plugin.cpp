@@ -259,8 +259,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
            "Limits the maximum rate of transaction messages that an account's code is allowed each per-code-account-transaction-msg-rate-limit-time-frame-sec.")*/
 
    cli.add_options()
-         ("genesis-json", bpo::value<bfs::path>(), "File to read Genesis State from")
-         ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
+         ("genesis-json", bpo::value<bfs::path>(), "File to read ARISEN Genesis State from")
+         ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the ARISEN Genesis State file")
          ("print-genesis-json", bpo::bool_switch()->default_value(false),
           "extract genesis_state from blocks.log as JSON, print to console, and exit")
          ("extract-genesis-json", bpo::value<bfs::path>(),
@@ -332,7 +332,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       try {
          genesis_state gs; // Check if EOSIO_ROOT_KEY is bad
       } catch ( const fc::exception& ) {
-         elog( "EOSIO_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.",
+         elog( "EOSIO_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid Arisen-based public key.",
                ("root_key", genesis_state::eosio_root_key));
          throw;
       }
@@ -495,7 +495,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       } else if( options.at( "replay-blockchain" ).as<bool>()) {
          ilog( "Replay requested: deleting state database" );
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
-            wlog( "The --truncate-at-block option does not work for a regular replay of the blockchain." );
+            wlog( "The --truncate-at-block option does not work for a regular replay of the ARISEN blockchain." );
          clear_directory_contents( my->chain_config->state_dir );
          if( options.at( "fix-reversible-blocks" ).as<bool>()) {
             if( !recover_reversible_blocks( my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
@@ -554,7 +554,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                   options.at( "genesis-timestamp" ).as<string>());
          }
 
-         wlog( "Starting up fresh blockchain with provided genesis state." );
+         wlog( "Starting up fresh ARISEN blockchain with provided genesis state." );
       } else if( options.count( "genesis-timestamp" )) {
          EOS_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
                      plugin_config_exception,
@@ -567,7 +567,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
          my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
       } else {
-         wlog( "Starting up fresh blockchain with default genesis state." );
+         wlog( "Starting up fresh ARISEN blockchain with default genesis state." );
       }
 
       if ( options.count("read-mode") ) {

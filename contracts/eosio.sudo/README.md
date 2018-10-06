@@ -20,21 +20,21 @@ First, the account `eosio.sudo` needs to be created. Since it has the restricted
 
 The `eosio.sudo` account also needs to have sufficient RAM to host the contract and sufficient CPU and network bandwidth to deploy the contract. This means that the creator of the account (`eosio`) needs to gift sufficient RAM to the new account and delegate (preferably with transfer) sufficient bandwidth to the new account. To pull this off the `eosio` account needs to have enough of the core system token (the `SYS` token will be used within this guide) in its liquid balance. So prior to continuing with the next steps of this guide, the active block producers of the chain who are coordinating this process need to ensure that a sufficient amount of core system tokens that they are authorized to spend is placed in the liquid balance of the `eosio` account.
 
-This guide will be using cleos to carry out the process.
+This guide will be using arisecli to carry out the process.
 
 ### 2.1 Create the eosio.sudo account
 
 #### 2.1.1 Generate the transaction to create the eosio.sudo account
 
-The transaction to create the `eosio.sudo` account will need to be proposed to get the necessary approvals from active block producers before executing it. This transaction needs to first be generated and stored as JSON into a file so that it can be used in the cleos command to propose the transaction to the eosio.msig contract.
+The transaction to create the `eosio.sudo` account will need to be proposed to get the necessary approvals from active block producers before executing it. This transaction needs to first be generated and stored as JSON into a file so that it can be used in the arisecli command to propose the transaction to the eosio.msig contract.
 
-A simple way to generate a transaction to create a new account is to use the `cleos system newaccount`. However, that sub-command currently only accepts a single public key as the owner and active authority of the new account. However, the owner and active authorities of the new account should only be satisfied by the `active` permission of `eosio`. One option is to create the new account with the some newly generated key, and then later update the authorities of the new account using `cleos set account permission`. This guide will take an alternative approach which atomically creates the new account in its proper configuration.
+A simple way to generate a transaction to create a new account is to use the `arisecli system newaccount`. However, that sub-command currently only accepts a single public key as the owner and active authority of the new account. However, the owner and active authorities of the new account should only be satisfied by the `active` permission of `eosio`. One option is to create the new account with the some newly generated key, and then later update the authorities of the new account using `arisecli set account permission`. This guide will take an alternative approach which atomically creates the new account in its proper configuration.
 
-Three unsigned transactions will be generated using cleos and then the actions within those transactions will be appropriately stitched together into a single transaction which will later be proposed using the eosio.msig contract.
+Three unsigned transactions will be generated using arisecli and then the actions within those transactions will be appropriately stitched together into a single transaction which will later be proposed using the eosio.msig contract.
 
 First, generate a transaction to capture the necessary actions involved in creating a new account:
 ```
-$ cleos system newaccount -s -j -d --transfer --stake-net "1.000 SYS" --stake-cpu "1.000 SYS" --buy-ram-kbytes 50 eosio eosio.sudo EOS8MMUW11TAdTDxqdSwSqJodefSoZbFhcprndomgLi9MeR2o8MT4 > generated_account_creation_trx.json
+$ arisecli system newaccount -s -j -d --transfer --stake-net "1.000 SYS" --stake-cpu "1.000 SYS" --buy-ram-kbytes 50 eosio eosio.sudo EOS8MMUW11TAdTDxqdSwSqJodefSoZbFhcprndomgLi9MeR2o8MT4 > generated_account_creation_trx.json
 726964ms thread-0   main.cpp:429                  create_action        ] result: {"binargs":"0000000000ea305500004d1a03ea305500c80000"} arg: {"code":"eosio","action":"buyrambytes","args":{"payer":"eosio","receiver":"eosio.sudo","bytes":51200}}
 726967ms thread-0   main.cpp:429                  create_action        ] result: {"binargs":"0000000000ea305500004d1a03ea3055102700000000000004535953000000001027000000000000045359530000000001"} arg: {"code":"eosio","action":"delegatebw","args":{"from":"eosio","receiver":"eosio.sudo","stake_net_quantity":"1.0000 SYS","stake_cpu_quantity":"1.0000 SYS","transfer":true}}
 $ cat generated_account_creation_trx.json
@@ -112,7 +112,7 @@ $ cat newaccount_payload.json
 
 Third, generate a transaction containing the actual `eosio::newaccount` action that will be used in the final transaction:
 ```
-$ cleos push action -s -j -d eosio newaccount newaccount_payload.json -p eosio > generated_newaccount_trx.json
+$ arisecli push action -s -j -d eosio newaccount newaccount_payload.json -p eosio > generated_newaccount_trx.json
 $ cat generated_newaccount_trx.json
 {
   "expiration": "2018-06-29T17:11:36",
@@ -141,7 +141,7 @@ $ cat generated_newaccount_trx.json
 
 Fourth, generate a transaction containing the `eosio::setpriv` action which will make the `eosio.sudo` account privileged:
 ```
-$ cleos push action -s -j -d eosio setpriv '{"account": "eosio.sudo", "is_priv": 1}' -p eosio > generated_setpriv_trx.json
+$ arisecli push action -s -j -d eosio setpriv '{"account": "eosio.sudo", "is_priv": 1}' -p eosio > generated_setpriv_trx.json
 $ cat generated_setpriv_trx.json
 {
   "expiration": "2018-06-29T17:11:36",
@@ -297,7 +297,7 @@ The guide will assume that `blkproducera` was chosen as the lead block producer 
 
 The lead block producer (`blkproducera`) should propose the transaction stored in create_sudo_account_trx.json:
 ```
-$ cleos multisig propose_trx createsudo producer_permissions.json create_sudo_account_trx.json blkproducera
+$ arisecli multisig propose_trx createsudo producer_permissions.json create_sudo_account_trx.json blkproducera
 executed transaction: bf6aaa06b40e2a35491525cb11431efd2b5ac94e4a7a9c693c5bf0cfed942393  744 bytes  772 us
 #    eosio.msig <= eosio.msig::propose          {"proposer":"blkproducera","proposal_name":"createsudo","requested":[{"actor":"blkproducera","permis...
 warning: transaction executed locally, but may not be confirmed by the network yet
@@ -307,9 +307,9 @@ warning: transaction executed locally, but may not be confirmed by the network y
 
 Each of the potential approvers of the proposed transaction (i.e. the active block producers) should first review the proposed transaction to make sure they are not approving anything that they do not agree to.
 
-The proposed transaction can be reviewed using the `cleos multisig review` command:
+The proposed transaction can be reviewed using the `arisecli multisig review` command:
 ```
-$ cleos multisig review blkproducera createsudo > create_sudo_account_trx_to_review.json
+$ arisecli multisig review blkproducera createsudo > create_sudo_account_trx_to_review.json
 $ head -n 30 create_sudo_account_trx_to_review.json
 {
   "proposal_name": "createsudo",
@@ -345,7 +345,7 @@ $ head -n 30 create_sudo_account_trx_to_review.json
 
 The approvers should go through the full human-readable transaction output and make sure everything looks fine. But they can also use tools to automatically compare the proposed transaction to the one they generated to make sure there are absolutely no differences:
 ```
-$ cleos multisig propose_trx -j -s -d createsudo '[]' create_sudo_account_trx.json blkproducera | grep '"data":' | sed 's/^[ \t]*"data":[ \t]*//;s/[",]//g' | cut -c 35- > expected_create_sudo_trx_serialized.hex
+$ arisecli multisig propose_trx -j -s -d createsudo '[]' create_sudo_account_trx.json blkproducera | grep '"data":' | sed 's/^[ \t]*"data":[ \t]*//;s/[",]//g' | cut -c 35- > expected_create_sudo_trx_serialized.hex
 $ cat expected_create_sudo_trx_serialized.hex
 c0593f5b00000000000000000000040000000000ea305500409e9a2264b89a010000000000ea305500000000a8ed3232420000000000ea305500004d1a03ea30550100000000010000000000ea305500000000a8ed32320100000100000000010000000000ea305500000000a8ed32320100000000000000ea305500b0cafe4873bd3e010000000000ea305500000000a8ed3232140000000000ea305500004d1a03ea3055002800000000000000ea305500003f2a1ba6a24a010000000000ea305500000000a8ed3232310000000000ea305500004d1a03ea30551027000000000000045359530000000010270000000000000453595300000000010000000000ea305500000060bb5bb3c2010000000000ea305500000000a8ed32320900004d1a03ea30550100
 $ cat create_sudo_account_trx_to_review.json | grep '"packed_transaction":' | sed 's/^[ \t]*"packed_transaction":[ \t]*//;s/[",]//g' > proposed_create_sudo_trx_serialized.hex
@@ -356,7 +356,7 @@ $ diff expected_create_sudo_trx_serialized.hex proposed_create_sudo_trx_serializ
 
 When an approver (e.g. `blkproducerb`) is satisfied with the proposed transaction, they can simply approve it:
 ```
-$ cleos multisig approve blkproducera createsudo '{"actor": "blkproducerb", "permission": "active"}' -p blkproducerb
+$ arisecli multisig approve blkproducera createsudo '{"actor": "blkproducerb", "permission": "active"}' -p blkproducerb
 executed transaction: 03a907e2a3192aac0cd040c73db8273c9da7696dc7960de22b1a479ae5ee9f23  128 bytes  472 us
 #    eosio.msig <= eosio.msig::approve          {"proposer":"blkproducera","proposal_name":"createsudo","level":{"actor":"blkproducerb","permission"...
 warning: transaction executed locally, but may not be confirmed by the network yet
@@ -367,7 +367,7 @@ warning: transaction executed locally, but may not be confirmed by the network y
 When the necessary approvals are collected (in this example, with 21 block producers, at least 15 of their approvals were required), anyone can push the `eosio.msig::exec` action which executes the approved transaction. It makes a lot of sense for the lead block producer who proposed the transaction to also execute it (this will incur another temporary RAM cost for the deferred transaction that is generated by the eosio.msig contract).
 
 ```
-$ cleos multisig exec blkproducera createsudo blkproducera
+$ arisecli multisig exec blkproducera createsudo blkproducera
 executed transaction: 7ecc183b99915cc411f96dde7c35c3fe0df6e732507f272af3a039b706482e5a  160 bytes  850 us
 #    eosio.msig <= eosio.msig::exec             {"proposer":"blkproducera","proposal_name":"createsudo","executer":"blkproducera"}
 warning: transaction executed locally, but may not be confirmed by the network yet
@@ -375,7 +375,7 @@ warning: transaction executed locally, but may not be confirmed by the network y
 
 Anyone can now verify that the `eosio.sudo` was created:
 ```
-$ cleos get account eosio.sudo
+$ arisecli get account eosio.sudo
 privileged: true
 permissions:
      owner     1:    1 eosio@active,
@@ -405,11 +405,11 @@ producers:     <not voted>
 
 #### 2.2.1  Generate the transaction to deploy the eosio.sudo contract
 
-The transaction to deploy the contract to the `eosio.sudo` account will need to be proposed to get the necessary approvals from active block producers before executing it. This transaction needs to first be generated and stored as JSON into a file so that it can be used in the cleos command to propose the transaction to the eosio.msig contract.
+The transaction to deploy the contract to the `eosio.sudo` account will need to be proposed to get the necessary approvals from active block producers before executing it. This transaction needs to first be generated and stored as JSON into a file so that it can be used in the arisecli command to propose the transaction to the eosio.msig contract.
 
-The easy way to generate this transaction is using cleos:
+The easy way to generate this transaction is using arisecli:
 ```
-$ cleos set contract -s -j -d eosio.sudo contracts/eosio.sudo/ > deploy_sudo_contract_trx.json
+$ arisecli set contract -s -j -d eosio.sudo contracts/eosio.sudo/ > deploy_sudo_contract_trx.json
 Reading WAST/WASM from contracts/eosio.sudo/eosio.sudo.wasm...
 Using already assembled WASM...
 Publishing contract...
@@ -474,7 +474,7 @@ This guide will assume that `blkproducera` was chosen as the lead block producer
 
 The lead block producer (`blkproducera`) should propose the transaction stored in deploy_sudo_contract_trx.json:
 ```
-$ cleos multisig propose_trx deploysudo producer_permissions.json deploy_sudo_contract_trx.json blkproducera
+$ arisecli multisig propose_trx deploysudo producer_permissions.json deploy_sudo_contract_trx.json blkproducera
 executed transaction: 9e50dd40eba25583a657ee8114986a921d413b917002c8fb2d02e2d670f720a8  4312 bytes  871 us
 #    eosio.msig <= eosio.msig::propose          {"proposer":"blkproducera","proposal_name":"deploysudo","requested":[{"actor":"blkproducera","permis...
 warning: transaction executed locally, but may not be confirmed by the network yet
@@ -484,9 +484,9 @@ warning: transaction executed locally, but may not be confirmed by the network y
 
 Each of the potential approvers of the proposed transaction (i.e. the active block producers) should first review the proposed transaction to make sure they are not approving anything that they do not agree to.
 
-The proposed transaction can be reviewed using the `cleos multisig review` command:
+The proposed transaction can be reviewed using the `arisecli multisig review` command:
 ```
-$ cleos multisig review blkproducera deploysudo > deploy_sudo_contract_trx_to_review.json
+$ arisecli multisig review blkproducera deploysudo > deploy_sudo_contract_trx_to_review.json
 $ cat deploy_sudo_contract_trx_to_review.json
 {
   "proposal_name": "deploysudo",
@@ -538,7 +538,7 @@ Each approver should be able to see that the proposed transaction is setting the
 
 This guide assumes that each approver has already audited the source code of the contract to be deployed and has already compiled that code to generate the WebAssembly code that should be byte-for-byte identical to the code that every other approver following the same process should have generated. The guide also assumes that this generated code and its associated ABI were provided in the steps in sub-section 2.2.1 that generated the transaction in the deploy_sudo_contract_trx.json file. It then becomes quite simple to verify that the proposed transaction is identical to the one the potential approver could have proposed with the code and ABI that they already audited:
 ```
-$ cleos multisig propose_trx -j -s -d deploysudo '[]' deploy_sudo_contract_trx.json blkproducera | grep '"data":' | sed 's/^[ \t]*"data":[ \t]*//;s/[",]//g' | cut -c 35- > expected_deploy_sudo_trx_serialized.hex
+$ arisecli multisig propose_trx -j -s -d deploysudo '[]' deploy_sudo_contract_trx.json blkproducera | grep '"data":' | sed 's/^[ \t]*"data":[ \t]*//;s/[",]//g' | cut -c 35- > expected_deploy_sudo_trx_serialized.hex
 $ cat expected_deploy_sudo_trx_serialized.hex | cut -c -50
 c0593f5b00000000000000000000020000000000ea30550000
 $ cat deploy_sudo_account_trx_to_review.json | grep '"packed_transaction":' | sed 's/^[ \t]*"packed_transaction":[ \t]*//;s/[",]//g' > proposed_deploy_sudo_trx_serialized.hex
@@ -549,7 +549,7 @@ $ diff expected_deploy_sudo_trx_serialized.hex proposed_deploy_sudo_trx_serializ
 
 When an approver (e.g. `blkproducerb`) is satisfied with the proposed transaction, they can simply approve it:
 ```
-$ cleos multisig approve blkproducera deploysudo '{"actor": "blkproducerb", "permission": "active"}' -p blkproducerb
+$ arisecli multisig approve blkproducera deploysudo '{"actor": "blkproducerb", "permission": "active"}' -p blkproducerb
 executed transaction: d1e424e05ee4d96eb079fcd5190dd0bf35eca8c27dd7231b59df8e464881abfd  128 bytes  483 us
 #    eosio.msig <= eosio.msig::approve          {"proposer":"blkproducera","proposal_name":"deploysudo","level":{"actor":"blkproducerb","permission"...
 warning: transaction executed locally, but may not be confirmed by the network yet
@@ -560,7 +560,7 @@ warning: transaction executed locally, but may not be confirmed by the network y
 When the necessary approvals are collected (in this example, with 21 block producers, at least 15 of their approvals were required), anyone can push the `eosio.msig::exec` action which executes the approved transaction. It makes a lot of sense for the lead block producer who proposed the transaction to also execute it (this will incur another temporary RAM cost for the deferred transaction that is generated by the eosio.msig contract).
 
 ```
-$ cleos multisig exec blkproducera deploysudo blkproducera
+$ arisecli multisig exec blkproducera deploysudo blkproducera
 executed transaction: e8da14c6f1fdc3255b5413adccfd0d89b18f832a4cc18c4324ea2beec6abd483  160 bytes  1877 us
 #    eosio.msig <= eosio.msig::exec             {"proposer":"blkproducera","proposal_name":"deploysudo","executer":"blkproducera"}
 ```
@@ -568,7 +568,7 @@ executed transaction: e8da14c6f1fdc3255b5413adccfd0d89b18f832a4cc18c4324ea2beec6
 Anyone can now verify that the `eosio.sudo` contract was deployed correctly.
 
 ```
-$ cleos get code -a retrieved-eosio.sudo.abi eosio.sudo
+$ arisecli get code -a retrieved-eosio.sudo.abi eosio.sudo
 code hash: 1b3456a5eca28bcaca7a2a3360fbb2a72b9772a416c8e11a303bcb26bfe3263c
 saving abi to retrieved-eosio.sudo.abi
 $ sha256sum contracts/eosio.sudo/eosio.sudo.wasm
@@ -581,7 +581,7 @@ If the two hashes match then the local WebAssembly code is the one deployed on t
 
 ### 3.1 Example: Updating owner authority of an arbitrary account
 
-This example will demonstrate how to use the deployed eosio.sudo contract together with the eosio.msig contract to allow a greater than two-thirds supermajority of block producers of an EOSIO blockchain to change the owner authority of an arbitrary account. The example will use cleos: in particular, the `cleos multisig` command, the `cleos set account permission` sub-command, and the `cleos sudo exec` sub-command. However, the guide also demonstrates what to do if the `cleos sudo exec` sub-command is not available.
+This example will demonstrate how to use the deployed eosio.sudo contract together with the eosio.msig contract to allow a greater than two-thirds supermajority of block producers of an EOSIO blockchain to change the owner authority of an arbitrary account. The example will use arisecli: in particular, the `arisecli multisig` command, the `arisecli set account permission` sub-command, and the `arisecli sudo exec` sub-command. However, the guide also demonstrates what to do if the `arisecli sudo exec` sub-command is not available.
 
 This guide assumes that there are 21 active block producers on the chain with account names: `blkproducera`, `blkproducerb`, ..., `blkproduceru`. Block producer `blkproducera` will act as the lead block producer handling the proposal of the transaction.
 
@@ -646,7 +646,7 @@ Assume that none of the block producers know the private key corresponding to th
 
 The first step is to generate the transaction changing the owner permission of the `alice` account as if `alice` is authorizing the change:
 ```
-$ cleos set account permission -s -j -d alice owner '{"threshold": 1, "accounts": [{"permission": {"actor": "eosio", "permission": "active"}, "weight": 1}]}' > update_alice_owner_trx.json
+$ arisecli set account permission -s -j -d alice owner '{"threshold": 1, "accounts": [{"permission": {"actor": "eosio", "permission": "active"}, "weight": 1}]}' > update_alice_owner_trx.json
 ```
 
 Then modify update_alice_owner_trx.json so that the values for the `ref_block_num` and `ref_block_prefix` fields are both 0 and the value of the `expiration` field is `"1970-01-01T00:00:00"`:
@@ -680,7 +680,7 @@ $ cat update_alice_owner_trx.json
 The next step is to generate the transaction containing the `eosio.sudo::exec` action. This action will contain the transaction in update_alice_owner_trx.json as part of its action payload data.
 
 ```
-$ cleos sudo exec -s -j -d blkproducera update_alice_owner_trx.json > sudo_update_alice_owner_trx.json
+$ arisecli sudo exec -s -j -d blkproducera update_alice_owner_trx.json > sudo_update_alice_owner_trx.json
 ```
 
 Once again modify sudo_update_alice_owner_trx.json so that the value for the `ref_block_num` and `ref_block_prefix` fields are both 0. However, instead of changing the value of the expiration field to `"1970-01-01T00:00:00"`, it should be changed to a time that is far enough in the future to allow enough time for the proposed transaction to be approved and executed.
@@ -714,18 +714,18 @@ $ cat sudo_update_alice_owner_trx.json
 }
 ```
 
-If the `cleos sudo` command is not available, there is an alternative way to generate the above transaction. There is no need to continue reading the remaining of sub-section 3.1.1 if the sudo_update_alice_owner_trx.json file was already generated with content similar to the above using the `cleos sudo exec` sub-command method.
+If the `arisecli sudo` command is not available, there is an alternative way to generate the above transaction. There is no need to continue reading the remaining of sub-section 3.1.1 if the sudo_update_alice_owner_trx.json file was already generated with content similar to the above using the `arisecli sudo exec` sub-command method.
 
 First the hex encoding of the binary serialization of the transaction in update_alice_owner_trx.json must be obtained. One way of obtaining this data is through the following command:
 ```
-$ cleos multisig propose_trx -s -j -d nothing '[]' update_alice_owner_trx.json nothing | grep '"data":' | sed 's/^[ \t]*"data":[ \t]*//;s/[",]//g' | cut -c 35- > update_alice_owner_trx_serialized.hex
+$ arisecli multisig propose_trx -s -j -d nothing '[]' update_alice_owner_trx.json nothing | grep '"data":' | sed 's/^[ \t]*"data":[ \t]*//;s/[",]//g' | cut -c 35- > update_alice_owner_trx_serialized.hex
 $ cat update_alice_owner_trx_serialized.hex
 0000000000000000000000000000010000000000ea30550040cbdaa86c52d5010000000000855c3400000000a8ed3232310000000000855c340000000080ab26a700000000000000000100000000010000000000ea305500000000a8ed323201000000
 ```
 
 Then generate the template for the transaction containing the `eosio.sudo::exec` action:
 ```
-$ cleos push action -s -j -d eosio.sudo exec '{"executer": "blkproducera", "trx": ""}' > sudo_update_alice_owner_trx.json
+$ arisecli push action -s -j -d eosio.sudo exec '{"executer": "blkproducera", "trx": ""}' > sudo_update_alice_owner_trx.json
 $ cat sudo_update_alice_owner_trx.json
 {
   "expiration": "2018-06-29T23:34:01",
@@ -758,7 +758,7 @@ Then modify the transaction in sudo_update_alice_owner_trx.json as follows:
 
 The lead block producer (`blkproducera`) should propose the transaction stored in sudo_update_alice_owner_trx.json:
 ```
-$ cleos multisig propose_trx updatealice producer_permissions.json sudo_update_alice_owner_trx.json blkproducera
+$ arisecli multisig propose_trx updatealice producer_permissions.json sudo_update_alice_owner_trx.json blkproducera
 executed transaction: 10474f52c9e3fc8e729469a577cd2fc9e4330e25b3fd402fc738ddde26605c13  624 bytes  782 us
 #    eosio.msig <= eosio.msig::propose          {"proposer":"blkproducera","proposal_name":"updatealice","requested":[{"actor":"blkproducera","permi...
 warning: transaction executed locally, but may not be confirmed by the network yet
@@ -768,7 +768,7 @@ warning: transaction executed locally, but may not be confirmed by the network y
 
 Each of the potential approvers of the proposed transaction (i.e. the active block producers) should first review the proposed transaction to make sure they are not approving anything that they do not agree to.
 ```
-$ cleos multisig review blkproducera updatealice > sudo_update_alice_owner_trx_to_review.json
+$ arisecli multisig review blkproducera updatealice > sudo_update_alice_owner_trx_to_review.json
 $ cat sudo_update_alice_owner_trx_to_review.json
 {
   "proposal_name": "updatealice",
@@ -824,13 +824,13 @@ $ cat sudo_update_alice_owner_trx_to_review.json
 }
 ```
 
-The approvers should go through the human-readable transaction output and make sure everything looks fine. However, due to a current limitation of nodeos/cleos, the JSONification of action payload data does not occur recursively. So while both the `hex_data` and the human-readable JSON `data` of the payload of the `eosio.sudo::exec` action is available in the output of the `cleos multisig review` command, only the hex data is available of the payload of the inner `eosio::updateauth` action. So it is not clear what the `updateauth` will actually do.
+The approvers should go through the human-readable transaction output and make sure everything looks fine. However, due to a current limitation of aos/arisecli, the JSONification of action payload data does not occur recursively. So while both the `hex_data` and the human-readable JSON `data` of the payload of the `eosio.sudo::exec` action is available in the output of the `arisecli multisig review` command, only the hex data is available of the payload of the inner `eosio::updateauth` action. So it is not clear what the `updateauth` will actually do.
 
-Furthermore, even if this usability issue was fixed in nodeos/cleos, there will still be cases where there is no sensible human-readable version of an action data payload within a transaction. An example of this is the proposed transaction in sub-section 2.2.3 which used the `eosio::setcode` action to set the contract code of the `eosio.sudo` account. The best thing to do in such situations is for the reviewer to compare the proposed transaction to one generated by them through a process they trust.
+Furthermore, even if this usability issue was fixed in aos/arisecli, there will still be cases where there is no sensible human-readable version of an action data payload within a transaction. An example of this is the proposed transaction in sub-section 2.2.3 which used the `eosio::setcode` action to set the contract code of the `eosio.sudo` account. The best thing to do in such situations is for the reviewer to compare the proposed transaction to one generated by them through a process they trust.
 
 Since each block producer generated a transaction in sub-section 3.1.1 (stored in the file sudo_update_alice_owner_trx.json) which should be identical to the transaction proposed by the lead block producer, they can each simply check to see if the two transactions are identical:
 ```
-$ cleos multisig propose_trx -j -s -d updatealice '[]' sudo_update_alice_owner_trx.json blkproducera | grep '"data":' | sed 's/^[ \t]*"data":[ \t]*//;s/[",]//g' | cut -c 35- > expected_sudo_update_alice_owner_trx_serialized.hex
+$ arisecli multisig propose_trx -j -s -d updatealice '[]' sudo_update_alice_owner_trx.json blkproducera | grep '"data":' | sed 's/^[ \t]*"data":[ \t]*//;s/[",]//g' | cut -c 35- > expected_sudo_update_alice_owner_trx_serialized.hex
 $ cat expected_sudo_update_alice_owner_trx_serialized.hex
 c0593f5b000000000000000000000100004d1a03ea305500000000008054570260ae423ad15b613c00000000a8ed323200004d1a03ea305500000000a8ed32326b60ae423ad15b613c0000000000000000000000000000010000000000ea30550040cbdaa86c52d5010000000000855c3400000000a8ed3232310000000000855c340000000080ab26a700000000000000000100000000010000000000ea305500000000a8ed32320100000000
 $ cat sudo_update_alice_owner_trx_to_review.json | grep '"packed_transaction":' | sed 's/^[ \t]*"packed_transaction":[ \t]*//;s/[",]//g' > proposed_sudo_update_alice_owner_trx_serialized.hex
@@ -841,7 +841,7 @@ $ diff expected_sudo_update_alice_owner_trx_serialized.hex  proposed_sudo_update
 
 When an approver (e.g. `blkproducerb`) is satisfied with the proposed transaction, they can simply approve it:
 ```
-$ cleos multisig approve blkproducera updatealice '{"actor": "blkproducerb", "permission": "active"}' -p blkproducerb
+$ arisecli multisig approve blkproducera updatealice '{"actor": "blkproducerb", "permission": "active"}' -p blkproducerb
 executed transaction: 2bddc7747e0660ba26babf95035225895b134bfb2ede32ba0a2bb6091c7dab56  128 bytes  543 us
 #    eosio.msig <= eosio.msig::approve          {"proposer":"blkproducera","proposal_name":"updatealice","level":{"actor":"blkproducerb","permission...
 warning: transaction executed locally, but may not be confirmed by the network yet
@@ -852,7 +852,7 @@ warning: transaction executed locally, but may not be confirmed by the network y
 When the necessary approvals are collected (in this example, with 21 block producers, at least 15 of their approvals were required), anyone can push the `eosio.msig::exec` action which executes the approved transaction. It makes a lot of sense for the lead block producer who proposed the transaction to also execute it (this will incur another temporary RAM cost for the deferred transaction that is generated by the eosio.msig contract).
 
 ```
-$ cleos multisig exec blkproducera updatealice blkproducera
+$ arisecli multisig exec blkproducera updatealice blkproducera
 executed transaction: 7127a66ae307fbef6415bf60c3e91a88b79bcb46030da983c683deb2a1a8e0d0  160 bytes  820 us
 #    eosio.msig <= eosio.msig::exec             {"proposer":"blkproducera","proposal_name":"updatealice","executer":"blkproducera"}
 warning: transaction executed locally, but may not be confirmed by the network yet
@@ -860,7 +860,7 @@ warning: transaction executed locally, but may not be confirmed by the network y
 
 Anyone can now verify that the owner authority of `alice` was successfully changed:
 ```
-$ cleos get account alice
+$ arisecli get account alice
 permissions:
      owner     1:    1 eosio@active,
         active     1:    1 EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV

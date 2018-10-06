@@ -4,14 +4,14 @@
  */
 #pragma once
 
-#include <eosiolib/action.hpp>
-#include <eosiolib/public_key.hpp>
-#include <eosiolib/types.hpp>
-#include <eosiolib/print.hpp>
-#include <eosiolib/privileged.h>
-#include <eosiolib/optional.hpp>
-#include <eosiolib/producer_schedule.hpp>
-#include <eosiolib/contract.hpp>
+#include <arisenlib/action.hpp>
+#include <arisenlib/public_key.hpp>
+#include <arisenlib/types.hpp>
+#include <arisenlib/print.hpp>
+#include <arisenlib/privileged.h>
+#include <arisenlib/optional.hpp>
+#include <arisenlib/producer_schedule.hpp>
+#include <arisenlib/contract.hpp>
 
 namespace eosiosystem {
    using eosio::permission_level;

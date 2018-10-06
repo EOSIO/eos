@@ -1,4 +1,4 @@
-#include <eosiolib/eosio.hpp>
+#include <arisenlib/eosio.hpp>
 using namespace eosio;
 
 struct integration_test : public eosio::contract {

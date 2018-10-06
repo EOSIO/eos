@@ -3,9 +3,9 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/transaction.hpp>
-#include <eosiolib/dispatcher.hpp>
+#include <arisenlib/eosio.hpp>
+#include <arisenlib/transaction.hpp>
+#include <arisenlib/dispatcher.hpp>
 
 using namespace eosio;
 

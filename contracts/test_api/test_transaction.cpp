@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosiolib/action.hpp>
-#include <eosiolib/crypto.h>
-#include <eosiolib/transaction.hpp>
+#include <arisenlib/action.hpp>
+#include <arisenlib/crypto.h>
+#include <arisenlib/transaction.hpp>
 
 #include "test_api.hpp"
 

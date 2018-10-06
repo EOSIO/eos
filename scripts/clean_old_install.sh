@@ -13,11 +13,11 @@ if [ -d "/usr/local/include/eosio" ]; then
             pushd /usr/local &> /dev/null
 
             pushd include &> /dev/null
-            rm -rf appbase chainbase eosio eosio.system eosiolib fc libc++ musl &> /dev/null
+            rm -rf appbase chainbase eosio eosio.system arisenlib fc libc++ musl &> /dev/null
             popd &> /dev/null
 
             pushd bin &> /dev/null
-            rm cleos eosio-abigen eosio-applesdemo eosio-launcher eosio-s2wasm eosio-wast2wasm eosiocpp keosd nodeos &> /dev/null
+            rm arisecli arisen-abigen eosio-applesdemo arisen-launcher eosio-s2wasm eosio-wast2wasm eosiocpp awallet aos &> /dev/null
             popd &> /dev/null
 
             libraries=(libeosio_testing

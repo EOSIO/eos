@@ -2,16 +2,16 @@
  * @file action_test.cpp
  * @copyright defined in eos/LICENSE.txt
  */
-#include <eosiolib/action.hpp>
-#include <eosiolib/transaction.hpp>
-#include <eosiolib/chain.h>
-#include <eosiolib/db.h>
-#include <eosiolib/crypto.h>
-#include <eosiolib/privileged.h>
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/datastream.hpp>
-#include <eosiolib/print.hpp>
-#include <eosiolib/compiler_builtins.h>
+#include <arisenlib/action.hpp>
+#include <arisenlib/transaction.hpp>
+#include <arisenlib/chain.h>
+#include <arisenlib/db.h>
+#include <arisenlib/crypto.h>
+#include <arisenlib/privileged.h>
+#include <arisenlib/eosio.hpp>
+#include <arisenlib/datastream.hpp>
+#include <arisenlib/print.hpp>
+#include <arisenlib/compiler_builtins.h>
 #include "test_api.hpp"
 
 void test_action::read_action_normal() {

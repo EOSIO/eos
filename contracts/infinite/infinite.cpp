@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosiolib/print.hpp> /// defines transfer struct (abi)
+#include <arisenlib/print.hpp> /// defines transfer struct (abi)
 
 extern "C" {
 

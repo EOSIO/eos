@@ -12,20 +12,20 @@ from testUtils import Utils
 Wallet=namedtuple("Wallet", "name password host port")
 # pylint: disable=too-many-instance-attributes
 class WalletMgr(object):
-    __walletLogFile="test_keosd_output.log"
+    __walletLogFile="test_awallet_output.log"
     __walletDataDir="test_wallet_0"
 
     # pylint: disable=too-many-arguments
-    # walletd [True|False] True=Launch wallet(keosd) process; False=Manage launch process externally.
-    def __init__(self, walletd, nodeosPort=8888, nodeosHost="localhost", port=9899, host="localhost"):
+    # walletd [True|False] True=Launch wallet(awallet) process; False=Manage launch process externally.
+    def __init__(self, walletd, aosPort=8888, aosHost="localhost", port=9899, host="localhost"):
         self.walletd=walletd
-        self.nodeosPort=nodeosPort
-        self.nodeosHost=nodeosHost
+        self.aosPort=aosPort
+        self.aosHost=aosHost
         self.port=port
         self.host=host
         self.wallets={}
         self.__walletPid=None
-        self.endpointArgs="--url http://%s:%d" % (self.nodeosHost, self.nodeosPort)
+        self.endpointArgs="--url http://%s:%d" % (self.aosHost, self.aosPort)
         self.walletEndpointArgs=""
         if self.walletd:
             self.walletEndpointArgs += " --wallet-url http://%s:%d" % (self.host, self.port)
@@ -33,7 +33,7 @@ class WalletMgr(object):
 
     def launch(self):
         if not self.walletd:
-            Utils.Print("ERROR: Wallet Manager wasn't configured to launch keosd")
+            Utils.Print("ERROR: Wallet Manager wasn't configured to launch aWallet")
             return False
 
         cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d --verbose-http-errors" % (
@@ -43,7 +43,7 @@ class WalletMgr(object):
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
             self.__walletPid=popen.pid
 
-        # Give keosd time to warm up
+        # Give aWallet time to warm up
         time.sleep(2)
         return True
 

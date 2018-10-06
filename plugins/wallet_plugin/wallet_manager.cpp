@@ -276,7 +276,7 @@ void wallet_manager::own_and_use_wallet(const string& name, std::unique_ptr<wall
 }
 
 void wallet_manager::initialize_lock() {
-   //This is technically somewhat racy in here -- if multiple keosd are in this function at once.
+   //This is technically somewhat racy in here -- if multiple awallet are in this function at once.
    //I've considered that an acceptable tradeoff to maintain cross-platform boost constructs here
    lock_path = dir / "wallet.lock";
    {
@@ -286,7 +286,7 @@ void wallet_manager::initialize_lock() {
    wallet_dir_lock = std::make_unique<boost::interprocess::file_lock>(lock_path.string().c_str());
    if(!wallet_dir_lock->try_lock()) {
       wallet_dir_lock.reset();
-      EOS_THROW(wallet_exception, "Failed to lock access to wallet directory; is another keosd running?");
+      EOS_THROW(wallet_exception, "Failed to lock access to wallet directory; is another awallet running?");
    }
 }
 

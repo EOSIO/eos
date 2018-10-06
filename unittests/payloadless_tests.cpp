@@ -32,7 +32,7 @@ class payloadless_tester : public TESTER {
 BOOST_AUTO_TEST_SUITE(payloadless_tests)
 
 BOOST_FIXTURE_TEST_CASE( test_doit, payloadless_tester ) {
-   
+
    create_accounts( {N(payloadless)} );
    set_code( N(payloadless), payloadless_wast );
    set_abi( N(payloadless), payloadless_abi );
@@ -42,7 +42,7 @@ BOOST_FIXTURE_TEST_CASE( test_doit, payloadless_tester ) {
    BOOST_CHECK_EQUAL(msg == "Im a payloadless action", true);
 }
 
-// test GH#3916 - contract api action with no parameters fails when called from cleos
+// test GH#3916 - contract api action with no parameters fails when called from arisecli
 // abi_serializer was failing when action data was empty.
 BOOST_FIXTURE_TEST_CASE( test_abi_serializer, payloadless_tester ) {
 

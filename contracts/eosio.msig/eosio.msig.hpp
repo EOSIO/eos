@@ -1,6 +1,6 @@
 #pragma once
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/transaction.hpp>
+#include <arisenlib/eosio.hpp>
+#include <arisenlib/transaction.hpp>
 
 namespace eosio {
 

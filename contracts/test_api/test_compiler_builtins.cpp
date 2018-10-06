@@ -3,9 +3,9 @@
  *    @copyright defined in eos/LICENSE.txt
  */
 
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/print.hpp>
-#include <eosiolib/compiler_builtins.h>
+#include <arisenlib/eosio.hpp>
+#include <arisenlib/print.hpp>
+#include <arisenlib/compiler_builtins.h>
 
 #include "test_api.hpp"
 
