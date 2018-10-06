@@ -90,20 +90,20 @@ ecmd create account eosio eosio.ram $pubsyskey $pubsyskey
 ecmd create account eosio eosio.ramfee $pubsyskey $pubsyskey
 ecmd create account eosio eosio.saving $pubsyskey $pubsyskey
 ecmd create account eosio eosio.stake $pubsyskey $pubsyskey
-ecmd create account eosio eosio.token $pubsyskey $pubsyskey
+ecmd create account eosio arisen.token $pubsyskey $pubsyskey
 ecmd create account eosio eosio.vpay $pubsyskey $pubsyskey
 ecmd create account eosio arisen.sudo $pubsyskey $pubsyskey
 
-ecmd set contract eosio.token contracts/eosio.token eosio.token.wasm eosio.token.abi
+ecmd set contract arisen.token contracts/arisen.token arisen.token.wasm arisen.token.abi
 ecmd set contract arisen.msig contracts/arisen.msig arisen.msig.wasm arisen.msig.abi
 ecmd set contract arisen.sudo contracts/arisen.sudo arisen.sudo.wasm arisen.sudo.abi
 
 echo ===== Start: $step ============ >> $logfile
-echo executing: arisecli --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 RSN" ]' -p eosio.token | tee -a $logfile
-echo executing: arisecli --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "1000000000.0000 RSN", "memo" ]' -p eosio | tee -a $logfile
+echo executing: arisecli --wallet-url $wdurl --url http://$bioshost:$biosport push action arisen.token create '[ "eosio", "10000000000.0000 RSN" ]' -p arisen.token | tee -a $logfile
+echo executing: arisecli --wallet-url $wdurl --url http://$bioshost:$biosport push action arisen.token issue '[ "eosio", "1000000000.0000 RSN", "memo" ]' -p eosio | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/arisecli/arisecli --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 RSN" ]' -p eosio.token >> $logfile 2>&1
-programs/arisecli/arisecli --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "1000000000.0000 RSN", "memo" ]' -p eosio >> $logfile 2>&1
+programs/arisecli/arisecli --wallet-url $wdurl --url http://$bioshost:$biosport push action arisen.token create '[ "eosio", "10000000000.0000 RSN" ]' -p arisen.token >> $logfile 2>&1
+programs/arisecli/arisecli --wallet-url $wdurl --url http://$bioshost:$biosport push action arisen.token issue '[ "eosio", "1000000000.0000 RSN", "memo" ]' -p eosio >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 

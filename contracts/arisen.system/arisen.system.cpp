@@ -22,7 +22,7 @@ namespace arisensystem {
       auto itr = _rammarket.find(S(4,RAMCORE));
 
       if( itr == _rammarket.end() ) {
-         auto system_token_supply   = arisen::token(N(eosio.token)).get_supply(arisen::symbol_type(system_token_symbol).name()).amount;
+         auto system_token_supply   = arisen::token(N(arisen.token)).get_supply(arisen::symbol_type(system_token_symbol).name()).amount;
          if( system_token_supply > 0 ) {
             itr = _rammarket.emplace( _self, [&]( auto& m ) {
                m.supply.amount = 100000000000000ll;
@@ -104,7 +104,7 @@ namespace arisensystem {
       eosio_assert( bid.symbol == asset().symbol, "asset must be system token" );
       eosio_assert( bid.amount > 0, "insufficient bid" );
 
-      INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {bidder,N(active)},
+      INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {bidder,N(active)},
                                                     { bidder, N(eosio.names), bid, std::string("bid name ")+(name{newname}).to_string()  } );
 
       name_bid_table bids(_self,_self);
@@ -122,7 +122,7 @@ namespace arisensystem {
          eosio_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
          eosio_assert( current->high_bidder != bidder, "account is already highest bidder" );
 
-         INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {N(eosio.names),N(active)},
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio.names),N(active)},
                                                        { N(eosio.names), current->high_bidder, asset(current->high_bid),
                                                        std::string("refund bid on name ")+(name{newname}).to_string()  } );
 

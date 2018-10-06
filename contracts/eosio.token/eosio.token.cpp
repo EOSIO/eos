@@ -3,7 +3,7 @@
  *  @copyright defined in arisen/LICENSE.txt
  */
 
-#include "eosio.token.hpp"
+#include "arisen.token.hpp"
 
 namespace arisen {
 

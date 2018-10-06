@@ -18,8 +18,8 @@
 #include <arisen.system/arisen.system.wast.hpp>
 #include <arisen.system/arisen.system.abi.hpp>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
+#include <arisen.token/arisen.token.wast.hpp>
+#include <arisen.token/arisen.token.abi.hpp>
 
 #include <fc/io/fstream.hpp>
 
@@ -47,26 +47,26 @@ BOOST_AUTO_TEST_SUITE(get_table_tests)
 BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
    produce_blocks(2);
 
-   create_accounts({ N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake),
+   create_accounts({ N(arisen.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake),
       N(eosio.bpay), N(eosio.vpay), N(eosio.saving), N(eosio.names) });
 
    std::vector<account_name> accs{N(inita), N(initb), N(initc), N(initd)};
    create_accounts(accs);
    produce_block();
 
-   set_code( N(eosio.token), eosio_token_wast );
-   set_abi( N(eosio.token), eosio_token_abi );
+   set_code( N(arisen.token), eosio_token_wast );
+   set_abi( N(arisen.token), eosio_token_abi );
    produce_blocks(1);
 
    // create currency 
    auto act = mutable_variant_object()
          ("issuer",       "eosio")
          ("maximum_supply", arisen::chain::asset::from_string("1000000000.0000 SYS"));
-   push_action(N(eosio.token), N(create), N(eosio.token), act );
+   push_action(N(arisen.token), N(create), N(arisen.token), act );
 
    // issue
    for (account_name a: accs) {
-      push_action( N(eosio.token), N(issue), "eosio", mutable_variant_object()
+      push_action( N(arisen.token), N(issue), "eosio", mutable_variant_object()
                   ("to",      name(a) )
                   ("quantity", arisen::chain::asset::from_string("999.0000 SYS") )
                   ("memo", "")
@@ -76,13 +76,13 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
 
    // iterate over scope
    arisen::chain_apis::read_only plugin(*(this->control), fc::microseconds(INT_MAX));
-   arisen::chain_apis::read_only::get_table_by_scope_params param{N(eosio.token), N(accounts), "inita", "", 10};
+   arisen::chain_apis::read_only::get_table_by_scope_params param{N(arisen.token), N(accounts), "inita", "", 10};
    arisen::chain_apis::read_only::get_table_by_scope_result result = plugin.read_only::get_table_by_scope(param);
 
    BOOST_REQUIRE_EQUAL(4, result.rows.size());
    BOOST_REQUIRE_EQUAL("", result.more);
    if (result.rows.size() >= 4) {
-      BOOST_REQUIRE_EQUAL(name(N(eosio.token)), result.rows[0].code);
+      BOOST_REQUIRE_EQUAL(name(N(arisen.token)), result.rows[0].code);
       BOOST_REQUIRE_EQUAL(name(N(inita)), result.rows[0].scope);
       BOOST_REQUIRE_EQUAL(name(N(accounts)), result.rows[0].table);
       BOOST_REQUIRE_EQUAL(name(N(eosio)), result.rows[0].payer);

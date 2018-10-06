@@ -24,7 +24,7 @@ systemAccounts = [
     'eosio.ramfee',
     'eosio.saving',
     'eosio.stake',
-    'eosio.token',
+    'arisen.token',
     'eosio.vpay',
 ]
 
@@ -284,12 +284,12 @@ def stepStartBoot():
     startNode(0, {'name': 'eosio', 'pvt': args.private_key, 'pub': args.public_key})
     sleep(1.5)
 def stepInstallSystemContracts():
-    run(args.arisecli + 'set contract eosio.token ' + args.contracts_dir + 'eosio.token/')
+    run(args.arisecli + 'set contract arisen.token ' + args.contracts_dir + 'arisen.token/')
     run(args.arisecli + 'set contract arisen.msig ' + args.contracts_dir + 'arisen.msig/')
 def stepCreateTokens():
-    run(args.arisecli + 'push action eosio.token create \'["eosio", "10000000000.0000 %s"]\' -p eosio.token' % (args.symbol))
+    run(args.arisecli + 'push action arisen.token create \'["eosio", "10000000000.0000 %s"]\' -p arisen.token' % (args.symbol))
     totalAllocation = allocateFunds(0, len(accounts))
-    run(args.arisecli + 'push action eosio.token issue \'["eosio", "%s", "memo"]\' -p eosio' % intToCurrency(totalAllocation))
+    run(args.arisecli + 'push action arisen.token issue \'["eosio", "%s", "memo"]\' -p eosio' % intToCurrency(totalAllocation))
     sleep(1)
 def stepSetSystemContract():
     retry(args.arisecli + 'set contract eosio ' + args.contracts_dir + 'arisen.system/')

@@ -908,7 +908,7 @@ class Cluster(object):
             initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
             Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
             trans=None
-            contract="eosio.token"
+            contract="arisen.token"
             action="transfer"
             for name, keys in producerKeys.items():
                 data="{\"from\":\"eosio\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (name, initialFunds, "init transfer")
@@ -916,7 +916,7 @@ class Cluster(object):
                 if name != "eosio":
                     trans=biosNode.pushMessage(contract, action, data, opts)
                     if trans is None or not trans[0]:
-                        Utils.Print("ERROR: Failed to transfer funds from eosio.token to %s." % (name))
+                        Utils.Print("ERROR: Failed to transfer funds from arisen.token to %s." % (name))
                         return None
 
                 Node.validateTransaction(trans[1])
@@ -1073,7 +1073,7 @@ class Cluster(object):
                     return None
 
             eosioTokenAccount=copy.deepcopy(eosioAccount)
-            eosioTokenAccount.name="eosio.token"
+            eosioTokenAccount.name="arisen.token"
             trans=biosNode.createAccount(eosioTokenAccount, eosioAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (eosioTokenAccount.name))
@@ -1106,7 +1106,7 @@ class Cluster(object):
                 Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
                 return None
 
-            contract="eosio.token"
+            contract="arisen.token"
             contractDir="contracts/%s" % (contract)
             wasmFile="%s.wasm" % (contract)
             abiFile="%s.abi" % (contract)

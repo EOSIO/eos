@@ -56,14 +56,14 @@ Example game session using arisecli
 arisecli set contract eosio build/contracts/arisen.bios -p eosio
 ````
 
-##### Ceate eosio.token account
+##### Ceate arisen.token account
 ````bash
-arisecli create account eosio eosio.token EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+arisecli create account eosio arisen.token EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
-##### Set eosio.token contract to eosio.token account
+##### Set arisen.token contract to arisen.token account
 ````bash
-arisecli set contract eosio.token build/contracts/eosio.token -p eosio.token
+arisecli set contract arisen.token build/contracts/arisen.token -p arisen.token
 ````
 
 ##### Create dice account
@@ -78,7 +78,7 @@ arisecli set contract dice build/contracts/dice -p dice
 
 ##### Create native EOS token
 ````bash
-arisecli push action eosio.token create '[ "eosio", "1000000000.0000 EOS", 0, 0, 0]' -p eosio.token
+arisecli push action arisen.token create '[ "eosio", "1000000000.0000 EOS", 0, 0, 0]' -p arisen.token
 ````
 
 ##### Create alice account
@@ -93,12 +93,12 @@ arisecli create account eosio bob EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7S
 
 ##### Issue 1000 EOS to alice
 ````bash
-arisecli push action eosio.token issue '[ "alice", "1000.0000 EOS", "" ]' -p eosio
+arisecli push action arisen.token issue '[ "alice", "1000.0000 EOS", "" ]' -p eosio
 ````
 
 ##### Issue 1000 EOS to bob
 ````bash
-arisecli push action eosio.token issue '[ "bob", "1000.0000 EOS", "" ]' -p eosio
+arisecli push action arisen.token issue '[ "bob", "1000.0000 EOS", "" ]' -p eosio
 ````
 
 ##### Allow dice contract to make transfers on alice behalf (deposit)
@@ -263,6 +263,6 @@ arisecli push action dice withdraw '[ "alice", "103.0000 EOS" ]' -p alice
 
 ##### Balance of alice after withdraw
 ````bash
-arisecli get currency balance eosio.token alice eos
+arisecli get currency balance arisen.token alice eos
 1003.0000 RSN
 ````

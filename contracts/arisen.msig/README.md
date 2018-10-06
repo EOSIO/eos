@@ -45,14 +45,14 @@ Execute a proposal
 AriseCLI usage example.
 
 Prerequisites:
-   - eosio.token contract installed to eosio.token account, arisen.msig contract installed on arisen.msig account which is a privileged account.
+   - arisen.token contract installed to arisen.token account, arisen.msig contract installed on arisen.msig account which is a privileged account.
    - account 'treasury' is the issuer of EOS token.
    - account 'tester' exists.
    - keys to accounts 'treasury' and 'tester' imported into local wallet, the wallet is unlocked.
 
 One user creates a proposal:
 ````
-$ arisecli multisig propose test '[{"actor": "treasury", "permission": "active"}]' '[{"actor": "treasury", "permission": "active"}]' eosio.token issue '{"to": "tester", "quantity": "1000.0000 EOS", "memo": ""}' -p tester
+$ arisecli multisig propose test '[{"actor": "treasury", "permission": "active"}]' '[{"actor": "treasury", "permission": "active"}]' arisen.token issue '{"to": "tester", "quantity": "1000.0000 EOS", "memo": ""}' -p tester
 executed transaction: e26f3a3a7cba524a7b15a0b6c77c7daa73d3ba9bf84e83f9c2cdf27fcb183d61  336 bytes  107520 cycles
 #    arisen.msig <= arisen.msig::propose          {"proposer":"tester","proposal_name":"test","requested":[{"actor":"treasury","permission":"active"}]...
 ````
@@ -79,7 +79,7 @@ $ arisecli multisig review tester test -p treasury
     "delay_sec": 0,
     "context_free_actions": [],
     "actions": [{
-        "account": "eosio.token",
+        "account": "arisen.token",
         "name": "issue",
         "authorization": [{
             "actor": "treasury",

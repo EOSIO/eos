@@ -6,8 +6,8 @@
 #include <dice/dice.wast.hpp>
 #include <dice/dice.abi.hpp>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
+#include <arisen.token/arisen.token.wast.hpp>
+#include <arisen.token/arisen.token.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -224,10 +224,10 @@ BOOST_AUTO_TEST_SUITE(dice_tests)
 
 BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
-   create_accounts( {N(eosio.token), N(dice),N(alice),N(bob),N(carol),N(david)}, false);
+   create_accounts( {N(arisen.token), N(dice),N(alice),N(bob),N(carol),N(david)}, false);
 
-   set_code(N(eosio.token), eosio_token_wast);
-   set_abi(N(eosio.token), eosio_token_abi);
+   set_code(N(arisen.token), eosio_token_wast);
+   set_abi(N(arisen.token), eosio_token_abi);
 
    produce_block();
 
@@ -235,20 +235,20 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    add_dice_authority(N(bob));
    add_dice_authority(N(carol));
 
-   push_action(N(eosio.token), N(create), N(eosio.token), mvo()
-     ("issuer", "eosio.token")
+   push_action(N(arisen.token), N(create), N(arisen.token), mvo()
+     ("issuer", "arisen.token")
      ("maximum_supply", core_from_string("1000000000.0000"))
    );
 
-   push_action(N(eosio.token), N(issue), N(eosio.token), mvo()
+   push_action(N(arisen.token), N(issue), N(arisen.token), mvo()
      ("to", "eosio")
      ("quantity", core_from_string("1000000000.0000"))
      ("memo", "")
    );
 
-   transfer( config::system_account_name, N(alice), core_from_string("10000.0000"), "", N(eosio.token) );
-   transfer( config::system_account_name, N(bob),   core_from_string("10000.0000"), "", N(eosio.token) );
-   transfer( config::system_account_name, N(carol), core_from_string("10000.0000"), "", N(eosio.token) );
+   transfer( config::system_account_name, N(alice), core_from_string("10000.0000"), "", N(arisen.token) );
+   transfer( config::system_account_name, N(bob),   core_from_string("10000.0000"), "", N(arisen.token) );
+   transfer( config::system_account_name, N(carol), core_from_string("10000.0000"), "", N(arisen.token) );
 
    produce_block();
 
@@ -387,7 +387,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    BOOST_REQUIRE_EQUAL( balance_of(N(alice)), core_from_string("1.0000"));
 
    BOOST_REQUIRE_EQUAL(
-      get_currency_balance(N(eosio.token), symbol(CORE_SYMBOL), N(alice)),
+      get_currency_balance(N(arisen.token), symbol(CORE_SYMBOL), N(alice)),
       core_from_string("10009.0000")
    );
 
@@ -399,7 +399,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    withdraw( N(alice), core_from_string("1.0000"));
 
    BOOST_REQUIRE_EQUAL(
-      get_currency_balance(N(eosio.token), symbol(CORE_SYMBOL), N(alice)),
+      get_currency_balance(N(arisen.token), symbol(CORE_SYMBOL), N(alice)),
       core_from_string("10010.0000")
    );
 

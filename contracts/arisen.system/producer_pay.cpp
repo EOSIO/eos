@@ -1,6 +1,6 @@
 #include "arisen.system.hpp"
 
-#include <eosio.token/eosio.token.hpp>
+#include <arisen.token/arisen.token.hpp>
 
 namespace arisensystem {
 
@@ -78,7 +78,7 @@ namespace arisensystem {
 
       eosio_assert( ct - prod.last_claim_time > useconds_per_day, "already claimed rewards within past day" );
 
-      const asset token_supply   = token( N(eosio.token)).get_supply(symbol_type(system_token_symbol).name() );
+      const asset token_supply   = token( N(arisen.token)).get_supply(symbol_type(system_token_symbol).name() );
       const auto usecs_since_last_fill = ct - _gstate.last_pervote_bucket_fill;
 
       if( usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > 0 ) {
@@ -89,16 +89,16 @@ namespace arisensystem {
          auto to_per_block_pay   = to_producers / 4;
          auto to_per_vote_pay    = to_producers - to_per_block_pay;
 
-         INLINE_ACTION_SENDER(arisen::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
+         INLINE_ACTION_SENDER(arisen::token, issue)( N(arisen.token), {{N(eosio),N(active)}},
                                                     {N(eosio), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
 
-         INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio),N(active)},
                                                        { N(eosio), N(eosio.saving), asset(to_savings), "unallocated inflation" } );
 
-         INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio),N(active)},
                                                        { N(eosio), N(eosio.bpay), asset(to_per_block_pay), "fund per-block bucket" } );
 
-         INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio),N(active)},
                                                        { N(eosio), N(eosio.vpay), asset(to_per_vote_pay), "fund per-vote bucket" } );
 
          _gstate.pervote_bucket  += to_per_vote_pay;
@@ -128,11 +128,11 @@ namespace arisensystem {
       });
 
       if( producer_per_block_pay > 0 ) {
-         INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {N(eosio.bpay),N(active)},
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio.bpay),N(active)},
                                                        { N(eosio.bpay), owner, asset(producer_per_block_pay), std::string("producer block pay") } );
       }
       if( producer_per_vote_pay > 0 ) {
-         INLINE_ACTION_SENDER(arisen::token, transfer)( N(eosio.token), {N(eosio.vpay),N(active)},
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio.vpay),N(active)},
                                                        { N(eosio.vpay), owner, asset(producer_per_vote_pay), std::string("producer vote pay") } );
       }
    }

@@ -318,9 +318,9 @@ try:
     if hashNum != 0:
         errorExit("FAILURE - get code currency1111 failed", raw=True)
 
-    contractDir="contracts/eosio.token"
-    wasmFile="eosio.token.wasm"
-    abiFile="eosio.token.abi"
+    contractDir="contracts/arisen.token"
+    wasmFile="arisen.token.wasm"
+    abiFile="arisen.token.abi"
     Print("Publish contract")
     trans=node.publishContract(currencyAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:

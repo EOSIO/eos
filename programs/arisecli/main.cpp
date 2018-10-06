@@ -678,7 +678,7 @@ asset to_asset( account_name code, const string& s ) {
 }
 
 inline asset to_asset( const string& s ) {
-   return to_asset( N(eosio.token), s );
+   return to_asset( N(arisen.token), s );
 }
 
 struct set_account_permission_subcommand {
@@ -2466,7 +2466,7 @@ int main( int argc, char** argv ) {
    auto setActionPermission = set_action_permission_subcommand(setAction);
 
    // Transfer subcommand
-   string con = "eosio.token";
+   string con = "arisen.token";
    string sender;
    string recipient;
    string amount;

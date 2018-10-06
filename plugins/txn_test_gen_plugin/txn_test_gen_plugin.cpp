@@ -23,8 +23,8 @@
 #include <WASM/WASM.h>
 #include <Runtime/Runtime.h>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
+#include <arisen.token/arisen.token.wast.hpp>
+#include <arisen.token/arisen.token.abi.hpp>
 
 namespace arisen { namespace detail {
   struct txn_test_gen_empty {};
@@ -166,7 +166,7 @@ struct txn_test_gen_plugin_impl {
             trxs.emplace_back(std::move(trx));
          }
 
-         //set txn.test.t contract to eosio.token & initialize it
+         //set txn.test.t contract to arisen.token & initialize it
          {
             signed_transaction trx;
 

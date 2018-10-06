@@ -13,7 +13,7 @@
 #include <arisenlib/privileged.hpp>
 #include <arisenlib/singleton.hpp>
 #include <arisenlib/transaction.hpp>
-#include <eosio.token/eosio.token.hpp>
+#include <arisen.token/arisen.token.hpp>
 
 #include <algorithm>
 #include <cmath>
