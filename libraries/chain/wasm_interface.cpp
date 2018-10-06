@@ -947,7 +947,7 @@ public:
       }
    }
 
-   void eosio_exit(int32_t code) {
+   void arisen_exit(int32_t code) {
       throw wasm_exit{code};
    }
 
@@ -1787,7 +1787,7 @@ REGISTER_INTRINSICS(context_free_system_api,
    (arisen_assert,         void(int, int)      )
    (arisen_assert_message, void(int, int, int) )
    (arisen_assert_code,    void(int, int64_t)  )
-   (eosio_exit,           void(int)           )
+   (arisen_exit,           void(int)           )
 );
 
 REGISTER_INTRINSICS(action_api,

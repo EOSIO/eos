@@ -1784,7 +1784,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_no_eosioabi_macro, abi_gen_helper)
          [[noreturn]] void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
             hello  h( receiver );
             h.apply( code, action );
-            eosio_exit(0);
+            arisen_exit(0);
          }
       }
    )=====";

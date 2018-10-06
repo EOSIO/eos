@@ -130,7 +130,7 @@ extern "C" { \
          switch( action ) { \
             EOSIO_API( TYPE, MEMBERS ) \
          } \
-         /* does not allow destructor of thiscontract to run: eosio_exit(0); */ \
+         /* does not allow destructor of thiscontract to run: arisen_exit(0); */ \
       } \
    } \
 } \

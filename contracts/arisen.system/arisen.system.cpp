@@ -48,7 +48,7 @@ namespace arisensystem {
    system_contract::~system_contract() {
       //print( "destruct system\n" );
       _global.set( _gstate, _self );
-      //eosio_exit(0);
+      //arisen_exit(0);
    }
 
    void system_contract::setram( uint64_t max_ram_size ) {

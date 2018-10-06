@@ -62,13 +62,13 @@ extern "C" {
     *  Example:
 *
     *  @code
-    *  eosio_exit(0);
-    *  eosio_exit(1);
-    *  eosio_exit(2);
-    *  eosio_exit(3);
+    *  arisen_exit(0);
+    *  arisen_exit(1);
+    *  arisen_exit(2);
+    *  arisen_exit(3);
     *  @endcode
     */
-   [[noreturn]] void  eosio_exit( int32_t code );
+   [[noreturn]] void  arisen_exit( int32_t code );
 
 
    /**
