@@ -10,6 +10,7 @@ Third parties are encouraged to make pull requests to this file (`develop` branc
 | Kafka | https://github.com/TP-Lab/kafka_plugin |
 | SQL | https://github.com/asiniscalchi/eosio_sql_plugin |
 | ElasticSearch | https://github.com/EOSLaoMao/elasticsearch_plugin |
+| BP Heartbeat  | https://github.com/bancorprotocol/eos-producer-heartbeat-plugin |
 
 ## DISCLAIMER:
 
