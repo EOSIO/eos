@@ -125,11 +125,11 @@ constexpr uint64_t billable_size_v = ((billable_size<T>::value + billable_alignm
 
 } } } // namespace arisen::chain::config
 
-constexpr uint64_t EOS_PERCENT(uint64_t value, uint32_t percentage) {
+constexpr uint64_t RSN_PERCENT(uint64_t value, uint32_t percentage) {
    return (value * percentage) / arisen::chain::config::percent_100;
 }
 
 template<typename Number>
-Number EOS_PERCENT_CEIL(Number value, uint32_t percentage) {
+Number RSN_PERCENT_CEIL(Number value, uint32_t percentage) {
    return ((value * percentage) + arisen::chain::config::percent_100 - arisen::chain::config::percent_1)  / arisen::chain::config::percent_100;
 }
