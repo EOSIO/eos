@@ -218,7 +218,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         }
 
         // Set arisen.system to eosio
-        set_code_abi(config::system_account_name, eosio_system_wast, eosio_system_abi);
+        set_code_abi(config::system_account_name, arisen_system_wast, arisen_system_abi);
 
         // Buy ram and stake cpu and net for each genesis accounts
         for( const auto& a : test_genesis ) {

@@ -17,9 +17,9 @@ vector<type_def> common_type_defs() {
    return types;
 }
 
-abi_def arisen_contract_abi(const abi_def& eosio_system_abi)
+abi_def arisen_contract_abi(const abi_def& arisen_system_abi)
 {
-   abi_def eos_abi(eosio_system_abi);
+   abi_def eos_abi(arisen_system_abi);
 
    if( eos_abi.version.size() == 0 ) {
       eos_abi.version = "arisen::abi/1.0";

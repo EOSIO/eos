@@ -408,8 +408,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
                         get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
 
-   set_code( config::system_account_name, eosio_system_wast );
-   set_abi( config::system_account_name, eosio_system_abi );
+   set_code( config::system_account_name, arisen_system_wast );
+   set_abi( config::system_account_name, arisen_system_abi );
 
    produce_blocks();
 
@@ -519,8 +519,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
    issue(config::system_account_name, core_from_string("1000000000.0000"));
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
 
-   set_code( config::system_account_name, eosio_system_wast );
-   set_abi( config::system_account_name, eosio_system_abi );
+   set_code( config::system_account_name, arisen_system_wast );
+   set_abi( config::system_account_name, arisen_system_abi );
 
    produce_blocks();
 

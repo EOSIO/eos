@@ -14,7 +14,7 @@
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
 
-#include "eosio_system_tester.hpp"
+#include "arisen_system_tester.hpp"
 
 #include <test_ram_limit/test_ram_limit.abi.hpp>
 #include <test_ram_limit/test_ram_limit.wast.hpp>
@@ -32,7 +32,7 @@ BOOST_AUTO_TEST_SUITE(ram_tests)
 /*************************************************************************************
  * ram_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
+BOOST_FIXTURE_TEST_CASE(ram_tests, arisen_system::arisen_system_tester) { try {
    auto init_request_bytes = 80000;
    const auto increment_contract_bytes = 10000;
    const auto table_allocation_bytes = 12000;

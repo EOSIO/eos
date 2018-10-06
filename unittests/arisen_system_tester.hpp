@@ -34,14 +34,14 @@ using mvo = fc::mutable_variant_object;
 
 namespace arisen_system {
 
-class eosio_system_tester : public TESTER {
+class arisen_system_tester : public TESTER {
 public:
 
-   eosio_system_tester()
-   : eosio_system_tester([](TESTER& ) {}){}
+   arisen_system_tester()
+   : arisen_system_tester([](TESTER& ) {}){}
 
    template<typename Lambda>
-   eosio_system_tester(Lambda setup) {
+   arisen_system_tester(Lambda setup) {
       setup(*this);
 
       produce_blocks( 2 );
@@ -66,8 +66,8 @@ public:
       issue(config::system_account_name,      core_from_string("1000000000.0000"));
       BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
 
-      set_code( config::system_account_name, eosio_system_wast );
-      set_abi( config::system_account_name, eosio_system_abi );
+      set_code( config::system_account_name, arisen_system_wast );
+      set_abi( config::system_account_name, arisen_system_abi );
 
       {
          const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
