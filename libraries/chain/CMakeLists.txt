@@ -30,8 +30,8 @@ add_library( eosio_chain
 #             block_trace.cpp
               wast_to_wasm.cpp
               wasm_interface.cpp
-              wasm_eosio_validation.cpp
-              wasm_eosio_injection.cpp
+              wasm_arisen_validation.cpp
+              wasm_arisen_injection.cpp
               apply_context.cpp
               abi_serializer.cpp
               asset.cpp

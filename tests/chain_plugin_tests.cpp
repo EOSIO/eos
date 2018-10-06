@@ -3,7 +3,7 @@
 
 #include <arisen/testing/tester.hpp>
 #include <arisen/chain/abi_serializer.hpp>
-#include <arisen/chain/wasm_eosio_constraints.hpp>
+#include <arisen/chain/wasm_arisen_constraints.hpp>
 #include <arisen/chain/resource_limits.hpp>
 #include <arisen/chain/exceptions.hpp>
 #include <arisen/chain/wast_to_wasm.hpp>

@@ -1,6 +1,6 @@
 #include <arisen/chain/webassembly/wavm.hpp>
-#include <arisen/chain/wasm_eosio_constraints.hpp>
-#include <arisen/chain/wasm_eosio_injection.hpp>
+#include <arisen/chain/wasm_arisen_constraints.hpp>
+#include <arisen/chain/wasm_arisen_injection.hpp>
 #include <arisen/chain/apply_context.hpp>
 #include <arisen/chain/exceptions.hpp>
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <arisen/chain/wasm_eosio_binary_ops.hpp>
-#include <arisen/chain/wasm_eosio_constraints.hpp>
+#include <arisen/chain/wasm_arisen_binary_ops.hpp>
+#include <arisen/chain/wasm_arisen_constraints.hpp>
 #include <arisen/chain/webassembly/common.hpp>
 #include <fc/exception/exception.hpp>
 #include <arisen/chain/exceptions.hpp>

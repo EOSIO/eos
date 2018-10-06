@@ -5,7 +5,7 @@
 #include <arisen/chain/webassembly/binaryen.hpp>
 #include <arisen/chain/webassembly/wabt.hpp>
 #include <arisen/chain/webassembly/runtime_interface.hpp>
-#include <arisen/chain/wasm_eosio_injection.hpp>
+#include <arisen/chain/wasm_arisen_injection.hpp>
 #include <arisen/chain/transaction_context.hpp>
 #include <arisen/chain/exceptions.hpp>
 #include <fc/scoped_exit.hpp>

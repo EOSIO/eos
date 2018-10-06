@@ -8,8 +8,8 @@
 #include <arisen/chain/authorization_manager.hpp>
 #include <arisen/chain/resource_limits.hpp>
 #include <arisen/chain/wasm_interface_private.hpp>
-#include <arisen/chain/wasm_eosio_validation.hpp>
-#include <arisen/chain/wasm_eosio_injection.hpp>
+#include <arisen/chain/wasm_arisen_validation.hpp>
+#include <arisen/chain/wasm_arisen_injection.hpp>
 #include <arisen/chain/global_property_object.hpp>
 #include <arisen/chain/account_object.hpp>
 #include <fc/exception/exception.hpp>

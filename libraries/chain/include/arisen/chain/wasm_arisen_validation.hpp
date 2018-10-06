@@ -3,7 +3,7 @@
 #include <fc/exception/exception.hpp>
 #include <arisen/chain/exceptions.hpp>
 #include <arisen/chain/controller.hpp>
-#include <arisen/chain/wasm_eosio_binary_ops.hpp>
+#include <arisen/chain/wasm_arisen_binary_ops.hpp>
 #include <functional>
 #include <vector>
 #include <iostream>

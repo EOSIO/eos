@@ -1,4 +1,4 @@
-#include <arisen/chain/wasm_eosio_binary_ops.hpp>
+#include <arisen/chain/wasm_arisen_binary_ops.hpp>
 #include <fc/exception/exception.hpp>
 #include <arisen/chain/exceptions.hpp>
 #include "IR/Module.h"
