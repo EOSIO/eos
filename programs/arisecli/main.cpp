@@ -1,7 +1,7 @@
 /**
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
- *  @defgroup eosclienttool EOSIO Command Line Client Reference
+ *  @defgroup eosclienttool ARISEN Command Line Client Reference
  *  @brief Tool for sending transactions and querying state from @ref aOS
  *  @ingroup eosclienttool
  */
@@ -17,7 +17,7 @@
    arisecli contains documentation for all of its commands. For a list of all commands known to arisecli, simply run it with no arguments:
 ```
 $ ./arisecli
-Command Line Interface to EOSIO Client
+Command Line Interface to ARISEN Client
 Usage: programs/arisecli/arisecli [OPTIONS] SUBCOMMAND
 
 Options:
@@ -1746,7 +1746,7 @@ int main( int argc, char** argv ) {
    textdomain(locale_domain);
    context = arisen::client::http::create_http_context();
 
-   CLI::App app{"Command Line Interface to EOSIO Client"};
+   CLI::App app{"Command Line Interface to ARISEN Client"};
    app.require_subcommand();
    app.add_option( "-H,--host", obsoleted_option_host_port, localized("the host where aOS is running") )->group("hidden");
    app.add_option( "-p,--port", obsoleted_option_host_port, localized("the port where aOS is running") )->group("hidden");
