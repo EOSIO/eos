@@ -131,7 +131,7 @@ void assert_ripemd160( const char* data, uint32_t length, const checksum160* has
  *  @code
  *  checksum calc_hash;
  *  sha256( data, length, &calc_hash );
- *  eos_assert( calc_hash == hash, "invalid hash" );
+ *  rsn_assert( calc_hash == hash, "invalid hash" );
  *  @endcode
  */
 void sha256( const char* data, uint32_t length, checksum256* hash );
@@ -149,7 +149,7 @@ void sha256( const char* data, uint32_t length, checksum256* hash );
  *  @code
  *  checksum calc_hash;
  *  sha1( data, length, &calc_hash );
- *  eos_assert( calc_hash == hash, "invalid hash" );
+ *  rsn_assert( calc_hash == hash, "invalid hash" );
  *  @endcode
  */
 void sha1( const char* data, uint32_t length, checksum160* hash );
@@ -167,7 +167,7 @@ void sha1( const char* data, uint32_t length, checksum160* hash );
  *  @code
  *  checksum calc_hash;
  *  sha512( data, length, &calc_hash );
- *  eos_assert( calc_hash == hash, "invalid hash" );
+ *  rsn_assert( calc_hash == hash, "invalid hash" );
  *  @endcode
  */
 void sha512( const char* data, uint32_t length, checksum512* hash );
@@ -185,7 +185,7 @@ void sha512( const char* data, uint32_t length, checksum512* hash );
  *  @code
  *  checksum calc_hash;
  *  ripemod160( data, length, &calc_hash );
- *  eos_assert( calc_hash == hash, "invalid hash" );
+ *  rsn_assert( calc_hash == hash, "invalid hash" );
  *  @endcode
  */
 void ripemd160( const char* data, uint32_t length, checksum160* hash );
