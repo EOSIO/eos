@@ -9,15 +9,15 @@ use File::Spec;
 use File::Path;
 use Cwd;
 
-my $eos_home = defined $ENV{EOS_HOME} ? $ENV{EOS_HOME} : getcwd;
-my $eosd = $eos_home . "/programs/eosd/eosd";
-my $eosc = $eos_home . "/programs/eosc/eosc";
+my $rsn_home = defined $ENV{EOS_HOME} ? $ENV{EOS_HOME} : getcwd;
+my $eosd = $rsn_home . "/programs/eosd/eosd";
+my $eosc = $rsn_home . "/programs/eosc/eosc";
 
 my $nodes = defined $ENV{EOS_TEST_RING} ? $ENV{EOS_TEST_RING} : "1";
 my $pnodes = defined $ENV{EOS_TEST_PRODUCERS} ? $ENV{EOS_TEST_PRODUCERS} : "1";
 
 my $prods = 21;
-my $genesis = "$eos_home/genesis.json";
+my $genesis = "$rsn_home/genesis.json";
 my $http_port_base = 8888;
 my $p2p_port_base = 9876;
 my $data_dir_base = "tdn";
