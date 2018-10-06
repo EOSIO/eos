@@ -2180,4 +2180,4 @@ class multi_index
 
 };
   /// @}
-}  /// eosio
+}  /// arisen

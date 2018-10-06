@@ -121,7 +121,7 @@ namespace arisen {
        */
       operator uint64_t()const { return value; }
 
-      // keep in sync with name::operator string() in eosio source code definition for name
+      // keep in sync with name::operator string() in ARISEN source code definition for name
       std::string to_string() const {
          static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 

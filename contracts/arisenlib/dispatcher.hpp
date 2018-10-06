@@ -43,7 +43,7 @@ namespace arisen {
     * @brief Defines functions to dispatch action to proper action handler inside a contract
     * @ingroup contractdev
     */
-   
+
    /**
     * @defgroup dispatchercpp Dispatcher C++ API
     * @brief Defines C++ functions to dispatch action to proper action handler inside a contract
@@ -53,14 +53,14 @@ namespace arisen {
 
    /**
     * Unpack the received action and execute the correponding action handler
-    * 
+    *
     * @brief Unpack the received action and execute the correponding action handler
     * @tparam T - The contract class that has the correponding action handler, this contract should be derived from arisen::contract
-    * @tparam Q - The namespace of the action handler function 
+    * @tparam Q - The namespace of the action handler function
     * @tparam Args - The arguments that the action handler accepts, i.e. members of the action
     * @param obj - The contract object that has the correponding action handler
     * @param func - The action handler
-    * @return true  
+    * @return true
     */
    template<typename T, typename Q, typename... Args>
    bool execute_action( T* obj, void (Q::*func)(Args...)  ) {
@@ -80,8 +80,8 @@ namespace arisen {
          free(buffer);
       }
 
-      auto f2 = [&]( auto... a ){  
-         (obj->*func)( a... ); 
+      auto f2 = [&]( auto... a ){
+         (obj->*func)( a... );
       };
 
       boost::mp11::tuple_apply( f2, args );
@@ -104,14 +104,14 @@ namespace arisen {
  * @{
  */
 
-/** 
+/**
  * Convenient macro to create contract apply handler
  * To be able to use this macro, the contract needs to be derived from arisen::contract
- * 
- * @brief Convenient macro to create contract apply handler 
+ *
+ * @brief Convenient macro to create contract apply handler
  * @param TYPE - The class name of the contract
  * @param MEMBERS - The sequence of available actions supported by this contract
- * 
+ *
  * Example:
  * @code
  * ARISEN_ABI( arisen::bios, (setpriv)(setalimits)(setglimits)(setprods)(reqauth) )
@@ -122,8 +122,8 @@ extern "C" { \
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) { \
       auto self = receiver; \
       if( action == N(onerror)) { \
-         /* onerror is only valid if it is for the "eosio" code account and authorized by "eosio"'s "active permission */ \
-         arisen_assert(code == N(eosio), "onerror action's are only valid from the \"eosio\" system account"); \
+         /* onerror is only valid if it is for the "arisen" code account and authorized by "arisen"'s "active permission */ \
+         arisen_assert(code == N(arisen), "onerror action's are only valid from the \"arisen\" system account"); \
       } \
       if( code == self || action == N(onerror) ) { \
          TYPE thiscontract( self ); \
@@ -149,7 +149,7 @@ extern "C" { \
       T contract;
    };
 
-   void dispatch( account_name code, account_name action, 
+   void dispatch( account_name code, account_name action,
    */
 
 }

@@ -36,7 +36,7 @@ extern "C" {
     * @code
     * // Assume this action is used for the following examples:
     * // {
-    * //  "code": "eos",
+    * //  "code": "rsn",
     * //  "type": "transfer",
     * //  "authorization": [{ "account": "inita", "permission": "active" }],
     * //  "data": {
@@ -68,7 +68,7 @@ extern "C" {
 
    /**
     *  Copy up to @ref len bytes of current action data to the specified location
-    * 
+    *
     *  @brief Copy current action data to the specified location
     *  @param msg - a pointer where up to @ref len bytes of the current action data will be copied
     *  @param len - len of the current action data to be copied, 0 to report required size
@@ -80,7 +80,7 @@ extern "C" {
 
    /**
     * Get the length of the current action's data field. This method is useful for dynamically sized actions
-    * 
+    *
     * @brief Get the length of current action's data field
     * @return the length of the current action's data field
     */
@@ -88,7 +88,7 @@ extern "C" {
 
    /**
     *  Add the specified account to set of accounts to be notified
-    * 
+    *
     *  @brief Add the specified account to set of accounts to be notified
     *  @param name - name of the account to be verified
     */
@@ -96,7 +96,7 @@ extern "C" {
 
    /**
     *  Verifies that @ref name exists in the set of provided auths on a action. Throws if not found.
-    * 
+    *
     *  @brief Verify specified account exists in the set of provided auths
     *  @param name - name of the account to be verified
     */
@@ -104,7 +104,7 @@ extern "C" {
 
     /**
     *  Verifies that @ref name has auth.
-    * 
+    *
     *  @brief Verifies that @ref name has auth.
     *  @param name - name of the account to be verified
     */
@@ -112,7 +112,7 @@ extern "C" {
 
    /**
     *  Verifies that @ref name exists in the set of provided auths on a action. Throws if not found.
-    * 
+    *
     *  @brief Verify specified account exists in the set of provided auths
     *  @param name - name of the account to be verified
     *  @param permission - permission level to be verified
@@ -123,7 +123,7 @@ extern "C" {
 
    /**
     *  Send an inline action in the context of this action's parent transaction
-    * 
+    *
     *  @param serialized_action - serialized action
     *  @param size - size of serialized action in bytes
     *  @pre `serialized_action` is a valid pointer to an array at least `size` bytes long
@@ -132,7 +132,7 @@ extern "C" {
 
    /**
     *  Send an inline context free action in the context of this action's parent transaction
-    * 
+    *
     *  @param serialized_action - serialized action
     *  @param size - size of serialized action in bytes
     *  @pre `serialized_action` is a valid pointer to an array at least `size` bytes long

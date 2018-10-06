@@ -12,7 +12,7 @@ namespace arisen {
      typedef std::false_type is_enum;
   };
 
-} /// eosio
+} /// arisen
 
 
 
@@ -72,7 +72,7 @@ void arisen::reflector<TYPE>::visit( Visitor&& v ) { \
 
 /**
  *  Perform class reflection
- *  
+ *
  *  @brief Specializes arisen::reflector for TYPE
  *  @param TYPE - the class template to be reflected
  *  @param MEMBERS - a sequence of member names.  (field1)(field2)(field3)
@@ -84,7 +84,7 @@ void arisen::reflector<TYPE>::visit( Visitor&& v ) { \
 
 /**
  *  Perform class template reflection
- *  
+ *
  *  @brief Perform class template reflection
  *  @param TEMPLATE_ARGS - a sequence of template args. (args1)(args2)(args3)
  *  @param TYPE - the class template to be reflected
@@ -95,7 +95,7 @@ void arisen::reflector<TYPE>::visit( Visitor&& v ) { \
 
 /**
  *  Perform class reflection on empty class
- *  
+ *
  *  @brief Perform class reflection on empty class
  *  @param TYPE - the class to be reflected
  */
@@ -104,7 +104,7 @@ void arisen::reflector<TYPE>::visit( Visitor&& v ) { \
 
 /**
  *  Perform forward declaration of class reflection
- *  
+ *
  *  @brief Perform forward declaration of class reflection
  *  @param TYPE - the class to be reflected
  */
@@ -141,7 +141,7 @@ namespace arisen { \
  *
  *  @brief Specializes arisen::reflector for TYPE where
  *         type inherits other reflected classes
- * 
+ *
  *  @param TYPE - the class to be reflected
  *  @param INHERITS - a sequence of base class names (basea)(baseb)(basec)
  *  @param MEMBERS - a sequence of member names.  (field1)(field2)(field3)
@@ -163,7 +163,7 @@ template<> struct reflector<TYPE> {\
  *  Perform class template reflection where TYPE inherits other reflected classes
  *
  *  @brief Perform class template reflection where TYPE inherits other reflected classes
- *  
+ *
  *  @param TEMPLATE_ARGS - a sequence of template args. (args1)(args2)(args3)
  *  @param TYPE - the class to be reflected
  *  @param INHERITS - a sequence of base class names (basea)(baseb)(basec)

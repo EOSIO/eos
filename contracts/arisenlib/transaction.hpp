@@ -94,4 +94,4 @@ namespace arisen {
 
    ///@} transactioncpp api
 
-} // namespace eos
+} // namespace rsn
