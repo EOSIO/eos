@@ -7,7 +7,7 @@ add_library( arisen_testing
              ${HEADERS}
         )
 
-target_link_libraries( arisen_testing arisen_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime )
+target_link_libraries( arisen_testing arisen_chain rsn_utilities fc chainbase Logging IR WAST WASM Runtime )
 target_include_directories( arisen_testing
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"

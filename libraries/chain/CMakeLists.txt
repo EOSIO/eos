@@ -50,7 +50,7 @@ add_library( arisen_chain
              ${HEADERS}
              )
 
-target_link_libraries( arisen_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime
+target_link_libraries( arisen_chain rsn_utilities fc chainbase Logging IR WAST WASM Runtime
       wasm asmjs passes cfg ast emscripten-optimizer support softfloat builtins wabt
                      )
 target_include_directories( arisen_chain
