@@ -1,4 +1,4 @@
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 #include <arisenlib/privileged.h>
 #include <arisenlib/producer_schedule.hpp>
 

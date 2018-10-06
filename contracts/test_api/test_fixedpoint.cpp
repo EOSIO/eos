@@ -1,5 +1,5 @@
 #include <arisenlib/fixedpoint.hpp>
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 
 #include "test_api.hpp"
 

@@ -1,4 +1,4 @@
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 
 using namespace arisen;
 

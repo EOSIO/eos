@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 #include <string>
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 #include <arisenlib/contract.hpp>
 
 #pragma clang diagnostic push

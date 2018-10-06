@@ -1,5 +1,5 @@
 #pragma once
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 #include <arisenlib/asset.hpp>
 #include <arisenlib/multi_index.hpp>
 

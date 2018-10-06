@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 #include "../test_api/test_api.hpp"
 
 #include "test_multi_index.cpp"

@@ -129,7 +129,7 @@ namespace _multi_index_detail {
        *
 *
  *  @code
- *  #include <arisenlib/eosio.hpp>
+ *  #include <arisenlib/arisen.hpp>
  *  using namespace arisen;
  *  class mycontract: arisen::contract {
  *    struct record {
@@ -181,7 +181,7 @@ struct indexed_by {
  *  Example:
        *
  *  @code
- *  #include <arisenlib/eosio.hpp>
+ *  #include <arisenlib/arisen.hpp>
  *  using namespace arisen;
  *  class mycontract: contract {
  *    struct record {
@@ -617,7 +617,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -654,7 +654,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -690,7 +690,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -789,7 +789,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -837,7 +837,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -883,7 +883,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -929,7 +929,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -975,7 +975,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1031,7 +1031,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1087,7 +1087,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1144,7 +1144,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1203,7 +1203,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1274,7 +1274,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1346,7 +1346,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1409,7 +1409,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1473,7 +1473,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1548,7 +1548,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1620,7 +1620,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1721,7 +1721,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1790,7 +1790,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1898,7 +1898,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -1949,7 +1949,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -2042,7 +2042,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
@@ -2109,7 +2109,7 @@ class multi_index
        *  Example:
        *
        *  @code
-       *  #include <arisenlib/eosio.hpp>
+       *  #include <arisenlib/arisen.hpp>
        *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {

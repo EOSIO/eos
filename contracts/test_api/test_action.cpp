@@ -8,7 +8,7 @@
 #include <arisenlib/db.h>
 #include <arisenlib/crypto.h>
 #include <arisenlib/privileged.h>
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 #include <arisenlib/datastream.hpp>
 #include <arisenlib/print.hpp>
 #include <arisenlib/compiler_builtins.h>

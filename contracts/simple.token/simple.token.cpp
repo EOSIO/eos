@@ -1,4 +1,4 @@
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 
 class simpletoken : public arisen::contract {
    public:

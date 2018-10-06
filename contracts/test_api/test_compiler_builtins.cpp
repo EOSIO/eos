@@ -3,7 +3,7 @@
  *    @copyright defined in arisen/LICENSE.txt
  */
 
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 #include <arisenlib/print.hpp>
 #include <arisenlib/compiler_builtins.h>
 

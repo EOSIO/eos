@@ -1,4 +1,4 @@
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 #include <arisenlib/memory.hpp>
 #include "../test_api/test_api.hpp"
 

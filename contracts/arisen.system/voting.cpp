@@ -4,7 +4,7 @@
  */
 #include "arisen.system.hpp"
 
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 #include <arisenlib/crypto.h>
 #include <arisenlib/print.hpp>
 #include <arisenlib/datastream.hpp>

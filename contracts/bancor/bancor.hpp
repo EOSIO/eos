@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 #include <arisenlib/token.hpp>
 #include <arisenlib/reflect.hpp>
 #include <arisenlib/generic_currency.hpp>

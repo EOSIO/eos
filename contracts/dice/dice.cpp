@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 #include <string>
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 #include <arisenlib/time.hpp>
 #include <arisenlib/asset.hpp>
 #include <arisenlib/contract.hpp>

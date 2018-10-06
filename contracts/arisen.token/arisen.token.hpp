@@ -5,7 +5,7 @@
 #pragma once
 
 #include <arisenlib/asset.hpp>
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 
 #include <string>
 

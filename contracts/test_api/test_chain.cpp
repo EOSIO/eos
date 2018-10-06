@@ -4,7 +4,7 @@
  */
 #include <arisenlib/action.h>
 #include <arisenlib/chain.h>
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 #include "test_api.hpp"
 
 #pragma pack(push, 1)

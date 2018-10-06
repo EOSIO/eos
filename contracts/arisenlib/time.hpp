@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <string>
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 
 namespace arisen {
   class microseconds {

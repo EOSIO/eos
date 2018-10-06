@@ -1,5 +1,5 @@
 
-#include <arisenlib/eosio.hpp>
+#include <arisenlib/arisen.hpp>
 #include <arisenlib/datastream.hpp>
 #include <cmath>
 
