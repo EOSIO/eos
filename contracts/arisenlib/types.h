@@ -66,16 +66,16 @@ typedef uint16_t weight_type;
 #define ALIGNED(X) __attribute__ ((aligned (16))) X
 
 /**
- * @brief EOSIO Public Key
- * @details EOSIO Public Key. It is 34 bytes.
+ * @brief ARISEN Public Key
+ * @details ARISEN Public Key. It is 34 bytes.
  */
 struct public_key {
    char data[34];
 };
 
 /**
- * @brief EOSIO Signature
- * @details EOSIO Signature. It is 66 bytes.
+ * @brief ARISEN Signature
+ * @details ARISEN Signature. It is 66 bytes.
  */
 struct signature {
    uint8_t data[66];
@@ -106,8 +106,8 @@ struct ALIGNED(checksum512) {
 };
 
 /**
- * @brief Type of EOSIO Transaction Id
- * @details Type of EOSIO Transaction Id. It is 256-bit hash
+ * @brief Type of ARISEN Transaction Id
+ * @details Type of ARISEN Transaction Id. It is 256-bit hash
  */
 typedef struct checksum256 transaction_id_type;
 typedef struct checksum256 block_id_type;

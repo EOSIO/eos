@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 #include <arisenlib/varint.hpp>
 #include <arisenlib/serialize.hpp>
 
@@ -11,10 +11,10 @@ namespace arisen {
    *
    *  @{
    */
-   
+
    /**
-    * EOSIO Public Key
-    * @brief EOSIO Public Key
+    * ARISEN Public Key
+    * @brief ARISEN Public Key
     */
    struct public_key {
       /**
@@ -25,7 +25,7 @@ namespace arisen {
 
       /**
        * Bytes of the public key
-       * 
+       *
        * @brief Bytes of the public key
        */
       std::array<char,33> data;
@@ -38,7 +38,7 @@ namespace arisen {
       }
       RSNLIB_SERIALIZE( public_key, (type)(data) )
    };
-   
+
 }
 
 /// @} publickeytype

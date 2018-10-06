@@ -13,11 +13,11 @@ extern "C" {
  *  @ingroup contractdev
  *
  *  @defgroup databasecpp Database C++ API
- *  @brief Defines an interface to EOSIO database
+ *  @brief Defines an interface to ARISEN database
  *  @ingroup database
  *
  *  @details
- *  EOSIO organizes data according to the following broad structure:
+ *  ARISEN organizes data according to the following broad structure:
  *  - **code** - the account name which has write permission
  *     - **scope** - an area where the data is stored
  *        - **table** - a name for the table that is being stored
@@ -29,7 +29,7 @@ extern "C" {
  *  @brief Defines %C APIs for interfacing with the database.
  *  @ingroup database
  *
- *  @details Database C API provides low level interface to EOSIO database.
+ *  @details Database C API provides low level interface to ARISEN database.
  *
  *  @section tabletypes Supported Table Types
  *  Following are the table types supported by the C API:

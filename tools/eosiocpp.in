@@ -73,7 +73,7 @@ function build_contract {
                                    -I${ARISEN_INSTALL_DIR}/include/musl/upstream/include \
                                    -I${BOOST_INCLUDE_DIR} \
                                    -I $filePath \
-                                   ${EOSIOCPP_CFLAGS} \
+                                   ${ARISENCPP_CFLAGS} \
                                    -c $file -o $workdir/built/$name
         )
 
@@ -119,7 +119,7 @@ function generate_abi {
         -extra-arg=-I${ARISEN_INSTALL_DIR}/include/libc++/upstream/include \
         -extra-arg=-I${ARISEN_INSTALL_DIR}/include/musl/upstream/include \
         -extra-arg=-I${BOOST_INCLUDE_DIR} \
-        -extra-arg=${EOSIOCPP_CFLAGS}  \
+        -extra-arg=${ARISENCPP_CFLAGS}  \
         -extra-arg=-I${ARISEN_INSTALL_DIR}/include -extra-arg=-I$context_folder \
         -extra-arg=-fparse-all-comments -destination-file=${outname} -verbose=0 \
         -context=$context_folder $1 --
@@ -152,7 +152,7 @@ function print_help {
 
 function print_deprecation_notice {
     echo -e "\033[0;33mWARNING: this tool is deprecated and will be removed in a future release\033[0m" 1>&2
-    echo -e "\033[0;33mPlease consider using the EOSIO.CDT (https://github.com/EOSIO/eosio.cdt/)\033[0m" 1>&2
+    echo -e "\033[0;33mPlease consider using the ARISEN.CDT (https://github.com/arisenio/arisen.cdt/)\033[0m" 1>&2
 }
 
 command=""

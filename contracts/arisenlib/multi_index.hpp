@@ -119,10 +119,10 @@ namespace _multi_index_detail {
 }
 
 /**
- *  The indexed_by struct is used to instantiate the indices for the Multi-Index table. In EOSIO, up to 16 secondary indices can be specified.
- *  @brief The indexed_by struct is used to instantiate the indices for the Multi-Index table. In EOSIO, up to 16 secondary indices can be specified.
+ *  The indexed_by struct is used to instantiate the indices for the Multi-Index table. In ARISEN, up to 16 secondary indices can be specified.
+ *  @brief The indexed_by struct is used to instantiate the indices for the Multi-Index table. In ARISEN, up to 16 secondary indices can be specified.
  *
- *  @tparam IndexName - is the name of the index. The name must be provided as an EOSIO base32 encoded 64-bit integer and must conform to the EOSIO naming requirements of a maximum of 13 characters, the first twelve from the lowercase characters a-z, digits 0-5, and ".", and if there is a 13th character, it is restricted to lowercase characters a-p and ".".
+ *  @tparam IndexName - is the name of the index. The name must be provided as an ARISEN base32 encoded 64-bit integer and must conform to the ARISEN naming requirements of a maximum of 13 characters, the first twelve from the lowercase characters a-z, digits 0-5, and ".", and if there is a 13th character, it is restricted to lowercase characters a-p and ".".
  *  @tparam Extractor - is a function call operator that takes a const reference to the table object type and returns either a secondary key type or a reference to a secondary key type. It is recommended to use the `arisen::const_mem_fun` template, which is a type alias to the `boost::multi_index::const_mem_fun`. See the documentation for the Boost `const_mem_fun` key extractor for more details.
  *
  *  Example:
@@ -159,15 +159,15 @@ struct indexed_by {
 
 /**
  *  @defgroup multiindex Multi Index Table
- *  @brief Defines EOSIO Multi Index Table
+ *  @brief Defines ARISEN Multi Index Table
  *  @ingroup databasecpp
  *
  *
  *
- *  EOSIO Multi-Index API provides a C++ interface to the EOSIO database. It is patterned after Boost Multi Index Container.
- *  EOSIO Multi-Index table requires exactly a uint64_t primary key. For the table to be able to retrieve the primary key,
+ *  ARISEN Multi-Index API provides a C++ interface to the ARISEN database. It is patterned after Boost Multi Index Container.
+ *  ARISEN Multi-Index table requires exactly a uint64_t primary key. For the table to be able to retrieve the primary key,
  *  the object stored inside the table is required to have a const member function called primary_key() that returns uint64_t.
- *  EOSIO Multi-Index table also supports up to 16 secondary indices. The type of the secondary indices could be any of:
+ *  ARISEN Multi-Index table also supports up to 16 secondary indices. The type of the secondary indices could be any of:
  *  - uint64_t
  *  - uint128_t
  *  - uint256_t

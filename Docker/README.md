@@ -173,9 +173,9 @@ run `docker pull arisen/arisen:latest`
 
 run `docker-compose up`
 
-### EOSIO Testnet
+### ARISEN Testnet
 
-We can easily set up a EOSIO local testnet using docker images. Just run the following commands:
+We can easily set up a ARISEN local testnet using docker images. Just run the following commands:
 
 Note: if you want to use the mongo db plugin, you have to enable it in your `data-dir/config.ini` first.
 

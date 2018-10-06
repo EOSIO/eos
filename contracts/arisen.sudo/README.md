@@ -581,7 +581,7 @@ If the two hashes match then the local WebAssembly code is the one deployed on t
 
 ### 3.1 Example: Updating owner authority of an arbitrary account
 
-This example will demonstrate how to use the deployed arisen.sudo contract together with the arisen.msig contract to allow a greater than two-thirds supermajority of block producers of an EOSIO blockchain to change the owner authority of an arbitrary account. The example will use arisecli: in particular, the `arisecli multisig` command, the `arisecli set account permission` sub-command, and the `arisecli sudo exec` sub-command. However, the guide also demonstrates what to do if the `arisecli sudo exec` sub-command is not available.
+This example will demonstrate how to use the deployed arisen.sudo contract together with the arisen.msig contract to allow a greater than two-thirds supermajority of block producers of an ARISEN blockchain to change the owner authority of an arbitrary account. The example will use arisecli: in particular, the `arisecli multisig` command, the `arisecli set account permission` sub-command, and the `arisecli sudo exec` sub-command. However, the guide also demonstrates what to do if the `arisecli sudo exec` sub-command is not available.
 
 This guide assumes that there are 21 active block producers on the chain with account names: `blkproducera`, `blkproducerb`, ..., `blkproduceru`. Block producer `blkproducera` will act as the lead block producer handling the proposal of the transaction.
 

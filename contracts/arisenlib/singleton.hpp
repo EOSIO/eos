@@ -6,7 +6,7 @@ namespace  arisen {
 
    /**
     *  @defgroup singleton Singleton Table
-    *  @brief Defines EOSIO Singleton Table
+    *  @brief Defines ARISEN Singleton Table
     *  @ingroup databasecpp
     *  @{
     */
