@@ -48,7 +48,7 @@ Example game session using arisecli
 #### Prerequisites
 * Wallet must be unlock and have at least the following private keys
 
-	**5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3**
+	**5HrpMSjfpEtWkaJALRBNPNysX7mv3juwAnY2bLK4A1ofMMuD9Qq**
 	**5Jmsawgsp1tQ3GD6JyGCwy1dcvqKZgX6ugMVMdjirx85iv5VyPR**
 
 ##### Upload bios contract

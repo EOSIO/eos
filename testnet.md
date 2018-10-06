@@ -124,8 +124,8 @@ The ssh helper fields are paths to ssh and scp, an identity if necessary, and an
         "http_port": 12618,
         "filesize": 8192,
         "keys": [{
-            "public_key": "RSN6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-            "wif_private_key": "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
+            "public_key": "RSN7HknuwTB85iRC3iL8Fkc13PXkRyLoQnKbUMh4iXYY43orcxpjS",
+            "wif_private_key": "5HrpMSjfpEtWkaJALRBNPNysX7mv3juwAnY2bLK4A1ofMMuD9Qq"
           }
         ],
         "peers": [

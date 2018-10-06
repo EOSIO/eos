@@ -62,13 +62,13 @@ $ ./aos -d ~/rsn.data/generator_node --config-dir ~/rsn.data/generator_node -l ~
 ### Create a wallet on the non-producer and set bios contract
 ```bash
 $ ./arisecli wallet create --to-console
-$ ./arisecli wallet import --private-key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
+$ ./arisecli wallet import --private-key 5HrpMSjfpEtWkaJALRBNPNysX7mv3juwAnY2bLK4A1ofMMuD9Qq
 $ ./arisecli set contract arisen ~/rsn/build.release/contracts/arisen.bios/
 ```
 
 ### Initialize the accounts txn_test_gen_plugin uses
 ```bash
-$ curl --data-binary '["arisen", "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"]' http://127.0.0.1:12618/v1/txn_test_gen/create_test_accounts
+$ curl --data-binary '["arisen", "5HrpMSjfpEtWkaJALRBNPNysX7mv3juwAnY2bLK4A1ofMMuD9Qq"]' http://127.0.0.1:12618/v1/txn_test_gen/create_test_accounts
 ```
 
 ### Start transaction generation, this will submit 20 transactions evey 20ms (total of 1000TPS)

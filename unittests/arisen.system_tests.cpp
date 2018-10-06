@@ -682,7 +682,7 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, arisen_system_tester ) tr
    issue( "alice1111111", core_from_string("1000.0000"),  config::system_account_name );
 
    //fc::variant params = producer_parameters_example(1);
-   auto key =  fc::crypto::public_key( std::string("RSN6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") );
+   auto key =  fc::crypto::public_key( std::string("RSN7HknuwTB85iRC3iL8Fkc13PXkRyLoQnKbUMh4iXYY43orcxpjS") );
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice1111111), N(regproducer), mvo()
                                                ("producer",  "alice1111111")
                                                ("producer_key", key )

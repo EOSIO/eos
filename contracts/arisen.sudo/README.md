@@ -620,8 +620,8 @@ The goal of this example is for the block producers to change the owner permissi
 The initial status of the `alice` account might be:
 ```
 permissions:
-     owner     1:    1 RSN6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
-        active     1:    1 RSN6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+     owner     1:    1 RSN7HknuwTB85iRC3iL8Fkc13PXkRyLoQnKbUMh4iXYY43orcxpjS
+        active     1:    1 RSN7HknuwTB85iRC3iL8Fkc13PXkRyLoQnKbUMh4iXYY43orcxpjS
 memory:
      quota:     49.74 KiB    used:     3.365 KiB  
 
@@ -642,7 +642,7 @@ cpu bandwidth:
 producers:     <not voted>
 ```
 
-Assume that none of the block producers know the private key corresponding to the public key `RSN6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV` which, as can be seen above, is initially securing access to the `alice` account.
+Assume that none of the block producers know the private key corresponding to the public key `RSN7HknuwTB85iRC3iL8Fkc13PXkRyLoQnKbUMh4iXYY43orcxpjS` which, as can be seen above, is initially securing access to the `alice` account.
 
 The first step is to generate the transaction changing the owner permission of the `alice` account as if `alice` is authorizing the change:
 ```
@@ -863,7 +863,7 @@ Anyone can now verify that the owner authority of `alice` was successfully chang
 $ arisecli get account alice
 permissions:
      owner     1:    1 arisen@active,
-        active     1:    1 RSN6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+        active     1:    1 RSN7HknuwTB85iRC3iL8Fkc13PXkRyLoQnKbUMh4iXYY43orcxpjS
 memory:
      quota:     49.74 KiB    used:     3.348 KiB  
 
