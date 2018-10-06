@@ -13,12 +13,12 @@
 # In most cases, simply running ./arisen-tn_roll.sh is sufficient.
 #
 
-if [ -z "$EOSIO_HOME" ]; then
-    echo EOSIO_HOME not set - $0 unable to proceed.
+if [ -z "$ARISEN_HOME" ]; then
+    echo ARISEN_HOME not set - $0 unable to proceed.
     exit -1
 fi
 
-cd $EOSIO_HOME
+cd $ARISEN_HOME
 
 if [ -z "$EOSIO_NODE" ]; then
     DD=`ls -d var/lib/node_[012]?`
@@ -76,16 +76,16 @@ fi
 
 echo DD = $DD
 
-bash $EOSIO_HOME/scripts/arisen-tn_down.sh
+bash $ARISEN_HOME/scripts/arisen-tn_down.sh
 
 cp $SDIR/$RD/$prog $RD/$prog
 
 if [ $DD = "all" ]; then
     for EOSIO_RESTART_DATA_DIR in `ls -d var/lib/node_??`; do
-        bash $EOSIO_HOME/scripts/arisen-tn_up.sh "$*"
+        bash $ARISEN_HOME/scripts/arisen-tn_up.sh "$*"
     done
 else
-    bash $EOSIO_HOME/scripts/arisen-tn_up.sh "$*"
+    bash $ARISEN_HOME/scripts/arisen-tn_up.sh "$*"
 fi
 unset EOSIO_RESTART_DATA_DIR
 

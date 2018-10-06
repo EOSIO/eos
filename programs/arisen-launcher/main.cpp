@@ -606,7 +606,7 @@ launcher_def::initialize (const variables_map &vmap) {
   if (prod_nodes > total_nodes)
     total_nodes = prod_nodes;
 
-  char* erd_env_var = getenv ("EOSIO_HOME");
+  char* erd_env_var = getenv ("ARISEN_HOME");
   if (erd_env_var == nullptr || std::string(erd_env_var).empty()) {
      erd_env_var = getenv ("PWD");
   }
@@ -619,7 +619,7 @@ launcher_def::initialize (const variables_map &vmap) {
 
   stage = bfs::path(erd);
   if (!bfs::exists(stage)) {
-    cerr << "\"" << erd << "\" is not a valid path. Please ensure environment variable EOSIO_HOME is set to the build path." << endl;
+    cerr << "\"" << erd << "\" is not a valid path. Please ensure environment variable ARISEN_HOME is set to the build path." << endl;
     exit (-1);
   }
   stage /= bfs::path("staging");
@@ -1707,7 +1707,7 @@ launcher_def::bounce (const string& node_numbers) {
       const string node_num = node.get_node_num();
       cout << "Bouncing " << node.name << endl;
       string cmd = "./scripts/arisen-tn_bounce.sh " + eosd_extra_args;
-      do_command(host, node.name, { { "EOSIO_HOME", host.arisen_home }, { "EOSIO_NODE", node_num } }, cmd);
+      do_command(host, node.name, { { "ARISEN_HOME", host.arisen_home }, { "EOSIO_NODE", node_num } }, cmd);
    }
 }
 
@@ -1721,7 +1721,7 @@ launcher_def::down (const string& node_numbers) {
       cout << "Taking down " << node.name << endl;
       string cmd = "./scripts/arisen-tn_down.sh ";
       do_command(host, node.name,
-                 { { "EOSIO_HOME", host.arisen_home }, { "EOSIO_NODE", node_num }, { "EOSIO_TN_RESTART_CONFIG_DIR", node.config_dir_name } },
+                 { { "ARISEN_HOME", host.arisen_home }, { "EOSIO_NODE", node_num }, { "EOSIO_TN_RESTART_CONFIG_DIR", node.config_dir_name } },
                  cmd);
    }
 }
@@ -1734,7 +1734,7 @@ launcher_def::roll (const string& host_names) {
       cout << "Rolling " << host_name << endl;
       auto host = find_host_by_name_or_address(host_name);
       string cmd = "./scripts/arisen-tn_roll.sh ";
-      do_command(*host, host_name, { { "EOSIO_HOME", host->arisen_home } }, cmd);
+      do_command(*host, host_name, { { "ARISEN_HOME", host->arisen_home } }, cmd);
    }
 }
 

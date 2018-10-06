@@ -11,7 +11,7 @@
 # in most cases, simply running ./arisen-tn_bounce.sh is sufficient.
 #
 
-pushd $EOSIO_HOME
+pushd $ARISEN_HOME
 
 if [ ! -f programs/aos/aos ]; then
     echo unable to locate binary for aos
@@ -40,5 +40,5 @@ else
     fi
 fi
 
-bash $EOSIO_HOME/scripts/arisen-tn_down.sh
-bash $EOSIO_HOME/scripts/arisen-tn_up.sh "$*"
+bash $ARISEN_HOME/scripts/arisen-tn_down.sh
+bash $ARISEN_HOME/scripts/arisen-tn_up.sh "$*"

@@ -12,8 +12,8 @@ prog=aos
 # Quote any args that are "*", so they are not expanded
 qargs=`echo "$*" | sed -e 's/ \* / "*" /' -e 's/ \*$/ "*"/'`
 
-if [ "$PWD" != "$EOSIO_HOME" ]; then
-    echo $0 must only be run from $EOSIO_HOME
+if [ "$PWD" != "$ARISEN_HOME" ]; then
+    echo $0 must only be run from $ARISEN_HOME
     exit -1
 fi
 
