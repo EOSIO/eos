@@ -23,21 +23,21 @@ const static auto default_state_size            = 1*1024*1024*1024ll;
 const static auto default_state_guard_size      =    128*1024*1024ll;
 
 
-const static uint64_t system_account_name    = N(eosio);
-const static uint64_t null_account_name      = N(eosio.null);
-const static uint64_t producers_account_name = N(eosio.prods);
+const static uint64_t system_account_name    = N(arisen);
+const static uint64_t null_account_name      = N(arisen.null);
+const static uint64_t producers_account_name = N(arisen.prods);
 
 // Active permission of producers account requires greater than 2/3 of the producers to authorize
 const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
 const static uint64_t minority_producers_permission_name = N(prod.minor); // greater than 1/3 of producers needed to authorize0
 
-const static uint64_t arisen_auth_scope       = N(eosio.auth);
-const static uint64_t arisen_all_scope        = N(eosio.all);
+const static uint64_t arisen_auth_scope       = N(arisen.auth);
+const static uint64_t arisen_all_scope        = N(arisen.all);
 
 const static uint64_t active_name = N(active);
 const static uint64_t owner_name  = N(owner);
-const static uint64_t arisen_any_name = N(eosio.any);
-const static uint64_t arisen_code_name = N(eosio.code);
+const static uint64_t arisen_any_name = N(arisen.any);
+const static uint64_t arisen_code_name = N(arisen.code);
 
 const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;

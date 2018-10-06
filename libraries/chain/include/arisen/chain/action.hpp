@@ -45,7 +45,7 @@ namespace arisen { namespace chain {
     *
     *  This follows the design pattern of React Flux where actions are
     *  named and then dispatched to one or more action handlers (aka stores).
-    *  In the context of eosio, every action is dispatched to the handler defined
+    *  In the context of arisen, every action is dispatched to the handler defined
     *  by account 'scope' and function 'name', but the default handler may also
     *  forward the action to any number of additional handlers. Any application
     *  can write a handler for "scope::name" that will get executed if and only if
