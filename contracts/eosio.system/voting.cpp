@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include "eosio.system.hpp"
+#include "arisen.system.hpp"
 
 #include <arisenlib/eosio.hpp>
 #include <arisenlib/crypto.h>

@@ -1,6 +1,6 @@
 # Run in docker
 
-Simple and fast setup of EOS.IO on Docker is also available.
+Simple and fast setup of ARISEN on Docker is also available.
 
 ## Install Dependencies
 
@@ -26,7 +26,7 @@ The above will build off the most recent commit to the master branch by default.
 docker build -t arisen/arisen:v1.3.1 --build-arg branch=v1.3.1 .
 ```
 
-By default, the symbol in eosio.system is set to SYS. You can override this using the symbol argument while building the docker image.
+By default, the symbol in arisen.system is set to SYS. You can override this using the symbol argument while building the docker image.
 
 ```bash
 docker build -t arisen/arisen --build-arg symbol=<symbol> .

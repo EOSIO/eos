@@ -13,7 +13,7 @@ if [ -d "/usr/local/include/eosio" ]; then
             pushd /usr/local &> /dev/null
 
             pushd include &> /dev/null
-            rm -rf appbase chainbase eosio eosio.system arisenlib fc libc++ musl &> /dev/null
+            rm -rf appbase chainbase eosio arisen.system arisenlib fc libc++ musl &> /dev/null
             popd &> /dev/null
 
             pushd bin &> /dev/null

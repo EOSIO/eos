@@ -2,8 +2,8 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
+#include <arisen.system/arisen.system.wast.hpp>
+#include <arisen.system/arisen.system.abi.hpp>
 // These contracts are still under dev
 #include <arisen.bios/arisen.bios.wast.hpp>
 #include <arisen.bios/arisen.bios.abi.hpp>
@@ -206,7 +206,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
         auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
         create_currency(N(eosio.token), config::system_account_name, max_supply);
-        // Issue the genesis supply of 1 billion SYS tokens to eosio.system
+        // Issue the genesis supply of 1 billion SYS tokens to arisen.system
         issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
 
         auto actual = get_balance(config::system_account_name);
@@ -217,7 +217,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            create_account( a.aname, config::system_account_name );
         }
 
-        // Set eosio.system to eosio
+        // Set arisen.system to eosio
         set_code_abi(config::system_account_name, eosio_system_wast, eosio_system_abi);
 
         // Buy ram and stake cpu and net for each genesis accounts

@@ -1,4 +1,4 @@
-#include "eosio.system.hpp"
+#include "arisen.system.hpp"
 #include <arisenlib/dispatcher.hpp>
 
 #include "producer_pay.cpp"
@@ -181,13 +181,13 @@ namespace arisensystem {
       set_resource_limits( newact, 0, 0, 0 );
    }
 
-} /// eosio.system
+} /// arisen.system
 
 
 EOSIO_ABI( eosiosystem::system_contract,
-     // native.hpp (newaccount definition is actually in eosio.system.cpp)
+     // native.hpp (newaccount definition is actually in arisen.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
-     // eosio.system.cpp
+     // arisen.system.cpp
      (setram)(setparams)(setpriv)(rmvproducer)(bidname)
      // delegate_bandwidth.cpp
      (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(refund)

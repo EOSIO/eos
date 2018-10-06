@@ -107,7 +107,7 @@ programs/arisecli/arisecli --wallet-url $wdurl --url http://$bioshost:$biosport 
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-ecmd set contract eosio contracts/eosio.system eosio.system.wasm eosio.system.abi
+ecmd set contract eosio contracts/arisen.system arisen.system.wasm arisen.system.abi
 
 # Manual deployers, add a series of lines below this block that looks like:
 #    cacmd $PRODNAME[0] $OWNERKEY[0] $ACTIVEKEY[0]
