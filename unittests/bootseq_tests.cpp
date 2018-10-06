@@ -189,7 +189,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         //  - arisen.msig (code: arisen.msig)
         //  - arisen.token (code: arisen.token)
         set_code_abi(N(arisen.msig), eosio_msig_wast, eosio_msig_abi);//, &eosio_active_pk);
-        set_code_abi(N(arisen.token), eosio_token_wast, eosio_token_abi); //, &eosio_active_pk);
+        set_code_abi(N(arisen.token), arisen_token_wast, arisen_token_abi); //, &eosio_active_pk);
 
         // Set privileged for arisen.msig and arisen.token
         set_privileged(N(arisen.msig));
@@ -198,8 +198,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Verify arisen.msig and arisen.token is privileged
         const auto& eosio_msig_acc = get<account_object, by_name>(N(arisen.msig));
         BOOST_TEST(eosio_msig_acc.privileged == true);
-        const auto& eosio_token_acc = get<account_object, by_name>(N(arisen.token));
-        BOOST_TEST(eosio_token_acc.privileged == true);
+        const auto& arisen_token_acc = get<account_object, by_name>(N(arisen.token));
+        BOOST_TEST(arisen_token_acc.privileged == true);
 
 
         // Create SYS tokens in arisen.token, set its manager as eosio

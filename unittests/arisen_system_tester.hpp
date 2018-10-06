@@ -52,8 +52,8 @@ public:
 
       produce_blocks( 100 );
 
-      set_code( N(arisen.token), eosio_token_wast );
-      set_abi( N(arisen.token), eosio_token_abi );
+      set_code( N(arisen.token), arisen_token_wast );
+      set_abi( N(arisen.token), arisen_token_abi );
 
       {
          const auto& accnt = control->db().get<account_object,by_name>( N(arisen.token) );

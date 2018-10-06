@@ -226,8 +226,8 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
    create_accounts( {N(arisen.token), N(dice),N(alice),N(bob),N(carol),N(david)}, false);
 
-   set_code(N(arisen.token), eosio_token_wast);
-   set_abi(N(arisen.token), eosio_token_abi);
+   set_code(N(arisen.token), arisen_token_wast);
+   set_abi(N(arisen.token), arisen_token_abi);
 
    produce_block();
 

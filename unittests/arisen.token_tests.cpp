@@ -18,17 +18,17 @@ using namespace std;
 
 using mvo = fc::mutable_variant_object;
 
-class eosio_token_tester : public tester {
+class arisen_token_tester : public tester {
 public:
 
-   eosio_token_tester() {
+   arisen_token_tester() {
       produce_blocks( 2 );
 
       create_accounts( { N(alice), N(bob), N(carol), N(arisen.token) } );
       produce_blocks( 2 );
 
-      set_code( N(arisen.token), eosio_token_wast );
-      set_abi( N(arisen.token), eosio_token_abi );
+      set_code( N(arisen.token), arisen_token_wast );
+      set_abi( N(arisen.token), arisen_token_abi );
 
       produce_blocks();
 
@@ -97,9 +97,9 @@ public:
    abi_serializer abi_ser;
 };
 
-BOOST_AUTO_TEST_SUITE(eosio_token_tests)
+BOOST_AUTO_TEST_SUITE(arisen_token_tests)
 
-BOOST_FIXTURE_TEST_CASE( create_tests, eosio_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( create_tests, arisen_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("1000.000 TKN"));
    auto stats = get_stats("3,TKN");
@@ -112,7 +112,7 @@ BOOST_FIXTURE_TEST_CASE( create_tests, eosio_token_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( create_negative_max_supply, eosio_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( create_negative_max_supply, arisen_token_tester ) try {
 
    BOOST_REQUIRE_EQUAL( wasm_assert_msg( "max-supply must be positive" ),
       create( N(alice), asset::from_string("-1000.000 TKN"))
@@ -120,7 +120,7 @@ BOOST_FIXTURE_TEST_CASE( create_negative_max_supply, eosio_token_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( symbol_already_exists, eosio_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( symbol_already_exists, arisen_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("100 TKN"));
    auto stats = get_stats("0,TKN");
@@ -137,7 +137,7 @@ BOOST_FIXTURE_TEST_CASE( symbol_already_exists, eosio_token_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( create_max_supply, eosio_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( create_max_supply, arisen_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("4611686018427387903 TKN"));
    auto stats = get_stats("0,TKN");
@@ -161,7 +161,7 @@ BOOST_FIXTURE_TEST_CASE( create_max_supply, eosio_token_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( create_max_decimals, eosio_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( create_max_decimals, arisen_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("1.000000000000000000 TKN"));
    auto stats = get_stats("18,TKN");
@@ -185,7 +185,7 @@ BOOST_FIXTURE_TEST_CASE( create_max_decimals, eosio_token_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( issue_tests, eosio_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( issue_tests, arisen_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("1000.000 TKN"));
    produce_blocks(1);
@@ -219,7 +219,7 @@ BOOST_FIXTURE_TEST_CASE( issue_tests, eosio_token_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( transfer_tests, eosio_token_tester ) try {
+BOOST_FIXTURE_TEST_CASE( transfer_tests, arisen_token_tester ) try {
 
    auto token = create( N(alice), asset::from_string("1000 CERO"));
    produce_blocks(1);

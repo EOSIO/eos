@@ -319,7 +319,7 @@ BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) 
 
 BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name } };
-   auto wasm = wast_to_wasm( eosio_token_wast );
+   auto wasm = wast_to_wasm( arisen_token_wast );
 
    variant pretty_trx = fc::mutable_variant_object()
       ("expiration", "2020-01-01T00:30")
@@ -400,8 +400,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    produce_blocks(50);
 
    create_accounts( { N(arisen.token) } );
-   set_code( N(arisen.token), eosio_token_wast );
-   set_abi( N(arisen.token), eosio_token_abi );
+   set_code( N(arisen.token), arisen_token_wast );
+   set_abi( N(arisen.token), arisen_token_abi );
 
    create_currency( N(arisen.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
@@ -512,8 +512,8 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
    produce_blocks(50);
 
    create_accounts( { N(arisen.token) } );
-   set_code( N(arisen.token), eosio_token_wast );
-   set_abi( N(arisen.token), eosio_token_abi );
+   set_code( N(arisen.token), arisen_token_wast );
+   set_abi( N(arisen.token), arisen_token_abi );
 
    create_currency( N(arisen.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
