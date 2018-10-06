@@ -5,11 +5,11 @@ if(WASM_FOUND)
   message(STATUS "Using WASM llc => " ${WASM_LLC})
   message(STATUS "Using WASM llvm-link => " ${WASM_LLVM_LINK})
 else()
-  message( FATAL_ERROR "No WASM compiler cound be found (make sure WASM_ROOT is set)" )
+  message( FATAL_ERROR "No WASM compiler found be found (make sure WASM_ROOT is set)" )
   return()
 endif()
 macro(compile_wast)
-  #read arguments include ones that we don't since arguments get forwared "as is" and we don't want to threat unknown argument names as values
+  #read arguments include ones that we don't since arguments get forwarded "as is" and we don't want to threat unknown argument names as values
   cmake_parse_arguments(ARG "NOWARNINGS" "TARGET;DESTINATION_FOLDER" "SOURCE_FILES;INCLUDE_FOLDERS;SYSTEM_INCLUDE_FOLDERS;LIBRARIES" ${ARGN})
   set(target ${ARG_TARGET})
 
