@@ -303,7 +303,7 @@
    print_instructions
 
    printf "\\tFor more information and resources from Arisen, visit any of the links below:\\n"
-   printf "\\tArisenBank Website: https://arisenbank.io/\\n"
+   printf "\\tArisen Website: https://goarisen.io/\\n"
    printf "\\tdPay Website: https://dpays.io/\\n"
    printf "\\tArisen Developer Website: https://arising.io/\\n"
    printf "\\tArisen Developer Telegram channel @ https://t.me/arisendevs/\\n"
