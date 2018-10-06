@@ -38,8 +38,8 @@ namespace arisensystem {
       }
    }
 
-   eosio_global_state system_contract::get_default_parameters() {
-      eosio_global_state dp;
+   arisen_global_state system_contract::get_default_parameters() {
+      arisen_global_state dp;
       get_blockchain_parameters(dp);
       return dp;
    }

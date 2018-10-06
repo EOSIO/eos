@@ -35,7 +35,7 @@ namespace arisensystem {
                                >  name_bid_table;
 
 
-   struct eosio_global_state : arisen::blockchain_parameters {
+   struct arisen_global_state : arisen::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
       uint64_t             max_ram_size = 64ll*1024 * 1024 * 1024;
@@ -54,7 +54,7 @@ namespace arisensystem {
       block_timestamp      last_name_close;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, arisen::blockchain_parameters,
+      EOSLIB_SERIALIZE_DERIVED( arisen_global_state, arisen::blockchain_parameters,
                                 (max_ram_size)(total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)(last_pervote_bucket_fill)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
@@ -119,7 +119,7 @@ namespace arisensystem {
                                indexed_by<N(prototalvote), const_mem_fun<producer_info, double, &producer_info::by_votes>  >
                                >  producers_table;
 
-   typedef arisen::singleton<N(global), eosio_global_state> global_state_singleton;
+   typedef arisen::singleton<N(global), arisen_global_state> global_state_singleton;
 
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t     seconds_per_day = 24 * 3600;
@@ -131,7 +131,7 @@ namespace arisensystem {
          producers_table        _producers;
          global_state_singleton _global;
 
-         eosio_global_state     _gstate;
+         arisen_global_state     _gstate;
          rammarket              _rammarket;
 
       public:
@@ -225,7 +225,7 @@ namespace arisensystem {
                         asset stake_net_quantity, asset stake_cpu_quantity, bool transfer );
 
          //defined in voting.hpp
-         static eosio_global_state get_default_parameters();
+         static arisen_global_state get_default_parameters();
 
          void update_votes( const account_name voter, const account_name proxy, const std::vector<account_name>& producers, bool voting );
 
