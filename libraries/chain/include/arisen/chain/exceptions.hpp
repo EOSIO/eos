@@ -45,7 +45,7 @@
  * The main difference here is that if the exception caught isn't of type "arisen::chain::chain_exception"
  * This macro will rethrow the exception as the specified "exception_type"
  */
-#define EOS_CAPTURE_AND_RETHROW( exception_type, ... ) \
+#define RSN_CAPTURE_AND_RETHROW( exception_type, ... ) \
    catch (arisen::chain::chain_exception& e) { \
       FC_RETHROW_EXCEPTION( e, warn, "", FC_FORMAT_ARG_PARAMS(__VA_ARGS__) ); \
    } catch (fc::exception& e) { \
@@ -63,7 +63,7 @@
                 std::current_exception() ); \
    }
 
-#define EOS_RECODE_EXC( cause_type, effect_type ) \
+#define RSN_RECODE_EXC( cause_type, effect_type ) \
    catch( const cause_type& e ) \
    { throw( effect_type( e.what(), e.get_log() ) ); }
 

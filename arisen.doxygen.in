@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "ARISEN"
-PROJECT_NUMBER         = "ARISEN ${DOXY_EOS_VERSION}"
+PROJECT_NUMBER         = "ARISEN ${DOXY_RSN_VERSION}"
 PROJECT_BRIEF          =
 PROJECT_LOGO           = arisen-logo.png
 OUTPUT_DIRECTORY       =

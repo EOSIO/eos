@@ -9,12 +9,12 @@ use File::Spec;
 use File::Path;
 use Cwd;
 
-my $rsn_home = defined $ENV{EOS_HOME} ? $ENV{EOS_HOME} : getcwd;
+my $rsn_home = defined $ENV{RSN_HOME} ? $ENV{RSN_HOME} : getcwd;
 my $rsnd = $rsn_home . "/programs/rsnd/rsnd";
 my $rsnc = $rsn_home . "/programs/rsnc/rsnc";
 
-my $nodes = defined $ENV{EOS_TEST_RING} ? $ENV{EOS_TEST_RING} : "1";
-my $pnodes = defined $ENV{EOS_TEST_PRODUCERS} ? $ENV{EOS_TEST_PRODUCERS} : "1";
+my $nodes = defined $ENV{RSN_TEST_RING} ? $ENV{RSN_TEST_RING} : "1";
+my $pnodes = defined $ENV{RSN_TEST_PRODUCERS} ? $ENV{RSN_TEST_PRODUCERS} : "1";
 
 my $prods = 21;
 my $genesis = "$rsn_home/genesis.json";
