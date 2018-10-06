@@ -3,12 +3,12 @@
 binaries=(arisecli
           arisen-abigen
           arisen-launcher
-          eosio-s2wasm
-          eosio-wast2wasm
-          eosiocpp
+          arisen-s2wasm
+          arisen-wast2wasm
+          arisencpp
           awallet
           aos
-          eosio-applesdemo)
+          arisen-applesdemo)
 
 if [ -d "/usr/local/arisen" ]; then
    printf "\tDo you wish to remove this install? (requires sudo)\n"
@@ -21,15 +21,15 @@ if [ -d "/usr/local/arisen" ]; then
             fi
 
             pushd /usr/local &> /dev/null
-            rm -rf eosio
+            rm -rf arisen
             pushd bin &> /dev/null
             for binary in ${binaries[@]}; do
                rm ${binary}
             done
             # Handle cleanup of directories created from installation
             if [ "$1" == "--full" ]; then
-               if [ -d ~/Library/Application\ Support/eosio ]; then rm -rf ~/Library/Application\ Support/eosio; fi # Mac OS
-               if [ -d ~/.local/share/eosio ]; then rm -rf ~/.local/share/eosio; fi # Linux
+               if [ -d ~/Library/Application\ Support/arisen ]; then rm -rf ~/Library/Application\ Support/arisen; fi # Mac OS
+               if [ -d ~/.local/share/arisen ]; then rm -rf ~/.local/share/arisen; fi # Linux
             fi
             popd &> /dev/null
             break;;
