@@ -1,13 +1,13 @@
 /**
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
- *  @defgroup eosclienttool ARISEN Command Line Client Reference
+ *  @defgroup rsnclienttool ARISEN Command Line Client Reference
  *  @brief Tool for sending transactions and querying state from @ref aOS
- *  @ingroup eosclienttool
+ *  @ingroup rsnclienttool
  */
 
 /**
-  @defgroup eosclienttool
+  @defgroup rsnclienttool
 
   @section intro Introduction to arisecli
 
