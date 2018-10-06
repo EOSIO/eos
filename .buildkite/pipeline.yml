@@ -23,10 +23,10 @@ steps:
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:ubuntu"
+        image: "arisen/ci:ubuntu"
         workdir: /data/job
     timeout: 60
-    
+
   - command: |
         echo "+++ :hammer: Building" && \
         echo 1 | ./arisen_build.sh && \
@@ -38,7 +38,7 @@ steps:
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:ubuntu18"
+        image: "arisen/ci:ubuntu18"
         workdir: /data/job
     timeout: 60
 
@@ -53,10 +53,10 @@ steps:
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:fedora"
+        image: "arisen/ci:fedora"
         workdir: /data/job
     timeout: 60
- 
+
   - command: |
         echo "+++ :hammer: Building" && \
         echo 1 | ./arisen_build.sh && \
@@ -68,7 +68,7 @@ steps:
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:centos"
+        image: "arisen/ci:centos"
         workdir: /data/job
     timeout: 60
 
@@ -83,7 +83,7 @@ steps:
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:amazonlinux"
+        image: "arisen/ci:amazonlinux"
         workdir: /data/job
     timeout: 60
 
@@ -128,7 +128,7 @@ steps:
       - "build/genesis.json"
       - "build/config.ini"
     timeout: 60
-    
+
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
         buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Build" && \
@@ -149,7 +149,7 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:ubuntu"
+        image: "arisen/ci:ubuntu"
         workdir: /data/job
     timeout: 60
 
@@ -173,10 +173,10 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:ubuntu"
+        image: "arisen/ci:ubuntu"
         workdir: /data/job
     timeout: 60
-  
+
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
         buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build" && \
@@ -197,7 +197,7 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:ubuntu18"
+        image: "arisen/ci:ubuntu18"
         workdir: /data/job
     timeout: 60
 
@@ -221,7 +221,7 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:ubuntu18"
+        image: "arisen/ci:ubuntu18"
         workdir: /data/job
     timeout: 60
 
@@ -245,7 +245,7 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:fedora"
+        image: "arisen/ci:fedora"
         workdir: /data/job
     timeout: 60
 
@@ -269,7 +269,7 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:fedora"
+        image: "arisen/ci:fedora"
         workdir: /data/job
     timeout: 60
 
@@ -293,7 +293,7 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:centos"
+        image: "arisen/ci:centos"
         workdir: /data/job
     timeout: 60
 
@@ -317,7 +317,7 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:centos"
+        image: "arisen/ci:centos"
         workdir: /data/job
     timeout: 60
 
@@ -341,7 +341,7 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:amazonlinux"
+        image: "arisen/ci:amazonlinux"
         workdir: /data/job
     timeout: 60
 
@@ -365,6 +365,6 @@ steps:
       - "build/config.ini"
     plugins:
       docker#v1.4.0:
-        image: "eosio/ci:amazonlinux"
+        image: "arisen/ci:amazonlinux"
         workdir: /data/job
     timeout: 60
