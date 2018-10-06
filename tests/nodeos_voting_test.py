@@ -190,7 +190,7 @@ try:
         Utils.cmdError("%s" % (WalletdName))
         Utils.errorExit("Failed to stand up eos walletd.")
 
-    testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount,accounts[0],accounts[1],accounts[2],accounts[3],accounts[4]])
+    testWallet=walletMgr.create(testWalletName, [cluster.arisenAccount,accounts[0],accounts[1],accounts[2],accounts[3],accounts[4]])
 
     for _, account in cluster.defProducerAccounts.items():
         walletMgr.importKey(account, testWallet, ignoreDupKeyWarning=True)
@@ -211,11 +211,11 @@ try:
     node=node0
     # create accounts via eosio as otherwise a bid is needed
     for account in accounts:
-        Print("Create new account %s via %s" % (account.name, cluster.eosioAccount.name))
-        trans=node.createInitializeAccount(account, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=False, stakeNet=1000, stakeCPU=1000, buyRAM=1000, exitOnError=True)
+        Print("Create new account %s via %s" % (account.name, cluster.arisenAccount.name))
+        trans=node.createInitializeAccount(account, cluster.arisenAccount, stakedDeposit=0, waitForTransBlock=False, stakeNet=1000, stakeCPU=1000, buyRAM=1000, exitOnError=True)
         transferAmount="100000000.0000 {0}".format(CORE_SYMBOL)
-        Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
-        node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer")
+        Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.arisenAccount.name, account.name))
+        node.transferFunds(cluster.arisenAccount, account, transferAmount, "test transfer")
         trans=node.delegatebw(account, 20000000.0000, 20000000.0000, exitOnError=True)
 
     # containers for tracking producers

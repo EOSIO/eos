@@ -102,7 +102,7 @@ try:
         Utils.cmdError("%s" % (WalletdName))
         errorExit("Failed to stand up eos walletd.")
 
-    testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount])
+    testWallet=walletMgr.create(testWalletName, [cluster.arisenAccount])
 
     for _, account in cluster.defProducerAccounts.items():
         walletMgr.importKey(account, testWallet, ignoreDupKeyWarning=True)
@@ -121,21 +121,21 @@ try:
 
     # create accounts via eosio as otherwise a bid is needed
     for account in accounts:
-        Print("Create new account %s via %s" % (account.name, cluster.eosioAccount.name))
-        trans=nodes[0].createInitializeAccount(account, cluster.eosioAccount, stakedDeposit=500000, waitForTransBlock=False, stakeNet=50000, stakeCPU=50000, buyRAM=50000, exitOnError=True)
+        Print("Create new account %s via %s" % (account.name, cluster.arisenAccount.name))
+        trans=nodes[0].createInitializeAccount(account, cluster.arisenAccount, stakedDeposit=500000, waitForTransBlock=False, stakeNet=50000, stakeCPU=50000, buyRAM=50000, exitOnError=True)
         transferAmount="70000000.0000 {0}".format(CORE_SYMBOL)
-        Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
-        nodes[0].transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer")
+        Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.arisenAccount.name, account.name))
+        nodes[0].transferFunds(cluster.arisenAccount, account, transferAmount, "test transfer")
         trans=nodes[0].delegatebw(account, 1000000.0000, 68000000.0000, exitOnError=True)
 
     contractAccount=cluster.createAccountKeys(1)[0]
     contractAccount.name="contracttest"
     walletMgr.importKey(contractAccount, testWallet)
-    Print("Create new account %s via %s" % (contractAccount.name, cluster.eosioAccount.name))
-    trans=nodes[0].createInitializeAccount(contractAccount, cluster.eosioAccount, stakedDeposit=500000, waitForTransBlock=False, stakeNet=50000, stakeCPU=50000, buyRAM=50000, exitOnError=True)
+    Print("Create new account %s via %s" % (contractAccount.name, cluster.arisenAccount.name))
+    trans=nodes[0].createInitializeAccount(contractAccount, cluster.arisenAccount, stakedDeposit=500000, waitForTransBlock=False, stakeNet=50000, stakeCPU=50000, buyRAM=50000, exitOnError=True)
     transferAmount="90000000.0000 {0}".format(CORE_SYMBOL)
-    Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, contractAccount.name))
-    nodes[0].transferFunds(cluster.eosioAccount, contractAccount, transferAmount, "test transfer")
+    Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.arisenAccount.name, contractAccount.name))
+    nodes[0].transferFunds(cluster.arisenAccount, contractAccount, transferAmount, "test transfer")
     trans=nodes[0].delegatebw(contractAccount, 1000000.0000, 88000000.0000, exitOnError=True)
 
     contractDir="contracts/integration_test"
