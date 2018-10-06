@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include <eos/utilities/git_revision.hpp>
+#include <arisen/utilities/git_revision.hpp>
 
 #define RSN_GIT_REVISION_SHA "@RSN_GIT_REVISION_SHA@"
 #define RSN_GIT_REVISION_UNIX_TIMESTAMP @RSN_GIT_REVISION_UNIX_TIMESTAMP@
