@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in arisen/LICENSE.txt
  */
 #include <eosio/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>

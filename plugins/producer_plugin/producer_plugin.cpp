@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in arisen/LICENSE.txt
  */
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/chain/producer_object.hpp>

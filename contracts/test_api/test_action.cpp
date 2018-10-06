@@ -1,6 +1,6 @@
 /**
  * @file action_test.cpp
- * @copyright defined in eos/LICENSE.txt
+ * @copyright defined in arisen/LICENSE.txt
  */
 #include <arisenlib/action.hpp>
 #include <arisenlib/transaction.hpp>

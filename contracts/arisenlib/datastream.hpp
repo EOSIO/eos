@@ -1,6 +1,6 @@
 /**
  *  @file datastream.hpp
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in arisen/LICENSE.txt
  */
 #pragma once
 #include <arisenlib/system.h>

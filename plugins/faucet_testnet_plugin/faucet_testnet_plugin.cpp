@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in arisen/LICENSE.txt
  */
 #include <eosio/faucet_testnet_plugin/faucet_testnet_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>

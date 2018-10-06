@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in arisen/LICENSE.txt
  */
 #include <eosio/net_api_plugin/net_api_plugin.hpp>
 #include <eosio/chain/exceptions.hpp>

@@ -1,6 +1,6 @@
 /**
  *    @file test_compiler_builtins.cpp
- *    @copyright defined in eos/LICENSE.txt
+ *    @copyright defined in arisen/LICENSE.txt
  */
 
 #include <arisenlib/eosio.hpp>
