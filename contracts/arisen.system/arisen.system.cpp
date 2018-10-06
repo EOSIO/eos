@@ -74,7 +74,7 @@ namespace arisensystem {
    }
 
    void system_contract::setparams( const arisen::blockchain_parameters& params ) {
-      require_auth( N(eosio) );
+      require_auth( N(arisen) );
       (arisen::blockchain_parameters&)(_gstate) = params;
       arisen_assert( 3 <= _gstate.max_authority_depth, "max_authority_depth should be at least 3" );
       set_blockchain_parameters( params );
@@ -105,7 +105,7 @@ namespace arisensystem {
       arisen_assert( bid.amount > 0, "insufficient bid" );
 
       INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {bidder,N(active)},
-                                                    { bidder, N(eosio.names), bid, std::string("bid name ")+(name{newname}).to_string()  } );
+                                                    { bidder, N(arisen.names), bid, std::string("bid name ")+(name{newname}).to_string()  } );
 
       name_bid_table bids(_self,_self);
       print( name{bidder}, " bid ", bid, " on ", name{newname}, "\n" );
@@ -122,8 +122,8 @@ namespace arisensystem {
          arisen_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
          arisen_assert( current->high_bidder != bidder, "account is already highest bidder" );
 
-         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio.names),N(active)},
-                                                       { N(eosio.names), current->high_bidder, asset(current->high_bid),
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(arisen.names),N(active)},
+                                                       { N(arisen.names), current->high_bidder, asset(current->high_bid),
                                                        std::string("refund bid on name ")+(name{newname}).to_string()  } );
 
          bids.modify( current, bidder, [&]( auto& b ) {
@@ -184,7 +184,7 @@ namespace arisensystem {
 } /// arisen.system
 
 
-ARISEN_ABI( eosiosystem::system_contract,
+ARISEN_ABI( arisensystem::system_contract,
      // native.hpp (newaccount definition is actually in arisen.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
      // arisen.system.cpp

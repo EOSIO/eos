@@ -88,9 +88,9 @@ namespace arisensystem {
    void system_contract::buyrambytes( account_name payer, account_name receiver, uint32_t bytes ) {
       auto itr = _rammarket.find(S(4,RAMCORE));
       auto tmp = *itr;
-      auto eosout = tmp.convert( asset(bytes,S(0,RAM)), CORE_SYMBOL );
+      auto rsnout = tmp.convert( asset(bytes,S(0,RAM)), CORE_SYMBOL );
 
-      buyram( payer, receiver, eosout );
+      buyram( payer, receiver, rsnout );
    }
 
 
@@ -193,7 +193,7 @@ namespace arisensystem {
 
       auto fee = ( tokens_out.amount + 199 ) / 200; /// .5% fee (round up)
       // since tokens_out.amount was asserted to be at least 2 earlier, fee.amount < tokens_out.amount
-      
+
       if( fee > 0 ) {
          INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {account,N(active)},
             { account, N(arisen.ramfee), asset(fee), std::string("sell ram fee") } );
@@ -274,7 +274,7 @@ namespace arisensystem {
       } // tot_itr can be invalid, should go out of scope
 
       // create refund or update from existing refund
-      if ( N(arisen.stake) != source_stake_from ) { //for eosio both transfer and refund make no sense
+      if ( N(arisen.stake) != source_stake_from ) { //for arisen both transfer and refund make no sense
          refunds_table refunds_tbl( _self, from );
          auto req = refunds_tbl.find( from );
 

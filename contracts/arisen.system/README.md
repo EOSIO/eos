@@ -1,11 +1,11 @@
 arisen.system
 ----------
 
-This contract enables users to stake tokens, and then configure and vote on producers and worker proposals. 
+This contract enables users to stake tokens, and then configure and vote on producers and worker proposals.
 
 Users can also proxy their voting influence to other users.
 
-The state of this contract is read to determine the 21 active block producers. 
+The state of this contract is read to determine the 21 active block producers.
 
 Actions:
 The naming convention is codeaccount::actionname followed by a list of paramters.
@@ -16,7 +16,7 @@ Indicates that a particular account wishes to become a producer
    - updates the configuration settings for a particular producer, these
 
    Storage changes are billed to 'account'
-   
+
 ## arisen.system::okproducer     account producer vote
    - **account** the account which is doing the voting
    - **producer** the producer which is being voted for (or unvoted for)
@@ -33,7 +33,7 @@ Indicates that a particular account wishes to become a producer
 
    Storage changes will be billed to 'account'
 
-## arisen.system::unstake        account quantity 
+## arisen.system::unstake        account quantity
    - **account** - the account which is requesting their balance be unstaked
    - **quantity** - the quantity which will be unstaked, unstaked tokens lose voting influence immediately
 
@@ -57,10 +57,10 @@ Indicates that a particular account wishes to become a producer
 ## arisen.system::transfer from to amount memo
    - decrements balance of from if amount <= balance
    - increments balance of to by amount
-   - memo is ignored 
+   - memo is ignored
 
 ## arisen.system::stakevote account amount
-   - the primary currency of eosio is controlled by the token contract which enables users to transfer
+   - the primary currency of arisen is controlled by the token contract which enables users to transfer
      balances from one user to another. The receiver is notified on incoming balances and the vote contract
      will stake the tokens on receipt.
 
@@ -69,16 +69,16 @@ Indicates that a particular account wishes to become a producer
 
 ## arisen.system::onblock   account blocktime blocknum
    - this special action is triggered when a block is applied by the given producer and cannot be generated from
-     any other source. It is used to pay producers and calculate missed blocks of other producers. 
+     any other source. It is used to pay producers and calculate missed blocks of other producers.
 
    - producer pay is deposited into the producer's stake balance and can be withdrawn over time.
 
    - if blocknum is the start of a new round this may update the active producer config from the producer votes.
 
-## arisen.system::freeze producer accounts true|false 
-   - requires permission of the @producers account 
+## arisen.system::freeze producer accounts true|false
+   - requires permission of the @producers account
    - if an account is frozen, all authorizations of that account are rejected and the code for that account will not be run
 
 ## arisen.system::paystandby producer
-   - every block some amount of tokens is paid 
+   - every block some amount of tokens is paid
    - at most once per day a producer may claim a percentage of the standby pay equal to their totalvotes / allvotes

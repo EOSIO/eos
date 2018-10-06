@@ -233,4 +233,4 @@ namespace arisensystem {
          void propagate_weight_change( const voter_info& voter );
    };
 
-} /// eosiosystem
+} /// arisensystem

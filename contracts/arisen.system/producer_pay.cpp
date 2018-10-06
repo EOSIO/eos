@@ -20,7 +20,7 @@ namespace arisensystem {
    void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
       using namespace arisen;
 
-      require_auth(N(eosio));
+      require_auth(N(arisen));
 
       /** until activated stake crosses this threshold no new rewards are paid */
       if( _gstate.total_activated_stake < min_activated_stake )
@@ -89,17 +89,17 @@ namespace arisensystem {
          auto to_per_block_pay   = to_producers / 4;
          auto to_per_vote_pay    = to_producers - to_per_block_pay;
 
-         INLINE_ACTION_SENDER(arisen::token, issue)( N(arisen.token), {{N(eosio),N(active)}},
-                                                    {N(eosio), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
+         INLINE_ACTION_SENDER(arisen::token, issue)( N(arisen.token), {{N(arisen),N(active)}},
+                                                    {N(arisen), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
 
-         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio),N(active)},
-                                                       { N(eosio), N(eosio.saving), asset(to_savings), "unallocated inflation" } );
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(arisen),N(active)},
+                                                       { N(arisen), N(arisen.saving), asset(to_savings), "unallocated inflation" } );
 
-         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio),N(active)},
-                                                       { N(eosio), N(eosio.bpay), asset(to_per_block_pay), "fund per-block bucket" } );
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(arisen),N(active)},
+                                                       { N(arisen), N(arisen.bpay), asset(to_per_block_pay), "fund per-block bucket" } );
 
-         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio),N(active)},
-                                                       { N(eosio), N(eosio.vpay), asset(to_per_vote_pay), "fund per-vote bucket" } );
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(arisen),N(active)},
+                                                       { N(arisen), N(arisen.vpay), asset(to_per_vote_pay), "fund per-vote bucket" } );
 
          _gstate.pervote_bucket  += to_per_vote_pay;
          _gstate.perblock_bucket += to_per_block_pay;
@@ -128,12 +128,12 @@ namespace arisensystem {
       });
 
       if( producer_per_block_pay > 0 ) {
-         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio.bpay),N(active)},
-                                                       { N(eosio.bpay), owner, asset(producer_per_block_pay), std::string("producer block pay") } );
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(arisen.bpay),N(active)},
+                                                       { N(arisen.bpay), owner, asset(producer_per_block_pay), std::string("producer block pay") } );
       }
       if( producer_per_vote_pay > 0 ) {
-         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio.vpay),N(active)},
-                                                       { N(eosio.vpay), owner, asset(producer_per_vote_pay), std::string("producer vote pay") } );
+         INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(arisen.vpay),N(active)},
+                                                       { N(arisen.vpay), owner, asset(producer_per_vote_pay), std::string("producer vote pay") } );
       }
    }
 
