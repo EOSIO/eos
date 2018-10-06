@@ -89,7 +89,7 @@ ecmd create account eosio eosio.names $pubsyskey $pubsyskey
 ecmd create account eosio arisen.ram $pubsyskey $pubsyskey
 ecmd create account eosio arisen.ramfee $pubsyskey $pubsyskey
 ecmd create account eosio eosio.saving $pubsyskey $pubsyskey
-ecmd create account eosio eosio.stake $pubsyskey $pubsyskey
+ecmd create account eosio arisen.stake $pubsyskey $pubsyskey
 ecmd create account eosio arisen.token $pubsyskey $pubsyskey
 ecmd create account eosio eosio.vpay $pubsyskey $pubsyskey
 ecmd create account eosio arisen.sudo $pubsyskey $pubsyskey

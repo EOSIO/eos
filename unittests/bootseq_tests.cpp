@@ -182,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
         // Create arisen.msig and arisen.token
-        create_accounts({N(arisen.msig), N(arisen.token), N(arisen.ram), N(arisen.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+        create_accounts({N(arisen.msig), N(arisen.token), N(arisen.ram), N(arisen.ramfee), N(arisen.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
 
         // Set code for the following accounts:
         //  - eosio (code: arisen.bios) (already set by tester constructor)
@@ -230,7 +230,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            auto r = buyram(config::system_account_name, a.aname, asset(ram));
            BOOST_REQUIRE( !r->except_ptr );
 
-           r = delegate_bandwidth(N(eosio.stake), a.aname, asset(net), asset(cpu));
+           r = delegate_bandwidth(N(arisen.stake), a.aname, asset(net), asset(cpu));
            BOOST_REQUIRE( !r->except_ptr );
         }
 

@@ -23,7 +23,7 @@ systemAccounts = [
     'arisen.ram',
     'arisen.ramfee',
     'eosio.saving',
-    'eosio.stake',
+    'arisen.stake',
     'arisen.token',
     'eosio.vpay',
 ]

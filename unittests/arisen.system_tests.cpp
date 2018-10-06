@@ -129,22 +129,22 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, arisen_system_tester ) try {
    BOOST_REQUIRE_EQUAL( core_from_string("210.0000"), total["net_weight"].as<asset>());
    BOOST_REQUIRE_EQUAL( core_from_string("110.0000"), total["cpu_weight"].as<asset>());
 
-   const auto init_eosio_stake_balance = get_balance( N(eosio.stake) );
+   const auto init_eosio_stake_balance = get_balance( N(arisen.stake) );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
    BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
-   BOOST_REQUIRE_EQUAL( init_eosio_stake_balance + core_from_string("300.0000"), get_balance( N(eosio.stake) ) );
+   BOOST_REQUIRE_EQUAL( init_eosio_stake_balance + core_from_string("300.0000"), get_balance( N(arisen.stake) ) );
    BOOST_REQUIRE_EQUAL( success(), unstake( "alice1111111", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
    BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
 
    produce_block( fc::hours(3*24-1) );
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
-   BOOST_REQUIRE_EQUAL( init_eosio_stake_balance + core_from_string("300.0000"), get_balance( N(eosio.stake) ) );
+   BOOST_REQUIRE_EQUAL( init_eosio_stake_balance + core_from_string("300.0000"), get_balance( N(arisen.stake) ) );
    //after 3 days funds should be released
    produce_block( fc::hours(1) );
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL( core_from_string("1000.0000"), get_balance( "alice1111111" ) );
-   BOOST_REQUIRE_EQUAL( init_eosio_stake_balance, get_balance( N(eosio.stake) ) );
+   BOOST_REQUIRE_EQUAL( init_eosio_stake_balance, get_balance( N(arisen.stake) ) );
 
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "bob111111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
    BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
@@ -182,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, arisen_system_tester ) try
    cross_15_percent_threshold();
 
    issue( "eosio", core_from_string("1000.0000"), config::system_account_name );
-   issue( "eosio.stake", core_from_string("1000.0000"), config::system_account_name );
+   issue( "arisen.stake", core_from_string("1000.0000"), config::system_account_name );
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
    //eosio stakes for alice with transfer flag
@@ -249,7 +249,7 @@ BOOST_FIXTURE_TEST_CASE( stake_while_pending_refund, arisen_system_tester ) try 
    cross_15_percent_threshold();
 
    issue( "eosio", core_from_string("1000.0000"), config::system_account_name );
-   issue( "eosio.stake", core_from_string("1000.0000"), config::system_account_name );
+   issue( "arisen.stake", core_from_string("1000.0000"), config::system_account_name );
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
    //eosio stakes for alice with transfer flag

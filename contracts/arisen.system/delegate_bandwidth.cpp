@@ -274,7 +274,7 @@ namespace arisensystem {
       } // tot_itr can be invalid, should go out of scope
 
       // create refund or update from existing refund
-      if ( N(eosio.stake) != source_stake_from ) { //for eosio both transfer and refund make no sense
+      if ( N(arisen.stake) != source_stake_from ) { //for eosio both transfer and refund make no sense
          refunds_table refunds_tbl( _self, from );
          auto req = refunds_tbl.find( from );
 
@@ -351,7 +351,7 @@ namespace arisensystem {
          auto transfer_amount = net_balance + cpu_balance;
          if ( asset(0) < transfer_amount ) {
             INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {source_stake_from, N(active)},
-               { source_stake_from, N(eosio.stake), asset(transfer_amount), std::string("stake bandwidth") } );
+               { source_stake_from, N(arisen.stake), asset(transfer_amount), std::string("stake bandwidth") } );
          }
       }
 
@@ -416,8 +416,8 @@ namespace arisensystem {
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.
 
-      INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio.stake),N(active)},
-                                                    { N(eosio.stake), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
+      INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(arisen.stake),N(active)},
+                                                    { N(arisen.stake), req->owner, req->net_amount + req->cpu_amount, std::string("unstake") } );
 
       refunds_tbl.erase( req );
    }
