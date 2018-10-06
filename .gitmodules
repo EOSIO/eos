@@ -1,32 +1,32 @@
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
-	url = https://github.com/arisen/chainbase
+	url = https://github.com/arisenio/chainbase
         ignore = dirty
 [submodule "libraries/appbase"]
 	path = libraries/appbase
-	url = https://github.com/arisen/appbase
+	url = https://github.com/arisenio/appbase
         ignore = dirty
 [submodule "contracts/musl/upstream"]
 	path = contracts/musl/upstream
-	url = https://github.com/arisen/musl.git
+	url = https://github.com/arisenio/musl.git
 	branch = arisen
 [submodule "contracts/libc++/upstream"]
 	path = contracts/libc++/upstream
-	url = https://github.com/arisen/libcxx.git
+	url = https://github.com/arisenio/libcxx.git
 	branch = arisen
 [submodule "externals/binaryen"]
 	path = externals/binaryen
-	url = https://github.com/arisen/binaryen
+	url = https://github.com/arisenio/binaryen
 
 [submodule "libraries/softfloat"]
 	path = libraries/softfloat
-	url = https://github.com/arisen/berkeley-softfloat-3
+	url = https://github.com/arisenio/berkeley-softfloat-3
 [submodule "externals/magic_get"]
 	path = externals/magic_get
-	url = https://github.com/arisen/magic_get
+	url = https://github.com/arisenio/magic_get
 [submodule "libraries/fc"]
 	path = libraries/fc
-	url = https://github.com/arisen/fc
+	url = https://github.com/arisenio/fc
 [submodule "libraries/wabt"]
 	path = libraries/wabt
-	url = http://github.com/arisen/wabt
+	url = http://github.com/arisenio/wabt
