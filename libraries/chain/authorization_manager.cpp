@@ -240,7 +240,7 @@ namespace arisen { namespace chain {
 
       const auto linked_permission_name = lookup_minimum_permission(link.account, link.code, link.type);
 
-      if( !linked_permission_name ) // if action is linked to eosio.any permission
+      if( !linked_permission_name ) // if action is linked to arisen.any permission
          return;
 
       RSN_ASSERT( get_permission(auth).satisfies( get_permission({link.account, *linked_permission_name}),
@@ -374,7 +374,7 @@ namespace arisen { namespace chain {
 
             if( !special_case ) {
                auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
-               if( min_permission_name ) { // since special cases were already handled, it should only be false if the permission is eosio.any
+               if( min_permission_name ) { // since special cases were already handled, it should only be false if the permission is arisen.any
                   const auto& min_permission = get_permission({declared_auth.actor, *min_permission_name});
                   RSN_ASSERT( get_permission(declared_auth).satisfies( min_permission,
                                                                        _db.get_index<permission_index>().indices() ),

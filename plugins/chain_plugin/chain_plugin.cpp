@@ -1778,9 +1778,9 @@ namespace detail {
 chain::symbol read_only::extract_core_symbol()const {
    symbol core_symbol; // Default to CORE_SYMBOL if the appropriate data structure cannot be found in the system contract table data
 
-   // The following code makes assumptions about the contract deployed on eosio account (i.e. the system contract) and how it stores its data.
+   // The following code makes assumptions about the contract deployed on arisen account (i.e. the system contract) and how it stores its data.
    const auto& d = db.db();
-   const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(eosio), N(eosio), N(rammarket) ));
+   const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(arisen), N(arisen), N(rammarket) ));
    if( t_id != nullptr ) {
       const auto &idx = d.get_index<key_value_index, by_scope_primary>();
       auto it = idx.find(boost::make_tuple( t_id->id, arisen::chain::string_to_symbol_c(4,"RAMCORE") ));

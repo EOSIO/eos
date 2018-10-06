@@ -209,7 +209,7 @@ try:
     node3=cluster.getNode(3)
 
     node=node0
-    # create accounts via eosio as otherwise a bid is needed
+    # create accounts via arisen as otherwise a bid is needed
     for account in accounts:
         Print("Create new account %s via %s" % (account.name, cluster.arisenAccount.name))
         trans=node.createInitializeAccount(account, cluster.arisenAccount, stakedDeposit=0, waitForTransBlock=False, stakeNet=1000, stakeCPU=1000, buyRAM=1000, exitOnError=True)

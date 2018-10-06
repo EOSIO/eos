@@ -119,7 +119,7 @@ try:
     for account in accounts:
         walletMgr.importKey(account, testWallet)
 
-    # create accounts via eosio as otherwise a bid is needed
+    # create accounts via arisen as otherwise a bid is needed
     for account in accounts:
         Print("Create new account %s via %s" % (account.name, cluster.arisenAccount.name))
         trans=nodes[0].createInitializeAccount(account, cluster.arisenAccount, stakedDeposit=500000, waitForTransBlock=False, stakeNet=50000, stakeCPU=50000, buyRAM=50000, exitOnError=True)
@@ -167,7 +167,7 @@ try:
             try:
                 trans=nodes[0].pushMessage(contract, action, data, opts)
                 if trans is None or not trans[0]:
-                    Print("Failed to push create action to eosio contract. sleep for 60 seconds")
+                    Print("Failed to push create action to arisen contract. sleep for 60 seconds")
                     time.sleep(60)
                 time.sleep(1)
             except TypeError as ex:
@@ -245,7 +245,7 @@ try:
             try:
                 trans=nodes[0].pushMessage(contract, action, data, opts)
                 if trans is None or not trans[0]:
-                    Print("Failed to push create action to eosio contract. sleep for 60 seconds")
+                    Print("Failed to push create action to arisen contract. sleep for 60 seconds")
                     time.sleep(60)
                 time.sleep(1)
             except TypeError as ex:
@@ -305,7 +305,7 @@ try:
         try:
             trans=nodes[0].pushMessage(contract, action, data, opts)
             if trans is None or not trans[0]:
-                Print("Failed to push create action to eosio contract. sleep for 60 seconds")
+                Print("Failed to push create action to arisen contract. sleep for 60 seconds")
                 time.sleep(60)
                 continue
             time.sleep(1)

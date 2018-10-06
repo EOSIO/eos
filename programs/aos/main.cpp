@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eosio/LICENSE.txt
+ *  @copyright defined in arisen/LICENSE.txt
  */
 #include <appbase/application.hpp>
 

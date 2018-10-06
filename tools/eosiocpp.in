@@ -15,7 +15,7 @@ if [ -x "@CMAKE_BINARY_DIR@/externals/binaryen/bin/arisen-s2wasm" ]; then
 elif [ -x "${ARISEN_INSTALL_DIR}/bin/arisen-s2wasm" ]; then
     ARISEN_S2WASM="${ARISEN_INSTALL_DIR}/bin/arisen-s2wasm"
 else
-    echo "eosio-s2wasm not found either built or installed"
+    echo "arisen-s2wasm not found either built or installed"
     exit 12
 fi
 if [ -x "@CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Programs/arisen-wast2wasm" ]; then
@@ -23,7 +23,7 @@ if [ -x "@CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Programs/arisen-wast2wasm"
 elif [ -x "${ARISEN_INSTALL_DIR}/bin/arisen-wast2wasm" ]; then
     ARISEN_WAST2WASM="${ARISEN_INSTALL_DIR}/bin/arisen-wast2wasm"
 else
-    echo "eosio-wast2wasm not found either built or installed"
+    echo "arisen-wast2wasm not found either built or installed"
     exit 14
 fi
 BOOST_INCLUDE_DIR=@Boost_INCLUDE_DIR@

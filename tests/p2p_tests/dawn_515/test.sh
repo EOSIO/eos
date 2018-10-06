@@ -54,7 +54,7 @@ send-whole-blocks = true
 readonly = 0
 p2p-max-nodes-per-host = 10
 enable-stale-production = true
-producer-name = eosio
+producer-name = arisen
 EOF
 
 read -d '' config00 << EOF

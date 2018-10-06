@@ -1611,10 +1611,10 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_alias, abi_gen_helper)
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(abigen_eosioabi_macro, abi_gen_helper)
+BOOST_FIXTURE_TEST_CASE(abigen_arisenabi_macro, abi_gen_helper)
 { try {
 
-   const char* abigen_eosioabi_macro = R"=====(
+   const char* abigen_arisenabi_macro = R"=====(
 
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
@@ -1644,7 +1644,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_eosioabi_macro, abi_gen_helper)
 
    )=====";
 
-   const char* abigen_eosioabi_macro_abi = R"=====(
+   const char* abigen_arisenabi_macro_abi = R"=====(
    {
      "version": "arisen::abi/1.0",
      "types": [],
@@ -1668,7 +1668,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_eosioabi_macro, abi_gen_helper)
    }
    )=====";
 
-   BOOST_TEST( generate_abi(abigen_eosioabi_macro, abigen_eosioabi_macro_abi) == true );
+   BOOST_TEST( generate_abi(abigen_arisenabi_macro, abigen_arisenabi_macro_abi) == true );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -1746,10 +1746,10 @@ BOOST_FIXTURE_TEST_CASE(abigen_contract_inheritance, abi_gen_helper)
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(abigen_no_eosioabi_macro, abi_gen_helper)
+BOOST_FIXTURE_TEST_CASE(abigen_no_arisenabi_macro, abi_gen_helper)
 { try {
 
-   const char* abigen_no_eosioabi_macro = R"=====(
+   const char* abigen_no_arisenabi_macro = R"=====(
       #pragma GCC diagnostic push
       #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
       #include <arisenlib/arisen.hpp>
@@ -1789,7 +1789,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_no_eosioabi_macro, abi_gen_helper)
       }
    )=====";
 
-   const char* abigen_no_eosioabi_macro_abi = R"=====(
+   const char* abigen_no_arisenabi_macro_abi = R"=====(
    {
      "version": "arisen::abi/1.0",
      "types": [],
@@ -1828,7 +1828,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_no_eosioabi_macro, abi_gen_helper)
    }
    )=====";
 
-   BOOST_TEST( generate_abi(abigen_no_eosioabi_macro, abigen_no_eosioabi_macro_abi) == true );
+   BOOST_TEST( generate_abi(abigen_no_arisenabi_macro, abigen_no_arisenabi_macro_abi) == true );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -3372,7 +3372,7 @@ BOOST_AUTO_TEST_CASE(abi_large_array)
 
       abi_serializer abis( fc::json::from_string( abi_str ).as<abi_def>(), max_serialization_time );
       // indicate a very large array, but don't actually provide a large array
-      // curl http://127.0.0.1:12618/v1/chain/abi_bin_to_json -X POST -d '{"code":"eosio", "action":"hi", "binargs":"ffffffff08"}'
+      // curl http://127.0.0.1:12618/v1/chain/abi_bin_to_json -X POST -d '{"code":"arisen", "action":"hi", "binargs":"ffffffff08"}'
       bytes bin = {static_cast<char>(0xff),
                    static_cast<char>(0xff),
                    static_cast<char>(0xff),
@@ -3490,7 +3490,7 @@ BOOST_AUTO_TEST_CASE(abi_recursive_structs)
       )=====";
 
       abi_serializer abis(fc::json::from_string(abi_str).as<abi_def>(), max_serialization_time);
-      string hi_data = "{\"user\":\"eosio\"}";
+      string hi_data = "{\"user\":\"arisen\"}";
       auto bin = abis.variant_to_binary("hi2", fc::json::from_string(hi_data), max_serialization_time);
       BOOST_CHECK_THROW( abis.binary_to_variant("hi", bin, max_serialization_time);, fc::exception );
 

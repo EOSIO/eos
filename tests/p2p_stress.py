@@ -27,14 +27,14 @@ class StressNetwork:
         tr = node.transferFunds(acc1, acc2, amount, memo)
         self.trList.append(tr)
 
-    def execute(self, cmdInd, node, ta, eosio):
+    def execute(self, cmdInd, node, ta, arisen):
         print("\n==== network stress test: %d transaction(s)/s for %d secs ====" % (self.speeds[cmdInd], self.sec))
         total = self.speeds[cmdInd] * self.sec
 
         ta.name = self.randAcctName()
         acc1 = copy.copy(ta)
         print("creating new account %s" % (ta.name))
-        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=True, exitOnError=True)
+        tr = node.createAccount(ta, arisen, stakedDeposit=0, waitForTransBlock=True, exitOnError=True)
         trid = node.getTransId(tr)
         if trid is None:
             return ([], "", 0.0, "failed to create account")
@@ -43,17 +43,17 @@ class StressNetwork:
         ta.name = self.randAcctName()
         acc2 = copy.copy(ta)
         print("creating new account %s" % (ta.name))
-        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=True, exitOnError=True)
+        tr = node.createAccount(ta, arisen, stakedDeposit=0, waitForTransBlock=True, exitOnError=True)
         trid = node.getTransId(tr)
         if trid is None:
             return ([], "", 0.0, "failed to create account")
         print("transaction id %s" % (trid))
 
         print("issue currency0000 into %s" % (acc1.name))
-        contract="eosio"
+        contract="arisen"
         action="issue"
         data="{\"to\":\"" + acc1.name + "\",\"quantity\":\"1000000.0000 "+CORE_SYMBOL+"\"}"
-        opts="--permission eosio@active"
+        opts="--permission arisen@active"
         tr=node.pushMessage(contract, action, data, opts)
         trid = node.getTransId(tr[1])
         if trid is None:

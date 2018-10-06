@@ -24,7 +24,7 @@ Deleting the `transactions.txt` file will prevent replay from working.
 
 `arisecli wallet import  --private-key <private key from step 2>`
 
-`arisecli create account eosio <account_name> <public key from step 1> <public key from step 2>`
+`arisecli create account arisen <account_name> <public key from step 1> <public key from step 2>`
 
 ### Set contract steps
 `arisecli set contract arisen.token /contracts/arisen.token -p arisen.token@active`

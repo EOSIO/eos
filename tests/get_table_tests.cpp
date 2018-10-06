@@ -48,7 +48,7 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
    produce_blocks(2);
 
    create_accounts({ N(arisen.token), N(arisen.ram), N(arisen.ramfee), N(arisen.stake),
-      N(eosio.bpay), N(eosio.vpay), N(eosio.saving), N(eosio.names) });
+      N(arisen.bpay), N(arisen.vpay), N(arisen.saving), N(arisen.names) });
 
    std::vector<account_name> accs{N(inita), N(initb), N(initc), N(initd)};
    create_accounts(accs);
@@ -60,13 +60,13 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
 
    // create currency 
    auto act = mutable_variant_object()
-         ("issuer",       "eosio")
+         ("issuer",       "arisen")
          ("maximum_supply", arisen::chain::asset::from_string("1000000000.0000 SYS"));
    push_action(N(arisen.token), N(create), N(arisen.token), act );
 
    // issue
    for (account_name a: accs) {
-      push_action( N(arisen.token), N(issue), "eosio", mutable_variant_object()
+      push_action( N(arisen.token), N(issue), "arisen", mutable_variant_object()
                   ("to",      name(a) )
                   ("quantity", arisen::chain::asset::from_string("999.0000 SYS") )
                   ("memo", "")
@@ -85,7 +85,7 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
       BOOST_REQUIRE_EQUAL(name(N(arisen.token)), result.rows[0].code);
       BOOST_REQUIRE_EQUAL(name(N(inita)), result.rows[0].scope);
       BOOST_REQUIRE_EQUAL(name(N(accounts)), result.rows[0].table);
-      BOOST_REQUIRE_EQUAL(name(N(eosio)), result.rows[0].payer);
+      BOOST_REQUIRE_EQUAL(name(N(arisen)), result.rows[0].payer);
       BOOST_REQUIRE_EQUAL(1, result.rows[0].count);
 
       BOOST_REQUIRE_EQUAL(name(N(initb)), result.rows[1].scope);

@@ -133,9 +133,9 @@ if not walletMgr.importKey(defproduceraAccount, defproduceraWallet):
 
 node0=cluster.getNode(0)
 
-# eosio should have the same key as defproducera
-eosio = copy.copy(defproduceraAccount)
-eosio.name = "eosio"
+# arisen should have the same key as defproducera
+arisen = copy.copy(defproduceraAccount)
+arisen.name = "arisen"
 
 Print("Info of each node:")
 for i in range(len(hosts)):
@@ -148,7 +148,7 @@ for i in range(len(hosts)):
 wasmFile="arisen.system.wasm"
 abiFile="arisen.system.abi"
 Print("\nPush system contract %s %s" % (wasmFile, abiFile))
-trans=node0.publishContract(eosio.name, wasmFile, abiFile, waitForTransBlock=True)
+trans=node0.publishContract(arisen.name, wasmFile, abiFile, waitForTransBlock=True)
 if trans is None:
     Utils.errorExit("Failed to publish arisen.system.")
 else:
@@ -157,7 +157,7 @@ else:
 try:
     maxIndex = module.maxIndex()
     for cmdInd in range(maxIndex):
-        (transIdList, checkacct, expBal, errmsg) = module.execute(cmdInd, node0, testeraAccount, eosio)
+        (transIdList, checkacct, expBal, errmsg) = module.execute(cmdInd, node0, testeraAccount, arisen)
 
         if len(transIdList) == 0 and len(checkacct) == 0:
             errorExit("failed to execute command in host %s:%s" % (hosts[0], errmsg))

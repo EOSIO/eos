@@ -585,7 +585,7 @@ optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name 
                entry.last_accessed = fc::time_point::now();
                abi_serializer abis;
                if( n == chain::config::system_account_name ) {
-                  // redefine eosio setabi.abi from bytes to abi_def
+                  // redefine arisen setabi.abi from bytes to abi_def
                   // Done so that abi is stored as abi_def in mongo instead of as bytes
                   auto itr = std::find_if( abi.structs.begin(), abi.structs.end(),
                                            []( const auto& s ) { return s.name == "setabi"; } );

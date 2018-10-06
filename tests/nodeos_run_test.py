@@ -201,7 +201,7 @@ try:
     Print("Validating accounts before user accounts creation")
     cluster.validateAccounts(None)
 
-    # create accounts via eosio as otherwise a bid is needed
+    # create accounts via arisen as otherwise a bid is needed
     Print("Create new account %s via %s" % (testeraAccount.name, cluster.arisenAccount.name))
     transId=node.createInitializeAccount(testeraAccount, cluster.arisenAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
 
