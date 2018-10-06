@@ -6,7 +6,7 @@ file(GLOB HEADERS "include/eosio/chain/*.hpp"
                   "${CMAKE_CURRENT_BINARY_DIR}/include/eosio/chain/core_symbol.hpp" )
 
 ## SORT .cpp by most likely to change / break compile
-add_library( eosio_chain
+add_library( arisen_chain
              merkle.cpp
              name.cpp
              transaction.cpp
@@ -50,10 +50,10 @@ add_library( eosio_chain
              ${HEADERS}
              )
 
-target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime
+target_link_libraries( arisen_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime
       wasm asmjs passes cfg ast emscripten-optimizer support softfloat builtins wabt
                      )
-target_include_directories( eosio_chain
+target_include_directories( arisen_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../../externals/binaryen/src"
@@ -61,7 +61,7 @@ target_include_directories( eosio_chain
                                    "${CMAKE_BINARY_DIR}/libraries/wabt"
                             )
 
-install( TARGETS eosio_chain
+install( TARGETS arisen_chain
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
    LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
    ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}

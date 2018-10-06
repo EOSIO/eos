@@ -40,7 +40,7 @@ find_package(Boost 1.67 REQUIRED COMPONENTS
    unit_test_framework)
 
 find_library(libtester eosio_testing @CMAKE_INSTALL_FULL_LIBDIR@)
-find_library(libchain eosio_chain @CMAKE_INSTALL_FULL_LIBDIR@)
+find_library(libchain arisen_chain @CMAKE_INSTALL_FULL_LIBDIR@)
 if ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
    find_library(libfc fc_debug @CMAKE_INSTALL_FULL_LIBDIR@)
    find_library(libsecp256k1 secp256k1_debug @CMAKE_INSTALL_FULL_LIBDIR@)

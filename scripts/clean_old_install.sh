@@ -21,7 +21,7 @@ if [ -d "/usr/local/include/eosio" ]; then
             popd &> /dev/null
 
             libraries=(libeosio_testing
-            libeosio_chain
+            libarisen_chain
             libfc
             libbinaryen
             libWAST
