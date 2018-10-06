@@ -34,4 +34,4 @@ void sudo::exec() {
 
 } /// namespace arisen
 
-EOSIO_ABI( arisen::sudo, (exec) )
+ARISEN_ABI( arisen::sudo, (exec) )

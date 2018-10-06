@@ -184,7 +184,7 @@ namespace arisensystem {
 } /// arisen.system
 
 
-EOSIO_ABI( eosiosystem::system_contract,
+ARISEN_ABI( eosiosystem::system_contract,
      // native.hpp (newaccount definition is actually in arisen.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
      // arisen.system.cpp

@@ -148,7 +148,7 @@ namespace _multi_index_detail {
  *                   indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> > > table( code, scope);
  *      }
  *  }
- *  EOSIO_ABI( mycontract, (myaction) )
+ *  ARISEN_ABI( mycontract, (myaction) )
  *  @endcode
  */
 template<uint64_t IndexName, typename Extractor>
@@ -213,7 +213,7 @@ struct indexed_by {
  *        > table( code, scope);
  *      }
  *  }
- *  EOSIO_ABI( mycontract, (myaction) )
+ *  ARISEN_ABI( mycontract, (myaction) )
  *  @endcode
  *  @{
  */
@@ -638,7 +638,7 @@ class multi_index
        *        address_index addresses(_self, _self); // code, scope
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       multi_index( uint64_t code, uint64_t scope )
@@ -676,7 +676,7 @@ class multi_index
        *        arisen_assert(addresses.get_code() == N(dan), "Codes don't match.");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       uint64_t get_code()const  { return _code; }
@@ -712,7 +712,7 @@ class multi_index
        *        arisen_assert(addresses.get_code() == N(dan), "Scopes don't match");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       uint64_t get_scope()const { return _scope; }
@@ -821,7 +821,7 @@ class multi_index
        *        arisen_assert(itr == addresses.cbegin(), "Only address is not at front.");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator cbegin()const {
@@ -869,7 +869,7 @@ class multi_index
        *        arisen_assert(itr == addresses.begin(), "Only address is not at front.");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator begin()const  { return cbegin(); }
@@ -915,7 +915,7 @@ class multi_index
        *        arisen_assert(itr != addresses.cend(), "Address for account doesn't exist");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator cend()const   { return const_iterator( this ); }
@@ -961,7 +961,7 @@ class multi_index
        *        arisen_assert(itr != addresses.end(), "Address for account doesn't exist");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator end()const    { return cend(); }
@@ -1017,7 +1017,7 @@ class multi_index
        *        arisen_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_reverse_iterator crbegin()const { return std::make_reverse_iterator(cend()); }
@@ -1073,7 +1073,7 @@ class multi_index
        *        arisen_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_reverse_iterator rbegin()const  { return crbegin(); }
@@ -1130,7 +1130,7 @@ class multi_index
        *        arisen_assert(itr->account_name == N(dan), "Incorrect Second Record");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_reverse_iterator crend()const   { return std::make_reverse_iterator(cbegin()); }
@@ -1187,7 +1187,7 @@ class multi_index
        *        arisen_assert(itr->account_name == N(dan), "Incorrect Second Record");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_reverse_iterator rend()const    { return crend(); }
@@ -1253,7 +1253,7 @@ class multi_index
        *        arisen_assert(itr == zip_index.end(), "Incorrect End of Iterator");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator lower_bound( uint64_t primary )const {
@@ -1323,7 +1323,7 @@ class multi_index
        *        arisen_assert(itr == zip_index.end(), "Incorrect End of Iterator");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator upper_bound( uint64_t primary )const {
@@ -1376,7 +1376,7 @@ class multi_index
        *        });
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       uint64_t available_primary_key()const {
@@ -1446,7 +1446,7 @@ class multi_index
        *        arisen_assert(itr->account_name == N(dan), "Incorrect Record ");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       template<uint64_t IndexName>
@@ -1521,7 +1521,7 @@ class multi_index
        *        arisen_assert(itr == zip_index.end(), "Incorrect End of Iterator");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       template<uint64_t IndexName>
@@ -1593,7 +1593,7 @@ class multi_index
        *        arisen_assert(iterator_to(user) == itr, "Invalid iterator");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator iterator_to( const T& obj )const {
@@ -1650,7 +1650,7 @@ class multi_index
        *        });
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       template<typename Lambda>
@@ -1757,7 +1757,7 @@ class multi_index
        *        });
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       template<typename Lambda>
@@ -1827,7 +1827,7 @@ class multi_index
        *        arisen_assert(itr->city == "San Luis Obispo", "Address not modified");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       template<typename Lambda>
@@ -1930,7 +1930,7 @@ class multi_index
        *        arisen_assert(user.first_name == "Daniel", "Couldn't get him.");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const T& get( uint64_t primary, const char* error_msg = "unable to find key" )const {
@@ -1981,7 +1981,7 @@ class multi_index
        *        arisen_assert(itr != addresses.end(), "Couldn't get him.");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator find( uint64_t primary )const {
@@ -2076,7 +2076,7 @@ class multi_index
        *        arisen_assert(itr != addresses.end(), "Address not erased properly");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator erase( const_iterator itr ) {
@@ -2144,7 +2144,7 @@ class multi_index
        *        arisen_assert(itr == addresses.end(), "Record is not deleted");
        *      }
        *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  ARISEN_ABI( addressbook, (myaction) )
        *  @endcode
        */
       void erase( const T& obj ) {

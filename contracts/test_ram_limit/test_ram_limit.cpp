@@ -80,4 +80,4 @@ class test_ram_limit : public arisen::contract {
 
 #pragma clang diagnostic pop
 
-EOSIO_ABI( test_ram_limit, (setentry)(rmentry)(printentry) )
+ARISEN_ABI( test_ram_limit, (setentry)(rmentry)(printentry) )

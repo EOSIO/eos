@@ -12,4 +12,4 @@ class hello : public arisen::contract {
       }
 };
 
-EOSIO_ABI( hello, (hi) )
+ARISEN_ABI( hello, (hi) )

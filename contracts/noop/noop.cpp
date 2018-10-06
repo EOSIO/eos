@@ -18,6 +18,6 @@ namespace arisen {
          }
    };
 
-   EOSIO_ABI( noop, ( anyaction ) )
+   ARISEN_ABI( noop, ( anyaction ) )
 
 } /// eosio     

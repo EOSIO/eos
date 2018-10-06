@@ -34,4 +34,4 @@ struct integration_test : public arisen::contract {
       }
 };
 
-EOSIO_ABI( integration_test, (store) )
+ARISEN_ABI( integration_test, (store) )

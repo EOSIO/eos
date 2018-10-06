@@ -46,4 +46,4 @@ class simpletoken : public arisen::contract {
       }
 };
 
-EOSIO_ABI( simpletoken, (transfer)(issue) )
+ARISEN_ABI( simpletoken, (transfer)(issue) )

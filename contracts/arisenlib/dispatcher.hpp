@@ -95,7 +95,7 @@ namespace arisen {
       arisen::execute_action( &thiscontract, &OP::elem ); \
       break;
 
-// Helper macro for EOSIO_ABI
+// Helper macro for ARISEN_ABI
 #define EOSIO_API( TYPE,  MEMBERS ) \
    BOOST_PP_SEQ_FOR_EACH( EOSIO_API_CALL, TYPE, MEMBERS )
 
@@ -114,10 +114,10 @@ namespace arisen {
  * 
  * Example:
  * @code
- * EOSIO_ABI( arisen::bios, (setpriv)(setalimits)(setglimits)(setprods)(reqauth) )
+ * ARISEN_ABI( arisen::bios, (setpriv)(setalimits)(setglimits)(setprods)(reqauth) )
  * @endcode
  */
-#define EOSIO_ABI( TYPE, MEMBERS ) \
+#define ARISEN_ABI( TYPE, MEMBERS ) \
 extern "C" { \
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) { \
       auto self = receiver; \

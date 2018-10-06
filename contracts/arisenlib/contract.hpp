@@ -13,7 +13,7 @@ namespace arisen {
 
 /**
  * @brief %Base class for EOSIO contract.
- * @details %Base class for EOSIO contract. %A new contract should derive from this class, so it can make use of EOSIO_ABI macro.
+ * @details %Base class for EOSIO contract. %A new contract should derive from this class, so it can make use of ARISEN_ABI macro.
  */
 class contract {
    public:

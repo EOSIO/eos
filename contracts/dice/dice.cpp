@@ -388,4 +388,4 @@ class dice : public arisen::contract {
       }
 };
 
-EOSIO_ABI( dice, (offerbet)(canceloffer)(reveal)(claimexpired)(deposit)(withdraw) )
+ARISEN_ABI( dice, (offerbet)(canceloffer)(reveal)(claimexpired)(deposit)(withdraw) )

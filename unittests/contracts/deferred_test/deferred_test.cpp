@@ -58,4 +58,4 @@ extern "C" {
    }
 }
 
-//EOSIO_ABI( deferred_test, (defercall)(deferfunc) )
+//ARISEN_ABI( deferred_test, (defercall)(deferfunc) )

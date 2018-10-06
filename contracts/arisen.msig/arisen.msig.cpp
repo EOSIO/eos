@@ -134,4 +134,4 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
 
 } /// namespace arisen
 
-EOSIO_ABI( arisen::multisig, (propose)(approve)(unapprove)(cancel)(exec) )
+ARISEN_ABI( arisen::multisig, (propose)(approve)(unapprove)(cancel)(exec) )

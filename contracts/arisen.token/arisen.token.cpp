@@ -117,4 +117,4 @@ void token::add_balance( account_name owner, asset value, account_name ram_payer
 
 } /// namespace arisen
 
-EOSIO_ABI( arisen::token, (create)(issue)(transfer) )
+ARISEN_ABI( arisen::token, (create)(issue)(transfer) )

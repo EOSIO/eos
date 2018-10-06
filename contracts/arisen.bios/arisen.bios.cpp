@@ -1,3 +1,3 @@
 #include <arisen.bios/arisen.bios.hpp>
 
-EOSIO_ABI( arisen::bios, (setpriv)(setalimits)(setglimits)(setprods)(reqauth) )
+ARISEN_ABI( arisen::bios, (setpriv)(setalimits)(setglimits)(setprods)(reqauth) )

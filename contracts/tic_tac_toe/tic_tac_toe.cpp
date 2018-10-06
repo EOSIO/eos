@@ -170,4 +170,4 @@ void tic_tac_toe::move(const account_name& challenger, const account_name& host,
 }
 
 
-EOSIO_ABI( tic_tac_toe, (create)(restart)(close)(move))
+ARISEN_ABI( tic_tac_toe, (create)(restart)(close)(move))

@@ -11,4 +11,4 @@ class payloadless : public arisen::contract {
       }
 };
 
-EOSIO_ABI( payloadless, (doit) )
+ARISEN_ABI( payloadless, (doit) )
