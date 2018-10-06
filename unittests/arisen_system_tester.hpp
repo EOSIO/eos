@@ -47,7 +47,7 @@ public:
       produce_blocks( 2 );
 
       create_accounts({ N(arisen.token), N(arisen.ram), N(arisen.ramfee), N(arisen.stake),
-               N(eosio.bpay), N(eosio.vpay), N(eosio.saving), N(eosio.names) });
+               N(arisen.bpay), N(arisen.vpay), N(arisen.saving), N(arisen.names) });
 
 
       produce_blocks( 100 );
@@ -64,7 +64,7 @@ public:
 
       create_currency( N(arisen.token), config::system_account_name, core_from_string("10000000000.0000") );
       issue(config::system_account_name,      core_from_string("1000000000.0000"));
-      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
+      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "arisen" ) );
 
       set_code( config::system_account_name, arisen_system_wast );
       set_abi( config::system_account_name, arisen_system_abi );
@@ -82,7 +82,7 @@ public:
       create_account_with_resources( N(bob111111111), config::system_account_name, core_from_string("0.4500"), false );
       create_account_with_resources( N(carol1111111), config::system_account_name, core_from_string("1.0000"), false );
 
-      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("eosio")  + get_balance("arisen.ramfee") + get_balance("arisen.stake") + get_balance("arisen.ram") );
+      BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("arisen")  + get_balance("arisen.ramfee") + get_balance("arisen.stake") + get_balance("arisen.ram") );
    }
 
 
@@ -212,8 +212,8 @@ public:
       return push_transaction( trx );
    }
 
-   action_result buyram( const account_name& payer, account_name receiver, const asset& eosin ) {
-      return push_action( payer, N(buyram), mvo()( "payer",payer)("receiver",receiver)("quant",eosin) );
+   action_result buyram( const account_name& payer, account_name receiver, const asset& rsnin ) {
+      return push_action( payer, N(buyram), mvo()( "payer",payer)("receiver",receiver)("quant",rsnin) );
    }
    action_result buyrambytes( const account_name& payer, account_name receiver, uint32_t numbytes ) {
       return push_action( payer, N(buyrambytes), mvo()( "payer",payer)("receiver",receiver)("bytes",numbytes) );
@@ -408,7 +408,7 @@ public:
       abi_serializer msig_abi_ser;
       {
          create_account_with_resources( N(arisen.msig), config::system_account_name );
-         BOOST_REQUIRE_EQUAL( success(), buyram( "eosio", "arisen.msig", core_from_string("5000.0000") ) );
+         BOOST_REQUIRE_EQUAL( success(), buyram( "arisen", "arisen.msig", core_from_string("5000.0000") ) );
          produce_block();
 
          auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
@@ -430,8 +430,8 @@ public:
    }
 
    vector<name> active_and_vote_producers() {
-      //stake more than 15% of total EOS supply to activate chain
-      transfer( "eosio", "alice1111111", core_from_string("650000000.0000"), "eosio" );
+      //stake more than 15% of total RSN supply to activate chain
+      transfer( "arisen", "alice1111111", core_from_string("650000000.0000"), "arisen" );
       BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("300000000.0000"), core_from_string("300000000.0000") ) );
 
       // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
