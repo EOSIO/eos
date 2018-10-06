@@ -182,10 +182,10 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
         // Create arisen.msig and arisen.token
-        create_accounts({N(arisen.msig), N(arisen.token), N(arisen.ram), N(arisen.ramfee), N(arisen.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+        create_accounts({N(arisen.msig), N(arisen.token), N(arisen.ram), N(arisen.ramfee), N(arisen.stake), N(arisen.vpay), N(arisen.bpay), N(arisen.saving) });
 
         // Set code for the following accounts:
-        //  - eosio (code: arisen.bios) (already set by tester constructor)
+        //  - arisen (code: arisen.bios) (already set by tester constructor)
         //  - arisen.msig (code: arisen.msig)
         //  - arisen.token (code: arisen.token)
         set_code_abi(N(arisen.msig), arisen_msig_wast, arisen_msig_abi);//, &arisen_active_pk);
@@ -202,7 +202,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_TEST(arisen_token_acc.privileged == true);
 
 
-        // Create SYS tokens in arisen.token, set its manager as eosio
+        // Create SYS tokens in arisen.token, set its manager as arisen
         auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
         auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
         create_currency(N(arisen.token), config::system_account_name, max_supply);
@@ -217,7 +217,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            create_account( a.aname, config::system_account_name );
         }
 
-        // Set arisen.system to eosio
+        // Set arisen.system to arisen
         set_code_abi(config::system_account_name, arisen_system_wast, arisen_system_abi);
 
         // Buy ram and stake cpu and net for each genesis accounts
@@ -268,7 +268,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         produce_blocks_for_n_rounds(2); // 2 rounds since new producer schedule is set when the first block of next round is irreversible
         auto active_schedule = control->head_block_state()->active_schedule;
         BOOST_TEST(active_schedule.producers.size() == 1);
-        BOOST_TEST(active_schedule.producers.front().producer_name == "eosio");
+        BOOST_TEST(active_schedule.producers.front().producer_name == "arisen");
 
         // Spend some time so the producer pay pool is filled by the inflation rate
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
