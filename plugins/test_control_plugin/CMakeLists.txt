@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eosio/test_control_plugin/*.hpp")
+file(GLOB HEADERS "include/arisen/test_control_plugin/*.hpp")
 
 add_library( test_control_plugin
              test_control_plugin.cpp

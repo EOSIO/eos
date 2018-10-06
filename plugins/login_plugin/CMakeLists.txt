@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eosio/login_plugin/*.hpp")
+file(GLOB HEADERS "include/arisen/login_plugin/*.hpp")
 add_library( login_plugin
              login_plugin.cpp
              ${HEADERS} )

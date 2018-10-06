@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eosio/http_client_plugin/*.hpp")
+file(GLOB HEADERS "include/arisen/http_client_plugin/*.hpp")
 add_library( http_client_plugin
              http_client_plugin.cpp
              ${HEADERS} )

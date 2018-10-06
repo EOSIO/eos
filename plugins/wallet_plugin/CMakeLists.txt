@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eosio/wallet_plugin/*.hpp")
+file(GLOB HEADERS "include/arisen/wallet_plugin/*.hpp")
 
 if(APPLE)
   set(SE_WALLET_SOURCES se_wallet.cpp macos_user_auth.m)

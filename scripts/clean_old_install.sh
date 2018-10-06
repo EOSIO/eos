@@ -1,6 +1,6 @@
 #! /bin/bash
 
-if [ -d "/usr/local/include/eosio" ]; then
+if [ -d "/usr/local/include/arisen" ]; then
    printf "\n\tOld eosio install needs to be removed.\n\n"
    printf "\tDo you wish to remove this install? (requires sudo)\n"
    select yn in "Yes" "No"; do

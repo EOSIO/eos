@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eosio/net_api_plugin/*.hpp")
+file(GLOB HEADERS "include/arisen/net_api_plugin/*.hpp")
 add_library( net_api_plugin
              net_api_plugin.cpp
              ${HEADERS} )
