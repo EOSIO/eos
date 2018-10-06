@@ -71,7 +71,7 @@ killAll()
 
 cleanup()
 {
-    rm -rf etc/eosio/node_*
+    rm -rf etc/arisen/node_*
     rm -rf var/lib/node_*
 }
 

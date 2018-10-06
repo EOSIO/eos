@@ -10,18 +10,18 @@ if [ -x "@CMAKE_BINARY_DIR@/programs/arisen-abigen/arisen-abigen" ]; then
 elif [ -x "${ARISEN_INSTALL_DIR}/bin/arisen-abigen" ]; then
     ABIGEN=${ARISEN_INSTALL_DIR}/bin/arisen-abigen
 fi
-if [ -x "@CMAKE_BINARY_DIR@/externals/binaryen/bin/eosio-s2wasm" ]; then
-    ARISEN_S2WASM="@CMAKE_BINARY_DIR@/externals/binaryen/bin/eosio-s2wasm"
-elif [ -x "${ARISEN_INSTALL_DIR}/bin/eosio-s2wasm" ]; then
-    ARISEN_S2WASM="${ARISEN_INSTALL_DIR}/bin/eosio-s2wasm"
+if [ -x "@CMAKE_BINARY_DIR@/externals/binaryen/bin/arisen-s2wasm" ]; then
+    ARISEN_S2WASM="@CMAKE_BINARY_DIR@/externals/binaryen/bin/arisen-s2wasm"
+elif [ -x "${ARISEN_INSTALL_DIR}/bin/arisen-s2wasm" ]; then
+    ARISEN_S2WASM="${ARISEN_INSTALL_DIR}/bin/arisen-s2wasm"
 else
     echo "eosio-s2wasm not found either built or installed"
     exit 12
 fi
-if [ -x "@CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Programs/eosio-wast2wasm" ]; then
-    ARISEN_WAST2WASM="@CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Programs/eosio-wast2wasm"
-elif [ -x "${ARISEN_INSTALL_DIR}/bin/eosio-wast2wasm" ]; then
-    ARISEN_WAST2WASM="${ARISEN_INSTALL_DIR}/bin/eosio-wast2wasm"
+if [ -x "@CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Programs/arisen-wast2wasm" ]; then
+    ARISEN_WAST2WASM="@CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Programs/arisen-wast2wasm"
+elif [ -x "${ARISEN_INSTALL_DIR}/bin/arisen-wast2wasm" ]; then
+    ARISEN_WAST2WASM="${ARISEN_INSTALL_DIR}/bin/arisen-wast2wasm"
 else
     echo "eosio-wast2wasm not found either built or installed"
     exit 14
@@ -29,7 +29,7 @@ fi
 BOOST_INCLUDE_DIR=@Boost_INCLUDE_DIR@
 function copy_skeleton {
     set -e
-    cp -r "${ARISEN_INSTALL_DIR}/share/eosio/skeleton/." $newname
+    cp -r "${ARISEN_INSTALL_DIR}/share/arisen/skeleton/." $newname
 
     for file in $(find ./$newname -name 'skeleton.*')
     do
@@ -82,9 +82,9 @@ function build_contract {
     declare -a possible_libs=("@CMAKE_BINARY_DIR@/contracts/arisenlib/arisenlib.bc"
                               "@CMAKE_BINARY_DIR@/contracts/libc++/libc++.bc"
                               "@CMAKE_BINARY_DIR@/contracts/musl/libc.bc"
-                              "${ARISEN_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/arisenlib.bc"
-                              "${ARISEN_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc++.bc"
-                              "${ARISEN_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc.bc")
+                              "${ARISEN_INSTALL_DIR}/usr/share/arisen/contractsdk/lib/arisenlib.bc"
+                              "${ARISEN_INSTALL_DIR}/usr/share/arisen/contractsdk/lib/libc++.bc"
+                              "${ARISEN_INSTALL_DIR}/usr/share/arisen/contractsdk/lib/libc.bc")
     declare libs=""
     for lib in "${possible_libs[@]}"; do
         if [ -f "${lib}" ]; then

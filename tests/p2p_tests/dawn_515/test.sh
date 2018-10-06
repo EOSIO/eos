@@ -244,7 +244,7 @@ read -d '' logging01 << EOF
 EOF
 
 rm -rf staging
-rm -rf etc/eosio/node_*
+rm -rf etc/arisen/node_*
 rm -rf var/lib
 cName=config.ini
 lName=logging.json
@@ -301,5 +301,5 @@ fi
 programs/arisen-launcher/arisen-launcher -k 15
 rm -rf staging
 rm -rf var/lib/node_*
-rm -rf etc/eosio/node_*
+rm -rf etc/arisen/node_*
 exit $ret
