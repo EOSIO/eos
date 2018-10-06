@@ -55,7 +55,7 @@ try:
         Print("Stand up cluster")
         if cluster.launch(pnodes=4, dontKill=dontKill, p2pPlugin=p2pPlugin) is False:
             cmdError("launcher")
-            errorExit("Failed to stand up eos cluster.")
+            errorExit("Failed to stand up ARISEN cluster.")
     else:
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey)
         killEosInstances=False
@@ -91,7 +91,7 @@ try:
     walletMgr.cleanup()
     if walletMgr.launch() is False:
         cmdError("%s" % (WalletdName))
-        errorExit("Failed to stand up eos walletd.")
+        errorExit("Failed to stand up ARISEN walletd.")
 
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
@@ -212,17 +212,17 @@ try:
     Print("Bouncing nodes #00 and #01")
     if cluster.bounce("00,01") is False:
         cmdError("launcher bounce")
-        errorExit("Failed to bounce eos node.")
+        errorExit("Failed to bounce ARISEN node.")
 
     Print("Taking down node #02")
     if cluster.down("02") is False:
         cmdError("launcher down command")
-        errorExit("Failed to take down eos node.")
+        errorExit("Failed to take down ARISEN node.")
 
     Print("Using bounce option to re-launch node #02")
     if cluster.bounce("02") is False:
         cmdError("launcher bounce")
-        errorExit("Failed to bounce eos node.")
+        errorExit("Failed to bounce ARISEN node.")
 
     p = re.compile('Assert')
     errFileName="var/lib/node_00/stderr.txt"

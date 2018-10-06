@@ -116,7 +116,7 @@ The ssh helper fields are paths to ssh and scp, an identity if necessary, and an
         "remote": true,
         "ssh_identity": "",
         "ssh_args": "",
-        "rsn_root_dir": "/home/phil/blockchain/eos",
+        "rsn_root_dir": "/home/jared/blockchain/arisen",
         "data_dir": "tn_data_0",
         "hostname": "remoteserv",
         "public_name": "remoteserv",

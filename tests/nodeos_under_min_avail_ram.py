@@ -84,7 +84,7 @@ try:
     extraAosArgs=" %s %d %s %d " % (minRAMFlag, minRAMValue, maxRAMFlag, maxRAMValue)
     if cluster.launch(onlyBios=False, dontKill=dontKill, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes, extraAosArgs=extraAosArgs, useBiosBootFile=False) is False:
         Utils.cmdError("launcher")
-        errorExit("Failed to stand up eos cluster.")
+        errorExit("Failed to stand up ARISEN cluster.")
 
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
@@ -100,7 +100,7 @@ try:
     walletMgr.cleanup()
     if walletMgr.launch() is False:
         Utils.cmdError("%s" % (WalletdName))
-        errorExit("Failed to stand up eos walletd.")
+        errorExit("Failed to stand up ARISEN walletd.")
 
     testWallet=walletMgr.create(testWalletName, [cluster.arisenAccount])
 

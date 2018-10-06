@@ -835,13 +835,13 @@ void ensure_awallet_running(CLI::App* app) {
         vector<std::string> pargs;
         pargs.push_back("--http-server-address=" + lo_address + ":" + std::to_string(resolved_url.resolved_port));
 
-        ::boost::process::child keos(binPath, pargs,
+        ::boost::process::child akey(binPath, pargs,
                                      bp::std_in.close(),
                                      bp::std_out > bp::null,
                                      bp::std_err > bp::null);
-        if (keos.running()) {
+        if (akey.running()) {
             std::cerr << binPath << " launched" << std::endl;
-            keos.detach();
+            akey.detach();
             try_local_port(lo_address, resolved_url.resolved_port, 2000);
         } else {
             std::cerr << "No wallet service listening on " << lo_address << ":"
@@ -896,7 +896,7 @@ struct create_account_subcommand {
    string stake_net;
    string stake_cpu;
    uint32_t buy_ram_bytes_in_kbytes = 0;
-   string buy_ram_eos;
+   string buy_ram_rsn;
    bool transfer;
    bool simple;
 
@@ -914,7 +914,7 @@ struct create_account_subcommand {
                                    (localized("The amount of RSN delegated for CPU bandwidth")))->required();
          createAccount->add_option("--buy-ram-kbytes", buy_ram_bytes_in_kbytes,
                                    (localized("The amount of RAM bytes to purchase for the new account in kibibytes (KiB), default is 8 KiB")));
-         createAccount->add_option("--buy-ram", buy_ram_eos,
+         createAccount->add_option("--buy-ram", buy_ram_rsn,
                                    (localized("The amount of RAM bytes to purchase for the new account in RSN")));
          createAccount->add_flag("--transfer", transfer,
                                  (localized("Transfer voting power and right to unstake RSN to receiver")));
@@ -934,11 +934,11 @@ struct create_account_subcommand {
             } RSN_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
             auto create = create_newaccount(creator, account_name, owner_key, active_key);
             if (!simple) {
-               if ( buy_ram_eos.empty() && buy_ram_bytes_in_kbytes == 0) {
+               if ( buy_ram_rsn.empty() && buy_ram_bytes_in_kbytes == 0) {
                   std::cerr << "ERROR: Either --buy-ram or --buy-ram-kbytes with non-zero value is required" << std::endl;
                   return;
                }
-               action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_eos))
+               action buyram = !buy_ram_rsn.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_rsn))
                   : create_buyrambytes(creator, account_name, buy_ram_bytes_in_kbytes * 1024);
                auto net = to_asset(stake_net);
                auto cpu = to_asset(stake_cpu);

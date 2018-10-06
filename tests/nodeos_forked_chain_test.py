@@ -145,7 +145,7 @@ try:
                       totalNodes=totalNodes, totalProducers=totalProducers, p2pPlugin=p2pPlugin,
                       useBiosBootFile=False, specificExtraAosArgs=specificExtraAosArgs) is False:
         Utils.cmdError("launcher")
-        Utils.errorExit("Failed to stand up eos cluster.")
+        Utils.errorExit("Failed to stand up ARISEN cluster.")
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
 
@@ -168,7 +168,7 @@ try:
     walletMgr.cleanup()
     if walletMgr.launch() is False:
         Utils.cmdError("%s" % (WalletdName))
-        Utils.errorExit("Failed to stand up eos walletd.")
+        Utils.errorExit("Failed to stand up ARISEN walletd.")
 
     testWallet=walletMgr.create(testWalletName, [cluster.arisenAccount,accounts[0],accounts[1],accounts[2],accounts[3],accounts[4]])
 

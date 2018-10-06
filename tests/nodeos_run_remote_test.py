@@ -43,7 +43,7 @@ try:
            (pnodes, total_nodes-pnodes, topo, delay))
     Print("Stand up cluster")
     if cluster.launch(pnodes, total_nodes, prodCount, topo, delay, onlyBios=onlyBios, dontKill=dontKill) is False:
-        errorExit("Failed to stand up eos cluster.")
+        errorExit("Failed to stand up ARISEN cluster.")
 
     Print ("Wait for Cluster stabilization")
     # wait for cluster to start producing blocks

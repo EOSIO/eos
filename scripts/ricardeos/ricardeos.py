@@ -16,8 +16,8 @@ def add_ricardian_contracts_to_actions(source_abi_directory, contract_name, abi_
         rc_contract_path = os.path.join(source_abi_directory, contract_action_filename)
         if os.path.exists(rc_contract_path):
             print('Importing Contract {contract_action_filename} for {contract_name}:{action_name}'.format(
-                contract_action_filename = contract_action_filename, 
-                contract_name = contract_name, 
+                contract_action_filename = contract_action_filename,
+                contract_name = contract_name,
                 action_name = action_name
             ))
 
@@ -33,7 +33,7 @@ def add_ricardian_contracts_to_actions(source_abi_directory, contract_name, abi_
             ))
 
         abi_actions_with_ricardian_contracts.append(abi_action)
-    
+
     return abi_actions_with_ricardian_contracts
 
 def create_ricardian_clauses_list(source_abi_directory, contract_name):
@@ -56,7 +56,7 @@ def create_ricardian_clauses_list(source_abi_directory, contract_name):
         clause_id = clause_file_name[start_of_clause_id:end_of_clause_id]
 
         abi_ricardian_clauses.append({
-            'id': clause_id, 
+            'id': clause_id,
             'body': contract_contents
         })
 
@@ -109,7 +109,7 @@ def write_rc_file(path, filename, content):
     if write_file:
         with open(output_filename, 'w') as text_file:
             print(content, file=text_file)
-        
+
         print('Wrote {output_filename}'.format(output_filename = output_filename))
 
 def export_ricardian_from_abi(source_abi):
@@ -133,13 +133,13 @@ def export_ricardian_from_abi(source_abi):
 
 def main():
     if len(sys.argv) == 1:
-        print('Please specify an operation of export or import: ./ricardeos.py <import|export>')
+        print('Please specify an operation of export or import: ./ricardrsn.py <import|export>')
         sys.exit(1)
 
     if sys.argv[1] == 'import':
         if len(sys.argv) != 4:
             print('Please specify a source and destination abi:')
-            print('Usage: ./ricardeos.py import /eos/contracts/contract/mycontract.abi /eos/contracts/contract/withricardian-mycontract.abi')
+            print('Usage: ./ricardrsn.py import /rsn/contracts/contract/mycontract.abi /rsn/contracts/contract/withricardian-mycontract.abi')
 
             sys.exit(0)
         else:
@@ -149,14 +149,14 @@ def main():
     elif sys.argv[1] == 'export':
         if len(sys.argv) != 3:
             print('Please specify a source abi:')
-            print('Usage: ./ricardeos.py export /eos/contracts/contract/mycontract.abi')
+            print('Usage: ./ricardrsn.py export /rsn/contracts/contract/mycontract.abi')
 
             sys.exit(0)
         else:
             export_ricardian_from_abi(sys.argv[2])
 
             sys.exit(0)
-        
+
     else:
         print('Operation not recognized only import and export operations are supported')
 

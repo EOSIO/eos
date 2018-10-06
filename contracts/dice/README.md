@@ -263,6 +263,6 @@ arisecli push action dice withdraw '[ "alice", "103.0000 RSN" ]' -p alice
 
 ##### Balance of alice after withdraw
 ````bash
-arisecli get currency balance arisen.token alice eos
+arisecli get currency balance arisen.token alice rsn
 1003.0000 RSN
 ````

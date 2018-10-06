@@ -247,7 +247,7 @@ sub perform_work {
         my $stoptime = time () + $run_duration;
         my $counter = 0;
         while (time () < $stoptime) {
-            `$rsnc transfer eos inita 10 >> rsnc.out 2>> rsnc.err`;
+            `$rsnc transfer rsn inita 10 >> rsnc.out 2>> rsnc.err`;
             $counter++;
             if ($counter % 1000 == 0) {
                 print "$counter client iterations\n";

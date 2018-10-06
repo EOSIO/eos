@@ -40,11 +40,11 @@ class Cluster(object):
         """Cluster container.
         walletd [True|False] Is wallet awallet running. If not load the wallet plugin
         localCluster [True|False] Is cluster local to host.
-        host: eos server host
-        port: eos server port
-        walletHost: eos wallet host
+        host: ARISEN server host
+        port: ARISEN server port
+        walletHost: ARISEN wallet host
         walletPort: wos wallet port
-        enableMongo: Include mongoDb support, configures eos mongo plugin
+        enableMongo: Include mongoDb support, configures ARISEN mongo plugin
         mongoHost: MongoDB host
         mongoPort: MongoDB port
         defproduceraPrvtKey: Defproducera account private key
@@ -619,7 +619,7 @@ class Cluster(object):
         node=self.nodes[0]
         fromm=source
         to=accounts[0]
-        Utils.Print("Transfer %s units from account %s to %s on eos server port %d" % (
+        Utils.Print("Transfer %s units from account %s to %s on ARISEN server port %d" % (
             transferAmountStr, fromm.name, to.name, node.port))
         trans=node.transferFunds(fromm, to, transferAmountStr)
         transId=Node.getTransId(trans)
@@ -655,7 +655,7 @@ class Cluster(object):
             transferAmountStr=Node.currencyIntToStr(transferAmount, CORE_SYMBOL)
             fromm=account
             to=accounts[i+1] if i < (count-1) else source
-            Utils.Print("Transfer %s units from account %s to %s on eos server port %d." %
+            Utils.Print("Transfer %s units from account %s to %s on ARISEN server port %d." %
                     (transferAmountStr, fromm.name, to.name, node.port))
 
             trans=node.transferFunds(fromm, to, transferAmountStr)
@@ -694,7 +694,7 @@ class Cluster(object):
                                         (Utils.EosServerName, node.port))
 
             if node.validateFunds(initialBalances, transferAmount, source, accounts) is False:
-                Utils.Print("ERROR: Failed to validate funds on eos node port: %d" % (node.port))
+                Utils.Print("ERROR: Failed to validate funds on ARISEN node port: %d" % (node.port))
                 return False
 
         return True
@@ -859,7 +859,7 @@ class Cluster(object):
         cmd="bash bios_boot.sh"
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-            if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
+            if not silent: Utils.Print("Launcher failed to shut down ARISEN cluster.")
             return None
 
         p = re.compile('error', re.IGNORECASE)
@@ -1271,7 +1271,7 @@ class Cluster(object):
         else:
             self.biosNode.pid=int(m.group(1))
 
-    # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
+    # Kills a percentange of Eos instances starting from the tail and update rsnInstanceInfos state
     def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
         killSignal=signal.SIGKILL
         if killSignalStr == Utils.SigTermTag:
@@ -1329,14 +1329,14 @@ class Cluster(object):
         cmd="%s -k 9" % (Utils.EosLauncherPath)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-            if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
+            if not silent: Utils.Print("Launcher failed to shut down ARISEN cluster.")
 
         if allInstances:
-            # ocassionally the launcher cannot kill the eos server
+            # ocassionally the launcher cannot kill the ARISEN server
             cmd="pkill -9 %s" % (Utils.EosServerName)
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-                if not silent: Utils.Print("Failed to shut down eos cluster.")
+                if not silent: Utils.Print("Failed to shut down ARISEN cluster.")
 
         # another explicit nodes shutdown
         for node in self.nodes:
