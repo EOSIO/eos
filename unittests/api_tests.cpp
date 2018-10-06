@@ -273,10 +273,10 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
       BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 2);
       BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 1);
    }
-   set_code( config::system_account_name, eosio_bios_wast );
+   set_code( config::system_account_name, arisen_bios_wast );
 
-	set_code( N(testapi), eosio_bios_wast );
-   set_abi(N(testapi), eosio_bios_abi);
+	set_code( N(testapi), arisen_bios_wast );
+   set_abi(N(testapi), arisen_bios_abi);
 	set_code( N(testapi), test_api_wast );
 	res = CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
    BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 4);

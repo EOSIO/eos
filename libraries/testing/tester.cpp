@@ -810,9 +810,9 @@ namespace arisen { namespace testing {
    }
 
    void base_tester::push_genesis_block() {
-      set_code(config::system_account_name, eosio_bios_wast);
+      set_code(config::system_account_name, arisen_bios_wast);
 
-      set_abi(config::system_account_name, eosio_bios_abi);
+      set_abi(config::system_account_name, arisen_bios_abi);
       //produce_block();
    }
 
