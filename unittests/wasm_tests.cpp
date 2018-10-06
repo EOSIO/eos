@@ -1146,7 +1146,7 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
  } FC_LOG_AND_RETHROW()
 
 // abi_serializer::to_variant failed because arisen_system_abi modified via set_abi.
-// This test also verifies that chain_initializer::eos_contract_abi() does not conflict
+// This test also verifies that chain_initializer::rsn_contract_abi() does not conflict
 // with arisen_system_abi as they are not allowed to contain duplicates.
 BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    produce_blocks(2);
