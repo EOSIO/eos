@@ -20,7 +20,7 @@ if [ -d "/usr/local/include/eosio" ]; then
             rm arisecli arisen-abigen eosio-applesdemo arisen-launcher eosio-s2wasm eosio-wast2wasm eosiocpp awallet aos &> /dev/null
             popd &> /dev/null
 
-            libraries=(libeosio_testing
+            libraries=(libarisen_testing
             libarisen_chain
             libfc
             libbinaryen
