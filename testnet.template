@@ -75,7 +75,7 @@ wcmd create --to-console -n ignition
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
 
-ecmd set contract eosio contracts/eosio.bios eosio.bios.wasm eosio.bios.abi
+ecmd set contract eosio contracts/arisen.bios arisen.bios.wasm arisen.bios.abi
 
 # Create required system accounts
 ecmd create key --to-console

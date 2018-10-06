@@ -982,7 +982,7 @@ class Cluster(object):
                 Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (eosioName))
                 return None
 
-            contract="eosio.bios"
+            contract="arisen.bios"
             contractDir="contracts/%s" % (contract)
             wasmFile="%s.wasm" % (contract)
             abiFile="%s.abi" % (contract)

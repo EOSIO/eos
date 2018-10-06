@@ -4,8 +4,8 @@
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 
-#include <eosio.bios/eosio.bios.wast.hpp>
-#include <eosio.bios/eosio.bios.abi.hpp>
+#include <arisen.bios/arisen.bios.wast.hpp>
+#include <arisen.bios/arisen.bios.abi.hpp>
 #include <fstream>
 
 eosio::chain::asset core_from_string(const std::string& s) {

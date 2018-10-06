@@ -53,7 +53,7 @@ Example game session using arisecli
 
 ##### Upload bios contract
 ````bash
-arisecli set contract eosio build/contracts/eosio.bios -p eosio
+arisecli set contract eosio build/contracts/arisen.bios -p eosio
 ````
 
 ##### Ceate eosio.token account

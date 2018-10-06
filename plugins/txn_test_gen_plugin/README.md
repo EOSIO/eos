@@ -63,7 +63,7 @@ $ ./aos -d ~/eos.data/generator_node --config-dir ~/eos.data/generator_node -l ~
 ```bash
 $ ./arisecli wallet create --to-console
 $ ./arisecli wallet import --private-key 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
-$ ./arisecli set contract eosio ~/eos/build.release/contracts/eosio.bios/
+$ ./arisecli set contract eosio ~/eos/build.release/contracts/arisen.bios/
 ```
 
 ### Initialize the accounts txn_test_gen_plugin uses

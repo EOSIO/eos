@@ -5,8 +5,8 @@
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 // These contracts are still under dev
-#include <eosio.bios/eosio.bios.wast.hpp>
-#include <eosio.bios/eosio.bios.abi.hpp>
+#include <arisen.bios/arisen.bios.wast.hpp>
+#include <arisen.bios/arisen.bios.abi.hpp>
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
 #include <eosio.msig/eosio.msig.wast.hpp>
@@ -185,7 +185,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
 
         // Set code for the following accounts:
-        //  - eosio (code: eosio.bios) (already set by tester constructor)
+        //  - eosio (code: arisen.bios) (already set by tester constructor)
         //  - eosio.msig (code: eosio.msig)
         //  - eosio.token (code: eosio.token)
         set_code_abi(N(eosio.msig), eosio_msig_wast, eosio_msig_abi);//, &eosio_active_pk);
