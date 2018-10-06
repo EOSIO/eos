@@ -40,7 +40,7 @@ if (!GetOptions("nodes=i" => \$nodes,
                 "pnodes=i" => \$pnodes)) {
     print "usage: $ARGV[0] [--nodes=<n>] [--pnodes=<n>] [--topo=<ring|star>] [--first-pause=<n>] [--launch-pause=<n>] [--duration=<n>] [--time-stamp=<time> \n";
     print "where:\n";
-    print "--nodes=n (default = 1) sets the number of eosd instances to launch\n";
+    print "--nodes=n (default = 1) sets the number of rsnd instances to launch\n";
     print "--pnodes=n (default = 1) sets the number nodes that will also be producers\n";
     print "--topo=s (default = ring) sets the network topology to either a ring shape or a star shape\n";
     print "--first-pause=n (default = 0) sets the seconds delay after starting the first instance\n";
