@@ -16,9 +16,9 @@ Execute a transaction while bypassing regular authorization checks (requires aut
 
 The arisen.sudo contract needs to be installed on a privileged account to function. It is recommended to use the account `arisen.sudo`.
 
-First, the account `arisen.sudo` needs to be created. Since it has the restricted `eosio.` prefix, only a privileged account can create this account. So this guide will use the `eosio` account to create the `arisen.sudo` account. On typical live blockchain configurations, the `eosio` account can only be controlled by a supermajority of the current active block producers. So, this guide will use the `arisen.msig` contract to help coordinate the approvals of the proposed transaction that creates the `arisen.sudo` account.
+First, the account `arisen.sudo` needs to be created. Since it has the restricted `arisen.` prefix, only a privileged account can create this account. So this guide will use the `arisen` account to create the `arisen.sudo` account. On typical live blockchain configurations, the `arisen` account can only be controlled by a supermajority of the current active block producers. So, this guide will use the `arisen.msig` contract to help coordinate the approvals of the proposed transaction that creates the `arisen.sudo` account.
 
-The `arisen.sudo` account also needs to have sufficient RAM to host the contract and sufficient CPU and network bandwidth to deploy the contract. This means that the creator of the account (`eosio`) needs to gift sufficient RAM to the new account and delegate (preferably with transfer) sufficient bandwidth to the new account. To pull this off the `eosio` account needs to have enough of the core system token (the `SYS` token will be used within this guide) in its liquid balance. So prior to continuing with the next steps of this guide, the active block producers of the chain who are coordinating this process need to ensure that a sufficient amount of core system tokens that they are authorized to spend is placed in the liquid balance of the `eosio` account.
+The `arisen.sudo` account also needs to have sufficient RAM to host the contract and sufficient CPU and network bandwidth to deploy the contract. This means that the creator of the account (`arisen`) needs to gift sufficient RAM to the new account and delegate (preferably with transfer) sufficient bandwidth to the new account. To pull this off the `arisen` account needs to have enough of the core system token (the `RSN` token will be used within this guide) in its liquid balance. So prior to continuing with the next steps of this guide, the active block producers of the chain who are coordinating this process need to ensure that a sufficient amount of core system tokens that they are authorized to spend is placed in the liquid balance of the `arisen` account.
 
 This guide will be using arisecli to carry out the process.
 
@@ -28,15 +28,15 @@ This guide will be using arisecli to carry out the process.
 
 The transaction to create the `arisen.sudo` account will need to be proposed to get the necessary approvals from active block producers before executing it. This transaction needs to first be generated and stored as JSON into a file so that it can be used in the arisecli command to propose the transaction to the arisen.msig contract.
 
-A simple way to generate a transaction to create a new account is to use the `arisecli system newaccount`. However, that sub-command currently only accepts a single public key as the owner and active authority of the new account. However, the owner and active authorities of the new account should only be satisfied by the `active` permission of `eosio`. One option is to create the new account with the some newly generated key, and then later update the authorities of the new account using `arisecli set account permission`. This guide will take an alternative approach which atomically creates the new account in its proper configuration.
+A simple way to generate a transaction to create a new account is to use the `arisecli system newaccount`. However, that sub-command currently only accepts a single public key as the owner and active authority of the new account. However, the owner and active authorities of the new account should only be satisfied by the `active` permission of `arisen`. One option is to create the new account with the some newly generated key, and then later update the authorities of the new account using `arisecli set account permission`. This guide will take an alternative approach which atomically creates the new account in its proper configuration.
 
 Three unsigned transactions will be generated using arisecli and then the actions within those transactions will be appropriately stitched together into a single transaction which will later be proposed using the arisen.msig contract.
 
 First, generate a transaction to capture the necessary actions involved in creating a new account:
 ```
-$ arisecli system newaccount -s -j -d --transfer --stake-net "1.000 SYS" --stake-cpu "1.000 SYS" --buy-ram-kbytes 50 eosio arisen.sudo EOS8MMUW11TAdTDxqdSwSqJodefSoZbFhcprndomgLi9MeR2o8MT4 > generated_account_creation_trx.json
-726964ms thread-0   main.cpp:429                  create_action        ] result: {"binargs":"0000000000ea305500004d1a03ea305500c80000"} arg: {"code":"eosio","action":"buyrambytes","args":{"payer":"eosio","receiver":"arisen.sudo","bytes":51200}}
-726967ms thread-0   main.cpp:429                  create_action        ] result: {"binargs":"0000000000ea305500004d1a03ea3055102700000000000004535953000000001027000000000000045359530000000001"} arg: {"code":"eosio","action":"delegatebw","args":{"from":"eosio","receiver":"arisen.sudo","stake_net_quantity":"1.0000 SYS","stake_cpu_quantity":"1.0000 SYS","transfer":true}}
+$ arisecli system newaccount -s -j -d --transfer --stake-net "1.000 RSN" --stake-cpu "1.000 RSN" --buy-ram-kbytes 50 arisen arisen.sudo EOS8MMUW11TAdTDxqdSwSqJodefSoZbFhcprndomgLi9MeR2o8MT4 > generated_account_creation_trx.json
+726964ms thread-0   main.cpp:429                  create_action        ] result: {"binargs":"0000000000ea305500004d1a03ea305500c80000"} arg: {"code":"arisen","action":"buyrambytes","args":{"payer":"arisen","receiver":"arisen.sudo","bytes":51200}}
+726967ms thread-0   main.cpp:429                  create_action        ] result: {"binargs":"0000000000ea305500004d1a03ea3055102700000000000004535953000000001027000000000000045359530000000001"} arg: {"code":"arisen","action":"delegatebw","args":{"from":"arisen","receiver":"arisen.sudo","stake_net_quantity":"1.0000 RSN","stake_cpu_quantity":"1.0000 RSN","transfer":true}}
 $ cat generated_account_creation_trx.json
 {
   "expiration": "2018-06-29T17:11:36",
@@ -47,28 +47,28 @@ $ cat generated_account_creation_trx.json
   "delay_sec": 0,
   "context_free_actions": [],
   "actions": [{
-      "account": "eosio",
+      "account": "arisen",
       "name": "newaccount",
       "authorization": [{
-          "actor": "eosio",
+          "actor": "arisen",
           "permission": "active"
         }
       ],
       "data": "0000000000ea305500004d1a03ea305501000000010003c8162ea04fed738bfd5470527fd1ae7454c2e9ad1acbadec9f9e35bab2f33c660100000001000000010003c8162ea04fed738bfd5470527fd1ae7454c2e9ad1acbadec9f9e35bab2f33c6601000000"
     },{
-      "account": "eosio",
+      "account": "arisen",
       "name": "buyrambytes",
       "authorization": [{
-          "actor": "eosio",
+          "actor": "arisen",
           "permission": "active"
         }
       ],
       "data": "0000000000ea305500004d1a03ea305500c80000"
     },{
-      "account": "eosio",
+      "account": "arisen",
       "name": "delegatebw",
       "authorization": [{
-          "actor": "eosio",
+          "actor": "arisen",
           "permission": "active"
         }
       ],
@@ -87,13 +87,13 @@ Second, create a file (e.g. newaccount_payload.json) with the JSON payload for t
 ```
 $ cat newaccount_payload.json
 {
-   "creator": "eosio",
+   "creator": "arisen",
    "name": "arisen.sudo",
    "owner": {
       "threshold": 1,
       "keys": [],
       "accounts": [{
-         "permission": {"actor": "eosio", "permission": "active"},
+         "permission": {"actor": "arisen", "permission": "active"},
          "weight": 1
       }],
       "waits": []
@@ -102,7 +102,7 @@ $ cat newaccount_payload.json
       "threshold": 1,
       "keys": [],
       "accounts": [{
-         "permission": {"actor": "eosio", "permission": "active"},
+         "permission": {"actor": "arisen", "permission": "active"},
          "weight": 1
       }],
       "waits": []
@@ -112,7 +112,7 @@ $ cat newaccount_payload.json
 
 Third, generate a transaction containing the actual `arisen::newaccount` action that will be used in the final transaction:
 ```
-$ arisecli push action -s -j -d eosio newaccount newaccount_payload.json -p eosio > generated_newaccount_trx.json
+$ arisecli push action -s -j -d arisen newaccount newaccount_payload.json -p arisen > generated_newaccount_trx.json
 $ cat generated_newaccount_trx.json
 {
   "expiration": "2018-06-29T17:11:36",
@@ -123,10 +123,10 @@ $ cat generated_newaccount_trx.json
   "delay_sec": 0,
   "context_free_actions": [],
   "actions": [{
-      "account": "eosio",
+      "account": "arisen",
       "name": "newaccount",
       "authorization": [{
-          "actor": "eosio",
+          "actor": "arisen",
           "permission": "active"
         }
       ],
@@ -141,7 +141,7 @@ $ cat generated_newaccount_trx.json
 
 Fourth, generate a transaction containing the `arisen::setpriv` action which will make the `arisen.sudo` account privileged:
 ```
-$ arisecli push action -s -j -d eosio setpriv '{"account": "arisen.sudo", "is_priv": 1}' -p eosio > generated_setpriv_trx.json
+$ arisecli push action -s -j -d arisen setpriv '{"account": "arisen.sudo", "is_priv": 1}' -p arisen > generated_setpriv_trx.json
 $ cat generated_setpriv_trx.json
 {
   "expiration": "2018-06-29T17:11:36",
@@ -152,10 +152,10 @@ $ cat generated_setpriv_trx.json
   "delay_sec": 0,
   "context_free_actions": [],
   "actions": [{
-      "account": "eosio",
+      "account": "arisen",
       "name": "setpriv",
       "authorization": [{
-          "actor": "eosio",
+          "actor": "arisen",
           "permission": "active"
         }
       ],
@@ -180,10 +180,10 @@ $ cat create_sudo_account_trx.json
   "delay_sec": 0,
   "context_free_actions": [],
   "actions": [{
-      "account": "eosio",
+      "account": "arisen",
       "name": "newaccount",
       "authorization": [{
-          "actor": "eosio",
+          "actor": "arisen",
           "permission": "active"
         }
       ],
@@ -210,37 +210,37 @@ $ cat create_sudo_account_trx.json
   "delay_sec": 0,
   "context_free_actions": [],
   "actions": [{
-      "account": "eosio",
+      "account": "arisen",
       "name": "newaccount",
       "authorization": [{
-          "actor": "eosio",
+          "actor": "arisen",
           "permission": "active"
         }
       ],
       "data": "0000000000ea305500004d1a03ea30550100000000010000000000ea305500000000a8ed32320100000100000000010000000000ea305500000000a8ed3232010000"
     },{
-      "account": "eosio",
+      "account": "arisen",
       "name": "buyrambytes",
       "authorization": [{
-          "actor": "eosio",
+          "actor": "arisen",
           "permission": "active"
         }
       ],
       "data": "0000000000ea305500004d1a03ea305500c80000"
     },{
-      "account": "eosio",
+      "account": "arisen",
       "name": "delegatebw",
       "authorization": [{
-          "actor": "eosio",
+          "actor": "arisen",
           "permission": "active"
         }
       ],
       "data": "0000000000ea305500004d1a03ea3055102700000000000004535953000000001027000000000000045359530000000001"
     },{
-      "account": "eosio",
+      "account": "arisen",
       "name": "setpriv",
       "authorization": [{
-          "actor": "eosio",
+          "actor": "arisen",
           "permission": "active"
         }
       ],
@@ -323,22 +323,22 @@ $ head -n 30 create_sudo_account_trx_to_review.json
     "delay_sec": 0,
     "context_free_actions": [],
     "actions": [{
-        "account": "eosio",
+        "account": "arisen",
         "name": "newaccount",
         "authorization": [{
-            "actor": "eosio",
+            "actor": "arisen",
             "permission": "active"
           }
         ],
         "data": {
-          "creator": "eosio",
+          "creator": "arisen",
           "name": "arisen.sudo",
           "owner": {
             "threshold": 1,
             "keys": [],
             "accounts": [{
                 "permission": {
-                  "actor": "eosio",
+                  "actor": "arisen",
                   "permission": "active"
                 },
 ```
@@ -378,21 +378,21 @@ Anyone can now verify that the `arisen.sudo` was created:
 $ arisecli get account arisen.sudo
 privileged: true
 permissions:
-     owner     1:    1 eosio@active,
-        active     1:    1 eosio@active,
+     owner     1:    1 arisen@active,
+        active     1:    1 arisen@active,
 memory:
      quota:     49.74 KiB    used:     3.33 KiB  
 
 net bandwidth:
-     staked:          1.0000 SYS           (total stake delegated from account to self)
-     delegated:       0.0000 SYS           (total staked delegated to account from others)
+     staked:          1.0000 RSN           (total stake delegated from account to self)
+     delegated:       0.0000 RSN           (total staked delegated to account from others)
      used:                 0 bytes
      available:        2.304 MiB  
      limit:            2.304 MiB  
 
 cpu bandwidth:
-     staked:          1.0000 SYS           (total stake delegated from account to self)
-     delegated:       0.0000 SYS           (total staked delegated to account from others)
+     staked:          1.0000 RSN           (total stake delegated from account to self)
+     delegated:       0.0000 RSN           (total staked delegated to account from others)
      used:                 0 us   
      available:        460.8 ms   
      limit:            460.8 ms   
@@ -423,7 +423,7 @@ $ cat deploy_sudo_contract_trx.json
   "delay_sec": 0,
   "context_free_actions": [],
   "actions": [{
-      "account": "eosio",
+      "account": "arisen",
       "name": "setcode",
       "authorization": [{
           "actor": "arisen.sudo",
@@ -432,7 +432,7 @@ $ cat deploy_sudo_contract_trx.json
       ],
       "data": "00004d1a03ea30550000c8180061736d01000000013e0c60017f006000017e60027e7e0060017e006000017f60027f7f017f60027f7f0060037f7f7f017f60057f7e7f7f7f0060000060037e7e7e0060017f017f029d010803656e7610616374696f6e5f646174615f73697a65000403656e760c63757272656e745f74696d65000103656e760c656f73696f5f617373657274000603656e76066d656d637079000703656e7610726561645f616374696f6e5f64617461000503656e760c726571756972655f61757468000303656e760d726571756972655f6175746832000203656e760d73656e645f64656665727265640008030f0e0505050400000a05070b050b000904050170010202050301000107c7010b066d656d6f72790200165f5a6571524b3131636865636b73756d32353653315f0008165f5a6571524b3131636865636b73756d31363053315f0009165f5a6e65524b3131636865636b73756d31363053315f000a036e6f77000b305f5a4e35656f73696f3132726571756972655f6175746845524b4e535f31367065726d697373696f6e5f6c6576656c45000c155f5a4e35656f73696f347375646f34657865634576000d056170706c79000e066d656d636d700010066d616c6c6f630011046672656500140908010041000b02150d0a9a130e0b002000200141201010450b0b002000200141201010450b0d0020002001412010104100470b0a00100142c0843d80a70b0e002000290300200029030810060b9e0102017e027f410028020441206b2202210341002002360204200029030010050240024010002200418104490d002000101121020c010b410020022000410f6a4170716b22023602040b2002200010041a200041074b41101002200341186a2002410810031a2003290318100520032903182101200310013703002003200137030820032003290318200241086a2000410010074100200341206a3602040bfd0403027f047e017f4100410028020441206b220936020442002106423b2105412021044200210703400240024002400240024020064206560d0020042c00002203419f7f6a41ff017141194b0d01200341a5016a21030c020b420021082006420b580d020c030b200341d0016a41002003414f6a41ff01714105491b21030b2003ad42388642388721080b2008421f83200542ffffffff0f838621080b200441016a2104200642017c2106200820078421072005427b7c2205427a520d000b024020072002520d0042002106423b2105413021044200210703400240024002400240024020064204560d0020042c00002203419f7f6a41ff017141194b0d01200341a5016a21030c020b420021082006420b580d020c030b200341d0016a41002003414f6a41ff01714105491b21030b2003ad42388642388721080b2008421f83200542ffffffff0f838621080b200441016a2104200642017c2106200820078421072005427b7c2205427a520d000b200720015141c00010020b0240024020012000510d0042002106423b2105412021044200210703400240024002400240024020064206560d0020042c00002203419f7f6a41ff017141194b0d01200341a5016a21030c020b420021082006420b580d020c030b200341d0016a41002003414f6a41ff01714105491b21030b2003ad42388642388721080b2008421f83200542ffffffff0f838621080b200441016a2104200642017c2106200820078421072005427b7c2205427a520d000b20072002520d010b20092000370318200242808080808080a0aad700520d00200941003602142009410136021020092009290310370208200941186a200941086a100f1a0b4100200941206a3602040b8c0101047f4100280204220521042001280204210220012802002101024010002203450d00024020034180044d0d00200310112205200310041a200510140c010b410020052003410f6a4170716b22053602042005200310041a0b200020024101756a210302402002410171450d00200328020020016a28020021010b200320011100004100200436020441010b4901037f4100210502402002450d000240034020002d0000220320012d00002204470d01200141016a2101200041016a21002002417f6a22020d000c020b0b200320046b21050b20050b0900418001200010120bcd04010c7f02402001450d00024020002802c041220d0d004110210d200041c0c1006a41103602000b200141086a200141046a41077122026b200120021b210202400240024020002802c441220a200d4f0d002000200a410c6c6a4180c0006a21010240200a0d0020004184c0006a220d2802000d0020014180c000360200200d20003602000b200241046a210a034002402001280208220d200a6a20012802004b0d002001280204200d6a220d200d28020041808080807871200272360200200141086a22012001280200200a6a360200200d200d28020041808080807872360200200d41046a22010d030b2000101322010d000b0b41fcffffff0720026b2104200041c8c1006a210b200041c0c1006a210c20002802c8412203210d03402000200d410c6c6a22014188c0006a28020020014180c0006a22052802004641d0c200100220014184c0006a280200220641046a210d0340200620052802006a2107200d417c6a2208280200220941ffffffff07712101024020094100480d000240200120024f0d000340200d20016a220a20074f0d01200a280200220a4100480d012001200a41ffffffff07716a41046a22012002490d000b0b20082001200220012002491b200941808080807871723602000240200120024d0d00200d20026a200420016a41ffffffff07713602000b200120024f0d040b200d20016a41046a220d2007490d000b41002101200b4100200b28020041016a220d200d200c280200461b220d360200200d2003470d000b0b20010f0b2008200828020041808080807872360200200d0f0b41000b870501087f20002802c44121010240024041002d00a643450d0041002802a84321070c010b3f002107410041013a00a6434100200741107422073602a8430b200721030240024002400240200741ffff036a41107622023f0022084d0d00200220086b40001a4100210820023f00470d0141002802a84321030b41002108410020033602a84320074100480d0020002001410c6c6a210220074180800441808008200741ffff037122084181f8034922061b6a2008200741ffff077120061b6b20076b2107024041002d00a6430d003f002103410041013a00a6434100200341107422033602a8430b20024180c0006a210220074100480d01200321060240200741076a417871220520036a41ffff036a41107622083f0022044d0d00200820046b40001a20083f00470d0241002802a84321060b4100200620056a3602a8432003417f460d0120002001410c6c6a22014184c0006a2802002206200228020022086a2003460d020240200820014188c0006a22052802002201460d00200620016a2206200628020041808080807871417c20016b20086a72360200200520022802003602002006200628020041ffffffff07713602000b200041c4c1006a2202200228020041016a220236020020002002410c6c6a22004184c0006a200336020020004180c0006a220820073602000b20080f0b02402002280200220820002001410c6c6a22034188c0006a22012802002207460d0020034184c0006a28020020076a2203200328020041808080807871417c20076b20086a72360200200120022802003602002003200328020041ffffffff07713602000b2000200041c4c1006a220728020041016a22033602c0412007200336020041000f0b2002200820076a36020020020b7b01037f024002402000450d0041002802c04222024101480d004180c10021032002410c6c4180c1006a21010340200341046a2802002202450d010240200241046a20004b0d00200220032802006a20004b0d030b2003410c6a22032001490d000b0b0f0b2000417c6a2203200328020041ffffffff07713602000b0300000b0bcf01060041040b04b04900000041100b0572656164000041200b086f6e6572726f72000041300b06656f73696f000041c0000b406f6e6572726f7220616374696f6e277320617265206f6e6c792076616c69642066726f6d207468652022656f73696f222073797374656d206163636f756e74000041d0c2000b566d616c6c6f635f66726f6d5f6672656564207761732064657369676e656420746f206f6e6c792062652063616c6c6564206166746572205f686561702077617320636f6d706c6574656c7920616c6c6f636174656400"
     },{
-      "account": "eosio",
+      "account": "arisen",
       "name": "setabi",
       "authorization": [{
           "actor": "arisen.sudo",
@@ -500,7 +500,7 @@ $ cat deploy_sudo_contract_trx_to_review.json
     "delay_sec": 0,
     "context_free_actions": [],
     "actions": [{
-        "account": "eosio",
+        "account": "arisen",
         "name": "setcode",
         "authorization": [{
             "actor": "arisen.sudo",
@@ -515,7 +515,7 @@ $ cat deploy_sudo_contract_trx_to_review.json
         },
         "hex_data": "00004d1a03ea30550000c8180061736d01000000013e0c60017f006000017e60027e7e0060017e006000017f60027f7f017f60027f7f0060037f7f7f017f60057f7e7f7f7f0060000060037e7e7e0060017f017f029d010803656e7610616374696f6e5f646174615f73697a65000403656e760c63757272656e745f74696d65000103656e760c656f73696f5f617373657274000603656e76066d656d637079000703656e7610726561645f616374696f6e5f64617461000503656e760c726571756972655f61757468000303656e760d726571756972655f6175746832000203656e760d73656e645f64656665727265640008030f0e0505050400000a05070b050b000904050170010202050301000107c7010b066d656d6f72790200165f5a6571524b3131636865636b73756d32353653315f0008165f5a6571524b3131636865636b73756d31363053315f0009165f5a6e65524b3131636865636b73756d31363053315f000a036e6f77000b305f5a4e35656f73696f3132726571756972655f6175746845524b4e535f31367065726d697373696f6e5f6c6576656c45000c155f5a4e35656f73696f347375646f34657865634576000d056170706c79000e066d656d636d700010066d616c6c6f630011046672656500140908010041000b02150d0a9a130e0b002000200141201010450b0b002000200141201010450b0d0020002001412010104100470b0a00100142c0843d80a70b0e002000290300200029030810060b9e0102017e027f410028020441206b2202210341002002360204200029030010050240024010002200418104490d002000101121020c010b410020022000410f6a4170716b22023602040b2002200010041a200041074b41101002200341186a2002410810031a2003290318100520032903182101200310013703002003200137030820032003290318200241086a2000410010074100200341206a3602040bfd0403027f047e017f4100410028020441206b220936020442002106423b2105412021044200210703400240024002400240024020064206560d0020042c00002203419f7f6a41ff017141194b0d01200341a5016a21030c020b420021082006420b580d020c030b200341d0016a41002003414f6a41ff01714105491b21030b2003ad42388642388721080b2008421f83200542ffffffff0f838621080b200441016a2104200642017c2106200820078421072005427b7c2205427a520d000b024020072002520d0042002106423b2105413021044200210703400240024002400240024020064204560d0020042c00002203419f7f6a41ff017141194b0d01200341a5016a21030c020b420021082006420b580d020c030b200341d0016a41002003414f6a41ff01714105491b21030b2003ad42388642388721080b2008421f83200542ffffffff0f838621080b200441016a2104200642017c2106200820078421072005427b7c2205427a520d000b200720015141c00010020b0240024020012000510d0042002106423b2105412021044200210703400240024002400240024020064206560d0020042c00002203419f7f6a41ff017141194b0d01200341a5016a21030c020b420021082006420b580d020c030b200341d0016a41002003414f6a41ff01714105491b21030b2003ad42388642388721080b2008421f83200542ffffffff0f838621080b200441016a2104200642017c2106200820078421072005427b7c2205427a520d000b20072002520d010b20092000370318200242808080808080a0aad700520d00200941003602142009410136021020092009290310370208200941186a200941086a100f1a0b4100200941206a3602040b8c0101047f4100280204220521042001280204210220012802002101024010002203450d00024020034180044d0d00200310112205200310041a200510140c010b410020052003410f6a4170716b22053602042005200310041a0b200020024101756a210302402002410171450d00200328020020016a28020021010b200320011100004100200436020441010b4901037f4100210502402002450d000240034020002d0000220320012d00002204470d01200141016a2101200041016a21002002417f6a22020d000c020b0b200320046b21050b20050b0900418001200010120bcd04010c7f02402001450d00024020002802c041220d0d004110210d200041c0c1006a41103602000b200141086a200141046a41077122026b200120021b210202400240024020002802c441220a200d4f0d002000200a410c6c6a4180c0006a21010240200a0d0020004184c0006a220d2802000d0020014180c000360200200d20003602000b200241046a210a034002402001280208220d200a6a20012802004b0d002001280204200d6a220d200d28020041808080807871200272360200200141086a22012001280200200a6a360200200d200d28020041808080807872360200200d41046a22010d030b2000101322010d000b0b41fcffffff0720026b2104200041c8c1006a210b200041c0c1006a210c20002802c8412203210d03402000200d410c6c6a22014188c0006a28020020014180c0006a22052802004641d0c200100220014184c0006a280200220641046a210d0340200620052802006a2107200d417c6a2208280200220941ffffffff07712101024020094100480d000240200120024f0d000340200d20016a220a20074f0d01200a280200220a4100480d012001200a41ffffffff07716a41046a22012002490d000b0b20082001200220012002491b200941808080807871723602000240200120024d0d00200d20026a200420016a41ffffffff07713602000b200120024f0d040b200d20016a41046a220d2007490d000b41002101200b4100200b28020041016a220d200d200c280200461b220d360200200d2003470d000b0b20010f0b2008200828020041808080807872360200200d0f0b41000b870501087f20002802c44121010240024041002d00a643450d0041002802a84321070c010b3f002107410041013a00a6434100200741107422073602a8430b200721030240024002400240200741ffff036a41107622023f0022084d0d00200220086b40001a4100210820023f00470d0141002802a84321030b41002108410020033602a84320074100480d0020002001410c6c6a210220074180800441808008200741ffff037122084181f8034922061b6a2008200741ffff077120061b6b20076b2107024041002d00a6430d003f002103410041013a00a6434100200341107422033602a8430b20024180c0006a210220074100480d01200321060240200741076a417871220520036a41ffff036a41107622083f0022044d0d00200820046b40001a20083f00470d0241002802a84321060b4100200620056a3602a8432003417f460d0120002001410c6c6a22014184c0006a2802002206200228020022086a2003460d020240200820014188c0006a22052802002201460d00200620016a2206200628020041808080807871417c20016b20086a72360200200520022802003602002006200628020041ffffffff07713602000b200041c4c1006a2202200228020041016a220236020020002002410c6c6a22004184c0006a200336020020004180c0006a220820073602000b20080f0b02402002280200220820002001410c6c6a22034188c0006a22012802002207460d0020034184c0006a28020020076a2203200328020041808080807871417c20076b20086a72360200200120022802003602002003200328020041ffffffff07713602000b2000200041c4c1006a220728020041016a22033602c0412007200336020041000f0b2002200820076a36020020020b7b01037f024002402000450d0041002802c04222024101480d004180c10021032002410c6c4180c1006a21010340200341046a2802002202450d010240200241046a20004b0d00200220032802006a20004b0d030b2003410c6a22032001490d000b0b0f0b2000417c6a2203200328020041ffffffff07713602000b0300000b0bcf01060041040b04b04900000041100b0572656164000041200b086f6e6572726f72000041300b06656f73696f000041c0000b406f6e6572726f7220616374696f6e277320617265206f6e6c792076616c69642066726f6d207468652022656f73696f222073797374656d206163636f756e74000041d0c2000b566d616c6c6f635f66726f6d5f6672656564207761732064657369676e656420746f206f6e6c792062652063616c6c6564206166746572205f686561702077617320636f6d706c6574656c7920616c6c6f636174656400"
       },{
-        "account": "eosio",
+        "account": "arisen",
         "name": "setabi",
         "authorization": [{
             "actor": "arisen.sudo",
@@ -626,15 +626,15 @@ memory:
      quota:     49.74 KiB    used:     3.365 KiB  
 
 net bandwidth:
-     staked:          1.0000 SYS           (total stake delegated from account to self)
-     delegated:       0.0000 SYS           (total staked delegated to account from others)
+     staked:          1.0000 RSN           (total stake delegated from account to self)
+     delegated:       0.0000 RSN           (total staked delegated to account from others)
      used:                 0 bytes
      available:        2.304 MiB  
      limit:            2.304 MiB  
 
 cpu bandwidth:
-     staked:          1.0000 SYS           (total stake delegated from account to self)
-     delegated:       0.0000 SYS           (total staked delegated to account from others)
+     staked:          1.0000 RSN           (total stake delegated from account to self)
+     delegated:       0.0000 RSN           (total staked delegated to account from others)
      used:                 0 us   
      available:        460.8 ms   
      limit:            460.8 ms   
@@ -646,7 +646,7 @@ Assume that none of the block producers know the private key corresponding to th
 
 The first step is to generate the transaction changing the owner permission of the `alice` account as if `alice` is authorizing the change:
 ```
-$ arisecli set account permission -s -j -d alice owner '{"threshold": 1, "accounts": [{"permission": {"actor": "eosio", "permission": "active"}, "weight": 1}]}' > update_alice_owner_trx.json
+$ arisecli set account permission -s -j -d alice owner '{"threshold": 1, "accounts": [{"permission": {"actor": "arisen", "permission": "active"}, "weight": 1}]}' > update_alice_owner_trx.json
 ```
 
 Then modify update_alice_owner_trx.json so that the values for the `ref_block_num` and `ref_block_prefix` fields are both 0 and the value of the `expiration` field is `"1970-01-01T00:00:00"`:
@@ -661,7 +661,7 @@ $ cat update_alice_owner_trx.json
   "delay_sec": 0,
   "context_free_actions": [],
   "actions": [{
-      "account": "eosio",
+      "account": "arisen",
       "name": "updateauth",
       "authorization": [{
           "actor": "alice",
@@ -803,7 +803,7 @@ $ cat sudo_update_alice_owner_trx_to_review.json
             "delay_sec": 0,
             "context_free_actions": [],
             "actions": [{
-                "account": "eosio",
+                "account": "arisen",
                 "name": "updateauth",
                 "authorization": [{
                     "actor": "alice",
@@ -862,21 +862,21 @@ Anyone can now verify that the owner authority of `alice` was successfully chang
 ```
 $ arisecli get account alice
 permissions:
-     owner     1:    1 eosio@active,
+     owner     1:    1 arisen@active,
         active     1:    1 EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
 memory:
      quota:     49.74 KiB    used:     3.348 KiB  
 
 net bandwidth:
-     staked:          1.0000 SYS           (total stake delegated from account to self)
-     delegated:       0.0000 SYS           (total staked delegated to account from others)
+     staked:          1.0000 RSN           (total stake delegated from account to self)
+     delegated:       0.0000 RSN           (total staked delegated to account from others)
      used:                 0 bytes
      available:        2.304 MiB  
      limit:            2.304 MiB  
 
 cpu bandwidth:
-     staked:          1.0000 SYS           (total stake delegated from account to self)
-     delegated:       0.0000 SYS           (total staked delegated to account from others)
+     staked:          1.0000 RSN           (total stake delegated from account to self)
+     delegated:       0.0000 RSN           (total staked delegated to account from others)
      used:               413 us   
      available:        460.4 ms   
      limit:            460.8 ms   
