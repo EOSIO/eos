@@ -45,17 +45,17 @@ libraries/wasm-jit/Source/Programs/Disassemble
 libraries/wasm-jit/Source/Programs/Test
 libraries/wasm-jit/Source/Programs/wavm
 
-programs/cleos/cleos
+programs/arisecli/arisecli
 programs/js_operation_serializer/js_operation_serializer
 programs/data-dir
 programs/arisen-abigen/arisen-abigen
-programs/cleos/config.hpp
+programs/arisecli/config.hpp
 programs/arisen-applesedemo/arisen-applesedemo
 programs/arisen-launcher/config.hpp
 programs/arisen-launcher/arisen-launcher
-programs/keosd/keosd
-programs/nodeos/config.hpp
-programs/nodeos/nodeos
+programs/akeyd/akeyd
+programs/aos/config.hpp
+programs/aos/aos
 
 scripts/tn_init.sh
 
@@ -63,7 +63,7 @@ tests/plugin_test
 unittests/unit_test
 
 doxygen
-eos.doxygen
+arisen.doxygen
 
 wallet.json
 witness_node_data_dir
