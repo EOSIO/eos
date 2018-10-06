@@ -92,11 +92,11 @@ ecmd create account eosio eosio.saving $pubsyskey $pubsyskey
 ecmd create account eosio eosio.stake $pubsyskey $pubsyskey
 ecmd create account eosio eosio.token $pubsyskey $pubsyskey
 ecmd create account eosio eosio.vpay $pubsyskey $pubsyskey
-ecmd create account eosio eosio.sudo $pubsyskey $pubsyskey
+ecmd create account eosio arisen.sudo $pubsyskey $pubsyskey
 
 ecmd set contract eosio.token contracts/eosio.token eosio.token.wasm eosio.token.abi
 ecmd set contract arisen.msig contracts/arisen.msig arisen.msig.wasm arisen.msig.abi
-ecmd set contract eosio.sudo contracts/eosio.sudo eosio.sudo.wasm eosio.sudo.abi
+ecmd set contract arisen.sudo contracts/arisen.sudo arisen.sudo.wasm arisen.sudo.abi
 
 echo ===== Start: $step ============ >> $logfile
 echo executing: arisecli --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 RSN" ]' -p eosio.token | tee -a $logfile

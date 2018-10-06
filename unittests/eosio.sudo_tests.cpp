@@ -6,8 +6,8 @@
 #include <arisen.msig/arisen.msig.wast.hpp>
 #include <arisen.msig/arisen.msig.abi.hpp>
 
-#include <eosio.sudo/eosio.sudo.wast.hpp>
-#include <eosio.sudo/eosio.sudo.abi.hpp>
+#include <arisen.sudo/arisen.sudo.wast.hpp>
+#include <arisen.sudo/arisen.sudo.abi.hpp>
 
 #include <test_api/test_api.wast.hpp>
 
@@ -48,7 +48,7 @@ public:
       trx.actions.emplace_back( vector<permission_level>{{config::system_account_name, config::active_name}},
                                 newaccount{
                                    .creator  = config::system_account_name,
-                                   .name     = N(eosio.sudo),
+                                   .name     = N(arisen.sudo),
                                    .owner    = auth,
                                    .active   = auth,
                                 });
@@ -59,13 +59,13 @@ public:
 
       base_tester::push_action(config::system_account_name, N(setpriv),
                                  config::system_account_name,  mutable_variant_object()
-                                 ("account", "eosio.sudo")
+                                 ("account", "arisen.sudo")
                                  ("is_priv", 1)
       );
 
       auto system_private_key = get_private_key( config::system_account_name, "active" );
-      set_code( N(eosio.sudo), eosio_sudo_wast, &system_private_key );
-      set_abi( N(eosio.sudo), eosio_sudo_abi, &system_private_key );
+      set_code( N(arisen.sudo), eosio_sudo_wast, &system_private_key );
+      set_abi( N(arisen.sudo), eosio_sudo_abi, &system_private_key );
 
       produce_blocks();
 
@@ -81,7 +81,7 @@ public:
 
       produce_blocks();
 
-      const auto& accnt = control->db().get<account_object,by_name>( N(eosio.sudo) );
+      const auto& accnt = control->db().get<account_object,by_name>( N(arisen.sudo) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi, abi_serializer_max_time);
@@ -130,11 +130,11 @@ transaction eosio_sudo_tester::sudo_exec( account_name executer, const transacti
                   ("permission", name{config::active_name})
               );
   v.push_back( fc::mutable_variant_object()
-                 ("actor", "eosio.sudo")
+                 ("actor", "arisen.sudo")
                  ("permission", name{config::active_name})
              );
    auto act_obj = fc::mutable_variant_object()
-                     ("account", "eosio.sudo")
+                     ("account", "arisen.sudo")
                      ("name", "exec")
                      ("authorization", v)
                      ("data", fc::mutable_variant_object()("executer", executer)("trx", trx) );
@@ -179,8 +179,8 @@ BOOST_FIXTURE_TEST_CASE( sudo_exec_direct, eosio_sudo_tester ) try {
       signed_transaction sudo_trx( sudo_exec( N(alice), trx ), {}, {} );
       /*
       set_transaction_headers( sudo_trx );
-      sudo_trx.actions.emplace_back( get_action( N(eosio.sudo), N(exec),
-                                                 {{N(alice), config::active_name}, {N(eosio.sudo), config::active_name}},
+      sudo_trx.actions.emplace_back( get_action( N(arisen.sudo), N(exec),
+                                                 {{N(alice), config::active_name}, {N(arisen.sudo), config::active_name}},
                                                  mvo()
                                                    ("executer", "alice")
                                                    ("trx", trx)
@@ -239,7 +239,7 @@ BOOST_FIXTURE_TEST_CASE( sudo_with_msig, eosio_sudo_tester ) try {
    BOOST_REQUIRE_EQUAL( 2, traces.size() );
 
    BOOST_REQUIRE_EQUAL( 1, traces[0]->action_traces.size() );
-   BOOST_REQUIRE_EQUAL( "eosio.sudo", name{traces[0]->action_traces[0].act.account} );
+   BOOST_REQUIRE_EQUAL( "arisen.sudo", name{traces[0]->action_traces[0].act.account} );
    BOOST_REQUIRE_EQUAL( "exec", name{traces[0]->action_traces[0].act.name} );
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, traces[0]->receipt->status );
 
@@ -274,7 +274,7 @@ BOOST_FIXTURE_TEST_CASE( sudo_with_msig_unapprove, eosio_sudo_tester ) try {
 
    produce_block();
 
-   // The proposal should not have sufficient approvals to pass the authorization checks of eosio.sudo::exec.
+   // The proposal should not have sufficient approvals to pass the authorization checks of arisen.sudo::exec.
    BOOST_REQUIRE_EXCEPTION( push_action( N(arisen.msig), N(exec), N(alice), mvo()
                                           ("proposer",      "carol")
                                           ("proposal_name", "first")
@@ -316,7 +316,7 @@ BOOST_FIXTURE_TEST_CASE( sudo_with_msig_producers_change, eosio_sudo_tester ) tr
 
    produce_block();
 
-   // The proposal has four of the five requested approvals but they are not sufficient to satisfy the authorization checks of eosio.sudo::exec.
+   // The proposal has four of the five requested approvals but they are not sufficient to satisfy the authorization checks of arisen.sudo::exec.
    BOOST_REQUIRE_EXCEPTION( push_action( N(arisen.msig), N(exec), N(alice), mvo()
                                           ("proposer",      "carol")
                                           ("proposal_name", "first")
@@ -353,7 +353,7 @@ BOOST_FIXTURE_TEST_CASE( sudo_with_msig_producers_change, eosio_sudo_tester ) tr
    BOOST_REQUIRE_EQUAL( 2, traces.size() );
 
    BOOST_REQUIRE_EQUAL( 1, traces[0]->action_traces.size() );
-   BOOST_REQUIRE_EQUAL( "eosio.sudo", name{traces[0]->action_traces[0].act.account} );
+   BOOST_REQUIRE_EQUAL( "arisen.sudo", name{traces[0]->action_traces[0].act.account} );
    BOOST_REQUIRE_EQUAL( "exec", name{traces[0]->action_traces[0].act.name} );
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, traces[0]->receipt->status );
 

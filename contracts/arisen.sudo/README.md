@@ -1,32 +1,32 @@
-# eosio.sudo
+# arisen.sudo
 
 ## 1. Actions:
 The naming convention is codeaccount::actionname followed by a list of parameters.
 
-Execute a transaction while bypassing regular authorization checks (requires authorization of eosio.sudo which needs to be a privileged account).
+Execute a transaction while bypassing regular authorization checks (requires authorization of arisen.sudo which needs to be a privileged account).
 
-### eosio.sudo::exec    executer trx
+### arisen.sudo::exec    executer trx
    - **executer** account executing the transaction
    - **trx** transaction to execute
 
    Deferred transaction RAM usage is billed to 'executer'
 
 
-## 2. Installing the eosio.sudo contract
+## 2. Installing the arisen.sudo contract
 
-The eosio.sudo contract needs to be installed on a privileged account to function. It is recommended to use the account `eosio.sudo`.
+The arisen.sudo contract needs to be installed on a privileged account to function. It is recommended to use the account `arisen.sudo`.
 
-First, the account `eosio.sudo` needs to be created. Since it has the restricted `eosio.` prefix, only a privileged account can create this account. So this guide will use the `eosio` account to create the `eosio.sudo` account. On typical live blockchain configurations, the `eosio` account can only be controlled by a supermajority of the current active block producers. So, this guide will use the `arisen.msig` contract to help coordinate the approvals of the proposed transaction that creates the `eosio.sudo` account.
+First, the account `arisen.sudo` needs to be created. Since it has the restricted `eosio.` prefix, only a privileged account can create this account. So this guide will use the `eosio` account to create the `arisen.sudo` account. On typical live blockchain configurations, the `eosio` account can only be controlled by a supermajority of the current active block producers. So, this guide will use the `arisen.msig` contract to help coordinate the approvals of the proposed transaction that creates the `arisen.sudo` account.
 
-The `eosio.sudo` account also needs to have sufficient RAM to host the contract and sufficient CPU and network bandwidth to deploy the contract. This means that the creator of the account (`eosio`) needs to gift sufficient RAM to the new account and delegate (preferably with transfer) sufficient bandwidth to the new account. To pull this off the `eosio` account needs to have enough of the core system token (the `SYS` token will be used within this guide) in its liquid balance. So prior to continuing with the next steps of this guide, the active block producers of the chain who are coordinating this process need to ensure that a sufficient amount of core system tokens that they are authorized to spend is placed in the liquid balance of the `eosio` account.
+The `arisen.sudo` account also needs to have sufficient RAM to host the contract and sufficient CPU and network bandwidth to deploy the contract. This means that the creator of the account (`eosio`) needs to gift sufficient RAM to the new account and delegate (preferably with transfer) sufficient bandwidth to the new account. To pull this off the `eosio` account needs to have enough of the core system token (the `SYS` token will be used within this guide) in its liquid balance. So prior to continuing with the next steps of this guide, the active block producers of the chain who are coordinating this process need to ensure that a sufficient amount of core system tokens that they are authorized to spend is placed in the liquid balance of the `eosio` account.
 
 This guide will be using arisecli to carry out the process.
 
-### 2.1 Create the eosio.sudo account
+### 2.1 Create the arisen.sudo account
 
-#### 2.1.1 Generate the transaction to create the eosio.sudo account
+#### 2.1.1 Generate the transaction to create the arisen.sudo account
 
-The transaction to create the `eosio.sudo` account will need to be proposed to get the necessary approvals from active block producers before executing it. This transaction needs to first be generated and stored as JSON into a file so that it can be used in the arisecli command to propose the transaction to the arisen.msig contract.
+The transaction to create the `arisen.sudo` account will need to be proposed to get the necessary approvals from active block producers before executing it. This transaction needs to first be generated and stored as JSON into a file so that it can be used in the arisecli command to propose the transaction to the arisen.msig contract.
 
 A simple way to generate a transaction to create a new account is to use the `arisecli system newaccount`. However, that sub-command currently only accepts a single public key as the owner and active authority of the new account. However, the owner and active authorities of the new account should only be satisfied by the `active` permission of `eosio`. One option is to create the new account with the some newly generated key, and then later update the authorities of the new account using `arisecli set account permission`. This guide will take an alternative approach which atomically creates the new account in its proper configuration.
 
@@ -34,9 +34,9 @@ Three unsigned transactions will be generated using arisecli and then the action
 
 First, generate a transaction to capture the necessary actions involved in creating a new account:
 ```
-$ arisecli system newaccount -s -j -d --transfer --stake-net "1.000 SYS" --stake-cpu "1.000 SYS" --buy-ram-kbytes 50 eosio eosio.sudo EOS8MMUW11TAdTDxqdSwSqJodefSoZbFhcprndomgLi9MeR2o8MT4 > generated_account_creation_trx.json
-726964ms thread-0   main.cpp:429                  create_action        ] result: {"binargs":"0000000000ea305500004d1a03ea305500c80000"} arg: {"code":"eosio","action":"buyrambytes","args":{"payer":"eosio","receiver":"eosio.sudo","bytes":51200}}
-726967ms thread-0   main.cpp:429                  create_action        ] result: {"binargs":"0000000000ea305500004d1a03ea3055102700000000000004535953000000001027000000000000045359530000000001"} arg: {"code":"eosio","action":"delegatebw","args":{"from":"eosio","receiver":"eosio.sudo","stake_net_quantity":"1.0000 SYS","stake_cpu_quantity":"1.0000 SYS","transfer":true}}
+$ arisecli system newaccount -s -j -d --transfer --stake-net "1.000 SYS" --stake-cpu "1.000 SYS" --buy-ram-kbytes 50 eosio arisen.sudo EOS8MMUW11TAdTDxqdSwSqJodefSoZbFhcprndomgLi9MeR2o8MT4 > generated_account_creation_trx.json
+726964ms thread-0   main.cpp:429                  create_action        ] result: {"binargs":"0000000000ea305500004d1a03ea305500c80000"} arg: {"code":"eosio","action":"buyrambytes","args":{"payer":"eosio","receiver":"arisen.sudo","bytes":51200}}
+726967ms thread-0   main.cpp:429                  create_action        ] result: {"binargs":"0000000000ea305500004d1a03ea3055102700000000000004535953000000001027000000000000045359530000000001"} arg: {"code":"eosio","action":"delegatebw","args":{"from":"eosio","receiver":"arisen.sudo","stake_net_quantity":"1.0000 SYS","stake_cpu_quantity":"1.0000 SYS","transfer":true}}
 $ cat generated_account_creation_trx.json
 {
   "expiration": "2018-06-29T17:11:36",
@@ -88,7 +88,7 @@ Second, create a file (e.g. newaccount_payload.json) with the JSON payload for t
 $ cat newaccount_payload.json
 {
    "creator": "eosio",
-   "name": "eosio.sudo",
+   "name": "arisen.sudo",
    "owner": {
       "threshold": 1,
       "keys": [],
@@ -139,9 +139,9 @@ $ cat generated_newaccount_trx.json
 }
 ```
 
-Fourth, generate a transaction containing the `arisen::setpriv` action which will make the `eosio.sudo` account privileged:
+Fourth, generate a transaction containing the `arisen::setpriv` action which will make the `arisen.sudo` account privileged:
 ```
-$ arisecli push action -s -j -d eosio setpriv '{"account": "eosio.sudo", "is_priv": 1}' -p eosio > generated_setpriv_trx.json
+$ arisecli push action -s -j -d eosio setpriv '{"account": "arisen.sudo", "is_priv": 1}' -p eosio > generated_setpriv_trx.json
 $ cat generated_setpriv_trx.json
 {
   "expiration": "2018-06-29T17:11:36",
@@ -287,7 +287,7 @@ $ cat producer_permissions.json
 ]
 ```
 
-#### 2.1.2 Propose the transaction to create the eosio.sudo account
+#### 2.1.2 Propose the transaction to create the arisen.sudo account
 
 Only one of the potential approvers will need to propose the transaction that was created in the previous sub-section. All the other approvers should still follow the steps in the previous sub-section to generate the same create_sudo_account_trx.json file as all the other approvers. They will need this to compare to the actual proposed transaction prior to approving.
 
@@ -303,7 +303,7 @@ executed transaction: bf6aaa06b40e2a35491525cb11431efd2b5ac94e4a7a9c693c5bf0cfed
 warning: transaction executed locally, but may not be confirmed by the network yet
 ```
 
-#### 2.1.3 Review and approve the transaction to create the eosio.sudo account
+#### 2.1.3 Review and approve the transaction to create the arisen.sudo account
 
 Each of the potential approvers of the proposed transaction (i.e. the active block producers) should first review the proposed transaction to make sure they are not approving anything that they do not agree to.
 
@@ -332,7 +332,7 @@ $ head -n 30 create_sudo_account_trx_to_review.json
         ],
         "data": {
           "creator": "eosio",
-          "name": "eosio.sudo",
+          "name": "arisen.sudo",
           "owner": {
             "threshold": 1,
             "keys": [],
@@ -362,7 +362,7 @@ executed transaction: 03a907e2a3192aac0cd040c73db8273c9da7696dc7960de22b1a479ae5
 warning: transaction executed locally, but may not be confirmed by the network yet
 ```
 
-#### 2.1.4 Execute the transaction to create the eosio.sudo account
+#### 2.1.4 Execute the transaction to create the arisen.sudo account
 
 When the necessary approvals are collected (in this example, with 21 block producers, at least 15 of their approvals were required), anyone can push the `arisen.msig::exec` action which executes the approved transaction. It makes a lot of sense for the lead block producer who proposed the transaction to also execute it (this will incur another temporary RAM cost for the deferred transaction that is generated by the arisen.msig contract).
 
@@ -373,9 +373,9 @@ executed transaction: 7ecc183b99915cc411f96dde7c35c3fe0df6e732507f272af3a039b706
 warning: transaction executed locally, but may not be confirmed by the network yet
 ```
 
-Anyone can now verify that the `eosio.sudo` was created:
+Anyone can now verify that the `arisen.sudo` was created:
 ```
-$ arisecli get account eosio.sudo
+$ arisecli get account arisen.sudo
 privileged: true
 permissions:
      owner     1:    1 eosio@active,
@@ -401,16 +401,16 @@ producers:     <not voted>
 
 ```
 
-### 2.2 Deploy the eosio.sudo contract
+### 2.2 Deploy the arisen.sudo contract
 
-#### 2.2.1  Generate the transaction to deploy the eosio.sudo contract
+#### 2.2.1  Generate the transaction to deploy the arisen.sudo contract
 
-The transaction to deploy the contract to the `eosio.sudo` account will need to be proposed to get the necessary approvals from active block producers before executing it. This transaction needs to first be generated and stored as JSON into a file so that it can be used in the arisecli command to propose the transaction to the arisen.msig contract.
+The transaction to deploy the contract to the `arisen.sudo` account will need to be proposed to get the necessary approvals from active block producers before executing it. This transaction needs to first be generated and stored as JSON into a file so that it can be used in the arisecli command to propose the transaction to the arisen.msig contract.
 
 The easy way to generate this transaction is using arisecli:
 ```
-$ arisecli set contract -s -j -d eosio.sudo contracts/eosio.sudo/ > deploy_sudo_contract_trx.json
-Reading WAST/WASM from contracts/eosio.sudo/eosio.sudo.wasm...
+$ arisecli set contract -s -j -d arisen.sudo contracts/arisen.sudo/ > deploy_sudo_contract_trx.json
+Reading WAST/WASM from contracts/arisen.sudo/arisen.sudo.wasm...
 Using already assembled WASM...
 Publishing contract...
 $ cat deploy_sudo_contract_trx.json
@@ -426,7 +426,7 @@ $ cat deploy_sudo_contract_trx.json
       "account": "eosio",
       "name": "setcode",
       "authorization": [{
-          "actor": "eosio.sudo",
+          "actor": "arisen.sudo",
           "permission": "active"
         }
       ],
@@ -435,7 +435,7 @@ $ cat deploy_sudo_contract_trx.json
       "account": "eosio",
       "name": "setabi",
       "authorization": [{
-          "actor": "eosio.sudo",
+          "actor": "arisen.sudo",
           "permission": "active"
         }
       ],
@@ -464,7 +464,7 @@ $ head -n 9 deploy_sudo_contract_trx.json
 
 This guide will assume that there are 21 active block producers on the chain with account names: `blkproducera`, `blkproducerb`, ..., `blkproduceru`. The end of sub-section 2.1.1 displayed what the JSON of the active permissions of each of the active block producers would look like given the assumptions about the active block producer set. That JSON was stored in the file producer_permissions.json; if the approvers (i.e. block producers) have not created that file already, they should create that file now as shown at the end of sub-section 2.1.1.
 
-#### 2.2.2 Propose the transaction to deploy the eosio.sudo contract
+#### 2.2.2 Propose the transaction to deploy the arisen.sudo contract
 
 Only one of the potential approvers will need to propose the transaction that was created in the previous sub-section. All the other approvers should still follow the steps in the previous sub-section to generate the same deploy_sudo_contract_trx.json file as all the other approvers. They will need this to compare to the actual proposed transaction prior to approving.
 
@@ -480,7 +480,7 @@ executed transaction: 9e50dd40eba25583a657ee8114986a921d413b917002c8fb2d02e2d670
 warning: transaction executed locally, but may not be confirmed by the network yet
 ```
 
-#### 2.2.3 Review and approve the transaction to deploy the eosio.sudo contract
+#### 2.2.3 Review and approve the transaction to deploy the arisen.sudo contract
 
 Each of the potential approvers of the proposed transaction (i.e. the active block producers) should first review the proposed transaction to make sure they are not approving anything that they do not agree to.
 
@@ -503,12 +503,12 @@ $ cat deploy_sudo_contract_trx_to_review.json
         "account": "eosio",
         "name": "setcode",
         "authorization": [{
-            "actor": "eosio.sudo",
+            "actor": "arisen.sudo",
             "permission": "active"
           }
         ],
         "data": {
-          "account": "eosio.sudo",
+          "account": "arisen.sudo",
           "vmtype": 0,
           "vmversion": 0,
           "code": "0061736d01000000013e0c60017f006000017e60027e7e0060017e006000017f60027f7f017f60027f7f0060037f7f7f017f60057f7e7f7f7f0060000060037e7e7e0060017f017f029d010803656e7610616374696f6e5f646174615f73697a65000403656e760c63757272656e745f74696d65000103656e760c656f73696f5f617373657274000603656e76066d656d637079000703656e7610726561645f616374696f6e5f64617461000503656e760c726571756972655f61757468000303656e760d726571756972655f6175746832000203656e760d73656e645f64656665727265640008030f0e0505050400000a05070b050b000904050170010202050301000107c7010b066d656d6f72790200165f5a6571524b3131636865636b73756d32353653315f0008165f5a6571524b3131636865636b73756d31363053315f0009165f5a6e65524b3131636865636b73756d31363053315f000a036e6f77000b305f5a4e35656f73696f3132726571756972655f6175746845524b4e535f31367065726d697373696f6e5f6c6576656c45000c155f5a4e35656f73696f347375646f34657865634576000d056170706c79000e066d656d636d700010066d616c6c6f630011046672656500140908010041000b02150d0a9a130e0b002000200141201010450b0b002000200141201010450b0d0020002001412010104100470b0a00100142c0843d80a70b0e002000290300200029030810060b9e0102017e027f410028020441206b2202210341002002360204200029030010050240024010002200418104490d002000101121020c010b410020022000410f6a4170716b22023602040b2002200010041a200041074b41101002200341186a2002410810031a2003290318100520032903182101200310013703002003200137030820032003290318200241086a2000410010074100200341206a3602040bfd0403027f047e017f4100410028020441206b220936020442002106423b2105412021044200210703400240024002400240024020064206560d0020042c00002203419f7f6a41ff017141194b0d01200341a5016a21030c020b420021082006420b580d020c030b200341d0016a41002003414f6a41ff01714105491b21030b2003ad42388642388721080b2008421f83200542ffffffff0f838621080b200441016a2104200642017c2106200820078421072005427b7c2205427a520d000b024020072002520d0042002106423b2105413021044200210703400240024002400240024020064204560d0020042c00002203419f7f6a41ff017141194b0d01200341a5016a21030c020b420021082006420b580d020c030b200341d0016a41002003414f6a41ff01714105491b21030b2003ad42388642388721080b2008421f83200542ffffffff0f838621080b200441016a2104200642017c2106200820078421072005427b7c2205427a520d000b200720015141c00010020b0240024020012000510d0042002106423b2105412021044200210703400240024002400240024020064206560d0020042c00002203419f7f6a41ff017141194b0d01200341a5016a21030c020b420021082006420b580d020c030b200341d0016a41002003414f6a41ff01714105491b21030b2003ad42388642388721080b2008421f83200542ffffffff0f838621080b200441016a2104200642017c2106200820078421072005427b7c2205427a520d000b20072002520d010b20092000370318200242808080808080a0aad700520d00200941003602142009410136021020092009290310370208200941186a200941086a100f1a0b4100200941206a3602040b8c0101047f4100280204220521042001280204210220012802002101024010002203450d00024020034180044d0d00200310112205200310041a200510140c010b410020052003410f6a4170716b22053602042005200310041a0b200020024101756a210302402002410171450d00200328020020016a28020021010b200320011100004100200436020441010b4901037f4100210502402002450d000240034020002d0000220320012d00002204470d01200141016a2101200041016a21002002417f6a22020d000c020b0b200320046b21050b20050b0900418001200010120bcd04010c7f02402001450d00024020002802c041220d0d004110210d200041c0c1006a41103602000b200141086a200141046a41077122026b200120021b210202400240024020002802c441220a200d4f0d002000200a410c6c6a4180c0006a21010240200a0d0020004184c0006a220d2802000d0020014180c000360200200d20003602000b200241046a210a034002402001280208220d200a6a20012802004b0d002001280204200d6a220d200d28020041808080807871200272360200200141086a22012001280200200a6a360200200d200d28020041808080807872360200200d41046a22010d030b2000101322010d000b0b41fcffffff0720026b2104200041c8c1006a210b200041c0c1006a210c20002802c8412203210d03402000200d410c6c6a22014188c0006a28020020014180c0006a22052802004641d0c200100220014184c0006a280200220641046a210d0340200620052802006a2107200d417c6a2208280200220941ffffffff07712101024020094100480d000240200120024f0d000340200d20016a220a20074f0d01200a280200220a4100480d012001200a41ffffffff07716a41046a22012002490d000b0b20082001200220012002491b200941808080807871723602000240200120024d0d00200d20026a200420016a41ffffffff07713602000b200120024f0d040b200d20016a41046a220d2007490d000b41002101200b4100200b28020041016a220d200d200c280200461b220d360200200d2003470d000b0b20010f0b2008200828020041808080807872360200200d0f0b41000b870501087f20002802c44121010240024041002d00a643450d0041002802a84321070c010b3f002107410041013a00a6434100200741107422073602a8430b200721030240024002400240200741ffff036a41107622023f0022084d0d00200220086b40001a4100210820023f00470d0141002802a84321030b41002108410020033602a84320074100480d0020002001410c6c6a210220074180800441808008200741ffff037122084181f8034922061b6a2008200741ffff077120061b6b20076b2107024041002d00a6430d003f002103410041013a00a6434100200341107422033602a8430b20024180c0006a210220074100480d01200321060240200741076a417871220520036a41ffff036a41107622083f0022044d0d00200820046b40001a20083f00470d0241002802a84321060b4100200620056a3602a8432003417f460d0120002001410c6c6a22014184c0006a2802002206200228020022086a2003460d020240200820014188c0006a22052802002201460d00200620016a2206200628020041808080807871417c20016b20086a72360200200520022802003602002006200628020041ffffffff07713602000b200041c4c1006a2202200228020041016a220236020020002002410c6c6a22004184c0006a200336020020004180c0006a220820073602000b20080f0b02402002280200220820002001410c6c6a22034188c0006a22012802002207460d0020034184c0006a28020020076a2203200328020041808080807871417c20076b20086a72360200200120022802003602002003200328020041ffffffff07713602000b2000200041c4c1006a220728020041016a22033602c0412007200336020041000f0b2002200820076a36020020020b7b01037f024002402000450d0041002802c04222024101480d004180c10021032002410c6c4180c1006a21010340200341046a2802002202450d010240200241046a20004b0d00200220032802006a20004b0d030b2003410c6a22032001490d000b0b0f0b2000417c6a2203200328020041ffffffff07713602000b0300000b0bcf01060041040b04b04900000041100b0572656164000041200b086f6e6572726f72000041300b06656f73696f000041c0000b406f6e6572726f7220616374696f6e277320617265206f6e6c792076616c69642066726f6d207468652022656f73696f222073797374656d206163636f756e74000041d0c2000b566d616c6c6f635f66726f6d5f6672656564207761732064657369676e656420746f206f6e6c792062652063616c6c6564206166746572205f686561702077617320636f6d706c6574656c7920616c6c6f636174656400"
@@ -518,12 +518,12 @@ $ cat deploy_sudo_contract_trx_to_review.json
         "account": "eosio",
         "name": "setabi",
         "authorization": [{
-            "actor": "eosio.sudo",
+            "actor": "arisen.sudo",
             "permission": "active"
           }
         ],
         "data": {
-          "account": "eosio.sudo",
+          "account": "arisen.sudo",
           "abi": "0e656f73696f3a3a6162692f312e30030c6163636f756e745f6e616d65046e616d650f7065726d697373696f6e5f6e616d65046e616d650b616374696f6e5f6e616d65046e616d6506107065726d697373696f6e5f6c6576656c0002056163746f720c6163636f756e745f6e616d650a7065726d697373696f6e0f7065726d697373696f6e5f6e616d6506616374696f6e0004076163636f756e740c6163636f756e745f6e616d65046e616d650b616374696f6e5f6e616d650d617574686f72697a6174696f6e127065726d697373696f6e5f6c6576656c5b5d0464617461056279746573127472616e73616374696f6e5f68656164657200060a65787069726174696f6e0e74696d655f706f696e745f7365630d7265665f626c6f636b5f6e756d0675696e743136107265665f626c6f636b5f7072656669780675696e743332136d61785f6e65745f75736167655f776f7264730976617275696e743332106d61785f6370755f75736167655f6d730575696e74380964656c61795f7365630976617275696e74333209657874656e73696f6e000204747970650675696e74313604646174610562797465730b7472616e73616374696f6e127472616e73616374696f6e5f6865616465720314636f6e746578745f667265655f616374696f6e7308616374696f6e5b5d07616374696f6e7308616374696f6e5b5d167472616e73616374696f6e5f657874656e73696f6e730b657874656e73696f6e5b5d046578656300020865786563757465720c6163636f756e745f6e616d65037472780b7472616e73616374696f6e01000000000080545704657865630000000000"
         },
         "hex_data": "00004d1a03ea3055df040e656f73696f3a3a6162692f312e30030c6163636f756e745f6e616d65046e616d650f7065726d697373696f6e5f6e616d65046e616d650b616374696f6e5f6e616d65046e616d6506107065726d697373696f6e5f6c6576656c0002056163746f720c6163636f756e745f6e616d650a7065726d697373696f6e0f7065726d697373696f6e5f6e616d6506616374696f6e0004076163636f756e740c6163636f756e745f6e616d65046e616d650b616374696f6e5f6e616d650d617574686f72697a6174696f6e127065726d697373696f6e5f6c6576656c5b5d0464617461056279746573127472616e73616374696f6e5f68656164657200060a65787069726174696f6e0e74696d655f706f696e745f7365630d7265665f626c6f636b5f6e756d0675696e743136107265665f626c6f636b5f7072656669780675696e743332136d61785f6e65745f75736167655f776f7264730976617275696e743332106d61785f6370755f75736167655f6d730575696e74380964656c61795f7365630976617275696e74333209657874656e73696f6e000204747970650675696e74313604646174610562797465730b7472616e73616374696f6e127472616e73616374696f6e5f6865616465720314636f6e746578745f667265655f616374696f6e7308616374696f6e5b5d07616374696f6e7308616374696f6e5b5d167472616e73616374696f6e5f657874656e73696f6e730b657874656e73696f6e5b5d046578656300020865786563757465720c6163636f756e745f6e616d65037472780b7472616e73616374696f6e01000000000080545704657865630000000000"
@@ -534,7 +534,7 @@ $ cat deploy_sudo_contract_trx_to_review.json
 }
 ```
 
-Each approver should be able to see that the proposed transaction is setting the code and ABI of the `eosio.sudo` contract. But the data is just hex data and therefore not very meaningful to the approver. And considering that `eosio.sudo` at this point should be a privileged contract, it would be very dangerous for block producers to just allow a contract to be deployed to a privileged account without knowing exactly which WebAssembly code they are deploying and also auditing the source code that generated that WebAssembly code to ensure it is safe to deploy.
+Each approver should be able to see that the proposed transaction is setting the code and ABI of the `arisen.sudo` contract. But the data is just hex data and therefore not very meaningful to the approver. And considering that `arisen.sudo` at this point should be a privileged contract, it would be very dangerous for block producers to just allow a contract to be deployed to a privileged account without knowing exactly which WebAssembly code they are deploying and also auditing the source code that generated that WebAssembly code to ensure it is safe to deploy.
 
 This guide assumes that each approver has already audited the source code of the contract to be deployed and has already compiled that code to generate the WebAssembly code that should be byte-for-byte identical to the code that every other approver following the same process should have generated. The guide also assumes that this generated code and its associated ABI were provided in the steps in sub-section 2.2.1 that generated the transaction in the deploy_sudo_contract_trx.json file. It then becomes quite simple to verify that the proposed transaction is identical to the one the potential approver could have proposed with the code and ABI that they already audited:
 ```
@@ -555,7 +555,7 @@ executed transaction: d1e424e05ee4d96eb079fcd5190dd0bf35eca8c27dd7231b59df8e4648
 warning: transaction executed locally, but may not be confirmed by the network yet
 ```
 
-#### 2.2.4 Execute the transaction to create the eosio.sudo account
+#### 2.2.4 Execute the transaction to create the arisen.sudo account
 
 When the necessary approvals are collected (in this example, with 21 block producers, at least 15 of their approvals were required), anyone can push the `arisen.msig::exec` action which executes the approved transaction. It makes a lot of sense for the lead block producer who proposed the transaction to also execute it (this will incur another temporary RAM cost for the deferred transaction that is generated by the arisen.msig contract).
 
@@ -565,23 +565,23 @@ executed transaction: e8da14c6f1fdc3255b5413adccfd0d89b18f832a4cc18c4324ea2beec6
 #    arisen.msig <= arisen.msig::exec             {"proposer":"blkproducera","proposal_name":"deploysudo","executer":"blkproducera"}
 ```
 
-Anyone can now verify that the `eosio.sudo` contract was deployed correctly.
+Anyone can now verify that the `arisen.sudo` contract was deployed correctly.
 
 ```
-$ arisecli get code -a retrieved-eosio.sudo.abi eosio.sudo
+$ arisecli get code -a retrieved-arisen.sudo.abi arisen.sudo
 code hash: 1b3456a5eca28bcaca7a2a3360fbb2a72b9772a416c8e11a303bcb26bfe3263c
-saving abi to retrieved-eosio.sudo.abi
-$ sha256sum contracts/eosio.sudo/eosio.sudo.wasm
-1b3456a5eca28bcaca7a2a3360fbb2a72b9772a416c8e11a303bcb26bfe3263c  contracts/eosio.sudo/eosio.sudo.wasm
+saving abi to retrieved-arisen.sudo.abi
+$ sha256sum contracts/arisen.sudo/arisen.sudo.wasm
+1b3456a5eca28bcaca7a2a3360fbb2a72b9772a416c8e11a303bcb26bfe3263c  contracts/arisen.sudo/arisen.sudo.wasm
 ```
 
-If the two hashes match then the local WebAssembly code is the one deployed on the blockchain. The retrieved ABI, which was stored in the file retrieved-eosio.sudo.abi, can then be compared to the original ABI of the contract (contracts/eosio.sudo/eosio.sudo.abi) to ensure they are semantically the same.
+If the two hashes match then the local WebAssembly code is the one deployed on the blockchain. The retrieved ABI, which was stored in the file retrieved-arisen.sudo.abi, can then be compared to the original ABI of the contract (contracts/arisen.sudo/arisen.sudo.abi) to ensure they are semantically the same.
 
-## 3. Using the eosio.sudo contract
+## 3. Using the arisen.sudo contract
 
 ### 3.1 Example: Updating owner authority of an arbitrary account
 
-This example will demonstrate how to use the deployed eosio.sudo contract together with the arisen.msig contract to allow a greater than two-thirds supermajority of block producers of an EOSIO blockchain to change the owner authority of an arbitrary account. The example will use arisecli: in particular, the `arisecli multisig` command, the `arisecli set account permission` sub-command, and the `arisecli sudo exec` sub-command. However, the guide also demonstrates what to do if the `arisecli sudo exec` sub-command is not available.
+This example will demonstrate how to use the deployed arisen.sudo contract together with the arisen.msig contract to allow a greater than two-thirds supermajority of block producers of an EOSIO blockchain to change the owner authority of an arbitrary account. The example will use arisecli: in particular, the `arisecli multisig` command, the `arisecli set account permission` sub-command, and the `arisecli sudo exec` sub-command. However, the guide also demonstrates what to do if the `arisecli sudo exec` sub-command is not available.
 
 This guide assumes that there are 21 active block producers on the chain with account names: `blkproducera`, `blkproducerb`, ..., `blkproduceru`. Block producer `blkproducera` will act as the lead block producer handling the proposal of the transaction.
 
@@ -677,7 +677,7 @@ $ cat update_alice_owner_trx.json
 }
 ```
 
-The next step is to generate the transaction containing the `eosio.sudo::exec` action. This action will contain the transaction in update_alice_owner_trx.json as part of its action payload data.
+The next step is to generate the transaction containing the `arisen.sudo::exec` action. This action will contain the transaction in update_alice_owner_trx.json as part of its action payload data.
 
 ```
 $ arisecli sudo exec -s -j -d blkproducera update_alice_owner_trx.json > sudo_update_alice_owner_trx.json
@@ -695,13 +695,13 @@ $ cat sudo_update_alice_owner_trx.json
   "delay_sec": 0,
   "context_free_actions": [],
   "actions": [{
-      "account": "eosio.sudo",
+      "account": "arisen.sudo",
       "name": "exec",
       "authorization": [{
           "actor": "blkproducera",
           "permission": "active"
         },{
-          "actor": "eosio.sudo",
+          "actor": "arisen.sudo",
           "permission": "active"
         }
       ],
@@ -723,9 +723,9 @@ $ cat update_alice_owner_trx_serialized.hex
 0000000000000000000000000000010000000000ea30550040cbdaa86c52d5010000000000855c3400000000a8ed3232310000000000855c340000000080ab26a700000000000000000100000000010000000000ea305500000000a8ed323201000000
 ```
 
-Then generate the template for the transaction containing the `eosio.sudo::exec` action:
+Then generate the template for the transaction containing the `arisen.sudo::exec` action:
 ```
-$ arisecli push action -s -j -d eosio.sudo exec '{"executer": "blkproducera", "trx": ""}' > sudo_update_alice_owner_trx.json
+$ arisecli push action -s -j -d arisen.sudo exec '{"executer": "blkproducera", "trx": ""}' > sudo_update_alice_owner_trx.json
 $ cat sudo_update_alice_owner_trx.json
 {
   "expiration": "2018-06-29T23:34:01",
@@ -736,7 +736,7 @@ $ cat sudo_update_alice_owner_trx.json
   "delay_sec": 0,
   "context_free_actions": [],
   "actions": [{
-      "account": "eosio.sudo",
+      "account": "arisen.sudo",
       "name": "exec",
       "authorization": [],
       "data": "60ae423ad15b613c"
@@ -782,13 +782,13 @@ $ cat sudo_update_alice_owner_trx_to_review.json
     "delay_sec": 0,
     "context_free_actions": [],
     "actions": [{
-        "account": "eosio.sudo",
+        "account": "arisen.sudo",
         "name": "exec",
         "authorization": [{
             "actor": "blkproducera",
             "permission": "active"
           },{
-            "actor": "eosio.sudo",
+            "actor": "arisen.sudo",
             "permission": "active"
           }
         ],
@@ -824,9 +824,9 @@ $ cat sudo_update_alice_owner_trx_to_review.json
 }
 ```
 
-The approvers should go through the human-readable transaction output and make sure everything looks fine. However, due to a current limitation of aos/arisecli, the JSONification of action payload data does not occur recursively. So while both the `hex_data` and the human-readable JSON `data` of the payload of the `eosio.sudo::exec` action is available in the output of the `arisecli multisig review` command, only the hex data is available of the payload of the inner `arisen::updateauth` action. So it is not clear what the `updateauth` will actually do.
+The approvers should go through the human-readable transaction output and make sure everything looks fine. However, due to a current limitation of aos/arisecli, the JSONification of action payload data does not occur recursively. So while both the `hex_data` and the human-readable JSON `data` of the payload of the `arisen.sudo::exec` action is available in the output of the `arisecli multisig review` command, only the hex data is available of the payload of the inner `arisen::updateauth` action. So it is not clear what the `updateauth` will actually do.
 
-Furthermore, even if this usability issue was fixed in aos/arisecli, there will still be cases where there is no sensible human-readable version of an action data payload within a transaction. An example of this is the proposed transaction in sub-section 2.2.3 which used the `arisen::setcode` action to set the contract code of the `eosio.sudo` account. The best thing to do in such situations is for the reviewer to compare the proposed transaction to one generated by them through a process they trust.
+Furthermore, even if this usability issue was fixed in aos/arisecli, there will still be cases where there is no sensible human-readable version of an action data payload within a transaction. An example of this is the proposed transaction in sub-section 2.2.3 which used the `arisen::setcode` action to set the contract code of the `arisen.sudo` account. The best thing to do in such situations is for the reviewer to compare the proposed transaction to one generated by them through a process they trust.
 
 Since each block producer generated a transaction in sub-section 3.1.1 (stored in the file sudo_update_alice_owner_trx.json) which should be identical to the transaction proposed by the lead block producer, they can each simply check to see if the two transactions are identical:
 ```

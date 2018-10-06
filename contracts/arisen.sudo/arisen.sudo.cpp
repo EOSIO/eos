@@ -1,4 +1,4 @@
-#include <eosio.sudo/eosio.sudo.hpp>
+#include <arisen.sudo/arisen.sudo.hpp>
 #include <arisenlib/transaction.hpp>
 
 namespace arisen {
