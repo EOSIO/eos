@@ -9,7 +9,7 @@
  *  means this contract defines its own currency, allows people to create posts, vote
  *  on posts, and stake their voting power.
  *
- *  Unlike Steem, the goal is to enable maximum parallelism and enable the currency to
+ *  Unlike dPay, the goal is to enable maximum parallelism and enable the currency to
  *  be easily integrated with an exchange contract.
  */
 
