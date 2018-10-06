@@ -2,7 +2,7 @@
 #include <eosio/chain/block_state.hpp>
 #include <boost/signals2/signal.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    using boost::signals2::signal;
 

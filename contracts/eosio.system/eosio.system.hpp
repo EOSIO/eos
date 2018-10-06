@@ -13,7 +13,7 @@
 
 #include <string>
 
-namespace eosiosystem {
+namespace arisensystem {
 
    using arisen::asset;
    using arisen::indexed_by;

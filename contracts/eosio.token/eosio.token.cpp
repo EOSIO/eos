@@ -5,7 +5,7 @@
 
 #include "eosio.token.hpp"
 
-namespace eosio {
+namespace arisen {
 
 void token::create( account_name issuer,
                     asset        maximum_supply )
@@ -115,6 +115,6 @@ void token::add_balance( account_name owner, asset value, account_name ram_payer
    }
 }
 
-} /// namespace eosio
+} /// namespace arisen
 
 EOSIO_ABI( arisen::token, (create)(issue)(transfer) )

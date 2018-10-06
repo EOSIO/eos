@@ -13,7 +13,7 @@
 #include <arisenlib/producer_schedule.hpp>
 #include <arisenlib/contract.hpp>
 
-namespace eosiosystem {
+namespace arisensystem {
    using arisen::permission_level;
    using arisen::public_key;
 

@@ -2,7 +2,7 @@
 #include <vector>
 #include <memory>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 class apply_context;
 

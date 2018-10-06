@@ -7,7 +7,7 @@ namespace IR {
    struct Module;
 }
 
-namespace eosio { namespace chain { namespace wasm_constraints {
+namespace arisen { namespace chain { namespace wasm_constraints {
    constexpr unsigned maximum_linear_memory      = 33*1024*1024;//bytes
    constexpr unsigned maximum_mutable_globals    = 1024;        //bytes
    constexpr unsigned maximum_table_elements     = 1024;        //elements
@@ -27,4 +27,4 @@ namespace eosio { namespace chain { namespace wasm_constraints {
    static_assert(maximum_func_local_bytes>32                   , "maximum_func_local_bytes must be greater than 32");
 } // namespace  wasm_constraints
 
-}} // namespace eosio, chain
+}} // namespace arisen, chain

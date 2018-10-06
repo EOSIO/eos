@@ -2,7 +2,7 @@
 #include <arisenlib/action.hpp>
 #include <arisenlib/permission.hpp>
 
-namespace eosio {
+namespace arisen {
 
 /*
 propose function manually parses input data (instead of taking parsed arguments from dispatcher)
@@ -132,6 +132,6 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
    apptable.erase(apps);
 }
 
-} /// namespace eosio
+} /// namespace arisen
 
 EOSIO_ABI( arisen::multisig, (propose)(approve)(unapprove)(cancel)(exec) )

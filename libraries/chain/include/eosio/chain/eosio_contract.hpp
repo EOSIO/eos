@@ -7,7 +7,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/contract_types.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    class apply_context;
 

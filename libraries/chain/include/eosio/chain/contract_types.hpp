@@ -5,7 +5,7 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/types.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 using action_name    = arisen::chain::action_name;
 

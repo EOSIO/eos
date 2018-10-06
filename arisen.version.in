@@ -1,7 +1,7 @@
 #pragma once
 
 /// VERSION @VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@
-namespace eosio {
+namespace arisen {
    enum version {
       MAJOR @VERSION_MAJOR@,
       MINOR @VERSION_MINOR@,

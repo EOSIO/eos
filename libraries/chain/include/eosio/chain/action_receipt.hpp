@@ -6,7 +6,7 @@
 
 #include <eosio/chain/types.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    /**
     *  For each action dispatched this receipt is generated

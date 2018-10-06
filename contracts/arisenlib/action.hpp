@@ -12,7 +12,7 @@
 #include <boost/preprocessor/tuple/enum.hpp>
 #include <boost/preprocessor/facilities/overload.hpp>
 
-namespace eosio {
+namespace arisen {
 
    /**
     * @defgroup actioncppapi Action C++ API
@@ -355,7 +355,7 @@ namespace eosio {
    };
 
 
-} // namespace eosio
+} // namespace arisen
 
 #define INLINE_ACTION_SENDER3( CONTRACT_CLASS, FUNCTION_NAME, ACTION_NAME  )\
 ::arisen::inline_dispatcher<decltype(&CONTRACT_CLASS::FUNCTION_NAME), ACTION_NAME>::call

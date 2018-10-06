@@ -8,7 +8,7 @@
 
 #include "eosio_system_tester.hpp"
 
-using namespace eosio_system;
+using namespace arisen_system;
 
 BOOST_AUTO_TEST_SUITE(eosio_system_tests)
 

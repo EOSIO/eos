@@ -7,7 +7,7 @@
 
 #include <boost/mp11/tuple.hpp>
 #define N(X) ::arisen::string_to_name(#X)
-namespace eosio {
+namespace arisen {
 
    template<typename Contract, typename FirstAction>
    bool dispatch( uint64_t code, uint64_t act ) {

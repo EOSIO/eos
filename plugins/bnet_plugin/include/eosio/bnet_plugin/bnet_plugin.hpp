@@ -9,7 +9,7 @@
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace arisen {
    using chain::transaction_id_type;
    using std::shared_ptr;
    using namespace appbase;
@@ -49,6 +49,6 @@ class bnet_plugin : public plugin<bnet_plugin> {
       bnet_ptr my;
 };
 
-} /// namespace eosio
+} /// namespace arisen
 
 

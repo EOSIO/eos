@@ -17,7 +17,7 @@
 
 #include <functional>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 namespace detail {
 

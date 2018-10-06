@@ -6,7 +6,7 @@
 #include <tuple>
 #include <limits>
 
-namespace eosio {
+namespace arisen {
 
   /**
    *  @defgroup assetapi Asset API
@@ -469,4 +469,4 @@ namespace eosio {
    };
 
 /// @} asset type
-} /// namespace eosio
+} /// namespace arisen

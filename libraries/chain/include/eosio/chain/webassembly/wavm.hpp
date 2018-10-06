@@ -8,7 +8,7 @@
 #include "IR/Types.h"
 
 
-namespace eosio { namespace chain { namespace webassembly { namespace wavm {
+namespace arisen { namespace chain { namespace webassembly { namespace wavm {
 
 using namespace IR;
 using namespace Runtime;

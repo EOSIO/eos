@@ -13,7 +13,7 @@
 #include <array>
 #include <type_traits>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    /**
     * @brief The table_id_object class tracks the mapping of (scope, code, table) to an opaque identifier

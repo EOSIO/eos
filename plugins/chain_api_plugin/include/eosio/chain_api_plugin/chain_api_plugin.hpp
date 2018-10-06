@@ -9,7 +9,7 @@
 #include <appbase/application.hpp>
 #include <eosio/chain/controller.hpp>
 
-namespace eosio {
+namespace arisen {
    using arisen::chain::controller;
    using std::unique_ptr;
    using namespace appbase;

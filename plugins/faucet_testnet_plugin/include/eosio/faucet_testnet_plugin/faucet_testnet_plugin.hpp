@@ -6,7 +6,7 @@
 #include <appbase/application.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
 
-namespace eosio {
+namespace arisen {
 
 using namespace appbase;
 

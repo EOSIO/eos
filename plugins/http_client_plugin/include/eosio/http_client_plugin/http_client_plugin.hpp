@@ -6,7 +6,7 @@
 #include <appbase/application.hpp>
 #include <fc/network/http/http_client.hpp>
 
-namespace eosio {
+namespace arisen {
    using namespace appbase;
    using fc::http_client;
 

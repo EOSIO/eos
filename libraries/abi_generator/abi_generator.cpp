@@ -1,7 +1,7 @@
 #include <eosio/abi_generator/abi_generator.hpp>
 #include <eosio/chain/abi_def.hpp>
 
-namespace eosio {
+namespace arisen {
 
 void abi_generator::set_target_contract(const string& contract, const vector<string>& actions) {
   target_contract = contract;

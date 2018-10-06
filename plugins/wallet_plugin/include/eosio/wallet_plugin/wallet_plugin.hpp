@@ -10,7 +10,7 @@
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace arisen {
    using namespace appbase;
 
    namespace wallet {

@@ -7,7 +7,7 @@
 
 using namespace fc;
 
-namespace eosio { namespace chain { 
+namespace arisen { namespace chain { 
 
    class apply_context;
    class transaction_context;

@@ -8,7 +8,7 @@
 #include <fc/crypto/elliptic.hpp>
 #include <fc/optional.hpp>
 
-namespace eosio { namespace utilities {
+namespace arisen { namespace utilities {
 
 std::string                        key_to_wif(const fc::sha256& private_secret );
 std::string                        key_to_wif(const fc::ecc::private_key& key);

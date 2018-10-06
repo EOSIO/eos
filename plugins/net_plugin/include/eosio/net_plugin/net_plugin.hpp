@@ -7,7 +7,7 @@
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/net_plugin/protocol.hpp>
 
-namespace eosio {
+namespace arisen {
    using namespace appbase;
 
    struct connection_status {

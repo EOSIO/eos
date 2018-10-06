@@ -32,7 +32,7 @@ using mvo = fc::mutable_variant_object;
 #endif
 #endif
 
-namespace eosio_system {
+namespace arisen_system {
 
 class eosio_system_tester : public TESTER {
 public:

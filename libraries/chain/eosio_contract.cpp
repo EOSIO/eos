@@ -24,7 +24,7 @@
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 
 

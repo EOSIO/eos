@@ -14,7 +14,7 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <boost/tuple/tuple_io.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    authorization_manager::authorization_manager(controller& c, database& d)
    :_control(c),_db(d){}

@@ -7,7 +7,7 @@
 #include "exchange_state.cpp"
 
 
-namespace eosiosystem {
+namespace arisensystem {
 
    system_contract::system_contract( account_name s )
    :native(s),

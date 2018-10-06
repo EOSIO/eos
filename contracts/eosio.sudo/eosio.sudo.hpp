@@ -2,7 +2,7 @@
 
 #include <arisenlib/eosio.hpp>
 
-namespace eosio {
+namespace arisen {
 
    class sudo : public contract {
       public:
@@ -12,4 +12,4 @@ namespace eosio {
 
    };
 
-} /// namespace eosio
+} /// namespace arisen

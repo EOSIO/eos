@@ -24,7 +24,7 @@
 #include <arisenlib/db.h>
 #include <arisenlib/fixed_key.hpp>
 
-namespace eosio {
+namespace arisen {
 
 using boost::multi_index::const_mem_fun;
 
@@ -130,7 +130,7 @@ namespace _multi_index_detail {
 *
  *  @code
  *  #include <arisenlib/eosio.hpp>
- *  using namespace eosio;
+ *  using namespace arisen;
  *  class mycontract: arisen::contract {
  *    struct record {
  *       uint64_t    primary;
@@ -182,7 +182,7 @@ struct indexed_by {
        *
  *  @code
  *  #include <arisenlib/eosio.hpp>
- *  using namespace eosio;
+ *  using namespace arisen;
  *  class mycontract: contract {
  *    struct record {
  *      uint64_t    primary;
@@ -618,7 +618,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -655,7 +655,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -691,7 +691,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -790,7 +790,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -838,7 +838,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -884,7 +884,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -930,7 +930,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -976,7 +976,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1032,7 +1032,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1088,7 +1088,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1145,7 +1145,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1204,7 +1204,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1275,7 +1275,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1347,7 +1347,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1410,7 +1410,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1474,7 +1474,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1549,7 +1549,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1621,7 +1621,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1722,7 +1722,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1791,7 +1791,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1899,7 +1899,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -1950,7 +1950,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -2043,7 +2043,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {
@@ -2110,7 +2110,7 @@ class multi_index
        *
        *  @code
        *  #include <arisenlib/eosio.hpp>
-       *  using namespace eosio;
+       *  using namespace arisen;
        *  using namespace std;
        *  class addressbook: contract {
        *    struct address {

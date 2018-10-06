@@ -10,7 +10,7 @@
 
 #include <arisenlib/system.h>
 
-namespace eosio {
+namespace arisen {
 
    template<size_t Size>
    class fixed_key;

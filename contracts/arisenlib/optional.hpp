@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace eosio {
+namespace arisen {
   /**
    * @defgroup optionaltype Optional Type
    * @brief Defines otional type which is similar to boost::optional 
@@ -532,4 +532,4 @@ namespace eosio {
       return !left || *left != u;
    }
 ///@} optional
-} // namespace eosio
+} // namespace arisen

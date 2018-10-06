@@ -62,7 +62,7 @@ FC_REFLECT( invalid_access_action, (code)(val)(index)(store) )
 #define TESTER validating_tester
 #endif
 
-using namespace eosio;
+using namespace arisen;
 using namespace arisen::testing;
 using namespace chain;
 using namespace fc;

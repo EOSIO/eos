@@ -12,7 +12,7 @@
 #include <eosio/chain/authority.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-namespace eosio {
+namespace arisen {
 
 BOOST_AUTO_TEST_SUITE(wallet_tests)
 

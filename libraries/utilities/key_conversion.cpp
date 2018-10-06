@@ -6,7 +6,7 @@
 #include <fc/crypto/base58.hpp>
 #include <fc/variant.hpp>
 
-namespace eosio { namespace utilities {
+namespace arisen { namespace utilities {
 
 std::string key_to_wif(const fc::sha256& secret )
 {

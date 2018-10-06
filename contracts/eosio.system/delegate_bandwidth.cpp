@@ -18,7 +18,7 @@
 #include <cmath>
 #include <map>
 
-namespace eosiosystem {
+namespace arisensystem {
    using arisen::asset;
    using arisen::indexed_by;
    using arisen::const_mem_fun;
@@ -423,4 +423,4 @@ namespace eosiosystem {
    }
 
 
-} //namespace eosiosystem
+} //namespace arisensystem

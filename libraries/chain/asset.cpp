@@ -6,7 +6,7 @@
 #include <boost/rational.hpp>
 #include <fc/reflect/variant.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 uint8_t asset::decimals()const {
    return sym.decimals();

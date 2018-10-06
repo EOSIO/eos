@@ -7,7 +7,7 @@
 
 #include <algorithm>
 
-namespace eosio { namespace utilities { namespace rand {
+namespace arisen { namespace utilities { namespace rand {
 
 /// High performance random generator
 /// http://xorshift.di.unimi.it/

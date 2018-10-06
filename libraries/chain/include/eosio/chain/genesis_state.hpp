@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 struct genesis_state {
    genesis_state();

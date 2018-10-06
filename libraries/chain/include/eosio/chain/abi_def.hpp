@@ -6,7 +6,7 @@
 
 #include <eosio/chain/types.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 using type_name      = string;
 using field_name     = string;

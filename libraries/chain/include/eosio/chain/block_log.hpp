@@ -7,7 +7,7 @@
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/genesis_state.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    namespace detail { class block_log_impl; }
 

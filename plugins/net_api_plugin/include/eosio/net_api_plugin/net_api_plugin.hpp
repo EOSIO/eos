@@ -9,7 +9,7 @@
 
 #include <appbase/application.hpp>
 
-namespace eosio {
+namespace arisen {
 
 using namespace appbase;
 

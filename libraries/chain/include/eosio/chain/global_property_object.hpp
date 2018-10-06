@@ -14,7 +14,7 @@
 #include <chainbase/chainbase.hpp>
 #include "multi_index_includes.hpp"
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    /**
     * @class global_property_object

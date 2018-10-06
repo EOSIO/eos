@@ -9,7 +9,7 @@
 #include <string>
 #include <functional>
 
-namespace eosio {
+namespace arisen {
    namespace chain {
 
       /**
@@ -170,7 +170,7 @@ namespace eosio {
       }
 
    } // namespace chain
-} // namespace eosio
+} // namespace arisen
 
 namespace fc {
    inline void to_variant(const arisen::chain::symbol& var, fc::variant& vo) { vo = var.to_string(); }

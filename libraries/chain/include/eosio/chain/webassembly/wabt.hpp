@@ -11,7 +11,7 @@
 #include <src/common.h>
 #include <src/interp.h>
 
-namespace eosio { namespace chain { namespace webassembly { namespace wabt_runtime {
+namespace arisen { namespace chain { namespace webassembly { namespace wabt_runtime {
 
 using namespace fc;
 using namespace wabt;

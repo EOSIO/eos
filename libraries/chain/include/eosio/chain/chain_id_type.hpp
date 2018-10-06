@@ -8,7 +8,7 @@
 
 struct hello;
 
-namespace eosio {
+namespace arisen {
 
    class net_plugin_impl;
    struct handshake_message;

@@ -6,7 +6,7 @@
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    void chain_config::validate()const {
       EOS_ASSERT( target_block_net_usage_pct <= config::percent_100, action_validate_exception,

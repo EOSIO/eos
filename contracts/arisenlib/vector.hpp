@@ -3,10 +3,10 @@
 #include <arisenlib/stdlib.hpp>
 #include <vector>
 
-namespace eosio {
+namespace arisen {
 
    using std::vector;
 
    typedef std::vector<char> bytes;
 
-}  /// namespace eosio
+}  /// namespace arisen

@@ -6,7 +6,7 @@
 #include <tuple>
 #include <limits>
 
-namespace eosio {
+namespace arisen {
 
   /**
    *  @defgroup symbolapi Symbol API
@@ -224,4 +224,4 @@ namespace eosio {
 
    // }@ symbolapi
 
-} /// namespace eosio
+} /// namespace arisen

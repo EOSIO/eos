@@ -2,7 +2,7 @@
 #include <arisenlib/privileged.h>
 #include <arisenlib/producer_schedule.hpp>
 
-namespace eosio {
+namespace arisen {
 
    class testinline : public contract {
       public:
@@ -20,4 +20,4 @@ namespace eosio {
          }
    };
 
-} /// namespace eosio
+} /// namespace arisen

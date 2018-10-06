@@ -7,7 +7,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
    /**
     * @brief The permission_link_object class assigns permission_objects to message types
     *

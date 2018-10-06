@@ -9,7 +9,7 @@
 #ifndef CONFIG_HPP_IN
 #define CONFIG_HPP_IN
 
-namespace eosio { namespace aos { namespace config {
+namespace arisen { namespace aos { namespace config {
   constexpr uint64_t version = 0x${aos_BUILD_VERSION};
 }}}
 

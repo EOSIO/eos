@@ -38,7 +38,7 @@ void* sbrk(size_t num_bytes) {
       return reinterpret_cast<void*>(prev_num_bytes);
 }
 
-namespace eosio {
+namespace arisen {
 
    void set_blockchain_parameters(const arisen::blockchain_parameters& params) {
       char buf[sizeof(arisen::blockchain_parameters)];
@@ -527,7 +527,7 @@ namespace eosio {
 
    memory_manager memory_heap;
 
-} /// namespace eosio
+} /// namespace arisen
 
 extern "C" {
 

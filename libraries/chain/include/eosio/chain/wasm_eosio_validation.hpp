@@ -11,7 +11,7 @@
 #include "IR/Operators.h"
 #include "WASM/WASM.h"
 
-namespace eosio { namespace chain { namespace wasm_validations {
+namespace arisen { namespace chain { namespace wasm_validations {
 
    // module validators
    // effectively do nothing and pass

@@ -15,7 +15,7 @@
 
 using namespace boost;
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    const size_t abi_serializer::max_recursion_depth;
 

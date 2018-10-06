@@ -16,7 +16,7 @@
 #define TESTER validating_tester
 #endif
 
-using namespace eosio;
+using namespace arisen;
 using namespace arisen::chain;
 using namespace arisen::testing;
 

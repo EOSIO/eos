@@ -12,7 +12,7 @@ namespace chainbase {
 }
 
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    class authorization_manager;
 

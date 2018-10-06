@@ -10,7 +10,7 @@
 using namespace std;
 using namespace arisen::chain;
 
-namespace eosio { namespace wallet {
+namespace arisen { namespace wallet {
 
 class wallet_api
 {

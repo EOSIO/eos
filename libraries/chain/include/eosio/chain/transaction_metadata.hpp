@@ -7,7 +7,7 @@
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/trace.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 /**
  *  This data structure should store context-free cached data about a transaction such as

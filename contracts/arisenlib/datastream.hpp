@@ -20,7 +20,7 @@
 #include <boost/pfr.hpp>
 
 
-namespace eosio {
+namespace arisen {
 
 /**
  * @defgroup datastream Data Stream

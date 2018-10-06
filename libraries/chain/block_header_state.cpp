@@ -2,7 +2,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <limits>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 
    bool block_header_state::is_active_producer( account_name n )const {

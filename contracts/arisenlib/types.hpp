@@ -8,7 +8,7 @@
 #include <tuple>
 #include <string>
 
-namespace eosio {
+namespace arisen {
 
    typedef std::vector<std::tuple<uint16_t,std::vector<char>>> extensions_type;
 
@@ -164,7 +164,7 @@ namespace eosio {
       }
    };
 
-} // namespace eosio
+} // namespace arisen
 
 namespace std {
    /**

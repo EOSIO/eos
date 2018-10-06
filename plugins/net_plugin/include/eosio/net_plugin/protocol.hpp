@@ -7,7 +7,7 @@
 #include <eosio/chain/types.hpp>
 #include <chrono>
 
-namespace eosio {
+namespace arisen {
    using namespace chain;
    using namespace fc;
 
@@ -147,7 +147,7 @@ namespace eosio {
                                       signed_block,
                                       packed_transaction>;
 
-} // namespace eosio
+} // namespace arisen
 
 FC_REFLECT( arisen::select_ids<fc::sha256>, (mode)(pending)(ids) )
 FC_REFLECT( arisen::chain_size_message,

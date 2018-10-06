@@ -26,13 +26,13 @@
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
 
-namespace eosio { namespace detail {
+namespace arisen { namespace detail {
   struct txn_test_gen_empty {};
 }}
 
 FC_REFLECT(arisen::detail::txn_test_gen_empty, );
 
-namespace eosio {
+namespace arisen {
 
 static appbase::abstract_plugin& _txn_test_gen_plugin = app().register_plugin<txn_test_gen_plugin>();
 

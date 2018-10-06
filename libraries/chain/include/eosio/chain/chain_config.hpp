@@ -7,7 +7,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/config.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 /**
  * @brief Producer-voted blockchain configuration parameters

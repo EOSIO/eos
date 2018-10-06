@@ -17,7 +17,7 @@
 #include "WASM/WASM.h"
 
 
-namespace eosio { namespace chain { namespace wasm_injections {
+namespace arisen { namespace chain { namespace wasm_injections {
    using namespace IR;
    // helper functions for injection
 

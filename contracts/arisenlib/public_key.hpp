@@ -2,7 +2,7 @@
 #include <arisenlib/varint.hpp>
 #include <arisenlib/serialize.hpp>
 
-namespace eosio {
+namespace arisen {
 
    /**
    *  @defgroup publickeytype Public Key Type

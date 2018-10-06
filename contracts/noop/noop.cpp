@@ -5,7 +5,7 @@
 
 #include <arisenlib/eosio.hpp>
 
-namespace eosio {
+namespace arisen {
 
    class noop: public contract {
       public:

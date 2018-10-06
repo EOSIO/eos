@@ -10,7 +10,7 @@
 #include <arisenlib/serialize.hpp>
 #include <vector>
 
-namespace eosio {
+namespace arisen {
 
    /**
     * @defgroup transactioncppapi Transaction C++ API

@@ -1,6 +1,6 @@
 #include <arisenlib/eosio.hpp>
 #include <arisenlib/print.hpp>
-using namespace eosio;
+using namespace arisen;
 
 class payloadless : public arisen::contract {
   public:

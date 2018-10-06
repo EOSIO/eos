@@ -5,7 +5,7 @@
 #include <boost/preprocessor/seq/seq.hpp>
 #include <boost/preprocessor/stringize.hpp>
 
-namespace eosio {
+namespace arisen {
   template<typename T>
   struct reflector {
      typedef std::false_type is_reflected;
@@ -109,7 +109,7 @@ void arisen::reflector<TYPE>::visit( Visitor&& v ) { \
  *  @param TYPE - the class to be reflected
  */
 #define EOSLIB_REFLECT_FWD( TYPE ) \
-namespace eosio { \
+namespace arisen { \
   template<> struct reflector<TYPE> {\
        typedef TYPE type; \
        typedef arisen::true_type is_reflected; \
@@ -147,7 +147,7 @@ namespace eosio { \
  *  @param MEMBERS - a sequence of member names.  (field1)(field2)(field3)
  */
 #define EOSLIB_REFLECT_DERIVED( TYPE, INHERITS, MEMBERS ) \
-namespace eosio {  \
+namespace arisen {  \
 template<> struct reflector<TYPE> {\
     typedef TYPE type; \
     typedef arisen::true_type  is_reflected; \
@@ -170,7 +170,7 @@ template<> struct reflector<TYPE> {\
  *  @param MEMBERS - a sequence of member names.  (field1)(field2)(field3)
  */
 #define EOSLIB_REFLECT_DERIVED_TEMPLATE( TEMPLATE_ARGS, TYPE, INHERITS, MEMBERS ) \
-namespace eosio {  \
+namespace arisen {  \
 template<BOOST_PP_SEQ_ENUM(TEMPLATE_ARGS)> struct reflector<TYPE> {\
     typedef TYPE type; \
     typedef arisen::true_type  is_defined; \

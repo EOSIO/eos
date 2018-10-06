@@ -46,7 +46,7 @@
 
 #define _V(n, v)  fc::mutable_variant_object(n, v)
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
    using                               std::map;
    using                               std::vector;
    using                               std::unordered_map;

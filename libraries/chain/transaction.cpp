@@ -20,7 +20,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/transaction.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 using namespace boost::multi_index;
 

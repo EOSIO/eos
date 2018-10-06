@@ -4,7 +4,7 @@
  */
 #pragma once
 
-namespace eosio { namespace client { namespace http {
+namespace arisen { namespace client { namespace http {
 
    namespace detail {
       class http_context_impl;

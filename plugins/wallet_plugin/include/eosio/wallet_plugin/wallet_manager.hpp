@@ -11,7 +11,7 @@
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace arisen {
 namespace wallet {
 
 /// Provides associate of wallet name to wallet and manages the interaction with each wallet.
@@ -146,6 +146,6 @@ private:
 };
 
 } // namespace wallet
-} // namespace eosio
+} // namespace arisen
 
 

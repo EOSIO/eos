@@ -10,7 +10,7 @@
 
 #include <appbase/application.hpp>
 
-namespace eosio {
+namespace arisen {
 
 using boost::signals2::signal;
 

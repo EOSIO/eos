@@ -4,7 +4,7 @@
  */
 #pragma once
 
-namespace eosio { namespace utilities {
+namespace arisen { namespace utilities {
 
 template<size_t BlockSize=16, char PaddingChar=' '>
 class padding_ostream : public fc::buffered_ostream {

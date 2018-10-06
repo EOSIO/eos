@@ -8,7 +8,7 @@
 
 #include <fc/reflect/reflect.hpp>
 
-namespace eosio {
+namespace arisen {
    using namespace appbase;
 
    /**

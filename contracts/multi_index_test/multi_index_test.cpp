@@ -2,7 +2,7 @@
 #include <arisenlib/dispatcher.hpp>
 #include <arisenlib/multi_index.hpp>
 
-using namespace eosio;
+using namespace arisen;
 
 namespace multi_index_test {
 

@@ -31,7 +31,7 @@
 
 #endif
 
-namespace eosio { namespace wallet {
+namespace arisen { namespace wallet {
 
 namespace detail {
 
@@ -266,7 +266,7 @@ public:
 
 
 
-namespace eosio { namespace wallet {
+namespace arisen { namespace wallet {
 
 soft_wallet::soft_wallet(const wallet_data& initial_data)
    : my(new detail::soft_wallet_impl(*this, initial_data))

@@ -3,7 +3,7 @@
 #include <arisenlib/asset.hpp>
 #include <arisenlib/multi_index.hpp>
 
-namespace eosio {
+namespace arisen {
    using std::string;
    using std::array;
 

@@ -127,7 +127,7 @@ Options:
 #include "httpc.hpp"
 
 using namespace std;
-using namespace eosio;
+using namespace arisen;
 using namespace arisen::chain;
 using namespace arisen::utilities;
 using namespace arisen::client::help;

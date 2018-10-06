@@ -21,7 +21,7 @@
 #include "config.hpp"
 
 using namespace appbase;
-using namespace eosio;
+using namespace arisen;
 
 namespace fc {
    std::unordered_map<std::string,appender::ptr>& get_appender_map();

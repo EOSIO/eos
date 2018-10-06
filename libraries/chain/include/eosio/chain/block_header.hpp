@@ -2,7 +2,7 @@
 #include <eosio/chain/block_timestamp.hpp>
 #include <eosio/chain/producer_schedule.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    struct block_header
    {

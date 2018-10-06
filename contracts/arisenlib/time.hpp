@@ -3,7 +3,7 @@
 #include <string>
 #include <arisenlib/eosio.hpp>
 
-namespace eosio {
+namespace arisen {
   class microseconds {
     public:
         explicit microseconds( int64_t c = 0) :_count(c){}
@@ -176,4 +176,4 @@ namespace eosio {
    }; // block_timestamp
    typedef block_timestamp block_timestamp_type; 
 
-} // namespace eosio
+} // namespace arisen

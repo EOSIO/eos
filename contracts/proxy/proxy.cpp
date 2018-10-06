@@ -7,7 +7,7 @@
 #include <eosio.token/eosio.token.hpp>
 
 namespace proxy {
-   using namespace eosio;
+   using namespace arisen;
 
    namespace configs {
 
@@ -85,7 +85,7 @@ namespace proxy {
 }
 
 using namespace proxy;
-using namespace eosio;
+using namespace arisen;
 
 extern "C" {
 

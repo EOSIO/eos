@@ -23,7 +23,7 @@
 #include <boost/bind.hpp>
 #include <fstream>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
 

@@ -2,7 +2,7 @@
 #include <arisenlib/types.h>
 #include <arisenlib/print.hpp>
 
-namespace eosio
+namespace arisen
 {
     /**
     * @defgroup fixedpoint Fixed Point

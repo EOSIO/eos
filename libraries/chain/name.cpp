@@ -4,7 +4,7 @@
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-namespace eosio { namespace chain { 
+namespace arisen { namespace chain { 
 
    void name::set( const char* str ) {
       const auto len = strnlen(str, 14);

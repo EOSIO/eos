@@ -2,7 +2,7 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/trace.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    class transaction_context {
       private:

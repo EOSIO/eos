@@ -23,7 +23,7 @@
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace arisen {
    using chain::controller;
    using std::unique_ptr;
    using std::pair;

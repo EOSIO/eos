@@ -28,7 +28,7 @@
 #include <deep_nested.abi.hpp>
 #include <large_nested.abi.hpp>
 
-using namespace eosio;
+using namespace arisen;
 using namespace chain;
 
 BOOST_AUTO_TEST_SUITE(abi_tests)
@@ -624,7 +624,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
    #include <arisenlib/asset.hpp>
    #include <arisenlib/time.hpp>
 
-   using namespace eosio;
+   using namespace arisen;
 
    typedef signed_int varint32;
    typedef unsigned_int varuint32;
@@ -863,7 +863,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_indexes, abi_gen_helper)
    #include <arisenlib/types.hpp>
    #include <string>
 
-   using namespace eosio;
+   using namespace arisen;
 
    //@abi table
    struct table1 {
@@ -1227,7 +1227,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_simple_typedef, abi_gen_helper)
    const char* simple_typedef = R"=====(
    #include <arisenlib/types.hpp>
 
-   using namespace eosio;
+   using namespace arisen;
 
    struct common_params {
       uint64_t c1;
@@ -1291,7 +1291,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_field_typedef, abi_gen_helper)
    const char* field_typedef = R"=====(
    #include <arisenlib/types.hpp>
 
-   using namespace eosio;
+   using namespace arisen;
 
    typedef name my_name_alias;
 
@@ -1373,7 +1373,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_POD, abi_gen_helper)
    #include <string>
    #include <arisenlib/types.hpp>
 
-   using namespace eosio;
+   using namespace arisen;
    using namespace std;
 
    //@abi table
@@ -1442,7 +1442,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_structs, abi_gen_helper)
    #include <string>
    #include <arisenlib/types.hpp>
 
-   using namespace eosio;
+   using namespace arisen;
    using namespace std;
 
    struct my_struct {
@@ -1527,7 +1527,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_multidimension, abi_gen_helper)
    #include <string>
    #include <arisenlib/types.hpp>
 
-   using namespace eosio;
+   using namespace arisen;
    using namespace std;
 
    //@abi table
@@ -1623,7 +1623,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_eosioabi_macro, abi_gen_helper)
       #include <arisenlib/print.hpp>
 
 
-      using namespace eosio;
+      using namespace arisen;
 
       struct hello : public arisen::contract {
         public:
@@ -1683,7 +1683,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_contract_inheritance, abi_gen_helper)
       #include <arisenlib/print.hpp>
 
 
-      using namespace eosio;
+      using namespace arisen;
 
       struct hello : public arisen::contract {
         public:
@@ -1756,7 +1756,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_no_eosioabi_macro, abi_gen_helper)
       #include <arisenlib/print.hpp>
       #pragma GCC diagnostic pop
 
-      using namespace eosio;
+      using namespace arisen;
 
       struct hello : public arisen::contract {
         public:

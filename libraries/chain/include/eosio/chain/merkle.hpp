@@ -1,7 +1,7 @@
 #pragma once
 #include <eosio/chain/types.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    digest_type make_canonical_left(const digest_type& val);
    digest_type make_canonical_right(const digest_type& val);

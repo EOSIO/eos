@@ -8,7 +8,7 @@
 
 #include "multi_index_includes.hpp"
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 class producer_object : public chainbase::object<producer_object_type, producer_object> {
    OBJECT_CTOR(producer_object)
 

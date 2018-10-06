@@ -8,7 +8,7 @@
 
 #include <fc/filesystem.hpp>
 
-namespace eosio { namespace utilities {
+namespace arisen { namespace utilities {
 
 fc::path temp_directory_path();
 

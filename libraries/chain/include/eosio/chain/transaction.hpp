@@ -7,7 +7,7 @@
 #include <eosio/chain/action.hpp>
 #include <numeric>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    /**
     *  The transaction header contains the fixed-sized data

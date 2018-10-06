@@ -7,7 +7,7 @@
 #include <arisenlib/transaction.hpp>
 #include <arisenlib/dispatcher.hpp>
 
-using namespace eosio;
+using namespace arisen;
 
 class deferred_test : public arisen::contract {
    public:

@@ -7,7 +7,7 @@
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    transaction_context::transaction_context( controller& c,
                                              const signed_transaction& t,

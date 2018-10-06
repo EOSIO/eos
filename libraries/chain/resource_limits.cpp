@@ -6,7 +6,7 @@
 #include <boost/tuple/tuple_io.hpp>
 #include <algorithm>
 
-namespace eosio { namespace chain { namespace resource_limits {
+namespace arisen { namespace chain { namespace resource_limits {
 
 static_assert( config::rate_limiting_precision > 0, "config::rate_limiting_precision must be positive" );
 

@@ -28,7 +28,7 @@ using namespace arisen::testing;
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 
-namespace eosio
+namespace arisen
 {
 using namespace chain;
 using namespace std;
@@ -647,4 +647,4 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-} // namespace eosio
+} // namespace arisen

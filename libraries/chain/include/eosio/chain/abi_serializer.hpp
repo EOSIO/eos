@@ -8,7 +8,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <fc/variant_object.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 using std::map;
 using std::string;

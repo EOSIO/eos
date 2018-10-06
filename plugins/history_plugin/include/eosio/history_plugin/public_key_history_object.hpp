@@ -7,7 +7,7 @@
 #include <chainbase/chainbase.hpp>
 #include <fc/array.hpp>
 
-namespace eosio {
+namespace arisen {
 using chain::account_name;
 using chain::public_key_type;
 using chain::permission_name;

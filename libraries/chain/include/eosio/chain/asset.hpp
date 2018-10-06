@@ -7,7 +7,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/symbol.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 /**
 

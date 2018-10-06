@@ -10,7 +10,7 @@
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace arisen {
    using namespace appbase;
    typedef std::shared_ptr<class test_control_plugin_impl> test_control_ptr;
 

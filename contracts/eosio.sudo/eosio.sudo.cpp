@@ -1,7 +1,7 @@
 #include <eosio.sudo/eosio.sudo.hpp>
 #include <arisenlib/transaction.hpp>
 
-namespace eosio {
+namespace arisen {
 
 /*
 exec function manually parses input data (instead of taking parsed arguments from dispatcher)
@@ -32,6 +32,6 @@ void sudo::exec() {
    send_deferred( (uint128_t(executer) << 64) | current_time(), executer, buffer+trx_pos, size-trx_pos );
 }
 
-} /// namespace eosio
+} /// namespace arisen
 
 EOSIO_ABI( arisen::sudo, (exec) )

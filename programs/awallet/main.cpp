@@ -17,7 +17,7 @@
 #include "config.hpp"
 
 using namespace appbase;
-using namespace eosio;
+using namespace arisen;
 
 bfs::path determine_home_directory()
 {

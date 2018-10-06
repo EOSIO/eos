@@ -26,7 +26,7 @@
 #include <memory>
 #include <regex>
 
-namespace eosio {
+namespace arisen {
 
    static appbase::abstract_plugin& _http_plugin = app().register_plugin<http_plugin>();
 

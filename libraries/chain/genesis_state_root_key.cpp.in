@@ -5,7 +5,7 @@
 
 #include <eosio/chain/genesis_state.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 const string genesis_state::eosio_root_key = "${EOSIO_ROOT_KEY}";
 

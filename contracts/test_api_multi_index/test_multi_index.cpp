@@ -65,7 +65,7 @@ namespace _test_multi_index {
    template<uint64_t TableName>
    void idx64_store_only(uint64_t receiver)
    {
-      using namespace eosio;
+      using namespace arisen;
 
       typedef record_idx64 record;
 
@@ -97,7 +97,7 @@ namespace _test_multi_index {
    template<uint64_t TableName>
    void idx64_check_without_storing(uint64_t receiver)
    {
-      using namespace eosio;
+      using namespace arisen;
 
       typedef record_idx64 record;
 
@@ -210,7 +210,7 @@ namespace _test_multi_index {
    template<uint64_t TableName>
    void idx64_require_find_fail(uint64_t receiver)
    {
-      using namespace eosio;
+      using namespace arisen;
       typedef record_idx64 record;
 
       // Load table using multi_index
@@ -228,7 +228,7 @@ namespace _test_multi_index {
    template<uint64_t TableName>
    void idx64_require_find_fail_with_msg(uint64_t receiver)
    {
-      using namespace eosio;
+      using namespace arisen;
       typedef record_idx64 record;
 
       // Load table using multi_index
@@ -246,7 +246,7 @@ namespace _test_multi_index {
    template<uint64_t TableName>
    void idx64_require_find_sk_fail(uint64_t receiver)
    {
-      using namespace eosio;
+      using namespace arisen;
       typedef record_idx64 record;
 
       // Load table using multi_index
@@ -265,7 +265,7 @@ namespace _test_multi_index {
    template<uint64_t TableName>
    void idx64_require_find_sk_fail_with_msg(uint64_t receiver)
    {
-      using namespace eosio;
+      using namespace arisen;
       typedef record_idx64 record;
 
       // Load table using multi_index
@@ -284,7 +284,7 @@ namespace _test_multi_index {
    template<uint64_t TableName>
    void idx128_store_only(uint64_t receiver)
    {
-      using namespace eosio;
+      using namespace arisen;
 
       typedef record_idx128 record;
 
@@ -307,7 +307,7 @@ namespace _test_multi_index {
    template<uint64_t TableName>
    void idx128_check_without_storing(uint64_t receiver)
    {
-      using namespace eosio;
+      using namespace arisen;
 
       typedef record_idx128 record;
 
@@ -346,7 +346,7 @@ namespace _test_multi_index {
    template<uint64_t TableName, uint64_t SecondaryIndex>
    auto idx64_table(uint64_t receiver)
    {
-      using namespace eosio;
+      using namespace arisen;
       typedef record_idx64 record;
       // Load table using multi_index
       multi_index<TableName, record,
@@ -415,7 +415,7 @@ void test_multi_index::idx64_require_find_sk_fail_with_msg(uint64_t receiver, ui
 
 void test_multi_index::idx128_autoincrement_test(uint64_t receiver, uint64_t code, uint64_t action)
 {
-   using namespace eosio;
+   using namespace arisen;
    using namespace _test_multi_index;
 
    typedef record_idx128 record;
@@ -463,7 +463,7 @@ void test_multi_index::idx128_autoincrement_test(uint64_t receiver, uint64_t cod
 
 void test_multi_index::idx128_autoincrement_test_part1(uint64_t receiver, uint64_t code, uint64_t action)
 {
-   using namespace eosio;
+   using namespace arisen;
    using namespace _test_multi_index;
 
    typedef record_idx128 record;
@@ -496,7 +496,7 @@ void test_multi_index::idx128_autoincrement_test_part1(uint64_t receiver, uint64
 
 void test_multi_index::idx128_autoincrement_test_part2(uint64_t receiver, uint64_t code, uint64_t action)
 {
-   using namespace eosio;
+   using namespace arisen;
    using namespace _test_multi_index;
 
    typedef record_idx128 record;
@@ -552,7 +552,7 @@ void test_multi_index::idx128_autoincrement_test_part2(uint64_t receiver, uint64
 
 void test_multi_index::idx256_general(uint64_t receiver, uint64_t code, uint64_t action)
 {
-   using namespace eosio;
+   using namespace arisen;
    using namespace _test_multi_index;
 
    typedef record_idx256 record;
@@ -658,7 +658,7 @@ void test_multi_index::idx256_general(uint64_t receiver, uint64_t code, uint64_t
 
 void test_multi_index::idx_double_general(uint64_t receiver, uint64_t code, uint64_t action)
 {
-   using namespace eosio;
+   using namespace arisen;
    using namespace _test_multi_index;
 
    typedef record_idx_double record;
@@ -713,7 +713,7 @@ void test_multi_index::idx_double_general(uint64_t receiver, uint64_t code, uint
 
 void test_multi_index::idx_long_double_general(uint64_t receiver, uint64_t code, uint64_t action)
 {
-   using namespace eosio;
+   using namespace arisen;
    using namespace _test_multi_index;
 
    typedef record_idx_long_double record;

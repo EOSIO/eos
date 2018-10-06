@@ -13,7 +13,7 @@
 
 namespace chainbase { class database; }
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 class controller;
 class transaction_context;

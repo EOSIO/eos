@@ -7,7 +7,7 @@
 
 #include <cstdlib>
 
-namespace eosio { namespace utilities {
+namespace arisen { namespace utilities {
 
 fc::path temp_directory_path()
 {

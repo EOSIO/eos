@@ -9,7 +9,7 @@
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace arisen {
    using chain::transaction_id_type;
    using std::shared_ptr;
    using namespace appbase;
@@ -135,7 +135,7 @@ class history_plugin : public plugin<history_plugin> {
       history_ptr my;
 };
 
-} /// namespace eosio
+} /// namespace arisen
 
 FC_REFLECT( arisen::history_apis::read_only::get_actions_params, (account_name)(pos)(offset) )
 FC_REFLECT( arisen::history_apis::read_only::get_actions_result, (actions)(last_irreversible_block)(time_limit_exceeded_error) )

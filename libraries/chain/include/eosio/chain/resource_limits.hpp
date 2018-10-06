@@ -4,7 +4,7 @@
 #include <chainbase/chainbase.hpp>
 #include <set>
 
-namespace eosio { namespace chain { namespace resource_limits {
+namespace arisen { namespace chain { namespace resource_limits {
    namespace impl {
       template<typename T>
       struct ratio {

@@ -2,7 +2,7 @@
 #include <eosio/chain/block_header.hpp>
 #include <eosio/chain/transaction.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    /**
     * When a transaction is referenced by a block it could imply one of several outcomes which

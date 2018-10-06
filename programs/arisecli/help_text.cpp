@@ -270,7 +270,7 @@ const std::map<int64_t, std::string> error_advice = {
    { wallet_not_available_exception::code_value, error_advice_wallet_not_available_exception }
 };
 
-namespace eosio { namespace client { namespace help {
+namespace arisen { namespace client { namespace help {
 
 bool print_recognized_errors(const fc::exception& e, const bool verbose_errors) {
    // arisen recognized error code is from 3000000

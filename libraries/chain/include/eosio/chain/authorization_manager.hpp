@@ -10,7 +10,7 @@
 #include <utility>
 #include <functional>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    class controller;
    struct updateauth;

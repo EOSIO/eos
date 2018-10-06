@@ -8,7 +8,7 @@
 #include <fc/time.hpp>
 #include <fc/exception/exception.hpp>
 
-using namespace eosio;
+using namespace arisen;
 using namespace chain;
 
 

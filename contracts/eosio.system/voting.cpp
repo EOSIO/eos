@@ -18,7 +18,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace eosiosystem {
+namespace arisensystem {
    using arisen::indexed_by;
    using arisen::const_mem_fun;
    using arisen::bytes;
@@ -285,4 +285,4 @@ namespace eosiosystem {
       );
    }
 
-} /// namespace eosiosystem
+} /// namespace arisensystem

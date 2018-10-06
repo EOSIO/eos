@@ -9,7 +9,7 @@
 #include <appbase/application.hpp>
 #include <eosio/chain/controller.hpp>
 
-namespace eosio {
+namespace arisen {
 
 class login_plugin : public plugin<login_plugin> {
  public:
@@ -82,7 +82,7 @@ class login_plugin : public plugin<login_plugin> {
    unique_ptr<class login_plugin_impl> my;
 };
 
-} // namespace eosio
+} // namespace arisen
 
 FC_REFLECT(arisen::login_plugin::start_login_request_params, (expiration_time))
 FC_REFLECT(arisen::login_plugin::start_login_request_results, (server_ephemeral_pub_key))

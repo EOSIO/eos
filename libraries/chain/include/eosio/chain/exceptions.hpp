@@ -68,7 +68,7 @@
    { throw( effect_type( e.what(), e.get_log() ) ); }
 
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    FC_DECLARE_EXCEPTION( chain_exception,
                          3000000, "blockchain exception" )

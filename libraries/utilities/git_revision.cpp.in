@@ -5,7 +5,7 @@
 #define EOS_GIT_REVISION_UNIX_TIMESTAMP @EOS_GIT_REVISION_UNIX_TIMESTAMP@
 #define EOS_GIT_REVISION_DESCRIPTION "@EOS_GIT_REVISION_DESCRIPTION@"
 
-namespace eosio { namespace utilities {
+namespace arisen { namespace utilities {
 
 const char* const git_revision_sha = EOS_GIT_REVISION_SHA;
 const uint32_t git_revision_unix_timestamp = EOS_GIT_REVISION_UNIX_TIMESTAMP;

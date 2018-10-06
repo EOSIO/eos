@@ -13,7 +13,7 @@
 using namespace std;
 using namespace arisen::chain;
 
-namespace eosio { namespace wallet {
+namespace arisen { namespace wallet {
 
 typedef uint16_t transaction_handle_type;
 

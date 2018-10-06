@@ -3,7 +3,7 @@
 #include "serialize.hpp"
 #include "types.h"
 
-namespace eosio {
+namespace arisen {
 
    /**
     * @defgroup privilegedcppapi Privileged C++ API

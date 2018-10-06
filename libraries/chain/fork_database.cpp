@@ -9,7 +9,7 @@
 #include <fc/io/fstream.hpp>
 #include <fstream>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
    using boost::multi_index_container;
    using namespace boost::multi_index;
 

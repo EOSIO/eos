@@ -9,7 +9,7 @@
 
 #include <type_traits>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 
 struct permission_level_weight {

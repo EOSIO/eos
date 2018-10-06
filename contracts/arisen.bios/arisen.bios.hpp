@@ -2,7 +2,7 @@
 #include <arisenlib/eosio.hpp>
 #include <arisenlib/privileged.hpp>
 
-namespace eosio {
+namespace arisen {
 
    class bios : public contract {
       public:
@@ -41,4 +41,4 @@ namespace eosio {
       private:
    };
 
-} /// namespace eosio
+} /// namespace arisen

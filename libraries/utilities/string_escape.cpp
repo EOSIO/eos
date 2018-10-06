@@ -6,7 +6,7 @@
 #include <eosio/utilities/string_escape.hpp>
 #include <sstream>
 
-namespace eosio { namespace utilities {
+namespace arisen { namespace utilities {
 
   std::string escape_string_for_c_source_code(const std::string& input)
   {

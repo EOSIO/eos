@@ -8,7 +8,7 @@
 #include <softfloat_types.h>
 
 
-namespace eosio { namespace chain { namespace webassembly { namespace binaryen {
+namespace arisen { namespace chain { namespace webassembly { namespace binaryen {
 
 using namespace fc;
 using namespace wasm;

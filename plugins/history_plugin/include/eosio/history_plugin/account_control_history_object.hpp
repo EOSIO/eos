@@ -7,7 +7,7 @@
 #include <chainbase/chainbase.hpp>
 #include <eosio/chain/types.hpp>
 
-namespace eosio {
+namespace arisen {
 using chain::account_name;
 using chain::permission_name;
 using chain::shared_vector;

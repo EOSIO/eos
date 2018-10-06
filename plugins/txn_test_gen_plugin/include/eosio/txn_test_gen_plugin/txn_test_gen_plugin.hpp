@@ -7,7 +7,7 @@
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
-namespace eosio {
+namespace arisen {
 
 using namespace appbase;
 

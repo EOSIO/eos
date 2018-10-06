@@ -8,7 +8,7 @@
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
 
-namespace eosio { namespace chain { namespace config {
+namespace arisen { namespace chain { namespace config {
 
 typedef __uint128_t uint128_t;
 

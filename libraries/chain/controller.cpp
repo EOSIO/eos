@@ -22,7 +22,7 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 using resource_limits::resource_limits_manager;
 

@@ -8,7 +8,7 @@
 #include <eosio/chain/action_receipt.hpp>
 #include <eosio/chain/block.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    struct account_delta {
       account_delta( const account_name& n, int64_t d):account(n),delta(d){}

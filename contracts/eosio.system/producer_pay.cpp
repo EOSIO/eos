@@ -2,7 +2,7 @@
 
 #include <eosio.token/eosio.token.hpp>
 
-namespace eosiosystem {
+namespace arisensystem {
 
    const int64_t  min_pervote_daily_pay = 100'0000;
    const int64_t  min_activated_stake   = 150'000'000'0000;
@@ -18,7 +18,7 @@ namespace eosiosystem {
 
 
    void system_contract::onblock( block_timestamp timestamp, account_name producer ) {
-      using namespace eosio;
+      using namespace arisen;
 
       require_auth(N(eosio));
 
@@ -64,7 +64,7 @@ namespace eosiosystem {
       }
    }
 
-   using namespace eosio;
+   using namespace arisen;
    void system_contract::claimrewards( const account_name& owner ) {
       require_auth(owner);
 
@@ -137,4 +137,4 @@ namespace eosiosystem {
       }
    }
 
-} //namespace eosiosystem
+} //namespace arisensystem

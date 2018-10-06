@@ -7,9 +7,9 @@
 
 #include <fc/io/json.hpp>
 
-namespace eosio {
+namespace arisen {
 
-using namespace eosio;
+using namespace arisen;
 
 static appbase::abstract_plugin& _history_api_plugin = app().register_plugin<history_api_plugin>();
 

@@ -26,7 +26,7 @@
 
 using boost::asio::ip::tcp;
 using namespace arisen::chain;
-namespace eosio { namespace client { namespace http {
+namespace arisen { namespace client { namespace http {
 
    namespace detail {
       class http_context_impl {

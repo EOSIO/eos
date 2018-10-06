@@ -2,7 +2,7 @@
 #include <arisenlib/eosio.hpp>
 #include <arisenlib/transaction.hpp>
 
-namespace eosio {
+namespace arisen {
 
    class multisig : public contract {
       public:
@@ -33,4 +33,4 @@ namespace eosio {
          typedef arisen::multi_index<N(approvals),approvals_info> approvals;
    };
 
-} /// namespace eosio
+} /// namespace arisen

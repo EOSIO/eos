@@ -23,7 +23,7 @@
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/permutation.hpp>
 
-using namespace eosio;
+using namespace arisen;
 using namespace chain;
 using tester = arisen::testing::tester;
 

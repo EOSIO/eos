@@ -35,7 +35,7 @@
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace arisen {
 
 using chain::account_name;
 using chain::action_name;
@@ -1582,4 +1582,4 @@ void mongo_db_plugin::plugin_shutdown()
    my.reset();
 }
 
-} // namespace eosio
+} // namespace arisen

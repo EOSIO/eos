@@ -1,6 +1,6 @@
 #pragma once
 
-namespace eosio {
+namespace arisen {
 
 /**
  * @defgroup contracttype Contract Type
@@ -44,4 +44,4 @@ class contract {
 };
 
 /// @} contracttype
-} /// namespace eosio
+} /// namespace arisen

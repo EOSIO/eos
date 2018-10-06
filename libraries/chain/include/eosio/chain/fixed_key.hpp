@@ -10,7 +10,7 @@
 
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/exceptions.hpp>
-namespace eosio {
+namespace arisen {
 
    using chain::uint128_t;
 

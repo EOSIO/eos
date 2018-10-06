@@ -17,7 +17,7 @@
 using namespace IR;
 using namespace Runtime;
 
-namespace eosio { namespace chain { namespace webassembly { namespace wavm {
+namespace arisen { namespace chain { namespace webassembly { namespace wavm {
 
 running_instance_context the_running_instance_context;
 

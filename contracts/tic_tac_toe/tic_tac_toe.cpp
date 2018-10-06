@@ -4,7 +4,7 @@
  */
 #include "tic_tac_toe.hpp"
 
-using namespace eosio;
+using namespace arisen;
 
 /**
  * @brief Check if cell is empty

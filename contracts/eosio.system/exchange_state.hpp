@@ -2,7 +2,7 @@
 
 #include <arisenlib/asset.hpp>
 
-namespace eosiosystem {
+namespace arisensystem {
    using arisen::asset;
    using arisen::symbol_type;
 
@@ -37,4 +37,4 @@ namespace eosiosystem {
 
    typedef arisen::multi_index<N(rammarket), exchange_state> rammarket;
 
-} /// namespace eosiosystem
+} /// namespace arisensystem

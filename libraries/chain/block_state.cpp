@@ -1,7 +1,7 @@
 #include <eosio/chain/block_state.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    block_state::block_state( const block_header_state& prev, block_timestamp_type when )
    :block_header_state( prev.generate_next( when ) ), 

@@ -66,12 +66,12 @@
 using tcp = boost::asio::ip::tcp;
 namespace ws  = boost::beast::websocket;
 
-namespace eosio {
+namespace arisen {
    using namespace chain;
 
    static appbase::abstract_plugin& _bnet_plugin = app().register_plugin<bnet_plugin>();
 
-} /// namespace eosio
+} /// namespace arisen
 
 namespace fc {
    extern std::unordered_map<std::string,logger>& get_logger_map();
@@ -183,7 +183,7 @@ struct by_num;
 struct by_received;
 struct by_expired;
 
-namespace eosio {
+namespace arisen {
   using namespace chain::plugin_interface;
 
   class bnet_plugin_impl;
@@ -1557,4 +1557,4 @@ namespace eosio {
 
    }
 
-} /// namespace eosio
+} /// namespace arisen

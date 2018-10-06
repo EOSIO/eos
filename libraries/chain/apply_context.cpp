@@ -13,7 +13,7 @@
 
 using boost::container::flat_set;
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 static inline void print_debug(account_name receiver, const action_trace& ar) {
    if (!ar.console.empty()) {

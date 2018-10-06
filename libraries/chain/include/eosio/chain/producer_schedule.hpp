@@ -3,7 +3,7 @@
 #include <eosio/chain/types.hpp>
 #include <chainbase/chainbase.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    /**
     *  Used as part of the producer_schedule_type, mapps the producer name to their key.

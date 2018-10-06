@@ -17,7 +17,7 @@
 
 #include <utility>
 
-namespace eosio { namespace detail {
+namespace arisen { namespace detail {
   struct faucet_testnet_empty {};
 
   struct faucet_testnet_keys {
@@ -46,7 +46,7 @@ FC_REFLECT(arisen::detail::faucet_testnet_create_account_params, (account)(keys)
 FC_REFLECT(arisen::detail::faucet_testnet_create_account_alternates_response, (alternates)(message));
 FC_REFLECT(arisen::detail::faucet_testnet_create_account_rate_limited_response, (message));
 
-namespace eosio {
+namespace arisen {
 
 static appbase::abstract_plugin& _faucet_testnet_plugin = app().register_plugin<faucet_testnet_plugin>();
 

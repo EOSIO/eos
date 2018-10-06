@@ -1,6 +1,6 @@
 #include <arisenlib/eosio.hpp>
 
-using namespace eosio;
+using namespace arisen;
 
 class hello : public arisen::contract {
   public:

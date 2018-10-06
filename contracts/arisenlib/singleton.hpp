@@ -147,4 +147,4 @@ namespace  eosio {
    };
 
 /// @} singleton
-} /// namespace eosio
+} /// namespace arisen

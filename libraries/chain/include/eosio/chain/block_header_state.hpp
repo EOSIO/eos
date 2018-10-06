@@ -2,7 +2,7 @@
 #include <eosio/chain/block_header.hpp>
 #include <eosio/chain/incremental_merkle.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
 /**
  *  @struct block_header_state

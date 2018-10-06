@@ -1,5 +1,5 @@
 #include <arisenlib/eosio.hpp>
-using namespace eosio;
+using namespace arisen;
 
 struct integration_test : public arisen::contract {
       using contract::contract;

@@ -3,7 +3,7 @@
 #include <eosio/abi_generator/abi_generator.hpp>
 #include <fc/variant_object.hpp>
 
-using namespace eosio;
+using namespace arisen;
 using namespace arisen::chain;
 
 using mvo = fc::mutable_variant_object;

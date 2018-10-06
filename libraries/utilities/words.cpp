@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <eosio/utilities/words.hpp>
 
-namespace eosio { namespace words {
+namespace arisen { namespace words {
 
 const const_char_ptr word_list[] = { 
 "a",

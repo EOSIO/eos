@@ -6,7 +6,7 @@
 using namespace std;
 using namespace arisen::chain;
 
-namespace eosio { namespace wallet {
+namespace arisen { namespace wallet {
 
 namespace detail {
 struct yubihsm_wallet_impl;

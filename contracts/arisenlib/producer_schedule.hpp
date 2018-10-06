@@ -3,7 +3,7 @@
 
 #include <vector>
 
-namespace eosio {
+namespace arisen {
 
    /**
     *  Defines both the order, account name, and signing keys of the active set of producers.
@@ -27,4 +27,4 @@ namespace eosio {
    };
 
    /// @} producertype
-} /// namespace eosio
+} /// namespace arisen

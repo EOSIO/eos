@@ -21,7 +21,7 @@ using namespace arisen::chain::webassembly;
 using namespace IR;
 using namespace Runtime;
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    struct wasm_interface_impl {
       wasm_interface_impl(wasm_interface::vm_type vm) {

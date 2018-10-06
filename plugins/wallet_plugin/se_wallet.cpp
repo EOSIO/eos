@@ -15,7 +15,7 @@
 
 #include <future>
 
-namespace eosio { namespace wallet {
+namespace arisen { namespace wallet {
 
 using namespace fc::crypto::r1;
 

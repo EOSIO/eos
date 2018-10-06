@@ -138,7 +138,7 @@
 //include <arisenlib/eos.hpp>
 #include <arisenlib/dispatcher.hpp>
 
-using namespace eosio;
+using namespace arisen;
 /*
 namespace std {
    extern ios_base __start_std_streams;
@@ -257,7 +257,7 @@ namespace stltest {
         }
     };
 
-} /// namespace eosio
+} /// namespace arisen
 
 
 extern "C" {

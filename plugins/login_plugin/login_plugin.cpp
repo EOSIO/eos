@@ -8,11 +8,11 @@
 
 #include <fc/io/json.hpp>
 
-namespace eosio {
+namespace arisen {
 
 static appbase::abstract_plugin& _login_plugin = app().register_plugin<login_plugin>();
 
-using namespace eosio;
+using namespace arisen;
 
 struct login_request {
    chain::private_key_type server_ephemeral_priv_key{};
@@ -161,4 +161,4 @@ login_plugin::do_not_use_get_secret(const login_plugin::do_not_use_get_secret_pa
    return {params.priv_key.generate_shared_secret(params.pub_key)};
 }
 
-} // namespace eosio
+} // namespace arisen

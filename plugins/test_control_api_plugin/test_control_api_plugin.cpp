@@ -7,11 +7,11 @@
 
 #include <fc/io/json.hpp>
 
-namespace eosio {
+namespace arisen {
 
 static appbase::abstract_plugin& _test_control_api_plugin = app().register_plugin<test_control_api_plugin>();
 
-using namespace eosio;
+using namespace arisen;
 
 class test_control_api_plugin_impl {
 public:

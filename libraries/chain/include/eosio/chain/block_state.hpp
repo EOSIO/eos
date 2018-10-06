@@ -9,7 +9,7 @@
 #include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/action_receipt.hpp>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
 
    struct block_state : public block_header_state {
       block_state( const block_header_state& cur ):block_header_state(cur){}

@@ -12,7 +12,7 @@
 #include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/trace.hpp>
 
-namespace eosio { namespace chain { namespace plugin_interface {
+namespace arisen { namespace chain { namespace plugin_interface {
    using namespace arisen::chain;
    using namespace appbase;
 

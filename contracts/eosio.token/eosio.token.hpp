@@ -9,11 +9,11 @@
 
 #include <string>
 
-namespace eosiosystem {
+namespace arisensystem {
    class system_contract;
 }
 
-namespace eosio {
+namespace arisen {
 
    using std::string;
 
@@ -80,4 +80,4 @@ namespace eosio {
       return ac.balance;
    }
 
-} /// namespace eosio
+} /// namespace arisen

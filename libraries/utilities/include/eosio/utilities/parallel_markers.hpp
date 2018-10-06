@@ -8,7 +8,7 @@
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 
-namespace eosio { namespace utilities {
+namespace arisen { namespace utilities {
 
 /**
  * @brief Return values in DataRange corresponding to matching Markers

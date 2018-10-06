@@ -3,7 +3,7 @@
 #include <fc/reflect/reflect.hpp>
 #include <iosfwd>
 
-namespace eosio { namespace chain {
+namespace arisen { namespace chain {
    using std::string;
 
    static constexpr uint64_t char_to_symbol( char c ) {

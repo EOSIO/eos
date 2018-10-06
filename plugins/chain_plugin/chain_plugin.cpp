@@ -29,7 +29,7 @@
 #include <fc/variant.hpp>
 #include <signal.h>
 
-namespace eosio {
+namespace arisen {
 
 //declare operator<< and validate funciton for read_mode in the same namespace as read_mode itself
 namespace chain {
@@ -110,7 +110,7 @@ void validate(boost::any& v,
 
 }
 
-using namespace eosio;
+using namespace arisen;
 using namespace arisen::chain;
 using namespace arisen::chain::config;
 using namespace arisen::chain::plugin_interface;
@@ -1805,6 +1805,6 @@ chain::symbol read_only::extract_core_symbol()const {
 }
 
 } // namespace chain_apis
-} // namespace eosio
+} // namespace arisen
 
 FC_REFLECT( arisen::chain_apis::detail::ram_market_exchange_state_t, (ignore1)(ignore2)(ignore3)(core_symbol)(ignore4) )

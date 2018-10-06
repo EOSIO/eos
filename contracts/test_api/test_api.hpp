@@ -7,7 +7,7 @@
 #include <string>
 
 
-namespace eosio {
+namespace arisen {
    class transaction;
 }
 
