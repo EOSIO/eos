@@ -6,7 +6,7 @@ steps:
         echo "--- :spiral_note_pad: Generating Code Coverage Report" && \
         /usr/bin/ninja ARISEN_ut_coverage && \
         echo "--- :arrow_up: Publishing Code Coverage Report" && \
-        buildkite-agent artifact upload "ARISEN_ut_coverage/**/*" s3://eosio-coverage/$BUILDKITE_JOB_ID && \
+        buildkite-agent artifact upload "ARISEN_ut_coverage/**/*" s3://arisen-coverage/$BUILDKITE_JOB_ID && \
         cp /config/.coveralls.yml . && \
         /usr/local/bin/coveralls-lcov ARISEN_ut_coverage_filtered.info && \
         echo "+++ View Report" && \

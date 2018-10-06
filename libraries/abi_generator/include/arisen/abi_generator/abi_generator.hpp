@@ -58,7 +58,7 @@ namespace arisen {
          }                                                                      \
        FC_MULTILINE_MACRO_END \
       )
-   
+
    class ricardian_contracts {
       public:
          ricardian_contracts() = default;
@@ -76,7 +76,7 @@ namespace arisen {
                else {
                   parse_contract( contract_file );
                }
-            }   
+            }
          }
 
          vector<clause_pair> get_clauses() {
@@ -168,7 +168,7 @@ namespace arisen {
          map<string, uint64_t>  type_size;
          map<string, string>    full_types;
          string                 abi_context;
-         clang::ASTContext*     ast_context;   
+         clang::ASTContext*     ast_context;
          string                 target_contract;
          vector<string>         target_actions;
          ricardian_contracts    rc;
@@ -220,7 +220,7 @@ namespace arisen {
          void set_abi_context(const string& abi_context);
 
          /**
-          * @brief Set the ricardian_contracts object with parsed contracts and clauses 
+          * @brief Set the ricardian_contracts object with parsed contracts and clauses
           * @param ricardian_contracts contracts
           */
          void set_ricardian_contracts(const ricardian_contracts& contracts);
@@ -406,7 +406,7 @@ namespace arisen {
 
    };
 
-  
+
    class generate_abi_action : public ASTFrontendAction {
 
       private:
@@ -417,7 +417,7 @@ namespace arisen {
 
          generate_abi_action(bool verbose, bool opt_sfs, string abi_context,
                              abi_def& output, const string& contract, const vector<string>& actions) {
-            
+
             ricardian_contracts rc( abi_context, contract, actions );
             abi_gen.set_output(output);
             abi_gen.set_verbose(verbose);
@@ -425,7 +425,7 @@ namespace arisen {
             abi_gen.set_target_contract(contract, actions);
             abi_gen.set_ricardian_contracts( rc );
             output.ricardian_clauses = rc.get_clauses();
-          
+
             if(opt_sfs)
                abi_gen.enable_optimizaton(abi_generator::OPT_SINGLE_FIELD_STRUCT);
          }
@@ -437,6 +437,6 @@ namespace arisen {
          }
    };
 
-} //ns eosio
+} //ns arisen
 
 #pragma pop_macro("N")

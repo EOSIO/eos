@@ -20,4 +20,4 @@ namespace arisen {
 
    ARISEN_ABI( noop, ( anyaction ) )
 
-} /// eosio     
+} /// arisen     

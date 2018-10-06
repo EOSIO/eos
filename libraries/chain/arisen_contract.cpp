@@ -44,7 +44,7 @@ void validate_authority_precondition( const apply_context& context, const author
       if( a.permission.permission == config::owner_name || a.permission.permission == config::active_name )
          continue; // account was already checked to exist, so its owner and active permissions should exist
 
-      if( a.permission.permission == config::arisen_code_name ) // virtual eosio.code permission does not really exist but is allowed
+      if( a.permission.permission == config::arisen_code_name ) // virtual arisen.code permission does not really exist but is allowed
          continue;
 
       try {
@@ -87,8 +87,8 @@ void apply_arisen_newaccount(apply_context& context) {
    // Check if the creator is privileged
    const auto &creator = db.get<account_object, by_name>(create.creator);
    if( !creator.privileged ) {
-      RSN_ASSERT( name_str.find( "eosio." ) != 0, action_validate_exception,
-                  "only privileged accounts can have names that start with 'eosio.'" );
+      RSN_ASSERT( name_str.find( "arisen." ) != 0, action_validate_exception,
+                  "only privileged accounts can have names that start with 'arisen.'" );
    }
 
    auto existing_account = db.find<account_object, by_name>(create.name);
@@ -209,8 +209,8 @@ void apply_arisen_updateauth(apply_context& context) {
    auto& db = context.db;
 
    RSN_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
-   RSN_ASSERT( update.permission.to_string().find( "eosio." ) != 0, action_validate_exception,
-               "Permission names that start with 'eosio.' are reserved" );
+   RSN_ASSERT( update.permission.to_string().find( "arisen." ) != 0, action_validate_exception,
+               "Permission names that start with 'arisen.' are reserved" );
    RSN_ASSERT(update.permission != update.parent, action_validate_exception, "Cannot set an authority as its own parent");
    db.get<account_object, by_name>(update.account);
    RSN_ASSERT(validate(update.auth), action_validate_exception,
@@ -282,7 +282,7 @@ void apply_arisen_deleteauth(apply_context& context) {
       const auto& index = db.get_index<permission_link_index, by_permission_name>();
       auto range = index.equal_range(boost::make_tuple(remove.account, remove.permission));
       RSN_ASSERT(range.first == range.second, action_validate_exception,
-                 "Cannot delete a linked authority. Unlink the authority first. This authority is linked to ${code}::${type}.", 
+                 "Cannot delete a linked authority. Unlink the authority first. This authority is linked to ${code}::${type}.",
                  ("code", string(range.first->code))("type", string(range.first->message_type)));
    }
 

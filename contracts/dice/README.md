@@ -53,12 +53,12 @@ Example game session using arisecli
 
 ##### Upload bios contract
 ````bash
-arisecli set contract eosio build/contracts/arisen.bios -p eosio
+arisecli set contract arisen build/contracts/arisen.bios -p arisen
 ````
 
 ##### Ceate arisen.token account
 ````bash
-arisecli create account eosio arisen.token RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+arisecli create account arisen arisen.token RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Set arisen.token contract to arisen.token account
@@ -68,7 +68,7 @@ arisecli set contract arisen.token build/contracts/arisen.token -p arisen.token
 
 ##### Create dice account
 ````bash
-arisecli create account eosio dice RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+arisecli create account arisen dice RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Set dice contract to dice account
@@ -78,27 +78,27 @@ arisecli set contract dice build/contracts/dice -p dice
 
 ##### Create native RSN token
 ````bash
-arisecli push action arisen.token create '[ "eosio", "1000000000.0000 RSN", 0, 0, 0]' -p arisen.token
+arisecli push action arisen.token create '[ "arisen", "1000000000.0000 RSN", 0, 0, 0]' -p arisen.token
 ````
 
 ##### Create alice account
 ````bash
-arisecli create account eosio alice RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+arisecli create account arisen alice RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Create bob account
 ````bash
-arisecli create account eosio bob RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+arisecli create account arisen bob RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Issue 1000 RSN to alice
 ````bash
-arisecli push action arisen.token issue '[ "alice", "1000.0000 RSN", "" ]' -p eosio
+arisecli push action arisen.token issue '[ "alice", "1000.0000 RSN", "" ]' -p arisen
 ````
 
 ##### Issue 1000 RSN to bob
 ````bash
-arisecli push action arisen.token issue '[ "bob", "1000.0000 RSN", "" ]' -p eosio
+arisecli push action arisen.token issue '[ "bob", "1000.0000 RSN", "" ]' -p arisen
 ````
 
 ##### Allow dice contract to make transfers on alice behalf (deposit)
