@@ -23,10 +23,10 @@ using namespace fc;
 
 using mvo = fc::mutable_variant_object;
 
-class eosio_sudo_tester : public tester {
+class arisen_sudo_tester : public tester {
 public:
 
-   eosio_sudo_tester() {
+   arisen_sudo_tester() {
       create_accounts( { N(arisen.msig), N(prod1), N(prod2), N(prod3), N(prod4), N(prod5), N(alice), N(bob), N(carol) } );
       produce_block();
 
@@ -64,8 +64,8 @@ public:
       );
 
       auto system_private_key = get_private_key( config::system_account_name, "active" );
-      set_code( N(arisen.sudo), eosio_sudo_wast, &system_private_key );
-      set_abi( N(arisen.sudo), eosio_sudo_abi, &system_private_key );
+      set_code( N(arisen.sudo), arisen_sudo_wast, &system_private_key );
+      set_abi( N(arisen.sudo), arisen_sudo_abi, &system_private_key );
 
       produce_blocks();
 
@@ -123,7 +123,7 @@ public:
    abi_serializer abi_ser;
 };
 
-transaction eosio_sudo_tester::sudo_exec( account_name executer, const transaction& trx, uint32_t expiration ) {
+transaction arisen_sudo_tester::sudo_exec( account_name executer, const transaction& trx, uint32_t expiration ) {
    fc::variants v;
    v.push_back( fc::mutable_variant_object()
                   ("actor", executer)
@@ -146,7 +146,7 @@ transaction eosio_sudo_tester::sudo_exec( account_name executer, const transacti
    return trx2;
 }
 
-transaction eosio_sudo_tester::reqauth( account_name from, const vector<permission_level>& auths, uint32_t expiration ) {
+transaction arisen_sudo_tester::reqauth( account_name from, const vector<permission_level>& auths, uint32_t expiration ) {
    fc::variants v;
    for ( auto& level : auths ) {
       v.push_back(fc::mutable_variant_object()
@@ -167,9 +167,9 @@ transaction eosio_sudo_tester::reqauth( account_name from, const vector<permissi
    return trx;
 }
 
-BOOST_AUTO_TEST_SUITE(eosio_sudo_tests)
+BOOST_AUTO_TEST_SUITE(arisen_sudo_tests)
 
-BOOST_FIXTURE_TEST_CASE( sudo_exec_direct, eosio_sudo_tester ) try {
+BOOST_FIXTURE_TEST_CASE( sudo_exec_direct, arisen_sudo_tester ) try {
    auto trx = reqauth( N(bob), {permission_level{N(bob), config::active_name}} );
 
    transaction_trace_ptr trace;
@@ -203,7 +203,7 @@ BOOST_FIXTURE_TEST_CASE( sudo_exec_direct, eosio_sudo_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( sudo_with_msig, eosio_sudo_tester ) try {
+BOOST_FIXTURE_TEST_CASE( sudo_with_msig, arisen_sudo_tester ) try {
    auto trx = reqauth( N(bob), {permission_level{N(bob), config::active_name}} );
    auto sudo_trx = sudo_exec( N(alice), trx );
 
@@ -250,7 +250,7 @@ BOOST_FIXTURE_TEST_CASE( sudo_with_msig, eosio_sudo_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( sudo_with_msig_unapprove, eosio_sudo_tester ) try {
+BOOST_FIXTURE_TEST_CASE( sudo_with_msig_unapprove, arisen_sudo_tester ) try {
    auto trx = reqauth( N(bob), {permission_level{N(bob), config::active_name}} );
    auto sudo_trx = sudo_exec( N(alice), trx );
 
@@ -285,7 +285,7 @@ BOOST_FIXTURE_TEST_CASE( sudo_with_msig_unapprove, eosio_sudo_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( sudo_with_msig_producers_change, eosio_sudo_tester ) try {
+BOOST_FIXTURE_TEST_CASE( sudo_with_msig_producers_change, arisen_sudo_tester ) try {
    create_accounts( { N(newprod1) } );
 
    auto trx = reqauth( N(bob), {permission_level{N(bob), config::active_name}} );
