@@ -113,7 +113,7 @@ class soft_wallet final : public wallet_api
        * @returns a map containing the private keys, indexed by their public key
        */
       map<public_key_type, private_key_type> list_keys() override;
-      
+
       /** Dumps all public keys owned by the wallet.
        * @returns a vector containing the public keys
        */
@@ -165,7 +165,7 @@ class soft_wallet final : public wallet_api
 
       /** Removes a key from the wallet.
        *
-       * example: remove_key EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+       * example: remove_key RSN6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
        *
        * @param key the Public Key to remove
        */

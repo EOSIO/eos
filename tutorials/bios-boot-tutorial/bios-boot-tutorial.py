@@ -17,15 +17,15 @@ unlockTimeout = 999999999
 fastUnstakeSystem = './fast.refund/arisen.system/arisen.system.wasm'
 
 systemAccounts = [
-    'eosio.bpay',
+    'arisen.bpay',
     'arisen.msig',
-    'eosio.names',
+    'arisen.names',
     'arisen.ram',
     'arisen.ramfee',
-    'eosio.saving',
+    'arisen.saving',
     'arisen.stake',
     'arisen.token',
-    'eosio.vpay',
+    'arisen.vpay',
 ]
 
 def jsonArg(a):
@@ -132,7 +132,7 @@ def startProducers(b, e):
 
 def createSystemAccounts():
     for a in systemAccounts:
-        run(args.arisecli + 'create account eosio ' + a + ' ' + args.public_key)
+        run(args.arisecli + 'create account arisen ' + a + ' ' + args.public_key)
 
 def intToCurrency(i):
     return '%d.%04d %s' % (i // 10000, i % 10000, args.symbol)
@@ -171,10 +171,10 @@ def createStakedAccounts(b, e):
         stakeCpu = stake - stakeNet
         print('%s: total funds=%s, ram=%s, net=%s, cpu=%s, unstaked=%s' % (a['name'], intToCurrency(a['funds']), intToCurrency(ramFunds), intToCurrency(stakeNet), intToCurrency(stakeCpu), intToCurrency(unstaked)))
         assert(funds == ramFunds + stakeNet + stakeCpu + unstaked)
-        retry(args.arisecli + 'system newaccount --transfer eosio %s %s --stake-net "%s" --stake-cpu "%s" --buy-ram "%s"   ' %
+        retry(args.arisecli + 'system newaccount --transfer arisen %s %s --stake-net "%s" --stake-cpu "%s" --buy-ram "%s"   ' %
             (a['name'], a['pub'], intToCurrency(stakeNet), intToCurrency(stakeCpu), intToCurrency(ramFunds)))
         if unstaked:
-            retry(args.arisecli + 'transfer eosio %s "%s"' % (a['name'], intToCurrency(unstaked)))
+            retry(args.arisecli + 'transfer arisen %s "%s"' % (a['name'], intToCurrency(unstaked)))
 
 def regProducers(b, e):
     for i in range(b, e):
@@ -192,7 +192,7 @@ def vote(b, e):
         retry(args.arisecli + 'system voteproducer prods ' + voter + ' ' + prods)
 
 def claimRewards():
-    table = getJsonOutput(args.arisecli + 'get table eosio eosio producers -l 100')
+    table = getJsonOutput(args.arisecli + 'get table arisen arisen producers -l 100')
     times = []
     for row in table['rows']:
         if row['unpaid_blocks'] and not row['last_claim_time']:
@@ -209,7 +209,7 @@ def proxyVotes(b, e):
         retry(args.arisecli + 'system voteproducer proxy ' + voter + ' ' + proxy)
 
 def updateAuth(account, permission, parent, controller):
-    run(args.arisecli + 'push action eosio updateauth' + jsonArg({
+    run(args.arisecli + 'push action arisen updateauth' + jsonArg({
         'account': account,
         'permission': permission,
         'parent': parent,
@@ -240,11 +240,11 @@ def msigProposeReplaceSystem(proposer, proposalName):
     requestedPermissions = []
     for i in range(firstProducer, firstProducer + numProducers):
         requestedPermissions.append({'actor': accounts[i]['name'], 'permission': 'active'})
-    trxPermissions = [{'actor': 'eosio', 'permission': 'active'}]
+    trxPermissions = [{'actor': 'arisen', 'permission': 'active'}]
     with open(fastUnstakeSystem, mode='rb') as f:
-        setcode = {'account': 'eosio', 'vmtype': 0, 'vmversion': 0, 'code': f.read().hex()}
+        setcode = {'account': 'arisen', 'vmtype': 0, 'vmversion': 0, 'code': f.read().hex()}
     run(args.arisecli + 'multisig propose ' + proposalName + jsonArg(requestedPermissions) +
-        jsonArg(trxPermissions) + 'eosio setcode' + jsonArg(setcode) + ' -p ' + proposer)
+        jsonArg(trxPermissions) + 'arisen setcode' + jsonArg(setcode) + ' -p ' + proposer)
 
 def msigApproveReplaceSystem(proposer, proposalName):
     for i in range(firstProducer, firstProducer + numProducers):
@@ -256,7 +256,7 @@ def msigExecReplaceSystem(proposer, proposalName):
     retry(args.arisecli + 'multisig exec ' + proposer + ' ' + proposalName + ' -p ' + proposer)
 
 def msigReplaceSystem():
-    run(args.arisecli + 'push action eosio buyrambytes' + jsonArg(['eosio', accounts[0]['name'], 200000]) + '-p eosio')
+    run(args.arisecli + 'push action arisen buyrambytes' + jsonArg(['arisen', accounts[0]['name'], 200000]) + '-p arisen')
     sleep(1)
     msigProposeReplaceSystem(accounts[0]['name'], 'fast.unstake')
     sleep(1)
@@ -281,20 +281,20 @@ def stepStartWallet():
     startWallet()
     importKeys()
 def stepStartBoot():
-    startNode(0, {'name': 'eosio', 'pvt': args.private_key, 'pub': args.public_key})
+    startNode(0, {'name': 'arisen', 'pvt': args.private_key, 'pub': args.public_key})
     sleep(1.5)
 def stepInstallSystemContracts():
     run(args.arisecli + 'set contract arisen.token ' + args.contracts_dir + 'arisen.token/')
     run(args.arisecli + 'set contract arisen.msig ' + args.contracts_dir + 'arisen.msig/')
 def stepCreateTokens():
-    run(args.arisecli + 'push action arisen.token create \'["eosio", "10000000000.0000 %s"]\' -p arisen.token' % (args.symbol))
+    run(args.arisecli + 'push action arisen.token create \'["arisen", "10000000000.0000 %s"]\' -p arisen.token' % (args.symbol))
     totalAllocation = allocateFunds(0, len(accounts))
-    run(args.arisecli + 'push action arisen.token issue \'["eosio", "%s", "memo"]\' -p eosio' % intToCurrency(totalAllocation))
+    run(args.arisecli + 'push action arisen.token issue \'["arisen", "%s", "memo"]\' -p arisen' % intToCurrency(totalAllocation))
     sleep(1)
 def stepSetSystemContract():
-    retry(args.arisecli + 'set contract eosio ' + args.contracts_dir + 'arisen.system/')
+    retry(args.arisecli + 'set contract arisen ' + args.contracts_dir + 'arisen.system/')
     sleep(1)
-    run(args.arisecli + 'push action eosio setpriv' + jsonArg(['arisen.msig', 1]) + '-p eosio@active')
+    run(args.arisecli + 'push action arisen setpriv' + jsonArg(['arisen.msig', 1]) + '-p arisen@active')
 def stepCreateStakedAccounts():
     createStakedAccounts(0, len(accounts))
 def stepRegProducers():
@@ -312,14 +312,14 @@ def stepVote():
 def stepProxyVotes():
     proxyVotes(0, 0 + args.num_voters)
 def stepResign():
-    resign('eosio', 'eosio.prods')
+    resign('arisen', 'arisen.prods')
     for a in systemAccounts:
-        resign(a, 'eosio')
+        resign(a, 'arisen')
 def stepTransfer():
     while True:
         randomTransfer(0, args.num_senders)
 def stepLog():
-    run('tail -n 60 ' + args.nodes_dir + '00-eosio/stderr')
+    run('tail -n 60 ' + args.nodes_dir + '00-arisen/stderr')
 
 # Command Line Arguments
 
@@ -329,7 +329,7 @@ commands = [
     ('k', 'kill',           stepKillAll,                True,    "Kill all aOS and aWallet processes"),
     ('w', 'wallet',         stepStartWallet,            True,    "Start aWallet, create wallet, fill with keys"),
     ('b', 'boot',           stepStartBoot,              True,    "Start boot node"),
-    ('s', 'sys',            createSystemAccounts,       True,    "Create system accounts (eosio.*)"),
+    ('s', 'sys',            createSystemAccounts,       True,    "Create system accounts (arisen.*)"),
     ('c', 'contracts',      stepInstallSystemContracts, True,    "Install system contracts (token, msig)"),
     ('t', 'tokens',         stepCreateTokens,           True,    "Create tokens"),
     ('S', 'sys-contract',   stepSetSystemContract,      True,    "Set system contract"),
@@ -339,13 +339,13 @@ commands = [
     ('v', 'vote',           stepVote,                   True,    "Vote for producers"),
     ('R', 'claim',          claimRewards,               True,    "Claim rewards"),
     ('x', 'proxy',          stepProxyVotes,             True,    "Proxy votes"),
-    ('q', 'resign',         stepResign,                 True,    "Resign eosio"),
+    ('q', 'resign',         stepResign,                 True,    "Resign arisen"),
     ('m', 'msg-replace',    msigReplaceSystem,          False,   "Replace system contract using msig"),
     ('X', 'xfer',           stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
     ('l', 'log',            stepLog,                    True,    "Show tail of node's log"),
 ]
 
-parser.add_argument('--public-key', metavar='', help="ARISEN Public Key", default='EOS8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr', dest="public_key")
+parser.add_argument('--public-key', metavar='', help="ARISEN Public Key", default='RSN8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr', dest="public_key")
 parser.add_argument('--private-Key', metavar='', help="ARISEN Private Key", default='5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p', dest="private_key")
 parser.add_argument('--arisecli', metavar='', help="AriseCLI command", default='../../build/programs/arisecli/arisecli --wallet-url http://127.0.0.1:6666 ')
 parser.add_argument('--aos', metavar='', help="Path to aOS binary", default='../../build/programs/aos/aos')

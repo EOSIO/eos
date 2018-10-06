@@ -138,7 +138,7 @@ using namespace boost::filesystem;
 
 FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
 FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
-#define EOSC_ASSERT( TEST, ... ) \
+#define RSNC_ASSERT( TEST, ... ) \
   FC_EXPAND_MACRO( \
     FC_MULTILINE_MACRO_BEGIN \
       if( UNLIKELY(!(TEST)) ) \
@@ -166,7 +166,7 @@ bfs::path determine_home_directory()
 }
 
 string url = "http://127.0.0.1:12618/";
-string wallet_url = "http://127.0.0.1:8900/";
+string wallet_url = "http://127.0.0.1:12518/";
 bool no_verify = false;
 vector<string> headers;
 

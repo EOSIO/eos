@@ -5,8 +5,8 @@ This contract implements a simple DICE game between two players with 50/50 odds 
 
 Before playing all players deposit funds into their @dice account just like the @exchange contract
 
-1. Player 1 proposes to bet 1 EOS and submits SHA256(secret1)
-2. Player 2 proposes to bet 1 EOS and submits SHA256(secret2)
+1. Player 1 proposes to bet 1 RSN and submits SHA256(secret1)
+2. Player 2 proposes to bet 1 RSN and submits SHA256(secret2)
 
 Because Player 1 and 2 bet equal amounts their orders are matched and the game begins.
 
@@ -58,7 +58,7 @@ arisecli set contract eosio build/contracts/arisen.bios -p eosio
 
 ##### Ceate arisen.token account
 ````bash
-arisecli create account eosio arisen.token EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+arisecli create account eosio arisen.token RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Set arisen.token contract to arisen.token account
@@ -68,7 +68,7 @@ arisecli set contract arisen.token build/contracts/arisen.token -p arisen.token
 
 ##### Create dice account
 ````bash
-arisecli create account eosio dice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+arisecli create account eosio dice RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Set dice contract to dice account
@@ -76,49 +76,49 @@ arisecli create account eosio dice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7
 arisecli set contract dice build/contracts/dice -p dice
 ````
 
-##### Create native EOS token
+##### Create native RSN token
 ````bash
-arisecli push action arisen.token create '[ "eosio", "1000000000.0000 EOS", 0, 0, 0]' -p arisen.token
+arisecli push action arisen.token create '[ "eosio", "1000000000.0000 RSN", 0, 0, 0]' -p arisen.token
 ````
 
 ##### Create alice account
 ````bash
-arisecli create account eosio alice EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+arisecli create account eosio alice RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
 ##### Create bob account
 ````bash
-arisecli create account eosio bob EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+arisecli create account eosio bob RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ````
 
-##### Issue 1000 EOS to alice
+##### Issue 1000 RSN to alice
 ````bash
-arisecli push action arisen.token issue '[ "alice", "1000.0000 EOS", "" ]' -p eosio
+arisecli push action arisen.token issue '[ "alice", "1000.0000 RSN", "" ]' -p eosio
 ````
 
-##### Issue 1000 EOS to bob
+##### Issue 1000 RSN to bob
 ````bash
-arisecli push action arisen.token issue '[ "bob", "1000.0000 EOS", "" ]' -p eosio
+arisecli push action arisen.token issue '[ "bob", "1000.0000 RSN", "" ]' -p eosio
 ````
 
 ##### Allow dice contract to make transfers on alice behalf (deposit)
 ````bash
-arisecli set account permission alice active '{"threshold": 1,"keys": [{"key": "EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4","weight": 1}],"accounts": [{"permission":{"actor":"dice","permission":"active"},"weight":1}]}' owner -p alice
+arisecli set account permission alice active '{"threshold": 1,"keys": [{"key": "RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4","weight": 1}],"accounts": [{"permission":{"actor":"dice","permission":"active"},"weight":1}]}' owner -p alice
 ````
 
 ##### Allow dice contract to make transfers on bob behalf (deposit)
 ````bash
-arisecli set account permission bob active '{"threshold": 1,"keys": [{"key": "EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4","weight": 1}],"accounts": [{"permission":{"actor":"dice","permission":"active"},"weight":1}]}' owner -p bob
+arisecli set account permission bob active '{"threshold": 1,"keys": [{"key": "RSN7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4","weight": 1}],"accounts": [{"permission":{"actor":"dice","permission":"active"},"weight":1}]}' owner -p bob
 ````
 
-##### Alice deposits 100 EOS into the dice contract
+##### Alice deposits 100 RSN into the dice contract
 ````bash
-arisecli push action dice deposit '[ "alice", "100.0000 EOS" ]' -p alice
+arisecli push action dice deposit '[ "alice", "100.0000 RSN" ]' -p alice
 ````
 
-##### Bob deposits 100 EOS into the dice contract
+##### Bob deposits 100 RSN into the dice contract
 ````bash
-arisecli push action dice deposit '[ "bob", "100.0000 EOS" ]' -p bob
+arisecli push action dice deposit '[ "bob", "100.0000 RSN" ]' -p bob
 ````
 
 ##### Alice generates a secret
@@ -133,9 +133,9 @@ echo -n '28349b1d4bcdc9905e4ef9719019e55743c84efa0c5e9a0b077f0b54fcd84905' | xxd
 d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883
 ````
 
-##### Alice bets 3 EOS
+##### Alice bets 3 RSN
 ````bash
-arisecli push action dice offerbet '[ "3.0000 EOS", "alice", "d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883" ]' -p alice
+arisecli push action dice offerbet '[ "3.0000 RSN", "alice", "d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883" ]' -p alice
 ````
 
 ##### Bob generates a secret
@@ -150,9 +150,9 @@ echo -n '15fe76d25e124b08feb835f12e00a879bd15666a33786e64b655891fba7d6c12' | xxd
 50ed53fcdaf27f88d51ea4e835b1055efe779bb87e6cfdff47d28c88ffb27129
 ````
 
-##### Bob also bets 3 EOS (a game is started)
+##### Bob also bets 3 RSN (a game is started)
 ````bash
-arisecli push action dice offerbet '[ "3.0000 EOS", "bob", "50ed53fcdaf27f88d51ea4e835b1055efe779bb87e6cfdff47d28c88ffb27129" ]' -p bob
+arisecli push action dice offerbet '[ "3.0000 RSN", "bob", "50ed53fcdaf27f88d51ea4e835b1055efe779bb87e6cfdff47d28c88ffb27129" ]' -p bob
 ````
 
 ##### Dice contract tables right after the game started
@@ -163,12 +163,12 @@ arisecli get table dice dice account
 {
   "rows": [{
       "owner": "alice",
-      "rsn_balance": "97.0000 EOS",
+      "rsn_balance": "97.0000 RSN",
       "open_offers": 0,
       "open_games": 1
     },{
       "owner": "bob",
-      "rsn_balance": "97.0000 EOS",
+      "rsn_balance": "97.0000 RSN",
       "open_offers": 0,
       "open_games": 1
     }
@@ -184,7 +184,7 @@ arisecli get table dice dice game
 {
   "rows": [{
       "id": 1,
-      "bet": "3.0000 EOS",
+      "bet": "3.0000 RSN",
       "deadline": "1970-01-01T00:00:00",
       "player1": {
         "commitment": "d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883",
@@ -213,7 +213,7 @@ arisecli get table dice dice game
 {
   "rows": [{
       "id": 1,
-      "bet": "3.0000 EOS",
+      "bet": "3.0000 RSN",
       "deadline": "2018-04-17T07:45:49",
       "player1": {
         "commitment": "d533f24d6f28ddcef3f066474f7b8355383e485681ba8e793e037f5cf36e4883",
@@ -256,9 +256,9 @@ arisecli get table dice dice account
 }
 ````
 
-##### Alice withdraw from her dice account 103 EOS
+##### Alice withdraw from her dice account 103 RSN
 ````bash
-arisecli push action dice withdraw '[ "alice", "103.0000 EOS" ]' -p alice
+arisecli push action dice withdraw '[ "alice", "103.0000 RSN" ]' -p alice
 ````
 
 ##### Balance of alice after withdraw

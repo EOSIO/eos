@@ -17,7 +17,7 @@ namespace arisen {
          When encoded as a uint64_t, first byte represents the number of decimals, remaining bytes
          represent token name.
          Name must only include upper case alphabets.
-         from_string constructs a symbol from an input a string of the form "4,EOS"
+         from_string constructs a symbol from an input a string of the form "4,RSN"
          where the integer represents number of decimals. Number of decimals must be larger than zero.
        */
 

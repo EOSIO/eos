@@ -48,11 +48,11 @@ libraries/wasm-jit/Source/Programs/wavm
 programs/cleos/cleos
 programs/js_operation_serializer/js_operation_serializer
 programs/data-dir
-programs/eosio-abigen/eosio-abigen
+programs/arisen-abigen/arisen-abigen
 programs/cleos/config.hpp
-programs/eosio-applesedemo/eosio-applesedemo
-programs/eosio-launcher/config.hpp
-programs/eosio-launcher/eosio-launcher
+programs/arisen-applesedemo/arisen-applesedemo
+programs/arisen-launcher/config.hpp
+programs/arisen-launcher/arisen-launcher
 programs/keosd/keosd
 programs/nodeos/config.hpp
 programs/nodeos/nodeos
@@ -76,7 +76,7 @@ witness_node_data_dir
 build/*
 build-debug/*
 
-etc/eosio/node_*
+etc/arisen/node_*
 var/lib/node_*
 .vscode
 .idea/

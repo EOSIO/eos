@@ -1,17 +1,17 @@
 /**
   @defgroup contractdev Smart Contract API Reference
-  @brief Introduction to writing contracts for EOS.IO
+  @brief Introduction to writing contracts for ARISEN
 
-  @section background Background 
+  @section background Background
 
-  EOS.IO contracts (aka applications) are deployed to a blockchain as pre-compiled Web Assembly (aka WASM). WASM is compiled
+  ARISEN contracts (aka applications) are deployed to a blockchain as pre-compiled Web Assembly (aka WASM). WASM is compiled
   from C/C++ using LLVM and clang, which means that you will require knowledge of C/C++ in order to develop your blockchain
-  applications.  While it is possible to develop in C, we strongly recommend that all developers use the EOS.IO C++ API which
+  applications.  While it is possible to develop in C, we strongly recommend that all developers use the ARISEN C++ API which
   provides much stronger type safety and is generally easier to read.
 
   @section programstructure Application Structure
 
-  EOS.IO applications are designed around event (aka action) handlers that respond to user actions. For example,
+  ARISEN applications are designed around event (aka action) handlers that respond to user actions. For example,
   a user might transfer tokens to another user. This event can be processed and potentially rejected by the sender,
   the receiver, and the currency application itself.
 
@@ -21,7 +21,7 @@
 
   @subsection programentry Entry Points
 
-  EOS.IO applications have a `apply` which is like `main` in traditional applications:
+  ARISEN applications have a `apply` which is like `main` in traditional applications:
 
   ```
   extern "C" {
@@ -42,13 +42,13 @@
 ### Example Apply Entry Handler
 
   Generally speaking, you should use your entry handler to dispatch events to functions that implement the majority
-  of your logic and optionally reject events that your contract is unable or unwilling to accept. 
+  of your logic and optionally reject events that your contract is unable or unwilling to accept.
 
   ```
   extern "C" {
      void apply( uint64_t code, uint64_t action ) {
         if( code == N(currency) ) {
-           if( action == N(transfer) ) 
+           if( action == N(transfer) )
               currency::apply_currency_transfer( current_action< currency::transfer >() );
         } else {
            arisen_assert( false, "rejecting unexpected event" );

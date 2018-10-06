@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # arisen-tn_down.sh is used by the arisen-tn_bounce.sh and arisen-tn_roll.sh scripts.
-# It is intended to terminate specific EOS.IO daemon processes.
+# It is intended to terminate specific ARISEN daemon processes.
 #
 
 

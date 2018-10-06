@@ -42,7 +42,7 @@ public:
    /// @see wallet_manager::set_timeout(const std::chrono::seconds& t)
    /// @param secs The timeout in seconds.
    void set_timeout(int64_t secs) { set_timeout(std::chrono::seconds(secs)); }
-      
+
    /// Sign transaction with the private keys specified via their public keys.
    /// Use chain_controller::get_required_keys to determine which keys are needed for txn.
    /// @param txn the transaction to sign.
@@ -113,7 +113,7 @@ public:
    /// Wallet must be opened and unlocked.
    /// @param name the name of the wallet to remove the key from.
    /// @param password the plaintext password returned from ::create.
-   /// @param key the Public Key to remove, e.g. EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+   /// @param key the Public Key to remove, e.g. RSN6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
    /// @throws fc::exception if wallet not found or locked or key is not removed.
    void remove_key(const std::string& name, const std::string& password, const std::string& key);
 
@@ -147,5 +147,3 @@ private:
 
 } // namespace wallet
 } // namespace arisen
-
-

@@ -23,7 +23,7 @@ using mongo_db_plugin_impl_ptr = std::shared_ptr<class mongo_db_plugin_impl>;
  * pub_keys
  * account_controls
  *
- *   See data dictionary (DB Schema Definition - EOS API) for description of MongoDB schema.
+ *   See data dictionary (DB Schema Definition - ARISEN API) for description of MongoDB schema.
  *
  *   If cmake -DBUILD_MONGO_DB_PLUGIN=true  not specified then this plugin not compiled/included.
  */
@@ -45,4 +45,3 @@ private:
 };
 
 }
-

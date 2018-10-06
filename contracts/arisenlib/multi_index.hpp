@@ -811,9 +811,9 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(_self, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
@@ -859,9 +859,9 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(_self, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
@@ -905,9 +905,9 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(_self, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
@@ -951,9 +951,9 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(_self, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
@@ -997,17 +997,17 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(brendan);
-       *          address.first_name = "Brendan";
-       *          address.last_name = "Blumer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Stan";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 RSN Way";
        *          address.city = "Hong Kong";
        *          address.state = "HK";
        *        });
@@ -1053,17 +1053,17 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(brendan);
-       *          address.first_name = "Brendan";
-       *          address.last_name = "Blumer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Stan";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 RSN Way";
        *          address.city = "Hong Kong";
        *          address.state = "HK";
        *        });
@@ -1109,17 +1109,17 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(brendan);
-       *          address.first_name = "Brendan";
-       *          address.last_name = "Blumer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Stan";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 RSN Way";
        *          address.city = "Hong Kong";
        *          address.state = "HK";
        *        });
@@ -1166,17 +1166,17 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(brendan);
-       *          address.first_name = "Brendan";
-       *          address.last_name = "Blumer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Stan";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 RSN Way";
        *          address.city = "Hong Kong";
        *          address.state = "HK";
        *        });
@@ -1227,18 +1227,18 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *          address.zip = 93446;
        *        });
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(brendan);
-       *          address.first_name = "Brendan";
-       *          address.last_name = "Blumer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Stan";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 RSN Way";
        *          address.city = "Hong Kong";
        *          address.state = "HK";
        *          address.zip = 93445;
@@ -1299,18 +1299,18 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *          address.zip = 93446;
        *        });
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(brendan);
-       *          address.first_name = "Brendan";
-       *          address.last_name = "Blumer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Stan";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 RSN Way";
        *          address.city = "Hong Kong";
        *          address.state = "HK";
        *          address.zip = 93445;
@@ -1368,9 +1368,9 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.key = addresses.available_primary_key();
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
@@ -1433,9 +1433,9 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *          address.zip = 93446;
@@ -1497,18 +1497,18 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *          address.zip = 93446;
        *        });
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(brendan);
-       *          address.first_name = "Brendan";
-       *          address.last_name = "Blumer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Stan";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 RSN Way";
        *          address.city = "Hong Kong";
        *          address.state = "HK";
        *          address.zip = 93445;
@@ -1572,18 +1572,18 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *          address.zip = 93446;
        *        });
        *        addresses.emplace(payer, [&](auto& address) {
        *          address.account_name = N(brendan);
-       *          address.first_name = "Brendan";
-       *          address.last_name = "Blumer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Stan";
+       *          address.last_name = "Larimer";
+       *          address.street = "1 RSN Way";
        *          address.city = "Hong Kong";
        *          address.state = "HK";
        *          address.zip = 93445;
@@ -1642,9 +1642,9 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(_self, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
@@ -1743,9 +1743,9 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(_self, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
@@ -1812,9 +1812,9 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(_self, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
@@ -1920,14 +1920,14 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(_self, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
        *        auto user = addresses.get(N(dan));
-       *        arisen_assert(user.first_name == "Daniel", "Couldn't get him.");
+       *        arisen_assert(user.first_name == "Michael", "Couldn't get him.");
        *      }
        *  }
        *  ARISEN_ABI( addressbook, (myaction) )
@@ -1971,9 +1971,9 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(_self, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
@@ -2064,9 +2064,9 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(_self, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });
@@ -2131,9 +2131,9 @@ class multi_index
        *        // add to table, first argument is account to bill for storage
        *        addresses.emplace(_self, [&](auto& address) {
        *          address.account_name = N(dan);
-       *          address.first_name = "Daniel";
-       *          address.last_name = "Larimer";
-       *          address.street = "1 EOS Way";
+       *          address.first_name = "Michael";
+       *          address.last_name = "Taggart";
+       *          address.street = "1 RSN Way";
        *          address.city = "Blacksburg";
        *          address.state = "VA";
        *        });

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# arisen-tn_roll is used to have all of the instances of the EOS daemon on a host brought down
+# arisen-tn_roll is used to have all of the instances of the ARISEN daemon on a host brought down
 # so that the underlying executable image file (the "text file") can be replaced. Then
 # all instances are restarted.
 # usage: arisen-tn_roll.sh [arglist]

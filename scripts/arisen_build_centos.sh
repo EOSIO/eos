@@ -45,7 +45,7 @@
 
         printf "\\tChecking Yum installation...\\n"
         if ! YUM=$( command -v yum 2>/dev/null ); then
-                printf "\\t!! Yum must be installed to compile EOS.IO !!\\n"
+                printf "\\t!! Yum must be installed to compile ARISEN !!\\n"
                 printf "\\tExiting now.\\n"
                 exit 1;
         fi
