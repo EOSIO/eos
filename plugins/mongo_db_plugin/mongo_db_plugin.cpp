@@ -3,7 +3,7 @@
  *  @copyright defined in arisen/LICENSE.txt
  */
 #include <arisen/mongo_db_plugin/mongo_db_plugin.hpp>
-#include <arisen/chain/eosio_contract.hpp>
+#include <arisen/chain/arisen_contract.hpp>
 #include <arisen/chain/config.hpp>
 #include <arisen/chain/exceptions.hpp>
 #include <arisen/chain/transaction.hpp>

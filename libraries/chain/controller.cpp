@@ -20,7 +20,7 @@
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
 
-#include <arisen/chain/eosio_contract.hpp>
+#include <arisen/chain/arisen_contract.hpp>
 
 namespace arisen { namespace chain {
 
@@ -400,7 +400,7 @@ struct controller_impl {
          a.privileged = is_privileged;
 
          if( name == config::system_account_name ) {
-            a.set_abi(eosio_contract_abi(abi_def()));
+            a.set_abi(arisen_contract_abi(abi_def()));
          }
       });
       db.create<account_sequence_object>([&](auto & a) {

@@ -2,7 +2,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <arisen/testing/tester.hpp>
 #include <arisen/chain/wast_to_wasm.hpp>
-#include <arisen/chain/eosio_contract.hpp>
+#include <arisen/chain/arisen_contract.hpp>
 
 #include <arisen.bios/arisen.bios.wast.hpp>
 #include <arisen.bios/arisen.bios.abi.hpp>

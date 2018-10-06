@@ -15,7 +15,7 @@
 #include <arisen/chain/controller.hpp>
 #include <arisen/chain/generated_transaction_object.hpp>
 
-#include <arisen/chain/eosio_contract.hpp>
+#include <arisen/chain/arisen_contract.hpp>
 
 #include <arisen/utilities/key_conversion.hpp>
 #include <arisen/utilities/common.hpp>

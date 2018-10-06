@@ -17,7 +17,7 @@
 
 #include <arisen/chain/contract_types.hpp>
 #include <arisen/chain/abi_serializer.hpp>
-#include <arisen/chain/eosio_contract.hpp>
+#include <arisen/chain/arisen_contract.hpp>
 #include <arisen/abi_generator/abi_generator.hpp>
 #include <arisen/testing/tester.hpp>
 
@@ -70,7 +70,7 @@ void verify_round_trip_conversion( const abi_serializer& abis, const type_name& 
 auto get_resolver(const abi_def& abi = abi_def())
 {
    return [&abi](const account_name &name) -> optional<abi_serializer> {
-      return abi_serializer(eosio_contract_abi(abi), max_serialization_time);
+      return abi_serializer(arisen_contract_abi(abi), max_serialization_time);
    };
 }
 
@@ -522,7 +522,7 @@ BOOST_AUTO_TEST_CASE(uint_types)
 
    auto abi = fc::json::from_string(currency_abi).as<abi_def>();
 
-   abi_serializer abis(eosio_contract_abi(abi), max_serialization_time);
+   abi_serializer abis(arisen_contract_abi(abi), max_serialization_time);
 
    const char* test_data = R"=====(
    {
@@ -1835,7 +1835,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_no_eosioabi_macro, abi_gen_helper)
 BOOST_AUTO_TEST_CASE(general)
 { try {
 
-   auto abi = eosio_contract_abi(fc::json::from_string(my_abi).as<abi_def>());
+   auto abi = arisen_contract_abi(fc::json::from_string(my_abi).as<abi_def>());
 
    abi_serializer abis(abi, max_serialization_time);
 
@@ -2082,7 +2082,7 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
    }
    )=====";
 
-   auto abi = eosio_contract_abi(fc::json::from_string(typedef_cycle_abi).as<abi_def>());
+   auto abi = arisen_contract_abi(fc::json::from_string(typedef_cycle_abi).as<abi_def>());
 
    auto is_assert_exception = [](const auto& e) -> bool {
       wlog(e.to_string()); return true;
@@ -2098,7 +2098,7 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
 BOOST_AUTO_TEST_CASE(linkauth_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()), max_serialization_time);
+   abi_serializer abis(arisen_contract_abi(abi_def()), max_serialization_time);
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2132,7 +2132,7 @@ BOOST_AUTO_TEST_CASE(linkauth_test)
 BOOST_AUTO_TEST_CASE(unlinkauth_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()), max_serialization_time);
+   abi_serializer abis(arisen_contract_abi(abi_def()), max_serialization_time);
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2163,7 +2163,7 @@ BOOST_AUTO_TEST_CASE(unlinkauth_test)
 BOOST_AUTO_TEST_CASE(updateauth_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()), max_serialization_time);
+   abi_serializer abis(arisen_contract_abi(abi_def()), max_serialization_time);
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2233,7 +2233,7 @@ BOOST_AUTO_TEST_CASE(updateauth_test)
 BOOST_AUTO_TEST_CASE(deleteauth_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()), max_serialization_time);
+   abi_serializer abis(arisen_contract_abi(abi_def()), max_serialization_time);
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2261,7 +2261,7 @@ BOOST_AUTO_TEST_CASE(deleteauth_test)
 BOOST_AUTO_TEST_CASE(newaccount_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()), max_serialization_time);
+   abi_serializer abis(arisen_contract_abi(abi_def()), max_serialization_time);
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -2371,7 +2371,7 @@ BOOST_AUTO_TEST_CASE(newaccount_test)
 BOOST_AUTO_TEST_CASE(setcode_test)
 { try {
 
-   abi_serializer abis(eosio_contract_abi(abi_def()), max_serialization_time);
+   abi_serializer abis(arisen_contract_abi(abi_def()), max_serialization_time);
 
    const char* test_data = R"=====(
    {
@@ -2534,7 +2534,7 @@ BOOST_AUTO_TEST_CASE(setabi_test)
 
    auto v = fc::json::from_string(abi_def_abi);
 
-   abi_serializer abis(eosio_contract_abi(v.as<abi_def>()), max_serialization_time);
+   abi_serializer abis(arisen_contract_abi(v.as<abi_def>()), max_serialization_time);
 
    const char* abi_string = R"=====(
       {
@@ -2932,7 +2932,7 @@ BOOST_AUTO_TEST_CASE(abi_type_repeat)
    }
    )=====";
 
-   auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
+   auto abi = arisen_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
    auto is_table_exception = [](fc::exception const & e) -> bool { return e.to_detail_string().find("type already exists") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi, max_serialization_time), duplicate_abi_type_def_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
@@ -2990,7 +2990,7 @@ BOOST_AUTO_TEST_CASE(abi_struct_repeat)
    }
    )=====";
 
-   auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
+   auto abi = arisen_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
    BOOST_CHECK_THROW( abi_serializer abis(abi, max_serialization_time), duplicate_abi_struct_def_exception );
 } FC_LOG_AND_RETHROW() }
 
@@ -3050,7 +3050,7 @@ BOOST_AUTO_TEST_CASE(abi_action_repeat)
    }
    )=====";
 
-   auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
+   auto abi = arisen_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
    BOOST_CHECK_THROW( abi_serializer abis(abi, max_serialization_time), duplicate_abi_action_def_exception );
 } FC_LOG_AND_RETHROW() }
 
@@ -3113,7 +3113,7 @@ BOOST_AUTO_TEST_CASE(abi_table_repeat)
    }
    )=====";
 
-   auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
+   auto abi = arisen_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
    BOOST_CHECK_THROW( abi_serializer abis(abi, max_serialization_time), duplicate_abi_table_def_exception );
 } FC_LOG_AND_RETHROW() }
 
@@ -3339,7 +3339,7 @@ BOOST_AUTO_TEST_CASE(abi_account_name_in_eosio_abi)
    }
    )=====";
 
-   auto abi = eosio_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
+   auto abi = arisen_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
    auto is_type_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("abi.types.size") != std::string::npos; };
 
 } FC_LOG_AND_RETHROW() }

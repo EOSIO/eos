@@ -19,8 +19,8 @@ add_library( eosio_chain
              resource_limits.cpp
              block_log.cpp
              transaction_context.cpp
-             eosio_contract.cpp
-             eosio_contract_abi.cpp
+             arisen_contract.cpp
+             arisen_contract_abi.cpp
              chain_config.cpp
              chain_id_type.cpp
              genesis_state.cpp

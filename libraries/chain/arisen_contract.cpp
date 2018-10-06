@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in arisen/LICENSE.txt
  */
-#include <arisen/chain/eosio_contract.hpp>
+#include <arisen/chain/arisen_contract.hpp>
 #include <arisen/chain/contract_table_objects.hpp>
 
 #include <arisen/chain/controller.hpp>
