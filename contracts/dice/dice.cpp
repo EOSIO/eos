@@ -64,8 +64,8 @@ class dice : public arisen::contract {
 
             // No matching bet found, update player's account
             accounts.modify( cur_player_itr, 0, [&](auto& acnt) {
-               arisen_assert( acnt.eos_balance >= bet, "insufficient balance" );
-               acnt.eos_balance -= bet;
+               arisen_assert( acnt.rsn_balance >= bet, "insufficient balance" );
+               acnt.rsn_balance -= bet;
                acnt.open_offers++;
             });
 
@@ -114,8 +114,8 @@ class dice : public arisen::contract {
             });
 
             accounts.modify( cur_player_itr, 0, [&](auto& acnt) {
-               arisen_assert( acnt.eos_balance >= bet, "insufficient balance" );
-               acnt.eos_balance -= bet;
+               arisen_assert( acnt.rsn_balance >= bet, "insufficient balance" );
+               acnt.rsn_balance -= bet;
                acnt.open_games++;
             });
          }
@@ -134,7 +134,7 @@ class dice : public arisen::contract {
          auto acnt_itr = accounts.find(offer_itr->owner);
          accounts.modify(acnt_itr, 0, [&](auto& acnt){
             acnt.open_offers--;
-            acnt.eos_balance += offer_itr->bet;
+            acnt.rsn_balance += offer_itr->bet;
          });
 
          idx.erase(offer_itr);
@@ -232,7 +232,7 @@ class dice : public arisen::contract {
          ).send();
 
          accounts.modify( itr, 0, [&]( auto& acnt ) {
-            acnt.eos_balance += quantity;
+            acnt.rsn_balance += quantity;
          });
       }
 
@@ -247,8 +247,8 @@ class dice : public arisen::contract {
          arisen_assert(itr != accounts.end(), "unknown account");
 
          accounts.modify( itr, 0, [&]( auto& acnt ) {
-            arisen_assert( acnt.eos_balance >= quantity, "insufficient balance" );
-            acnt.eos_balance -= quantity;
+            arisen_assert( acnt.rsn_balance >= quantity, "insufficient balance" );
+            acnt.rsn_balance -= quantity;
          });
 
          action(
@@ -329,15 +329,15 @@ class dice : public arisen::contract {
          account( account_name o = account_name() ):owner(o){}
 
          account_name owner;
-         asset        eos_balance;
+         asset        rsn_balance;
          uint32_t     open_offers = 0;
          uint32_t     open_games = 0;
 
-         bool is_empty()const { return !( eos_balance.amount | open_offers | open_games ); }
+         bool is_empty()const { return !( rsn_balance.amount | open_offers | open_games ); }
 
          uint64_t primary_key()const { return owner; }
 
-         EOSLIB_SERIALIZE( account, (owner)(eos_balance)(open_offers)(open_games) )
+         EOSLIB_SERIALIZE( account, (owner)(rsn_balance)(open_offers)(open_games) )
       };
 
       typedef arisen::multi_index< N(account), account> account_index;
@@ -368,7 +368,7 @@ class dice : public arisen::contract {
          // Update winner account balance and game count
          auto winner_account = accounts.find(winner_offer.owner);
          accounts.modify( winner_account, 0, [&]( auto& acnt ) {
-            acnt.eos_balance += 2*g.bet;
+            acnt.rsn_balance += 2*g.bet;
             acnt.open_games--;
          });
 
