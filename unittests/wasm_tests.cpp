@@ -124,7 +124,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
       trx.sign( get_private_key( N(asserter), "active" ), control->get_chain_id() );
       yes_assert_id = trx.id();
 
-      BOOST_CHECK_THROW(push_transaction( trx ), eosio_assert_message_exception);
+      BOOST_CHECK_THROW(push_transaction( trx ), arisen_assert_message_exception);
    }
 
    produce_blocks(1);
@@ -528,7 +528,7 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
    std::string code = R"=====(
 (module
   (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (import "env" "arisen_assert" (func $arisen_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
    (export "apply" (func $apply))
@@ -598,7 +598,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
    std::string code = R"=====(
 (module
   (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+  (import "env" "arisen_assert" (func $arisen_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
    (export "apply" (func $apply))
@@ -1316,7 +1316,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    trx.sign(get_private_key( N(tbl), "active" ), control->get_chain_id());
 
    //should fail, a check to make sure assert() in wasm is being evaluated correctly
-   BOOST_CHECK_THROW(push_transaction(trx), eosio_assert_message_exception);
+   BOOST_CHECK_THROW(push_transaction(trx), arisen_assert_message_exception);
    }
 
    produce_blocks(1);
@@ -1909,7 +1909,7 @@ BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
       std::string code = R"=====(
    (module
    (import "env" "require_auth" (func $require_auth (param i64)))
-   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+   (import "env" "arisen_assert" (func $arisen_assert (param i32 i32)))
       (table 0 anyfunc)
       (memory $0 1)
       (export "apply" (func $apply))
@@ -1960,7 +1960,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_net_usage_tests, tester ) try {
       std::string code = R"=====(
    (module
    (import "env" "require_auth" (func $require_auth (param i64)))
-   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+   (import "env" "arisen_assert" (func $arisen_assert (param i32 i32)))
       (table 0 anyfunc)
       (memory $0 1)
       (export "apply" (func $apply))

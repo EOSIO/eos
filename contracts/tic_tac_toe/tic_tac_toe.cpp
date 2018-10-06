@@ -88,12 +88,12 @@ account_name get_winner(const tic_tac_toe::game& current_game) {
  */
 void tic_tac_toe::create(const account_name& challenger, const account_name& host) {
    require_auth(host);
-   eosio_assert(challenger != host, "challenger shouldn't be the same as host");
+   arisen_assert(challenger != host, "challenger shouldn't be the same as host");
 
    // Check if game already exists
    games existing_host_games(_self, host);
    auto itr = existing_host_games.find( challenger );
-   eosio_assert(itr == existing_host_games.end(), "game already exists");
+   arisen_assert(itr == existing_host_games.end(), "game already exists");
 
    existing_host_games.emplace(host, [&]( auto& g ) {
       g.challenger = challenger;
@@ -111,10 +111,10 @@ void tic_tac_toe::restart(const account_name& challenger, const account_name& ho
    // Check if game exists
    games existing_host_games(_self, host);
    auto itr = existing_host_games.find( challenger );
-   eosio_assert(itr != existing_host_games.end(), "game doesn't exists");
+   arisen_assert(itr != existing_host_games.end(), "game doesn't exists");
 
    // Check if this game belongs to the action sender
-   eosio_assert(by == itr->host || by == itr->challenger, "this is not your game!");
+   arisen_assert(by == itr->host || by == itr->challenger, "this is not your game!");
 
    // Reset game
    existing_host_games.modify(itr, itr->host, []( auto& g ) {
@@ -131,7 +131,7 @@ void tic_tac_toe::close(const account_name& challenger, const account_name& host
    // Check if game exists
    games existing_host_games(_self, host);
    auto itr = existing_host_games.find( challenger );
-   eosio_assert(itr != existing_host_games.end(), "game doesn't exists");
+   arisen_assert(itr != existing_host_games.end(), "game doesn't exists");
 
    // Remove game
    existing_host_games.erase(itr);
@@ -146,18 +146,18 @@ void tic_tac_toe::move(const account_name& challenger, const account_name& host,
    // Check if game exists
    games existing_host_games(_self, host);
    auto itr = existing_host_games.find( challenger );
-   eosio_assert(itr != existing_host_games.end(), "game doesn't exists");
+   arisen_assert(itr != existing_host_games.end(), "game doesn't exists");
 
    // Check if this game hasn't ended yet
-   eosio_assert(itr->winner == N(none), "the game has ended!");
+   arisen_assert(itr->winner == N(none), "the game has ended!");
    // Check if this game belongs to the action sender
-   eosio_assert(by == itr->host || by == itr->challenger, "this is not your game!");
+   arisen_assert(by == itr->host || by == itr->challenger, "this is not your game!");
    // Check if this is the  action sender's turn
-   eosio_assert(by == itr->turn, "it's not your turn yet!");
+   arisen_assert(by == itr->turn, "it's not your turn yet!");
 
 
    // Check if user makes a valid movement
-   eosio_assert(is_valid_movement(row, column, itr->board), "not a valid movement!");
+   arisen_assert(is_valid_movement(row, column, itr->board), "not a valid movement!");
 
    // Fill the cell, 1 for host, 2 for challenger
    const uint8_t cell_value = itr->turn == itr->host ? 1 : 2;

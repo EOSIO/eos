@@ -45,7 +45,7 @@ extern "C" {
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_pk_cache_sk_lookup);
 
       //unhandled test call
-      eosio_assert(false, "Unknown Test");
+      arisen_assert(false, "Unknown Test");
    }
 
 }

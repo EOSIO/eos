@@ -330,7 +330,7 @@ namespace arisen {
           * @brief Pointer Dereference operator
           * @return T& - Contained value
           */
-         T&       operator*()      { eosio_assert(_valid, "dereference of empty optional"); return ref(); }
+         T&       operator*()      { arisen_assert(_valid, "dereference of empty optional"); return ref(); }
 
          /**
           * Get contained value of this optional
@@ -338,7 +338,7 @@ namespace arisen {
           * @brief Pointer Dereference operator
           * @return T& - Contained value
           */
-         const T& operator*()const { eosio_assert(_valid, "dereference of empty optional"); return ref(); }
+         const T& operator*()const { arisen_assert(_valid, "dereference of empty optional"); return ref(); }
 
          /**
           * Get pointer to the contained value
@@ -348,7 +348,7 @@ namespace arisen {
           */
          T*       operator->()
          {
-            eosio_assert(_valid, "dereference of empty optional");
+            arisen_assert(_valid, "dereference of empty optional");
             return ptr();
          }
 
@@ -360,7 +360,7 @@ namespace arisen {
           */         
          const T* operator->()const
          {
-            eosio_assert(_valid, "dereference of empty optional");
+            arisen_assert(_valid, "dereference of empty optional");
             return ptr();
          }
 

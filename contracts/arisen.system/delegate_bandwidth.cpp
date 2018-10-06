@@ -105,7 +105,7 @@ namespace arisensystem {
    void system_contract::buyram( account_name payer, account_name receiver, asset quant )
    {
       require_auth( payer );
-      eosio_assert( quant.amount > 0, "must purchase a positive amount" );
+      arisen_assert( quant.amount > 0, "must purchase a positive amount" );
 
       auto fee = quant;
       fee.amount = ( fee.amount + 199 ) / 200; /// .5% fee (round up)
@@ -132,7 +132,7 @@ namespace arisensystem {
           bytes_out = es.convert( quant_after_fee,  S(0,RAM) ).amount;
       });
 
-      eosio_assert( bytes_out > 0, "must reserve a positive amount" );
+      arisen_assert( bytes_out > 0, "must reserve a positive amount" );
 
       _gstate.total_ram_bytes_reserved += uint64_t(bytes_out);
       _gstate.total_ram_stake          += quant_after_fee.amount;
@@ -161,12 +161,12 @@ namespace arisensystem {
     */
    void system_contract::sellram( account_name account, int64_t bytes ) {
       require_auth( account );
-      eosio_assert( bytes > 0, "cannot sell negative byte" );
+      arisen_assert( bytes > 0, "cannot sell negative byte" );
 
       user_resources_table  userres( _self, account );
       auto res_itr = userres.find( account );
-      eosio_assert( res_itr != userres.end(), "no resource row" );
-      eosio_assert( res_itr->ram_bytes >= bytes, "insufficient quota" );
+      arisen_assert( res_itr != userres.end(), "no resource row" );
+      arisen_assert( res_itr->ram_bytes >= bytes, "insufficient quota" );
 
       asset tokens_out;
       auto itr = _rammarket.find(S(4,RAMCORE));
@@ -175,13 +175,13 @@ namespace arisensystem {
           tokens_out = es.convert( asset(bytes,S(0,RAM)), CORE_SYMBOL);
       });
 
-      eosio_assert( tokens_out.amount > 1, "token amount received from selling ram is too low" );
+      arisen_assert( tokens_out.amount > 1, "token amount received from selling ram is too low" );
 
       _gstate.total_ram_bytes_reserved -= static_cast<decltype(_gstate.total_ram_bytes_reserved)>(bytes); // bytes > 0 is asserted above
       _gstate.total_ram_stake          -= tokens_out.amount;
 
       //// this shouldn't happen, but just in case it does we should prevent it
-      eosio_assert( _gstate.total_ram_stake >= 0, "error, attempt to unstake more tokens than previously staked" );
+      arisen_assert( _gstate.total_ram_stake >= 0, "error, attempt to unstake more tokens than previously staked" );
 
       userres.modify( res_itr, account, [&]( auto& res ) {
           res.ram_bytes -= bytes;
@@ -205,15 +205,15 @@ namespace arisensystem {
       const int64_t max_claimable = 100'000'000'0000ll;
       const int64_t claimable = int64_t(max_claimable * double(now()-base_time) / (10*seconds_per_year) );
 
-      eosio_assert( max_claimable - claimable <= stake, "b1 can only claim their tokens over 10 years" );
+      arisen_assert( max_claimable - claimable <= stake, "b1 can only claim their tokens over 10 years" );
    }
 
    void system_contract::changebw( account_name from, account_name receiver,
                                    const asset stake_net_delta, const asset stake_cpu_delta, bool transfer )
    {
       require_auth( from );
-      eosio_assert( stake_net_delta != asset(0) || stake_cpu_delta != asset(0), "should stake non-zero amount" );
-      eosio_assert( std::abs( (stake_net_delta + stake_cpu_delta).amount )
+      arisen_assert( stake_net_delta != asset(0) || stake_cpu_delta != asset(0), "should stake non-zero amount" );
+      arisen_assert( std::abs( (stake_net_delta + stake_cpu_delta).amount )
                      >= std::max( std::abs( stake_net_delta.amount ), std::abs( stake_cpu_delta.amount ) ),
                     "net and cpu deltas cannot be opposite signs" );
 
@@ -240,8 +240,8 @@ namespace arisensystem {
                   dbo.cpu_weight    += stake_cpu_delta;
                });
          }
-         eosio_assert( asset(0) <= itr->net_weight, "insufficient staked net bandwidth" );
-         eosio_assert( asset(0) <= itr->cpu_weight, "insufficient staked cpu bandwidth" );
+         arisen_assert( asset(0) <= itr->net_weight, "insufficient staked net bandwidth" );
+         arisen_assert( asset(0) <= itr->cpu_weight, "insufficient staked cpu bandwidth" );
          if ( itr->net_weight == asset(0) && itr->cpu_weight == asset(0) ) {
             del_tbl.erase( itr );
          }
@@ -263,8 +263,8 @@ namespace arisensystem {
                   tot.cpu_weight    += stake_cpu_delta;
                });
          }
-         eosio_assert( asset(0) <= tot_itr->net_weight, "insufficient staked total net bandwidth" );
-         eosio_assert( asset(0) <= tot_itr->cpu_weight, "insufficient staked total cpu bandwidth" );
+         arisen_assert( asset(0) <= tot_itr->net_weight, "insufficient staked total net bandwidth" );
+         arisen_assert( asset(0) <= tot_itr->cpu_weight, "insufficient staked total cpu bandwidth" );
 
          set_resource_limits( receiver, tot_itr->ram_bytes, tot_itr->net_weight.amount, tot_itr->cpu_weight.amount );
 
@@ -311,8 +311,8 @@ namespace arisensystem {
                   }
                });
 
-               eosio_assert( asset(0) <= req->net_amount, "negative net refund amount" ); //should never happen
-               eosio_assert( asset(0) <= req->cpu_amount, "negative cpu refund amount" ); //should never happen
+               arisen_assert( asset(0) <= req->net_amount, "negative net refund amount" ); //should never happen
+               arisen_assert( asset(0) <= req->cpu_amount, "negative cpu refund amount" ); //should never happen
 
                if ( req->net_amount == asset(0) && req->cpu_amount == asset(0) ) {
                   refunds_tbl.erase( req );
@@ -369,7 +369,7 @@ namespace arisensystem {
                   v.staked += total_update.amount;
                });
          }
-         eosio_assert( 0 <= from_voter->staked, "stake for voting cannot be negative");
+         arisen_assert( 0 <= from_voter->staked, "stake for voting cannot be negative");
          if( from == N(b1) ) {
             validate_b1_vesting( from_voter->staked );
          }
@@ -384,10 +384,10 @@ namespace arisensystem {
                                      asset stake_net_quantity,
                                      asset stake_cpu_quantity, bool transfer )
    {
-      eosio_assert( stake_cpu_quantity >= asset(0), "must stake a positive amount" );
-      eosio_assert( stake_net_quantity >= asset(0), "must stake a positive amount" );
-      eosio_assert( stake_net_quantity + stake_cpu_quantity > asset(0), "must stake a positive amount" );
-      eosio_assert( !transfer || from != receiver, "cannot use transfer flag if delegating to self" );
+      arisen_assert( stake_cpu_quantity >= asset(0), "must stake a positive amount" );
+      arisen_assert( stake_net_quantity >= asset(0), "must stake a positive amount" );
+      arisen_assert( stake_net_quantity + stake_cpu_quantity > asset(0), "must stake a positive amount" );
+      arisen_assert( !transfer || from != receiver, "cannot use transfer flag if delegating to self" );
 
       changebw( from, receiver, stake_net_quantity, stake_cpu_quantity, transfer);
    } // delegatebw
@@ -395,10 +395,10 @@ namespace arisensystem {
    void system_contract::undelegatebw( account_name from, account_name receiver,
                                        asset unstake_net_quantity, asset unstake_cpu_quantity )
    {
-      eosio_assert( asset() <= unstake_cpu_quantity, "must unstake a positive amount" );
-      eosio_assert( asset() <= unstake_net_quantity, "must unstake a positive amount" );
-      eosio_assert( asset() < unstake_cpu_quantity + unstake_net_quantity, "must unstake a positive amount" );
-      eosio_assert( _gstate.total_activated_stake >= min_activated_stake,
+      arisen_assert( asset() <= unstake_cpu_quantity, "must unstake a positive amount" );
+      arisen_assert( asset() <= unstake_net_quantity, "must unstake a positive amount" );
+      arisen_assert( asset() < unstake_cpu_quantity + unstake_net_quantity, "must unstake a positive amount" );
+      arisen_assert( _gstate.total_activated_stake >= min_activated_stake,
                     "cannot undelegate bandwidth until the chain is activated (at least 15% of all tokens participate in voting)" );
 
       changebw( from, receiver, -unstake_net_quantity, -unstake_cpu_quantity, false);
@@ -410,8 +410,8 @@ namespace arisensystem {
 
       refunds_table refunds_tbl( _self, owner );
       auto req = refunds_tbl.find( owner );
-      eosio_assert( req != refunds_tbl.end(), "refund request not found" );
-      eosio_assert( req->request_time + refund_delay <= now(), "refund is not available yet" );
+      arisen_assert( req != refunds_tbl.end(), "refund request not found" );
+      arisen_assert( req->request_time + refund_delay <= now(), "refund is not available yet" );
       // Until now() becomes NOW, the fact that now() is the timestamp of the previous block could in theory
       // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
       // consecutive missed blocks.

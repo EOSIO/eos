@@ -194,8 +194,8 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_execute, eosio_msig_tester ) try {
                                           ("proposal_name", "first")
                                           ("executer",      "alice")
                             ),
-                            eosio_assert_message_exception,
-                            eosio_assert_message_is("transaction authorization failed")
+                            arisen_assert_message_exception,
+                            arisen_assert_message_is("transaction authorization failed")
    );
 
    //approve and execute
@@ -246,8 +246,8 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, eosio_msig_tester ) try {
                                           ("proposal_name", "first")
                                           ("executer",      "alice")
                             ),
-                            eosio_assert_message_exception,
-                            eosio_assert_message_is("transaction authorization failed")
+                            arisen_assert_message_exception,
+                            arisen_assert_message_is("transaction authorization failed")
    );
 
 } FC_LOG_AND_RETHROW()
@@ -275,8 +275,8 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, eosio_msig_tester ) try {
                                           ("proposal_name", "first")
                                           ("executer",      "alice")
                             ),
-                            eosio_assert_message_exception,
-                            eosio_assert_message_is("transaction authorization failed")
+                            arisen_assert_message_exception,
+                            arisen_assert_message_is("transaction authorization failed")
    );
 
    //approve by bob and execute
@@ -310,8 +310,8 @@ BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) 
                                              ("trx",           trx)
                                              ("requested", vector<permission_level>{ { N(alice), config::active_name } } )
                             ),
-                            eosio_assert_message_exception,
-                            eosio_assert_message_is("transaction authorization failed")
+                            arisen_assert_message_exception,
+                            arisen_assert_message_is("transaction authorization failed")
    );
 
 } FC_LOG_AND_RETHROW()
@@ -494,7 +494,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    // can't create account because system contract was replace by the test_api contract
 
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(alice1111112), config::system_account_name, core_from_string("1.0000"), false ),
-                            eosio_assert_message_exception, eosio_assert_message_is("Unknown Test")
+                            arisen_assert_message_exception, arisen_assert_message_is("Unknown Test")
 
    );
 } FC_LOG_AND_RETHROW()
@@ -590,7 +590,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
                      ("proposal_name", "first")
                      ("executer",      "alice")
       ),
-      eosio_assert_message_exception, eosio_assert_message_is("transaction authorization failed")
+      arisen_assert_message_exception, arisen_assert_message_is("transaction authorization failed")
    );
 
    //approve by apple
@@ -617,7 +617,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
    // can't create account because system contract was replace by the test_api contract
 
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(alice1111112), config::system_account_name, core_from_string("1.0000"), false ),
-                            eosio_assert_message_exception, eosio_assert_message_is("Unknown Test")
+                            arisen_assert_message_exception, arisen_assert_message_is("Unknown Test")
 
    );
 } FC_LOG_AND_RETHROW()

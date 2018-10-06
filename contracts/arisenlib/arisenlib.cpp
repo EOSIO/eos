@@ -50,7 +50,7 @@ namespace arisen {
    void get_blockchain_parameters(arisen::blockchain_parameters& params) {
       char buf[sizeof(arisen::blockchain_parameters)];
       size_t size = get_blockchain_parameters_packed( buf, sizeof(buf) );
-      eosio_assert( size <= sizeof(buf), "buffer is too small" );
+      arisen_assert( size <= sizeof(buf), "buffer is too small" );
       arisen::datastream<const char*> ds( buf, size_t(size) );
       ds >> params;
    }
@@ -292,7 +292,7 @@ namespace arisen {
 
          char* malloc_from_freed(uint32_t size)
          {
-            eosio_assert(_offset == _heap_size, "malloc_from_freed was designed to only be called after _heap was completely allocated");
+            arisen_assert(_offset == _heap_size, "malloc_from_freed was designed to only be called after _heap was completely allocated");
 
             char* current = _heap + _size_marker;
             while (current != nullptr)

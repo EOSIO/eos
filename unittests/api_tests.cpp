@@ -303,7 +303,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 
    //test assert_false
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "assert_false", {} ),
-                          eosio_assert_message_exception, eosio_assert_message_is("test_action::assert_false") );
+                          arisen_assert_message_exception, arisen_assert_message_is("test_action::assert_false") );
 
    // test read_action_normal
    dummy_action dummy13{DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
@@ -411,7 +411,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
    // test current_time
    produce_block();
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_current_time", fc::raw::pack(now) ),
-                          eosio_assert_message_exception, eosio_assert_message_is("tmp == current_time()")     );
+                          arisen_assert_message_exception, arisen_assert_message_is("tmp == current_time()")     );
 
    // test test_current_receiver
    CALL_TEST_FUNCTION( *this, "test_action", "test_current_receiver", fc::raw::pack(N(testapi)));
@@ -587,8 +587,8 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       BOOST_CHECK_EQUAL(ttrace->action_traces[0].inline_traces[0].act.authorization.size(), 0);
 
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action_fail", {} ),
-                             eosio_assert_message_exception,
-                             eosio_assert_message_is("context free actions cannot have authorizations") );
+                             arisen_assert_message_exception,
+                             arisen_assert_message_is("context free actions cannot have authorizations") );
 
       BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -999,8 +999,8 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
 
    // test send_action_inline_fail
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_inline_fail", {}),
-                          eosio_assert_message_exception,
-                          eosio_assert_message_is("test_action::assert_false")                          );
+                          arisen_assert_message_exception,
+                          arisen_assert_message_is("test_action::assert_false")                          );
 
    //   test send_transaction
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction", {});
@@ -1392,41 +1392,41 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_double_general", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_long_double_general", {});
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pk_iterator_exceed_end", {},
-                                           eosio_assert_message_exception, "cannot increment end iterator");
+                                           arisen_assert_message_exception, "cannot increment end iterator");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_sk_iterator_exceed_end", {},
-                                           eosio_assert_message_exception, "cannot increment end iterator");
+                                           arisen_assert_message_exception, "cannot increment end iterator");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pk_iterator_exceed_begin", {},
-                                           eosio_assert_message_exception, "cannot decrement iterator at beginning of table");
+                                           arisen_assert_message_exception, "cannot decrement iterator at beginning of table");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_sk_iterator_exceed_begin", {},
-                                           eosio_assert_message_exception, "cannot decrement iterator at beginning of index");
+                                           arisen_assert_message_exception, "cannot decrement iterator at beginning of index");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_pk_ref_to_other_table", {},
-                                           eosio_assert_message_exception, "object passed to iterator_to is not in multi_index");
+                                           arisen_assert_message_exception, "object passed to iterator_to is not in multi_index");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_sk_ref_to_other_table", {},
-                                           eosio_assert_message_exception, "object passed to iterator_to is not in multi_index");
+                                           arisen_assert_message_exception, "object passed to iterator_to is not in multi_index");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_pk_end_itr_to_iterator_to", {},
-                                           eosio_assert_message_exception, "object passed to iterator_to is not in multi_index");
+                                           arisen_assert_message_exception, "object passed to iterator_to is not in multi_index");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_pk_end_itr_to_modify", {},
-                                           eosio_assert_message_exception, "cannot pass end iterator to modify");
+                                           arisen_assert_message_exception, "cannot pass end iterator to modify");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_pk_end_itr_to_erase", {},
-                                           eosio_assert_message_exception, "cannot pass end iterator to erase");
+                                           arisen_assert_message_exception, "cannot pass end iterator to erase");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_sk_end_itr_to_iterator_to", {},
-                                           eosio_assert_message_exception, "object passed to iterator_to is not in multi_index");
+                                           arisen_assert_message_exception, "object passed to iterator_to is not in multi_index");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_sk_end_itr_to_modify", {},
-                                           eosio_assert_message_exception, "cannot pass end iterator to modify");
+                                           arisen_assert_message_exception, "cannot pass end iterator to modify");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_sk_end_itr_to_erase", {},
-                                           eosio_assert_message_exception, "cannot pass end iterator to erase");
+                                           arisen_assert_message_exception, "cannot pass end iterator to erase");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_modify_primary_key", {},
-                                           eosio_assert_message_exception, "updater cannot change primary key when modifying an object");
+                                           arisen_assert_message_exception, "updater cannot change primary key when modifying an object");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_run_out_of_avl_pk", {},
-                                           eosio_assert_message_exception, "next primary key in table is at autoincrement limit");
+                                           arisen_assert_message_exception, "next primary key in table is at autoincrement limit");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_fail", {},
-                                           eosio_assert_message_exception, "unable to find key");
+                                           arisen_assert_message_exception, "unable to find key");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_fail_with_msg", {},
-                                           eosio_assert_message_exception, "unable to find primary key in require_find");
+                                           arisen_assert_message_exception, "unable to find primary key in require_find");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_sk_fail", {},
-                                           eosio_assert_message_exception, "unable to find secondary key");
+                                           arisen_assert_message_exception, "unable to find secondary key");
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_sk_fail_with_msg", {},
-                                           eosio_assert_message_exception, "unable to find sec key");
+                                           arisen_assert_message_exception, "unable to find sec key");
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_sk_cache_pk_lookup", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_pk_cache_sk_lookup", {});
 
@@ -1449,7 +1449,7 @@ BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, TESTER) { try {
 	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "test_multiplication", {});
 	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "test_division", {});
 	CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_fixedpoint", "test_division_by_0", {},
-                                          eosio_assert_message_exception, "divide by zero"     );
+                                          arisen_assert_message_exception, "divide by zero"     );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -2018,7 +2018,7 @@ BOOST_FIXTURE_TEST_CASE(permission_usage_tests, TESTER) { try {
                                        N(testapi), config::active_name,
                                        control->head_block_time() + fc::milliseconds(config::block_interval_ms)
                                      })
-   ), eosio_assert_message_exception );
+   ), arisen_assert_message_exception );
 
    produce_blocks(5);
 
@@ -2060,7 +2060,7 @@ BOOST_FIXTURE_TEST_CASE(permission_usage_tests, TESTER) { try {
                                                             N(bob), N(perm1),
                                                             permission_creation_time
                                           })
-   ), eosio_assert_message_exception );
+   ), arisen_assert_message_exception );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "test_permission_last_used",
                        fc::raw::pack(test_permission_last_used_action{
@@ -2102,9 +2102,9 @@ BOOST_FIXTURE_TEST_CASE(account_creation_time_tests, TESTER) { try {
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
- * eosio_assert_code_tests test cases
+ * arisen_assert_code_tests test cases
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
+BOOST_FIXTURE_TEST_CASE(arisen_assert_code_tests, TESTER) { try {
    produce_block();
    create_account( N(testapi) );
    produce_block();
@@ -2134,7 +2134,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
    produce_blocks(10);
 
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_assert_code", fc::raw::pack((uint64_t)42) ),
-                          eosio_assert_code_exception, eosio_assert_code_is(42)                                        );
+                          arisen_assert_code_exception, arisen_assert_code_is(42)                                        );
 
    produce_block();
 

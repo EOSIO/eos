@@ -69,14 +69,14 @@ namespace arisensystem {
       require_auth(owner);
 
       const auto& prod = _producers.get( owner );
-      eosio_assert( prod.active(), "producer does not have an active key" );
+      arisen_assert( prod.active(), "producer does not have an active key" );
 
-      eosio_assert( _gstate.total_activated_stake >= min_activated_stake,
+      arisen_assert( _gstate.total_activated_stake >= min_activated_stake,
                     "cannot claim rewards until the chain is activated (at least 15% of all tokens participate in voting)" );
 
       auto ct = current_time();
 
-      eosio_assert( ct - prod.last_claim_time > useconds_per_day, "already claimed rewards within past day" );
+      arisen_assert( ct - prod.last_claim_time > useconds_per_day, "already claimed rewards within past day" );
 
       const asset token_supply   = token( N(arisen.token)).get_supply(symbol_type(system_token_symbol).name() );
       const auto usecs_since_last_fill = ct - _gstate.last_pervote_bucket_fill;

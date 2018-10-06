@@ -65,7 +65,7 @@ void test_permission::test_permission_last_used(uint64_t /* receiver */, uint64_
 
    auto params = unpack_action_data<test_permission_last_used_msg>();
 
-   eosio_assert( get_permission_last_used(params.account, params.permission) == params.last_used_time, "unexpected last used permission time" );
+   arisen_assert( get_permission_last_used(params.account, params.permission) == params.last_used_time, "unexpected last used permission time" );
 }
 
 void test_permission::test_account_creation_time(uint64_t /* receiver */, uint64_t code, uint64_t action) {
@@ -75,5 +75,5 @@ void test_permission::test_account_creation_time(uint64_t /* receiver */, uint64
 
    auto params = unpack_action_data<test_permission_last_used_msg>();
 
-   eosio_assert( get_account_creation_time(params.account) == params.last_used_time, "unexpected account creation time" );
+   arisen_assert( get_account_creation_time(params.account) == params.last_used_time, "unexpected account creation time" );
 }

@@ -922,27 +922,27 @@ public:
       EOS_ASSERT( false, abort_called, "abort() called");
    }
 
-   // Kept as intrinsic rather than implementing on WASM side (using eosio_assert_message and strlen) because strlen is faster on native side.
-   void eosio_assert( bool condition, null_terminated_ptr msg ) {
+   // Kept as intrinsic rather than implementing on WASM side (using arisen_assert_message and strlen) because strlen is faster on native side.
+   void arisen_assert( bool condition, null_terminated_ptr msg ) {
       if( BOOST_UNLIKELY( !condition ) ) {
          std::string message( msg );
          edump((message));
-         EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+         EOS_THROW( arisen_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
-   void eosio_assert_message( bool condition, array_ptr<const char> msg, size_t msg_len ) {
+   void arisen_assert_message( bool condition, array_ptr<const char> msg, size_t msg_len ) {
       if( BOOST_UNLIKELY( !condition ) ) {
          std::string message( msg, msg_len );
          edump((message));
-         EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+         EOS_THROW( arisen_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
-   void eosio_assert_code( bool condition, uint64_t error_code ) {
+   void arisen_assert_code( bool condition, uint64_t error_code ) {
       if( BOOST_UNLIKELY( !condition ) ) {
          edump((error_code));
-         EOS_THROW( eosio_assert_code_exception,
+         EOS_THROW( arisen_assert_code_exception,
                     "assertion failure with error code: ${error_code}", ("error_code", error_code) );
       }
    }
@@ -1784,9 +1784,9 @@ REGISTER_INTRINSICS(system_api,
 
 REGISTER_INTRINSICS(context_free_system_api,
    (abort,                void()              )
-   (eosio_assert,         void(int, int)      )
-   (eosio_assert_message, void(int, int, int) )
-   (eosio_assert_code,    void(int, int64_t)  )
+   (arisen_assert,         void(int, int)      )
+   (arisen_assert_message, void(int, int, int) )
+   (arisen_assert_code,    void(int, int64_t)  )
    (eosio_exit,           void(int)           )
 );
 

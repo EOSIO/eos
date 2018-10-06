@@ -884,7 +884,7 @@ namespace arisen { namespace testing {
       return match;
    }
 
-   bool eosio_assert_message_is::operator()( const eosio_assert_message_exception& ex ) {
+   bool arisen_assert_message_is::operator()( const arisen_assert_message_exception& ex ) {
       auto message = ex.get_log().at( 0 ).get_message();
       bool match = (message == expected);
       if( !match ) {
@@ -893,7 +893,7 @@ namespace arisen { namespace testing {
       return match;
    }
 
-   bool eosio_assert_message_starts_with::operator()( const eosio_assert_message_exception& ex ) {
+   bool arisen_assert_message_starts_with::operator()( const arisen_assert_message_exception& ex ) {
       auto message = ex.get_log().at( 0 ).get_message();
       bool match = boost::algorithm::starts_with( message, expected );
       if( !match ) {
@@ -902,7 +902,7 @@ namespace arisen { namespace testing {
       return match;
    }
 
-   bool eosio_assert_code_is::operator()( const eosio_assert_code_exception& ex ) {
+   bool arisen_assert_code_is::operator()( const arisen_assert_code_exception& ex ) {
       auto message = ex.get_log().at( 0 ).get_message();
       bool match = (message == expected);
       if( !match ) {

@@ -9,7 +9,7 @@ class simpletoken : public arisen::contract {
          require_auth( from );
 
          const auto& fromacnt = _accounts.get( from );
-         eosio_assert( fromacnt.balance >= quantity, "overdrawn balance" );
+         arisen_assert( fromacnt.balance >= quantity, "overdrawn balance" );
          _accounts.modify( fromacnt, from, [&]( auto& a ){ a.balance -= quantity; } );
 
          add_balance( from, to, quantity );
@@ -40,7 +40,7 @@ class simpletoken : public arisen::contract {
          } else {
            _accounts.modify( toitr, 0, [&]( auto& a ) {
               a.balance += q;
-              eosio_assert( a.balance >= q, "overflow detected" );
+              arisen_assert( a.balance >= q, "overflow detected" );
            });
          }
       }

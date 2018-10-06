@@ -779,7 +779,7 @@ namespace arisen
         // std::cout << "Performing division on " << val << ", with " << q << " precision / " << r.val << ", with " << qr << " precision. Result precision " << ((q>qr) ? q:qr) << std::endl;
         // Convert val to 128 bit by additionally shifting 64 bit and take the result to 128bit
         // Q(X+64-Y) = Q(X+64) / Q(Y)
-       eosio_assert( !(r.int_part() == 0 && r.frac_part() == 0), "divide by zero" );
+       arisen_assert( !(r.int_part() == 0 && r.frac_part() == 0), "divide by zero" );
         return fixed_point128<Q+64-QR>((int128_t(val)<<64)/r.val);
     }
 
@@ -876,7 +876,7 @@ namespace arisen
     fixed_point64<Q+32-QR> fixed_point32<Q>::operator/(const fixed_point32<QR> &r) const {
         // Convert val into 64 bit and perform the division
         // Q(X+32-Y) = Q(X+32) / Q(Y)
-        eosio_assert( !(r.int_part() == 0 && r.frac_part() == 0), "divide by zero" );
+        arisen_assert( !(r.int_part() == 0 && r.frac_part() == 0), "divide by zero" );
         return fixed_point64<Q+32-QR>((int64_t(val)<<32)/r.val);
     }
 
@@ -894,7 +894,7 @@ namespace arisen
     fixed_point64<Q> fixed_divide(uint32_t lhs, uint32_t rhs)
     {
 
-        eosio_assert( rhs != 0, "divide by zero" );
+        arisen_assert( rhs != 0, "divide by zero" );
         fixed_point64<Q> result = fixed_point32<0>((int32_t)lhs) / fixed_point32<0>((int32_t)rhs);
         return result;
     }
@@ -913,7 +913,7 @@ namespace arisen
     fixed_point128<Q> fixed_divide(uint64_t lhs, uint64_t rhs)
     {
 
-        eosio_assert( rhs != 0, "divide by zero" );
+        arisen_assert( rhs != 0, "divide by zero" );
         fixed_point128<Q> result = fixed_point64<0>((int32_t)lhs) / fixed_point64<0>((int32_t)rhs);
         return fixed_point128<Q>(result);
     }

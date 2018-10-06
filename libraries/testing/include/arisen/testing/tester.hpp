@@ -468,43 +468,43 @@ namespace arisen { namespace testing {
   };
 
   /**
-   * Utility predicate to check whether an eosio_assert message is equivalent to a given string
+   * Utility predicate to check whether an arisen_assert message is equivalent to a given string
    */
-  struct eosio_assert_message_is {
-     eosio_assert_message_is( const string& msg )
+  struct arisen_assert_message_is {
+     arisen_assert_message_is( const string& msg )
            : expected( "assertion failure with message: " ) {
         expected.append( msg );
      }
 
-     bool operator()( const eosio_assert_message_exception& ex );
+     bool operator()( const arisen_assert_message_exception& ex );
 
      string expected;
   };
 
   /**
-   * Utility predicate to check whether an eosio_assert message starts with a given string
+   * Utility predicate to check whether an arisen_assert message starts with a given string
    */
-  struct eosio_assert_message_starts_with {
-     eosio_assert_message_starts_with( const string& msg )
+  struct arisen_assert_message_starts_with {
+     arisen_assert_message_starts_with( const string& msg )
            : expected( "assertion failure with message: " ) {
         expected.append( msg );
      }
 
-     bool operator()( const eosio_assert_message_exception& ex );
+     bool operator()( const arisen_assert_message_exception& ex );
 
      string expected;
   };
 
   /**
-   * Utility predicate to check whether an eosio_assert_code error code is equivalent to a given number
+   * Utility predicate to check whether an arisen_assert_code error code is equivalent to a given number
    */
-  struct eosio_assert_code_is {
-     eosio_assert_code_is( uint64_t error_code )
+  struct arisen_assert_code_is {
+     arisen_assert_code_is( uint64_t error_code )
            : expected( "assertion failure with error code: " ) {
         expected.append( std::to_string(error_code) );
      }
 
-     bool operator()( const eosio_assert_code_exception& ex );
+     bool operator()( const arisen_assert_code_exception& ex );
 
      string expected;
   };

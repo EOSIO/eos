@@ -59,8 +59,8 @@ namespace arisen {
       explicit asset( int64_t a = 0, symbol_type s = CORE_SYMBOL )
       :amount(a),symbol{s}
       {
-         eosio_assert( is_amount_within_range(), "magnitude of asset amount must be less than 2^62" );
-         eosio_assert( symbol.is_valid(),        "invalid symbol name" );
+         arisen_assert( is_amount_within_range(), "magnitude of asset amount must be less than 2^62" );
+         arisen_assert( symbol.is_valid(),        "invalid symbol name" );
       }
 
       /**
@@ -89,7 +89,7 @@ namespace arisen {
        */
       void set_amount( int64_t a ) {
          amount = a;
-         eosio_assert( is_amount_within_range(), "magnitude of asset amount must be less than 2^62" );
+         arisen_assert( is_amount_within_range(), "magnitude of asset amount must be less than 2^62" );
       }
 
       /**
@@ -113,10 +113,10 @@ namespace arisen {
        * @post The amount of this asset is subtracted by the amount of asset a
        */
       asset& operator-=( const asset& a ) {
-         eosio_assert( a.symbol == symbol, "attempt to subtract asset with different symbol" );
+         arisen_assert( a.symbol == symbol, "attempt to subtract asset with different symbol" );
          amount -= a.amount;
-         eosio_assert( -max_amount <= amount, "subtraction underflow" );
-         eosio_assert( amount <= max_amount,  "subtraction overflow" );
+         arisen_assert( -max_amount <= amount, "subtraction underflow" );
+         arisen_assert( amount <= max_amount,  "subtraction overflow" );
          return *this;
       }
 
@@ -129,10 +129,10 @@ namespace arisen {
        * @post The amount of this asset is added with the amount of asset a
        */
       asset& operator+=( const asset& a ) {
-         eosio_assert( a.symbol == symbol, "attempt to add asset with different symbol" );
+         arisen_assert( a.symbol == symbol, "attempt to add asset with different symbol" );
          amount += a.amount;
-         eosio_assert( -max_amount <= amount, "addition underflow" );
-         eosio_assert( amount <= max_amount,  "addition overflow" );
+         arisen_assert( -max_amount <= amount, "addition underflow" );
+         arisen_assert( amount <= max_amount,  "addition overflow" );
          return *this;
       }
 
@@ -174,8 +174,8 @@ namespace arisen {
        */
       asset& operator*=( int64_t a ) {
          int128_t tmp = (int128_t)amount * (int128_t)a;
-         eosio_assert( tmp <= max_amount, "multiplication overflow" );
-         eosio_assert( tmp >= -max_amount, "multiplication underflow" );
+         arisen_assert( tmp <= max_amount, "multiplication overflow" );
+         arisen_assert( tmp >= -max_amount, "multiplication underflow" );
          amount = (int64_t)tmp;
          return *this;
       }
@@ -218,8 +218,8 @@ namespace arisen {
        * @post The amount of this asset is divided by a
        */
       asset& operator/=( int64_t a ) {
-         eosio_assert( a != 0, "divide by zero" );
-         eosio_assert( !(amount == std::numeric_limits<int64_t>::min() && a == -1), "signed division overflow" );
+         arisen_assert( a != 0, "divide by zero" );
+         arisen_assert( !(amount == std::numeric_limits<int64_t>::min() && a == -1), "signed division overflow" );
          amount /= a;
          return *this;
       }
@@ -248,7 +248,7 @@ namespace arisen {
        * @pre Both asset must have the same symbol
        */
       friend int64_t operator/( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         arisen_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
          return a.amount / b.amount;
       }
 
@@ -263,7 +263,7 @@ namespace arisen {
        * @pre Both asset must have the same symbol
        */
       friend bool operator==( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         arisen_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
          return a.amount == b.amount;
       }
 
@@ -292,7 +292,7 @@ namespace arisen {
        * @pre Both asset must have the same symbol
        */
       friend bool operator<( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         arisen_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
          return a.amount < b.amount;
       }
 
@@ -307,7 +307,7 @@ namespace arisen {
        * @pre Both asset must have the same symbol
        */
       friend bool operator<=( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         arisen_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
          return a.amount <= b.amount;
       }
 
@@ -322,7 +322,7 @@ namespace arisen {
        * @pre Both asset must have the same symbol
        */
       friend bool operator>( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         arisen_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
          return a.amount > b.amount;
       }
 
@@ -337,7 +337,7 @@ namespace arisen {
        * @pre Both asset must have the same symbol
        */
       friend bool operator>=( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         arisen_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
          return a.amount >= b.amount;
       }
 
@@ -445,7 +445,7 @@ namespace arisen {
        * @pre The owner of both extended asset need to be the same
        */
       friend extended_asset operator - ( const extended_asset& a, const extended_asset& b ) {
-         eosio_assert( a.contract == b.contract, "type mismatch" );
+         arisen_assert( a.contract == b.contract, "type mismatch" );
          asset r = static_cast<const asset&>(a) - static_cast<const asset&>(b);
          return {r, a.contract};
       }
@@ -460,7 +460,7 @@ namespace arisen {
        * @pre The owner of both extended asset need to be the same
        */
       friend extended_asset operator + ( const extended_asset& a, const extended_asset& b ) {
-         eosio_assert( a.contract == b.contract, "type mismatch" );
+         arisen_assert( a.contract == b.contract, "type mismatch" );
          asset r = static_cast<const asset&>(a) + static_cast<const asset&>(b);
          return {r, a.contract};
       }

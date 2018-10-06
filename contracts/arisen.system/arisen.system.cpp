@@ -54,9 +54,9 @@ namespace arisensystem {
    void system_contract::setram( uint64_t max_ram_size ) {
       require_auth( _self );
 
-      eosio_assert( _gstate.max_ram_size < max_ram_size, "ram may only be increased" ); /// decreasing ram might result market maker issues
-      eosio_assert( max_ram_size < 1024ll*1024*1024*1024*1024, "ram size is unrealistic" );
-      eosio_assert( max_ram_size > _gstate.total_ram_bytes_reserved, "attempt to set max below reserved" );
+      arisen_assert( _gstate.max_ram_size < max_ram_size, "ram may only be increased" ); /// decreasing ram might result market maker issues
+      arisen_assert( max_ram_size < 1024ll*1024*1024*1024*1024, "ram size is unrealistic" );
+      arisen_assert( max_ram_size > _gstate.total_ram_bytes_reserved, "attempt to set max below reserved" );
 
       auto delta = int64_t(max_ram_size) - int64_t(_gstate.max_ram_size);
       auto itr = _rammarket.find(S(4,RAMCORE));
@@ -76,7 +76,7 @@ namespace arisensystem {
    void system_contract::setparams( const arisen::blockchain_parameters& params ) {
       require_auth( N(eosio) );
       (arisen::blockchain_parameters&)(_gstate) = params;
-      eosio_assert( 3 <= _gstate.max_authority_depth, "max_authority_depth should be at least 3" );
+      arisen_assert( 3 <= _gstate.max_authority_depth, "max_authority_depth should be at least 3" );
       set_blockchain_parameters( params );
    }
 
@@ -88,7 +88,7 @@ namespace arisensystem {
    void system_contract::rmvproducer( account_name producer ) {
       require_auth( _self );
       auto prod = _producers.find( producer );
-      eosio_assert( prod != _producers.end(), "producer not found" );
+      arisen_assert( prod != _producers.end(), "producer not found" );
       _producers.modify( prod, 0, [&](auto& p) {
             p.deactivate();
          });
@@ -96,13 +96,13 @@ namespace arisensystem {
 
    void system_contract::bidname( account_name bidder, account_name newname, asset bid ) {
       require_auth( bidder );
-      eosio_assert( arisen::name_suffix(newname) == newname, "you can only bid on top-level suffix" );
-      eosio_assert( newname != 0, "the empty name is not a valid account name to bid on" );
-      eosio_assert( (newname & 0xFull) == 0, "13 character names are not valid account names to bid on" );
-      eosio_assert( (newname & 0x1F0ull) == 0, "accounts with 12 character names and no dots can be created without bidding required" );
-      eosio_assert( !is_account( newname ), "account already exists" );
-      eosio_assert( bid.symbol == asset().symbol, "asset must be system token" );
-      eosio_assert( bid.amount > 0, "insufficient bid" );
+      arisen_assert( arisen::name_suffix(newname) == newname, "you can only bid on top-level suffix" );
+      arisen_assert( newname != 0, "the empty name is not a valid account name to bid on" );
+      arisen_assert( (newname & 0xFull) == 0, "13 character names are not valid account names to bid on" );
+      arisen_assert( (newname & 0x1F0ull) == 0, "accounts with 12 character names and no dots can be created without bidding required" );
+      arisen_assert( !is_account( newname ), "account already exists" );
+      arisen_assert( bid.symbol == asset().symbol, "asset must be system token" );
+      arisen_assert( bid.amount > 0, "insufficient bid" );
 
       INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {bidder,N(active)},
                                                     { bidder, N(eosio.names), bid, std::string("bid name ")+(name{newname}).to_string()  } );
@@ -118,9 +118,9 @@ namespace arisensystem {
             b.last_bid_time = current_time();
          });
       } else {
-         eosio_assert( current->high_bid > 0, "this auction has already closed" );
-         eosio_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
-         eosio_assert( current->high_bidder != bidder, "account is already highest bidder" );
+         arisen_assert( current->high_bid > 0, "this auction has already closed" );
+         arisen_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
+         arisen_assert( current->high_bidder != bidder, "account is already highest bidder" );
 
          INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio.names),N(active)},
                                                        { N(eosio.names), current->high_bidder, asset(current->high_bid),
@@ -162,12 +162,12 @@ namespace arisensystem {
             if( suffix == newact ) {
                name_bid_table bids(_self,_self);
                auto current = bids.find( newact );
-               eosio_assert( current != bids.end(), "no active bid for name" );
-               eosio_assert( current->high_bidder == creator, "only highest bidder can claim" );
-               eosio_assert( current->high_bid < 0, "auction for name is not closed yet" );
+               arisen_assert( current != bids.end(), "no active bid for name" );
+               arisen_assert( current->high_bidder == creator, "only highest bidder can claim" );
+               arisen_assert( current->high_bid < 0, "auction for name is not closed yet" );
                bids.erase( current );
             } else {
-               eosio_assert( creator == suffix, "only suffix may create this account" );
+               arisen_assert( creator == suffix, "only suffix may create this account" );
             }
          }
       }

@@ -86,7 +86,7 @@ public:
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi, abi_serializer_max_time);
 
-      while( control->pending_block_state()->header.producer.to_string() == "eosio" ) {
+      while( control->pending_block_state()->header.producer.to_string() == "arisen" ) {
          produce_block();
       }
    }
@@ -197,7 +197,7 @@ BOOST_FIXTURE_TEST_CASE( sudo_exec_direct, arisen_sudo_tester ) try {
 
    BOOST_REQUIRE( bool(trace) );
    BOOST_REQUIRE_EQUAL( 1, trace->action_traces.size() );
-   BOOST_REQUIRE_EQUAL( "eosio", name{trace->action_traces[0].act.account} );
+   BOOST_REQUIRE_EQUAL( "arisen", name{trace->action_traces[0].act.account} );
    BOOST_REQUIRE_EQUAL( "reqauth", name{trace->action_traces[0].act.name} );
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, trace->receipt->status );
 
@@ -244,7 +244,7 @@ BOOST_FIXTURE_TEST_CASE( sudo_with_msig, arisen_sudo_tester ) try {
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, traces[0]->receipt->status );
 
    BOOST_REQUIRE_EQUAL( 1, traces[1]->action_traces.size() );
-   BOOST_REQUIRE_EQUAL( "eosio", name{traces[1]->action_traces[0].act.account} );
+   BOOST_REQUIRE_EQUAL( "arisen", name{traces[1]->action_traces[0].act.account} );
    BOOST_REQUIRE_EQUAL( "reqauth", name{traces[1]->action_traces[0].act.name} );
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, traces[1]->receipt->status );
 
@@ -279,8 +279,8 @@ BOOST_FIXTURE_TEST_CASE( sudo_with_msig_unapprove, arisen_sudo_tester ) try {
                                           ("proposer",      "carol")
                                           ("proposal_name", "first")
                                           ("executer",      "alice")
-                                       ), eosio_assert_message_exception,
-                                          eosio_assert_message_is("transaction authorization failed")
+                                       ), arisen_assert_message_exception,
+                                          arisen_assert_message_is("transaction authorization failed")
    );
 
 } FC_LOG_AND_RETHROW()
@@ -321,14 +321,14 @@ BOOST_FIXTURE_TEST_CASE( sudo_with_msig_producers_change, arisen_sudo_tester ) t
                                           ("proposer",      "carol")
                                           ("proposal_name", "first")
                                           ("executer",      "alice")
-                                       ), eosio_assert_message_exception,
-                                          eosio_assert_message_is("transaction authorization failed")
+                                       ), arisen_assert_message_exception,
+                                          arisen_assert_message_is("transaction authorization failed")
    );
 
    // Unfortunately the new producer cannot approve because they were not in the original requested approvals.
    BOOST_REQUIRE_EXCEPTION( approve( N(carol), N(first), N(newprod1) ),
-                            eosio_assert_message_exception,
-                            eosio_assert_message_is("approval is not on the list of requested approvals")
+                            arisen_assert_message_exception,
+                            arisen_assert_message_is("approval is not on the list of requested approvals")
    );
 
    // But prod5 still can provide the fifth approval necessary to satisfy the 2/3+1 threshold of the new producer set

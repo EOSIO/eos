@@ -217,7 +217,7 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
          ("memo", "overspend! Alice");
 
       BOOST_CHECK_EXCEPTION( push_action(N(alice), N(transfer), data),
-                             eosio_assert_message_exception, eosio_assert_message_is("overdrawn balance") );
+                             arisen_assert_message_exception, arisen_assert_message_is("overdrawn balance") );
       produce_block();
 
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));
@@ -584,7 +584,7 @@ BOOST_FIXTURE_TEST_CASE( test_input_quantity, currency_tester ) try {
 
    // transfer using different symbol name fails
    {
-      BOOST_REQUIRE_THROW(transfer(N(alice), N(carl), "20.50 USD"), eosio_assert_message_exception);
+      BOOST_REQUIRE_THROW(transfer(N(alice), N(carl), "20.50 USD"), arisen_assert_message_exception);
    }
 
    // issue to alice using right precision

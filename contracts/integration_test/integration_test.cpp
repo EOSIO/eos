@@ -17,8 +17,8 @@ struct integration_test : public arisen::contract {
                   account_name to,
                   uint64_t     num ) {
          require_auth( from );
-         eosio_assert( is_account( to ), "to account does not exist");
-         eosio_assert( num < std::numeric_limits<size_t>::max(), "num to large");
+         arisen_assert( is_account( to ), "to account does not exist");
+         arisen_assert( num < std::numeric_limits<size_t>::max(), "num to large");
          payloads data ( _self, from );
          uint64_t key = 0;
          const uint64_t num_keys = 5;

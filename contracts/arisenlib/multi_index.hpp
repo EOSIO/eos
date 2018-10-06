@@ -318,7 +318,7 @@ class multi_index
                   const_iterator& operator++() {
                      using namespace _multi_index_detail;
 
-                     eosio_assert( _item != nullptr, "cannot increment end iterator" );
+                     arisen_assert( _item != nullptr, "cannot increment end iterator" );
 
                      if( _item->__iters[Number] == -1 ) {
                         secondary_key_type temp_secondary_key;
@@ -350,9 +350,9 @@ class multi_index
 
                      if( !_item ) {
                         auto ei = secondary_index_db_functions<secondary_key_type>::db_idx_end(_idx->get_code(), _idx->get_scope(), _idx->name());
-                        eosio_assert( ei != -1, "cannot decrement end iterator when the index is empty" );
+                        arisen_assert( ei != -1, "cannot decrement end iterator when the index is empty" );
                         prev_itr = secondary_index_db_functions<secondary_key_type>::db_idx_previous( ei , &prev_pk );
-                        eosio_assert( prev_itr >= 0, "cannot decrement end iterator when the index is empty" );
+                        arisen_assert( prev_itr >= 0, "cannot decrement end iterator when the index is empty" );
                      } else {
                         if( _item->__iters[Number] == -1 ) {
                            secondary_key_type temp_secondary_key;
@@ -361,7 +361,7 @@ class multi_index
                            mi.__iters[Number] = idxitr;
                         }
                         prev_itr = secondary_index_db_functions<secondary_key_type>::db_idx_previous( _item->__iters[Number], &prev_pk );
-                        eosio_assert( prev_itr >= 0, "cannot decrement iterator at beginning of index" );
+                        arisen_assert( prev_itr >= 0, "cannot decrement iterator at beginning of index" );
                      }
 
                      const T& obj = *_idx->_multidx->find( prev_pk );
@@ -419,8 +419,8 @@ class multi_index
 
             const_iterator require_find( const secondary_key_type& secondary, const char* error_msg = "unable to find secondary key" )const {
                auto lb = lower_bound( secondary );
-               eosio_assert( lb != cend(), error_msg );
-               eosio_assert( secondary == secondary_extractor_type()(*lb), error_msg );
+               arisen_assert( lb != cend(), error_msg );
+               arisen_assert( secondary == secondary_extractor_type()(*lb), error_msg );
                return lb;
             }
 
@@ -431,7 +431,7 @@ class multi_index
             // Gets the object with the smallest primary key in the case where the secondary key is not unique.
             const T& get( const secondary_key_type& secondary, const char* error_msg = "unable to find secondary key" )const {
                auto result = find( secondary );
-               eosio_assert( result != cend(), error_msg );
+               arisen_assert( result != cend(), error_msg );
                return *result;
             }
 
@@ -475,7 +475,7 @@ class multi_index
                using namespace _multi_index_detail;
 
                const auto& objitem = static_cast<const item&>(obj);
-               eosio_assert( objitem.__idx == _multidx, "object passed to iterator_to is not in multi_index" );
+               arisen_assert( objitem.__idx == _multidx, "object passed to iterator_to is not in multi_index" );
 
                if( objitem.__iters[Number] == -1 ) {
                   secondary_key_type temp_secondary_key;
@@ -489,13 +489,13 @@ class multi_index
 
             template<typename Lambda>
             void modify( const_iterator itr, uint64_t payer, Lambda&& updater ) {
-               eosio_assert( itr != cend(), "cannot pass end iterator to modify" );
+               arisen_assert( itr != cend(), "cannot pass end iterator to modify" );
 
                _multidx->modify( *itr, payer, std::forward<Lambda&&>(updater) );
             }
 
             const_iterator erase( const_iterator itr ) {
-               eosio_assert( itr != cend(), "cannot pass end iterator to erase" );
+               arisen_assert( itr != cend(), "cannot pass end iterator to erase" );
 
                const auto& obj = *itr;
                ++itr;
@@ -558,7 +558,7 @@ class multi_index
             return *itr2->_item;
 
          auto size = db_get_i64( itr, nullptr, 0 );
-         eosio_assert( size >= 0, "error reading iterator" );
+         arisen_assert( size >= 0, "error reading iterator" );
 
          //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
          void* buffer = max_stack_buffer_size < size_t(size) ? malloc(size_t(size)) : alloca(size_t(size));
@@ -673,7 +673,7 @@ class multi_index
        *      typedef arisen::multi_index< N(address), address > address_index;
        *      void myaction() {
        *        address_index addresses(N(dan), N(dan)); // code, scope
-       *        eosio_assert(addresses.get_code() == N(dan), "Codes don't match.");
+       *        arisen_assert(addresses.get_code() == N(dan), "Codes don't match.");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -709,7 +709,7 @@ class multi_index
        *      typedef arisen::multi_index< N(address), address > address_index;
        *      void myaction() {
        *        address_index addresses(N(dan), N(dan)); // code, scope
-       *        eosio_assert(addresses.get_code() == N(dan), "Scopes don't match");
+       *        arisen_assert(addresses.get_code() == N(dan), "Scopes don't match");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -741,7 +741,7 @@ class multi_index
          }
 
          const_iterator& operator++() {
-            eosio_assert( _item != nullptr, "cannot increment end iterator" );
+            arisen_assert( _item != nullptr, "cannot increment end iterator" );
 
             uint64_t next_pk;
             auto next_itr = db_next_i64( _item->__primary_itr, &next_pk );
@@ -757,12 +757,12 @@ class multi_index
 
             if( !_item ) {
                auto ei = db_end_i64(_multidx->get_code(), _multidx->get_scope(), TableName);
-               eosio_assert( ei != -1, "cannot decrement end iterator when the table is empty" );
+               arisen_assert( ei != -1, "cannot decrement end iterator when the table is empty" );
                prev_itr = db_previous_i64( ei , &prev_pk );
-               eosio_assert( prev_itr >= 0, "cannot decrement end iterator when the table is empty" );
+               arisen_assert( prev_itr >= 0, "cannot decrement end iterator when the table is empty" );
             } else {
                prev_itr = db_previous_i64( _item->__primary_itr, &prev_pk );
-               eosio_assert( prev_itr >= 0, "cannot decrement iterator at beginning of table" );
+               arisen_assert( prev_itr >= 0, "cannot decrement iterator at beginning of table" );
             }
 
             _item = &_multidx->load_object_by_primary_iterator( prev_itr );
@@ -818,7 +818,7 @@ class multi_index
        *          address.state = "VA";
        *        });
        *        auto itr = addresses.find(N(dan));
-       *        eosio_assert(itr == addresses.cbegin(), "Only address is not at front.");
+       *        arisen_assert(itr == addresses.cbegin(), "Only address is not at front.");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -866,7 +866,7 @@ class multi_index
        *          address.state = "VA";
        *        });
        *        auto itr = addresses.find(N(dan));
-       *        eosio_assert(itr == addresses.begin(), "Only address is not at front.");
+       *        arisen_assert(itr == addresses.begin(), "Only address is not at front.");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -912,7 +912,7 @@ class multi_index
        *          address.state = "VA";
        *        });
        *        auto itr = addresses.find(N(dan));
-       *        eosio_assert(itr != addresses.cend(), "Address for account doesn't exist");
+       *        arisen_assert(itr != addresses.cend(), "Address for account doesn't exist");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -958,7 +958,7 @@ class multi_index
        *          address.state = "VA";
        *        });
        *        auto itr = addresses.find(N(dan));
-       *        eosio_assert(itr != addresses.end(), "Address for account doesn't exist");
+       *        arisen_assert(itr != addresses.end(), "Address for account doesn't exist");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -1012,9 +1012,9 @@ class multi_index
        *          address.state = "HK";
        *        });
        *        auto itr = addresses.crbegin();
-       *        eosio_assert(itr->account_name == N(dan), "Incorrect Last Record ");
+       *        arisen_assert(itr->account_name == N(dan), "Incorrect Last Record ");
        *        itr++;
-       *        eosio_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
+       *        arisen_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -1068,9 +1068,9 @@ class multi_index
        *          address.state = "HK";
        *        });
        *        auto itr = addresses.rbegin();
-       *        eosio_assert(itr->account_name == N(dan), "Incorrect Last Record ");
+       *        arisen_assert(itr->account_name == N(dan), "Incorrect Last Record ");
        *        itr++;
-       *        eosio_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
+       *        arisen_assert(itr->account_name == N(brendan), "Incorrect Second Last Record");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -1125,9 +1125,9 @@ class multi_index
        *        });
        *        auto itr = addresses.crend();
        *        itr--;
-       *        eosio_assert(itr->account_name == N(brendan), "Incorrect First Record ");
+       *        arisen_assert(itr->account_name == N(brendan), "Incorrect First Record ");
        *        itr--;
-       *        eosio_assert(itr->account_name == N(dan), "Incorrect Second Record");
+       *        arisen_assert(itr->account_name == N(dan), "Incorrect Second Record");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -1182,9 +1182,9 @@ class multi_index
        *        });
        *        auto itr = addresses.rend();
        *        itr--;
-       *        eosio_assert(itr->account_name == N(brendan), "Incorrect First Record ");
+       *        arisen_assert(itr->account_name == N(brendan), "Incorrect First Record ");
        *        itr--;
-       *        eosio_assert(itr->account_name == N(dan), "Incorrect Second Record");
+       *        arisen_assert(itr->account_name == N(dan), "Incorrect Second Record");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -1246,11 +1246,11 @@ class multi_index
        *        uint32_t zipnumb = 93445;
        *        auto zip_index = addresses.get_index<N(zip)>();
        *        auto itr = zip_index.lower_bound(zipnumb);
-       *        eosio_assert(itr->account_name == N(brendan), "Incorrect First Lower Bound Record ");
+       *        arisen_assert(itr->account_name == N(brendan), "Incorrect First Lower Bound Record ");
        *        itr++;
-       *        eosio_assert(itr->account_name == N(dan), "Incorrect Second Lower Bound Record");
+       *        arisen_assert(itr->account_name == N(dan), "Incorrect Second Lower Bound Record");
        *        itr++;
-       *        eosio_assert(itr == zip_index.end(), "Incorrect End of Iterator");
+       *        arisen_assert(itr == zip_index.end(), "Incorrect End of Iterator");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -1318,9 +1318,9 @@ class multi_index
        *        uint32_t zipnumb = 93445;
        *        auto zip_index = addresses.get_index<N(zip)>();
        *        auto itr = zip_index.upper_bound(zipnumb);
-       *        eosio_assert(itr->account_name == N(dan), "Incorrect First Upper Bound Record ");
+       *        arisen_assert(itr->account_name == N(dan), "Incorrect First Upper Bound Record ");
        *        itr++;
-       *        eosio_assert(itr == zip_index.end(), "Incorrect End of Iterator");
+       *        arisen_assert(itr == zip_index.end(), "Incorrect End of Iterator");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -1394,7 +1394,7 @@ class multi_index
             }
          }
 
-         eosio_assert( _next_primary_key < no_available_primary_key, "next primary key in table is at autoincrement limit");
+         arisen_assert( _next_primary_key < no_available_primary_key, "next primary key in table is at autoincrement limit");
          return _next_primary_key;
       }
 
@@ -1443,7 +1443,7 @@ class multi_index
        *        uint32_t zipnumb = 93446;
        *        auto zip_index = addresses.get_index<N(zip)>();
        *        auto itr = zip_index.find(zipnumb);
-       *        eosio_assert(itr->account_name == N(dan), "Incorrect Record ");
+       *        arisen_assert(itr->account_name == N(dan), "Incorrect Record ");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -1516,9 +1516,9 @@ class multi_index
        *        uint32_t zipnumb = 93445;
        *        auto zip_index = addresses.get_index<N(zip)>();
        *        auto itr = zip_index.upper_bound(zipnumb);
-       *        eosio_assert(itr->account_name == N(dan), "Incorrect First Upper Bound Record ");
+       *        arisen_assert(itr->account_name == N(dan), "Incorrect First Upper Bound Record ");
        *        itr++;
-       *        eosio_assert(itr == zip_index.end(), "Incorrect End of Iterator");
+       *        arisen_assert(itr == zip_index.end(), "Incorrect End of Iterator");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -1590,7 +1590,7 @@ class multi_index
        *        });
        *        auto user = addresses.get(N(dan));
        *        auto itr = address.find(N(dan));
-       *        eosio_assert(iterator_to(user) == itr, "Invalid iterator");
+       *        arisen_assert(iterator_to(user) == itr, "Invalid iterator");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -1598,7 +1598,7 @@ class multi_index
        */
       const_iterator iterator_to( const T& obj )const {
          const auto& objitem = static_cast<const item&>(obj);
-         eosio_assert( objitem.__idx == this, "object passed to iterator_to is not in multi_index" );
+         arisen_assert( objitem.__idx == this, "object passed to iterator_to is not in multi_index" );
          return {this, &objitem};
       }
       /**
@@ -1657,7 +1657,7 @@ class multi_index
       const_iterator emplace( uint64_t payer, Lambda&& constructor ) {
          using namespace _multi_index_detail;
 
-         eosio_assert( _code == current_receiver(), "cannot create objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
+         arisen_assert( _code == current_receiver(), "cannot create objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
 
          auto itm = std::make_unique<item>( this, [&]( auto& i ){
             T& obj = static_cast<T&>(i);
@@ -1750,7 +1750,7 @@ class multi_index
        *          address.state = "VA";
        *        });
        *        auto itr = addresses.find(N(dan));
-       *        eosio_assert(itr != addresses.end(), "Address for account not found");
+       *        arisen_assert(itr != addresses.end(), "Address for account not found");
        *        addresses.modify( itr, account payer, [&]( auto& address ) {
        *          address.city = "San Luis Obispo";
        *          address.state = "CA";
@@ -1762,7 +1762,7 @@ class multi_index
        */
       template<typename Lambda>
       void modify( const_iterator itr, uint64_t payer, Lambda&& updater ) {
-         eosio_assert( itr != end(), "cannot pass end iterator to modify" );
+         arisen_assert( itr != end(), "cannot pass end iterator to modify" );
 
          modify( *itr, payer, std::forward<Lambda&&>(updater) );
       }
@@ -1819,12 +1819,12 @@ class multi_index
        *          address.state = "VA";
        *        });
        *        auto itr = addresses.find(N(dan));
-       *        eosio_assert(itr != addresses.end(), "Address for account not found");
+       *        arisen_assert(itr != addresses.end(), "Address for account not found");
        *        addresses.modify( *itr, payer, [&]( auto& address ) {
        *          address.city = "San Luis Obispo";
        *          address.state = "CA";
        *        });
-       *        eosio_assert(itr->city == "San Luis Obispo", "Address not modified");
+       *        arisen_assert(itr->city == "San Luis Obispo", "Address not modified");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -1835,9 +1835,9 @@ class multi_index
          using namespace _multi_index_detail;
 
          const auto& objitem = static_cast<const item&>(obj);
-         eosio_assert( objitem.__idx == this, "object passed to modify is not in multi_index" );
+         arisen_assert( objitem.__idx == this, "object passed to modify is not in multi_index" );
          auto& mutableitem = const_cast<item&>(objitem);
-         eosio_assert( _code == current_receiver(), "cannot modify objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
+         arisen_assert( _code == current_receiver(), "cannot modify objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
 
          auto secondary_keys = hana::transform( _indices, [&]( auto&& idx ) {
             typedef typename decltype(+hana::at_c<0>(idx))::type index_type;
@@ -1850,7 +1850,7 @@ class multi_index
          auto& mutableobj = const_cast<T&>(obj); // Do not forget the auto& otherwise it would make a copy and thus not update at all.
          updater( mutableobj );
 
-         eosio_assert( pk == obj.primary_key(), "updater cannot change primary key when modifying an object" );
+         arisen_assert( pk == obj.primary_key(), "updater cannot change primary key when modifying an object" );
 
          size_t size = pack_size( obj );
          //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
@@ -1927,7 +1927,7 @@ class multi_index
        *          address.state = "VA";
        *        });
        *        auto user = addresses.get(N(dan));
-       *        eosio_assert(user.first_name == "Daniel", "Couldn't get him.");
+       *        arisen_assert(user.first_name == "Daniel", "Couldn't get him.");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -1935,7 +1935,7 @@ class multi_index
        */
       const T& get( uint64_t primary, const char* error_msg = "unable to find key" )const {
          auto result = find( primary );
-         eosio_assert( result != cend(), error_msg );
+         arisen_assert( result != cend(), error_msg );
          return *result;
       }
 
@@ -1978,7 +1978,7 @@ class multi_index
        *          address.state = "VA";
        *        });
        *        auto itr = addresses.find(N(dan));
-       *        eosio_assert(itr != addresses.end(), "Couldn't get him.");
+       *        arisen_assert(itr != addresses.end(), "Couldn't get him.");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -2015,7 +2015,7 @@ class multi_index
             return iterator_to(*(itr2->_item));
 
          auto itr = db_find_i64( _code, _scope, TableName, primary );
-         eosio_assert( itr >= 0,  error_msg );
+         arisen_assert( itr >= 0,  error_msg );
 
          const item& i = load_object_by_primary_iterator( itr );
          return iterator_to(static_cast<const T&>(i));
@@ -2071,16 +2071,16 @@ class multi_index
        *          address.state = "VA";
        *        });
        *        auto itr = addresses.find(N(dan));
-       *        eosio_assert(itr != addresses.end(), "Address for account not found");
+       *        arisen_assert(itr != addresses.end(), "Address for account not found");
        *        addresses.erase( itr );
-       *        eosio_assert(itr != addresses.end(), "Address not erased properly");
+       *        arisen_assert(itr != addresses.end(), "Address not erased properly");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
        *  @endcode
        */
       const_iterator erase( const_iterator itr ) {
-         eosio_assert( itr != end(), "cannot pass end iterator to erase" );
+         arisen_assert( itr != end(), "cannot pass end iterator to erase" );
 
          const auto& obj = *itr;
          ++itr;
@@ -2138,10 +2138,10 @@ class multi_index
        *          address.state = "VA";
        *        });
        *        auto itr = addresses.find(N(dan));
-       *        eosio_assert(itr != addresses.end(), "Record is not found");
+       *        arisen_assert(itr != addresses.end(), "Record is not found");
        *        addresses.erase(*itr);
        *        itr = addresses.find(N(dan));
-       *        eosio_assert(itr == addresses.end(), "Record is not deleted");
+       *        arisen_assert(itr == addresses.end(), "Record is not deleted");
        *      }
        *  }
        *  EOSIO_ABI( addressbook, (myaction) )
@@ -2151,15 +2151,15 @@ class multi_index
          using namespace _multi_index_detail;
 
          const auto& objitem = static_cast<const item&>(obj);
-         eosio_assert( objitem.__idx == this, "object passed to erase is not in multi_index" );
-         eosio_assert( _code == current_receiver(), "cannot erase objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
+         arisen_assert( objitem.__idx == this, "object passed to erase is not in multi_index" );
+         arisen_assert( _code == current_receiver(), "cannot erase objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
 
          auto pk = objitem.primary_key();
          auto itr2 = std::find_if(_items_vector.rbegin(), _items_vector.rend(), [&](const item_ptr& ptr) {
             return ptr._item->primary_key() == pk;
          });
 
-         eosio_assert( itr2 != _items_vector.rend(), "attempt to remove object that was not in multi_index" );
+         arisen_assert( itr2 != _items_vector.rend(), "attempt to remove object that was not in multi_index" );
 
          _items_vector.erase(--(itr2.base()));
 

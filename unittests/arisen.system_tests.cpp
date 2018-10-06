@@ -2190,7 +2190,7 @@ BOOST_FIXTURE_TEST_CASE( buyname, arisen_system_tester ) try {
    produce_block();
 
    BOOST_REQUIRE_EXCEPTION( create_accounts_with_resources( { N(fail) }, N(dan) ), // dan shouldn't be able to create fail
-                            eosio_assert_message_exception, eosio_assert_message_is( "no active bid for name" ) );
+                            arisen_assert_message_exception, arisen_assert_message_is( "no active bid for name" ) );
    bidname( "dan", "nofail", core_from_string( "1.0000" ) );
    BOOST_REQUIRE_EQUAL( "assertion failure with message: must increase bid by 10%", bidname( "sam", "nofail", core_from_string( "1.0000" ) )); // didn't increase bid by 10%
    BOOST_REQUIRE_EQUAL( success(), bidname( "sam", "nofail", core_from_string( "2.0000" ) )); // didn't increase bid by 10%
@@ -2198,7 +2198,7 @@ BOOST_FIXTURE_TEST_CASE( buyname, arisen_system_tester ) try {
    produce_block();
 
    BOOST_REQUIRE_EXCEPTION( create_accounts_with_resources( { N(nofail) }, N(dan) ), // dan shoudn't be able to do this, sam won
-                            eosio_assert_message_exception, eosio_assert_message_is( "only highest bidder can claim" ) );
+                            arisen_assert_message_exception, arisen_assert_message_is( "only highest bidder can claim" ) );
    //wlog( "verify sam can create nofail" );
    create_accounts_with_resources( { N(nofail) }, N(sam) ); // sam should be able to do this, he won the bid
    //wlog( "verify nofail can create test.nofail" );
@@ -2206,7 +2206,7 @@ BOOST_FIXTURE_TEST_CASE( buyname, arisen_system_tester ) try {
    create_accounts_with_resources( { N(test.nofail) }, N(nofail) ); // only nofail can create test.nofail
    //wlog( "verify dan cannot create test.fail" );
    BOOST_REQUIRE_EXCEPTION( create_accounts_with_resources( { N(test.fail) }, N(dan) ), // dan shouldn't be able to do this
-                            eosio_assert_message_exception, eosio_assert_message_is( "only suffix may create this account" ) );
+                            arisen_assert_message_exception, arisen_assert_message_is( "only suffix may create this account" ) );
 
    create_accounts_with_resources( { N(goodgoodgood) }, N(dan) ); /// 12 char names should succeed
 } FC_LOG_AND_RETHROW()
@@ -2343,9 +2343,9 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, arisen_system_tester ) try {
    produce_blocks(2);
    // bid for prefb has closed, only highest bidder can claim
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefb), N(alice) ),
-                            eosio_assert_message_exception, eosio_assert_message_is( "only highest bidder can claim" ) );
+                            arisen_assert_message_exception, arisen_assert_message_is( "only highest bidder can claim" ) );
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefb), N(carl) ),
-                            eosio_assert_message_exception, eosio_assert_message_is( "only highest bidder can claim" ) );
+                            arisen_assert_message_exception, arisen_assert_message_is( "only highest bidder can claim" ) );
    create_account_with_resources( N(prefb), N(eve) );
 
    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(prefe), N(carl) ),

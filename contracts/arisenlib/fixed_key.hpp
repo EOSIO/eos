@@ -65,7 +65,7 @@ namespace arisen {
                    continue;
                }
 
-               eosio_assert( sub_words_left == 1, "unexpected error in fixed_key constructor" );
+               arisen_assert( sub_words_left == 1, "unexpected error in fixed_key constructor" );
                temp_word |= static_cast<word_t>(w);
                sub_words_left = num_sub_words;
 
