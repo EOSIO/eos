@@ -45,8 +45,8 @@ namespace arisen { namespace chain { namespace wasm_validations {
 
    using wasm_validate_func = std::function<void(IR::Module&)>;
 
-  
-   // just pass 
+
+   // just pass
    struct no_constraints_validators {
       static void validate( const IR::Module& m ) {}
    };
@@ -63,7 +63,7 @@ namespace arisen { namespace chain { namespace wasm_validations {
          // just pass
       }
    };
-   
+
    template <typename T>
    struct large_offset_validator {
       static constexpr bool kills = true;
@@ -95,11 +95,11 @@ namespace arisen { namespace chain { namespace wasm_validations {
       static constexpr bool kills = true;
       static constexpr bool post = false;
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-         FC_THROW_EXCEPTION(wasm_execution_error, "Error, blacklisted opcode ${op} ", 
+         FC_THROW_EXCEPTION(wasm_execution_error, "Error, blacklisted opcode ${op} ",
             ("op", inst->to_string()));
       }
    };
-   
+
    struct nested_validator {
       static constexpr bool kills = false;
       static constexpr bool post = false;
@@ -125,7 +125,7 @@ namespace arisen { namespace chain { namespace wasm_validations {
       using loop_t            = wasm_ops::loop                    <whitelist_validator, nested_validator>;
       using if__t             = wasm_ops::if_                     <whitelist_validator, nested_validator>;
       using else__t           = wasm_ops::else_                   <whitelist_validator, nested_validator>;
-      
+
       using end_t             = wasm_ops::end                     <whitelist_validator, nested_validator>;
       using unreachable_t     = wasm_ops::unreachable             <whitelist_validator>;
       using br_t              = wasm_ops::br                      <whitelist_validator>;
@@ -175,7 +175,7 @@ namespace arisen { namespace chain { namespace wasm_validations {
       using i64_const_t       = wasm_ops::i64_const               <whitelist_validator>;
       using f32_const_t       = wasm_ops::f32_const               <whitelist_validator>;
       using f64_const_t       = wasm_ops::f64_const               <whitelist_validator>;
-      
+
       using i32_eqz_t         = wasm_ops::i32_eqz                 <whitelist_validator>;
       using i32_eq_t          = wasm_ops::i32_eq                  <whitelist_validator>;
       using i32_ne_t          = wasm_ops::i32_ne                  <whitelist_validator>;
@@ -192,21 +192,21 @@ namespace arisen { namespace chain { namespace wasm_validations {
       using i32_ctz_t         = wasm_ops::i32_ctz                 <whitelist_validator>;
       using i32_popcnt_t      = wasm_ops::i32_popcnt              <whitelist_validator>;
 
-      using i32_add_t         = wasm_ops::i32_add                 <whitelist_validator>; 
-      using i32_sub_t         = wasm_ops::i32_sub                 <whitelist_validator>; 
-      using i32_mul_t         = wasm_ops::i32_mul                 <whitelist_validator>; 
-      using i32_div_s_t       = wasm_ops::i32_div_s               <whitelist_validator>; 
-      using i32_div_u_t       = wasm_ops::i32_div_u               <whitelist_validator>; 
-      using i32_rem_s_t       = wasm_ops::i32_rem_s               <whitelist_validator>; 
-      using i32_rem_u_t       = wasm_ops::i32_rem_u               <whitelist_validator>; 
-      using i32_and_t         = wasm_ops::i32_and                 <whitelist_validator>; 
-      using i32_or_t          = wasm_ops::i32_or                  <whitelist_validator>; 
-      using i32_xor_t         = wasm_ops::i32_xor                 <whitelist_validator>; 
-      using i32_shl_t         = wasm_ops::i32_shl                 <whitelist_validator>; 
-      using i32_shr_s_t       = wasm_ops::i32_shr_s               <whitelist_validator>; 
-      using i32_shr_u_t       = wasm_ops::i32_shr_u               <whitelist_validator>; 
-      using i32_rotl_t        = wasm_ops::i32_rotl                <whitelist_validator>; 
-      using i32_rotr_t        = wasm_ops::i32_rotr                <whitelist_validator>; 
+      using i32_add_t         = wasm_ops::i32_add                 <whitelist_validator>;
+      using i32_sub_t         = wasm_ops::i32_sub                 <whitelist_validator>;
+      using i32_mul_t         = wasm_ops::i32_mul                 <whitelist_validator>;
+      using i32_div_s_t       = wasm_ops::i32_div_s               <whitelist_validator>;
+      using i32_div_u_t       = wasm_ops::i32_div_u               <whitelist_validator>;
+      using i32_rem_s_t       = wasm_ops::i32_rem_s               <whitelist_validator>;
+      using i32_rem_u_t       = wasm_ops::i32_rem_u               <whitelist_validator>;
+      using i32_and_t         = wasm_ops::i32_and                 <whitelist_validator>;
+      using i32_or_t          = wasm_ops::i32_or                  <whitelist_validator>;
+      using i32_xor_t         = wasm_ops::i32_xor                 <whitelist_validator>;
+      using i32_shl_t         = wasm_ops::i32_shl                 <whitelist_validator>;
+      using i32_shr_s_t       = wasm_ops::i32_shr_s               <whitelist_validator>;
+      using i32_shr_u_t       = wasm_ops::i32_shr_u               <whitelist_validator>;
+      using i32_rotl_t        = wasm_ops::i32_rotl                <whitelist_validator>;
+      using i32_rotr_t        = wasm_ops::i32_rotr                <whitelist_validator>;
 
       using i64_eqz_t         = wasm_ops::i64_eqz                 <whitelist_validator>;
       using i64_eq_t          = wasm_ops::i64_eq                  <whitelist_validator>;
@@ -224,21 +224,21 @@ namespace arisen { namespace chain { namespace wasm_validations {
       using i64_ctz_t         = wasm_ops::i64_ctz                 <whitelist_validator>;
       using i64_popcnt_t      = wasm_ops::i64_popcnt              <whitelist_validator>;
 
-      using i64_add_t         = wasm_ops::i64_add                 <whitelist_validator>; 
-      using i64_sub_t         = wasm_ops::i64_sub                 <whitelist_validator>; 
-      using i64_mul_t         = wasm_ops::i64_mul                 <whitelist_validator>; 
-      using i64_div_s_t       = wasm_ops::i64_div_s               <whitelist_validator>; 
-      using i64_div_u_t       = wasm_ops::i64_div_u               <whitelist_validator>; 
-      using i64_rem_s_t       = wasm_ops::i64_rem_s               <whitelist_validator>; 
-      using i64_rem_u_t       = wasm_ops::i64_rem_u               <whitelist_validator>; 
-      using i64_and_t         = wasm_ops::i64_and                 <whitelist_validator>; 
-      using i64_or_t          = wasm_ops::i64_or                  <whitelist_validator>; 
-      using i64_xor_t         = wasm_ops::i64_xor                 <whitelist_validator>; 
-      using i64_shl_t         = wasm_ops::i64_shl                 <whitelist_validator>; 
-      using i64_shr_s_t       = wasm_ops::i64_shr_s               <whitelist_validator>; 
-      using i64_shr_u_t       = wasm_ops::i64_shr_u               <whitelist_validator>; 
-      using i64_rotl_t        = wasm_ops::i64_rotl                <whitelist_validator>; 
-      using i64_rotr_t        = wasm_ops::i64_rotr                <whitelist_validator>; 
+      using i64_add_t         = wasm_ops::i64_add                 <whitelist_validator>;
+      using i64_sub_t         = wasm_ops::i64_sub                 <whitelist_validator>;
+      using i64_mul_t         = wasm_ops::i64_mul                 <whitelist_validator>;
+      using i64_div_s_t       = wasm_ops::i64_div_s               <whitelist_validator>;
+      using i64_div_u_t       = wasm_ops::i64_div_u               <whitelist_validator>;
+      using i64_rem_s_t       = wasm_ops::i64_rem_s               <whitelist_validator>;
+      using i64_rem_u_t       = wasm_ops::i64_rem_u               <whitelist_validator>;
+      using i64_and_t         = wasm_ops::i64_and                 <whitelist_validator>;
+      using i64_or_t          = wasm_ops::i64_or                  <whitelist_validator>;
+      using i64_xor_t         = wasm_ops::i64_xor                 <whitelist_validator>;
+      using i64_shl_t         = wasm_ops::i64_shl                 <whitelist_validator>;
+      using i64_shr_s_t       = wasm_ops::i64_shr_s               <whitelist_validator>;
+      using i64_shr_u_t       = wasm_ops::i64_shr_u               <whitelist_validator>;
+      using i64_rotl_t        = wasm_ops::i64_rotl                <whitelist_validator>;
+      using i64_rotr_t        = wasm_ops::i64_rotr                <whitelist_validator>;
 
       using f32_eq_t                = wasm_ops::f32_eq            <whitelist_validator>;
       using f32_ne_t                = wasm_ops::f32_ne            <whitelist_validator>;
@@ -320,8 +320,8 @@ namespace arisen { namespace chain { namespace wasm_validations {
             validator( m );
       }
    };
- 
-   // inherit from this class and define your own validators 
+
+   // inherit from this class and define your own validators
    class wasm_binary_validation {
       using standard_module_constraints_validators = constraints_validators< memories_validation_visitor,
                                                                              data_segments_validation_visitor,
@@ -351,4 +351,4 @@ namespace arisen { namespace chain { namespace wasm_validations {
          static standard_module_constraints_validators _module_validators;
    };
 
-}}} // namespace wasm_constraints, chain, eosio
+}}} // namespace wasm_constraints, chain, arisen
