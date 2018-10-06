@@ -7,6 +7,6 @@
 
 namespace arisen { namespace chain {
 
-const string genesis_state::arisen_root_key = "${EOSIO_ROOT_KEY}";
+const string genesis_state::arisen_root_key = "${ARISEN_ROOT_KEY}";
 
 } } // namespace arisen::chain
