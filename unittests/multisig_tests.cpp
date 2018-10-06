@@ -383,16 +383,16 @@ BOOST_FIXTURE_TEST_CASE( big_transaction, arisen_msig_tester ) try {
 
 BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, arisen_msig_tester ) try {
 
-   // required to set up the link between (eosio active) and (eosio.prods active)
+   // required to set up the link between (arisen active) and (arisen.prods active)
    //
-   //                  eosio active
+   //                  arisen active
    //                       |
-   //             eosio.prods active (2/3 threshold)
+   //             arisen.prods active (2/3 threshold)
    //             /         |        \             <--- implicitly updated in onblock action
    // alice active     bob active   carol active
 
    set_authority(config::system_account_name, "active", authority(1,
-      vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}},
+      vector<key_weight>{{get_private_key("arisen", "active").get_public_key(), 1}},
       vector<permission_level_weight>{{{config::producers_account_name, config::active_name}, 1}}), "owner",
       { { config::system_account_name, "active" } }, { get_private_key( config::system_account_name, "active" ) });
 
@@ -406,7 +406,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, arisen_msig_tester 
    create_currency( N(arisen.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("eosio") + get_balance("arisen.ramfee") + get_balance("arisen.stake") + get_balance("arisen.ram") );
+                        get_balance("arisen") + get_balance("arisen.ramfee") + get_balance("arisen.stake") + get_balance("arisen.ram") );
 
    set_code( config::system_account_name, arisen_system_wast );
    set_abi( config::system_account_name, arisen_system_abi );
@@ -418,7 +418,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, arisen_msig_tester 
    create_account_with_resources( N(carol1111111), config::system_account_name, core_from_string("1.0000"), false );
 
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("eosio") + get_balance("arisen.ramfee") + get_balance("arisen.stake") + get_balance("arisen.ram") );
+                        get_balance("arisen") + get_balance("arisen.ramfee") + get_balance("arisen.stake") + get_balance("arisen.ram") );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name} };
@@ -477,7 +477,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, arisen_msig_tester 
                   ("proposal_name", "first")
                   ("level",         permission_level{ N(carol), config::active_name })
    );
-   // execute by alice to replace the eosio system contract
+   // execute by alice to replace the arisen system contract
    transaction_trace_ptr trace;
    control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
 
@@ -501,9 +501,9 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, arisen_msig_tester 
 
 BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, arisen_msig_tester ) try {
 
-   // set up the link between (eosio active) and (eosio.prods active)
+   // set up the link between (arisen active) and (arisen.prods active)
    set_authority(config::system_account_name, "active", authority(1,
-      vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}},
+      vector<key_weight>{{get_private_key("arisen", "active").get_public_key(), 1}},
       vector<permission_level_weight>{{{config::producers_account_name, config::active_name}, 1}}), "owner",
       { { config::system_account_name, "active" } }, { get_private_key( config::system_account_name, "active" ) });
 
@@ -517,7 +517,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, arisen_msig_teste
 
    create_currency( N(arisen.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
-   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "arisen" ) );
 
    set_code( config::system_account_name, arisen_system_wast );
    set_abi( config::system_account_name, arisen_system_abi );
@@ -529,7 +529,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, arisen_msig_teste
    create_account_with_resources( N(carol1111111), config::system_account_name, core_from_string("1.0000"), false );
 
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("eosio") + get_balance("arisen.ramfee") + get_balance("arisen.stake") + get_balance("arisen.ram") );
+                        get_balance("arisen") + get_balance("arisen.ramfee") + get_balance("arisen.stake") + get_balance("arisen.ram") );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name}, {N(apple), config::active_name}};
@@ -599,7 +599,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, arisen_msig_teste
                   ("proposal_name", "first")
                   ("level",         permission_level{ N(apple), config::active_name })
    );
-   // execute by alice to replace the eosio system contract
+   // execute by alice to replace the arisen system contract
    transaction_trace_ptr trace;
    control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
 
