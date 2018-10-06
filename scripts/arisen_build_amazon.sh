@@ -24,13 +24,13 @@
 	fi
 
 	if [[ "${OS_NAME}" == "Amazon Linux AMI" && "${OS_VER}" -lt 2017 ]]; then
-		printf "\\tYou must be running Amazon Linux 2017.09 or higher to install EOSIO.\\n"
+		printf "\\tYou must be running Amazon Linux 2017.09 or higher to install ARISEN.\\n"
 		printf "\\texiting now.\\n"
 		exit 1
 	fi
 
 	if [ "${DISK_AVAIL}" -lt "${DISK_MIN}" ]; then
-		printf "\\tYou must have at least %sGB of available storage to install EOSIO.\\n" "${DISK_MIN}"
+		printf "\\tYou must have at least %sGB of available storage to install ARISEN.\\n" "${DISK_MIN}"
 		printf "\\texiting now.\\n"
 		exit 1
 	fi
@@ -42,7 +42,7 @@
 		printf "\\n\\tExiting now.\\n"
 		exit 1
 	fi
-	
+
 	printf "\\tYum installation found at %s.\\n" "${YUM}"
 	printf "\\tUpdating YUM.\\n"
 	if ! UPDATE=$( sudo "$YUM" -y update )
@@ -81,15 +81,15 @@
 			printf "\\tPackage %s found.\\n" "${DEP_ARRAY[$i]}"
 			continue
 		fi
-	done		
+	done
 
 	if [ "${COUNT}" -gt 1 ]; then
-		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
+		printf "\\n\\tThe following dependencies are required to install ARISEN.\\n"
 		printf "\\n\\t${DISPLAY}\\n\\n"
 		printf "\\tDo you wish to install these dependencies?\\n"
 		select yn in "Yes" "No"; do
 			case $yn in
-				[Yy]* ) 
+				[Yy]* )
 					printf "\\n\\n\\tInstalling dependencies.\\n\\n"
 					if ! sudo "${YUM}" -y install ${DEP}
 					then
@@ -104,7 +104,7 @@
 				* ) echo "Please type 1 for yes or 2 for no.";;
 			esac
 		done
-	else 
+	else
 		printf "\\n\\tNo required YUM dependencies to install.\\n"
 	fi
 
@@ -233,7 +233,7 @@
 			fi
 		fi
 	fi
-	
+
 	printf "\\n\\tChecking boost library installation.\\n"
 	BVERSION=$( grep "BOOST_LIB_VERSION" "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null \
 	| tail -1 | tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9\._]//gI' )
@@ -362,7 +362,7 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		
+
 if ! tee > "/dev/null" "${MONGOD_CONF}" <<mongodconf
 systemLog:
  destination: file

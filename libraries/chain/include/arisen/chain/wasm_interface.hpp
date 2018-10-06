@@ -60,7 +60,7 @@ namespace arisen { namespace chain {
          wasm_interface(vm_type vm);
          ~wasm_interface();
 
-         //validates code -- does a WASM validation pass and checks the wasm against EOSIO specific constraints
+         //validates code -- does a WASM validation pass and checks the wasm against ARISEN specific constraints
          static void validate(const controller& control, const bytes& code);
 
          //Calls apply or error on a given code

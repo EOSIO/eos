@@ -6,7 +6,7 @@ This general procedure was used when doing Dawn 3.0 performance testing as menti
 
 ## Performance testing
 
-The following instructions describe how to use the `txn_test_gen_plugin` plugin to generate 1,000 transaction per second load on a simple EOSIO node.
+The following instructions describe how to use the `txn_test_gen_plugin` plugin to generate 1,000 transaction per second load on a simple ARISEN node.
 
 ### Create config and data directories
 Make an empty directory for our configs and data, `mkdir ~/rsn.data`, and define a logging.json that doesn't print debug information (which occurs for each txn) to the console:
