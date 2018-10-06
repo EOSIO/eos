@@ -157,7 +157,7 @@ public:
          _keys[wif_pub_key] = priv;
          return true;
       }
-      EOS_THROW( chain::key_exist_exception, "Key already in wallet" );
+      RSN_THROW( chain::key_exist_exception, "Key already in wallet" );
    }
 
    // Removes a key from the wallet
@@ -171,7 +171,7 @@ public:
          _keys.erase(pub);
          return true;
       }
-      EOS_THROW( chain::key_nonexistent_exception, "Key not in wallet" );
+      RSN_THROW( chain::key_nonexistent_exception, "Key not in wallet" );
    }
 
    string create_key(string key_type)
@@ -185,7 +185,7 @@ public:
       else if(key_type == "R1")
          priv_key = fc::crypto::private_key::generate<fc::crypto::r1::private_key_shim>();
       else
-         EOS_THROW(chain::unsupported_key_type_exception, "Key type \"${kt}\" not supported by software wallet", ("kt", key_type));
+         RSN_THROW(chain::unsupported_key_type_exception, "Key type \"${kt}\" not supported by software wallet", ("kt", key_type));
 
       import_key((string)priv_key);
       return (string)priv_key.get_public_key();
@@ -235,7 +235,7 @@ public:
          ofstream outfile{ wallet_filename };
          if (!outfile) {
             elog("Unable to open file: ${fn}", ("fn", wallet_filename));
-            EOS_THROW(wallet_exception, "Unable to open file: ${fn}", ("fn", wallet_filename));
+            RSN_THROW(wallet_exception, "Unable to open file: ${fn}", ("fn", wallet_filename));
          }
          outfile.write( data.c_str(), data.length() );
          outfile.flush();
@@ -362,7 +362,7 @@ void soft_wallet::unlock(string password)
    FC_ASSERT(pk.checksum == pw);
    my->_keys = std::move(pk.keys);
    my->_checksum = pk.checksum;
-} EOS_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
+} RSN_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
                           "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename())) }
 
 void soft_wallet::check_password(string password)
@@ -372,7 +372,7 @@ void soft_wallet::check_password(string password)
    vector<char> decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
    auto pk = fc::raw::unpack<plain_keys>(decrypted);
    FC_ASSERT(pk.checksum == pw);
-} EOS_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
+} RSN_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
                           "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename())) }
 
 void soft_wallet::set_password( string password )

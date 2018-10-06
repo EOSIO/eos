@@ -927,7 +927,7 @@ public:
       if( BOOST_UNLIKELY( !condition ) ) {
          std::string message( msg );
          edump((message));
-         EOS_THROW( arisen_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+         RSN_THROW( arisen_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
@@ -935,14 +935,14 @@ public:
       if( BOOST_UNLIKELY( !condition ) ) {
          std::string message( msg, msg_len );
          edump((message));
-         EOS_THROW( arisen_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
+         RSN_THROW( arisen_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
    void arisen_assert_code( bool condition, uint64_t error_code ) {
       if( BOOST_UNLIKELY( !condition ) ) {
          edump((error_code));
-         EOS_THROW( arisen_assert_code_exception,
+         RSN_THROW( arisen_assert_code_exception,
                     "assertion failure with error code: ${error_code}", ("error_code", error_code) );
       }
    }

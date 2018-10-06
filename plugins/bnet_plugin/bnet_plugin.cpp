@@ -998,7 +998,7 @@ namespace arisen {
            peer_ilog(this, "received signed_block_ptr");
            if (!b) {
               peer_elog(this, "bad signed_block_ptr : null pointer");
-              EOS_THROW(block_validate_exception, "bad block" );
+              RSN_THROW(block_validate_exception, "bad block" );
            }
            status( "received block " + std::to_string(b->block_num()) );
            //ilog( "recv block ${n}", ("n", b->block_num()) );
@@ -1045,7 +1045,7 @@ namespace arisen {
            peer_ilog(this, "received packed_transaction_ptr");
            if (!p) {
               peer_elog(this, "bad packed_transaction_ptr : null pointer");
-              EOS_THROW(transaction_exception, "bad transaction");
+              RSN_THROW(transaction_exception, "bad transaction");
            }
            if( app().get_plugin<chain_plugin>().chain().get_read_mode() == chain::db_read_mode::READ_ONLY )
               return;

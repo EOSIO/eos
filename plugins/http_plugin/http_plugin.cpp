@@ -191,14 +191,14 @@ namespace arisen {
 
                fc::ec_key ecdh = EC_KEY_new_by_curve_name(NID_secp384r1);
                if (!ecdh)
-                  EOS_THROW(chain::http_exception, "Failed to set NID_secp384r1");
+                  RSN_THROW(chain::http_exception, "Failed to set NID_secp384r1");
                if(SSL_CTX_set_tmp_ecdh(ctx->native_handle(), (EC_KEY*)ecdh) != 1)
-                  EOS_THROW(chain::http_exception, "Failed to set ECDH PFS");
+                  RSN_THROW(chain::http_exception, "Failed to set ECDH PFS");
 
                if(SSL_CTX_set_cipher_list(ctx->native_handle(), \
                   "EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:AES256:" \
                   "!DHE:!RSA:!AES128:!RC4:!DES:!3DES:!DSS:!SRP:!PSK:!EXP:!MD5:!LOW:!aNULL:!eNULL") != 1)
-                  EOS_THROW(chain::http_exception, "Failed to set HTTPS cipher list");
+                  RSN_THROW(chain::http_exception, "Failed to set HTTPS cipher list");
             } catch (const fc::exception& e) {
                elog("https server initialization error: ${w}", ("w", e.to_detail_string()));
             } catch(std::exception& e) {

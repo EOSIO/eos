@@ -381,12 +381,12 @@ namespace arisen { namespace chain {
             for( const auto& field : st.fields ) {
                if( vo.contains( string(field.name).c_str() ) ) {
                   if( missing_extension )
-                     EOS_THROW( pack_exception, "Unexpected '${f}' in variant object", ("f",field.name) );
+                     RSN_THROW( pack_exception, "Unexpected '${f}' in variant object", ("f",field.name) );
                   _variant_to_binary(_remove_bin_extension(field.type), vo[field.name], ds, allow_extensions && &field == &st.fields.back(), recursion_depth, deadline, max_serialization_time);
                } else if( ends_with(field.type, "$") && allow_extensions ) {
                   missing_extension = true;
                } else {
-                  EOS_THROW( pack_exception, "Missing '${f}' in variant object", ("f",field.name) );
+                  RSN_THROW( pack_exception, "Missing '${f}' in variant object", ("f",field.name) );
                }
             }
          } else if( var.is_array() ) {
@@ -399,12 +399,12 @@ namespace arisen { namespace chain {
                else if( ends_with(field.type, "$") && allow_extensions )
                   break;
                else
-                  EOS_THROW( pack_exception, "Early end to array specifying the fields of struct '${t}'; require input for field '${f}'",
+                  RSN_THROW( pack_exception, "Early end to array specifying the fields of struct '${t}'; require input for field '${f}'",
                              ("t", st.name)("f", field.name) );
                ++i;
             }
          } else {
-            EOS_THROW( pack_exception, "Failed to serialize struct '${t}' in variant object", ("t", st.name));
+            RSN_THROW( pack_exception, "Failed to serialize struct '${t}' in variant object", ("t", st.name));
          }
       }
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }

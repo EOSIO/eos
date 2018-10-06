@@ -32,7 +32,7 @@ namespace arisen { namespace chain {
          else if(vm == wasm_interface::vm_type::wabt)
             runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
          else
-            EOS_THROW(wasm_exception, "wasm_interface_impl fall through");
+            RSN_THROW(wasm_exception, "wasm_interface_impl fall through");
       }
 
       std::vector<uint8_t> parse_initial_memory(const Module& module) {

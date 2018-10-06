@@ -14,7 +14,7 @@
       FC_THROW_EXCEPTION( exc_type, FORMAT, __VA_ARGS__ );            \
    FC_MULTILINE_MACRO_END
 
-#define EOS_THROW( exc_type, FORMAT, ... ) \
+#define RSN_THROW( exc_type, FORMAT, ... ) \
     throw exc_type( FC_LOG_MESSAGE( error, FORMAT, __VA_ARGS__ ) );
 
 /**
@@ -22,7 +22,7 @@
  * The main difference here is that if the exception caught isn't of type "arisen::chain::chain_exception"
  * This macro will rethrow the exception as the specified "exception_type"
  */
-#define EOS_RETHROW_EXCEPTIONS(exception_type, FORMAT, ... ) \
+#define RSN_RETHROW_EXCEPTIONS(exception_type, FORMAT, ... ) \
    catch (arisen::chain::chain_exception& e) { \
       FC_RETHROW_EXCEPTION( e, warn, FORMAT, __VA_ARGS__ ); \
    } catch (fc::exception& e) { \

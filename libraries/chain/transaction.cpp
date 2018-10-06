@@ -267,7 +267,7 @@ bytes packed_transaction::get_raw_transaction() const
          case zlib:
             return zlib_decompress(packed_trx);
          default:
-            EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
+            RSN_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
       }
    } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
 }
@@ -281,7 +281,7 @@ vector<bytes> packed_transaction::get_context_free_data()const
          case zlib:
             return zlib_decompress_context_free_data(packed_context_free_data);
          default:
-            EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
+            RSN_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
       }
    } FC_CAPTURE_AND_RETHROW((compression)(packed_context_free_data))
 }
@@ -316,7 +316,7 @@ void packed_transaction::local_unpack()const
             unpacked_trx = zlib_decompress_transaction(packed_trx);
             break;
          default:
-            EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
+            RSN_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
          }
       } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
    }
@@ -337,7 +337,7 @@ signed_transaction packed_transaction::get_signed_transaction() const
          case zlib:
             return signed_transaction(get_transaction(), signatures, zlib_decompress_context_free_data(packed_context_free_data));
          default:
-            EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
+            RSN_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
       }
    } FC_CAPTURE_AND_RETHROW((compression)(packed_trx)(packed_context_free_data))
 
@@ -354,7 +354,7 @@ void packed_transaction::set_transaction(const transaction& t, packed_transactio
             packed_trx = zlib_compress_transaction(t);
             break;
          default:
-            EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
+            RSN_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
       }
    } FC_CAPTURE_AND_RETHROW((_compression)(t))
    packed_context_free_data.clear();
@@ -374,7 +374,7 @@ void packed_transaction::set_transaction(const transaction& t, const vector<byte
             packed_context_free_data = zlib_compress_context_free_data(cfd);
             break;
          default:
-            EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
+            RSN_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
       }
    } FC_CAPTURE_AND_RETHROW((_compression)(t))
    compression = _compression;

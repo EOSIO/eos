@@ -448,7 +448,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             ilog( "Saved genesis JSON to '${path}'", ("path", p.generic_string()));
          }
 
-         EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
+         RSN_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
       }
 
       if( options.count("export-reversible-blocks") ) {
@@ -463,7 +463,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          else
             ilog( "Saved recovered blocks from reversible block database into '${path}'", ("path", p.generic_string()) );
 
-         EOS_THROW( node_management_success, "exported reversible blocks" );
+         RSN_THROW( node_management_success, "exported reversible blocks" );
       }
 
       if( options.at( "delete-all-blocks" ).as<bool>()) {
@@ -512,7 +512,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          } else {
             ilog( "Exiting after fixing reversible blocks database..." );
          }
-         EOS_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
+         RSN_THROW( fixed_reversible_db_exception, "fixed corrupted reversible blocks database" );
       } else if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 ) {
          wlog( "The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain." );
       } else if( options.count("import-reversible-blocks") ) {
@@ -523,7 +523,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          import_reversible_blocks( my->chain_config->blocks_dir/config::reversible_blocks_dir_name,
                                    my->chain_config->reversible_cache_size, reversible_blocks_file );
 
-         EOS_THROW( node_management_success, "imported reversible blocks" );
+         RSN_THROW( node_management_success, "imported reversible blocks" );
       }
 
       if( options.count("import-reversible-blocks") ) {
@@ -1331,7 +1331,7 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
                const auto& by_txid = d.get_index<generated_transaction_multi_index,by_trx_id>();
                auto itr = by_txid.find( txid );
                if (itr == by_txid.end()) {
-                  EOS_THROW(transaction_exception, "Unknown Transaction ID: ${txid}", ("txid", txid));
+                  RSN_THROW(transaction_exception, "Unknown Transaction ID: ${txid}", ("txid", txid));
                }
 
                return d.get_index<generated_transaction_multi_index>().indices().project<by_delay>(itr);
@@ -1397,7 +1397,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
          block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id));
       }
 
-   } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
+   } RSN_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
 
    RSN_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
@@ -1425,7 +1425,7 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
    } else {
       try {
          b = db.fetch_block_state_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
-      } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
+      } RSN_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
    }
 
    RSN_ASSERT( b, unknown_block_exception, "Could not find reversible block: ${block}", ("block", params.block_num_or_id));
@@ -1451,7 +1451,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
       auto resolver = make_resolver(this, abi_serializer_max_time);
       try {
          abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
-      } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
+      } RSN_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
       app().get_method<incoming::methods::transaction_async>()(pretty_input, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void{
          if (result.contains<fc::exception_ptr>()) {
@@ -1725,7 +1725,7 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
       RSN_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action} in contract ${contract}", ("action", params.action)("contract", params.code));
       try {
          result.binargs = abis.variant_to_binary(action_type, params.args, abi_serializer_max_time);
-      } EOS_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
+      } RSN_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
                                 "'${args}' is invalid args for action '${action}' code '${code}'. expected '${proto}'",
                                 ("args", params.args)("action", params.action)("code", params.code)("proto", action_abi_to_variant(abi, action_type)))
    } else {
@@ -1753,7 +1753,7 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
    auto resolver = make_resolver(this, abi_serializer_max_time);
    try {
       abi_serializer::from_variant(params.transaction, pretty_input, resolver, abi_serializer_max_time);
-   } EOS_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction")
+   } RSN_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction")
 
    auto required_keys_set = db.get_authorization_manager().get_required_keys( pretty_input, params.available_keys, fc::seconds( pretty_input.delay_sec ));
    get_required_keys_result result;
