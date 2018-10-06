@@ -553,8 +553,8 @@ inline fc::mutable_variant_object proxy( account_name acct ) {
    return voter( acct )( "is_proxy", 1 );
 }
 
-inline uint64_t M( const string& eos_str ) {
-   return core_from_string( eos_str ).get_amount();
+inline uint64_t M( const string& rsn_str ) {
+   return core_from_string( rsn_str ).get_amount();
 }
 
 }
