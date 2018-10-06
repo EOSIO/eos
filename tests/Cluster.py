@@ -77,7 +77,7 @@ class Cluster(object):
         self.defProducerAccounts={}
         self.defproduceraAccount=self.defProducerAccounts["defproducera"]= Account("defproducera")
         self.defproducerbAccount=self.defProducerAccounts["defproducerb"]= Account("defproducerb")
-        self.eosioAccount=self.defProducerAccounts["eosio"]= Account("eosio")
+        self.arisenAccount=self.defProducerAccounts["arisen"]= Account("arisen")
 
         self.defproduceraAccount.ownerPrivateKey=defproduceraPrvtKey
         self.defproduceraAccount.activePrivateKey=defproduceraPrvtKey
@@ -360,7 +360,7 @@ class Cluster(object):
             initAccountKeys(account, producerKeys[name])
             self.defProducerAccounts[name] = account
 
-        self.eosioAccount=self.defProducerAccounts["eosio"]
+        self.arisenAccount=self.defProducerAccounts["arisen"]
         self.defproduceraAccount=self.defProducerAccounts["defproducera"]
         self.defproducerbAccount=self.defProducerAccounts["defproducerb"]
 
@@ -726,7 +726,7 @@ class Cluster(object):
 
         myAccounts = []
         if testSysAccounts:
-            myAccounts += [self.eosioAccount, self.defproduceraAccount, self.defproducerbAccount]
+            myAccounts += [self.arisenAccount, self.defproduceraAccount, self.defproducerbAccount]
         if accounts:
             assert(isinstance(accounts, list))
             myAccounts += accounts
@@ -808,7 +808,7 @@ class Cluster(object):
         """Parse node config file for producers."""
 
         node="node_%02d" % (nodeNum)
-        configFile="etc/eosio/%s/config.ini" % (node)
+        configFile="etc/arisen/%s/config.ini" % (node)
         if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
         configStr=None
         with open(configFile, 'r') as f:
@@ -827,16 +827,16 @@ class Cluster(object):
         """Parse cluster config file. Updates producer keys data members."""
 
         node="node_bios"
-        configFile="etc/eosio/%s/config.ini" % (node)
+        configFile="etc/arisen/%s/config.ini" % (node)
         if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
         producerKeys=Cluster.parseProducerKeys(configFile, node)
         if producerKeys is None:
-            Utils.Print("ERROR: Failed to parse eosio private keys from cluster config files.")
+            Utils.Print("ERROR: Failed to parse arisen private keys from cluster config files.")
             return None
 
         for i in range(0, totalNodes):
             node="node_%02d" % (i)
-            configFile="etc/eosio/%s/config.ini" % (node)
+            configFile="etc/arisen/%s/config.ini" % (node)
             if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
 
             keys=Cluster.parseProducerKeys(configFile, node)
@@ -863,7 +863,7 @@ class Cluster(object):
             return None
 
         p = re.compile('error', re.IGNORECASE)
-        bootlog="eosio-ignition-wd/bootlog.txt"
+        bootlog="arisen-ignition-wd/bootlog.txt"
         with open(bootlog) as bootFile:
             for line in bootFile:
                 if p.search(line):
@@ -892,17 +892,17 @@ class Cluster(object):
                 Utils.Print("ERROR: Failed to create ignition wallet.")
                 return None
 
-            eosioName="eosio"
-            eosioKeys=producerKeys[eosioName]
-            eosioAccount=Account(eosioName)
-            eosioAccount.ownerPrivateKey=eosioKeys["private"]
-            eosioAccount.ownerPublicKey=eosioKeys["public"]
-            eosioAccount.activePrivateKey=eosioKeys["private"]
-            eosioAccount.activePublicKey=eosioKeys["public"]
-            producerKeys.pop(eosioName)
+            arisenName="arisen"
+            arisenKeys=producerKeys[arisenName]
+            arisenAccount=Account(arisenName)
+            arisenAccount.ownerPrivateKey=arisenKeys["private"]
+            arisenAccount.ownerPublicKey=arisenKeys["public"]
+            arisenAccount.activePrivateKey=arisenKeys["private"]
+            arisenAccount.activePublicKey=arisenKeys["public"]
+            producerKeys.pop(arisenName)
 
-            if not walletMgr.importKey(eosioAccount, ignWallet):
-                Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (eosioName))
+            if not walletMgr.importKey(arisenAccount, ignWallet):
+                Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (arisenName))
                 return None
 
             initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
@@ -911,9 +911,9 @@ class Cluster(object):
             contract="arisen.token"
             action="transfer"
             for name, keys in producerKeys.items():
-                data="{\"from\":\"eosio\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (name, initialFunds, "init transfer")
-                opts="--permission eosio@active"
-                if name != "eosio":
+                data="{\"from\":\"arisen\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (name, initialFunds, "init transfer")
+                opts="--permission arisen@active"
+                if name != "arisen":
                     trans=biosNode.pushMessage(contract, action, data, opts)
                     if trans is None or not trans[0]:
                         Utils.Print("ERROR: Failed to transfer funds from arisen.token to %s." % (name))
@@ -970,16 +970,16 @@ class Cluster(object):
         try:
             ignWallet=walletMgr.create("ignition")
 
-            eosioName="eosio"
-            eosioKeys=producerKeys[eosioName]
-            eosioAccount=Account(eosioName)
-            eosioAccount.ownerPrivateKey=eosioKeys["private"]
-            eosioAccount.ownerPublicKey=eosioKeys["public"]
-            eosioAccount.activePrivateKey=eosioKeys["private"]
-            eosioAccount.activePublicKey=eosioKeys["public"]
+            arisenName="arisen"
+            arisenKeys=producerKeys[arisenName]
+            arisenAccount=Account(arisenName)
+            arisenAccount.ownerPrivateKey=arisenKeys["private"]
+            arisenAccount.ownerPublicKey=arisenKeys["public"]
+            arisenAccount.activePrivateKey=arisenKeys["private"]
+            arisenAccount.activePublicKey=arisenKeys["public"]
 
-            if not walletMgr.importKey(eosioAccount, ignWallet):
-                Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (eosioName))
+            if not walletMgr.importKey(arisenAccount, ignWallet):
+                Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (arisenName))
                 return None
 
             contract="arisen.bios"
@@ -987,7 +987,7 @@ class Cluster(object):
             wasmFile="%s.wasm" % (contract)
             abiFile="%s.abi" % (contract)
             Utils.Print("Publish %s contract" % (contract))
-            trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+            trans=biosNode.publishContract(arisenAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
             if trans is None:
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return None
@@ -995,7 +995,7 @@ class Cluster(object):
             Node.validateTransaction(trans)
 
             Utils.Print("Creating accounts: %s " % ", ".join(producerKeys.keys()))
-            producerKeys.pop(eosioName)
+            producerKeys.pop(arisenName)
             accounts=[]
             for name, keys in producerKeys.items():
                 initx = None
@@ -1004,7 +1004,7 @@ class Cluster(object):
                 initx.ownerPublicKey=keys["public"]
                 initx.activePrivateKey=keys["private"]
                 initx.activePublicKey=keys["public"]
-                trans=biosNode.createAccount(initx, eosioAccount, 0)
+                trans=biosNode.createAccount(initx, arisenAccount, 0)
                 if trans is None:
                     Utils.Print("ERROR: Failed to create account %s" % (name))
                     return None
@@ -1027,8 +1027,8 @@ class Cluster(object):
                         setProdsStr=f.read()
 
                         Utils.Print("Setting producers.")
-                        opts="--permission eosio@active"
-                        myTrans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
+                        opts="--permission arisen@active"
+                        myTrans=biosNode.pushMessage("arisen", "setprods", setProdsStr, opts)
                         if myTrans is None or not myTrans[0]:
                             Utils.Print("ERROR: Failed to set producers.")
                             return None
@@ -1052,9 +1052,9 @@ class Cluster(object):
                     setProdsStr += ' ] }'
                     if Utils.Debug: Utils.Print("setprods: %s" % (setProdsStr))
                     Utils.Print("Setting producers: %s." % (", ".join(prodNames)))
-                    opts="--permission eosio@active"
+                    opts="--permission arisen@active"
                     # pylint: disable=redefined-variable-type
-                    trans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
+                    trans=biosNode.pushMessage("arisen", "setprods", setProdsStr, opts)
                     if trans is None or not trans[0]:
                         Utils.Print("ERROR: Failed to set producer %s." % (keys["name"]))
                         return None
@@ -1065,39 +1065,39 @@ class Cluster(object):
                     Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
                     return None
 
-                # wait for block production handover (essentially a block produced by anyone but eosio).
-                lam = lambda: biosNode.getInfo(exitOnError=True)["head_block_producer"] != "eosio"
+                # wait for block production handover (essentially a block produced by anyone but arisen).
+                lam = lambda: biosNode.getInfo(exitOnError=True)["head_block_producer"] != "arisen"
                 ret=Utils.waitForBool(lam)
                 if not ret:
                     Utils.Print("ERROR: Block production handover failed.")
                     return None
 
-            eosioTokenAccount=copy.deepcopy(eosioAccount)
-            eosioTokenAccount.name="arisen.token"
-            trans=biosNode.createAccount(eosioTokenAccount, eosioAccount, 0)
+            arisenTokenAccount=copy.deepcopy(arisenAccount)
+            arisenTokenAccount.name="arisen.token"
+            trans=biosNode.createAccount(arisenTokenAccount, arisenAccount, 0)
             if trans is None:
-                Utils.Print("ERROR: Failed to create account %s" % (eosioTokenAccount.name))
+                Utils.Print("ERROR: Failed to create account %s" % (arisenTokenAccount.name))
                 return None
 
-            eosioRamAccount=copy.deepcopy(eosioAccount)
-            eosioRamAccount.name="arisen.ram"
-            trans=biosNode.createAccount(eosioRamAccount, eosioAccount, 0)
+            arisenRamAccount=copy.deepcopy(arisenAccount)
+            arisenRamAccount.name="arisen.ram"
+            trans=biosNode.createAccount(arisenRamAccount, arisenAccount, 0)
             if trans is None:
-                Utils.Print("ERROR: Failed to create account %s" % (eosioRamAccount.name))
+                Utils.Print("ERROR: Failed to create account %s" % (arisenRamAccount.name))
                 return None
 
-            eosioRamfeeAccount=copy.deepcopy(eosioAccount)
-            eosioRamfeeAccount.name="arisen.ramfee"
-            trans=biosNode.createAccount(eosioRamfeeAccount, eosioAccount, 0)
+            arisenRamfeeAccount=copy.deepcopy(arisenAccount)
+            arisenRamfeeAccount.name="arisen.ramfee"
+            trans=biosNode.createAccount(arisenRamfeeAccount, arisenAccount, 0)
             if trans is None:
-                Utils.Print("ERROR: Failed to create account %s" % (eosioRamfeeAccount.name))
+                Utils.Print("ERROR: Failed to create account %s" % (arisenRamfeeAccount.name))
                 return None
 
-            eosioStakeAccount=copy.deepcopy(eosioAccount)
-            eosioStakeAccount.name="arisen.stake"
-            trans=biosNode.createAccount(eosioStakeAccount, eosioAccount, 0)
+            arisenStakeAccount=copy.deepcopy(arisenAccount)
+            arisenStakeAccount.name="arisen.stake"
+            trans=biosNode.createAccount(arisenStakeAccount, arisenAccount, 0)
             if trans is None:
-                Utils.Print("ERROR: Failed to create account %s" % (eosioStakeAccount.name))
+                Utils.Print("ERROR: Failed to create account %s" % (arisenStakeAccount.name))
                 return None
 
             Node.validateTransaction(trans)
@@ -1111,20 +1111,20 @@ class Cluster(object):
             wasmFile="%s.wasm" % (contract)
             abiFile="%s.abi" % (contract)
             Utils.Print("Publish %s contract" % (contract))
-            trans=biosNode.publishContract(eosioTokenAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+            trans=biosNode.publishContract(arisenTokenAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
             if trans is None:
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return None
 
             # Create currency0000, followed by issue currency0000
-            contract=eosioTokenAccount.name
+            contract=arisenTokenAccount.name
             Utils.Print("push create action to %s contract" % (contract))
             action="create"
-            data="{\"issuer\":\"%s\",\"maximum_supply\":\"1000000000.0000 %s\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_whitelist\":\"0\"}" % (eosioTokenAccount.name, CORE_SYMBOL)
+            data="{\"issuer\":\"%s\",\"maximum_supply\":\"1000000000.0000 %s\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_whitelist\":\"0\"}" % (arisenTokenAccount.name, CORE_SYMBOL)
             opts="--permission %s@active" % (contract)
             trans=biosNode.pushMessage(contract, action, data, opts)
             if trans is None or not trans[0]:
-                Utils.Print("ERROR: Failed to push create action to eosio contract.")
+                Utils.Print("ERROR: Failed to push create action to arisen contract.")
                 return None
 
             Node.validateTransaction(trans[1])
@@ -1133,14 +1133,14 @@ class Cluster(object):
                 Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
                 return None
 
-            contract=eosioTokenAccount.name
+            contract=arisenTokenAccount.name
             Utils.Print("push issue action to %s contract" % (contract))
             action="issue"
-            data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 %s\",\"memo\":\"initial issue\"}" % (eosioAccount.name, CORE_SYMBOL)
+            data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 %s\",\"memo\":\"initial issue\"}" % (arisenAccount.name, CORE_SYMBOL)
             opts="--permission %s@active" % (contract)
             trans=biosNode.pushMessage(contract, action, data, opts)
             if trans is None or not trans[0]:
-                Utils.Print("ERROR: Failed to push issue action to eosio contract.")
+                Utils.Print("ERROR: Failed to push issue action to arisen contract.")
                 return None
 
             Node.validateTransaction(trans[1])
@@ -1154,8 +1154,8 @@ class Cluster(object):
                 return None
 
             expectedAmount="1000000000.0000 {0}".format(CORE_SYMBOL)
-            Utils.Print("Verify eosio issue, Expected: %s" % (expectedAmount))
-            actualAmount=biosNode.getAccountEosBalanceStr(eosioAccount.name)
+            Utils.Print("Verify arisen issue, Expected: %s" % (expectedAmount))
+            actualAmount=biosNode.getAccountEosBalanceStr(arisenAccount.name)
             if expectedAmount != actualAmount:
                 Utils.Print("ERROR: Issue verification failed. Excepted %s, actual: %s" %
                             (expectedAmount, actualAmount))
@@ -1166,7 +1166,7 @@ class Cluster(object):
             wasmFile="%s.wasm" % (contract)
             abiFile="%s.abi" % (contract)
             Utils.Print("Publish %s contract" % (contract))
-            trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+            trans=biosNode.publishContract(arisenAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
             if trans is None:
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return None
@@ -1176,14 +1176,14 @@ class Cluster(object):
             initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
             Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
             trans=None
-            contract=eosioTokenAccount.name
+            contract=arisenTokenAccount.name
             action="transfer"
             for name, keys in producerKeys.items():
-                data="{\"from\":\"%s\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (eosioAccount.name, name, initialFunds, "init transfer")
-                opts="--permission %s@active" % (eosioAccount.name)
+                data="{\"from\":\"%s\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (arisenAccount.name, name, initialFunds, "init transfer")
+                opts="--permission %s@active" % (arisenAccount.name)
                 trans=biosNode.pushMessage(contract, action, data, opts)
                 if trans is None or not trans[0]:
-                    Utils.Print("ERROR: Failed to transfer funds from %s to %s." % (eosioTokenAccount.name, name))
+                    Utils.Print("ERROR: Failed to transfer funds from %s to %s." % (arisenTokenAccount.name, name))
                     return None
 
                 Node.validateTransaction(trans[1])
@@ -1313,13 +1313,13 @@ class Cluster(object):
             Utils.Print("File %s not found." % (fileName))
 
     def dumpErrorDetails(self):
-        fileName="etc/eosio/node_bios/config.ini"
+        fileName="etc/arisen/node_bios/config.ini"
         Cluster.dumpErrorDetailImpl(fileName)
         fileName="var/lib/node_bios/stderr.txt"
         Cluster.dumpErrorDetailImpl(fileName)
 
         for i in range(0, len(self.nodes)):
-            fileName="etc/eosio/node_%02d/config.ini" % (i)
+            fileName="etc/arisen/node_%02d/config.ini" % (i)
             Cluster.dumpErrorDetailImpl(fileName)
             fileName="var/lib/node_%02d/stderr.txt" % (i)
             Cluster.dumpErrorDetailImpl(fileName)
@@ -1392,7 +1392,7 @@ class Cluster(object):
     def cleanup(self):
         for f in glob.glob("var/lib/node_*"):
             shutil.rmtree(f)
-        for f in glob.glob("etc/eosio/node_*"):
+        for f in glob.glob("etc/arisen/node_*"):
             shutil.rmtree(f)
 
         if self.enableMongo:
