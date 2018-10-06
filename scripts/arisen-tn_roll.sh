@@ -20,16 +20,16 @@ fi
 
 cd $ARISEN_HOME
 
-if [ -z "$EOSIO_NODE" ]; then
+if [ -z "$ARISEN_NODE" ]; then
     DD=`ls -d var/lib/node_[012]?`
     ddcount=`echo $DD | wc -w`
     if [ $ddcount -gt 1 ]; then
         DD="all"
     fi
     OFS=$((${#DD}-2))
-    export EOSIO_NODE=${DD:$OFS}
+    export ARISEN_NODE=${DD:$OFS}
 else
-    DD=var/lib/node_$EOSIO_NODE
+    DD=var/lib/node_$ARISEN_NODE
     if [ ! \( -d $DD \) ]; then
         echo no directory named $PWD/$DD
         cd -

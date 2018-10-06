@@ -1707,7 +1707,7 @@ launcher_def::bounce (const string& node_numbers) {
       const string node_num = node.get_node_num();
       cout << "Bouncing " << node.name << endl;
       string cmd = "./scripts/arisen-tn_bounce.sh " + eosd_extra_args;
-      do_command(host, node.name, { { "ARISEN_HOME", host.arisen_home }, { "EOSIO_NODE", node_num } }, cmd);
+      do_command(host, node.name, { { "ARISEN_HOME", host.arisen_home }, { "ARISEN_NODE", node_num } }, cmd);
    }
 }
 
@@ -1721,7 +1721,7 @@ launcher_def::down (const string& node_numbers) {
       cout << "Taking down " << node.name << endl;
       string cmd = "./scripts/arisen-tn_down.sh ";
       do_command(host, node.name,
-                 { { "ARISEN_HOME", host.arisen_home }, { "EOSIO_NODE", node_num }, { "EOSIO_TN_RESTART_CONFIG_DIR", node.config_dir_name } },
+                 { { "ARISEN_HOME", host.arisen_home }, { "ARISEN_NODE", node_num }, { "EOSIO_TN_RESTART_CONFIG_DIR", node.config_dir_name } },
                  cmd);
    }
 }

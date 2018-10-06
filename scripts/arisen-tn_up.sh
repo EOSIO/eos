@@ -22,12 +22,12 @@ if [ ! -e $rundir/$prog ]; then
     exit -1
 fi
 
-if [ -z "$EOSIO_NODE" ]; then
+if [ -z "$ARISEN_NODE" ]; then
     echo data directory not set
     exit -1
 fi
 
-datadir=var/lib/node_$EOSIO_NODE
+datadir=var/lib/node_$ARISEN_NODE
 now=`date +'%Y_%m_%d_%H_%M_%S'`
 log=stderr.$now.txt
 touch $datadir/$log
@@ -35,8 +35,8 @@ rm $datadir/stderr.txt
 ln -s $log $datadir/stderr.txt
 
 relaunch() {
-    echo "$rundir/$prog $qargs $* --data-dir $datadir --config-dir etc/eosio/node_$EOSIO_NODE > $datadir/stdout.txt  2>> $datadir/$log "
-    nohup $rundir/$prog $qargs $* --data-dir $datadir --config-dir etc/eosio/node_$EOSIO_NODE > $datadir/stdout.txt  2>> $datadir/$log &
+    echo "$rundir/$prog $qargs $* --data-dir $datadir --config-dir etc/eosio/node_$ARISEN_NODE > $datadir/stdout.txt  2>> $datadir/$log "
+    nohup $rundir/$prog $qargs $* --data-dir $datadir --config-dir etc/eosio/node_$ARISEN_NODE > $datadir/stdout.txt  2>> $datadir/$log &
     pid=$!
     echo pid = $pid
     echo $pid > $datadir/$prog.pid

@@ -12,7 +12,7 @@ fi
 
 prog=aos
 
-DD=var/lib/node_$EOSIO_NODE
+DD=var/lib/node_$ARISEN_NODE
 runtest=`cat $DD/$prog.pid`
 echo runtest = $runtest
 running=`ps -e | grep $runtest | grep -cv grep `
