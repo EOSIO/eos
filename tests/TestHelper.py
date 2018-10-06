@@ -25,7 +25,7 @@ class AppArgs:
 # pylint: disable=too-many-instance-attributes
 class TestHelper(object):
     LOCAL_HOST="localhost"
-    DEFAULT_PORT=8888
+    DEFAULT_PORT=12618
 
     @staticmethod
     # pylint: disable=too-many-branches

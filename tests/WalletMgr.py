@@ -17,7 +17,7 @@ class WalletMgr(object):
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] True=Launch wallet(awallet) process; False=Manage launch process externally.
-    def __init__(self, walletd, aosPort=8888, aosHost="localhost", port=9899, host="localhost"):
+    def __init__(self, walletd, aosPort=12618, aosHost="localhost", port=12518, host="localhost"):
         self.walletd=walletd
         self.aosPort=aosPort
         self.aosHost=aosHost

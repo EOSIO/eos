@@ -6,9 +6,9 @@ Doing this manually is a tedious task and easily error prone. Fortunately a solu
 ## Testnet nodes, networks, and topology
 Before getting into the details of the EOS testnet, lets clarify some terms. In this document I use the terms "host" and "machine" fairly interchangeably. A host generally boils down to a single IP address, although in practice it could have more.
 
-The next term is "node." A node is an instance of the eosd executable configured to serve as 0 or more producers. There is not a one-to-one mapping between nodes and hosts, a host may serve more than one node, but one node cannot span more than one host. 
+The next term is "node." A node is an instance of the eosd executable configured to serve as 0 or more producers. There is not a one-to-one mapping between nodes and hosts, a host may serve more than one node, but one node cannot span more than one host.
 
-I use "local network" to refer to any group of nodes, whether on a single host or several, are all close in that access does not have to leave a secure network environment. 
+I use "local network" to refer to any group of nodes, whether on a single host or several, are all close in that access does not have to leave a secure network environment.
 
 Finally there is the idea of distributed networks that involve remote hosts. These may be hosts on which you may not have direct access for starting and stopping eosd instances, but with whom you may wish to collaborate for setting up a decentralized testnet.
 
@@ -20,7 +20,7 @@ The downside is that you need a lot of hardware when running many nodes on a sin
 ### Distributed networks
 The most representative model of the live net is to spread the eosd nodes across many hosts. The Launcher app is able to start distributed nodes by the use of bash scripts pushed through ssh. In this case additional configuration is required to replace configured references to "localhost" or "127.0.0.1" with the actual host name or ip addresses of the various peer machines.
 
-Launching a distributed testnet requires the operator to have ssh access to all the remote machines configured to authenticate without the need for a user entered password. This configuration is described in detail below. 
+Launching a distributed testnet requires the operator to have ssh access to all the remote machines configured to authenticate without the need for a user entered password. This configuration is described in detail below.
 
 In cases where a testnet spans multiple remote networks, a common launcher defined configuration file may be shared externally between distributed operators, each being responsible for launching his or her own local network.
 
@@ -44,17 +44,17 @@ In a "mesh" network, each node is connected to as many peer nodes as possible.
 This is an example of a custom deployment where clusters of nodes are isolated except through a single crosslink.
 
 # The Launcher Application
-To address the complexity implied by distributing multiple eosd nodes across a LAN or a wider network, the launcher application was created. 
+To address the complexity implied by distributing multiple eosd nodes across a LAN or a wider network, the launcher application was created.
 
 Based on a handful of command line arguments the Launcher is able to compose per-node configuration files, distribute these files securely amongst the peer hosts, then start up the multiple instances of eosd.
 
-Eosd instances started this way have their output logged in individual text files. Finally the launcher application is also able to shut down some or all of the test network. 
+Eosd instances started this way have their output logged in individual text files. Finally the launcher application is also able to shut down some or all of the test network.
 
 ## Running the Launcher application
 
-The launcher program is used to configure and deploy producing and non-producing eosd nodes that talk to each other using configured routes. The configuration for each node is stored in separate directories, permitting multiple nodes to be active on the same host, assuming the machine has sufficient memory and disk space for multiple eosd instances. The launcher makes use of multiple configuration sources in order to deploy a testnet. A handful of command line arguments can be used to set up simple local networks. 
+The launcher program is used to configure and deploy producing and non-producing eosd nodes that talk to each other using configured routes. The configuration for each node is stored in separate directories, permitting multiple nodes to be active on the same host, assuming the machine has sufficient memory and disk space for multiple eosd instances. The launcher makes use of multiple configuration sources in order to deploy a testnet. A handful of command line arguments can be used to set up simple local networks.
 
-To support deploying distributed networks, the launcher will read more detailed configuration from a JSON file. You can use the launcher to create a default JSON file based on the command line options you supply. Edit that file to substitute actual hostnames and other details 
+To support deploying distributed networks, the launcher will read more detailed configuration from a JSON file. You can use the launcher to create a default JSON file based on the command line options you supply. Edit that file to substitute actual hostnames and other details
 as needed, then rerun the launcher supplying this file.
 
 For the moment the launcher only activates platform-native nodes, dockerized nodes will be added later. It should be straight forward to use the generated configuration files with dockerized nodes.
@@ -64,26 +64,26 @@ Here is the current list of command line arguments recognized by the launcher.
 
 ```
 launcher command line arguments:
-  -n [ --nodes ] arg (=1)               total number of nodes to configure and 
+  -n [ --nodes ] arg (=1)               total number of nodes to configure and
                                         launch
   -p [ --pnodes ] arg (=1)              number of nodes that are producers
   -d [ --delay ] arg (=0)               number of seconds to wait before starting the next node. Used to simulate a person keying in a series of individual eosd startup command lines.
-  -s [ --shape ] arg (=star)            network topology, use "star" 
+  -s [ --shape ] arg (=star)            network topology, use "star"
                                         "mesh" or give a filename for custom
   -g [ --genesis ] arg (="./genesis.json")
                                         set the path to genesis.json
-  -o [ --output ] arg                   save a copy of the generated topology 
+  -o [ --output ] arg                   save a copy of the generated topology
                                         in this file
-  --skip-signature                      EOSD does not require transaction 
+  --skip-signature                      EOSD does not require transaction
                                         signatures.
-  -i [ --timestamp ] arg                set the timestamp for the first block. 
+  -i [ --timestamp ] arg                set the timestamp for the first block.
                                         Use "now" to indicate the current time
-  -l [ --launch ] arg                   select a subset of nodes to launch. 
-                                        Currently may be "all", "none", or 
-                                        "local". If not set, the default is to 
-                                        launch all unless an output file is 
+  -l [ --launch ] arg                   select a subset of nodes to launch.
+                                        Currently may be "all", "none", or
+                                        "local". If not set, the default is to
+                                        launch all unless an output file is
                                         named, in which case it starts none.
-  -k [ --kill ] arg                     The launcher retrieves the previously 
+  -k [ --kill ] arg                     The launcher retrieves the previously
                                         started process ids and signals each with the specified signum. Use 15 for a sigterm and 9 for sigkill.                              
   -h [ --help ]                         print this list
 ```
@@ -94,7 +94,7 @@ This is the file generated by running the following command:
 
  `launcher --output <filename> [other options]`
 
-In this mode, the launcher does not activate any eosd instances, it produces a file of the given filename. This file is a JSON formatted template that provides an easy means of 
+In this mode, the launcher does not activate any eosd instances, it produces a file of the given filename. This file is a JSON formatted template that provides an easy means of
 
 The object described in this file is composed of a helper for using ssl, and a collection of testnet node descriptors. The node descriptors are listed as name, value pairs. Note that the names serve a dual purpose acting as both the key in a map of node descriptors and as an alias for the node in the peer lists. For example:
 
@@ -107,8 +107,8 @@ The object described in this file is composed of a helper for using ssl, and a c
     "ssh_args": "-i ~phil/.ssh/id-sample"
   },
 ```
-The ssh helper fields are paths to ssh and scp, an identity if necessary, and any optional arguments. 
-  
+The ssh helper fields are paths to ssh and scp, an identity if necessary, and any optional arguments.
+
 ```
   "nodes": [[
       "testnet_0",{
@@ -120,8 +120,8 @@ The ssh helper fields are paths to ssh and scp, an identity if necessary, and an
         "data_dir": "tn_data_0",
         "hostname": "remoteserv",
         "public_name": "remoteserv",
-        "p2p_port": 9876,
-        "http_port": 8888,
+        "p2p_port": 6620,
+        "http_port": 12618,
         "filesize": 8192,
         "keys": [{
             "public_key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
@@ -176,7 +176,7 @@ This table describes all of the key/value pairs used in the testnet.json file.
 | public_name        | possibly different from the hostname, this name will get substituted for the aliases when creating the per-node config.ini file's peer list.
 | p2p_port           | combined with the public name to identify the endpoint listed on for peer connections. When multiple nodes share a host, the p2p_port is automatically incremented for each node.
 | http_port          | defines the listen endpoint for the client API services
-| filesize           | sets the capacity in megabytes for the size of the blockchain backing store file. 
+| filesize           | sets the capacity in megabytes for the size of the blockchain backing store file.
 | keys               | specify the authentication tokens for this node.
 | peers              | this list indicates the other nodes in the network to which this one actively connects. Since this file may be edited to alter the hostname, public name, or p2p port values, the peers list here holds aliases for the actual endpoints eventually written to the individual config.ini files.
 | producers          | this list identifies which of the producers from the genesis.json file are held by this node. Note that the launcher uses a round-robin algorithm to spread the producer instances across the producing nodes.
@@ -187,7 +187,7 @@ The ssh_helper section of the testnet.json file contains the ssh elements necess
 It is also necessary to provision the server by at least copying the eosd executable, and the genesis.json files to their appropriate locations relative to some named EOS root directory. For example, I defined the EOS root to be `/home/phil/blockchain/eos`. When run, the launcher will run through a variety of shell commands using ssh and finally using scp to copy a config.ini file to the appropriate data directory on the remote.
 
 ## Runtime Artifacts
-The launcher app creates a separate date and configuration directory for each node instance. This directory is named `tn_data_<n>` with n ranging from 0 to the number of nodes being launched. 
+The launcher app creates a separate date and configuration directory for each node instance. This directory is named `tn_data_<n>` with n ranging from 0 to the number of nodes being launched.
 
 | Per-Node File | Description
 | :------------ | :----------

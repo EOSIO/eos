@@ -117,7 +117,7 @@ echo Launcher options: --aos \"--plugin arisen::wallet_api_plugin\" $launcherOpt
 programs/arisen-launcher/arisen-launcher --aos "--plugin arisen::wallet_api_plugin" $launcherOpts
 sleep 7
 
-startPort=8888
+startPort=12618
 endport=`expr $startPort + $total_nodes`
 echo startPort: $startPort
 echo endPort: $endPort

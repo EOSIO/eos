@@ -22,9 +22,9 @@ Usage: programs/arisecli/arisecli [OPTIONS] SUBCOMMAND
 
 Options:
   -h,--help                   Print this help message and exit
-  -u,--url TEXT=http://localhost:8888/
+  -u,--url TEXT=http://localhost:12618/
                               the http/https URL where aOS is running
-  --wallet-url TEXT=http://localhost:8888/
+  --wallet-url TEXT=http://localhost:12618/
                               the http/https URL where aWallet is running
   -r,--header                 pass specific HTTP header, repeat this option to pass multiple headers
   -n,--no-verify              don't verify peer certificate when using HTTPS
@@ -165,7 +165,7 @@ bfs::path determine_home_directory()
    return home;
 }
 
-string url = "http://127.0.0.1:8888/";
+string url = "http://127.0.0.1:12618/";
 string wallet_url = "http://127.0.0.1:8900/";
 bool no_verify = false;
 vector<string> headers;
@@ -856,7 +856,7 @@ void ensure_awallet_running(CLI::App* app) {
 
 CLI::callback_t obsoleted_option_host_port = [](CLI::results_t) {
    std::cerr << localized("Host and port options (-H, --wallet-host, etc.) have been replaced with -u/--url and --wallet-url\n"
-                          "Use for example -u http://localhost:8888 or --url https://example.invalid/\n");
+                          "Use for example -u http://localhost:12618 or --url https://example.invalid/\n");
    exit(1);
    return false;
 };

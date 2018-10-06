@@ -40,14 +40,14 @@ read -d '' genesis << EOF
 EOF
 
 read -d '' configbios << EOF
-p2p-server-address = localhost:9876
+p2p-server-address = localhost:6620
 plugin = arisen::producer_plugin
 plugin = arisen::chain_api_plugin
 plugin = arisen::net_plugin
 plugin = arisen::history_api_plugin
-http-server-address = 127.0.0.1:8888
+http-server-address = 127.0.0.1:12618
 blocks-dir = blocks
-p2p-listen-endpoint = 0.0.0.0:9876
+p2p-listen-endpoint = 0.0.0.0:6620
 allowed-connection = any
 private-key = ['EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV','5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3']
 send-whole-blocks = true
@@ -61,11 +61,11 @@ read -d '' config00 << EOF
 blocks-dir = blocks
 readonly = 0
 send-whole-blocks = true
-http-server-address = 127.0.0.1:8889
+http-server-address = 127.0.0.1:12618
 p2p-listen-endpoint = 0.0.0.0:9877
 p2p-server-address = localhost:9877
 allowed-connection = any
-p2p-peer-address = localhost:9876
+p2p-peer-address = localhost:6620
 plugin = arisen::chain_api_plugin
 EOF
 
@@ -77,7 +77,7 @@ http-server-address = 127.0.0.1:8890
 p2p-listen-endpoint = 0.0.0.0:9878
 p2p-server-address = localhost:9877
 allowed-connection = any
-p2p-peer-address = localhost:9876
+p2p-peer-address = localhost:6620
 plugin = arisen::chain_api_plugin
 EOF
 
@@ -280,9 +280,9 @@ if [ $res -ne 0 ]; then
     ret=1
 fi
 
-b5idbios=`./programs/arisecli/arisecli -u http://localhost:8888 get block 5 | grep "^ *\"id\""`
-b5id00=`./programs/arisecli/arisecli -u http://localhost:8889 get block 5 | grep "^ *\"id\""`
-b5id01=`./programs/arisecli/arisecli -u http://localhost:8890 get block 5 | grep "^ *\"id\""`
+b5idbios=`./programs/arisecli/arisecli -u http://localhost:12618 get block 5 | grep "^ *\"id\""`
+b5id00=`./programs/arisecli/arisecli -u http://localhost:12618 get block 5 | grep "^ *\"id\""`
+b5id01=`./programs/arisecli/arisecli -u http://localhost:12618 get block 5 | grep "^ *\"id\""`
 
 if [ "$b5idbios" != "$b5id00" ]; then
     echo FAILURE: nodes are not in sync

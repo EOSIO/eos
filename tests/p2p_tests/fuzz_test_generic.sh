@@ -5,7 +5,7 @@
 # message buffers in excess of 1 gigabyte.
 #
 if ! pgrep aos > /dev/null; then
-   echo "Run aOS with net_plugin configured for port 9876."
+   echo "Run aOS with net_plugin configured for port 6620."
    exit 1
 fi
-for i in `seq 1 10000`; do netcat localhost 9876 < /dev/urandom; done
+for i in `seq 1 10000`; do netcat localhost 6620 < /dev/urandom; done

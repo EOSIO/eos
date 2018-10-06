@@ -102,7 +102,7 @@ int main(int argc, char** argv)
       http_plugin::set_defaults({
          .address_config_prefix = "",
          .default_unix_socket_path = "",
-         .default_http_port = 8888
+         .default_http_port = 12618
       });
       if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv))
          return INITIALIZE_FAIL;

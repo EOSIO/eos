@@ -10,16 +10,16 @@ use File::Path;
 use Cwd;
 
 my $rsn_home = defined $ENV{EOS_HOME} ? $ENV{EOS_HOME} : getcwd;
-my $eosd = $rsn_home . "/programs/eosd/eosd";
-my $eosc = $rsn_home . "/programs/eosc/eosc";
+my $rsnd = $rsn_home . "/programs/rsnd/rsnd";
+my $rsnc = $rsn_home . "/programs/rsnc/rsnc";
 
 my $nodes = defined $ENV{EOS_TEST_RING} ? $ENV{EOS_TEST_RING} : "1";
 my $pnodes = defined $ENV{EOS_TEST_PRODUCERS} ? $ENV{EOS_TEST_PRODUCERS} : "1";
 
 my $prods = 21;
 my $genesis = "$rsn_home/genesis.json";
-my $http_port_base = 8888;
-my $p2p_port_base = 9876;
+my $http_port_base = 12618;
+my $p2p_port_base = 6620;
 my $data_dir_base = "tdn";
 my $hostname = "127.0.0.1";
 my $first_pause = 0;
@@ -199,7 +199,7 @@ sub launch_nodes {
     }
 
     for (my $i = 0; $i < $nodes;  $i++) {
-        my @cmdline = ($eosd,
+        my @cmdline = ($rsnd,
                        $gtsarg,
                        "--data-dir=$data_dir[$i]",
                        "--verbose-http-errors",
@@ -247,7 +247,7 @@ sub perform_work {
         my $stoptime = time () + $run_duration;
         my $counter = 0;
         while (time () < $stoptime) {
-            `$eosc transfer eos inita 10 >> eosc.out 2>> eosc.err`;
+            `$rsnc transfer eos inita 10 >> rsnc.out 2>> rsnc.err`;
             $counter++;
             if ($counter % 1000 == 0) {
                 print "$counter client iterations\n";
