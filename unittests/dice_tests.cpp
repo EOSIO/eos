@@ -241,7 +241,7 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    );
 
    push_action(N(arisen.token), N(issue), N(arisen.token), mvo()
-     ("to", "eosio")
+     ("to", "arisen")
      ("quantity", core_from_string("1000000000.0000"))
      ("memo", "")
    );
