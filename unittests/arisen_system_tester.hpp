@@ -417,8 +417,8 @@ public:
                                                ("is_priv", 1)
          );
 
-         set_code( N(arisen.msig), eosio_msig_wast );
-         set_abi( N(arisen.msig), eosio_msig_abi );
+         set_code( N(arisen.msig), arisen_msig_wast );
+         set_abi( N(arisen.msig), arisen_msig_abi );
 
          produce_blocks();
          const auto& accnt = control->db().get<account_object,by_name>( N(arisen.msig) );

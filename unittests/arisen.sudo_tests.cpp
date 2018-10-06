@@ -37,8 +37,8 @@ public:
                                  ("is_priv", 1)
       );
 
-      set_code( N(arisen.msig), eosio_msig_wast );
-      set_abi( N(arisen.msig), eosio_msig_abi );
+      set_code( N(arisen.msig), arisen_msig_wast );
+      set_abi( N(arisen.msig), arisen_msig_abi );
 
       produce_blocks();
 
@@ -358,7 +358,7 @@ BOOST_FIXTURE_TEST_CASE( sudo_with_msig_producers_change, arisen_sudo_tester ) t
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, traces[0]->receipt->status );
 
    BOOST_REQUIRE_EQUAL( 1, traces[1]->action_traces.size() );
-   BOOST_REQUIRE_EQUAL( "eosio", name{traces[1]->action_traces[0].act.account} );
+   BOOST_REQUIRE_EQUAL( "arisen", name{traces[1]->action_traces[0].act.account} );
    BOOST_REQUIRE_EQUAL( "reqauth", name{traces[1]->action_traces[0].act.name} );
    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, traces[1]->receipt->status );
 
