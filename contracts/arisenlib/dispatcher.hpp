@@ -89,15 +89,15 @@ namespace arisen {
    }
  /// @}  dispatcher
 
-// Helper macro for EOSIO_API
-#define EOSIO_API_CALL( r, OP, elem ) \
+// Helper macro for ARISEN_API
+#define ARISEN_API_CALL( r, OP, elem ) \
    case ::arisen::string_to_name( BOOST_PP_STRINGIZE(elem) ): \
       arisen::execute_action( &thiscontract, &OP::elem ); \
       break;
 
 // Helper macro for ARISEN_ABI
-#define EOSIO_API( TYPE,  MEMBERS ) \
-   BOOST_PP_SEQ_FOR_EACH( EOSIO_API_CALL, TYPE, MEMBERS )
+#define ARISEN_API( TYPE,  MEMBERS ) \
+   BOOST_PP_SEQ_FOR_EACH( ARISEN_API_CALL, TYPE, MEMBERS )
 
 /**
  * @addtogroup dispatcher
@@ -128,7 +128,7 @@ extern "C" { \
       if( code == self || action == N(onerror) ) { \
          TYPE thiscontract( self ); \
          switch( action ) { \
-            EOSIO_API( TYPE, MEMBERS ) \
+            ARISEN_API( TYPE, MEMBERS ) \
          } \
          /* does not allow destructor of thiscontract to run: arisen_exit(0); */ \
       } \

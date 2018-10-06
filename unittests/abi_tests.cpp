@@ -1775,7 +1775,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_no_eosioabi_macro, abi_gen_helper)
            void apply( account_name contract, account_name act ) {
               auto& thiscontract = *this;
               switch( act ) {
-                 EOSIO_API( hello, (hi)(bye))
+                 ARISEN_API( hello, (hi)(bye))
               };
            }
       };
