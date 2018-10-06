@@ -44,7 +44,7 @@ class Node(object):
         self.mongoDb=mongoDb
         self.endpointHttp="http://%s:%d" % (self.host, self.port)
         self.endpointArgs="--url %s" % (self.endpointHttp)
-        self.miscEosClientArgs="--no-auto-awallet"
+        self.miscRsnClientArgs="--no-auto-awallet"
         self.mongoEndpointArgs=""
         self.infoValid=None
         self.lastRetrievedHeadBlockNum=None
@@ -53,7 +53,7 @@ class Node(object):
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
     def rsnClientArgs(self):
-        return self.endpointArgs + " " + self.miscEosClientArgs
+        return self.endpointArgs + " " + self.miscRsnClientArgs
 
     def __str__(self):
         #return "Host: %s, Port:%d, Pid:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.cmd)
@@ -159,7 +159,7 @@ class Node(object):
             assert(account)
             assert(isinstance(account, Account))
             if Utils.Debug: Utils.Print("Validating account %s" % (account.name))
-            accountInfo=self.getEosAccount(account.name, exitOnError=True)
+            accountInfo=self.getRsnAccount(account.name, exitOnError=True)
             try:
                 if not self.enableMongo:
                     assert(accountInfo["account_name"] == account.name)
@@ -492,17 +492,17 @@ class Node(object):
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def getEosAccount(self, name, exitOnError=False):
+    def getRsnAccount(self, name, exitOnError=False):
         assert(isinstance(name, str))
         if not self.enableMongo:
             cmdDesc="get account"
             cmd="%s -j %s" % (cmdDesc, name)
-            msg="( getEosAccount(name=%s) )" % (name);
+            msg="( getRsnAccount(name=%s) )" % (name);
             return self.processArisecliCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
         else:
-            return self.getEosAccountFromDb(name, exitOnError=exitOnError)
+            return self.getRsnAccountFromDb(name, exitOnError=exitOnError)
 
-    def getEosAccountFromDb(self, name, exitOnError=False):
+    def getRsnAccountFromDb(self, name, exitOnError=False):
         cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
         subcommand='db.accounts.findOne({"name" : "%s"})' % (name)
         if Utils.Debug: Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
@@ -568,7 +568,7 @@ class Node(object):
     def verifyAccount(self, account):
         assert(account)
         if not self.enableMongo:
-            ret=self.getEosAccount(account.name)
+            ret=self.getRsnAccount(account.name)
             if ret is not None:
                 account_name=ret["account_name"]
                 if account_name is None:
@@ -580,7 +580,7 @@ class Node(object):
 
     def verifyAccountMdb(self, account):
         assert(account)
-        ret=self.getEosAccountFromDb(account.name)
+        ret=self.getRsnAccountFromDb(account.name)
         if ret is not None:
             account_name=ret["name"]
             if account_name is None:
@@ -627,7 +627,7 @@ class Node(object):
         assert(isinstance(destination, Account))
 
         cmd="%s %s -v transfer -j %s %s" % (
-            Utils.EosClientPath, self.rsnClientArgs(), source.name, destination.name)
+            Utils.RsnClientPath, self.rsnClientArgs(), source.name, destination.name)
         cmdArr=cmd.split()
         cmdArr.append(amountStr)
         cmdArr.append(memo)
@@ -682,7 +682,7 @@ class Node(object):
         assert(isinstance(initialBalances, dict))
         assert(isinstance(transferAmount, int))
 
-        currentBalances=self.getEosBalances([source] + accounts)
+        currentBalances=self.getRsnBalances([source] + accounts)
         assert(currentBalances)
         assert(isinstance(currentBalances, dict))
         assert(len(initialBalances) == len(currentBalances))
@@ -703,14 +703,14 @@ class Node(object):
                             (expectedInitialBalance, initialBalance, key.name))
                 return False
 
-    def getEosBalances(self, accounts):
+    def getRsnBalances(self, accounts):
         """Returns a dictionary with account balances keyed by accounts"""
         assert(accounts)
         assert(isinstance(accounts, list))
 
         balances={}
         for account in accounts:
-            balance = self.getAccountEosBalance(account.name)
+            balance = self.getAccountRsnBalance(account.name)
             balances[account]=balance
 
         return balances
@@ -777,22 +777,22 @@ class Node(object):
         servants=trans["controlled_accounts"]
         return servants
 
-    def getAccountEosBalanceStr(self, scope):
+    def getAccountRsnBalanceStr(self, scope):
         """Returns SYS currency0000 account balance from arisecli get table command. Returned balance is string following syntax "98.0311 SYS". """
         assert isinstance(scope, str)
         amount=self.getTableAccountBalance("arisen.token", scope)
-        if Utils.Debug: Utils.Print("getNodeAccountEosBalance %s %s" % (scope, amount))
+        if Utils.Debug: Utils.Print("getNodeAccountRsnBalance %s %s" % (scope, amount))
         assert isinstance(amount, str)
         return amount
 
-    def getAccountEosBalance(self, scope):
+    def getAccountRsnBalance(self, scope):
         """Returns SYS currency0000 account balance from arisecli get table command. Returned balance is an integer e.g. 980311. """
-        balanceStr=self.getAccountEosBalanceStr(scope)
+        balanceStr=self.getAccountRsnBalanceStr(scope)
         balance=Node.currencyStrToInt(balanceStr)
         return balance
 
     def getAccountCodeHash(self, account):
-        cmd="%s %s get code %s" % (Utils.EosClientPath, self.rsnClientArgs(), account)
+        cmd="%s %s get code %s" % (Utils.RsnClientPath, self.rsnClientArgs(), account)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         try:
             retStr=Utils.checkOutput(cmd.split())
@@ -812,7 +812,7 @@ class Node(object):
 
     # publish contract and return transaction as json object
     def publishContract(self, account, contractDir, wasmFile, abiFile, waitForTransBlock=False, shouldFail=False):
-        cmd="%s %s -v set contract -j %s %s" % (Utils.EosClientPath, self.rsnClientArgs(), account, contractDir)
+        cmd="%s %s -v set contract -j %s %s" % (Utils.RsnClientPath, self.rsnClientArgs(), account, contractDir)
         cmd += "" if wasmFile is None else (" "+ wasmFile)
         cmd += "" if abiFile is None else (" " + abiFile)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
@@ -866,7 +866,7 @@ class Node(object):
 
     # returns tuple with transaction and
     def pushMessage(self, account, action, data, opts, silentErrors=False):
-        cmd="%s %s push action -j %s %s" % (Utils.EosClientPath, self.rsnClientArgs(), account, action)
+        cmd="%s %s push action -j %s %s" % (Utils.RsnClientPath, self.rsnClientArgs(), account, action)
         cmdArr=cmd.split()
         if data is not None:
             cmdArr.append(data)
@@ -923,7 +923,7 @@ class Node(object):
 
     def processArisecliCmd(self, cmd, cmdDesc, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
         assert(isinstance(returnType, ReturnType))
-        cmd="%s %s %s" % (Utils.EosClientPath, self.rsnClientArgs(), cmd)
+        cmd="%s %s %s" % (Utils.RsnClientPath, self.rsnClientArgs(), cmd)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if exitMsg is not None:
             exitMsg="Context: " + exitMsg

@@ -119,7 +119,7 @@ p2pPlugin=args.p2p_plugin
 
 walletMgr=WalletMgr(True)
 testSuccessful=False
-killEosInstances=not dontKill
+killRsnInstances=not dontKill
 killWallet=not dontKill
 
 WalletdName="awallet"
@@ -407,6 +407,6 @@ try:
 
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killRsnInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
 
 exit(0)

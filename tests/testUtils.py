@@ -15,15 +15,15 @@ class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
 
-    EosClientPath="programs/arisecli/arisecli"
+    RsnClientPath="programs/arisecli/arisecli"
 
-    EosWalletName="awallet"
-    EosWalletPath="programs/awallet/"+ EosWalletName
+    RsnWalletName="awallet"
+    RsnWalletPath="programs/awallet/"+ RsnWalletName
 
-    EosServerName="aos"
-    EosServerPath="programs/aos/"+ EosServerName
+    RsnServerName="aos"
+    RsnServerPath="programs/aos/"+ RsnServerName
 
-    EosLauncherPath="programs/arisen-launcher/arisen-launcher"
+    RsnLauncherPath="programs/arisen-launcher/arisen-launcher"
     MongoPath="mongo"
     ShuttingDown=False
     CheckOutputDeque=deque(maxlen=10)
