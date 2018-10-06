@@ -53,7 +53,7 @@ fi
 
    create_symlink() {
       pushd /usr/local/bin &> /dev/null
-      ln -sf ../eosio/bin/$1 $1
+      ln -sf ../arisen/bin/$1 $1
       popd &> /dev/null
    }
 
@@ -62,9 +62,9 @@ fi
       create_symlink "arisecli"
       create_symlink "arisen-abigen"
       create_symlink "arisen-launcher"
-      create_symlink "eosio-s2wasm"
-      create_symlink "eosio-wast2wasm"
-      create_symlink "eosiocpp"
+      create_symlink "arisen-s2wasm"
+      create_symlink "arisen-wast2wasm"
+      create_symlink "arisencpp"
       create_symlink "awallet"
       create_symlink "aos"
    }
