@@ -44,7 +44,7 @@ void validate_authority_precondition( const apply_context& context, const author
       if( a.permission.permission == config::owner_name || a.permission.permission == config::active_name )
          continue; // account was already checked to exist, so its owner and active permissions should exist
 
-      if( a.permission.permission == config::eosio_code_name ) // virtual eosio.code permission does not really exist but is allowed
+      if( a.permission.permission == config::arisen_code_name ) // virtual eosio.code permission does not really exist but is allowed
          continue;
 
       try {
@@ -67,11 +67,11 @@ void validate_authority_precondition( const apply_context& context, const author
 /**
  *  This method is called assuming precondition_system_newaccount succeeds a
  */
-void apply_eosio_newaccount(apply_context& context) {
+void apply_arisen_newaccount(apply_context& context) {
    auto create = context.act.data_as<newaccount>();
    try {
    context.require_authorization(create.creator);
-//   context.require_write_lock( config::eosio_auth_scope );
+//   context.require_write_lock( config::arisen_auth_scope );
    auto& authorization = context.control.get_mutable_authorization_manager();
 
    EOS_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
@@ -125,7 +125,7 @@ void apply_eosio_newaccount(apply_context& context) {
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
-void apply_eosio_setcode(apply_context& context) {
+void apply_arisen_setcode(apply_context& context) {
    const auto& cfg = context.control.get_global_properties().configuration;
 
    auto& db = context.db;
@@ -171,7 +171,7 @@ void apply_eosio_setcode(apply_context& context) {
    }
 }
 
-void apply_eosio_setabi(apply_context& context) {
+void apply_arisen_setabi(apply_context& context) {
    auto& db  = context.db;
    auto  act = context.act.data_as<setabi>();
 
@@ -200,7 +200,7 @@ void apply_eosio_setabi(apply_context& context) {
    }
 }
 
-void apply_eosio_updateauth(apply_context& context) {
+void apply_arisen_updateauth(apply_context& context) {
 
    auto update = context.act.data_as<updateauth>();
    context.require_authorization(update.account); // only here to mark the single authority on this action as used
@@ -264,8 +264,8 @@ void apply_eosio_updateauth(apply_context& context) {
    }
 }
 
-void apply_eosio_deleteauth(apply_context& context) {
-//   context.require_write_lock( config::eosio_auth_scope );
+void apply_arisen_deleteauth(apply_context& context) {
+//   context.require_write_lock( config::arisen_auth_scope );
 
    auto remove = context.act.data_as<deleteauth>();
    context.require_authorization(remove.account); // only here to mark the single authority on this action as used
@@ -295,8 +295,8 @@ void apply_eosio_deleteauth(apply_context& context) {
 
 }
 
-void apply_eosio_linkauth(apply_context& context) {
-//   context.require_write_lock( config::eosio_auth_scope );
+void apply_arisen_linkauth(apply_context& context) {
+//   context.require_write_lock( config::arisen_auth_scope );
 
    auto requirement = context.act.data_as<linkauth>();
    try {
@@ -311,7 +311,7 @@ void apply_eosio_linkauth(apply_context& context) {
       const auto *code = db.find<account_object, by_name>(requirement.code);
       EOS_ASSERT(code != nullptr, account_query_exception,
                  "Failed to retrieve code for account: ${account}", ("account", requirement.code));
-      if( requirement.requirement != config::eosio_any_name ) {
+      if( requirement.requirement != config::arisen_any_name ) {
          const auto *permission = db.find<permission_object, by_name>(requirement.requirement);
          EOS_ASSERT(permission != nullptr, permission_query_exception,
                     "Failed to retrieve permission: ${permission}", ("permission", requirement.requirement));
@@ -343,8 +343,8 @@ void apply_eosio_linkauth(apply_context& context) {
   } FC_CAPTURE_AND_RETHROW((requirement))
 }
 
-void apply_eosio_unlinkauth(apply_context& context) {
-//   context.require_write_lock( config::eosio_auth_scope );
+void apply_arisen_unlinkauth(apply_context& context) {
+//   context.require_write_lock( config::arisen_auth_scope );
 
    auto& db = context.db;
    auto unlink = context.act.data_as<unlinkauth>();
@@ -362,7 +362,7 @@ void apply_eosio_unlinkauth(apply_context& context) {
    db.remove(*link);
 }
 
-void apply_eosio_canceldelay(apply_context& context) {
+void apply_arisen_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
    context.require_authorization(cancel.canceling_auth.actor); // only here to mark the single authority on this action as used
 

@@ -568,7 +568,7 @@ struct abi_gen_helper {
       stdc_include_param, pfr_include_param, core_sym_include_param };
 
     bool res = runToolOnCodeWithArgs(
-      new find_eosio_abi_macro_action(contract, actions, ""),
+      new find_arisen_abi_macro_action(contract, actions, ""),
       source,
       extra_args
     );
@@ -3303,7 +3303,7 @@ BOOST_AUTO_TEST_CASE(abi_type_nested_in_vector)
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE(abi_account_name_in_eosio_abi)
+BOOST_AUTO_TEST_CASE(abi_account_name_in_arisen_abi)
 { try {
    // inifinite loop in types
    const char* repeat_abi = R"=====(

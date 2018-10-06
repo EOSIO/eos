@@ -455,7 +455,7 @@ public:
                                             ("permission", name(config::active_name).to_string())
                                             ("parent", name(config::owner_name).to_string())
                                             ("auth",  authority(1, {key_weight{get_public_key( config::system_account_name, "active" ), 1}}, {
-                                                  permission_level_weight{{config::system_account_name, config::eosio_code_name}, 1},
+                                                  permission_level_weight{{config::system_account_name, config::arisen_code_name}, 1},
                                                      permission_level_weight{{config::producers_account_name,  config::active_name}, 1}
                                                }
                                             ))

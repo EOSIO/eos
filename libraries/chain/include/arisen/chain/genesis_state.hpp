@@ -18,7 +18,7 @@ namespace arisen { namespace chain {
 struct genesis_state {
    genesis_state();
 
-   static const string eosio_root_key;
+   static const string arisen_root_key;
 
    chain_config   initial_configuration = {
       .max_block_net_usage                  = config::default_max_block_net_usage,

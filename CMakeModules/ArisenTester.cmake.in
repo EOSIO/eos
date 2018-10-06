@@ -69,7 +69,7 @@ find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
     DOC "Path to the GMP library"
 )
 
-macro(add_eosio_test test_name)
+macro(add_arisen_test test_name)
    add_executable( ${test_name} ${ARGN} )
    target_link_libraries( ${test_name}
        ${LLVM}

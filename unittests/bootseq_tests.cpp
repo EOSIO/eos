@@ -188,8 +188,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         //  - eosio (code: arisen.bios) (already set by tester constructor)
         //  - arisen.msig (code: arisen.msig)
         //  - arisen.token (code: arisen.token)
-        set_code_abi(N(arisen.msig), arisen_msig_wast, arisen_msig_abi);//, &eosio_active_pk);
-        set_code_abi(N(arisen.token), arisen_token_wast, arisen_token_abi); //, &eosio_active_pk);
+        set_code_abi(N(arisen.msig), arisen_msig_wast, arisen_msig_abi);//, &arisen_active_pk);
+        set_code_abi(N(arisen.token), arisen_token_wast, arisen_token_abi); //, &arisen_active_pk);
 
         // Set privileged for arisen.msig and arisen.token
         set_privileged(N(arisen.msig));
