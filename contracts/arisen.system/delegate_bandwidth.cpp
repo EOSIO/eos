@@ -118,11 +118,11 @@ namespace arisensystem {
       // If quant.amount == 1, then quant_after_fee.amount == 0 and the next inline transfer will fail causing the buyram action to fail.
 
       INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {payer,N(active)},
-         { payer, N(eosio.ram), quant_after_fee, std::string("buy ram") } );
+         { payer, N(arisen.ram), quant_after_fee, std::string("buy ram") } );
 
       if( fee.amount > 0 ) {
          INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {payer,N(active)},
-                                                       { payer, N(eosio.ramfee), fee, std::string("ram fee") } );
+                                                       { payer, N(arisen.ramfee), fee, std::string("ram fee") } );
       }
 
       int64_t bytes_out;
@@ -188,15 +188,15 @@ namespace arisensystem {
       });
       set_resource_limits( res_itr->owner, res_itr->ram_bytes, res_itr->net_weight.amount, res_itr->cpu_weight.amount );
 
-      INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(eosio.ram),N(active)},
-                                                       { N(eosio.ram), account, asset(tokens_out), std::string("sell ram") } );
+      INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(arisen.ram),N(active)},
+                                                       { N(arisen.ram), account, asset(tokens_out), std::string("sell ram") } );
 
       auto fee = ( tokens_out.amount + 199 ) / 200; /// .5% fee (round up)
       // since tokens_out.amount was asserted to be at least 2 earlier, fee.amount < tokens_out.amount
       
       if( fee > 0 ) {
          INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {account,N(active)},
-            { account, N(eosio.ramfee), asset(fee), std::string("sell ram fee") } );
+            { account, N(arisen.ramfee), asset(fee), std::string("sell ram fee") } );
       }
    }
 

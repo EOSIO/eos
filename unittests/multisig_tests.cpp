@@ -30,7 +30,7 @@ class eosio_msig_tester : public tester {
 public:
 
    eosio_msig_tester() {
-      create_accounts( { N(arisen.msig), N(eosio.stake), N(eosio.ram), N(eosio.ramfee), N(alice), N(bob), N(carol) } );
+      create_accounts( { N(arisen.msig), N(eosio.stake), N(arisen.ram), N(arisen.ramfee), N(alice), N(bob), N(carol) } );
       produce_block();
 
       auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
@@ -406,7 +406,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    create_currency( N(arisen.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
+                        get_balance("eosio") + get_balance("arisen.ramfee") + get_balance("eosio.stake") + get_balance("arisen.ram") );
 
    set_code( config::system_account_name, arisen_system_wast );
    set_abi( config::system_account_name, arisen_system_abi );
@@ -418,7 +418,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    create_account_with_resources( N(carol1111111), config::system_account_name, core_from_string("1.0000"), false );
 
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
+                        get_balance("eosio") + get_balance("arisen.ramfee") + get_balance("eosio.stake") + get_balance("arisen.ram") );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name} };
@@ -529,7 +529,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
    create_account_with_resources( N(carol1111111), config::system_account_name, core_from_string("1.0000"), false );
 
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-                        get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
+                        get_balance("eosio") + get_balance("arisen.ramfee") + get_balance("eosio.stake") + get_balance("arisen.ram") );
 
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
       {N(carol), config::active_name}, {N(apple), config::active_name}};

@@ -182,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
         // Create arisen.msig and arisen.token
-        create_accounts({N(arisen.msig), N(arisen.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+        create_accounts({N(arisen.msig), N(arisen.token), N(arisen.ram), N(arisen.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
 
         // Set code for the following accounts:
         //  - eosio (code: arisen.bios) (already set by tester constructor)

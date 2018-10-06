@@ -22,12 +22,12 @@ BOOST_FIXTURE_TEST_CASE( buysell, arisen_system_tester ) try {
    auto total = get_total_stake( "alice1111111" );
    auto init_bytes =  total["ram_bytes"].as_uint64();
 
-   const asset initial_ram_balance = get_balance(N(eosio.ram));
-   const asset initial_ramfee_balance = get_balance(N(eosio.ramfee));
+   const asset initial_ram_balance = get_balance(N(arisen.ram));
+   const asset initial_ramfee_balance = get_balance(N(arisen.ramfee));
    BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", core_from_string("200.0000") ) );
    BOOST_REQUIRE_EQUAL( core_from_string("800.0000"), get_balance( "alice1111111" ) );
-   BOOST_REQUIRE_EQUAL( initial_ram_balance + core_from_string("199.0000"), get_balance(N(eosio.ram)) );
-   BOOST_REQUIRE_EQUAL( initial_ramfee_balance + core_from_string("1.0000"), get_balance(N(eosio.ramfee)) );
+   BOOST_REQUIRE_EQUAL( initial_ram_balance + core_from_string("199.0000"), get_balance(N(arisen.ram)) );
+   BOOST_REQUIRE_EQUAL( initial_ramfee_balance + core_from_string("1.0000"), get_balance(N(arisen.ramfee)) );
 
    total = get_total_stake( "alice1111111" );
    auto bytes = total["ram_bytes"].as_uint64();

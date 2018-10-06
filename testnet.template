@@ -86,8 +86,8 @@ wcmd import -n ignition --private-key $prisyskey
 ecmd create account eosio eosio.bpay $pubsyskey $pubsyskey
 ecmd create account eosio arisen.msig $pubsyskey $pubsyskey
 ecmd create account eosio eosio.names $pubsyskey $pubsyskey
-ecmd create account eosio eosio.ram $pubsyskey $pubsyskey
-ecmd create account eosio eosio.ramfee $pubsyskey $pubsyskey
+ecmd create account eosio arisen.ram $pubsyskey $pubsyskey
+ecmd create account eosio arisen.ramfee $pubsyskey $pubsyskey
 ecmd create account eosio eosio.saving $pubsyskey $pubsyskey
 ecmd create account eosio eosio.stake $pubsyskey $pubsyskey
 ecmd create account eosio arisen.token $pubsyskey $pubsyskey

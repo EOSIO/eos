@@ -1080,14 +1080,14 @@ class Cluster(object):
                 return None
 
             eosioRamAccount=copy.deepcopy(eosioAccount)
-            eosioRamAccount.name="eosio.ram"
+            eosioRamAccount.name="arisen.ram"
             trans=biosNode.createAccount(eosioRamAccount, eosioAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (eosioRamAccount.name))
                 return None
 
             eosioRamfeeAccount=copy.deepcopy(eosioAccount)
-            eosioRamfeeAccount.name="eosio.ramfee"
+            eosioRamfeeAccount.name="arisen.ramfee"
             trans=biosNode.createAccount(eosioRamfeeAccount, eosioAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (eosioRamfeeAccount.name))
