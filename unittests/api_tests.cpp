@@ -47,7 +47,7 @@
 #include <arisen.bios/arisen.bios.wast.hpp>
 #include <arisen.bios/arisen.bios.abi.hpp>
 
-#define DISABLE_EOSLIB_SERIALIZE
+#define DISABLE_RSNLIB_SERIALIZE
 #include <test_api/test_api_common.hpp>
 
 FC_REFLECT( dummy_action, (a)(b)(c) )

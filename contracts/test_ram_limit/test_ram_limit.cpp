@@ -73,7 +73,7 @@ class test_ram_limit : public arisen::contract {
 
          uint64_t primary_key()const { return key; }
 
-         EOSLIB_SERIALIZE( test, (key)(data) )
+         RSNLIB_SERIALIZE( test, (key)(data) )
       };
       typedef arisen::multi_index< N(test.table), test> test_table;
 };

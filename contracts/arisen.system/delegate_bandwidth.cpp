@@ -40,7 +40,7 @@ namespace arisensystem {
       uint64_t primary_key()const { return owner; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( user_resources, (owner)(net_weight)(cpu_weight)(ram_bytes) )
+      RSNLIB_SERIALIZE( user_resources, (owner)(net_weight)(cpu_weight)(ram_bytes) )
    };
 
 
@@ -56,7 +56,7 @@ namespace arisensystem {
       uint64_t  primary_key()const { return to; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight) )
+      RSNLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight) )
 
    };
 
@@ -69,7 +69,7 @@ namespace arisensystem {
       uint64_t  primary_key()const { return owner; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( refund_request, (owner)(request_time)(net_amount)(cpu_amount) )
+      RSNLIB_SERIALIZE( refund_request, (owner)(request_time)(net_amount)(cpu_amount) )
    };
 
    /**

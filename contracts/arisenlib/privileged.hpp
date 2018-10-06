@@ -95,7 +95,7 @@ namespace arisen {
       uint16_t max_authority_depth;
 
 
-      EOSLIB_SERIALIZE( blockchain_parameters,
+      RSNLIB_SERIALIZE( blockchain_parameters,
                         (max_block_net_usage)(target_block_net_usage_pct)
                         (max_transaction_net_usage)(base_per_transaction_net_usage)(net_usage_leeway)
                         (context_free_discount_net_usage_num)(context_free_discount_net_usage_den)
@@ -157,6 +157,6 @@ namespace arisen {
          return a.producer_name < b.producer_name;
       }
 
-      EOSLIB_SERIALIZE( producer_key, (producer_name)(block_signing_key) )
+      RSNLIB_SERIALIZE( producer_key, (producer_name)(block_signing_key) )
    };
 }

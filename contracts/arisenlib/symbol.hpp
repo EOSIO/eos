@@ -161,7 +161,7 @@ namespace arisen {
          }
       }
 
-      EOSLIB_SERIALIZE( symbol_type, (value) )
+      RSNLIB_SERIALIZE( symbol_type, (value) )
    };
 
    /**
@@ -219,7 +219,7 @@ namespace arisen {
         return std::tie( a.value, a.contract ) < std::tie( b.value, b.contract );
       }
 
-      EOSLIB_SERIALIZE( extended_symbol, (value)(contract) )
+      RSNLIB_SERIALIZE( extended_symbol, (value)(contract) )
    };
 
    // }@ symbolapi

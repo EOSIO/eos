@@ -369,7 +369,7 @@ namespace arisen {
          symbol.print(false);
       }
 
-      EOSLIB_SERIALIZE( asset, (amount)(symbol) )
+      RSNLIB_SERIALIZE( asset, (amount)(symbol) )
    };
 
   /**
@@ -465,7 +465,7 @@ namespace arisen {
          return {r, a.contract};
       }
 
-      EOSLIB_SERIALIZE( extended_asset, (amount)(symbol)(contract) )
+      RSNLIB_SERIALIZE( extended_asset, (amount)(symbol)(contract) )
    };
 
 /// @} asset type

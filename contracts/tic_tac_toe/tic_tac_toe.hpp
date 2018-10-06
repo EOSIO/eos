@@ -74,7 +74,7 @@ class tic_tac_toe : public arisen::contract {
          }
 
          auto primary_key() const { return challenger; }
-         EOSLIB_SERIALIZE( game, (challenger)(host)(turn)(winner)(board))
+         RSNLIB_SERIALIZE( game, (challenger)(host)(turn)(winner)(board))
       };
 
       /**

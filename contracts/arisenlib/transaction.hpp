@@ -35,7 +35,7 @@ namespace arisen {
       uint8_t         max_cpu_usage_ms = 0UL; /// number of CPU usage units to bill transaction for
       unsigned_int    delay_sec = 0UL; /// number of CPU usage units to bill transaction for
 
-      EOSLIB_SERIALIZE( transaction_header, (expiration)(ref_block_num)(ref_block_prefix)(net_usage_words)(max_cpu_usage_ms)(delay_sec) )
+      RSNLIB_SERIALIZE( transaction_header, (expiration)(ref_block_num)(ref_block_prefix)(net_usage_words)(max_cpu_usage_ms)(delay_sec) )
    };
 
    class transaction : public transaction_header {
@@ -51,7 +51,7 @@ namespace arisen {
       vector<action>  actions;
       extensions_type transaction_extensions;
 
-      EOSLIB_SERIALIZE_DERIVED( transaction, transaction_header, (context_free_actions)(actions)(transaction_extensions) )
+      RSNLIB_SERIALIZE_DERIVED( transaction, transaction_header, (context_free_actions)(actions)(transaction_extensions) )
    };
 
    /**
@@ -72,7 +72,7 @@ namespace arisen {
          return unpack<transaction>(sent_trx);
       }
 
-      EOSLIB_SERIALIZE( onerror, (sender_id)(sent_trx) )
+      RSNLIB_SERIALIZE( onerror, (sender_id)(sent_trx) )
    };
 
    /**

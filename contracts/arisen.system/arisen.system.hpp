@@ -54,7 +54,7 @@ namespace arisensystem {
       block_timestamp      last_name_close;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( arisen_global_state, arisen::blockchain_parameters,
+      RSNLIB_SERIALIZE_DERIVED( arisen_global_state, arisen::blockchain_parameters,
                                 (max_ram_size)(total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)(last_pervote_bucket_fill)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
@@ -77,7 +77,7 @@ namespace arisensystem {
       void     deactivate()       { producer_key = public_key(); is_active = false; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(is_active)(url)
+      RSNLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(is_active)(url)
                         (unpaid_blocks)(last_claim_time)(location) )
    };
 
@@ -109,7 +109,7 @@ namespace arisensystem {
       uint64_t primary_key()const { return owner; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(proxied_vote_weight)(is_proxy)(reserved1)(reserved2)(reserved3) )
+      RSNLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(proxied_vote_weight)(is_proxy)(reserved1)(reserved2)(reserved3) )
    };
 
    typedef arisen::multi_index< N(voters), voter_info>  voters_table;

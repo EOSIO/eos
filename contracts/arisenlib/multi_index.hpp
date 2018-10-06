@@ -137,7 +137,7 @@ namespace _multi_index_detail {
  *       uint128_t   secondary;
  *       uint64_t primary_key() const { return primary; }
  *       uint64_t get_secondary() const { return secondary; }
- *       EOSLIB_SERIALIZE( record, (primary)(secondary) )
+ *       RSNLIB_SERIALIZE( record, (primary)(secondary) )
  *     };
  *    public:
  *      mycontract( account_name self ):contract(self){}
@@ -197,7 +197,7 @@ struct indexed_by {
  *      uint256_t get_secondary_3() const { return secondary_3; }
  *      double get_secondary_4() const { return secondary_4; }
  *      long double get_secondary_5() const { return secondary_5; }
- *      EOSLIB_SERIALIZE( record, (primary)(secondary_1)(secondary_2)(secondary_3)(secondary_4)(secondary_5) )
+ *      RSNLIB_SERIALIZE( record, (primary)(secondary_1)(secondary_2)(secondary_3)(secondary_4)(secondary_5) )
  *    };
  *    public:
  *      mycontract( account_name self ):contract(self){}
@@ -629,7 +629,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -666,7 +666,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -702,7 +702,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -801,7 +801,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -849,7 +849,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -895,7 +895,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -941,7 +941,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -987,7 +987,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1043,7 +1043,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1099,7 +1099,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1156,7 +1156,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1217,7 +1217,7 @@ class multi_index
        *       uint32_t zip = 0;
        *       uint64_t primary_key() const { return account_name; }
        *       uint64_t by_zip() const { return zip; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1289,7 +1289,7 @@ class multi_index
        *       uint64_t liked = 0;
        *       uint64_t primary_key() const { return account_name; }
        *       uint64_t by_zip() const { return zip; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1358,7 +1358,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return key; }
-       *       EOSLIB_SERIALIZE( address, (key)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (key)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1423,7 +1423,7 @@ class multi_index
        *       uint32_t zip = 0;
        *       uint64_t primary_key() const { return account_name; }
        *       uint64_t by_zip() const { return zip; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1487,7 +1487,7 @@ class multi_index
        *       uint32_t zip = 0;
        *       uint64_t primary_key() const { return account_name; }
        *       uint64_t by_zip() const { return zip; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1562,7 +1562,7 @@ class multi_index
        *       uint32_t zip = 0;
        *       uint64_t primary_key() const { return account_name; }
        *       uint64_t by_zip() const { return zip; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state)(zip) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1632,7 +1632,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1733,7 +1733,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1802,7 +1802,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1910,7 +1910,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -1961,7 +1961,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -2054,7 +2054,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}
@@ -2121,7 +2121,7 @@ class multi_index
        *       string city;
        *       string state;
        *       uint64_t primary_key() const { return account_name; }
-       *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
+       *       RSNLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
        *      addressbook(account_name self):contract(self) {}

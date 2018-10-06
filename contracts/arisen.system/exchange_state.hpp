@@ -20,7 +20,7 @@ namespace arisensystem {
          asset balance;
          double weight = .5;
 
-         EOSLIB_SERIALIZE( connector, (balance)(weight) )
+         RSNLIB_SERIALIZE( connector, (balance)(weight) )
       };
 
       connector base;
@@ -32,7 +32,7 @@ namespace arisensystem {
       asset convert_from_exchange( connector& c, asset in );
       asset convert( asset from, symbol_type to );
 
-      EOSLIB_SERIALIZE( exchange_state, (supply)(base)(quote) )
+      RSNLIB_SERIALIZE( exchange_state, (supply)(base)(quote) )
    };
 
    typedef arisen::multi_index<N(rammarket), exchange_state> rammarket;

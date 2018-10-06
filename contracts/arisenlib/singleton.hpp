@@ -48,7 +48,7 @@ namespace  eosio {
           */
          uint64_t primary_key() const { return pk_value; }
 
-         EOSLIB_SERIALIZE( row, (value) )
+         RSNLIB_SERIALIZE( row, (value) )
       };
 
       typedef arisen::multi_index<SingletonName, row> table;
