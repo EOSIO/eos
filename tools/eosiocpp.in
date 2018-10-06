@@ -1,27 +1,27 @@
 #!/bin/bash
 
-EOSIO_BIN_INSTALL_DIR=`dirname $0`
-if [ "${EOSIO_BIN_INSTALL_DIR}" == "." ]; then
-  EOSIO_BIN_INSTALL_DIR=`pwd`
+ARISEN_BIN_INSTALL_DIR=`dirname $0`
+if [ "${ARISEN_BIN_INSTALL_DIR}" == "." ]; then
+  ARISEN_BIN_INSTALL_DIR=`pwd`
 fi
-ARISEN_INSTALL_DIR=`dirname ${EOSIO_BIN_INSTALL_DIR}`
+ARISEN_INSTALL_DIR=`dirname ${ARISEN_BIN_INSTALL_DIR}`
 if [ -x "@CMAKE_BINARY_DIR@/programs/arisen-abigen/arisen-abigen" ]; then
     ABIGEN="@CMAKE_BINARY_DIR@/programs/arisen-abigen/arisen-abigen"
 elif [ -x "${ARISEN_INSTALL_DIR}/bin/arisen-abigen" ]; then
     ABIGEN=${ARISEN_INSTALL_DIR}/bin/arisen-abigen
 fi
 if [ -x "@CMAKE_BINARY_DIR@/externals/binaryen/bin/eosio-s2wasm" ]; then
-    EOSIO_S2WASM="@CMAKE_BINARY_DIR@/externals/binaryen/bin/eosio-s2wasm"
+    ARISEN_S2WASM="@CMAKE_BINARY_DIR@/externals/binaryen/bin/eosio-s2wasm"
 elif [ -x "${ARISEN_INSTALL_DIR}/bin/eosio-s2wasm" ]; then
-    EOSIO_S2WASM="${ARISEN_INSTALL_DIR}/bin/eosio-s2wasm"
+    ARISEN_S2WASM="${ARISEN_INSTALL_DIR}/bin/eosio-s2wasm"
 else
     echo "eosio-s2wasm not found either built or installed"
     exit 12
 fi
 if [ -x "@CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Programs/eosio-wast2wasm" ]; then
-    EOSIO_WAST2WASM="@CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Programs/eosio-wast2wasm"
+    ARISEN_WAST2WASM="@CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Programs/eosio-wast2wasm"
 elif [ -x "${ARISEN_INSTALL_DIR}/bin/eosio-wast2wasm" ]; then
-    EOSIO_WAST2WASM="${ARISEN_INSTALL_DIR}/bin/eosio-wast2wasm"
+    ARISEN_WAST2WASM="${ARISEN_INSTALL_DIR}/bin/eosio-wast2wasm"
 else
     echo "eosio-wast2wasm not found either built or installed"
     exit 14
@@ -93,8 +93,8 @@ function build_contract {
     done
     ($PRINT_CMDS; @WASM_LLVM_LINK@ -only-needed -o $workdir/linked.bc $workdir/built/* ${libs})
     ($PRINT_CMDS; @WASM_LLC@ -thread-model=single --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc)
-    ($PRINT_CMDS; ${EOSIO_S2WASM} -o $outname -s 16384 $workdir/assembly.s)
-    ($PRINT_CMDS; ${EOSIO_WAST2WASM} $outname ${outname%.*}.wasm -n)
+    ($PRINT_CMDS; ${ARISEN_S2WASM} -o $outname -s 16384 $workdir/assembly.s)
+    ($PRINT_CMDS; ${ARISEN_WAST2WASM} $outname ${outname%.*}.wasm -n)
 
     ($PRINT_CMDS; rm -rf $workdir)
     set +e

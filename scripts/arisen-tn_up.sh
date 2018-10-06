@@ -56,26 +56,26 @@ relaunch() {
     done
 }
 
-if [ -z "$EOSIO_LEVEL" ]; then
+if [ -z "$ARISEN_LEVEL" ]; then
     echo starting with no modifiers
     relaunch
     if [ "$connected" -eq 0 ]; then
-        EOSIO_LEVEL=replay
+        ARISEN_LEVEL=replay
     else
         exit 0
     fi
 fi
 
-if [ "$EOSIO_LEVEL" == replay ]; then
+if [ "$ARISEN_LEVEL" == replay ]; then
     echo starting with replay
     relaunch --hard-replay-blockchain
     if [  "$connected" -eq 0 ]; then
-        EOSIO_LEVEL=resync
+        ARISEN_LEVEL=resync
     else
         exit 0
     fi
 fi
-if [ "$EOSIO_LEVEL" == resync ]; then
+if [ "$ARISEN_LEVEL" == resync ]; then
     echo starting with delete-all-blocks
     relaunch --delete-all-blocks
 fi

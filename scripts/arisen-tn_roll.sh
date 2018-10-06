@@ -81,12 +81,12 @@ bash $ARISEN_HOME/scripts/arisen-tn_down.sh
 cp $SDIR/$RD/$prog $RD/$prog
 
 if [ $DD = "all" ]; then
-    for EOSIO_RESTART_DATA_DIR in `ls -d var/lib/node_??`; do
+    for ARISEN_RESTART_DATA_DIR in `ls -d var/lib/node_??`; do
         bash $ARISEN_HOME/scripts/arisen-tn_up.sh "$*"
     done
 else
     bash $ARISEN_HOME/scripts/arisen-tn_up.sh "$*"
 fi
-unset EOSIO_RESTART_DATA_DIR
+unset ARISEN_RESTART_DATA_DIR
 
 cd -

@@ -3,7 +3,7 @@
 #include <arisen/chain/wasm_interface.hpp>
 #include <arisen/chain/wasm_arisen_constraints.hpp>
 
-#define EOSIO_INJECTED_MODULE_NAME "arisen_injection"
+#define ARISEN_INJECTED_MODULE_NAME "arisen_injection"
 
 using namespace fc;
 
