@@ -85,6 +85,7 @@ void blocklog::read_log() {
    uint32_t block_num = (first_block < 1) ? 1 : first_block;
    signed_block_ptr next;
    fc::variant pretty_output;
+   std::vector<fc::variant> outputs;
    const fc::microseconds deadline = fc::seconds(10);
    auto print_block = [&](signed_block_ptr& next) {
       abi_serializer::to_variant(*next,
@@ -98,26 +99,30 @@ void blocklog::read_log() {
                  ("id", block_id)
                  ("ref_block_prefix", ref_block_prefix)
                  (pretty_output.get_object());
-      fc::variant v(std::move(enhanced_object));
-      if (no_pretty_print)
-         fc::json::to_stream(*out, v, fc::json::stringify_large_ints_and_doubles);
-      else
-         *out << fc::json::to_pretty_string(v) << "\n";
+      outputs.emplace_back(std::move(enhanced_object));
    };
    while((block_num <= last_block) && (next = block_logger.read_block_by_num( block_num ))) {
       print_block(next);
       ++block_num;
-      out->flush();
    }
-   if (!reversible_blocks) {
-      return;
+   if (reversible_blocks) {
+      const reversible_block_object* obj = nullptr;
+      while( (block_num <= last_block) && (obj = reversible_blocks->find<reversible_block_object,by_num>(block_num)) ) {
+         auto next = obj->get_block();
+         print_block(next);
+         ++block_num;
+      }
    }
-   const reversible_block_object* obj = nullptr;
-   while( (block_num <= last_block) && (obj = reversible_blocks->find<reversible_block_object,by_num>(block_num)) ) {
-      auto next = obj->get_block();
-      print_block(next);
-      ++block_num;
-   }
+
+   fc::variant v;
+   abi_serializer::to_variant(outputs,
+                              v,
+                              []( account_name n ) { return optional<abi_serializer>(); },
+                              deadline);
+   if (no_pretty_print)
+      fc::json::to_stream(*out, v, fc::json::stringify_large_ints_and_doubles);
+   else
+      *out << fc::json::to_pretty_string(v) << "\n";
 }
 
 void blocklog::set_program_options(options_description& cli)
