@@ -11,6 +11,8 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <boost/container/flat_set.hpp>
 
+#include <cyberway/chaindb/chaindb_controller.hpp>
+
 using boost::container::flat_set;
 
 namespace eosio { namespace chain {
@@ -52,6 +54,9 @@ action_trace apply_context::exec_one()
          if( trx_context.can_subjectively_fail && control.is_producing_block()) {
             control.check_contract_list( receiver );
             control.check_action_list( act.account, act.name );
+         }
+         if( a.abi.size() > 0 && chaindb.has_code(receiver) ) {
+            chaindb.add_code(receiver, a.get_abi());
          }
          try {
             control.get_wasm_interface().apply( a.code_version, a.code, *this );

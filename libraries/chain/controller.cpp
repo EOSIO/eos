@@ -22,6 +22,8 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 
+#include <cyberway/chaindb/chaindb_controller.hpp>
+
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
@@ -92,6 +94,7 @@ struct pending_state {
 
 struct controller_impl {
    controller&                    self;
+   chaindb_controller             chaindb;
    chainbase::database            db;
    chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
@@ -145,6 +148,7 @@ struct controller_impl {
 
    controller_impl( const controller::config& cfg, controller& s  )
    :self(s),
+    chaindb(cfg.chaindb_con_type, cfg.chaindb_con),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size ),
@@ -1405,6 +1409,8 @@ void controller::startup() {
 chainbase::database& controller::db()const { return my->db; }
 
 fork_database& controller::fork_db()const { return my->fork_db; }
+
+chaindb_controller& controller::chaindb() const { return my->chaindb; }
 
 
 void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count) {

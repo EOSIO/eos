@@ -412,9 +412,9 @@ namespace _detail {
                     abi.structs.emplace_back();
                     auto& dst = abi.structs.back();
                     dst.name = get_index_name(table.name.value, index.name);
-                    for (auto& key: index.key_names) {
+                    for (auto& key: index.orders) {
                         for (auto& field: src.fields) {
-                            if (field.name == key) {
+                            if (field.name == key.field) {
                                 dst.fields.push_back(field);
                                 break;
                             }
@@ -624,8 +624,8 @@ namespace _detail {
             if (cursor_->end() != itr) {
                 auto& view = *itr;
                 mutable_variant_object object;
-                for (auto& name: index_.key_names) {
-                    build_variant(object, name, view[name]);
+                for (auto& o: index_.orders) {
+                    build_variant(object, o.field, view[o.field]);
                 }
                 key_.emplace(object);
             } else {
@@ -673,10 +673,9 @@ namespace _detail {
             find.append(scope_kvp(scope));
             if (!find_key_.size()) return find;
 
-            for (int i = 0; i < index_.key_names.size(); ++i) {
-                auto& key = index_.key_names[i];
-                auto cmp = is_asc_order(index_.key_orders[i]) ? forward : backward;
-                find.append(kvp(key, [&](sub_document doc) { build_document(doc, cmp, find_key_[key]); }));
+            for (auto& o: index_.orders) {
+                auto cmp = is_asc_order(o.order) ? forward : backward;
+                find.append(kvp(o.field, [&](sub_document doc) { build_document(doc, cmp, find_key_[o.field]); }));
             }
             return find;
         }
@@ -685,11 +684,11 @@ namespace _detail {
             document sort;
             auto order = static_cast<int>(find_cmp_->order);
 
-            for (int i = 0; i < index_.key_names.size(); ++i) {
-                if (is_asc_order(index_.key_orders[i])) {
-                    sort.append(kvp(index_.key_names[i], order));
+            for (auto& o: index_.orders) {
+                if (is_asc_order(o.order)) {
+                    sort.append(kvp(o.field, order));
                 } else {
-                    sort.append(kvp(index_.key_names[i], -order));
+                    sort.append(kvp(o.field, -order));
                 }
             }
             if (!index_.unique) sort.append(kvp(get_id_key(), order));
@@ -788,18 +787,18 @@ namespace _detail {
                 options::index().name(get_primary_index_name()).unique(true));
 
             for (auto& index: table.indexes) {
-                if (index.name == get_primary_index_name() || index.key_names.empty()) continue;
+                if (index.name == get_primary_index_name() || index.orders.empty()) continue;
 
                 bool was_primary = false;
                 document doc;
                 doc.append(kvp(get_scope_key(), 1));
-                for (int i = 0; i < index.key_names.size(); ++i) {
-                    if (is_asc_order(index.key_orders[i])) {
-                        doc.append(kvp(index.key_names[i], 1));
+                for (auto& o: index.orders) {
+                    if (is_asc_order(o.order)) {
+                        doc.append(kvp(o.field, 1));
                     } else {
-                        doc.append(kvp(index.key_names[i], -1));
+                        doc.append(kvp(o.field, -1));
                     }
-                    was_primary |= (index.key_names[i] == get_id_key());
+                    was_primary |= (o.field == get_id_key());
                 }
                 if (!was_primary && !index.unique) doc.append(kvp(get_id_key(), 1));
 

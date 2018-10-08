@@ -1229,6 +1229,8 @@ class console_api : public context_aware_api {
          return context.IDX.previous_secondary(iterator, primary);\
       }
 
+#if 0 // CYBERWAY_CHAINDB
+
 class database_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
@@ -1270,6 +1272,8 @@ class database_api : public context_aware_api {
       DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(idx_double, float64_t)
       DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(idx_long_double, float128_t)
 };
+
+#endif // CYBERWAY_CHAINDB
 
 class memory_api : public context_aware_api {
    public:
@@ -1712,6 +1716,8 @@ REGISTER_INTRINSICS(producer_api,
    (get_active_producers,      int(int, int) )
 );
 
+#if 0 // CYBERWAY_CHAINDB
+
 #define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX) \
    (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int))\
    (db_##IDX##_remove,         void(int))\
@@ -1754,6 +1760,8 @@ REGISTER_INTRINSICS( database_api,
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_long_double)
 );
+
+#endif // CYBERWAY_CHAINDB
 
 REGISTER_INTRINSICS(crypto_api,
    (assert_recover_key,     void(int, int, int, int, int) )
@@ -1921,3 +1929,5 @@ std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
 }
 
 } } /// eosio::chain
+
+#include "wasm_chaindb_interface.ipp"

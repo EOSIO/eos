@@ -28,7 +28,7 @@ if (libmongoc-1.0_FOUND)
 
     message(STATUS "Found mongocxx library: ${CHAINDB_LIBMONGOCXX}")
 else()
-    message("Could NOT find MongoDB. mongo_db_plugin with MongoDB support will not be included.")
+    message("Could NOT find MongoDB. chaindb test support will not be included.")
 endif()
 
 set(CHAINDB_TEST_NAME chaindb_test)

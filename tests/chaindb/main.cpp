@@ -58,8 +58,8 @@ int main() {
     abi.tables.emplace_back( eosio::chain::table_def {
        "hello",
        "hello",
-       {{"primary", true, {"id"}, {"asc"}},
-        {"name", false, {"name"}, {"asc"}}}
+       {{"primary", true, {{"id", "asc"}}},
+        {"name", false, {{"name", "asc"}}}}
     });
 
     try {

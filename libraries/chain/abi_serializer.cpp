@@ -105,7 +105,7 @@ namespace eosio { namespace chain {
 
    void abi_serializer::set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time) {
       const fc::time_point deadline = fc::time_point::now() + max_serialization_time;
-      EOS_ASSERT(starts_with(abi.version, "eosio::abi/1."), unsupported_abi_version_exception, "ABI has an unsupported version");
+      EOS_ASSERT(starts_with(abi.version, "cyberway::abi/1."), unsupported_abi_version_exception, "ABI has an unsupported version");
 
       typedefs.clear();
       structs.clear();
@@ -129,10 +129,8 @@ namespace eosio { namespace chain {
       for( const auto& t : abi.tables ) {
          tables[t.name] = t.type;
          for( const auto& i : t.indexes ) {
-            EOS_ASSERT( i.key_names.size() == i.key_orders.size(), abi_serialization_table_index_items_size,
-                "key_names has different size than key_orders");
-            for( const auto& o : i.key_orders ) {
-                EOS_ASSERT( o == "asc" || o == "desc", abi_serialization_index_order_type,
+            for( const auto& o : i.orders ) {
+                EOS_ASSERT( o.order == "asc" || o.order == "desc", abi_serialization_index_order_type,
                     "invalid type of index order" );
             }
          }
