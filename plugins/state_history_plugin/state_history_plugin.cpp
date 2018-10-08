@@ -26,31 +26,6 @@ using boost::signals2::scoped_connection;
 
 static appbase::abstract_plugin& _state_history_plugin = app().register_plugin<state_history_plugin>();
 
-enum class state_history_db_object_type {
-   null_object_type = 0,
-   state_history_object_type,
-};
-
-struct state_history_object
-    : public chainbase::object<(uint16_t)state_history_db_object_type::state_history_object_type,
-                               state_history_object> {
-   OBJECT_CTOR(state_history_object, (deltas))
-
-   id_type       id;
-   shared_string deltas;
-};
-
-using state_history_index = chainbase::shared_multi_index_container<
-    state_history_object,
-    indexed_by<ordered_unique<tag<by_id>,
-                              member<state_history_object, state_history_object::id_type, &state_history_object::id>>>>;
-
-} // namespace eosio
-
-CHAINBASE_SET_INDEX_TYPE(eosio::state_history_object, eosio::state_history_index)
-
-namespace eosio {
-
 template <typename F>
 static void for_each_table(const chainbase::database& db, F f) {
    f("account", db.get_index<account_index>(), [](auto&) { return true; });
@@ -96,21 +71,16 @@ auto catch_and_log(F f) {
 }
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
-   chain_plugin*                        chain_plug = nullptr;
-   std::unique_ptr<chainbase::database> db;
-   history_log                          state_log{"irreversible_state"};
-   fc::optional<scoped_connection>      accepted_block_connection;
-   fc::optional<scoped_connection>      irreversible_block_connection;
-   string                               endpoint_address = "0.0.0.0";
-   uint16_t                             endpoint_port    = 4321;
-   std::unique_ptr<tcp::acceptor>       acceptor;
+   chain_plugin*                   chain_plug = nullptr;
+   history_log                     state_log{"state_history"};
+   bool                            stopping = false;
+   fc::optional<scoped_connection> accepted_block_connection;
+   fc::optional<scoped_connection> irreversible_block_connection;
+   string                          endpoint_address = "0.0.0.0";
+   uint16_t                        endpoint_port    = 4321;
+   std::unique_ptr<tcp::acceptor>  acceptor;
 
-   void open_irreversible(const boost::filesystem::path& path) {
-      state_log.open_log((path / "irreversible_state.log").string());
-      state_log.open_index((path / "irreversible_state.index").string());
-   }
-
-   void get_irreversible_state(uint32_t block_num, bytes& deltas) {
+   void get_state(uint32_t block_num, bytes& deltas) {
       history_log_header header;
       auto&              stream = state_log.get_entry(block_num, header);
       uint32_t           s;
@@ -137,7 +107,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          stream->next_layer().set_option(boost::asio::socket_base::send_buffer_size(1024 * 1024));
          stream->next_layer().set_option(boost::asio::socket_base::receive_buffer_size(1024 * 1024));
          stream->async_accept([self = shared_from_this(), this](boost::system::error_code ec) {
-            if (!plugin->db)
+            if (plugin->stopping)
                return;
             callback(ec, "async_accept", [&] {
                start_read();
@@ -150,7 +120,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          auto in_buffer = std::make_shared<boost::beast::flat_buffer>();
          stream->async_read(
              *in_buffer, [self = shared_from_this(), this, in_buffer](boost::system::error_code ec, size_t) {
-                if (!plugin->db)
+                if (plugin->stopping)
                    return;
                 callback(ec, "async_read", [&] {
                    auto d = boost::asio::buffer_cast<char const*>(boost::beast::buffers_front(in_buffer->data()));
@@ -183,7 +153,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          stream->async_write( //
              boost::asio::buffer(send_queue[0]),
              [self = shared_from_this(), this](boost::system::error_code ec, size_t) {
-                if (!plugin->db)
+                if (plugin->stopping)
                    return;
                 callback(ec, "async_write", [&] {
                    send_queue.erase(send_queue.begin());
@@ -194,26 +164,19 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
 
       using result_type = void;
-      void operator()(get_state_request_v0&) {
-         get_state_result_v0 result;
-         auto&               ind = plugin->db->get_index<state_history_index>().indices();
-         if (!ind.empty())
-            result.last_block_num = (--ind.end())->id._id;
+      void operator()(get_status_request_v0&) {
+         get_status_result_v0 result;
+         result.state_begin_block_num = plugin->state_log.begin_block();
+         result.state_end_block_num   = plugin->state_log.end_block();
          send(std::move(result));
       }
 
       void operator()(get_block_request_v0& req) {
          // ilog("${b} get_block_request_v0", ("b", req.block_num));
          get_block_result_v0 result{req.block_num};
-         auto&               ind = plugin->db->get_index<state_history_index>().indices();
-         auto                it  = ind.find(req.block_num);
-         if (it != ind.end()) {
-            result.found = true;
-            result.deltas.assign(it->deltas.begin(), it->deltas.end());
-            // dlog("    bytes: ${b}", ("b", result.deltas));
-         } else if (req.block_num >= plugin->state_log.begin_block && req.block_num < plugin->state_log.end_block) {
-            plugin->get_irreversible_state(req.block_num, result.deltas);
-            result.found = true;
+         if (req.block_num >= plugin->state_log.begin_block() && req.block_num < plugin->state_log.end_block()) {
+            result.deltas.emplace();
+            plugin->get_state(req.block_num, *result.deltas);
          }
          send(std::move(result));
       }
@@ -283,7 +246,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    void do_accept() {
       auto socket = std::make_shared<tcp::socket>(app().get_io_service());
       acceptor->async_accept(*socket, [self = shared_from_this(), socket, this](auto ec) {
-         if (!db)
+         if (stopping)
             return;
          if (ec) {
             if (ec == boost::system::errc::too_many_files_open)
@@ -299,99 +262,60 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       });
    }
 
-   void on_accept(boost::system::error_code ec) {}
-
    void on_accepted_block(const block_state_ptr& block_state) {
-      // ilog("block ${n}", ("n", block_state->block->block_num()));
-      auto& chain = chain_plug->chain();
-      auto& idx   = db->get_index<state_history_index>();
-
-      // todo: ignore blocks already in irreversible_state.log
-
-      uint64_t num_removed = 0;
-      while (!idx.indices().empty() && (--idx.indices().end())->id._id >= block_state->block->block_num()) {
-         db->remove(*--idx.indices().end());
-         ++num_removed;
-      }
-      if (num_removed)
-         ilog("fork: removed ${n} blocks", ("n", num_removed));
-      EOS_ASSERT(idx.indices().empty() || (--idx.indices().end())->id._id + 1 == block_state->block->block_num(),
-                 plugin_exception, "missed a fork switch");
-
-      bool fresh = idx.indices().empty();
+      bool fresh = state_log.begin_block() == state_log.end_block();
       if (fresh)
          ilog("Placing initial state in block ${n}", ("n", block_state->block->block_num()));
 
-      db->create<state_history_object>([&](state_history_object& hist) {
-         hist.id = block_state->block->block_num();
-         std::vector<table_delta> deltas;
-         for_each_table(chain.db(), [&, this](auto* name, auto& index, auto filter) {
-            if (fresh) {
-               if (index.indices().empty())
-                  return;
-               deltas.push_back({});
-               auto& delta = deltas.back();
-               delta.name  = name;
-               for (auto& row : index.indices())
-                  if (filter(row))
-                     delta.rows.emplace_back(row.id._id, fc::raw::pack(make_history_serial_wrapper(row)));
-            } else {
-               if (index.stack().empty())
-                  return;
-               auto& undo = index.stack().back();
-               if (undo.old_values.empty() && undo.new_ids.empty() && undo.removed_values.empty())
-                  return;
-               deltas.push_back({});
-               auto& delta = deltas.back();
-               delta.name  = name;
-               for (auto& old : undo.old_values) {
-                  auto& row = index.get(old.first);
-                  if (filter(row))
-                     delta.rows.emplace_back(old.first._id, fc::raw::pack(make_history_serial_wrapper(row)));
-               }
-               for (auto id : undo.new_ids) {
-                  auto& row = index.get(id);
-                  if (filter(row))
-                     delta.rows.emplace_back(id._id, fc::raw::pack(make_history_serial_wrapper(row)));
-               }
-               for (auto& old : undo.removed_values)
-                  if (filter(old.second))
-                     delta.removed.push_back(old.first._id);
+      std::vector<table_delta> deltas;
+      for_each_table(chain_plug->chain().db(), [&, this](auto* name, auto& index, auto filter) {
+         if (fresh) {
+            if (index.indices().empty())
+               return;
+            deltas.push_back({});
+            auto& delta = deltas.back();
+            delta.name  = name;
+            for (auto& row : index.indices())
+               if (filter(row))
+                  delta.rows.emplace_back(row.id._id, fc::raw::pack(make_history_serial_wrapper(row)));
+         } else {
+            if (index.stack().empty())
+               return;
+            auto& undo = index.stack().back();
+            if (undo.old_values.empty() && undo.new_ids.empty() && undo.removed_values.empty())
+               return;
+            deltas.push_back({});
+            auto& delta = deltas.back();
+            delta.name  = name;
+            for (auto& old : undo.old_values) {
+               auto& row = index.get(old.first);
+               if (filter(row))
+                  delta.rows.emplace_back(old.first._id, fc::raw::pack(make_history_serial_wrapper(row)));
             }
-         });
-         auto bin = fc::raw::pack(deltas);
-         // dlog("    ${s} bytes", ("s", bin.size()));
-         hist.deltas.insert(hist.deltas.end(), bin.begin(), bin.end());
+            for (auto id : undo.new_ids) {
+               auto& row = index.get(id);
+               if (filter(row))
+                  delta.rows.emplace_back(id._id, fc::raw::pack(make_history_serial_wrapper(row)));
+            }
+            for (auto& old : undo.removed_values)
+               if (filter(old.second))
+                  delta.removed.push_back(old.first._id);
+         }
+      });
+      auto deltas_bin = fc::raw::pack(deltas);
+      EOS_ASSERT(deltas_bin.size() == (uint32_t)deltas_bin.size(), plugin_exception, "deltas is too big");
+      history_log_header header{.block_num    = block_state->block->block_num(),
+                                .payload_size = sizeof(uint32_t) + deltas_bin.size()};
+      state_log.write_entry(header, [&](auto& stream) {
+         uint32_t s = (uint32_t)deltas_bin.size();
+         stream.write((char*)&s, sizeof(s));
+         if (!deltas_bin.empty())
+            stream.write(deltas_bin.data(), deltas_bin.size());
       });
    } // on_accepted_block
 
-   void on_irreversible_block(const block_state_ptr& block_state) {
-      // ilog("irreversible ${n}", ("n", block_state->block->block_num()));
-      auto& idx = db->get_index<state_history_index>().indices();
-      while (!idx.empty()) {
-         auto& obj = *idx.begin();
-         if (obj.id._id > block_state->block->block_num())
-            break;
-         if (obj.id._id == state_log.end_block || state_log.begin_block == state_log.end_block) {
-            // ilog("write irreversible ${n}", ("n", obj.id._id));
-            EOS_ASSERT(obj.deltas.size() == (uint32_t)obj.deltas.size(), plugin_exception, "deltas is too big");
-            history_log_header header{.block_num    = (uint32_t)obj.id._id,
-                                      .payload_size = sizeof(uint32_t) + obj.deltas.size()};
-            state_log.write_entry(header, [&](auto& stream) {
-               uint32_t s = (uint32_t)obj.deltas.size();
-               stream.write((char*)&s, sizeof(s));
-               if (!obj.deltas.empty())
-                  stream.write(obj.deltas.data(), obj.deltas.size());
-            });
-         }
-         if (idx.size() >= 2 && (++idx.begin())->id._id <= block_state->block->block_num()) {
-            // ilog("drop irreversible ${n}", ("n", obj.id._id));
-            db->remove(obj);
-         } else
-            break;
-      }
-   } // on_irreversible_block
-};   // state_history_plugin_impl
+   void on_irreversible_block(const block_state_ptr& block_state) {}
+}; // state_history_plugin_impl
 
 state_history_plugin::state_history_plugin()
     : my(std::make_shared<state_history_plugin_impl>()) {}
@@ -402,8 +326,6 @@ void state_history_plugin::set_program_options(options_description& cli, options
    auto options = cfg.add_options();
    options("state-history-dir", bpo::value<bfs::path>()->default_value("state-history"),
            "the location of the state-history directory (absolute path or relative to application data dir)");
-   options("state-history-db-size-mb", bpo::value<uint64_t>()->default_value(1024),
-           "Maximum size (in MiB) of the state history database");
    options("delete-state-history", bpo::bool_switch()->default_value(false), "clear state history database");
    options("state-history-endpoint", bpo::value<string>()->default_value("0.0.0.0:8080"),
            "the endpoint upon which to listen for incoming connections");
@@ -427,7 +349,6 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
          state_history_dir = app().data_dir() / dir_option;
       else
          state_history_dir = dir_option;
-      auto state_history_size = options.at("state-history-db-size-mb").as<uint64_t>() * 1024 * 1024;
 
       auto ip_port         = options.at("state-history-endpoint").as<string>();
       auto port            = ip_port.substr(ip_port.find(':') + 1, ip_port.size());
@@ -441,34 +362,9 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
          boost::filesystem::remove_all(state_history_dir);
       }
 
-      my->db = std::make_unique<chainbase::database>(state_history_dir, database::read_write, state_history_size);
-      my->db->add_index<state_history_index>();
-      my->open_irreversible(state_history_dir);
-
-      auto& ind = my->db->get_index<state_history_index>().indices();
-      ilog("in-memory state history has ${n} blocks", ("n", ind.size()));
-      if (my->state_log.end_block != my->state_log.begin_block) {
-         // todo: load if ind.empty()
-         EOS_ASSERT(!ind.empty(), plugin_exception, "irreversible_state.log and shared_memory don't match");
-         auto& x = *ind.begin();
-         EOS_ASSERT(x.id._id == my->state_log.end_block - 1, plugin_exception,
-                    "irreversible_state.log and shared_memory don't match");
-      }
-
-      // size_t total = 0, max_size = 0, max_block = 0, num = 0;
-      // for (auto& x : ind) {
-      //    if (!(x.id._id % 10000))
-      //       dlog("    ${i}: ${s} bytes", ("i", x.id._id)("s", x.deltas.size()));
-      //    total += x.deltas.size();
-      //    if (x.deltas.size() > max_size) {
-      //       max_block = x.id._id;
-      //       max_size  = x.deltas.size();
-      //    }
-      //    ++num;
-      // }
-      // dlog("total: ${s} bytes", ("s", total));
-      // dlog("max:   ${s} bytes in ${b}", ("s", max_size)("b", max_block));
-      // dlog("num:   ${s}", ("s", num));
+      boost::filesystem::create_directories(state_history_dir);
+      my->state_log.open((state_history_dir / "state_history.log").string(),
+                         (state_history_dir / "state_history.index").string());
    }
    FC_LOG_AND_RETHROW()
 } // state_history_plugin::plugin_initialize
@@ -480,7 +376,7 @@ void state_history_plugin::plugin_shutdown() {
    my->irreversible_block_connection.reset();
    while (!my->sessions.empty())
       my->sessions.begin()->second->close();
-   my->db.reset();
+   my->stopping = true;
 }
 
 } // namespace eosio

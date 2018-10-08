@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include <boost/filesystem.hpp>
 #include <fstream>
 #include <stdint.h>
 
@@ -40,15 +41,75 @@ struct history_log_header {
    uint16_t version      = 0;
 };
 
-struct history_log {
-   const char* const name = "";
+class history_log {
+ private:
+   const char* const name     = "";
+   bool              _is_open = false;
+   std::string       log_filename;
+   std::string       index_filename;
    std::fstream      log;
    std::fstream      index;
-   uint32_t          begin_block = 0;
-   uint32_t          end_block   = 0;
+   uint32_t          _begin_block = 0;
+   uint32_t          _end_block   = 0;
 
-   void open_log(const std::string& filename) {
-      log.open(filename, std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app);
+ public:
+   history_log(const char* const name)
+       : name(name) {}
+
+   bool     is_open() const { return _is_open; }
+   uint32_t begin_block() const { return _begin_block; }
+   uint32_t end_block() const { return _end_block; }
+
+   void open(std::string log_filename, std::string index_filename) {
+      this->log_filename   = std::move(log_filename);
+      this->index_filename = std::move(index_filename);
+      open_log();
+      open_index();
+      _is_open = true;
+   }
+
+   void close() {
+      log.close();
+      index.close();
+      _is_open = false;
+   }
+
+   template <typename F>
+   void write_entry(history_log_header header, F write_payload) {
+      EOS_ASSERT(_is_open, chain::plugin_exception, "writing to closed ${name}.log", ("name", name));
+      EOS_ASSERT(_begin_block == _end_block || header.block_num <= _end_block, chain::plugin_exception,
+                 "missed a block writing to ${name}.log", ("name", name));
+      if (header.block_num < _end_block)
+         truncate(header.block_num);
+      log.seekg(0, std::ios_base::end);
+      uint64_t pos = log.tellg();
+      log.write((char*)&header, sizeof(header));
+      write_payload(log);
+      uint64_t end = log.tellg();
+      EOS_ASSERT(end == pos + sizeof(header) + header.payload_size, chain::plugin_exception,
+                 "wrote payload with incorrect size to ${name}.log", ("name", name));
+      log.write((char*)&pos, sizeof(pos));
+
+      index.seekg(0, std::ios_base::end);
+      index.write((char*)&pos, sizeof(pos));
+      if (_begin_block == _end_block)
+         _begin_block = header.block_num;
+      _end_block = header.block_num + 1;
+   }
+
+   // returns stream positioned at payload
+   std::fstream& get_entry(uint32_t block_num, history_log_header& header) {
+      EOS_ASSERT(_is_open, chain::plugin_exception, "reading from closed ${name}.log", ("name", name));
+      EOS_ASSERT(block_num >= _begin_block && block_num < _end_block, chain::plugin_exception,
+                 "read non-existing block in ${name}.log", ("name", name));
+      log.seekg(get_pos(block_num));
+      log.read((char*)&header, sizeof(header));
+      return log;
+   }
+
+ private:
+   void open_log() {
+      log.open(log_filename, std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app);
       uint64_t size = log.tellg();
       if (size >= sizeof(history_log_header)) {
          history_log_header header;
@@ -56,7 +117,7 @@ struct history_log {
          log.read((char*)&header, sizeof(header));
          EOS_ASSERT(header.version == 0 && sizeof(header) + header.payload_size + sizeof(uint64_t) <= size,
                     chain::plugin_exception, "corrupt ${name}.log (1)", ("name", name));
-         begin_block = header.block_num;
+         _begin_block = header.block_num;
 
          uint64_t end_pos;
          log.seekg(size - sizeof(end_pos));
@@ -67,23 +128,23 @@ struct history_log {
          log.read((char*)&header, sizeof(header));
          EOS_ASSERT(end_pos + sizeof(header) + header.payload_size + sizeof(uint64_t) == size, chain::plugin_exception,
                     "corrupt ${name}.log (3)", ("name", name));
-         end_block = header.block_num + 1;
+         _end_block = header.block_num + 1;
 
-         EOS_ASSERT(begin_block < end_block, chain::plugin_exception, "corrupt ${name}.log (4)", ("name", name));
-         ilog("${name}.log has blocks ${b}-${e}", ("name", name)("b", begin_block)("e", end_block - 1));
+         EOS_ASSERT(_begin_block < _end_block, chain::plugin_exception, "corrupt ${name}.log (4)", ("name", name));
+         ilog("${name}.log has blocks ${b}-${e}", ("name", name)("b", _begin_block)("e", _end_block - 1));
       } else {
          EOS_ASSERT(!size, chain::plugin_exception, "corrupt ${name}.log (5)", ("name", name));
          ilog("${name}.log is empty", ("name", name));
       }
    }
 
-   void open_index(const std::string& filename) {
-      index.open(filename, std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app);
-      if (index.tellg() == (end_block - begin_block) * sizeof(uint64_t))
+   void open_index() {
+      index.open(index_filename, std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app);
+      if (index.tellg() == (_end_block - _begin_block) * sizeof(uint64_t))
          return;
       ilog("Regenerate ${name}.index", ("name", name));
       index.close();
-      index.open(filename, std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::trunc);
+      index.open(index_filename, std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::trunc);
 
       log.seekg(0, std::ios_base::end);
       uint64_t size = log.tellg();
@@ -107,36 +168,36 @@ struct history_log {
       }
    }
 
-   template <typename F>
-   void write_entry(history_log_header header, F write_payload) {
-      EOS_ASSERT(begin_block == end_block || header.block_num == end_block, chain::plugin_exception,
-                 "writing unexpected block_num to ${name}.log", ("name", name));
-      log.seekg(0, std::ios_base::end);
-      uint64_t pos = log.tellg();
-      log.write((char*)&header, sizeof(header));
-      write_payload(log);
-      uint64_t end = log.tellg();
-      EOS_ASSERT(end == pos + sizeof(header) + header.payload_size, chain::plugin_exception,
-                 "wrote payload with incorrect size to ${name}.log", ("name", name));
-      log.write((char*)&pos, sizeof(pos));
-
-      index.seekg(0, std::ios_base::end);
-      index.write((char*)&pos, sizeof(pos));
-      if (begin_block == end_block)
-         begin_block = header.block_num;
-      end_block = header.block_num + 1;
+   uint64_t get_pos(uint32_t block_num) {
+      uint64_t pos;
+      index.seekg((block_num - _begin_block) * sizeof(pos));
+      index.read((char*)&pos, sizeof(pos));
+      return pos;
    }
 
-   // returns stream positioned at payload
-   std::fstream& get_entry(uint32_t block_num, history_log_header& header) {
-      EOS_ASSERT(block_num >= begin_block && block_num < end_block, chain::plugin_exception,
-                 "read non-existing block in ${name}.log", ("name", name));
-      uint64_t pos;
-      index.seekg((block_num - begin_block) * sizeof(pos));
-      index.read((char*)&pos, sizeof(pos));
-      log.seekg(pos);
-      log.read((char*)&header, sizeof(header));
-      return log;
+   void truncate(uint32_t block_num) {
+      log.flush();
+      index.flush();
+      uint64_t num_removed = 0;
+      if (block_num <= _begin_block) {
+         num_removed = _end_block - _begin_block;
+         log.seekg(0);
+         index.seekg(0);
+         boost::filesystem::resize_file(log_filename, 0);
+         boost::filesystem::resize_file(index_filename, 0);
+         _begin_block = _end_block = 0;
+      } else {
+         num_removed  = _end_block - block_num;
+         uint64_t pos = get_pos(block_num);
+         log.seekg(0);
+         index.seekg(0);
+         boost::filesystem::resize_file(log_filename, pos);
+         boost::filesystem::resize_file(index_filename, (block_num - _begin_block) * sizeof(pos));
+         _end_block = block_num;
+      }
+      log.sync();
+      index.sync();
+      ilog("fork or replay: removed ${n} blocks from ${name}.log", ("n", num_removed)("name", name));
    }
 }; // history_log
 

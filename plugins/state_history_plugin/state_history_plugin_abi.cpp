@@ -2,11 +2,12 @@ extern const char* const state_history_plugin_abi = R"({
     "version": "eosio::abi/1.1",
     "structs": [
         {
-            "name": "get_state_request_v0", "fields": []
+            "name": "get_status_request_v0", "fields": []
         },
         {
-            "name": "get_state_result_v0", "fields": [
-                { "name": "last_block_num", "type": "uint32" }
+            "name": "get_status_result_v0", "fields": [
+                { "name": "state_begin_block_num", "type": "uint32" },
+                { "name": "state_end_block_num", "type": "uint32" }
             ]
         },
         {
@@ -17,8 +18,7 @@ extern const char* const state_history_plugin_abi = R"({
         {
             "name": "get_block_result_v0", "fields": [
                 { "name": "block_num", "type": "uint32" },
-                { "name": "found", "type": "bool" },
-                { "name": "deltas", "type": "bytes" }
+                { "name": "deltas", "type": "bytes?" }
             ]
         },
         {
@@ -326,8 +326,8 @@ extern const char* const state_history_plugin_abi = R"({
         }
     ],
     "variants": [
-        { "name": "request", "types": ["get_state_request_v0", "get_block_request_v0"] },
-        { "name": "result", "types": ["get_state_result_v0", "get_block_result_v0"] },
+        { "name": "request", "types": ["get_status_request_v0", "get_block_request_v0"] },
+        { "name": "result", "types": ["get_status_result_v0", "get_block_result_v0"] },
 
         { "name": "table_delta", "types": ["table_delta_v0"] },
         { "name": "account", "types": ["account_v0"] },
