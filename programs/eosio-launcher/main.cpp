@@ -426,6 +426,7 @@ struct launcher_def {
    string start_temp;
    string start_script;
    fc::optional<uint32_t> max_block_cpu_usage;
+   fc::optional<uint32_t> max_transaction_cpu_usage;
    eosio::chain::genesis_state genesis_from_file;
 
    void assign_name (eosd_def &node, bool is_bios);
@@ -500,7 +501,8 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("gelf-endpoint",bpo::value<string>(&gelf_endpoint)->default_value("10.160.11.21:12201"),"hostname:port or ip:port of GELF endpoint")
     ("template",bpo::value<string>(&start_temp)->default_value("testnet.template"),"the startup script template")
     ("script",bpo::value<string>(&start_script)->default_value("bios_boot.sh"),"the generated startup script name")
-    ("max-block-cpu-usage",bpo::value<uint32_t>(),"")
+    ("max-block-cpu-usage",bpo::value<uint32_t>(),"Provide the \"max-block-cpu-usage\" value to use in the genesis.json file")
+    ("max-transaction-cpu-usage",bpo::value<uint32_t>(),"Provide the \"max-transaction-cpu-usage\" value to use in the genesis.json file")
         ;
 }
 
@@ -534,6 +536,10 @@ launcher_def::initialize (const variables_map &vmap) {
 
   if (vmap.count("max-block-cpu-usage")) {
      max_block_cpu_usage = vmap["max-block-cpu-usage"].as<uint32_t>();
+  }
+
+  if (vmap.count("max-transaction-cpu-usage")) {
+     max_transaction_cpu_usage = vmap["max-transaction-cpu-usage"].as<uint32_t>();
   }
 
   genesis = vmap["genesis"].as<string>();
@@ -1184,6 +1190,8 @@ launcher_def::init_genesis () {
    genesis_from_file.initial_key = public_key_type(bioskey);
    if (max_block_cpu_usage)
       genesis_from_file.initial_configuration.max_block_cpu_usage = *max_block_cpu_usage;
+   if (max_transaction_cpu_usage)
+      genesis_from_file.initial_configuration.max_transaction_cpu_usage = *max_transaction_cpu_usage;
 }
 
 void
