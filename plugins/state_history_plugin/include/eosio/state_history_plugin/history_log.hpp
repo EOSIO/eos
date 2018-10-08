@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/types.hpp>
 #include <fc/log/logger.hpp>
 
 namespace eosio {
@@ -20,37 +21,49 @@ namespace eosio {
  *   +---------+----------------+-----------+------------------+-----+---------+----------------+
  *
  *   *.index:
- *   +----------------+------------------+-----+----------------+
- *   | Pos of Entry i | Pos of Entry i+1 | ... | Pos of Entry z |
- *   +----------------+------------------+-----+----------------+
+ *   +-----------+-------------+-----+-----------+
+ *   | Summary i | Summary i+1 | ... | Summary z |
+ *   +-----------+-------------+-----+-----------+
  *
  * each entry:
- *    uint32_t    block_num
- *    uint64_t    size of payload
- *    uint8_t     version
- *                payload
+ *    uint32_t       block_num
+ *    block_id_type  block_id
+ *    uint64_t       size of payload
+ *    uint8_t        version
+ *                   payload
  *
- * irreversible_state payload:
+ * each summary:
+ *    uint64_t       position of entry in *.log
+ *    block_id_type  block_id
+ *
+ * state payload:
  *    uint32_t    size of deltas
  *    char[]      deltas
  */
 
 struct history_log_header {
-   uint32_t block_num    = 0;
-   uint64_t payload_size = 0;
-   uint16_t version      = 0;
+   uint32_t             block_num = 0;
+   chain::block_id_type block_id;
+   uint64_t             payload_size = 0;
+   uint8_t              version      = 0;
+};
+
+struct history_summary {
+   uint64_t             pos = 0;
+   chain::block_id_type block_id;
 };
 
 class history_log {
  private:
-   const char* const name     = "";
-   bool              _is_open = false;
-   std::string       log_filename;
-   std::string       index_filename;
-   std::fstream      log;
-   std::fstream      index;
-   uint32_t          _begin_block = 0;
-   uint32_t          _end_block   = 0;
+   const char* const    name     = "";
+   bool                 _is_open = false;
+   std::string          log_filename;
+   std::string          index_filename;
+   std::fstream         log;
+   std::fstream         index;
+   uint32_t             _begin_block = 0;
+   uint32_t             _end_block   = 0;
+   chain::block_id_type last_block_id;
 
  public:
    history_log(const char* const name)
@@ -75,10 +88,23 @@ class history_log {
    }
 
    template <typename F>
-   void write_entry(history_log_header header, F write_payload) {
+   void write_entry(history_log_header header, const chain::block_id_type& prev_id, F write_payload) {
       EOS_ASSERT(_is_open, chain::plugin_exception, "writing to closed ${name}.log", ("name", name));
       EOS_ASSERT(_begin_block == _end_block || header.block_num <= _end_block, chain::plugin_exception,
-                 "missed a block writing to ${name}.log", ("name", name));
+                 "missed a block in ${name}.log", ("name", name));
+
+      if (_begin_block != _end_block && header.block_num > _begin_block) {
+         if (header.block_num == _end_block) {
+            EOS_ASSERT(prev_id == last_block_id, chain::plugin_exception, "missed a fork change in ${name}.log",
+                       ("name", name));
+         } else {
+            history_log_header prev;
+            get_entry(header.block_num - 1, prev);
+            EOS_ASSERT(prev_id == prev.block_id, chain::plugin_exception, "missed a fork change in ${name}.log",
+                       ("name", name));
+         }
+      }
+
       if (header.block_num < _end_block)
          truncate(header.block_num);
       log.seekg(0, std::ios_base::end);
@@ -91,10 +117,12 @@ class history_log {
       log.write((char*)&pos, sizeof(pos));
 
       index.seekg(0, std::ios_base::end);
-      index.write((char*)&pos, sizeof(pos));
+      history_summary summary{.pos = pos, .block_id = header.block_id};
+      index.write((char*)&summary, sizeof(summary));
       if (_begin_block == _end_block)
          _begin_block = header.block_num;
-      _end_block = header.block_num + 1;
+      _end_block    = header.block_num + 1;
+      last_block_id = header.block_id;
    }
 
    // returns stream positioned at payload
@@ -128,7 +156,8 @@ class history_log {
          log.read((char*)&header, sizeof(header));
          EOS_ASSERT(end_pos + sizeof(header) + header.payload_size + sizeof(uint64_t) == size, chain::plugin_exception,
                     "corrupt ${name}.log (3)", ("name", name));
-         _end_block = header.block_num + 1;
+         _end_block    = header.block_num + 1;
+         last_block_id = header.block_id;
 
          EOS_ASSERT(_begin_block < _end_block, chain::plugin_exception, "corrupt ${name}.log (4)", ("name", name));
          ilog("${name}.log has blocks ${b}-${e}", ("name", name)("b", _begin_block)("e", _end_block - 1));
@@ -140,7 +169,7 @@ class history_log {
 
    void open_index() {
       index.open(index_filename, std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app);
-      if (index.tellg() == (_end_block - _begin_block) * sizeof(uint64_t))
+      if (index.tellg() == (_end_block - _begin_block) * sizeof(history_summary))
          return;
       ilog("Regenerate ${name}.index", ("name", name));
       index.close();
@@ -150,7 +179,6 @@ class history_log {
       uint64_t size = log.tellg();
       uint64_t pos  = 0;
       while (pos < size) {
-         index.write((char*)&pos, sizeof(pos));
          history_log_header header;
          EOS_ASSERT(pos + sizeof(header) <= size, chain::plugin_exception, "corrupt ${name}.log (6)", ("name", name));
          log.seekg(pos);
@@ -164,15 +192,18 @@ class history_log {
          // ilog("block ${b} at ${pos}-${end} suffix=${suffix} file_size=${fs}",
          //      ("b", header.block_num)("pos", pos)("end", suffix_pos + sizeof(suffix))("suffix", suffix)("fs", size));
          EOS_ASSERT(suffix == pos, chain::plugin_exception, "corrupt ${name}.log (8)", ("name", name));
+
+         history_summary summary{.pos = pos, .block_id = header.block_id};
+         index.write((char*)&summary, sizeof(summary));
          pos = suffix_pos + sizeof(suffix);
       }
    }
 
    uint64_t get_pos(uint32_t block_num) {
-      uint64_t pos;
-      index.seekg((block_num - _begin_block) * sizeof(pos));
-      index.read((char*)&pos, sizeof(pos));
-      return pos;
+      history_summary summary;
+      index.seekg((block_num - _begin_block) * sizeof(summary));
+      index.read((char*)&summary, sizeof(summary));
+      return summary.pos;
    }
 
    void truncate(uint32_t block_num) {
@@ -192,7 +223,7 @@ class history_log {
          log.seekg(0);
          index.seekg(0);
          boost::filesystem::resize_file(log_filename, pos);
-         boost::filesystem::resize_file(index_filename, (block_num - _begin_block) * sizeof(pos));
+         boost::filesystem::resize_file(index_filename, (block_num - _begin_block) * sizeof(history_summary));
          _end_block = block_num;
       }
       log.sync();
