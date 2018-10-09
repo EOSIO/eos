@@ -66,41 +66,49 @@ public:
 struct variant_snapshot_suite {
    using writer_t = variant_snapshot_writer;
    using reader_t = variant_snapshot_reader;
-   using storage_t = fc::mutable_variant_object;
+   using write_storage_t = fc::mutable_variant_object;
+   using read_storage_t = fc::variant;
 };
 
 struct buffered_snapshot_suite {
    using writer_t = ostream_snapshot_writer;
    using reader_t = istream_snapshot_reader;
-   using storage_t = std::stringstream;
+   using write_storage_t = std::stringstream;
+   using read_storage_t = write_storage_t;
+
 };
 
 template<typename SUITE>
 struct suite_funcs {
    struct writer : public SUITE::writer_t {
-      writer( const std::shared_ptr<typename SUITE::storage_t>& storage )
+      writer( const std::shared_ptr<typename SUITE::write_storage_t>& storage )
       :SUITE::writer_t(*storage)
       ,storage(storage)
-      {}
+      {
 
-      std::shared_ptr<typename SUITE::storage_t> storage;
+      }
+
+      std::shared_ptr<typename SUITE::write_storage_t> storage;
    };
 
    struct reader : public SUITE::reader_t {
-      explicit reader(const std::shared_ptr<writer>& from)
-      :SUITE::reader_t(*from->storage)
-      ,storage(from->storage)
+      explicit reader(typename SUITE::read_storage_t& buffer)
+      :SUITE::reader_t(buffer)
       {}
 
-      std::shared_ptr<typename SUITE::storage_t> storage;
    };
 
    static auto get_writer() {
-      return std::make_shared<writer>(std::make_shared<typename SUITE::storage_t>());
+      return std::make_shared<writer>(std::make_shared<typename SUITE::write_storage_t>());
    }
 
-   static auto get_reader(const std::shared_ptr<writer>& w) {
-      return std::make_shared<reader>(w);
+   static auto finalize(const std::shared_ptr<writer>& w) {
+      w->finalize();
+      return typename SUITE::read_storage_t(std::move(*w->storage));
+   }
+
+   static auto get_reader( typename SUITE::read_storage_t& buffer) {
+      return std::make_shared<reader>(buffer);
    }
 };
 
@@ -126,10 +134,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot
       // create a new snapshot child
       auto writer = suite_funcs<SNAPSHOT_SUITE>::get_writer();
       chain.control->write_snapshot(writer);
-      writer->finalize();
+      auto snapshot = suite_funcs<SNAPSHOT_SUITE>::finalize(writer);
 
       // create a new child at this snapshot
-      sub_testers.emplace_back(chain.get_config(), suite_funcs<SNAPSHOT_SUITE>::get_reader(writer), generation);
+      sub_testers.emplace_back(chain.get_config(), suite_funcs<SNAPSHOT_SUITE>::get_reader(snapshot), generation);
 
       // increment the test contract
       chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
@@ -182,9 +190,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
    // create a new snapshot child
    auto writer = suite_funcs<SNAPSHOT_SUITE>::get_writer();
    chain.control->write_snapshot(writer);
+   auto snapshot = suite_funcs<SNAPSHOT_SUITE>::finalize(writer);
 
    // create a new child at this snapshot
-   snapshotted_tester snap_chain(chain.get_config(), suite_funcs<SNAPSHOT_SUITE>::get_reader(writer), 1);
+   snapshotted_tester snap_chain(chain.get_config(), suite_funcs<SNAPSHOT_SUITE>::get_reader(snapshot), 1);
    BOOST_REQUIRE_EQUAL(expected_pre_integrity_hash.str(), snap_chain.control->calculate_integrity_hash().str());
 
    // push more blocks to build up a block log
@@ -204,7 +213,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
    BOOST_REQUIRE_EQUAL(expected_post_integrity_hash.str(), snap_chain.control->calculate_integrity_hash().str());
 
    // replay the block log from the snapshot child, from the snapshot
-   snapshotted_tester replay_chain(chain.get_config(), suite_funcs<SNAPSHOT_SUITE>::get_reader(writer), 2, 1);
+   snapshotted_tester replay_chain(chain.get_config(), suite_funcs<SNAPSHOT_SUITE>::get_reader(snapshot), 2, 1);
    BOOST_REQUIRE_EQUAL(expected_post_integrity_hash.str(), snap_chain.control->calculate_integrity_hash().str());
 }
 
