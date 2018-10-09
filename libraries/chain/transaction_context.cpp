@@ -23,7 +23,7 @@ namespace eosio { namespace chain {
    ,pseudo_start(s)
    {
       if (!c.skip_db_sessions()) {
-         undo_session = c.db().start_undo_session(true);
+         undo_session = c.mutable_db().start_undo_session(true);
       }
       trace->id = id;
       trace->block_num = c.pending_block_state()->block_num;
@@ -451,7 +451,7 @@ namespace eosio { namespace chain {
       auto first_auth = trx.first_authorizor();
 
       uint32_t trx_size = 0;
-      const auto& cgto = control.db().create<generated_transaction_object>( [&]( auto& gto ) {
+      const auto& cgto = control.mutable_db().create<generated_transaction_object>( [&]( auto& gto ) {
         gto.trx_id      = id;
         gto.payer       = first_auth;
         gto.sender      = account_name(); /// delayed transactions have no sender
@@ -467,7 +467,7 @@ namespace eosio { namespace chain {
 
    void transaction_context::record_transaction( const transaction_id_type& id, fc::time_point_sec expire ) {
       try {
-          control.db().create<transaction_object>([&](transaction_object& transaction) {
+          control.mutable_db().create<transaction_object>([&](transaction_object& transaction) {
               transaction.trx_id = id;
               transaction.expiration = expire;
           });

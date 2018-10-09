@@ -37,7 +37,7 @@ struct async_result_visitor : public fc::visitor<std::string> {
 
 #define CALL(api_name, api_handle, api_namespace, call_name, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
-   [this, api_handle](string, string body, url_response_callback cb) mutable { \
+   [api_handle](string, string body, url_response_callback cb) mutable { \
           api_handle.validate(); \
           try { \
              if (body.empty()) body = "{}"; \
@@ -50,7 +50,7 @@ struct async_result_visitor : public fc::visitor<std::string> {
 
 #define CALL_ASYNC(api_name, api_handle, api_namespace, call_name, call_result, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
-   [this, api_handle](string, string body, url_response_callback cb) mutable { \
+   [api_handle](string, string body, url_response_callback cb) mutable { \
       if (body.empty()) body = "{}"; \
       api_handle.validate(); \
       api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>(),\
@@ -79,7 +79,10 @@ void chain_api_plugin::plugin_startup() {
    auto ro_api = app().get_plugin<chain_plugin>().get_read_only_api();
    auto rw_api = app().get_plugin<chain_plugin>().get_read_write_api();
 
-   app().get_plugin<http_plugin>().add_api({
+   auto& _http_plugin = app().get_plugin<http_plugin>();
+   ro_api.set_shorten_abi_errors( !_http_plugin.verbose_errors() );
+
+   _http_plugin.add_api({
       CHAIN_RO_CALL(get_info, 200l),
       CHAIN_RO_CALL(get_block, 200),
       CHAIN_RO_CALL(get_block_header_state, 200),

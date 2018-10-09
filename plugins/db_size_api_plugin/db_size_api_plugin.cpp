@@ -36,7 +36,7 @@ void db_size_api_plugin::plugin_startup() {
 }
 
 db_size_stats db_size_api_plugin::get() {
-   chainbase::database& db = app().get_plugin<chain_plugin>().chain().db();
+   const chainbase::database& db = app().get_plugin<chain_plugin>().chain().db();
    db_size_stats ret;
 
    ret.free_bytes = db.get_segment_manager()->get_free_memory();
