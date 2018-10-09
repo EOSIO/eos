@@ -946,8 +946,7 @@ handle_action( mongo_regactoin &regact, const chain::action_trace &action_trace 
    } else if ( op == "update" ) {
       auto filter = document{};
       auto update = document{};
-      dlog(v["act"]["data"]["filter"].get_string());
-      dlog(v["act"]["data"]["update"].get_string());
+
       from_json_to_doc( filter, v["act"]["data"]["filter"].get_string());
       from_json_to_doc( update, v["act"]["data"]["update"].get_string());
 
