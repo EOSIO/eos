@@ -189,7 +189,7 @@ class Node(object):
         outStr=Node.byteArrToStr(outs)
         if not outStr:
             return None
-        extJStr=Utils.filterJsonObject(outStr)
+        extJStr=Utils.filterJsonObjectOrArray(outStr)
         if not extJStr:
             return None
         jStr=Node.normalizeJsonObject(extJStr)
