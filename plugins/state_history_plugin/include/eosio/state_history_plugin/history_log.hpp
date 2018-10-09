@@ -136,6 +136,59 @@ class history_log {
    }
 
  private:
+   bool get_last_block(uint64_t size) {
+      history_log_header header;
+      uint64_t           suffix;
+      log.seekg(size - sizeof(suffix));
+      log.read((char*)&suffix, sizeof(suffix));
+      if (suffix > size || suffix + sizeof(header) > size) {
+         elog("corrupt ${name}.log (2)", ("name", name));
+         return false;
+      }
+      log.seekg(suffix);
+      log.read((char*)&header, sizeof(header));
+      if (suffix + sizeof(header) + header.payload_size + sizeof(suffix) != size) {
+         elog("corrupt ${name}.log (3)", ("name", name));
+         return false;
+      }
+      _end_block    = header.block_num + 1;
+      last_block_id = header.block_id;
+      if (_begin_block >= _end_block) {
+         elog("corrupt ${name}.log (4)", ("name", name));
+         return false;
+      }
+      return true;
+   }
+
+   void recover_blocks(uint64_t size) {
+      ilog("recover ${name}.log", ("name", name));
+      uint64_t pos       = 0;
+      uint32_t num_found = 0;
+      while (true) {
+         history_log_header header;
+         if (pos + sizeof(header) > size)
+            break;
+         log.seekg(pos);
+         log.read((char*)&header, sizeof(header));
+         uint64_t suffix;
+         if (header.payload_size > size || pos + sizeof(header) + header.payload_size + sizeof(suffix) > size)
+            break;
+         log.seekg(pos + sizeof(header) + header.payload_size);
+         log.read((char*)&suffix, sizeof(suffix));
+         if (suffix != pos)
+            break;
+         pos = pos + sizeof(header) + header.payload_size + sizeof(suffix);
+         if (!(++num_found % 10000)) {
+            printf("%10u blocks found, log pos=%12llu\r", (unsigned)num_found, (unsigned long long)pos);
+            fflush(stdout);
+         }
+      }
+      log.flush();
+      boost::filesystem::resize_file(log_filename, pos);
+      log.sync();
+      EOS_ASSERT(get_last_block(pos), chain::plugin_exception, "recover ${name}.log failed", ("name", name));
+   }
+
    void open_log() {
       log.open(log_filename, std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app);
       uint64_t size = log.tellg();
@@ -145,21 +198,10 @@ class history_log {
          log.read((char*)&header, sizeof(header));
          EOS_ASSERT(header.version == 0 && sizeof(header) + header.payload_size + sizeof(uint64_t) <= size,
                     chain::plugin_exception, "corrupt ${name}.log (1)", ("name", name));
-         _begin_block = header.block_num;
-
-         uint64_t end_pos;
-         log.seekg(size - sizeof(end_pos));
-         log.read((char*)&end_pos, sizeof(end_pos));
-         EOS_ASSERT(end_pos <= size && end_pos + sizeof(header) <= size, chain::plugin_exception,
-                    "corrupt ${name}.log (2)", ("name", name));
-         log.seekg(end_pos);
-         log.read((char*)&header, sizeof(header));
-         EOS_ASSERT(end_pos + sizeof(header) + header.payload_size + sizeof(uint64_t) == size, chain::plugin_exception,
-                    "corrupt ${name}.log (3)", ("name", name));
-         _end_block    = header.block_num + 1;
+         _begin_block  = header.block_num;
          last_block_id = header.block_id;
-
-         EOS_ASSERT(_begin_block < _end_block, chain::plugin_exception, "corrupt ${name}.log (4)", ("name", name));
+         if (!get_last_block(size))
+            recover_blocks(size);
          ilog("${name}.log has blocks ${b}-${e}", ("name", name)("b", _begin_block)("e", _end_block - 1));
       } else {
          EOS_ASSERT(!size, chain::plugin_exception, "corrupt ${name}.log (5)", ("name", name));
@@ -176,8 +218,9 @@ class history_log {
       index.open(index_filename, std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::trunc);
 
       log.seekg(0, std::ios_base::end);
-      uint64_t size = log.tellg();
-      uint64_t pos  = 0;
+      uint64_t size      = log.tellg();
+      uint64_t pos       = 0;
+      uint32_t num_found = 0;
       while (pos < size) {
          history_log_header header;
          EOS_ASSERT(pos + sizeof(header) <= size, chain::plugin_exception, "corrupt ${name}.log (6)", ("name", name));
@@ -196,6 +239,10 @@ class history_log {
          history_summary summary{.pos = pos, .block_id = header.block_id};
          index.write((char*)&summary, sizeof(summary));
          pos = suffix_pos + sizeof(suffix);
+         if (!(++num_found % 10000)) {
+            printf("%10u blocks found, log pos=%12llu\r", (unsigned)num_found, (unsigned long long)pos);
+            fflush(stdout);
+         }
       }
    }
 
