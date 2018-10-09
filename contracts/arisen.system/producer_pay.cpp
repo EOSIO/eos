@@ -93,7 +93,7 @@ namespace arisensystem {
                                                     {N(arisen), asset(new_tokens), std::string("issue tokens for producer pay and savings")} );
 
          INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(arisen),N(active)},
-                                                       { N(arisen), N(arisen.saving), asset(to_savings), "unallocated inflation" } );
+                                                       { N(arisen), N(arisen.save), asset(to_savings), "unallocated inflation" } );
 
          INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {N(arisen),N(active)},
                                                        { N(arisen), N(arisen.bpay), asset(to_per_block_pay), "fund per-block bucket" } );

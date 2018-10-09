@@ -122,7 +122,7 @@ namespace arisensystem {
 
       if( fee.amount > 0 ) {
          INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {payer,N(active)},
-                                                       { payer, N(arisen.ramfee), fee, std::string("ram fee") } );
+                                                       { payer, N(arisen.rfee), fee, std::string("ram fee") } );
       }
 
       int64_t bytes_out;
@@ -196,7 +196,7 @@ namespace arisensystem {
 
       if( fee > 0 ) {
          INLINE_ACTION_SENDER(arisen::token, transfer)( N(arisen.token), {account,N(active)},
-            { account, N(arisen.ramfee), asset(fee), std::string("sell ram fee") } );
+            { account, N(arisen.rfee), asset(fee), std::string("sell ram fee") } );
       }
    }
 
