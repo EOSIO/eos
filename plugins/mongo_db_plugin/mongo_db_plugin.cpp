@@ -816,7 +816,11 @@ void insert_document( mongocxx::collection *coll, const bsoncxx::builder::basic:
 
 void update_document( mongocxx::collection *coll, const bsoncxx::builder::basic::document & filter,
                       const bsoncxx::builder::basic::document & update ) {
-   coll->update_one(filter.view(), update.view());
+
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
+
+   coll->update_one( filter.view(), make_document( kvp( "$set", update.view())));
 }
 
 void delete_document( mongocxx::collection *coll, const bsoncxx::builder::basic::document & filter ) {
@@ -942,6 +946,8 @@ handle_action( mongo_regactoin &regact, const chain::action_trace &action_trace 
    } else if ( op == "update" ) {
       auto filter = document{};
       auto update = document{};
+      dlog(v["act"]["data"]["filter"].get_string());
+      dlog(v["act"]["data"]["update"].get_string());
       from_json_to_doc( filter, v["act"]["data"]["filter"].get_string());
       from_json_to_doc( update, v["act"]["data"]["update"].get_string());
 
