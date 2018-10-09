@@ -19,6 +19,7 @@ delay=args.d
 total_nodes = pnodes if args.n == 0 else args.n
 debug=args.v
 nodesFile=args.nodes_file
+dontLaunch=nodesFile is not None
 seed=args.seed
 dontKill=args.leave_running
 dumpErrorDetails=args.dump_error_details
@@ -40,7 +41,7 @@ walletMgr=WalletMgr(True)
 try:
     cluster.setWalletMgr(walletMgr)
 
-    if nodesFile is not None:
+    if dontLaunch: # run test against remote cluster
         jsonStr=None
         with open(nodesFile, "r") as f:
             jsonStr=f.read()
@@ -74,7 +75,10 @@ try:
     accountsCount=total_nodes
     walletName="MyWallet-%d" % (random.randrange(10000))
     Print("Creating wallet %s if one doesn't already exist." % walletName)
-    wallet=walletMgr.create(walletName, [cluster.eosioAccount,cluster.defproduceraAccount,cluster.defproducerbAccount])
+    walletAccounts=[cluster.defproduceraAccount,cluster.defproducerbAccount]
+    if not dontLaunch:
+        walletAccounts.append(cluster.eosioAccount)
+    wallet=walletMgr.create(walletName, walletAccounts)
     if wallet is None:
         errorExit("Failed to create wallet %s" % (walletName))
 
@@ -95,7 +99,7 @@ try:
         errorExit("Failed to spread and validate funds.")
 
     print("Funds spread validated")
-    
+
     testSuccessful=True
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)

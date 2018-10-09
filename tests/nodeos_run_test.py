@@ -72,6 +72,7 @@ try:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
+        Print("Collecting cluster info.")
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
         killEosInstances=False
 
@@ -114,7 +115,10 @@ try:
 
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
-    testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount,cluster.defproduceraAccount,cluster.defproducerbAccount])
+    walletAccounts=[cluster.defproduceraAccount,cluster.defproducerbAccount]
+    if not dontLaunch:
+        walletAccounts.append(cluster.eosioAccount)
+    testWallet=walletMgr.create(testWalletName, walletAccounts)
 
     Print("Wallet \"%s\" password=%s." % (testWalletName, testWallet.password.encode("utf-8")))
 
@@ -202,14 +206,14 @@ try:
     cluster.validateAccounts(None)
 
     # create accounts via eosio as otherwise a bid is needed 
-    Print("Create new account %s via %s" % (testeraAccount.name, cluster.eosioAccount.name))
-    transId=node.createInitializeAccount(testeraAccount, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
+    Print("Create new account %s via %s" % (testeraAccount.name, cluster.defproduceraAccount.name))
+    transId=node.createInitializeAccount(testeraAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
 
-    Print("Create new account %s via %s" % (currencyAccount.name, cluster.eosioAccount.name))
-    transId=node.createInitializeAccount(currencyAccount, cluster.eosioAccount, buyRAM=1000000, stakedDeposit=5000, exitOnError=True)
+    Print("Create new account %s via %s" % (currencyAccount.name, cluster.defproduceraAccount.name))
+    transId=node.createInitializeAccount(currencyAccount, cluster.defproduceraAccount, buyRAM=200000, stakedDeposit=5000, exitOnError=True)
 
-    Print("Create new account %s via %s" % (exchangeAccount.name, cluster.eosioAccount.name))
-    transId=node.createInitializeAccount(exchangeAccount, cluster.eosioAccount, buyRAM=1000000, waitForTransBlock=True, exitOnError=True)
+    Print("Create new account %s via %s" % (exchangeAccount.name, cluster.defproduceraAccount.name))
+    transId=node.createInitializeAccount(exchangeAccount, cluster.defproduceraAccount, buyRAM=200000, waitForTransBlock=True, exitOnError=True)
 
     Print("Validating accounts after user accounts creation")
     accounts=[testeraAccount, currencyAccount, exchangeAccount]
