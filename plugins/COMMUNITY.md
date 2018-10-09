@@ -6,6 +6,7 @@ Third parties are encouraged to make pull requests to this file (`develop` branc
 
 | Description | URL |
 | ----------- | --- |
+| BP Heartbeat  | https://github.com/bancorprotocol/eos-producer-heartbeat-plugin |
 | ElasticSearch | https://github.com/EOSLaoMao/elasticsearch_plugin |
 | Kafka | https://github.com/TP-Lab/kafka_plugin |
 | MySQL | https://github.com/eosBLACK/eosio_mysqldb_plugin |
