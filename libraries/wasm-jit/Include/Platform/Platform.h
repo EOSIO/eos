@@ -134,6 +134,7 @@ namespace Platform
 		Uptr& outTrapOperand,
 		const std::function<void()>& thunk
 		);
+	PLATFORM_API void immediately_exit();
 
 	//
 	// Threading
