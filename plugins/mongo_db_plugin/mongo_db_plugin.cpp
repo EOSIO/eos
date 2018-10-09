@@ -929,6 +929,7 @@ void
 handle_action( mongo_regactoin &regact, const chain::action_trace &action_trace ) {
    using bsoncxx::builder::basic::document;
    using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::basic::make_document;
 
    const chain::base_action_trace &base = action_trace;
    auto v = regact.get_plguin()->to_variant_with_abi( base );
@@ -938,22 +939,34 @@ handle_action( mongo_regactoin &regact, const chain::action_trace &action_trace 
 
    auto coll_name = regact.get_action_info()->view()["collection"].get_utf8().value.to_string();
    auto op = regact.get_action_info()->view()["operation"].get_utf8().value.to_string();
+   auto maxupnum = regact.get_action_info()->view()["maxupnum"].get_int32();
    if ( op == "insert" ) {
       auto doc = document{};
-      from_json_to_doc( doc, v["act"]["data"]["document"].get_string());
+      from_json_to_doc( doc, fc::json::to_string( v["act"]["data"] ));
 
       insert_document( regact.get_plguin()->get_custom_collection( coll_name ), doc );
    } else if ( op == "update" ) {
       auto filter = document{};
       auto update = document{};
 
-      from_json_to_doc( filter, v["act"]["data"]["filter"].get_string());
-      from_json_to_doc( update, v["act"]["data"]["update"].get_string());
+      auto vb = v["act"]["data"].get_object();
+      auto key = vb.begin();
+
+      int key_count = 0;
+      for (auto it = vb.begin(); it != vb.end(); ++it) {
+         filter.append( kvp(it->key(), it->value().as_string()));
+         ++key_count;
+         if (key_count == maxupnum) {
+            break;
+         }
+      }
+
+      from_json_to_doc( update, fc::json::to_string( v["act"]["data"]));
 
       update_document( regact.get_plguin()->get_custom_collection( coll_name ), filter, update );
    } else if ( op == "delete" ) {
       auto filter = document{};
-      from_json_to_doc( filter, v["act"]["data"]["filter"].get_string());
+      from_json_to_doc( filter, fc::json::to_string( v["act"]["data"] ));
 
       delete_document( regact.get_plguin()->get_custom_collection( coll_name ), filter );
    } else {

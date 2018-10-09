@@ -14,18 +14,18 @@ public:
    }
 
    /// @abi actoin
-   void addword(string document) {
-      print(document);
+   void addword(string word, string desc, uint64_t id) {
+      print(word, "\t", desc, "\t", id);
    }
 
    /// @abi action
-   void delword( string filter ) {
-
+   void delword( string word ) {
+      print(word);
    }
 
    /// @abi action
-   void modword( string filter, string update ) {
-
+   void modword( string word, uint64_t id ) {
+      print(word, "\t", id);
    }
 
 };
