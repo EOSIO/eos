@@ -107,7 +107,7 @@ steps:
       - "mongod.log"
       - "build/genesis.json"
       - "build/config.ini"
-    timeout: 60
+    timeout: 100
     
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -131,7 +131,7 @@ steps:
       docker#v1.4.0:
         image: "eosio/ci:ubuntu"
         workdir: /data/job
-    timeout: 60
+    timeout: 100
   
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -155,7 +155,7 @@ steps:
       docker#v1.4.0:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
-    timeout: 60
+    timeout: 100
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -179,7 +179,7 @@ steps:
       docker#v1.4.0:
         image: "eosio/ci:fedora"
         workdir: /data/job
-    timeout: 60
+    timeout: 100
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -203,7 +203,7 @@ steps:
       docker#v1.4.0:
         image: "eosio/ci:centos"
         workdir: /data/job
-    timeout: 60
+    timeout: 100
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -227,4 +227,4 @@ steps:
       docker#v1.4.0:
         image: "eosio/ci:amazonlinux"
         workdir: /data/job
-    timeout: 60
+    timeout: 100

@@ -18,6 +18,7 @@
 #include <boost/asio/ssl.hpp>
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
+#include <fc/network/platform_root_ca.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -230,14 +231,7 @@ namespace eosio { namespace client { namespace http {
       }
       else { //https
          boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23_client);
-#if defined( __APPLE__ )
-         //TODO: this is undocumented/not supported; fix with keychain based approach
-         ssl_context.load_verify_file("/private/etc/ssl/cert.pem");
-#elif defined( _WIN32 )
-         EOS_THROW(http_exception, "HTTPS on Windows not supported");
-#else
-         ssl_context.set_default_verify_paths();
-#endif
+         fc::add_platform_root_cas_to_context(ssl_context);
 
          boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(cp.context->ios, ssl_context);
          SSL_set_tlsext_host_name(socket.native_handle(), url.server.c_str());

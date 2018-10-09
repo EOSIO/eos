@@ -257,11 +257,6 @@ def myTest(transWillEnterBlock):
         currencyAccount=accounts[0]
         currencyAccount.name="currency0000"
 
-        Print("Stand up walletd")
-        if walletMgr.launch() is False:
-            error("Failed to stand up eos walletd.")
-            return False
-
         testWalletName="test"
         Print("Creating wallet \"%s\"." % (testWalletName))
         testWallet=walletMgr.create(testWalletName)
@@ -328,7 +323,7 @@ def myTest(transWillEnterBlock):
                 return False
 
             Print("Get details for transaction %s" % (transId))
-            transaction=node2.getTransaction(trans[1], exitOnError=True)
+            transaction=node2.getTransaction(transId, exitOnError=True)
             signature=transaction["transaction"]["signatures"][0]
 
             blockNum=int(transaction["transaction"]["ref_block_num"])
