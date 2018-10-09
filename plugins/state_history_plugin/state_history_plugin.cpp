@@ -41,8 +41,6 @@ static void for_each_table(const chainbase::database& db, F f) {
 
    f("global_property", db.get_index<global_property_multi_index>(), [](auto&) { return true; });
    f("dynamic_global_property", db.get_index<dynamic_global_property_multi_index>(), [](auto&) { return true; });
-   f("block_summary", db.get_index<block_summary_multi_index>(),
-     [](auto& row) { return row.block_id != block_id_type(); });
    f("transaction", db.get_index<transaction_multi_index>(), [](auto&) { return true; });
    f("generated_transaction", db.get_index<generated_transaction_multi_index>(), [](auto&) { return true; });
 
@@ -75,7 +73,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    history_log                     state_log{"state_history"};
    bool                            stopping = false;
    fc::optional<scoped_connection> accepted_block_connection;
-   fc::optional<scoped_connection> irreversible_block_connection;
    string                          endpoint_address = "0.0.0.0";
    uint16_t                        endpoint_port    = 4321;
    std::unique_ptr<tcp::acceptor>  acceptor;
@@ -165,9 +162,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       using result_type = void;
       void operator()(get_status_request_v0&) {
+         auto&                chain = plugin->chain_plug->chain();
          get_status_result_v0 result;
-         result.state_begin_block_num = plugin->state_log.begin_block();
-         result.state_end_block_num   = plugin->state_log.end_block();
+         result.last_irreversible_block_num = chain.last_irreversible_block_num();
+         result.last_irreversible_block_id  = chain.last_irreversible_block_id();
+         result.state_begin_block_num       = plugin->state_log.begin_block();
+         result.state_end_block_num         = plugin->state_log.end_block();
          send(std::move(result));
       }
 
@@ -314,9 +314,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             stream.write(deltas_bin.data(), deltas_bin.size());
       });
    } // on_accepted_block
-
-   void on_irreversible_block(const block_state_ptr& block_state) {}
-}; // state_history_plugin_impl
+};   // state_history_plugin_impl
 
 state_history_plugin::state_history_plugin()
     : my(std::make_shared<state_history_plugin_impl>()) {}
@@ -341,8 +339,6 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       auto& chain = my->chain_plug->chain();
       my->accepted_block_connection.emplace(
           chain.accepted_block.connect([&](const block_state_ptr& p) { my->on_accepted_block(p); }));
-      my->irreversible_block_connection.emplace(
-          chain.irreversible_block.connect([&](const block_state_ptr& p) { my->on_irreversible_block(p); }));
 
       auto                    dir_option = options.at("state-history-dir").as<bfs::path>();
       boost::filesystem::path state_history_dir;
@@ -374,7 +370,6 @@ void state_history_plugin::plugin_startup() { my->listen(); }
 
 void state_history_plugin::plugin_shutdown() {
    my->accepted_block_connection.reset();
-   my->irreversible_block_connection.reset();
    while (!my->sessions.empty())
       my->sessions.begin()->second->close();
    my->stopping = true;

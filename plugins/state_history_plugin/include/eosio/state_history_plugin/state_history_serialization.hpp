@@ -5,7 +5,6 @@
 #pragma once
 
 #include <eosio/chain/account_object.hpp>
-#include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
@@ -215,14 +214,6 @@ datastream<ST>& operator<<(datastream<ST>&                                      
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.global_action_sequence));
-   return ds;
-}
-
-template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::block_summary_object>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
-   fc::raw::pack(ds, as_type<eosio::chain::block_id_type>(obj.obj.block_id));
    return ds;
 }
 

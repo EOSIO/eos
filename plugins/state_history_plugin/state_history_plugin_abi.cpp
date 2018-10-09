@@ -6,6 +6,8 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "get_status_result_v0", "fields": [
+                { "name": "last_irreversible_block_num", "type": "uint32" },
+                { "name": "last_irreversible_block_id", "type": "checksum256" },
                 { "name": "state_begin_block_num", "type": "uint32" },
                 { "name": "state_end_block_num", "type": "uint32" }
             ]
@@ -176,12 +178,6 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "block_summary_v0", "fields": [
-                { "type": "uint64", "name": "id" },
-                { "type": "checksum256", "name": "block_id" }
-            ]
-        },
-        {
             "name": "transaction_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "time_point_sec", "name": "expiration" },
@@ -344,7 +340,6 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "chain_config", "types": ["chain_config_v0"] },
         { "name": "global_property", "types": ["global_property_v0"] },
         { "name": "dynamic_global_property", "types": ["dynamic_global_property_v0"] },
-        { "name": "block_summary", "types": ["block_summary_v0"] },
         { "name": "transaction", "types": ["transaction_v0"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
         { "name": "key_weight", "types": ["key_weight_v0"] },
@@ -375,7 +370,6 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "index_long_double", "type": "index_long_double" },
         { "name": "global_property", "type": "global_property" },
         { "name": "dynamic_global_property", "type": "dynamic_global_property" },
-        { "name": "block_summary", "type": "block_summary" },
         { "name": "transaction", "type": "transaction" },
         { "name": "generated_transaction", "type": "generated_transaction" },
         { "name": "permission", "type": "permission" },
