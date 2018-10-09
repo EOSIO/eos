@@ -148,6 +148,7 @@ class TestHelper(object):
             cluster.dumpErrorDetails()
             if walletMgr:
                 walletMgr.dumpErrorDetails()
+            cluster.printBlockLogIfNeeded()
             Utils.Print("== Errors see above ==")
             if len(Utils.CheckOutputDeque)>0:
                 Utils.Print("== cout/cerr pairs from last %d calls to Utils. ==" % len(Utils.CheckOutputDeque))

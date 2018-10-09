@@ -32,6 +32,7 @@ class Cluster(object):
     __bootlog="eosio-ignition-wd/bootlog.txt"
     __configDir="etc/eosio/"
     __dataDir="var/lib/"
+    __fileDivider="================================================================="
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
@@ -1265,7 +1266,7 @@ class Cluster(object):
 
     @staticmethod
     def dumpErrorDetailImpl(fileName):
-        Utils.Print("=================================================================")
+        Utils.Print(Cluster.__fileDivider)
         Utils.Print("Contents of %s:" % (fileName))
         if os.path.exists(fileName):
             with open(fileName, "r") as f:
@@ -1414,3 +1415,38 @@ class Cluster(object):
                     node.reportStatus()
                 except:
                     Utils.Print("No reportStatus")
+
+    def printBlockLogIfNeeded(self):
+        printBlockLog=False
+        if hasattr(self, "nodes"):
+            for node in self.nodes:
+                if node.missingTransaction:
+                    printBlockLog=True
+                    break
+
+        if hasattr(self, "biosNode") and self.biosNode.missingTransaction:
+            printBlockLog=True
+
+        if not printBlockLog:
+            return
+
+        self.printBlockLog()
+
+    def printBlockLog(self):
+        blockLogDir=Cluster.__dataDir + Cluster.nodeExtensionToName("bios") + "/blocks/"
+        blockLogBios=Utils.getBlockLog(blockLogDir, exitOnError=False)
+        Utils.Print(Cluster.__fileDivider)
+        Utils.Print("Block log from %s:\n%s" % (blockLogDir, json.dumps(blockLogBios, indent=1)))
+
+        if not hasattr(self, "nodes"):
+            return
+
+
+        numNodes=len(self.nodes)
+        for i in range(numNodes):
+            node=self.nodes[i]
+            blockLogDir=Cluster.__dataDir + Cluster.nodeExtensionToName(i) + "/blocks/"
+            blockLog=Utils.getBlockLog(blockLogDir, exitOnError=False)
+            Utils.Print(Cluster.__fileDivider)
+            Utils.Print("Block log from %s:\n%s" % (blockLogDir, json.dumps(blockLog, indent=1)))
+
