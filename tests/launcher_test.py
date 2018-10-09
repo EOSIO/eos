@@ -38,7 +38,7 @@ testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
 
-WalletdName="keosd"
+WalletdName=Utils.EosWalletName
 ClientName="cleos"
 timeout = .5 * 12 * 2 + 60 # time for finalization with 1 producer + 60 seconds padding
 Utils.setIrreversibleTimeout(timeout)
@@ -46,19 +46,25 @@ Utils.setIrreversibleTimeout(timeout)
 try:
     TestHelper.printSystemInfo("BEGIN")
 
-    walletMgr.killall(allInstances=killAll)
-    walletMgr.cleanup()
+    cluster.setWalletMgr(walletMgr)
 
     if not dontLaunch:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(pnodes=4, dontKill=dontKill, p2pPlugin=p2pPlugin) is False:
+        if cluster.launch(pnodes=4, p2pPlugin=p2pPlugin) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
+        walletMgr.killall(allInstances=killAll)
+        walletMgr.cleanup()
         cluster.initializeNodes(defproduceraPrvtKey=defproduceraPrvtKey)
         killEosInstances=False
+
+        print("Stand up walletd")
+        if walletMgr.launch() is False:
+            cmdError("%s" % (WalletdName))
+            errorExit("Failed to stand up eos walletd.")
 
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
@@ -85,13 +91,6 @@ try:
 
     exchangeAccount.ownerPrivateKey=PRV_KEY2
     exchangeAccount.ownerPublicKey=PUB_KEY2
-
-    Print("Stand up %s" % (WalletdName))
-    walletMgr.killall(allInstances=killAll)
-    walletMgr.cleanup()
-    if walletMgr.launch() is False:
-        cmdError("%s" % (WalletdName))
-        errorExit("Failed to stand up eos walletd.")
 
     testWalletName="test"
     Print("Creating wallet \"%s\"." % (testWalletName))
@@ -191,7 +190,7 @@ try:
 
     node.waitForTransInBlock(transId)
 
-    transaction=node.getTransaction(trans, exitOnError=True, delayedRetry=False)
+    transaction=node.getTransaction(transId, exitOnError=True, delayedRetry=False)
 
     typeVal=None
     amountVal=None

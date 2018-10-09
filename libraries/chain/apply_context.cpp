@@ -272,8 +272,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    }
 
    uint32_t trx_size = 0;
-   auto& d = control.db();
-   if ( auto ptr = d.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
+   if ( auto ptr = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
 
       // TODO: Remove the following subjective check when the deferred trx replacement RAM bug has been fixed with a hard fork.
@@ -283,7 +282,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       // TODO: The logic of the next line needs to be incorporated into the next hard fork.
       // add_ram_usage( ptr->payer, -(config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size()) );
 
-      d.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
+      db.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
             gtx.payer       = payer;
@@ -294,7 +293,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
             trx_size = gtx.set( trx );
          });
    } else {
-      d.create<generated_transaction_object>( [&]( auto& gtx ) {
+      db.create<generated_transaction_object>( [&]( auto& gtx ) {
             gtx.trx_id      = trx.id();
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;

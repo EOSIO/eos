@@ -453,7 +453,7 @@ class apply_context {
    public:
       apply_context(controller& con, transaction_context& trx_ctx, const action& a, uint32_t depth=0)
       :control(con)
-      ,db(con.db())
+      ,db(con.mutable_db())
       ,trx_context(trx_ctx)
       ,act(a)
       ,receiver(act.account)

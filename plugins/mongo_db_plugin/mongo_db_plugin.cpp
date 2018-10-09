@@ -111,7 +111,8 @@ public:
    void remove_account_control( const account_name& name, const permission_name& permission );
 
    /// @return true if act should be added to mongodb, false to skip it
-   bool filter_include( const chain::action_trace& action_trace ) const;
+   bool filter_include( const account_name& receiver, const action_name& act_name,
+                        const vector<chain::permission_level>& authorization ) const;
 
    void init();
    void wipe_database();
@@ -127,6 +128,7 @@ public:
    bool filter_on_star = true;
    std::set<filter_entry> filter_on;
    std::set<filter_entry> filter_out;
+   bool update_blocks_via_block_num = false;
    bool store_blocks = true;
    bool store_block_states = true;
    bool store_transactions = true;
@@ -217,20 +219,22 @@ const std::string mongo_db_plugin_impl::accounts_col = "accounts";
 const std::string mongo_db_plugin_impl::pub_keys_col = "pub_keys";
 const std::string mongo_db_plugin_impl::account_controls_col = "account_controls";
 
-bool mongo_db_plugin_impl::filter_include( const chain::action_trace& action_trace ) const {
+bool mongo_db_plugin_impl::filter_include( const account_name& receiver, const action_name& act_name,
+                                           const vector<chain::permission_level>& authorization ) const
+{
    bool include = false;
    if( filter_on_star ) {
       include = true;
    } else {
-      auto itr = std::find_if( filter_on.cbegin(), filter_on.cend(), [&action_trace]( const auto& filter ) {
-         return filter.match( action_trace.receipt.receiver, action_trace.act.name, 0 );
+      auto itr = std::find_if( filter_on.cbegin(), filter_on.cend(), [&receiver, &act_name]( const auto& filter ) {
+         return filter.match( receiver, act_name, 0 );
       } );
       if( itr != filter_on.cend() ) {
          include = true;
       } else {
-         for( const auto& a : action_trace.act.authorization ) {
-            auto itr = std::find_if( filter_on.cbegin(), filter_on.cend(), [&action_trace, &a]( const auto& filter ) {
-               return filter.match( action_trace.receipt.receiver, action_trace.act.name, a.actor );
+         for( const auto& a : authorization ) {
+            auto itr = std::find_if( filter_on.cbegin(), filter_on.cend(), [&receiver, &act_name, &a]( const auto& filter ) {
+               return filter.match( receiver, act_name, a.actor );
             } );
             if( itr != filter_on.cend() ) {
                include = true;
@@ -241,15 +245,16 @@ bool mongo_db_plugin_impl::filter_include( const chain::action_trace& action_tra
    }
 
    if( !include ) { return false; }
+   if( filter_out.empty() ) { return true; }
 
-   auto itr = std::find_if( filter_out.cbegin(), filter_out.cend(), [&action_trace]( const auto& filter ) {
-      return filter.match( action_trace.receipt.receiver, action_trace.act.name, 0 );
+   auto itr = std::find_if( filter_out.cbegin(), filter_out.cend(), [&receiver, &act_name]( const auto& filter ) {
+      return filter.match( receiver, act_name, 0 );
    } );
    if( itr != filter_out.cend() ) { return false; }
 
-   for( const auto& a : action_trace.act.authorization ) {
-      auto itr = std::find_if( filter_out.cbegin(), filter_out.cend(), [&action_trace, &a]( const auto& filter ) {
-         return filter.match( action_trace.receipt.receiver, action_trace.act.name, a.actor );
+   for( const auto& a : authorization ) {
+      auto itr = std::find_if( filter_out.cbegin(), filter_out.cend(), [&receiver, &act_name, &a]( const auto& filter ) {
+         return filter.match( receiver, act_name, a.actor );
       } );
       if( itr != filter_out.cend() ) { return false; }
    }
@@ -694,6 +699,27 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    using bsoncxx::builder::basic::make_array;
    namespace bbb = bsoncxx::builder::basic;
 
+   const auto& trx = t->trx;
+
+   if( !filter_on_star || !filter_out.empty() ) {
+      bool include = false;
+      for( const auto& a : trx.actions ) {
+         if( filter_include( a.account, a.name, a.authorization ) ) {
+            include = true;
+            break;
+         }
+      }
+      if( !include ) {
+         for( const auto& a : trx.context_free_actions ) {
+            if( filter_include( a.account, a.name, a.authorization ) ) {
+               include = true;
+               break;
+            }
+         }
+      }
+      if( !include ) return;
+   }
+
    auto trans_doc = bsoncxx::builder::basic::document{};
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -701,7 +727,6 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
 
    const auto& trx_id = t->id;
    const auto trx_id_str = trx_id.str();
-   const auto& trx = t->trx;
 
    trans_doc.append( kvp( "trx_id", trx_id_str ) );
 
@@ -776,7 +801,8 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
    }
 
    bool added = false;
-   if( start_block_reached && store_action_traces && filter_include( atrace ) ) {
+   if( start_block_reached && store_action_traces &&
+       filter_include( atrace.receipt.receiver, atrace.act.name, atrace.act.authorization ) ) {
       auto action_traces_doc = bsoncxx::builder::basic::document{};
       const chain::base_action_trace& base = atrace; // without inline action traces
 
@@ -930,9 +956,16 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       block_state_doc.append( kvp( "createdAt", b_date{now} ) );
 
       try {
-         if( !_block_states.update_one( make_document( kvp( "block_id", block_id_str ) ),
-                                        make_document( kvp( "$set", block_state_doc.view() ) ), update_opts ) ) {
-            EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block_state ${bid}", ("bid", block_id) );
+         if( update_blocks_via_block_num ) {
+            if( !_block_states.update_one( make_document( kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ) ),
+                                           make_document( kvp( "$set", block_state_doc.view() ) ), update_opts ) ) {
+               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block_state ${num}", ("num", block_num) );
+            }
+         } else {
+            if( !_block_states.update_one( make_document( kvp( "block_id", block_id_str ) ),
+                                           make_document( kvp( "$set", block_state_doc.view() ) ), update_opts ) ) {
+               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block_state ${bid}", ("bid", block_id) );
+            }
          }
       } catch( ... ) {
          handle_mongo_exception( "block_states insert: " + json, __LINE__ );
@@ -963,9 +996,16 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       block_doc.append( kvp( "createdAt", b_date{now} ) );
 
       try {
-         if( !_blocks.update_one( make_document( kvp( "block_id", block_id_str ) ),
-                                  make_document( kvp( "$set", block_doc.view() ) ), update_opts ) ) {
-            EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block ${bid}", ("bid", block_id) );
+         if( update_blocks_via_block_num ) {
+            if( !_blocks.update_one( make_document( kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ) ),
+                                     make_document( kvp( "$set", block_doc.view() ) ), update_opts ) ) {
+               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block ${num}", ("num", block_num) );
+            }
+         } else {
+            if( !_blocks.update_one( make_document( kvp( "block_id", block_id_str ) ),
+                                     make_document( kvp( "$set", block_doc.view() ) ), update_opts ) ) {
+               EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert block ${bid}", ("bid", block_id) );
+            }
          }
       } catch( ... ) {
          handle_mongo_exception( "blocks insert: " + json, __LINE__ );
@@ -1427,6 +1467,8 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
          "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
                " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI."
                " Example: mongodb://127.0.0.1:27017/EOS")
+         ("mongodb-update-via-block-num", bpo::value<bool>()->default_value(false),
+          "Update blocks/block_state with latest via block number so that duplicates are overwritten.")
          ("mongodb-store-blocks", bpo::value<bool>()->default_value(true),
           "Enables storing blocks in mongodb.")
          ("mongodb-store-block-states", bpo::value<bool>()->default_value(true),
@@ -1475,6 +1517,9 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          }
          if( options.count( "mongodb-block-start" )) {
             my->start_block_num = options.at( "mongodb-block-start" ).as<uint32_t>();
+         }
+         if( options.count( "mongodb-update-via-block-num" )) {
+            my->update_blocks_via_block_num = options.at( "mongodb-update-via-block-num" ).as<bool>();
          }
          if( options.count( "mongodb-store-blocks" )) {
             my->store_blocks = options.at( "mongodb-store-blocks" ).as<bool>();
