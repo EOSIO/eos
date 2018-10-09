@@ -926,10 +926,11 @@ private:
 };
 
 void
-handle_action( mongo_regactoin &regact, const chain::action_trace &action_trace ) {
+handle_action( mongo_regactoin &regact, const chain::action_trace &action_trace, const std::chrono::milliseconds& now) {
    using bsoncxx::builder::basic::document;
    using bsoncxx::builder::basic::kvp;
    using bsoncxx::builder::basic::make_document;
+   using bsoncxx::types::b_date;
 
    const chain::base_action_trace &base = action_trace;
    auto v = regact.get_plguin()->to_variant_with_abi( base );
@@ -943,6 +944,8 @@ handle_action( mongo_regactoin &regact, const chain::action_trace &action_trace 
    if ( op == "insert" ) {
       auto doc = document{};
       from_json_to_doc( doc, fc::json::to_string( v["act"]["data"] ));
+
+      doc.append( kvp( "createdAt", b_date{now} ) );
 
       insert_document( regact.get_plguin()->get_custom_collection( coll_name ), doc );
    } else if ( op == "update" ) {
@@ -993,7 +996,7 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
    }
 
    if (start_block_reached && store_action_traces && regact.filter_include( atrace )) {
-      handle_action( regact, atrace );
+      handle_action( regact, atrace, now );
    }
 
    if( start_block_reached && store_action_traces && filter_include( atrace ) ) {
