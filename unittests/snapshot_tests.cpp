@@ -4,6 +4,7 @@
  */
 
 #include <boost/test/unit_test.hpp>
+#include <boost/mpl/list.hpp>
 #include <eosio/testing/tester.hpp>
 
 #include <eosio/chain/snapshot.hpp>
@@ -11,6 +12,7 @@
 #include <snapshot_test/snapshot_test.wast.hpp>
 #include <snapshot_test/snapshot_test.abi.hpp>
 
+#include <sstream>
 
 using namespace eosio;
 using namespace testing;
@@ -61,9 +63,52 @@ public:
    bool validate() { return true; }
 };
 
+struct variant_snapshot_suite {
+   using writer_t = variant_snapshot_writer;
+   using reader_t = variant_snapshot_reader;
+   using storage_t = fc::mutable_variant_object;
+};
+
+struct buffered_snapshot_suite {
+   using writer_t = ostream_snapshot_writer;
+   using reader_t = istream_snapshot_reader;
+   using storage_t = std::stringstream;
+};
+
+template<typename SUITE>
+struct suite_funcs {
+   struct writer : public SUITE::writer_t {
+      writer( const std::shared_ptr<typename SUITE::storage_t>& storage )
+      :SUITE::writer_t(*storage)
+      ,storage(storage)
+      {}
+
+      std::shared_ptr<typename SUITE::storage_t> storage;
+   };
+
+   struct reader : public SUITE::reader_t {
+      explicit reader(const std::shared_ptr<writer>& from)
+      :SUITE::reader_t(*from->storage)
+      ,storage(from->storage)
+      {}
+
+      std::shared_ptr<typename SUITE::storage_t> storage;
+   };
+
+   static auto get_writer() {
+      return std::make_shared<writer>(std::make_shared<typename SUITE::storage_t>());
+   }
+
+   static auto get_reader(const std::shared_ptr<writer>& w) {
+      return std::make_shared<reader>(w);
+   }
+};
+
 BOOST_AUTO_TEST_SUITE(snapshot_tests)
 
-BOOST_AUTO_TEST_CASE(test_exhaustive_snapshot)
+using snapshot_suites = boost::mpl::list<variant_snapshot_suite, buffered_snapshot_suite>;
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;
 
@@ -79,13 +124,12 @@ BOOST_AUTO_TEST_CASE(test_exhaustive_snapshot)
 
    for (int generation = 0; generation < generation_count; generation++) {
       // create a new snapshot child
-      variant_snapshot_writer writer;
-      auto writer_p = std::shared_ptr<snapshot_writer>(&writer, [](snapshot_writer *){});
-      chain.control->write_snapshot(writer_p);
-      auto snapshot = writer.finalize();
+      auto writer = suite_funcs<SNAPSHOT_SUITE>::get_writer();
+      chain.control->write_snapshot(writer);
+      writer->finalize();
 
       // create a new child at this snapshot
-      sub_testers.emplace_back(chain.get_config(), std::make_shared<variant_snapshot_reader>(snapshot), generation);
+      sub_testers.emplace_back(chain.get_config(), suite_funcs<SNAPSHOT_SUITE>::get_reader(writer), generation);
 
       // increment the test contract
       chain.push_action(N(snapshot), N(increment), N(snapshot), mutable_variant_object()
@@ -108,7 +152,7 @@ BOOST_AUTO_TEST_CASE(test_exhaustive_snapshot)
    }
 }
 
-BOOST_AUTO_TEST_CASE(test_replay_over_snapshot)
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain;
 
@@ -136,13 +180,11 @@ BOOST_AUTO_TEST_CASE(test_replay_over_snapshot)
    auto expected_pre_integrity_hash = chain.control->calculate_integrity_hash();
 
    // create a new snapshot child
-   variant_snapshot_writer writer;
-   auto writer_p = std::shared_ptr<snapshot_writer>(&writer, [](snapshot_writer *){});
-   chain.control->write_snapshot(writer_p);
-   auto snapshot = writer.finalize();
+   auto writer = suite_funcs<SNAPSHOT_SUITE>::get_writer();
+   chain.control->write_snapshot(writer);
 
    // create a new child at this snapshot
-   snapshotted_tester snap_chain(chain.get_config(), std::make_shared<variant_snapshot_reader>(snapshot), 1);
+   snapshotted_tester snap_chain(chain.get_config(), suite_funcs<SNAPSHOT_SUITE>::get_reader(writer), 1);
    BOOST_REQUIRE_EQUAL(expected_pre_integrity_hash.str(), snap_chain.control->calculate_integrity_hash().str());
 
    // push more blocks to build up a block log
@@ -162,7 +204,7 @@ BOOST_AUTO_TEST_CASE(test_replay_over_snapshot)
    BOOST_REQUIRE_EQUAL(expected_post_integrity_hash.str(), snap_chain.control->calculate_integrity_hash().str());
 
    // replay the block log from the snapshot child, from the snapshot
-   snapshotted_tester replay_chain(chain.get_config(), std::make_shared<variant_snapshot_reader>(snapshot), 2, 1);
+   snapshotted_tester replay_chain(chain.get_config(), suite_funcs<SNAPSHOT_SUITE>::get_reader(writer), 2, 1);
    BOOST_REQUIRE_EQUAL(expected_post_integrity_hash.str(), snap_chain.control->calculate_integrity_hash().str());
 }
 

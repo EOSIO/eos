@@ -190,22 +190,22 @@ namespace eosio { namespace chain {
 
    class variant_snapshot_writer : public snapshot_writer {
       public:
-         variant_snapshot_writer();
+         variant_snapshot_writer(fc::mutable_variant_object& snapshot);
 
          void write_start_section( const std::string& section_name ) override;
          void write_row( const detail::abstract_snapshot_row_writer& row_writer ) override;
          void write_end_section( ) override;
-         fc::variant finalize();
+         void finalize();
 
       private:
-         fc::mutable_variant_object snapshot;
+         fc::mutable_variant_object& snapshot;
          std::string current_section_name;
          fc::variants current_rows;
    };
 
    class variant_snapshot_reader : public snapshot_reader {
       public:
-         variant_snapshot_reader(const fc::variant& snapshot);
+         explicit variant_snapshot_reader(const fc::variant& snapshot);
 
          void validate() const override;
          void set_section( const string& section_name ) override;
@@ -216,7 +216,46 @@ namespace eosio { namespace chain {
       private:
          const fc::variant& snapshot;
          const fc::variant_object* cur_section;
-         int cur_row;
+         uint64_t cur_row;
+   };
+
+   class ostream_snapshot_writer : public snapshot_writer {
+      public:
+         explicit ostream_snapshot_writer(std::ostream& snapshot);
+
+         void write_start_section( const std::string& section_name ) override;
+         void write_row( const detail::abstract_snapshot_row_writer& row_writer ) override;
+         void write_end_section( ) override;
+         void finalize();
+
+         static const uint32_t magic_number = 0x30510550;
+
+      private:
+
+         std::ostream&  snapshot;
+         std::streampos header_pos;
+         std::streampos section_pos;
+         uint64_t       row_count;
+
+   };
+
+   class istream_snapshot_reader : public snapshot_reader {
+      public:
+         explicit istream_snapshot_reader(std::istream& snapshot);
+
+         void validate() const override;
+         void set_section( const string& section_name ) override;
+         bool read_row( detail::abstract_snapshot_row_reader& row_reader ) override;
+         bool empty ( ) override;
+         void clear_section() override;
+
+      private:
+         bool validate_section() const;
+
+         std::istream&  snapshot;
+         std::streampos header_pos;
+         uint64_t       num_rows;
+         uint64_t       cur_row;
    };
 
 }}
