@@ -648,6 +648,8 @@ public:
    fc::microseconds get_abi_serializer_max_time() const;
 
    void handle_guard_exception(const chain::guard_exception& e) const;
+
+   static void handle_db_exhaustion();
 private:
    void log_guard_exception(const chain::guard_exception& e) const;
 
