@@ -272,10 +272,20 @@ struct controller_impl {
       // should already have been loaded from the snapshot so, it cannot be applied
       if (s->block) {
          if (read_mode == db_read_mode::IRREVERSIBLE) {
-            apply_block(s->block, controller::block_status::complete);
-            fork_db.mark_in_current_chain(s, true);
-            fork_db.set_validity(s, true);
-            head = s;
+            // when applying a snapshot, head may not be present
+            // when not applying a snapshot, make sure this is the next block
+            if (!head || s->block_num == head->block_num + 1) {
+               apply_block(s->block, controller::block_status::complete);
+               head = s;
+            } else {
+               // otherwise, assert the one odd case where initializing a chain
+               // from genesis creates and applies the first block automatically.
+               // when syncing from another chain, this is pushed in again
+               EOS_ASSERT(!head || head->block_num == 1, block_validate_exception, "Attempting to re-apply an irreversible block that was not the implied genesis block");
+            }
+
+            fork_db.mark_in_current_chain(head, true);
+            fork_db.set_validity(head, true);
          }
          emit(self.irreversible_block, s);
       }
