@@ -140,7 +140,8 @@ errorExit=Utils.errorExit
 
 from core_symbol import CORE_SYMBOL
 
-args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run","--p2p-plugin"})
+args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run",
+                              "--p2p-plugin","--wallet-port"})
 Utils.Debug=args.v
 totalNodes=4
 cluster=Cluster(walletd=True)
@@ -150,8 +151,9 @@ dontKill=args.leave_running
 prodCount=args.prod_count
 killAll=args.clean_run
 p2pPlugin=args.p2p_plugin
+walletPort=args.wallet_port
 
-walletMgr=WalletMgr(True)
+walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
@@ -161,11 +163,12 @@ ClientName="cleos"
 
 try:
     TestHelper.printSystemInfo("BEGIN")
+    cluster.setWalletMgr(walletMgr)
 
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
     Print("Stand up cluster")
-    if cluster.launch(prodCount=prodCount, onlyBios=False, dontKill=dontKill, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes*21, p2pPlugin=p2pPlugin, useBiosBootFile=False) is False:
+    if cluster.launch(prodCount=prodCount, onlyBios=False, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes*21, p2pPlugin=p2pPlugin, useBiosBootFile=False) is False:
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
 
@@ -184,12 +187,6 @@ try:
     testWalletName="test"
 
     Print("Creating wallet \"%s\"." % (testWalletName))
-    walletMgr.killall(allInstances=killAll)
-    walletMgr.cleanup()
-    if walletMgr.launch() is False:
-        Utils.cmdError("%s" % (WalletdName))
-        Utils.errorExit("Failed to stand up eos walletd.")
-
     testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount,accounts[0],accounts[1],accounts[2],accounts[3],accounts[4]])
 
     for _, account in cluster.defProducerAccounts.items():

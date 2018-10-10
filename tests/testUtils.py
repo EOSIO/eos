@@ -1,3 +1,4 @@
+import errno
 import subprocess
 import time
 import os
@@ -18,6 +19,7 @@ class Utils:
     FNull = open(os.devnull, 'w')
 
     EosClientPath="programs/cleos/cleos"
+    MiscEosClientArgs="--no-auto-keosd"
 
     EosWalletName="keosd"
     EosWalletPath="programs/keosd/"+ EosWalletName
@@ -29,6 +31,8 @@ class Utils:
     MongoPath="mongo"
     ShuttingDown=False
     CheckOutputDeque=deque(maxlen=10)
+
+    EosBlockLogPath="programs/eosio-blocklog/eosio-blocklog"
 
     @staticmethod
     def Print(*args, **kwargs):
@@ -134,16 +138,25 @@ class Utils:
         return False if ret is None else ret
 
     @staticmethod
-    def filterJsonObject(data):
-        firstIdx=data.find('{')
-        lastIdx=data.rfind('}')
-        retStr=data[firstIdx:lastIdx+1]
+    def filterJsonObjectOrArray(data):
+        firstObjIdx=data.find('{')
+        lastObjIdx=data.rfind('}')
+        firstArrayIdx=data.find('[')
+        lastArrayIdx=data.rfind(']')
+        if firstArrayIdx==-1 or lastArrayIdx==-1:
+            retStr=data[firstObjIdx:lastObjIdx+1]
+        elif firstObjIdx==-1 or lastObjIdx==-1:
+            retStr=data[firstArrayIdx:lastArrayIdx+1]
+        elif lastArrayIdx < lastObjIdx:
+            retStr=data[firstObjIdx:lastObjIdx+1]
+        else:
+            retStr=data[firstArrayIdx:lastArrayIdx+1]
         return retStr
 
     @staticmethod
     def runCmdArrReturnJson(cmdArr, trace=False, silentErrors=True):
         retStr=Utils.checkOutput(cmdArr)
-        jStr=Utils.filterJsonObject(retStr)
+        jStr=Utils.filterJsonObjectOrArray(retStr)
         if trace: Utils.Print ("RAW > %s" % (retStr))
         if trace: Utils.Print ("JSON> %s" % (jStr))
         if not jStr:
@@ -211,6 +224,30 @@ class Utils:
 
         return "pgrep %s %s" % (pgrepOpts, serverName)
 
+    @staticmethod
+    def getBlockLog(blockLogLocation, silentErrors=False, exitOnError=False):
+        assert(isinstance(blockLogLocation, str))
+        cmd="%s --blocks-dir %s --as-json-array" % (Utils.EosBlockLogPath, blockLogLocation)
+        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        rtn=None
+        try:
+            rtn=Utils.runCmdReturnJson(cmd, silentErrors=silentErrors)
+        except subprocess.CalledProcessError as ex:
+            if not silentErrors:
+                msg=ex.output.decode("utf-8")
+                errorMsg="Exception during \"%s\". %s" % (cmd, msg)
+                if exitOnError:
+                    Utils.cmdError(errorMsg)
+                    Utils.errorExit(errorMsg)
+                else:
+                    Utils.Print("ERROR: %s" % (errorMsg))
+            return None
+
+        if exitOnError and rtn is None:
+            Utils.cmdError("could not \"%s\"" % (cmd))
+            Utils.errorExit("Failed to \"%s\"" % (cmd))
+
+        return rtn
 
 ###########################################################################################
 class Account(object):

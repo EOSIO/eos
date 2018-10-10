@@ -800,7 +800,7 @@ namespace eosio { namespace chain {
       }
 
       fc::scoped_exit<std::function<void()>> variant_to_binary_context::disallow_extensions_unless( bool condition ) {
-         std::function<void()> callback = [old_recursion_depth=recursion_depth, old_allow_extensions=allow_extensions, this](){
+         std::function<void()> callback = [old_allow_extensions=allow_extensions, this](){
             allow_extensions = old_allow_extensions;
          };
 

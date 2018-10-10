@@ -31,7 +31,7 @@ class Node(object):
 
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
-    def __init__(self, host, port, pid=None, cmd=None, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
+    def __init__(self, host, port, pid=None, cmd=None, walletMgr=None, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
         self.host=host
         self.port=port
         self.pid=pid
@@ -44,17 +44,19 @@ class Node(object):
         self.mongoDb=mongoDb
         self.endpointHttp="http://%s:%d" % (self.host, self.port)
         self.endpointArgs="--url %s" % (self.endpointHttp)
-        self.miscEosClientArgs="--no-auto-keosd"
         self.mongoEndpointArgs=""
         self.infoValid=None
         self.lastRetrievedHeadBlockNum=None
         self.lastRetrievedLIB=None
         self.transCache={}
+        self.walletMgr=walletMgr
+        self.missingTransaction=False
         if self.enableMongo:
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
     def eosClientArgs(self):
-        return self.endpointArgs + " " + self.miscEosClientArgs
+        walletArgs=" " + self.walletMgr.getWalletEndpointArgs() if self.walletMgr is not None else ""
+        return self.endpointArgs + walletArgs + " " + Utils.MiscEosClientArgs
 
     def __str__(self):
         #return "Host: %s, Port:%d, Pid:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.cmd)
@@ -187,7 +189,7 @@ class Node(object):
         outStr=Node.byteArrToStr(outs)
         if not outStr:
             return None
-        extJStr=Utils.filterJsonObject(outStr)
+        extJStr=Utils.filterJsonObjectOrArray(outStr)
         if not extJStr:
             return None
         jStr=Node.normalizeJsonObject(extJStr)
@@ -225,9 +227,6 @@ class Node(object):
     @staticmethod
     def byteArrToStr(arr):
         return arr.decode("utf-8")
-
-    def setWalletEndpointArgs(self, args):
-        self.endpointArgs="--url http://%s:%d %s" % (self.host, self.port, args)
 
     def validateAccounts(self, accounts):
         assert(accounts)
@@ -326,60 +325,11 @@ class Node(object):
         """Is blockNum finalized"""
         return self.isBlockPresent(blockNum, blockType=BlockType.lib)
 
-    class BlockWalker:
-        def __init__(self, node, transId, startBlockNum=None, endBlockNum=None):
-            assert(isinstance(transId, str))
-            self.trans=None
-            self.transId=transId
-            self.node=node
-            self.startBlockNum=startBlockNum
-            self.endBlockNum=endBlockNum
-
-        def walkBlocks(self):
-            start=None
-            end=None
-            if self.trans is None and self.transId in self.transCache.keys():
-                self.trans=self.transCache[self.transId]
-            if self.trans is not None:
-                cntxt=Node.Context(self.trans, "trans")
-                cntxt.add("processed")
-                cntxt.add("action_traces")
-                cntxt.index(0)
-                blockNum=cntxt.add("block_num")
-            else:
-                blockNum=None
-            # it should be blockNum or later, but just in case the block leading up have any clues...
-            start=None
-            if self.startBlockNum is not None:
-                start=self.startBlockNum
-            elif blockNum is not None:
-                start=blockNum-5
-            if self.endBlockNum is not None:
-                end=self.endBlockNum
-            else:
-                info=self.node.getInfo()
-                end=info["head_block_num"]
-            if start is None:
-                if end > 100:
-                    start=end-100
-                else:
-                    start=0
-            transDesc=" id =%s" % (self.transId)
-            if self.trans is not None:
-                transDesc="=%s" % (json.dumps(self.trans, indent=2, sort_keys=True))
-            msg="Original transaction%s\nExpected block_num=%s\n" % (transDesc, blockNum)
-            for blockNum in range(start, end+1):
-                block=self.node.getBlock(blockNum)
-                msg+=json.dumps(block, indent=2, sort_keys=True)+"\n"
-
-            return msg
-
     # pylint: disable=too-many-branches
     def getTransaction(self, transId, silentErrors=False, exitOnError=False, delayedRetry=True):
         assert(isinstance(transId, str))
         exitOnErrorForDelayed=not delayedRetry and exitOnError
         timeout=3
-        blockWalker=None
         if not self.enableMongo:
             cmdDesc="get transaction"
             cmd="%s %s" % (cmdDesc, transId)
@@ -388,12 +338,10 @@ class Node(object):
                 trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnErrorForDelayed, exitMsg=msg)
                 if trans is not None or not delayedRetry:
                     return trans
-                if blockWalker is None:
-                    blockWalker=Node.BlockWalker(self, transId)
                 if Utils.Debug: Utils.Print("Could not find transaction with id %s, delay and retry" % (transId))
                 time.sleep(timeout)
 
-            msg+="\nBlock printout -->>\n%s" % blockWalker.walkBlocks();
+            self.missingTransaction=True
             # either it is there or the transaction has timed out
             return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
         else:

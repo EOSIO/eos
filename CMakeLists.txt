@@ -27,7 +27,7 @@ set( CXX_STANDARD_REQUIRED ON)
 
 set(VERSION_MAJOR 1)
 set(VERSION_MINOR 3)
-set(VERSION_PATCH 0)
+set(VERSION_PATCH 1)
 
 set( CLI_CLIENT_EXECUTABLE_NAME cleos )
 set( NODE_EXECUTABLE_NAME nodeos )
@@ -238,6 +238,7 @@ install(FILES libraries/softfloat/COPYING.txt DESTINATION ${CMAKE_INSTALL_FULL_D
 install(FILES libraries/wasm-jit/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.wavm)
 install(FILES libraries/fc/secp256k1/upstream/COPYING DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.secp256k1)
 install(FILES externals/binaryen/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.binaryen)
+install(FILES libraries/fc/src/network/LICENSE.go DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ )
 
 include(installer)
 

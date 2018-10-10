@@ -47,7 +47,7 @@ clusterMapJsonTemplate="""{
 }
 """
 
-cluster=Cluster()
+cluster=Cluster(walletd=True)
 
 (fd, nodesFile) = tempfile.mkstemp()
 try:
@@ -58,7 +58,7 @@ try:
     Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" %
            (pnodes, total_nodes-pnodes, topo, delay))
     Print("Stand up cluster")
-    if cluster.launch(pnodes, total_nodes, prodCount, topo, delay) is False:
+    if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, prodCount=prodCount, topo=topo, delay=delay, dontKill=dontKill) is False:
         errorExit("Failed to stand up eos cluster.")
 
     Print ("Wait for Cluster stabilization")
@@ -76,7 +76,7 @@ try:
     tfile.write(clusterMapJson)
     tfile.close()
 
-    cmd="%s --nodes-file %s %s %s" % (actualTest, nodesFile, "-v" if debug else "", "--dont-kill" if dontKill else "")
+    cmd="%s --nodes-file %s %s %s" % (actualTest, nodesFile, "-v" if debug else "", "--leave-running" if dontKill else "")
     Print("Starting up distributed transactions test: %s" % (actualTest))
     Print("cmd: %s\n" % (cmd))
     if 0 != subprocess.call(cmd, shell=True):
