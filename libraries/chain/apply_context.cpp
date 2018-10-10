@@ -29,51 +29,9 @@ static inline void print_debug(account_name receiver, const action_trace& ar) {
    }
 }
 
-action_trace apply_context::exec_one()
+void apply_context::exec_one( action_trace& trace )
 {
    auto start = fc::time_point::now();
-
-   fc::optional<fc::exception> except;
-   const auto& cfg = control.get_global_properties().configuration;
-   try {
-      const auto& a = control.get_account( receiver );
-      privileged = a.privileged;
-      auto native = control.find_apply_handler( receiver, act.account, act.name );
-      if( native ) {
-         if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
-            control.check_contract_list( receiver );
-            control.check_action_list( act.account, act.name );
-         }
-         (*native)( *this );
-      }
-
-      if( a.code.size() > 0
-          && !(act.account == config::system_account_name && act.name == N( setcode ) &&
-               receiver == config::system_account_name) ) {
-         if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
-            control.check_contract_list( receiver );
-            control.check_action_list( act.account, act.name );
-         }
-         try {
-            control.get_wasm_interface().apply( a.code_version, a.code, *this );
-         } catch( const wasm_exit& ) {}
-      }
-   } catch( const boost::interprocess::bad_alloc& ) {
-      throw;
-   } catch( fc::exception& e ) {
-      e.append_log( FC_LOG_MESSAGE( warn, "pending console output: ${console}", ("console", _pending_console_output.str()) ) );
-      except.emplace( e );
-   } catch( std::exception& e ) {
-      fc::exception fce( FC_LOG_MESSAGE( warn, "${what}: pending console output: ${console}",
-                         ("what", e.what())("console", _pending_console_output.str()) ),
-                         fc::std_exception_code, BOOST_CORE_TYPEID( e ).name(), e.what() );
-      except.emplace( fce );
-   } catch( ... ) {
-      fc::unhandled_exception fce( FC_LOG_MESSAGE( warn, "unknown exception: pending console output: ${console}" ,
-                                   ("console", _pending_console_output.str()) ),
-                                   std::current_exception() );
-      except.emplace( fce );
-   }
 
    action_receipt r;
    r.receiver         = receiver;
@@ -89,42 +47,75 @@ action_trace apply_context::exec_one()
       r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
    }
 
-   action_trace t(r);
-   t.trx_id = trx_context.id;
-   t.block_num = control.pending_block_state()->block_num;
-   t.block_time = control.pending_block_time();
-   t.producer_block_id = control.pending_producer_block_id();
-   t.account_ram_deltas = std::move( _account_ram_deltas );
-   _account_ram_deltas.clear();
-   t.act = act;
-   t.context_free = context_free;
-   t.console = _pending_console_output.str();
-   t.except = std::move( except );
+   trace = {r}; // reset action_trace
+
+   trace.trx_id = trx_context.id;
+   trace.block_num = control.pending_block_state()->block_num;
+   trace.block_time = control.pending_block_time();
+   trace.producer_block_id = control.pending_producer_block_id();
+   trace.act = act;
+   trace.context_free = context_free;
+
+   const auto& cfg = control.get_global_properties().configuration;
+   try {
+      try {
+         const auto& a = control.get_account( receiver );
+         privileged = a.privileged;
+         auto native = control.find_apply_handler( receiver, act.account, act.name );
+         if( native ) {
+            if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
+               control.check_contract_list( receiver );
+               control.check_action_list( act.account, act.name );
+            }
+            (*native)( *this );
+         }
+
+         if( a.code.size() > 0
+             && !(act.account == config::system_account_name && act.name == N( setcode ) &&
+                  receiver == config::system_account_name) ) {
+            if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
+               control.check_contract_list( receiver );
+               control.check_action_list( act.account, act.name );
+            }
+            try {
+               control.get_wasm_interface().apply( a.code_version, a.code, *this );
+            } catch( const wasm_exit& ) {}
+         }
+      } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output.str()) )
+   } catch( fc::exception& e ) {
+      trace.except = e;
+      finalize_trace( trace, start );
+      throw;
+   }
 
    trx_context.executed.emplace_back( move(r) );
 
    if ( control.contracts_console() ) {
-      print_debug(receiver, t);
+      print_debug(receiver, trace);
    }
 
-   reset_console();
-
-   t.elapsed = fc::time_point::now() - start;
-
-   return t;
+   finalize_trace( trace, start );
 }
 
-void apply_context::exec()
+void apply_context::finalize_trace( action_trace& trace, const fc::time_point& start )
+{
+   trace.account_ram_deltas = std::move( _account_ram_deltas );
+   _account_ram_deltas.clear();
+
+   trace.console = _pending_console_output.str();
+   reset_console();
+
+   trace.elapsed = fc::time_point::now() - start;
+}
+
+void apply_context::exec( action_trace& trace )
 {
    _notified.push_back(receiver);
-   trace = exec_one();
-   if( trace.except.valid() )
-      throw *trace.except;
+   exec_one( trace );
    for( uint32_t i = 1; i < _notified.size(); ++i ) {
       receiver = _notified[i];
-      trace.inline_traces.emplace_back( exec_one() );
-      if( trace.inline_traces.back().except.valid() )
-         throw *trace.inline_traces.back().except;
+      trace.inline_traces.emplace_back( );
+      exec_one( trace.inline_traces.back() );
    }
 
    if( _cfa_inline_actions.size() > 0 || _inline_actions.size() > 0 ) {
