@@ -2,6 +2,7 @@ steps:
   - command: |
         echo "--- :hammer: Building with Address Sanitizer" && \
         /usr/bin/cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0  -Wall -Werror \
+        -ASAN_SYMBOLIZER_PATH=/usr/lib/llvm-4.0/bin/llvm-symbolizer \ 
         -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT="${BOOST_ROOT}" \
         -DWASM_ROOT="${WASM_ROOT}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" \
         -DBUILD_MONGO_DB_PLUGIN=true \
@@ -33,70 +34,70 @@ steps:
           - ASAN_OPTIONS=fast_unwind_on_malloc=0
     timeout: 60
 
-  - command: |
-        echo "--- :hammer: Building with Thread Sanitizer" && \
-        /usr/bin/cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0  -Wall -Werror \
-        -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT="${BOOST_ROOT}" \
-        -DWASM_ROOT="${WASM_ROOT}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" \
-        -DBUILD_MONGO_DB_PLUGIN=true \
-        -DENABLE_COVERAGE_TESTING=true \
-        -DBUILD_DOXYGEN=false \
-        -DCMAKE_CXX_FLAGS="-fsanitizer=thread -fsanitize-recover=all -g" \
-        -DCMAKE_C_FLAGS="-fsanitizer=thread -fsanitize-recover=all -g" \
-        -DCMAKE_EXE_LINKER_FLAGS="-fsanitizer=thread -fsanitize-recover=all  -pthread" \
-        -DCMAKE_MODULE_LINKER_FLAGS="-fsanitizer=thread -fsanitize-recover=all -pthread" && \
-        /usr/bin/ninja | tee thread_sanitizer.log
-    label: ":spiral_note_pad: Generate Report"
-    agents:
-      - "role=automation-builder-large"
-    artifact_paths:
-      - "thread_sanitizer.log"
-    plugins:
-      docker#v1.4.0:
-        image: "eosio/ci:ubuntu18"
-        command: ["--privileged"]
-        workdir: /data/job
-        mounts:
-          - /etc/buildkite-agent/config:/config
-        environment:
-          - BOOST_ROOT=/root/opt/boost
-          - OPENSSL_ROOT_DIR=/usr/include/openssl
-          - WASM_ROOT=/root/opt/wasm
-          - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/opt/wasm/bin
-          - CI=true
-          - ASAN_OPTIONS=fast_unwind_on_malloc=0
-    timeout: 60
+  # - command: |
+  #       echo "--- :hammer: Building with Thread Sanitizer" && \
+  #       /usr/bin/cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0  -Wall -Werror \
+  #       -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT="${BOOST_ROOT}" \
+  #       -DWASM_ROOT="${WASM_ROOT}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" \
+  #       -DBUILD_MONGO_DB_PLUGIN=true \
+  #       -DENABLE_COVERAGE_TESTING=true \
+  #       -DBUILD_DOXYGEN=false \
+  #       -DCMAKE_CXX_FLAGS="-fsanitizer=thread -fsanitize-recover=all -g" \
+  #       -DCMAKE_C_FLAGS="-fsanitizer=thread -fsanitize-recover=all -g" \
+  #       -DCMAKE_EXE_LINKER_FLAGS="-fsanitizer=thread -fsanitize-recover=all  -pthread" \
+  #       -DCMAKE_MODULE_LINKER_FLAGS="-fsanitizer=thread -fsanitize-recover=all -pthread" && \
+  #       /usr/bin/ninja | tee thread_sanitizer.log
+  #   label: ":spiral_note_pad: Generate Report"
+  #   agents:
+  #     - "role=automation-builder-large"
+  #   artifact_paths:
+  #     - "thread_sanitizer.log"
+  #   plugins:
+  #     docker#v1.4.0:
+  #       image: "eosio/ci:ubuntu18"
+  #       command: ["--privileged"]
+  #       workdir: /data/job
+  #       mounts:
+  #         - /etc/buildkite-agent/config:/config
+  #       environment:
+  #         - BOOST_ROOT=/root/opt/boost
+  #         - OPENSSL_ROOT_DIR=/usr/include/openssl
+  #         - WASM_ROOT=/root/opt/wasm
+  #         - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/opt/wasm/bin
+  #         - CI=true
+  #         - ASAN_OPTIONS=fast_unwind_on_malloc=0
+  #   timeout: 60
 
-  - command: |
-        echo "--- :hammer: Building with Leak Sanitizer" && \
-        /usr/bin/cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0 -Wall -Werror \
-        -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT="${BOOST_ROOT}" \
-        -DWASM_ROOT="${WASM_ROOT}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" \
-        -DBUILD_MONGO_DB_PLUGIN=true \
-        -DENABLE_COVERAGE_TESTING=true \
-        -DBUILD_DOXYGEN=false \
-        -DCMAKE_CXX_FLAGS="-fsanitizer=leak -fsanitize-recover=all -g" \
-        -DCMAKE_C_FLAGS="-fsanitizer=leak -fsanitize-recover=all -g" \
-        -DCMAKE_EXE_LINKER_FLAGS="-fsanitizer=leak -fsanitize-recover=all  -pthread" \
-        -DCMAKE_MODULE_LINKER_FLAGS="-fsanitizer=leak -fsanitize-recover=all -pthread" && \
-        /usr/bin/ninja | tee leak_sanitizer.log
-    label: ":spiral_note_pad: Generate Report"
-    agents:
-      - "role=automation-builder-large"
-    artifact_paths:
-      - "leak_sanitizer.log"
-    plugins:
-      docker#v1.4.0:
-        image: "eosio/ci:ubuntu18"
-        command: ["--privileged"]
-        workdir: /data/job
-        mounts:
-          - /etc/buildkite-agent/config:/config
-        environment:
-          - BOOST_ROOT=/root/opt/boost
-          - OPENSSL_ROOT_DIR=/usr/include/openssl
-          - WASM_ROOT=/root/opt/wasm
-          - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/opt/wasm/bin
-          - CI=true
-          - ASAN_OPTIONS=fast_unwind_on_malloc=0
-    timeout: 60
+  # - command: |
+  #       echo "--- :hammer: Building with Leak Sanitizer" && \
+  #       /usr/bin/cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0 -Wall -Werror \
+  #       -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT="${BOOST_ROOT}" \
+  #       -DWASM_ROOT="${WASM_ROOT}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" \
+  #       -DBUILD_MONGO_DB_PLUGIN=true \
+  #       -DENABLE_COVERAGE_TESTING=true \
+  #       -DBUILD_DOXYGEN=false \
+  #       -DCMAKE_CXX_FLAGS="-fsanitizer=leak -fsanitize-recover=all -g" \
+  #       -DCMAKE_C_FLAGS="-fsanitizer=leak -fsanitize-recover=all -g" \
+  #       -DCMAKE_EXE_LINKER_FLAGS="-fsanitizer=leak -fsanitize-recover=all  -pthread" \
+  #       -DCMAKE_MODULE_LINKER_FLAGS="-fsanitizer=leak -fsanitize-recover=all -pthread" && \
+  #       /usr/bin/ninja | tee leak_sanitizer.log
+  #   label: ":spiral_note_pad: Generate Report"
+  #   agents:
+  #     - "role=automation-builder-large"
+  #   artifact_paths:
+  #     - "leak_sanitizer.log"
+  #   plugins:
+  #     docker#v1.4.0:
+  #       image: "eosio/ci:ubuntu18"
+  #       command: ["--privileged"]
+  #       workdir: /data/job
+  #       mounts:
+  #         - /etc/buildkite-agent/config:/config
+  #       environment:
+  #         - BOOST_ROOT=/root/opt/boost
+  #         - OPENSSL_ROOT_DIR=/usr/include/openssl
+  #         - WASM_ROOT=/root/opt/wasm
+  #         - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/opt/wasm/bin
+  #         - CI=true
+  #         - ASAN_OPTIONS=fast_unwind_on_malloc=0
+  #   timeout: 60
