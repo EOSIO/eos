@@ -3058,14 +3058,14 @@ int main( int argc, char** argv ) {
    wrap->require_subcommand();
 
    // wrap exec
-   con = "eosio.wrap";
+   string wrap_con = "eosio.wrap";
    executer = "";
    string trx_to_exec;
    auto wrap_exec = wrap->add_subcommand("exec", localized("Execute a transaction while bypassing authorization checks"));
    add_standard_transaction_options(wrap_exec);
    wrap_exec->add_option("executer", executer, localized("Account executing the transaction and paying for the deferred transaction RAM"))->required();
    wrap_exec->add_option("transaction", trx_to_exec, localized("The JSON string or filename defining the transaction to execute"))->required();
-   wrap_exec->add_option("--contract,-c", con, localized("The contract which controls the wrap contract"));
+   wrap_exec->add_option("--contract,-c", wrap_con, localized("The account which controls the wrap contract"));
 
    wrap_exec->set_callback([&] {
       fc::variant trx_var;
@@ -3075,14 +3075,14 @@ int main( int argc, char** argv ) {
 
       auto accountPermissions = get_account_permissions(tx_permission);
       if( accountPermissions.empty() ) {
-         accountPermissions = vector<permission_level>{{executer, config::active_name}, {con, config::active_name}};
+         accountPermissions = vector<permission_level>{{executer, config::active_name}, {wrap_con, config::active_name}};
       }
 
       auto args = fc::mutable_variant_object()
          ("executer", executer )
          ("trx", trx_var);
 
-      send_actions({chain::action{accountPermissions, con, "exec", variant_to_bin( con, N(exec), args ) }});
+      send_actions({chain::action{accountPermissions, wrap_con, "exec", variant_to_bin( wrap_con, N(exec), args ) }});
    });
 
    // system subcommand
