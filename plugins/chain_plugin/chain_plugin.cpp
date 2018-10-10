@@ -248,8 +248,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Disable the check which subjectively fails a transaction if a contract bills more RAM to another account within the context of a notification handler (i.e. when the receiver is not the code of the action).")
          ("chaindb_type", bpo::value<cyberway::chaindb::chaindb_type>()->default_value(cyberway::chaindb::chaindb_type::MongoDB),
           "Type of chaindb connection")
-         ("chaindb_connection", bpo::value<string>()->default_value("mongodb://127.0.0.1:27017"),
-          "Connection path to chaindb")
+         ("chaindb_address", bpo::value<string>()->default_value("mongodb://127.0.0.1:27017"),
+          "Connection address to chaindb")
           ;
 
 // TODO: rate limiting
@@ -397,16 +397,18 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
 
       if (options.count("chaindb_type"))
-         my->chain_config->chaindb_con_type = options.at("chaindb_type").as<cyberway::chaindb::chaindb_type>();
+         my->chain_config->chaindb_address_type = options.at("chaindb_type").as<cyberway::chaindb::chaindb_type>();
 
-      if (options.count("chaindb_connection"))
-         my->chain_config->chaindb_con = options.at("chaindb_connection").as<string>();
+      if (options.count("chaindb_address"))
+         my->chain_config->chaindb_address = options.at("chaindb_address").as<string>();
 
       if( options.count( "wasm-runtime" ))
          my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
 
-      if(options.count("abi-serializer-max-time-ms"))
+      if(options.count("abi-serializer-max-time-ms")) {
          my->abi_serializer_max_time_ms = fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000);
+         my->chain_config->abi_serializer_max_time_ms = my->abi_serializer_max_time_ms;
+      }
 
       my->chain_config->blocks_dir = my->blocks_dir;
       my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;

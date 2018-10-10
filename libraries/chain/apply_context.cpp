@@ -11,7 +11,7 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <boost/container/flat_set.hpp>
 
-#include <cyberway/chaindb/chaindb_controller.hpp>
+#include <cyberway/chaindb/controller.hpp>
 
 using boost::container::flat_set;
 
@@ -55,12 +55,14 @@ action_trace apply_context::exec_one()
             control.check_contract_list( receiver );
             control.check_action_list( act.account, act.name );
          }
-         if( a.abi.size() > 0 && chaindb.has_code(receiver) ) {
-            chaindb.add_code(receiver, a.get_abi());
+         if( a.abi.size() > 0 && chaindb.has_abi(receiver) ) {
+            chaindb.add_abi(receiver, a.get_abi());
          }
          try {
+            cyberway::chaindb::chaindb_guard guard(chaindb, receiver);
             control.get_wasm_interface().apply( a.code_version, a.code, *this );
          } catch( const wasm_exit& ) {}
+
       }
 
    } FC_RETHROW_EXCEPTIONS(warn, "pending console output: ${console}", ("console", _pending_console_output.str()))

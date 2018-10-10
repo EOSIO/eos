@@ -1,6 +1,7 @@
-#include <cyberway/chaindb/chaindb_controller.hpp>
+#include <cyberway/chaindb/controller.hpp>
 
 namespace eosio { namespace chain {
+
     using cyberway::chaindb::cursor_t;
     using cyberway::chaindb::account_name_t;
     using cyberway::chaindb::table_name_t;

@@ -339,7 +339,7 @@ private:
             auto key = extractor_type()(itm);
             auto pk = primary_key_extractor_type()(itm);
             cursor_t cursor;
-            safe_allocate(key, "invalid size of key", [&](auto& data, auto& size) {
+            safe_allocate(size, "invalid size of key", [&](auto& data, auto& size) {
                 pack_object(key, data, size);
                 cursor = chaindb_find(get_code(), get_scope(), table_name(), index_name(), pk, data, size);
             });
@@ -397,7 +397,7 @@ private:
         });
         if (items_vector_.rend() != itr) {
             (*itr)->deleted_ = true;
-            items_vector_.erase(itr.base());
+            items_vector_.erase(--(itr.base()));
         }
     }
 

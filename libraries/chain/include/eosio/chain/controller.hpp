@@ -7,7 +7,7 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/account_object.hpp>
 
-#include <cyberway/chaindb/chaindb_common.hpp>
+#include <cyberway/chaindb/common.hpp>
 
 namespace chainbase {
    class database;
@@ -81,8 +81,10 @@ namespace eosio { namespace chain {
             flat_set<account_name>   resource_greylist;
             flat_set<account_name>   trusted_producers;
 
-            chaindb_type             chaindb_con_type = chaindb_type::MongoDB;
-            string                   chaindb_con;
+            fc::microseconds         abi_serializer_max_time_ms{chain::config::default_abi_serializer_max_time_ms * 1000};
+
+            chaindb_type             chaindb_address_type = chaindb_type::MongoDB;
+            string                   chaindb_address;
          };
 
          enum class block_status {

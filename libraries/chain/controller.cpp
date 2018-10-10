@@ -22,7 +22,7 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 
-#include <cyberway/chaindb/chaindb_controller.hpp>
+#include <cyberway/chaindb/controller.hpp>
 
 namespace eosio { namespace chain {
 
@@ -148,7 +148,7 @@ struct controller_impl {
 
    controller_impl( const controller::config& cfg, controller& s  )
    :self(s),
-    chaindb(cfg.chaindb_con_type, cfg.chaindb_con),
+    chaindb(cfg.abi_serializer_max_time_ms, cfg.chaindb_address_type, cfg.chaindb_address),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size ),

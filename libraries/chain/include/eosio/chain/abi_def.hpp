@@ -10,6 +10,7 @@ namespace eosio { namespace chain {
 
 using type_name      = string;
 using field_name     = string;
+using code_type      = uint64_t;
 
 struct type_def {
    type_def() = default;
@@ -72,14 +73,19 @@ struct order_def {
 };
 
 struct index_def {
-    index_def() = default;
-    index_def(const type_name& name, const bool unique, const vector<order_def>& orders)
-    : name(name), unique(unique), orders(orders)
-    { }
+   index_def() = default;
+   index_def(const index_name& name, const bool unique, const vector<order_def>& orders)
+   : name(name), unique(unique), orders(orders)
+   { }
 
-    type_name          name;
-    bool               unique = false;
-    vector<order_def>  orders;
+   index_def(const index_name& name, const code_type code, const bool unique, const vector<order_def>& orders)
+   : name(name), code(code), unique(unique), orders(orders)
+   { }
+
+   index_name         name;
+   code_type          code = 0;
+   bool               unique = false;
+   vector<order_def>  orders;
 };
 
 struct table_def {
@@ -88,7 +94,12 @@ struct table_def {
    :name(name), type(type), indexes(indexes)
    {}
 
+   table_def(const table_name& name, const code_type code, const type_name& type, const vector<index_def>& indexes)
+   :name(name), code(code), type(type), indexes(indexes)
+   {}
+
    table_name         name;        // the name of the table
+   code_type          code = 0;
    type_name          type;        // type of binary data stored in this table
    vector<index_def>  indexes;     //
 };

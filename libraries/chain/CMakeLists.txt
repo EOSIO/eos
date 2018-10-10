@@ -38,15 +38,15 @@ if (BUILD_CHAINDB_MONGO)
         set(CHAINDB_DEFS ${CHAINDB_DEFS} CYBERWAY_CHAINDB=1 ${LIBMONGOCXX_STATIC_DEFINITIONS} ${LIBBSONCXX_STATIC_DEFINITIONS})
         set(CHAINDB_INCS ${CHAINDB_INCS} ${BSON_INCLUDE_DIRS} ${LIBMONGOCXX_STATIC_INCLUDE_DIRS} ${LIBBSONCXX_STATIC_INCLUDE_DIRS})
         set(CHAINDB_LIBS ${CHAINDB_LIBS} ${CHAINDB_LIBMONGOCXX} ${CHAINDB_LIBBSONCXX} ${BSON_LIBRARIES})
-        set(CHAINDB_SRCS ${CHAINDB_SRCS} chaindb/chaindb_mongo.cpp)
+        set(CHAINDB_SRCS ${CHAINDB_SRCS} chaindb/mongo_driver.cpp)
 
     else()
         message("Could NOT find MongoDB. chaindb with MongoDB support will not be included.")
-        set(CHAINDB_SRCS ${CHAINDB_SRCS} chaindb/chaindb_fail_mongo.cpp)
+        set(CHAINDB_SRCS ${CHAINDB_SRCS} chaindb/mongo_fail_driver.cpp)
     endif()
 else()
     message("chaindb with MongoDB support not selected and will be omitted.")
-    set(CHAINDB_SRCS ${CHAINDB_SRCS} chaindb/chaindb_fail_mongo.cpp)
+    set(CHAINDB_SRCS ${CHAINDB_SRCS} chaindb/mongo_fail_driver.cpp)
 endif()
 
 file(GLOB HEADERS "include/eosio/chain/*.hpp"
@@ -89,6 +89,7 @@ add_library( eosio_chain
              webassembly/binaryen.cpp
              webassembly/wabt.cpp
 
+             chaindb/controller.cpp
              ${CHAINDB_SRCS}
 
 #             get_config.cpp

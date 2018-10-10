@@ -422,10 +422,10 @@ namespace eosio { namespace chain {
                                     3015016, "ABI has an unsupported version" )
 
       // CyberWay
-      FC_DECLARE_DERIVED_EXCEPTION( abi_serialization_table_index_items_size, abi_exception,
-                                    3015090, "ABI different size of index names and orders" )
-      FC_DECLARE_DERIVED_EXCEPTION( abi_serialization_index_order_type, abi_exception,
-                                    3015091, "ABI invalid type of index order" )
+      FC_DECLARE_DERIVED_EXCEPTION( abi_serialization_index_order_exception, abi_exception,
+                                    3015090, "ABI invalid type of index order" )
+      FC_DECLARE_DERIVED_EXCEPTION( abi_serialization_primary_key_exception, abi_exception,
+                                    3015091, "ABI invalid primary key" )
 
    FC_DECLARE_DERIVED_EXCEPTION( contract_exception,           chain_exception,
                                  3160000, "Contract exception" )
