@@ -9,25 +9,30 @@ public:
    using contract::contract;
 
    /// @abi action
-   void hi(account_name user) {
-      print("Hello, ", name{user});
+   void hi( account_name user ) {
+      print( "Hello, ", name{ user } );
    }
 
    /// @abi actoin
-   void addword(string word, string desc, uint64_t id) {
-      print(word, "\t", desc, "\t", id);
+   void addword( string word, string desc, uint64_t id ) {
+      print( word, "\t", desc, "\t", id );
    }
 
    /// @abi action
    void delword( string word ) {
-      print(word);
+      print( word );
    }
 
    /// @abi action
    void modword( string word, uint64_t id ) {
-      print(word, "\t", id);
+      print( word, "\t", id );
+   }
+
+   /// @abi action
+   void testvec( vector<string> w, vector<uint64_t> v ) {
+
    }
 
 };
 
-EOSIO_ABI( hello, (hi)(addword)(delword)(modword) )
+EOSIO_ABI( hello, ( hi )( addword )( delword )( modword )( testvec ))
