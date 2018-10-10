@@ -1,6 +1,6 @@
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
-	url = https://github.com/eosio/chainbase
+	url = https://github.com/GolosChain/cyberway.chainbase
         ignore = dirty
 [submodule "libraries/appbase"]
 	path = libraries/appbase
@@ -26,7 +26,7 @@
 	url = https://github.com/EOSIO/magic_get
 [submodule "libraries/fc"]
 	path = libraries/fc
-	url = https://github.com/EOSIO/fc
+	url = https://github.com/GolosChain/cyberway.fc
 [submodule "libraries/wabt"]
 	path = libraries/wabt
 	url = http://github.com/EOSIO/wabt
