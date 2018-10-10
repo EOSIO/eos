@@ -909,7 +909,7 @@ producer_plugin::snapshot_information producer_plugin::create_snapshot() const {
                "snapshot named ${name} already exists", ("name", snapshot_path));
 
 
-   auto snap_out = std::ofstream(snapshot_path, (std::ios::out | std::ios::binary | std::ios::app));
+   auto snap_out = std::ofstream(snapshot_path, (std::ios::out | std::ios::binary));
    auto writer = std::make_shared<ostream_snapshot_writer>(snap_out);
    chain.write_snapshot(writer);
    writer->finalize();

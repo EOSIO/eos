@@ -425,6 +425,10 @@ struct controller_impl {
    }
 
    void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
+      snapshot->write_section<genesis_state>([this]( auto &section ){
+         section.add_row(conf.genesis);
+      });
+
       snapshot->write_section<block_state>([this]( auto &section ){
          section.template add_row<block_header_state>(*fork_db.head());
       });
