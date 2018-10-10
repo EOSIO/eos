@@ -147,6 +147,8 @@ namespace eosio { namespace chain {
             my->first_block_num = 0;
             my->block_stream.read( (char*)&my->first_block_num, sizeof(my->first_block_num) );
             EOS_ASSERT(my->first_block_num > 0, block_log_exception, "Block log is malformed, first recorded block number is 0 but must be greater than or equal to 1");
+         } else {
+            my->first_block_num = 1;
          }
 
          my->head = read_head();
