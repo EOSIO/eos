@@ -7,10 +7,10 @@ steps:
         -DBUILD_MONGO_DB_PLUGIN=true \
         -DENABLE_COVERAGE_TESTING=true \
         -DBUILD_DOXYGEN=false \
-        -DCMAKE_CXX_FLAGS="-fsanitize=memory -fsanitize-memory-track-origins -fsanitize-recover=all -g" \
-        -DCMAKE_C_FLAGS="-fsanitize=memory -fsanitize-memory-track-origins  -fsanitize-recover=all -g" \
-        -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=memory -fsanitize-memory-track-origins  -fsanitize-recover=all  -pthread" \
-        -DCMAKE_MODULE_LINKER_FLAGS="-fsanitize=memory -fsanitize-memory-track-origins  -fsanitize-recover=all -pthread" && \
+        -DCMAKE_CXX_FLAGS="-fsanitize=memory -fsanitize-memory-track-origins -fsanitize-recover=all -g -O1" \
+        -DCMAKE_C_FLAGS="-fsanitize=memory -fsanitize-memory-track-origins -fsanitize-recover=all -g -O1" \
+        -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=memory -fsanitize-memory-track-origins -fsanitize-recover=all  -pthread" \
+        -DCMAKE_MODULE_LINKER_FLAGS="-fsanitize=memory -fsanitize-memory-track-origins -fsanitize-recover=all -pthread" && \
         /usr/bin/ninja && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf ../build.tar.gz build/
@@ -35,7 +35,7 @@ steps:
           - CI=true
           - ASAN_OPTIONS=fast_unwind_on_malloc=0
           - MSAN_SYMBOLIZER_PATH=/usr/lib/llvm-4.0/bin/llvm-symbolizer
-    timeout: 60
+    timeout: 180
 
   - wait
 
