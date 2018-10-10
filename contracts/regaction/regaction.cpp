@@ -10,8 +10,8 @@ class regaction : public contract {
       using contract::contract;
 
       /// @abi action 
-      void addaction( string receiver, string action, string collection, string operation, int32_t maxupnum) {
-         print( receiver, " ", action, " ", collection, " ", operation, " ", maxupnum );
+      void addaction( string receiver, string action, string collection, string operation, int32_t idxnum) {
+         print( receiver, " ", action, " ", collection, " ", operation, " ", idxnum );
       }
 
       /// @abi action
@@ -25,8 +25,8 @@ class regaction : public contract {
       }
 
       /// @abi action
-      void regmodact( string receiver, string action, string collection, int32_t maxupnum) {
-         SEND_INLINE_ACTION( *this, addaction, { _self, N( active ) }, { receiver, action, collection, "update", maxupnum } );
+      void regmodact( string receiver, string action, string collection, int32_t idxnum) {
+         SEND_INLINE_ACTION( *this, addaction, { _self, N( active ) }, { receiver, action, collection, "update", idxnum } );
       }
 
       /// @abi action

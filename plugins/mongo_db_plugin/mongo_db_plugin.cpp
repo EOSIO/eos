@@ -940,7 +940,7 @@ handle_action( mongo_regactoin &regact, const chain::action_trace &action_trace,
 
    auto coll_name = regact.get_action_info()->view()["collection"].get_utf8().value.to_string();
    auto op = regact.get_action_info()->view()["operation"].get_utf8().value.to_string();
-   auto maxupnum = regact.get_action_info()->view()["maxupnum"].get_int32();
+   auto idxnum = regact.get_action_info()->view()["idxnum"].get_int32();
    if ( op == "insert" ) {
       auto doc = document{};
       from_json_to_doc( doc, fc::json::to_string( v["act"]["data"] ));
@@ -955,13 +955,10 @@ handle_action( mongo_regactoin &regact, const chain::action_trace &action_trace,
       auto vb = v["act"]["data"].get_object();
       auto key = vb.begin();
 
-      int key_count = 0;
-      for (auto it = vb.begin(); it != vb.end(); ++it) {
-         filter.append( kvp(it->key(), it->value().as_string()));
-         ++key_count;
-         if (key_count == maxupnum) {
-            break;
-         }
+      auto idxcount = 0;
+      for ( auto it = vb.begin(); idxcount < idxnum && it != vb.end();
+            ++idxcount, ++it ) {
+         filter.append( kvp( it->key(), it->value().as_string()));
       }
 
       from_json_to_doc( update, fc::json::to_string( v["act"]["data"]));
