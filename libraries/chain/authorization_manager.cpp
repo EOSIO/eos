@@ -14,6 +14,8 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <boost/tuple/tuple_io.hpp>
 
+#include <eosio/chain/chaindb_control.hpp>
+
 namespace eosio { namespace chain {
 
    authorization_manager::authorization_manager(controller& c, database& d)
@@ -21,8 +23,23 @@ namespace eosio { namespace chain {
 
    void authorization_manager::add_indices() {
       _db.add_index<permission_index>();
-      _db.add_index<permission_usage_index>();
+      _db.add_database_index<permission_usage_index>();
       _db.add_index<permission_link_index>();
+
+      eosio::chain::abi_def abi;
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "usage", "",
+        {{"id", "uint64"},
+         {"time", "uint64"}}
+      });
+
+      abi.tables.emplace_back( eosio::chain::table_def {
+        name{chaindb::tag<permission_usage_object>::get_name()}.to_string(),
+        "usage",
+        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+      });
+
+      chaindb_set_abi(0, abi);
    }
 
    void authorization_manager::initialize_database() {

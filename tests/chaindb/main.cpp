@@ -22,14 +22,22 @@ struct hello_object {
     const std::string& by_name() const {
         return name;
     }
+
+    template<typename Constructor,typename Allocator>
+    hello_object(Constructor&& c, Allocator a) {
+        c(*this);
+    }
 };
 
 FC_REFLECT(value_object, (key)(value))
 FC_REFLECT(hello_object, (id)(age)(name)(values))
 
+struct empty_allocator {
+};
+
 using hello_index =
     chaindb::multi_index<
-        N(hello), chaindb::primary_key_extractor, hello_object,
+        N(hello), chaindb::primary_key_extractor, hello_object, empty_allocator,
         chaindb::indexed_by<
             N(name), chaindb::const_mem_fun<hello_object, const std::string&, &hello_object::by_name>>>;
 

@@ -13,7 +13,9 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 
-#include "chaindb.h"
+#include <eosio/chain/chaindb.h>
+
+#include <eosio/chain/multi_index_includes.hpp>
 
 #define _chaindb_internal_assert(_EXPR, ...) EOS_ASSERT(_EXPR, fc::assert_exception, __VA_ARGS__)
 #define scope_kvp(__SCOPE) _detail::kvp(_detail::get_scope_key(), _detail::name(__SCOPE).to_string())
@@ -353,8 +355,9 @@ namespace _detail {
     }
 
     const string& get_primary_index_name() {
-        static string name = "primary";
-        return name;
+        //static string name = "primary";
+        static string nm = name{chaindb::tag<by_id>::get_name()}.to_string();
+        return nm;
     }
 
     const string& get_id_key() {
@@ -381,7 +384,7 @@ namespace _detail {
         const table_name_t table;
 
         string code_name() const {
-            return name(code).to_string();
+            return code?name(code).to_string():"_system";
         }
 
         string scope_name() const {
@@ -427,7 +430,7 @@ namespace _detail {
         }
 
         string code_name() const {
-            return name(code).to_string();
+            return code?name(code).to_string():"_system";
         }
 
         variant_object to_object(
