@@ -20,7 +20,8 @@ extern const char* const state_history_plugin_abi = R"({
         {
             "name": "get_block_result_v0", "fields": [
                 { "name": "block_num", "type": "uint32" },
-                { "name": "deltas", "type": "bytes?" }
+                { "name": "deltas", "type": "bytes?" },
+                { "name": "traces", "type": "bytes?" }
             ]
         },
         {
@@ -34,6 +35,63 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "name", "type": "string" },
                 { "name": "rows", "type": "row[]" },
                 { "name": "removed", "type": "uint64[]" }
+            ]
+        },
+        {
+            "name": "action_v0", "fields": [
+                { "name": "account", "type": "name" },
+                { "name": "name", "type": "name" },
+                { "name": "authorization", "type": "permission_level[]" },
+                { "name": "data", "type": "bytes" }
+            ]
+        },
+        {
+            "name": "account_auth_sequence", "fields": [
+                { "name": "account", "type": "name" },
+                { "name": "sequence", "type": "uint64" }
+            ]
+        },
+        {
+            "name": "action_receipt_v0", "fields": [
+                { "name": "receiver", "type": "name" },
+                { "name": "act_digest", "type": "checksum256" },
+                { "name": "global_sequence", "type": "uint64" },
+                { "name": "recv_sequence", "type": "uint64" },
+                { "name": "auth_sequence", "type": "account_auth_sequence[]" },
+                { "name": "code_sequence", "type": "varuint32" },
+                { "name": "abi_sequence", "type": "varuint32" }
+            ]
+        },
+        {
+            "name": "account_delta", "fields": [
+                { "name": "account", "type": "name" },
+                { "name": "delta", "type": "int64" }
+            ]
+        },
+        {
+            "name": "action_trace_v0", "fields": [
+                { "name": "receipt", "type": "action_receipt" },
+                { "name": "act", "type": "action" },
+
+                { "name": "context_free", "type": "bool" },
+                { "name": "elapsed", "type": "int64" },
+                { "name": "cpu_usage", "type": "uint64" },
+                { "name": "console", "type": "string" },
+                { "name": "total_cpu_usage", "type": "uint64" },
+                { "name": "account_ram_deltas", "type": "account_delta[]" },
+                { "name": "inline_traces", "type": "action_trace[]" }
+            ]
+        },
+        {
+            "name": "transaction_trace_v0", "fields": [
+                { "name": "id", "type": "checksum256" },
+                { "name": "status", "type": "uint8" },
+                { "name": "cpu_usage_us", "type": "uint32" },
+                { "name": "net_usage_words", "type": "varuint32" },
+                { "name": "elapsed", "type": "int64" },
+                { "name": "net_usage", "type": "uint64" },
+                { "name": "scheduled", "type": "bool" },
+                { "name": "action_traces", "type": "action_trace[]" }
             ]
         },
         {
@@ -324,6 +382,11 @@ extern const char* const state_history_plugin_abi = R"({
     "variants": [
         { "name": "request", "types": ["get_status_request_v0", "get_block_request_v0"] },
         { "name": "result", "types": ["get_status_result_v0", "get_block_result_v0"] },
+
+        { "name": "action", "types": ["action_v0"] },
+        { "name": "action_receipt", "types": ["action_receipt_v0"] },
+        { "name": "action_trace", "types": ["action_trace_v0"] },
+        { "name": "transaction_trace", "types": ["transaction_trace_v0"] },
 
         { "name": "table_delta", "types": ["table_delta_v0"] },
         { "name": "account", "types": ["account_v0"] },

@@ -69,13 +69,16 @@ auto catch_and_log(F f) {
 }
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
-   chain_plugin*                   chain_plug = nullptr;
-   history_log                     state_log{"state_history"};
-   bool                            stopping = false;
-   fc::optional<scoped_connection> accepted_block_connection;
-   string                          endpoint_address = "0.0.0.0";
-   uint16_t                        endpoint_port    = 4321;
-   std::unique_ptr<tcp::acceptor>  acceptor;
+   chain_plugin*                                        chain_plug = nullptr;
+   history_log                                          state_log{"state_history"};
+   history_log                                          trace_log{"trace_history"};
+   bool                                                 stopping = false;
+   fc::optional<scoped_connection>                      applied_transaction_connection;
+   fc::optional<scoped_connection>                      accepted_block_connection;
+   string                                               endpoint_address = "0.0.0.0";
+   uint16_t                                             endpoint_port    = 4321;
+   std::unique_ptr<tcp::acceptor>                       acceptor;
+   std::map<transaction_id_type, transaction_trace_ptr> traces;
 
    void get_state(uint32_t block_num, bytes& deltas) {
       history_log_header header;
@@ -85,6 +88,16 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       deltas.resize(s);
       if (s)
          stream.read(deltas.data(), s);
+   }
+
+   void get_trace(uint32_t block_num, bytes& traces) {
+      history_log_header header;
+      auto&              stream = trace_log.get_entry(block_num, header);
+      uint32_t           s;
+      stream.read((char*)&s, sizeof(s));
+      traces.resize(s);
+      if (s)
+         stream.read(traces.data(), s);
    }
 
    struct session : std::enable_shared_from_this<session> {
@@ -178,6 +191,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             result.deltas.emplace();
             plugin->get_state(req.block_num, *result.deltas);
          }
+         if (req.block_num >= plugin->trace_log.begin_block() && req.block_num < plugin->trace_log.end_block()) {
+            result.traces.emplace();
+            plugin->get_trace(req.block_num, *result.traces);
+         }
          send(std::move(result));
       }
 
@@ -262,7 +279,41 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       });
    }
 
+   void on_applied_transaction(const transaction_trace_ptr& p) { traces[p->id] = p; }
+
    void on_accepted_block(const block_state_ptr& block_state) {
+      // todo: config options
+      store_traces(block_state);
+      store_state(block_state);
+   }
+
+   void store_traces(const block_state_ptr& block_state) {
+      std::vector<transaction_trace_ptr> traces;
+      for (auto& p : block_state->trxs) {
+         auto it = this->traces.find(p->id);
+         if (it == this->traces.end() || !it->second->receipt) {
+            ilog("missing trace for transaction {id}", ("id", p->id));
+            continue;
+         }
+         traces.push_back(it->second);
+      }
+      this->traces.clear();
+
+      auto traces_bin = fc::raw::pack(make_history_serial_wrapper(traces));
+      EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
+
+      history_log_header header{.block_num    = block_state->block->block_num(),
+                                .block_id     = block_state->block->id(),
+                                .payload_size = sizeof(uint32_t) + traces_bin.size()};
+      trace_log.write_entry(header, block_state->block->previous, [&](auto& stream) {
+         uint32_t s = (uint32_t)traces_bin.size();
+         stream.write((char*)&s, sizeof(s));
+         if (!traces_bin.empty())
+            stream.write(traces_bin.data(), traces_bin.size());
+      });
+   }
+
+   void store_state(const block_state_ptr& block_state) {
       bool fresh = state_log.begin_block() == state_log.end_block();
       if (fresh)
          ilog("Placing initial state in block ${n}", ("n", block_state->block->block_num()));
@@ -313,7 +364,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          if (!deltas_bin.empty())
             stream.write(deltas_bin.data(), deltas_bin.size());
       });
-   } // on_accepted_block
+   } // store_state
 };   // state_history_plugin_impl
 
 state_history_plugin::state_history_plugin()
@@ -337,6 +388,8 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       my->chain_plug = app().find_plugin<chain_plugin>();
       EOS_ASSERT(my->chain_plug, chain::missing_chain_plugin_exception, "");
       auto& chain = my->chain_plug->chain();
+      my->applied_transaction_connection.emplace(
+          chain.applied_transaction.connect([&](const transaction_trace_ptr& p) { my->on_applied_transaction(p); }));
       my->accepted_block_connection.emplace(
           chain.accepted_block.connect([&](const block_state_ptr& p) { my->on_accepted_block(p); }));
 
@@ -362,6 +415,8 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       boost::filesystem::create_directories(state_history_dir);
       my->state_log.open((state_history_dir / "state_history.log").string(),
                          (state_history_dir / "state_history.index").string());
+      my->trace_log.open((state_history_dir / "trace_history.log").string(),
+                         (state_history_dir / "trace_history.index").string());
    }
    FC_LOG_AND_RETHROW()
 } // state_history_plugin::plugin_initialize
@@ -369,6 +424,7 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
 void state_history_plugin::plugin_startup() { my->listen(); }
 
 void state_history_plugin::plugin_shutdown() {
+   my->applied_transaction_connection.reset();
    my->accepted_block_connection.reset();
    while (!my->sessions.empty())
       my->sessions.begin()->second->close();
