@@ -17,10 +17,10 @@ namespace eosio { namespace chain {
    };
 
    struct by_account_permission;
-   using permission_usage_index = chainbase::shared_multi_index_container<
+   using permission_usage_index = chainbase::shared_multi_index_container2<
       permission_usage_object,
-      indexed_by<
-         ordered_unique<tag<by_id>, member<permission_usage_object, permission_usage_object::id_type, &permission_usage_object::id>>
+      indexed_by2<
+         ordered_unique2<chaindb::tag<by_id>, member<permission_usage_object, permission_usage_object::id_type, &permission_usage_object::id>>
       >
    >;
 

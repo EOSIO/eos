@@ -18,6 +18,8 @@
 #include <boost/dll/runtime_symbol_info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 
+#include <mongocxx/instance.hpp>
+
 #include "config.hpp"
 
 using namespace appbase;
@@ -92,6 +94,11 @@ enum return_codes {
 
 int main(int argc, char** argv)
 {
+    if (!chaindb_init("mongodb://127.0.0.1:27017")) {
+        elog("Cannot connect to database");
+        return 1;
+    }
+   
    try {
       app().set_version(eosio::nodeos::config::version);
       app().register_plugin<history_plugin>();
