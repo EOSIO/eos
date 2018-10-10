@@ -1,7 +1,16 @@
 steps:
   - command: |
         echo "--- :hammer: Building with sanitizers" && \
-        /usr/bin/cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT="${BOOST_ROOT}" -DWASM_ROOT="${WASM_ROOT}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true -DENABLE_COVERAGE_TESTING=true -DBUILD_DOXYGEN=false -DCMAKE_CXX_FLAGS="-fsanitize-recover=leak -g" -DCMAKE_C_FLAGS="-fsanitize-recover=leak -g" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize-recover=leak -pthread" -DCMAKE_MODULE_LINKER_FLAGS="-fsanitize-recover=leak -pthread" && \
+        /usr/bin/cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0 \
+        -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT="${BOOST_ROOT}" \
+        -DWASM_ROOT="${WASM_ROOT}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" \
+        -DBUILD_MONGO_DB_PLUGIN=true \
+        -DENABLE_COVERAGE_TESTING=true \
+         -DBUILD_DOXYGEN=false \
+         -DCMAKE_CXX_FLAGS="-fsanitize-recover=leak -fsanitize-recover=address -fsanitize-recover=thread -g" \
+         -DCMAKE_C_FLAGS="-fsanitize-recover=leak -fsanitize-recover=address -fsanitize-recover=thread -g" \
+         -DCMAKE_EXE_LINKER_FLAGS="-fsanitize-recover=leak -fsanitize-recover=address -fsanitize-recover=thread -pthread" \
+         -DCMAKE_MODULE_LINKER_FLAGS="-fsanitize-recover=leak -fsanitize-recover=address -fsanitize-recover=thread -pthread" && \
         /usr/bin/ninja | tee sanitizer_output.log
     label: ":spiral_note_pad: Generate Report"
     agents:
