@@ -37,6 +37,7 @@ namespace eosio { namespace chain {
       block_timestamp_type block_time;
       fc::optional<block_id_type>     producer_block_id;
       flat_set<account_delta>         account_ram_deltas;
+      fc::optional<fc::exception>     except;
    };
 
    struct action_trace : public base_action_trace {
@@ -71,7 +72,7 @@ FC_REFLECT( eosio::chain::account_delta,
 
 FC_REFLECT( eosio::chain::base_action_trace,
                     (receipt)(act)(context_free)(elapsed)(cpu_usage)(console)(total_cpu_usage)(trx_id)
-                    (block_num)(block_time)(producer_block_id)(account_ram_deltas) )
+                    (block_num)(block_time)(producer_block_id)(account_ram_deltas)(except) )
 
 FC_REFLECT_DERIVED( eosio::chain::action_trace,
                     (eosio::chain::base_action_trace), (inline_traces) )
