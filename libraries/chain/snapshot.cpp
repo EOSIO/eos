@@ -263,6 +263,9 @@ void istream_snapshot_reader::set_section( const string& section_name ) {
       if (match && snapshot.get() == 0) {
          cur_row = 0;
          num_rows = row_count;
+
+         // leave the stream at the right point
+         restore_pos.cancel();
          return;
       }
    }

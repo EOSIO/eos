@@ -40,9 +40,47 @@ namespace eosio { namespace chain {
          value = row;
       }
 
+      /**
+       * Due to a pattern in our code of overloading `operator << ( std::ostream&, ... )` to provide
+       * human-readable string forms of data, we cannot directly use ostream as those operators will
+       * be used instead of the expected operators.  In otherwords:
+       * fc::raw::pack(fc::datastream...)
+       * will end up calling _very_ different operators than
+       * fc::raw::pack(std::ostream...)
+       */
+      struct ostream_wrapper {
+         explicit ostream_wrapper(std::ostream& s)
+         :inner(s) {
+
+         }
+
+         ostream_wrapper(ostream_wrapper &&) = default;
+         ostream_wrapper(const ostream_wrapper& ) = default;
+
+         auto& write( const char* d, size_t s ) {
+            return inner.write(d, s);
+         }
+
+         auto& put(char c) {
+           return inner.put(c);
+         }
+
+         auto tellp() const {
+            return inner.tellp();
+         }
+
+         auto& seekp(std::ostream::pos_type p) {
+            return inner.seekp(p);
+         }
+
+         std::ostream& inner;
+      };
+
+
       struct abstract_snapshot_row_writer {
-         virtual void write(std::ostream& out) const = 0;
+         virtual void write(ostream_wrapper& out) const = 0;
          virtual variant to_variant() const = 0;
+         virtual std::string row_type_name() const = 0;
       };
 
       template<typename T>
@@ -50,7 +88,7 @@ namespace eosio { namespace chain {
          explicit snapshot_row_writer( const T& data )
          :data(data) {}
 
-         void write(std::ostream& out) const override {
+         void write(ostream_wrapper& out) const override {
             fc::raw::pack(out, data);
          }
 
@@ -58,6 +96,10 @@ namespace eosio { namespace chain {
             variant var;
             fc::to_variant(data, var);
             return var;
+         }
+
+         std::string row_type_name() const override {
+            return boost::core::demangle( typeid( T ).name() );
          }
 
          const T& data;
@@ -110,6 +152,7 @@ namespace eosio { namespace chain {
       struct abstract_snapshot_row_reader {
          virtual void provide(std::istream& in) const = 0;
          virtual void provide(const fc::variant&) const = 0;
+         virtual std::string row_type_name() const = 0;
       };
 
       template<typename T>
@@ -123,6 +166,10 @@ namespace eosio { namespace chain {
 
          void provide(const fc::variant& var) const override {
             fc::from_variant(var, data);
+         }
+
+         std::string row_type_name() const override {
+            return boost::core::demangle( typeid( T ).name() );
          }
 
          T& data;
@@ -231,11 +278,10 @@ namespace eosio { namespace chain {
          static const uint32_t magic_number = 0x30510550;
 
       private:
-
-         std::ostream&  snapshot;
-         std::streampos header_pos;
-         std::streampos section_pos;
-         uint64_t       row_count;
+         detail::ostream_wrapper snapshot;
+         std::streampos          header_pos;
+         std::streampos          section_pos;
+         uint64_t                row_count;
 
    };
 

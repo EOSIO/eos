@@ -62,6 +62,17 @@ namespace eosio { namespace chain {
       }
    };
 
+   template<typename DataStream>
+   DataStream& operator << ( DataStream& ds, const shared_blob& b ) {
+      fc::raw::pack(ds, static_cast<const shared_string&>(b));
+      return ds;
+   }
+
+   template<typename DataStream>
+   DataStream& operator >> ( DataStream& ds, shared_blob& b ) {
+      fc::raw::unpack(ds, static_cast<shared_string &>(b));
+      return ds;
+   }
 } }
 
 namespace fc {
@@ -131,30 +142,18 @@ namespace fc {
       from_variant(v, _v);
       sv = eosio::chain::shared_vector<T>(_v.begin(), _v.end(), sv.get_allocator());
    }
-
-   template<typename DataStream>
-   DataStream& operator << ( DataStream& ds, const eosio::chain::shared_blob& b ) {
-      fc::raw::pack(ds, static_cast<const eosio::chain::shared_string&>(b));
-      return ds;
-   }
-
-   template<typename DataStream>
-   DataStream& operator >> ( DataStream& ds, eosio::chain::shared_blob& b ) {
-      fc::raw::unpack(ds, static_cast<eosio::chain::shared_string &>(b));
-      return ds;
-   }
 }
 
 namespace chainbase {
    // overloads for OID packing
    template<typename DataStream, typename OidType>
-   DataStream& operator << ( DataStream& ds, const chainbase::oid<OidType>& oid ) {
+   DataStream& operator << ( DataStream& ds, const oid<OidType>& oid ) {
       fc::raw::pack(ds, oid._id);
       return ds;
    }
 
    template<typename DataStream, typename OidType>
-   DataStream& operator >> ( DataStream& ds, chainbase::oid<OidType>& oid ) {
+   DataStream& operator >> ( DataStream& ds, oid<OidType>& oid ) {
       fc::raw::unpack(ds, oid._id);
       return ds;
    }
@@ -169,7 +168,7 @@ DataStream& operator << ( DataStream& ds, const float64_t& v ) {
 
 template<typename DataStream>
 DataStream& operator >> ( DataStream& ds, float64_t& v ) {
-   fc::raw::unpack(ds, *reinterpret_cast<const double *>(&v));
+   fc::raw::unpack(ds, *reinterpret_cast<double *>(&v));
    return ds;
 }
 
@@ -181,7 +180,7 @@ DataStream& operator << ( DataStream& ds, const float128_t& v ) {
 
 template<typename DataStream>
 DataStream& operator >> ( DataStream& ds, float128_t& v ) {
-   fc::raw::unpack(ds, *reinterpret_cast<const eosio::chain::uint128_t*>(&v));
+   fc::raw::unpack(ds, *reinterpret_cast<eosio::chain::uint128_t*>(&v));
    return ds;
 }
 
