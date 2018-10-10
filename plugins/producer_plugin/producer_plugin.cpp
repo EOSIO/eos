@@ -1357,15 +1357,17 @@ bool producer_plugin_impl::maybe_produce_block() {
    });
 
    try {
-      produce_block();
-      return true;
-   } catch ( const guard_exception& e ) {
-      app().get_plugin<chain_plugin>().handle_guard_exception(e);
-      return false;
-   } catch ( boost::interprocess::bad_alloc& ) {
+      try {
+         produce_block();
+         return true;
+      } catch ( const guard_exception& e ) {
+         app().get_plugin<chain_plugin>().handle_guard_exception(e);
+         return false;
+      } FC_LOG_AND_DROP();
+   } catch ( boost::interprocess::bad_alloc&) {
       raise(SIGUSR1);
       return false;
-   } FC_LOG_AND_DROP();
+   }
 
    fc_dlog(_log, "Aborting block due to produce_block error");
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
