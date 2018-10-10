@@ -1,17 +1,16 @@
 steps:
   - command: |
         echo "--- :hammer: Building with Address Sanitizer" && \
-        /usr/bin/cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0  -Wall -Werror \
-        -ASAN_SYMBOLIZER_PATH=/usr/lib/llvm-4.0/bin/llvm-symbolizer \ 
+        /usr/bin/cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0 -Wall -Werror \
         -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT="${BOOST_ROOT}" \
         -DWASM_ROOT="${WASM_ROOT}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" \
         -DBUILD_MONGO_DB_PLUGIN=true \
         -DENABLE_COVERAGE_TESTING=true \
         -DBUILD_DOXYGEN=false \
-        -DCMAKE_CXX_FLAGS="-fsanitizer=address -fsanitize-recover=all -g" \
-        -DCMAKE_C_FLAGS="-fsanitizer=address -fsanitize-recover=all -g" \
-        -DCMAKE_EXE_LINKER_FLAGS="-fsanitizer=address -fsanitize-recover=all  -pthread" \
-        -DCMAKE_MODULE_LINKER_FLAGS="-fsanitizer=address -fsanitize-recover=all -pthread" && \
+        -DCMAKE_CXX_FLAGS="-fsanitize=address -fsanitize-recover=all -g" \
+        -DCMAKE_C_FLAGS="-fsanitize=address -fsanitize-recover=all -g" \
+        -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address -fsanitize-recover=all  -pthread" \
+        -DCMAKE_MODULE_LINKER_FLAGS="-fsanitize=address -fsanitize-recover=all -pthread" && \
         /usr/bin/ninja | tee address_sanitizer.log
     label: ":spiral_note_pad: Generate Report"
     agents:
@@ -32,6 +31,7 @@ steps:
           - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/opt/wasm/bin
           - CI=true
           - ASAN_OPTIONS=fast_unwind_on_malloc=0
+          - ASAN_SYMBOLIZER_PATH=/usr/lib/llvm-4.0/bin/llvm-symbolizer
     timeout: 60
 
   # - command: |
