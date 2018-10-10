@@ -37,6 +37,7 @@ add_subdirectory(integration_test)
 add_subdirectory(insurancePolicy)
 add_subdirectory(ping)
 add_subdirectory(regaction)
+add_subdirectory(p2p_insurance)
 
 
 file(GLOB SKELETONS RELATIVE ${CMAKE_SOURCE_DIR}/contracts "skeleton/*")
