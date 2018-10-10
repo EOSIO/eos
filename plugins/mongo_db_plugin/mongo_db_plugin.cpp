@@ -848,10 +848,11 @@ public:
    }
 
    void
-   handle_regaction( const chain::action_trace &action_trace ) {
+   handle_regaction( const chain::action_trace &action_trace, const std::chrono::milliseconds &now ) {
       using bsoncxx::types::b_bool;
       using bsoncxx::builder::basic::kvp;
       using bsoncxx::builder::basic::document;
+      using bsoncxx::types::b_date;
 
       const chain::base_action_trace& base = action_trace;
       auto v = plugin->to_variant_with_abi( base );
@@ -862,6 +863,8 @@ public:
       if ( actname == "addaction" ) {
          auto doc = document{};
          from_json_to_doc(doc, fc::json::to_string( v["act"]["data"]));
+
+         doc.append( kvp( "createdAt", b_date{now} ) );
 
          auto filter = document{};
          filter.append( kvp( "receiver", v["act"]["data"]["receiver"].get_string() ),
@@ -989,7 +992,7 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
    bool added = false;
    mongo_regactoin regact(this);
    if (start_block_reached && store_action_traces && regact.is_regreceiver( atrace ) ) {
-      regact.handle_regaction( atrace );
+      regact.handle_regaction( atrace, now );
    }
 
    if (start_block_reached && store_action_traces && regact.filter_include( atrace )) {
