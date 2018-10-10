@@ -421,6 +421,18 @@ namespace eosio { namespace chain {
       auto data = fc::raw::pack( gs );
       new_block_stream.write( data.data(), data.size() );
 
+      if (version != 1) {
+         auto expected_totem = npos;
+         std::decay_t<decltype(npos)> actual_totem;
+         old_block_stream.read ( (char*)&actual_totem, sizeof(actual_totem) );
+
+         EOS_ASSERT(actual_totem == expected_totem, block_log_exception,
+                    "Expected separator between block log header and blocks was not found( expected: ${e}, actual: ${a} )",
+                    ("e", fc::to_hex((char*)&expected_totem, sizeof(expected_totem) ))("a", fc::to_hex((char*)&actual_totem, sizeof(actual_totem) )));
+
+         new_block_stream.write( (char*)&actual_totem, sizeof(actual_totem) );
+      }
+
       std::exception_ptr     except_ptr;
       vector<char>           incomplete_block_data;
       optional<signed_block> bad_block;
