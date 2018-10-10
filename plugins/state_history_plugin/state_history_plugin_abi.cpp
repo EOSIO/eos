@@ -20,8 +20,8 @@ extern const char* const state_history_plugin_abi = R"({
         {
             "name": "get_block_result_v0", "fields": [
                 { "name": "block_num", "type": "uint32" },
-                { "name": "deltas", "type": "bytes?" },
-                { "name": "traces", "type": "bytes?" }
+                { "name": "traces", "type": "bytes?" },
+                { "name": "deltas", "type": "bytes?" }
             ]
         },
         {

@@ -70,8 +70,8 @@ auto catch_and_log(F f) {
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                        chain_plug = nullptr;
-   history_log                                          state_log{"state_history"};
    history_log                                          trace_log{"trace_history"};
+   history_log                                          chain_state_log{"chain_state_history"};
    bool                                                 stopping = false;
    fc::optional<scoped_connection>                      applied_transaction_connection;
    fc::optional<scoped_connection>                      accepted_block_connection;
@@ -80,30 +80,24 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    std::unique_ptr<tcp::acceptor>                       acceptor;
    std::map<transaction_id_type, transaction_trace_ptr> traces;
 
-   void get_state(uint32_t block_num, bytes& deltas) {
+   void get_data(history_log& log, uint32_t block_num, fc::optional<bytes>& result) {
+      if (block_num < log.begin_block() || block_num >= log.end_block())
+         return;
       history_log_header header;
-      auto&              stream = state_log.get_entry(block_num, header);
+      auto&              stream = log.get_entry(block_num, header);
       uint32_t           s;
       stream.read((char*)&s, sizeof(s));
-      deltas.resize(s);
+      result.emplace();
+      result->resize(s);
       if (s)
-         stream.read(deltas.data(), s);
-   }
-
-   void get_trace(uint32_t block_num, bytes& traces) {
-      history_log_header header;
-      auto&              stream = trace_log.get_entry(block_num, header);
-      uint32_t           s;
-      stream.read((char*)&s, sizeof(s));
-      traces.resize(s);
-      if (s)
-         stream.read(traces.data(), s);
+         stream.read(result->data(), s);
    }
 
    struct session : std::enable_shared_from_this<session> {
       std::shared_ptr<state_history_plugin_impl> plugin;
       std::unique_ptr<ws::stream<tcp::socket>>   stream;
       bool                                       sending = false;
+      bool                                       sentAbi = false;
       std::vector<std::vector<char>>             send_queue;
 
       session(std::shared_ptr<state_history_plugin_impl> plugin)
@@ -145,7 +139,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
 
       void send(const char* s) {
-         // todo: send as string
          send_queue.push_back({s, s + strlen(s)});
          send();
       }
@@ -160,6 +153,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          if (sending || send_queue.empty())
             return;
          sending = true;
+         stream->binary(sentAbi);
+         sentAbi = true;
          stream->async_write( //
              boost::asio::buffer(send_queue[0]),
              [self = shared_from_this(), this](boost::system::error_code ec, size_t) {
@@ -179,22 +174,17 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          get_status_result_v0 result;
          result.last_irreversible_block_num = chain.last_irreversible_block_num();
          result.last_irreversible_block_id  = chain.last_irreversible_block_id();
-         result.state_begin_block_num       = plugin->state_log.begin_block();
-         result.state_end_block_num         = plugin->state_log.end_block();
+         result.state_begin_block_num       = plugin->chain_state_log.begin_block();
+         result.state_end_block_num         = plugin->chain_state_log.end_block();
          send(std::move(result));
       }
 
       void operator()(get_block_request_v0& req) {
          // ilog("${b} get_block_request_v0", ("b", req.block_num));
          get_block_result_v0 result{req.block_num};
-         if (req.block_num >= plugin->state_log.begin_block() && req.block_num < plugin->state_log.end_block()) {
-            result.deltas.emplace();
-            plugin->get_state(req.block_num, *result.deltas);
-         }
-         if (req.block_num >= plugin->trace_log.begin_block() && req.block_num < plugin->trace_log.end_block()) {
-            result.traces.emplace();
-            plugin->get_trace(req.block_num, *result.traces);
-         }
+         // todo: client select which datasets to receive
+         plugin->get_data(plugin->trace_log, req.block_num, result.traces);
+         plugin->get_data(plugin->chain_state_log, req.block_num, result.deltas);
          send(std::move(result));
       }
 
@@ -279,12 +269,15 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       });
    }
 
-   void on_applied_transaction(const transaction_trace_ptr& p) { traces[p->id] = p; }
+   void on_applied_transaction(const transaction_trace_ptr& p) {
+      if (p->receipt)
+         traces[p->id] = p;
+   }
 
    void on_accepted_block(const block_state_ptr& block_state) {
       // todo: config options
       store_traces(block_state);
-      store_state(block_state);
+      store_chain_state(block_state);
    }
 
    void store_traces(const block_state_ptr& block_state) {
@@ -313,8 +306,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       });
    }
 
-   void store_state(const block_state_ptr& block_state) {
-      bool fresh = state_log.begin_block() == state_log.end_block();
+   void store_chain_state(const block_state_ptr& block_state) {
+      bool fresh = chain_state_log.begin_block() == chain_state_log.end_block();
       if (fresh)
          ilog("Placing initial state in block ${n}", ("n", block_state->block->block_num()));
 
@@ -358,13 +351,13 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       history_log_header header{.block_num    = block_state->block->block_num(),
                                 .block_id     = block_state->block->id(),
                                 .payload_size = sizeof(uint32_t) + deltas_bin.size()};
-      state_log.write_entry(header, block_state->block->previous, [&](auto& stream) {
+      chain_state_log.write_entry(header, block_state->block->previous, [&](auto& stream) {
          uint32_t s = (uint32_t)deltas_bin.size();
          stream.write((char*)&s, sizeof(s));
          if (!deltas_bin.empty())
             stream.write(deltas_bin.data(), deltas_bin.size());
       });
-   } // store_state
+   } // store_chain_state
 };   // state_history_plugin_impl
 
 state_history_plugin::state_history_plugin()
@@ -413,10 +406,10 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       }
 
       boost::filesystem::create_directories(state_history_dir);
-      my->state_log.open((state_history_dir / "state_history.log").string(),
-                         (state_history_dir / "state_history.index").string());
       my->trace_log.open((state_history_dir / "trace_history.log").string(),
                          (state_history_dir / "trace_history.index").string());
+      my->chain_state_log.open((state_history_dir / "chain_state_history.log").string(),
+                               (state_history_dir / "chain_state_history.index").string());
    }
    FC_LOG_AND_RETHROW()
 } // state_history_plugin::plugin_initialize
