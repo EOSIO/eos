@@ -215,7 +215,7 @@ namespace cyberway { namespace chaindb {
             }
         }
 
-        void verify_table_structure(
+        void verify_tables_structure(
             driver_interface& driver, const time_point& deadline, const microseconds& max_time
         ) const {
             for (auto& t: abi_.tables) {
@@ -225,8 +225,7 @@ namespace cyberway { namespace chaindb {
 
                 driver.verify_table_structure(info, max_time);
 
-                CYBERWAY_ASSERT(
-                    time_point::now() < deadline, eosio::chain::abi_serialization_deadline_exception,
+                CYBERWAY_ASSERT(time_point::now() < deadline, eosio::chain::abi_serialization_deadline_exception,
                     "serialization time limit ${t}us exceeded", ("t", max_time) );
             }
         }
@@ -290,8 +289,7 @@ namespace cyberway { namespace chaindb {
                 "The ${value_type} '${type}': ${value}",
                 ("value_type", value_type)("type", db_type())("value", value));
 
-            CYBERWAY_ASSERT(
-                value.is_object(), invalid_abi_store_type_exception,
+            CYBERWAY_ASSERT(value.is_object(), invalid_abi_store_type_exception,
                 "ABI serializer returns bad type for the ${value_type} for ${type}: ${value}",
                 ("value_type", value_type)("type", db_type())("value", value));
 
@@ -308,8 +306,7 @@ namespace cyberway { namespace chaindb {
                 "The ${value_type} '${type}': ${value}",
                 ("value", value_type)("type", db_type())("value", value));
 
-            CYBERWAY_ASSERT(
-                value.is_object(), invalid_abi_store_type_exception,
+            CYBERWAY_ASSERT(value.is_object(), invalid_abi_store_type_exception,
                 "ABI serializer receive wrong type for the ${value_type} for '${type}': ${value}",
                 ("value_type", value_type)("type", db_type())("value", value));
 
@@ -329,8 +326,7 @@ namespace cyberway { namespace chaindb {
                     break;
 
                 default:
-                    CYBERWAY_ASSERT(
-                        false, unknown_connection_type_exception,
+                    CYBERWAY_ASSERT(false, unknown_connection_type_exception,
                         "Invalid type of ChainDB connection");
             }
         }
@@ -340,7 +336,7 @@ namespace cyberway { namespace chaindb {
         void set_abi(const account_name& code, abi_def abi) {
             time_point deadline = time_point::now() + max_abi_time;
             abi_info info(code, std::move(abi), max_abi_time);
-            info.verify_table_structure(*driver.get(), deadline, max_abi_time);
+            info.verify_tables_structure(*driver.get(), deadline, max_abi_time);
             abi_map_.erase(code);
             abi_map_.emplace(code, std::move(info));
         }
@@ -396,8 +392,7 @@ namespace cyberway { namespace chaindb {
             auto& cursor = driver->current(id);
 
             auto& src = object_data(cursor);
-            CYBERWAY_ASSERT(
-                src.size() == size, invalid_data_size_exception,
+            CYBERWAY_ASSERT(src.size() == size, invalid_data_size_exception,
                 "Wrong data size (${data_size} != ${object_size}) for the table ${table}",
                 ("data_size", size)("object_size", src.size())("table", _detail::full_table_name(cursor.info)));
 
@@ -418,11 +413,11 @@ namespace cyberway { namespace chaindb {
             auto value = add_service_fields(table, payer, raw_value, pk, size);
 
             auto inserted_pk = driver->insert(table, value);
-            CYBERWAY_ASSERT(
-                inserted_pk == pk, driver_primary_key_exception,
+            CYBERWAY_ASSERT(inserted_pk == pk, driver_primary_key_exception,
                 "Driver returns ${ipk} instead of ${pk} on inserting into the table ${table}",
                 ("ipk", inserted_pk)("pk", pk)("table", full_table_name(table)));
 
+            // open cursor from inserted pk
             mutable_variant_object key_object;
             key_object(*table.pk_field, pk);
             variant key(std::move(key_object));
@@ -430,8 +425,7 @@ namespace cyberway { namespace chaindb {
             info.index = &get_pk_index(table);
 
             auto& cursor = driver->lower_bound(info, key);
-            CYBERWAY_ASSERT(
-                cursor.pk == pk, driver_primary_key_exception,
+            CYBERWAY_ASSERT(cursor.pk == pk, driver_primary_key_exception,
                 "Driver returns ${ipk} instead of ${pk} on loading from the table ${table}",
                 ("ipk", cursor.pk)("pk", pk)("table", full_table_name(table)));
 
@@ -461,8 +455,7 @@ namespace cyberway { namespace chaindb {
             auto value = add_service_fields(table, payer, raw_value, pk, size);
 
             auto updated_pk = driver->update(table, value);
-            CYBERWAY_ASSERT(
-                updated_pk == pk, driver_primary_key_exception,
+            CYBERWAY_ASSERT(updated_pk == pk, driver_primary_key_exception,
                 "Driver returns ${upk} instead of ${pk} on updating of the table ${table}",
                 ("upk", updated_pk)("pk", pk)("table", full_table_name(table)));
 
@@ -482,8 +475,7 @@ namespace cyberway { namespace chaindb {
             auto& orig_object = orig_value.get_object();
 
             auto deleted_pk = driver->remove(table, pk);
-            CYBERWAY_ASSERT(
-                deleted_pk == pk, driver_primary_key_exception,
+            CYBERWAY_ASSERT(deleted_pk == pk, driver_primary_key_exception,
                 "Driver returns ${dpk} instead of ${pk} on deleting of the table ${table}",
                 ("dpk", deleted_pk)("pk", pk)("table", full_table_name(table)));
 
@@ -499,8 +491,7 @@ namespace cyberway { namespace chaindb {
         template <typename Info, typename Request>
         Info get_table(const Request& request) const {
             auto info = find_table<Info>(request);
-            CYBERWAY_ASSERT(
-                info.table, unknown_table_exception,
+            CYBERWAY_ASSERT(info.table, unknown_table_exception,
                 "ABI table ${table} doesn't exists",
                 ("table", _detail::full_table_name(request)));
 
@@ -509,8 +500,7 @@ namespace cyberway { namespace chaindb {
 
         index_info get_index(const index_request& request) const {
             auto info = find_index(request);
-            CYBERWAY_ASSERT(
-                info.index, unknown_index_exception,
+            CYBERWAY_ASSERT(info.index, unknown_index_exception,
                 "ABI index ${index} doesn't exists",
                 ("index", _detail::full_index_name(request)));
 
@@ -565,15 +555,13 @@ namespace cyberway { namespace chaindb {
         }
 
         const bytes& object_data(const cursor_info& cursor) const {
+            CYBERWAY_ASSERT(cursor.info.abi != nullptr && cursor.info.table != nullptr, broken_driver_exception,
+                "Driver returns bad information about abi.");
+
             auto& data = driver->data(cursor);
             if (data.size()) return data;
 
             auto& value = driver->value(cursor);
-            CYBERWAY_ASSERT(
-                cursor.info.abi != nullptr && cursor.info.table != nullptr,
-                broken_driver_exception,
-                "Driver return bad information about abi");
-
             validate_object(cursor.info, value, cursor.pk);
 
             auto buffer = cursor.info.abi->to_bytes(cursor.info, value, max_abi_time);
@@ -584,28 +572,25 @@ namespace cyberway { namespace chaindb {
         void validate_object(const table_info& table, const variant& value, const primary_key_t pk) const {
             using namespace _detail;
 
-            // TODO: check on object
+            CYBERWAY_ASSERT(value.is_object(), broken_driver_exception,
+                "ChainDB driver returns not object.");
             auto& object = value.get_object();
-            auto& fields = reserved_fields();
 
+            auto& fields = reserved_fields();
             for (auto& field: fields) {
-                CYBERWAY_ASSERT(
-                    object.end() != object.find(field), reserved_field_name_exception,
+                CYBERWAY_ASSERT(object.end() != object.find(field), driver_absent_field_exception,
                     "ChainDB driver returns object without field ${name} for the table ${table}.",
                     ("table", full_table_name(table))("name", field));
             }
 
             auto itr = object.find(*table.pk_field);
-            CYBERWAY_ASSERT(
-                object.end() != itr, primary_key_absent_exception,
+            CYBERWAY_ASSERT(object.end() != itr, driver_primary_key_exception,
                 "ChainDB driver returns object without primary key", ("table", full_table_name(table)));
 
-            CYBERWAY_ASSERT(
-                variant::uint64_type == itr->value().get_type(), primary_key_wrong_type_exception,
+            CYBERWAY_ASSERT(variant::uint64_type == itr->value().get_type(), driver_primary_key_exception,
                 "ChainDB driver returns object with wrong type of primary key", ("table", full_table_name(table)));
 
-            CYBERWAY_ASSERT(
-                pk == itr->value().as_uint64(), primary_key_wrong_value_exception,
+            CYBERWAY_ASSERT(pk == itr->value().as_uint64(), driver_primary_key_exception,
                 "ChainDB driver returns object with wrong value of primary key", ("table", full_table_name(table)));
         }
 
@@ -617,23 +602,19 @@ namespace cyberway { namespace chaindb {
             auto& fields = reserved_fields();
 
             for (auto& field: fields) {
-                CYBERWAY_ASSERT(
-                    object.end() == object.find(field), reserved_field_name_exception,
+                CYBERWAY_ASSERT(object.end() == object.find(field), reserved_field_name_exception,
                     "The table ${table} can't use ${name} as field name.",
                     ("table", full_table_name(table))("name", field));
             }
 
             auto itr = object.find(*table.pk_field);
-            CYBERWAY_ASSERT(
-                object.end() != itr, primary_key_absent_exception,
+            CYBERWAY_ASSERT(object.end() != itr, primary_key_exception,
                 "The table ${table} doesn't have primary key", ("table", full_table_name(table)));
 
-            CYBERWAY_ASSERT(
-                variant::uint64_type == itr->value().get_type(), primary_key_wrong_type_exception,
+            CYBERWAY_ASSERT(variant::uint64_type == itr->value().get_type(), primary_key_exception,
                 "The table ${table} has wrong type of primary key", ("table", full_table_name(table)));
 
-            CYBERWAY_ASSERT(
-                pk == itr->value().as_uint64(), primary_key_wrong_value_exception,
+            CYBERWAY_ASSERT(pk == itr->value().as_uint64(), primary_key_exception,
                 "The table ${table} has wrong value of primary key", ("table", full_table_name(table)));
         }
 

@@ -50,17 +50,12 @@ namespace cyberway { namespace chaindb {
                                  3730000, "ChainDB contract exception")
 
         FC_DECLARE_DERIVED_EXCEPTION(invalid_data_size_exception, chaindb_contract_exception,
-                                     3720001, "Requested data with wrong size")
+                                     3730001, "Requested data with wrong size")
 
         FC_DECLARE_DERIVED_EXCEPTION(reserved_field_name_exception, chaindb_contract_exception,
-                                     3720002, "Table contains reserved field name")
+                                     3730002, "Table contains reserved field name")
 
-        FC_DECLARE_DERIVED_EXCEPTION(primary_key_absent_exception, chaindb_contract_exception,
-                                     3720003, "Table doesn't have primary key field")
+        FC_DECLARE_DERIVED_EXCEPTION(primary_key_exception, chaindb_contract_exception,
+                                     3730003, "Table doesn't have primary key field")
 
-        FC_DECLARE_DERIVED_EXCEPTION(primary_key_wrong_type_exception, chaindb_contract_exception,
-                                     3720004, "The primary key field has wrong type")
-
-        FC_DECLARE_DERIVED_EXCEPTION(primary_key_wrong_value_exception, chaindb_contract_exception,
-                                     3720005, "The primary key field has wrong value")
 } } // namespace cyberway::chaindb
