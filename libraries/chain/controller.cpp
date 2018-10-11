@@ -128,6 +128,7 @@ struct controller_impl {
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
    optional<fc::microseconds>     subjective_cpu_leeway;
    bool                           trusted_producer_light_validation = false;
+   uint32_t                       snapshot_head_block = 0;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -341,8 +342,10 @@ struct controller_impl {
             blog.reset(conf.genesis, signed_block_ptr(), head->block_num + 1);
          } else if ( end->block_num() > head->block_num) {
             replay();
+         } else {
+            EOS_ASSERT(end->block_num() == head->block_num, fork_database_exception,
+                       "Block log is provided with snapshot but does not contain the head block from the snapshot");
          }
-
       } else if( !head ) {
          initialize_fork_db(); // set head to genesis state
 
@@ -455,6 +458,7 @@ struct controller_impl {
          fork_db.set_validity(head_state, true);
          fork_db.mark_in_current_chain(head_state, true);
          head = head_state;
+         snapshot_head_block = head->block_num;
       });
 
       controller_index_set::walk_indices([this, &snapshot]( auto utils ){
@@ -1652,7 +1656,7 @@ optional<block_id_type> controller::pending_producer_block_id()const {
 }
 
 uint32_t controller::last_irreversible_block_num() const {
-   return std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum);
+   return std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum, my->snapshot_head_block);
 }
 
 block_id_type controller::last_irreversible_block_id() const {
