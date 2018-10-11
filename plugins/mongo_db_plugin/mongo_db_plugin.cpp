@@ -941,35 +941,41 @@ handle_action( mongo_regactoin &regact, const chain::action_trace &action_trace,
    dlog( bsoncxx::to_json( *( regact.get_action_info())));
    dlog( fc::json::to_string( v ));
 
+   static const int32_t INSERT = 1;
+   static const int32_t UPDATE = 2;
+   static const int32_t DELETE = 3;
+
    auto coll_name = regact.get_action_info()->view()["collection"].get_utf8().value.to_string();
-   auto op = regact.get_action_info()->view()["operation"].get_utf8().value.to_string();
+   auto op = regact.get_action_info()->view()["operation"].get_int32();
    auto idxnum = regact.get_action_info()->view()["idxnum"].get_int32();
-   if ( op == "insert" ) {
+   if ( op == INSERT ) {
       auto doc = document{};
       from_json_to_doc( doc, fc::json::to_string( v["act"]["data"] ));
 
       doc.append( kvp( "createdAt", b_date{now} ) );
 
       insert_document( regact.get_plguin()->get_custom_collection( coll_name ), doc );
-   } else if ( op == "update" ) {
+   } else if ( op == UPDATE ) {
       auto filter = document{};
       auto update = document{};
 
       auto vb = v["act"]["data"].get_object();
-      auto key = vb.begin();
-
       auto idxcount = 0;
-      for ( auto it = vb.begin(); idxcount < idxnum && it != vb.end();
-            ++idxcount, ++it ) {
+      for ( auto it = vb.begin(); idxcount < idxnum && it != vb.end(); ++idxcount, ++it ) {
          filter.append( kvp( it->key(), it->value().as_string()));
       }
 
       from_json_to_doc( update, fc::json::to_string( v["act"]["data"]));
 
       update_document( regact.get_plguin()->get_custom_collection( coll_name ), filter, update );
-   } else if ( op == "delete" ) {
+   } else if ( op == DELETE ) {
       auto filter = document{};
-      from_json_to_doc( filter, fc::json::to_string( v["act"]["data"] ));
+
+      auto vb = v["act"]["data"].get_object();
+      auto idxcount = 0;
+      for ( auto it = vb.begin(); idxcount < idxnum && it != vb.end(); ++idxcount, ++it ) {
+         filter.append( kvp( it->key(), it->value().as_string()));
+      }
 
       delete_document( regact.get_plguin()->get_custom_collection( coll_name ), filter );
    } else {

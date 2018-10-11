@@ -30,6 +30,21 @@ public:
 
    }
 
+   /// @abi actoin
+   void addint( uint64_t id, string val ) {
+
+   }
+
+   /// @abi action
+   void modint( uint64_t id, string val ) {
+
+   }
+
+   /// @abi action
+   void delint( uint64_t id ) {
+
+   }
+
 };
 
-EOSIO_ABI( hello, ( hi )( addword )( delword )( modword )( testvec ))
+EOSIO_ABI( hello, ( hi )( addword )( delword )( modword )( testvec )( addint )( modint )( delint ))
