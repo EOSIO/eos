@@ -76,9 +76,7 @@ extern const char* const state_history_plugin_abi = R"({
 
                 { "name": "context_free", "type": "bool" },
                 { "name": "elapsed", "type": "int64" },
-                { "name": "cpu_usage", "type": "uint64" },
                 { "name": "console", "type": "string" },
-                { "name": "total_cpu_usage", "type": "uint64" },
                 { "name": "account_ram_deltas", "type": "account_delta[]" },
                 { "name": "inline_traces", "type": "action_trace[]" }
             ]
