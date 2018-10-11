@@ -28,15 +28,14 @@ namespace eosio { namespace chain {
       action               act;
       bool                 context_free = false;
       fc::microseconds     elapsed;
-      uint64_t             cpu_usage = 0;
       string               console;
 
-      uint64_t             total_cpu_usage = 0; /// total of inline_traces[x].cpu_usage + cpu_usage
       transaction_id_type  trx_id; ///< the transaction that generated this action
       uint32_t             block_num = 0;
       block_timestamp_type block_time;
       fc::optional<block_id_type>     producer_block_id;
       flat_set<account_delta>         account_ram_deltas;
+      fc::optional<fc::exception>     except;
    };
 
    struct action_trace : public base_action_trace {
@@ -70,8 +69,8 @@ FC_REFLECT( eosio::chain::account_delta,
             (account)(delta) )
 
 FC_REFLECT( eosio::chain::base_action_trace,
-                    (receipt)(act)(context_free)(elapsed)(cpu_usage)(console)(total_cpu_usage)(trx_id)
-                    (block_num)(block_time)(producer_block_id)(account_ram_deltas) )
+                    (receipt)(act)(context_free)(elapsed)(console)(trx_id)
+                    (block_num)(block_time)(producer_block_id)(account_ram_deltas)(except) )
 
 FC_REFLECT_DERIVED( eosio::chain::action_trace,
                     (eosio::chain::base_action_trace), (inline_traces) )

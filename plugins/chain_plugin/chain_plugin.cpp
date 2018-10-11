@@ -28,6 +28,7 @@
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 #include <signal.h>
+#include <cstdlib>
 
 namespace eosio {
 
@@ -939,6 +940,12 @@ void chain_plugin::handle_guard_exception(const chain::guard_exception& e) const
    app().quit();
 }
 
+void chain_plugin::handle_db_exhaustion() {
+   elog("database memory exhausted: increase chain-state-db-size-mb and/or reversible-blocks-db-size-mb");
+   //return 1 -- it's what programs/nodeos/main.cpp considers "BAD_ALLOC"
+   std::_Exit(1);
+}
+
 namespace chain_apis {
 
 const string read_only::KEYi64 = "i64";
@@ -1440,7 +1447,7 @@ void read_write::push_block(const read_write::push_block_params& params, next_fu
       app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(params));
       next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
-      raise(SIGUSR1);
+      chain_plugin::handle_db_exhaustion();
    } CATCH_AND_CALL(next);
 }
 
@@ -1475,7 +1482,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
 
 
    } catch ( boost::interprocess::bad_alloc& ) {
-      raise(SIGUSR1);
+      chain_plugin::handle_db_exhaustion();
    } CATCH_AND_CALL(next);
 }
 

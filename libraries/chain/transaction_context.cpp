@@ -429,14 +429,7 @@ namespace eosio { namespace chain {
       acontext.context_free = context_free;
       acontext.receiver     = receiver;
 
-      try {
-         acontext.exec();
-      } catch( ... ) {
-         trace = move(acontext.trace);
-         throw;
-      }
-
-      trace = move(acontext.trace);
+      acontext.exec( trace );
    }
 
    void transaction_context::schedule_transaction() {

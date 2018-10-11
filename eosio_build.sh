@@ -85,7 +85,7 @@
                DOXYGEN=true
             ;;
             s)
-               if [ "${#OPTARG}" -gt 6 ] || [ -z "${#OPTARG}" ]; then
+               if [ "${#OPTARG}" -gt 7 ] || [ -z "${#OPTARG}" ]; then
                   printf "\\n\\tInvalid argument: %s\\n" "${OPTARG}" 1>&2
                   usage
                   exit 1
