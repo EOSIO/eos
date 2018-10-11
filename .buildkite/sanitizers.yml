@@ -19,7 +19,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -j8 -LE _tests --output-on-failure | tee sanitizer.log
+        ctest -j8 -LE _tests --output-on-failure | tee sanitizer.log
         echo "--- :beers: Done"
     label: ":_: Undefined Sanitizer"
     agents:
