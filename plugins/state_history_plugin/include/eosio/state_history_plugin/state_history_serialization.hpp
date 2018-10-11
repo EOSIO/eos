@@ -180,7 +180,6 @@ datastream<ST>& operator<<(datastream<ST>&                                      
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::producer_key>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.producer_name.value));
    fc::raw::pack(ds, as_type<eosio::chain::public_key_type>(obj.obj.block_signing_key));
    return ds;
@@ -189,9 +188,8 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>&                                                            ds,
                            const history_serial_wrapper<eosio::chain::shared_producer_schedule_type>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.version));
-   history_serialize_container(ds, obj.obj.producers);
+   history_serialize_container(ds, as_type<eosio::chain::shared_vector<eosio::chain::producer_key>>(obj.obj.producers));
    return ds;
 }
 

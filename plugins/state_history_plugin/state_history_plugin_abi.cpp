@@ -20,6 +20,8 @@ extern const char* const state_history_plugin_abi = R"({
         {
             "name": "get_block_result_v0", "fields": [
                 { "name": "block_num", "type": "uint32" },
+                { "name": "block", "type": "bytes?" },
+                { "name": "block_state", "type": "bytes?" },
                 { "name": "traces", "type": "bytes?" },
                 { "name": "deltas", "type": "bytes?" }
             ]
@@ -92,6 +94,56 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "net_usage", "type": "uint64" },
                 { "name": "scheduled", "type": "bool" },
                 { "name": "action_traces", "type": "action_trace[]" }
+            ]
+        },
+        {
+            "name": "packed_transaction", "fields": [
+                { "name": "signatures", "type": "signature[]" },
+                { "name": "compression", "type": "uint8" },
+                { "name": "packed_context_free_data", "type": "bytes" },
+                { "name": "packed_trx", "type": "bytes" }
+            ]
+        },
+        {
+            "name": "transaction_receipt_header", "fields": [
+                { "name": "status", "type": "uint8" },
+                { "name": "cpu_usage_us", "type": "uint32" },
+                { "name": "net_usage_words", "type": "varuint32" }
+            ]
+        },
+        {
+            "name": "transaction_receipt", "base": "transaction_receipt_header", "fields": [
+                { "name": "trx", "type": "transaction_variant" }
+            ]
+        },
+        {
+            "name": "extension", "fields": [
+                { "name": "type", "type": "uint16" },
+                { "name": "data", "type": "bytes" }
+            ]
+        },
+        {
+            "name": "block_header", "fields": [
+                { "name": "timestamp", "type": "block_timestamp_type" },
+                { "name": "producer", "type": "name" },
+                { "name": "confirmed; ", "type": "uint16" },
+                { "name": "previous", "type": "checksum256" },
+                { "name": "transaction_mroot", "type": "checksum256" },
+                { "name": "action_mroot", "type": "checksum256" },
+                { "name": "schedule_version", "type": "uint32" },
+                { "name": "new_producers", "type": "producer_schedule?" },
+                { "name": "header_extensions", "type": "extension[]" }
+            ]
+        },
+        {
+            "name": "signed_block_header", "base": "block_header", "fields": [
+                { "name": "producer_signature", "type": "signature" }
+            ]
+        },
+        {
+            "name": "signed_block", "base": "signed_block_header", "fields": [
+                { "name": "transactions", "type": "transaction_receipt[]" },
+                { "name": "block_extensions", "type": "extension[]" }
             ]
         },
         {
@@ -189,13 +241,13 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "producer_key_v0", "fields": [
+            "name": "producer_key", "fields": [
                 { "type": "name", "name": "producer_name" },
                 { "type": "public_key", "name": "block_signing_key" }
             ]
         },
         {
-            "name": "shared_producer_schedule_type_v0", "fields": [
+            "name": "producer_schedule", "fields": [
                 { "type": "uint32", "name": "version" },
                 { "type": "producer_key[]", "name": "producers" }
             ]
@@ -225,7 +277,7 @@ extern const char* const state_history_plugin_abi = R"({
             "name": "global_property_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "uint32?", "name": "proposed_schedule_block_num" },
-                { "type": "shared_producer_schedule_type", "name": "proposed_schedule" },
+                { "type": "producer_schedule", "name": "proposed_schedule" },
                 { "type": "chain_config", "name": "configuration" }
             ]
         },
@@ -379,6 +431,9 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         }
     ],
+    "types": [
+        { "new_type_name": "transaction_id", "type": "checksum256" }
+    ],
     "variants": [
         { "name": "request", "types": ["get_status_request_v0", "get_block_request_v0"] },
         { "name": "result", "types": ["get_status_result_v0", "get_block_result_v0"] },
@@ -387,6 +442,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "action_receipt", "types": ["action_receipt_v0"] },
         { "name": "action_trace", "types": ["action_trace_v0"] },
         { "name": "transaction_trace", "types": ["transaction_trace_v0"] },
+        { "name": "transaction_variant", "types": ["transaction_id", "packed_transaction"] },
 
         { "name": "table_delta", "types": ["table_delta_v0"] },
         { "name": "account", "types": ["account_v0"] },
@@ -398,8 +454,6 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "index256", "types": ["index256_v0"] },
         { "name": "index_double", "types": ["index_double_v0"] },
         { "name": "index_long_double", "types": ["index_long_double_v0"] },
-        { "name": "producer_key", "types": ["producer_key_v0"] },
-        { "name": "shared_producer_schedule_type", "types": ["shared_producer_schedule_type_v0"] },
         { "name": "chain_config", "types": ["chain_config_v0"] },
         { "name": "global_property", "types": ["global_property_v0"] },
         { "name": "dynamic_global_property", "types": ["dynamic_global_property_v0"] },

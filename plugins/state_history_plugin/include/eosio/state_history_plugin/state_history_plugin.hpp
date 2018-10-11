@@ -39,6 +39,8 @@ struct get_block_request_v0 {
 
 struct get_block_result_v0 {
    uint32_t            block_num = 0;
+   fc::optional<bytes> block;
+   fc::optional<bytes> block_state;
    fc::optional<bytes> traces;
    fc::optional<bytes> deltas;
 };
@@ -70,4 +72,4 @@ FC_REFLECT_EMPTY(eosio::get_status_request_v0);
 FC_REFLECT(eosio::get_status_result_v0,
            (last_irreversible_block_num)(last_irreversible_block_id)(state_begin_block_num)(state_end_block_num));
 FC_REFLECT(eosio::get_block_request_v0, (block_num));
-FC_REFLECT(eosio::get_block_result_v0, (block_num)(traces)(deltas));
+FC_REFLECT(eosio::get_block_result_v0, (block_num)(block)(block_state)(traces)(deltas));

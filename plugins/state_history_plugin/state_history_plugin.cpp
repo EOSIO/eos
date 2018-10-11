@@ -70,6 +70,7 @@ auto catch_and_log(F f) {
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                        chain_plug = nullptr;
+   history_log                                          block_state_log{"block_state_history"};
    history_log                                          trace_log{"trace_history"};
    history_log                                          chain_state_log{"chain_state_history"};
    bool                                                 stopping = false;
@@ -91,6 +92,11 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       result->resize(s);
       if (s)
          stream.read(result->data(), s);
+   }
+
+   void get_block(uint32_t block_num, fc::optional<bytes>& result) {
+      auto p = chain_plug->chain().fetch_block_by_number(block_num);
+      result = fc::raw::pack(*p);
    }
 
    struct session : std::enable_shared_from_this<session> {
@@ -183,6 +189,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          // ilog("${b} get_block_request_v0", ("b", req.block_num));
          get_block_result_v0 result{req.block_num};
          // todo: client select which datasets to receive
+         plugin->get_block(req.block_num, result.block);
+         plugin->get_data(plugin->block_state_log, req.block_num, result.block_state);
          plugin->get_data(plugin->trace_log, req.block_num, result.traces);
          plugin->get_data(plugin->chain_state_log, req.block_num, result.deltas);
          send(std::move(result));
@@ -276,8 +284,13 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
    void on_accepted_block(const block_state_ptr& block_state) {
       // todo: config options
+      store_block_state(block_state);
       store_traces(block_state);
       store_chain_state(block_state);
+   }
+
+   void store_block_state(const block_state_ptr& block_state) {
+      // todo
    }
 
    void store_traces(const block_state_ptr& block_state) {
@@ -406,6 +419,8 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       }
 
       boost::filesystem::create_directories(state_history_dir);
+      my->block_state_log.open((state_history_dir / "block_state_history.log").string(),
+                               (state_history_dir / "block_state_history.index").string());
       my->trace_log.open((state_history_dir / "trace_history.log").string(),
                          (state_history_dir / "trace_history.index").string());
       my->chain_state_log.open((state_history_dir / "chain_state_history.log").string(),
