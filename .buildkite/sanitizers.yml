@@ -49,7 +49,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ctest -j8 -LE _tests --output-on-failure | tee sanitizer.log
+        ctest -j8 -LE _tests -V | tee sanitizer.log
     retry:
       automatic:
         limit: 1
