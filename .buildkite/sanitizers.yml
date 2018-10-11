@@ -1,7 +1,7 @@
 steps:
   - command: |
         echo "--- :hammer: Building with Undefined Sanitizer" && \
-        usr/bin/cmake -GNinja \
+        /usr/bin/cmake -GNinja \
         -DCMAKE_BUILD_TYPE=Debug \
         -DCMAKE_CXX_COMPILER=clang++-4.0 \
         -DCMAKE_C_COMPILER=clang-4.0 \
