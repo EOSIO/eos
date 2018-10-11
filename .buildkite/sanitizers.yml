@@ -1,25 +1,29 @@
 steps:
   - command: |
-        echo "--- :hammer: Building with Memory Sanitizer" && \
-        /usr/bin/cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0 -Wall -Werror \
-        -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT="${BOOST_ROOT}" \
-        -DWASM_ROOT="${WASM_ROOT}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" \
+        echo "--- :hammer: Building with Undefined Sanitizer" && \
+        usr/bin/cmake -GNinja \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_CXX_COMPILER=clang++-4.0 \
+        -DCMAKE_C_COMPILER=clang-4.0 \
+        -DBOOST_ROOT="${BOOST_ROOT}" \
+        -DWASM_ROOT="${WASM_ROOT}" \
+        -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" \
         -DBUILD_MONGO_DB_PLUGIN=true \
-        -DENABLE_COVERAGE_TESTING=true \
-        -DBUILD_DOXYGEN=false \
-        -DCMAKE_CXX_FLAGS="-fsanitize=memory -fsanitize-memory-track-origins -fsanitize-recover=all -g -O1" \
-        -DCMAKE_C_FLAGS="-fsanitize=memory -fsanitize-memory-track-origins -fsanitize-recover=all -g -O1" \
-        -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=memory -fsanitize-memory-track-origins -fsanitize-recover=all  -pthread" \
-        -DCMAKE_MODULE_LINKER_FLAGS="-fsanitize=memory -fsanitize-memory-track-origins -fsanitize-recover=all -pthread" && \
-        /usr/bin/ninja && \
+        -DENABLE_COVERAGE_TESTING=true\
+        -DBUILD_DOXYGEN=false -DCMAKE_CXX_FLAGS="-fsanitize=undefined -fsanitize-recover=all -g -fno-omit-frame-pointer" \
+        -DCMAKE_C_FLAGS="-fsanitize=undefined -fsanitize-recover=all -g -fno-omit-frame-pointer" \
+        -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=undefined -fsanitize-recover=all -rtlib=compiler-rt -lgcc_s -pthread" \
+        -DCMAKE_MODULE_LINKER_FLAGS="-fsanitize=undefined -fsanitize-recover=all -rtlib=compiler-rt -lgcc_s -pthread" && \
+        /usr/bin/ninja | tee ninja.log && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf ../build.tar.gz build/
         echo "--- :beers: Done"
-    label: ":_: Memory Sanitizer"
+    label: ":_: Undefined Sanitizer"
     agents:
       - "role=automation-builder-large"
     artifact_paths:
       - "build.tar.gz"
+      - "ninja.log"
     plugins:
       docker#v1.4.0:
         image: "eosio/ci:ubuntu18"
@@ -33,15 +37,13 @@ steps:
           - WASM_ROOT=/root/opt/wasm
           - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/opt/wasm/bin
           - CI=true
-          - ASAN_OPTIONS=fast_unwind_on_malloc=0
-          - MSAN_SYMBOLIZER_PATH=/usr/lib/llvm-4.0/bin/llvm-symbolizer
     timeout: 180
 
   - wait
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":_: Memory Sanitizer" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":_: Undefined Sanitizer" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
@@ -50,7 +52,7 @@ steps:
     retry:
       automatic:
         limit: 1
-    label: ":_: Memory Sanitizer Tests"
+    label: ":_: Undefined Sanitizer Tests"
     agents:
       - "role=automation-builder-large"
     artifact_paths:
