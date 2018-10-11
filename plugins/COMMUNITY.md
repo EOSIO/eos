@@ -12,7 +12,7 @@ Third parties are encouraged to make pull requests to this file (`develop` branc
 | MySQL | https://github.com/eosBLACK/eosio_mysqldb_plugin |
 | SQL | https://github.com/asiniscalchi/eosio_sql_plugin |
 | Watch for specific actions and send them to an HTTP URL | https://github.com/eosauthority/eosio-watcher-plugin |
-| ZeroMQ | https://github.com/cc32d9/eos_zmq_plugin |
+| ZMQ / history | https://github.com/cc32d9/eos_zmq_plugin |
 
 ## DISCLAIMER:
 
