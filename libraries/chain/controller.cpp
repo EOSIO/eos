@@ -1656,7 +1656,7 @@ optional<block_id_type> controller::pending_producer_block_id()const {
 }
 
 uint32_t controller::last_irreversible_block_num() const {
-   return std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum, my->snapshot_head_block);
+   return std::max(std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum), my->snapshot_head_block);
 }
 
 block_id_type controller::last_irreversible_block_id() const {
