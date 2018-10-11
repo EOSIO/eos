@@ -23,7 +23,7 @@ steps:
     agents:
       - "role=automation-builder-large"
     artifact_paths:
-      - "build.tar.gz"
+      - "../build.tar.gz"
       - "ninja.log"
     plugins:
       docker#v1.4.0:
