@@ -45,11 +45,11 @@ steps:
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
         buildkite-agent artifact download "build.tar.gz" . --step ":_: Undefined Sanitizer" && \
-        tar -zxf build.tar.gz && \
+        tar -zxf build.tar.gz --no-same-owner && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ctest -j8 -LE _tests -V | tee sanitizer.log
+        ctest -j8 -LE _tests -V -O sanitizer.log
     retry:
       automatic:
         limit: 1
