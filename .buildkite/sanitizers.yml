@@ -50,9 +50,6 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         ctest -j8 -LE _tests -V -O sanitizer.log
-    retry:
-      automatic:
-        limit: 1
     label: ":_: Undefined Sanitizer Tests"
     agents:
       - "role=automation-builder-large"
