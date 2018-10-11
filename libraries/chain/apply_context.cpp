@@ -36,18 +36,6 @@ void apply_context::exec_one( action_trace& trace )
    action_receipt r;
    r.receiver         = receiver;
    r.act_digest       = digest_type::hash(act);
-   r.global_sequence  = next_global_sequence();
-   r.recv_sequence    = next_recv_sequence( receiver );
-
-   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
-   r.code_sequence    = account_sequence.code_sequence;
-   r.abi_sequence     = account_sequence.abi_sequence;
-
-   for( const auto& auth : act.authorization ) {
-      r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
-   }
-
-   trace = {r}; // reset action_trace
 
    trace.trx_id = trx_context.id;
    trace.block_num = control.pending_block_state()->block_num;
@@ -83,10 +71,24 @@ void apply_context::exec_one( action_trace& trace )
          }
       } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output.str()) )
    } catch( fc::exception& e ) {
+      trace.receipt = r; // fill with known data
       trace.except = e;
       finalize_trace( trace, start );
       throw;
    }
+
+   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
+   r.code_sequence    = account_sequence.code_sequence; // could be modified by action execution above
+   r.abi_sequence     = account_sequence.abi_sequence;  // could be modified by action execution above
+
+   r.global_sequence  = next_global_sequence();
+   r.recv_sequence    = next_recv_sequence( receiver );
+
+   for( const auto& auth : act.authorization ) {
+      r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
+   }
+
+   trace.receipt = r;
 
    trx_context.executed.emplace_back( move(r) );
 
