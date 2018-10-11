@@ -77,12 +77,12 @@ void apply_context::exec_one( action_trace& trace )
       throw;
    }
 
+   r.global_sequence  = next_global_sequence();
+   r.recv_sequence    = next_recv_sequence( receiver );
+
    const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
    r.code_sequence    = account_sequence.code_sequence; // could be modified by action execution above
    r.abi_sequence     = account_sequence.abi_sequence;  // could be modified by action execution above
-
-   r.global_sequence  = next_global_sequence();
-   r.recv_sequence    = next_recv_sequence( receiver );
 
    for( const auto& auth : act.authorization ) {
       r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
