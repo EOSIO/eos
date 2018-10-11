@@ -30,6 +30,9 @@ class Cluster(object):
     __BiosPort=8788
     __LauncherCmdArr=[]
     __bootlog="eosio-ignition-wd/bootlog.txt"
+    __configDir="etc/eosio/"
+    __dataDir="var/lib/"
+    __fileDivider="================================================================="
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
@@ -745,6 +748,14 @@ class Cluster(object):
         m=re.search(r"node_([\d]+)", name)
         return int(m.group(1))
 
+    @staticmethod
+    def nodeExtensionToName(ext):
+        r"""Convert node extension (bios, 0, 1, etc) to node name. """
+        prefix="node_"
+        if ext == "bios":
+            return prefix + ext
+
+        return "node_%02d" % (ext)
 
     @staticmethod
     def parseProducerKeys(configFile, nodeName):
@@ -783,8 +794,7 @@ class Cluster(object):
     def parseProducers(nodeNum):
         """Parse node config file for producers."""
 
-        node="node_%02d" % (nodeNum)
-        configFile="etc/eosio/%s/config.ini" % (node)
+        configFile=Cluster.__configDir + Cluster.nodeExtensionToName(nodeNum) + "/config.ini"
         if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
         configStr=None
         with open(configFile, 'r') as f:
@@ -802,20 +812,20 @@ class Cluster(object):
     def parseClusterKeys(totalNodes):
         """Parse cluster config file. Updates producer keys data members."""
 
-        node="node_bios"
-        configFile="etc/eosio/%s/config.ini" % (node)
+        nodeName=Cluster.nodeExtensionToName("bios")
+        configFile=Cluster.__configDir + nodeName + "/config.ini"
         if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
-        producerKeys=Cluster.parseProducerKeys(configFile, node)
+        producerKeys=Cluster.parseProducerKeys(configFile, nodeName)
         if producerKeys is None:
             Utils.Print("ERROR: Failed to parse eosio private keys from cluster config files.")
             return None
 
         for i in range(0, totalNodes):
-            node="node_%02d" % (i)
-            configFile="etc/eosio/%s/config.ini" % (node)
+            nodeName=Cluster.nodeExtensionToName(i)
+            configFile=Cluster.__configDir + nodeName + "/config.ini"
             if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
 
-            keys=Cluster.parseProducerKeys(configFile, node)
+            keys=Cluster.parseProducerKeys(configFile, nodeName)
             if keys is not None:
                 producerKeys.update(keys)
             keyMsg="None" if keys is None else len(keys)
@@ -1183,11 +1193,8 @@ class Cluster(object):
 
     @staticmethod
     def pgrepEosServerPattern(nodeInstance):
-        if isinstance(nodeInstance, str):
-            return r"[\n]?(\d+) (.* --data-dir var/lib/node_%s .*)\n" % nodeInstance
-        else:
-            nodeInstanceStr="%02d" % nodeInstance
-            return Cluster.pgrepEosServerPattern(nodeInstanceStr)
+        dataLocation=Cluster.__dataDir + Cluster.nodeExtensionToName(nodeInstance)
+        return r"[\n]?(\d+) (.* --data-dir %s .*)\n" % (dataLocation)
 
     # Populates list of EosInstanceInfo objects, matched to actual running instances
     def discoverLocalNodes(self, totalNodes, timeout=None):
@@ -1259,7 +1266,7 @@ class Cluster(object):
 
     @staticmethod
     def dumpErrorDetailImpl(fileName):
-        Utils.Print("=================================================================")
+        Utils.Print(Cluster.__fileDivider)
         Utils.Print("Contents of %s:" % (fileName))
         if os.path.exists(fileName):
             with open(fileName, "r") as f:
@@ -1268,17 +1275,18 @@ class Cluster(object):
             Utils.Print("File %s not found." % (fileName))
 
     def dumpErrorDetails(self):
-        fileName="etc/eosio/node_bios/config.ini"
+        fileName=Cluster.__configDir + Cluster.nodeExtensionToName("bios") + "/config.ini"
         Cluster.dumpErrorDetailImpl(fileName)
-        fileName="var/lib/node_bios/stderr.txt"
+        fileName=Cluster.__dataDir + Cluster.nodeExtensionToName("bios") + "/stderr.txt"
         Cluster.dumpErrorDetailImpl(fileName)
 
         for i in range(0, len(self.nodes)):
-            fileName="etc/eosio/node_%02d/config.ini" % (i)
+            configLocation=Cluster.__configDir + Cluster.nodeExtensionToName(i) + "/"
+            fileName=configLocation + "config.ini"
             Cluster.dumpErrorDetailImpl(fileName)
-            fileName="etc/eosio/node_%02d/genesis.json" % (i)
+            fileName=configLocation + "genesis.json"
             Cluster.dumpErrorDetailImpl(fileName)
-            fileName="var/lib/node_%02d/stderr.txt" % (i)
+            fileName=Cluster.__dataDir + Cluster.nodeExtensionToName(i) + "/stderr.txt"
             Cluster.dumpErrorDetailImpl(fileName)
 
         if self.useBiosBootFile:
@@ -1350,9 +1358,9 @@ class Cluster(object):
         return node.waitForNextBlock(timeout)
 
     def cleanup(self):
-        for f in glob.glob("var/lib/node_*"):
+        for f in glob.glob(Cluster.__dataDir + "node_*"):
             shutil.rmtree(f)
-        for f in glob.glob("etc/eosio/node_*"):
+        for f in glob.glob(Cluster.__configDir + "node_*"):
             shutil.rmtree(f)
 
         for f in self.filesToCleanup:
@@ -1407,3 +1415,38 @@ class Cluster(object):
                     node.reportStatus()
                 except:
                     Utils.Print("No reportStatus")
+
+    def printBlockLogIfNeeded(self):
+        printBlockLog=False
+        if hasattr(self, "nodes"):
+            for node in self.nodes:
+                if node.missingTransaction:
+                    printBlockLog=True
+                    break
+
+        if hasattr(self, "biosNode") and self.biosNode.missingTransaction:
+            printBlockLog=True
+
+        if not printBlockLog:
+            return
+
+        self.printBlockLog()
+
+    def printBlockLog(self):
+        blockLogDir=Cluster.__dataDir + Cluster.nodeExtensionToName("bios") + "/blocks/"
+        blockLogBios=Utils.getBlockLog(blockLogDir, exitOnError=False)
+        Utils.Print(Cluster.__fileDivider)
+        Utils.Print("Block log from %s:\n%s" % (blockLogDir, json.dumps(blockLogBios, indent=1)))
+
+        if not hasattr(self, "nodes"):
+            return
+
+
+        numNodes=len(self.nodes)
+        for i in range(numNodes):
+            node=self.nodes[i]
+            blockLogDir=Cluster.__dataDir + Cluster.nodeExtensionToName(i) + "/blocks/"
+            blockLog=Utils.getBlockLog(blockLogDir, exitOnError=False)
+            Utils.Print(Cluster.__fileDivider)
+            Utils.Print("Block log from %s:\n%s" % (blockLogDir, json.dumps(blockLog, indent=1)))
+

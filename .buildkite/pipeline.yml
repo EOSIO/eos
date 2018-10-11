@@ -97,9 +97,6 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
-    retry:
-      automatic:
-        limit: 1
     label: ":darwin: Tests"
     agents:
       - "role=macos-tester"
@@ -117,9 +114,6 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
-    retry:
-      automatic:
-        limit: 1
     label: ":darwin: NP Tests"
     agents:
       - "role=macos-tester"
@@ -137,9 +131,6 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
-    retry:
-      automatic:
-        limit: 1
     label: ":ubuntu: Tests"
     agents:
       - "role=linux-tester"
@@ -161,9 +152,6 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
-    retry:
-      automatic:
-        limit: 1
     label: ":ubuntu: NP Tests"
     agents:
       - "role=linux-tester"
@@ -185,9 +173,6 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
-    retry:
-      automatic:
-        limit: 1
     label: ":ubuntu: 18.04 Tests"
     agents:
       - "role=linux-tester"
@@ -209,9 +194,6 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
-    retry:
-      automatic:
-        limit: 1
     label: ":ubuntu: 18.04 NP Tests"
     agents:
       - "role=linux-tester"
@@ -233,9 +215,6 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
-    retry:
-      automatic:
-        limit: 1
     label: ":fedora: Tests"
     agents:
       - "role=linux-tester"
@@ -257,9 +236,6 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
-    retry:
-      automatic:
-        limit: 1
     label: ":fedora: NP Tests"
     agents:
       - "role=linux-tester"
@@ -281,9 +257,6 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
-    retry:
-      automatic:
-        limit: 1
     label: ":centos: Tests"
     agents:
       - "role=linux-tester"
@@ -305,9 +278,6 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
-    retry:
-      automatic:
-        limit: 1
     label: ":centos: NP Tests"
     agents:
       - "role=linux-tester"
@@ -329,9 +299,6 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
-    retry:
-      automatic:
-        limit: 1
     label: ":aws: Tests"
     agents:
       - "role=linux-tester"
@@ -353,9 +320,6 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
-    retry:
-      automatic:
-        limit: 1
     label: ":aws: NP Tests"
     agents:
       - "role=linux-tester"

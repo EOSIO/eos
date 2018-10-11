@@ -35,6 +35,7 @@ struct blocklog {
    uint32_t                         first_block;
    uint32_t                         last_block;
    bool                             no_pretty_print;
+   bool                             as_json_array;
 };
 
 void blocklog::read_log() {
@@ -82,6 +83,8 @@ void blocklog::read_log() {
    else
       out = &std::cout;
 
+   if (as_json_array)
+      *out << "[";
    uint32_t block_num = (first_block < 1) ? 1 : first_block;
    signed_block_ptr next;
    fc::variant pretty_output;
@@ -99,25 +102,32 @@ void blocklog::read_log() {
                  ("ref_block_prefix", ref_block_prefix)
                  (pretty_output.get_object());
       fc::variant v(std::move(enhanced_object));
-      if (no_pretty_print)
-         fc::json::to_stream(*out, v, fc::json::stringify_large_ints_and_doubles);
-      else
-         *out << fc::json::to_pretty_string(v) << "\n";
+       if (no_pretty_print)
+          fc::json::to_stream(*out, v, fc::json::stringify_large_ints_and_doubles);
+       else
+          *out << fc::json::to_pretty_string(v) << "\n";
    };
+   bool contains_obj = false;
    while((block_num <= last_block) && (next = block_logger.read_block_by_num( block_num ))) {
+      if (as_json_array && contains_obj)
+         *out << ",";
       print_block(next);
       ++block_num;
-      out->flush();
+      contains_obj = true;
    }
-   if (!reversible_blocks) {
-      return;
+   if (reversible_blocks) {
+      const reversible_block_object* obj = nullptr;
+      while( (block_num <= last_block) && (obj = reversible_blocks->find<reversible_block_object,by_num>(block_num)) ) {
+         if (as_json_array && contains_obj)
+            *out << ",";
+         auto next = obj->get_block();
+         print_block(next);
+         ++block_num;
+         contains_obj = true;
+      }
    }
-   const reversible_block_object* obj = nullptr;
-   while( (block_num <= last_block) && (obj = reversible_blocks->find<reversible_block_object,by_num>(block_num)) ) {
-      auto next = obj->get_block();
-      print_block(next);
-      ++block_num;
-   }
+   if (as_json_array)
+      *out << "]";
 }
 
 void blocklog::set_program_options(options_description& cli)
@@ -133,6 +143,8 @@ void blocklog::set_program_options(options_description& cli)
           "the last block number (inclusive) to log")
          ("no-pretty-print", bpo::bool_switch(&no_pretty_print)->default_value(false),
           "Do not pretty print the output.  Useful if piping to jq to improve performance.")
+         ("as-json-array", bpo::bool_switch(&as_json_array)->default_value(false),
+          "Print out json blocks wrapped in json array (otherwise the output is free-standing json objects).")
          ("help", "Print this help message and exit.")
          ;
 
