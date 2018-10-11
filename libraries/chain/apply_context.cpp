@@ -92,11 +92,11 @@ void apply_context::exec_one( action_trace& trace )
 
    trx_context.executed.emplace_back( move(r) );
 
+   finalize_trace( trace, start );
+
    if ( control.contracts_console() ) {
       print_debug(receiver, trace);
    }
-
-   finalize_trace( trace, start );
 }
 
 void apply_context::finalize_trace( action_trace& trace, const fc::time_point& start )
