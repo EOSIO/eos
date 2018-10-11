@@ -161,16 +161,6 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "account_sequence_v0", "fields": [
-                { "type": "uint64", "name": "id" },
-                { "type": "name", "name": "name" },
-                { "type": "uint64", "name": "recv_sequence" },
-                { "type": "uint64", "name": "auth_sequence" },
-                { "type": "uint64", "name": "code_sequence" },
-                { "type": "uint64", "name": "abi_sequence" }
-            ]
-        },
-        {
             "name": "table_id_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "name", "name": "code" },
@@ -282,19 +272,6 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "dynamic_global_property_v0", "fields": [
-                { "type": "uint64", "name": "id" },
-                { "type": "uint64", "name": "global_action_sequence" }
-            ]
-        },
-        {
-            "name": "transaction_v0", "fields": [
-                { "type": "uint64", "name": "id" },
-                { "type": "time_point_sec", "name": "expiration" },
-                { "type": "checksum256", "name": "trx_id" }
-            ]
-        },
-        {
             "name": "generated_transaction_v0", "fields": [
                 { "type": "uint64", "name": "id" },
                 { "type": "checksum256", "name": "trx_id" },
@@ -348,12 +325,6 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "name", "name": "name" },
                 { "type": "time_point", "name": "last_updated" },
                 { "type": "shared_authority", "name": "auth" }
-            ]
-        },
-        {
-            "name": "permission_usage_v0", "fields": [
-                { "type": "uint64", "name": "id" },
-                { "type": "time_point", "name": "last_used" }
             ]
         },
         {
@@ -446,7 +417,6 @@ extern const char* const state_history_plugin_abi = R"({
 
         { "name": "table_delta", "types": ["table_delta_v0"] },
         { "name": "account", "types": ["account_v0"] },
-        { "name": "account_sequence", "types": ["account_sequence_v0"] },
         { "name": "table_id", "types": ["table_id_v0"] },
         { "name": "key_value", "types": ["key_value_v0"] },
         { "name": "index64", "types": ["index64_v0"] },
@@ -456,8 +426,6 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "index_long_double", "types": ["index_long_double_v0"] },
         { "name": "chain_config", "types": ["chain_config_v0"] },
         { "name": "global_property", "types": ["global_property_v0"] },
-        { "name": "dynamic_global_property", "types": ["dynamic_global_property_v0"] },
-        { "name": "transaction", "types": ["transaction_v0"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
         { "name": "key_weight", "types": ["key_weight_v0"] },
         { "name": "permission_level", "types": ["permission_level_v0"] },
@@ -465,7 +433,6 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "wait_weight", "types": ["wait_weight_v0"] },
         { "name": "shared_authority", "types": ["shared_authority_v0"] },
         { "name": "permission", "types": ["permission_v0"] },
-        { "name": "permission_usage", "types": ["permission_usage_v0"] },
         { "name": "permission_link", "types": ["permission_link_v0"] },
         { "name": "resource_limits", "types": ["resource_limits_v0"] },
         { "name": "usage_accumulator", "types": ["usage_accumulator_v0"] },
@@ -477,7 +444,6 @@ extern const char* const state_history_plugin_abi = R"({
     ],
     "tables": [
         { "name": "account", "type": "account" },
-        { "name": "account_sequence", "type": "account_sequence" },
         { "name": "table_id", "type": "table_id" },
         { "name": "key_value", "type": "key_value" },
         { "name": "index64", "type": "index64" },
@@ -486,11 +452,9 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "index_double", "type": "index_double" },
         { "name": "index_long_double", "type": "index_long_double" },
         { "name": "global_property", "type": "global_property" },
-        { "name": "dynamic_global_property", "type": "dynamic_global_property" },
         { "name": "transaction", "type": "transaction" },
         { "name": "generated_transaction", "type": "generated_transaction" },
         { "name": "permission", "type": "permission" },
-        { "name": "permission_usage", "type": "permission_usage" },
         { "name": "permission_link", "type": "permission_link" },
         { "name": "resource_limits", "type": "resource_limits" },
         { "name": "resource_usage", "type": "resource_usage" },

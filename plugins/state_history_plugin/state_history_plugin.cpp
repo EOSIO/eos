@@ -29,7 +29,6 @@ static appbase::abstract_plugin& _state_history_plugin = app().register_plugin<s
 template <typename F>
 static void for_each_table(const chainbase::database& db, F f) {
    f("account", db.get_index<account_index>(), [](auto&) { return true; });
-   f("account_sequence", db.get_index<account_sequence_index>(), [](auto&) { return true; });
 
    f("table_id", db.get_index<table_id_multi_index>(), [](auto&) { return true; });
    f("key_value", db.get_index<key_value_index>(), [](auto&) { return true; });
@@ -40,12 +39,9 @@ static void for_each_table(const chainbase::database& db, F f) {
    f("index_long_double", db.get_index<index_long_double_index>(), [](auto&) { return true; });
 
    f("global_property", db.get_index<global_property_multi_index>(), [](auto&) { return true; });
-   f("dynamic_global_property", db.get_index<dynamic_global_property_multi_index>(), [](auto&) { return true; });
-   f("transaction", db.get_index<transaction_multi_index>(), [](auto&) { return true; });
    f("generated_transaction", db.get_index<generated_transaction_multi_index>(), [](auto&) { return true; });
 
    f("permission", db.get_index<permission_index>(), [](auto&) { return true; });
-   f("permission_usage", db.get_index<permission_usage_index>(), [](auto&) { return true; });
    f("permission_link", db.get_index<permission_link_index>(), [](auto&) { return true; });
 
    f("resource_limits", db.get_index<resource_limits::resource_limits_index>(), [](auto&) { return true; });

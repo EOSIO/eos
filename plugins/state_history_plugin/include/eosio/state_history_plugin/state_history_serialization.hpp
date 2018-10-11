@@ -14,7 +14,6 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>
 #include <eosio/chain/trace.hpp>
-#include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
 template <typename T>
@@ -77,19 +76,6 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, as_type<eosio::chain::block_timestamp_type>(obj.obj.creation_date));
    fc::raw::pack(ds, as_type<eosio::chain::shared_string>(obj.obj.code));
    fc::raw::pack(ds, as_type<eosio::chain::shared_string>(obj.obj.abi));
-   return ds;
-}
-
-template <typename ST>
-datastream<ST>& operator<<(datastream<ST>&                                                      ds,
-                           const history_serial_wrapper<eosio::chain::account_sequence_object>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.value));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.recv_sequence));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.auth_sequence));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.code_sequence));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.abi_sequence));
    return ds;
 }
 
@@ -231,24 +217,6 @@ datastream<ST>& operator<<(datastream<ST>&                                      
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>&                                                             ds,
-                           const history_serial_wrapper<eosio::chain::dynamic_global_property_object>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.global_action_sequence));
-   return ds;
-}
-
-template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::transaction_object>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
-   fc::raw::pack(ds, as_type<fc::time_point_sec>(obj.obj.expiration));
-   fc::raw::pack(ds, as_type<eosio::chain::transaction_id_type>(obj.obj.trx_id));
-   return ds;
-}
-
-template <typename ST>
 datastream<ST>& operator<<(datastream<ST>&                                                           ds,
                            const history_serial_wrapper<eosio::chain::generated_transaction_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
@@ -317,15 +285,6 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.value));
    fc::raw::pack(ds, as_type<fc::time_point>(obj.obj.last_updated));
    fc::raw::pack(ds, make_history_serial_wrapper(as_type<eosio::chain::shared_authority>(obj.obj.auth)));
-   return ds;
-}
-
-template <typename ST>
-datastream<ST>& operator<<(datastream<ST>&                                                      ds,
-                           const history_serial_wrapper<eosio::chain::permission_usage_object>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
-   fc::raw::pack(ds, as_type<fc::time_point>(obj.obj.last_used));
    return ds;
 }
 
