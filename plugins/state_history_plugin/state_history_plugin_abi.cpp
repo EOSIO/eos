@@ -28,15 +28,14 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "row", "fields": [
-                { "name": "id", "type": "uint64" },
+                { "name": "present", "type": "bool" },
                 { "name": "data", "type": "bytes" }
             ]
         },
         {
             "name": "table_delta_v0", "fields": [
                 { "name": "name", "type": "string" },
-                { "name": "rows", "type": "row[]" },
-                { "name": "removed", "type": "uint64[]" }
+                { "name": "rows", "type": "row[]" }
             ]
         },
         {
@@ -148,7 +147,6 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "account_v0", "fields": [
-                { "type": "uint64", "name": "id" },
                 { "type": "name", "name": "name" },
                 { "type": "uint8", "name": "vm_type" },
                 { "type": "uint8", "name": "vm_version" },
@@ -161,70 +159,74 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "table_id_v0", "fields": [
-                { "type": "uint64", "name": "id" },
+            "name": "contract_table_v0", "fields": [
                 { "type": "name", "name": "code" },
                 { "type": "name", "name": "scope" },
                 { "type": "name", "name": "table" },
-                { "type": "name", "name": "payer" },
-                { "type": "uint32", "name": "count" }
+                { "type": "name", "name": "payer" }
             ]
         },
         {
-            "name": "key_value_v0", "fields": [
-                { "type": "uint64", "name": "id" },
-                { "type": "uint64", "name": "t_id" },
+            "name": "contract_row_v0", "fields": [
+                { "type": "name", "name": "code" },
+                { "type": "name", "name": "scope" },
+                { "type": "name", "name": "table" },
                 { "type": "uint64", "name": "primary_key" },
                 { "type": "name", "name": "payer" },
                 { "type": "bytes", "name": "value" }
             ]
         },
         {
-            "name": "index64_v0", "fields": [
-                { "type": "uint64", "name": "id" },
-                { "type": "uint64", "name": "t_id" },
+            "name": "contract_index64_v0", "fields": [
+                { "type": "name", "name": "code" },
+                { "type": "name", "name": "scope" },
+                { "type": "name", "name": "table" },
                 { "type": "uint64", "name": "primary_key" },
                 { "type": "name", "name": "payer" },
                 { "type": "uint64", "name": "secondary_key" }
             ]
         },
         {
-            "name": "index128_v0", "fields": [
-                { "type": "uint64", "name": "id" },
-                { "type": "uint64", "name": "t_id" },
+            "name": "contract_index128_v0", "fields": [
+                { "type": "name", "name": "code" },
+                { "type": "name", "name": "scope" },
+                { "type": "name", "name": "table" },
                 { "type": "uint64", "name": "primary_key" },
                 { "type": "name", "name": "payer" },
                 { "type": "uint128", "name": "secondary_key" }
             ]
         },
         {
-            "name": "index256_key", "fields": [
+            "name": "contract_index256_key", "fields": [
                 { "type": "uint128", "name": "a0" },
                 { "type": "uint128", "name": "a1" }
             ]
         },
         {
-            "name": "index256_v0", "fields": [
-                { "type": "uint64", "name": "id" },
-                { "type": "uint64", "name": "t_id" },
+            "name": "contract_index256_v0", "fields": [
+                { "type": "name", "name": "code" },
+                { "type": "name", "name": "scope" },
+                { "type": "name", "name": "table" },
                 { "type": "uint64", "name": "primary_key" },
                 { "type": "name", "name": "payer" },
-                { "type": "index256_key", "name": "secondary_key" }
+                { "type": "contract_index256_key", "name": "secondary_key" }
             ]
         },
         {
-            "name": "index_double_v0", "fields": [
-                { "type": "uint64", "name": "id" },
-                { "type": "uint64", "name": "t_id" },
+            "name": "contract_index_double_v0", "fields": [
+                { "type": "name", "name": "code" },
+                { "type": "name", "name": "scope" },
+                { "type": "name", "name": "table" },
                 { "type": "uint64", "name": "primary_key" },
                 { "type": "name", "name": "payer" },
                 { "type": "float64", "name": "secondary_key" }
             ]
         },
         {
-            "name": "index_long_double_v0", "fields": [
-                { "type": "uint64", "name": "id" },
-                { "type": "uint64", "name": "t_id" },
+            "name": "contract_index_long_double_v0", "fields": [
+                { "type": "name", "name": "code" },
+                { "type": "name", "name": "scope" },
+                { "type": "name", "name": "table" },
                 { "type": "uint64", "name": "primary_key" },
                 { "type": "name", "name": "payer" },
                 { "type": "float128", "name": "secondary_key" }
@@ -417,13 +419,13 @@ extern const char* const state_history_plugin_abi = R"({
 
         { "name": "table_delta", "types": ["table_delta_v0"] },
         { "name": "account", "types": ["account_v0"] },
-        { "name": "table_id", "types": ["table_id_v0"] },
-        { "name": "key_value", "types": ["key_value_v0"] },
-        { "name": "index64", "types": ["index64_v0"] },
-        { "name": "index128", "types": ["index128_v0"] },
-        { "name": "index256", "types": ["index256_v0"] },
-        { "name": "index_double", "types": ["index_double_v0"] },
-        { "name": "index_long_double", "types": ["index_long_double_v0"] },
+        { "name": "contract_table", "types": ["contract_table_v0"] },
+        { "name": "contract_row", "types": ["contract_row_v0"] },
+        { "name": "contract_index64", "types": ["contract_index64_v0"] },
+        { "name": "contract_index128", "types": ["contract_index128_v0"] },
+        { "name": "contract_index256", "types": ["contract_index256_v0"] },
+        { "name": "contract_index_double", "types": ["contract_index_double_v0"] },
+        { "name": "contract_index_long_double", "types": ["contract_index_long_double_v0"] },
         { "name": "chain_config", "types": ["chain_config_v0"] },
         { "name": "global_property", "types": ["global_property_v0"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
@@ -443,22 +445,21 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "resource_limits_config", "types": ["resource_limits_config_v0"] }
     ],
     "tables": [
-        { "name": "account", "type": "account" },
-        { "name": "table_id", "type": "table_id" },
-        { "name": "key_value", "type": "key_value" },
-        { "name": "index64", "type": "index64" },
-        { "name": "index128", "type": "index128" },
-        { "name": "index256", "type": "index256" },
-        { "name": "index_double", "type": "index_double" },
-        { "name": "index_long_double", "type": "index_long_double" },
-        { "name": "global_property", "type": "global_property" },
-        { "name": "transaction", "type": "transaction" },
-        { "name": "generated_transaction", "type": "generated_transaction" },
-        { "name": "permission", "type": "permission" },
-        { "name": "permission_link", "type": "permission_link" },
-        { "name": "resource_limits", "type": "resource_limits" },
-        { "name": "resource_usage", "type": "resource_usage" },
-        { "name": "resource_limits_state", "type": "resource_limits_state" },
-        { "name": "resource_limits_config", "type": "resource_limits_config" }
+        { "name": "account", "type": "account", "key_names": ["name"] },
+        { "name": "contract_table", "type": "contract_table", "key_names": ["code", "scope", "table"] },
+        { "name": "contract_row", "type": "contract_row", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "contract_index64", "type": "contract_index64", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "contract_index128", "type": "contract_index128", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "contract_index256", "type": "contract_index256", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "contract_index_double", "type": "contract_index_double", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "contract_index_long_double", "type": "contract_index_long_double", "key_names": ["code", "scope", "table", "primary_key"] },
+        { "name": "global_property", "type": "global_property", "key_names": ["id"] },
+        { "name": "generated_transaction", "type": "generated_transaction", "key_names": ["id"] },
+        { "name": "permission", "type": "permission", "key_names": ["id"] },
+        { "name": "permission_link", "type": "permission_link", "key_names": ["id"] },
+        { "name": "resource_limits", "type": "resource_limits", "key_names": ["id"] },
+        { "name": "resource_usage", "type": "resource_usage", "key_names": ["id"] },
+        { "name": "resource_limits_state", "type": "resource_limits_state", "key_names": ["id"] },
+        { "name": "resource_limits_config", "type": "resource_limits_config", "key_names": ["id"] }
     ]
 })";

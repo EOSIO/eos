@@ -27,31 +27,6 @@ using boost::signals2::scoped_connection;
 static appbase::abstract_plugin& _state_history_plugin = app().register_plugin<state_history_plugin>();
 
 template <typename F>
-static void for_each_table(const chainbase::database& db, F f) {
-   f("account", db.get_index<account_index>(), [](auto&) { return true; });
-
-   f("table_id", db.get_index<table_id_multi_index>(), [](auto&) { return true; });
-   f("key_value", db.get_index<key_value_index>(), [](auto&) { return true; });
-   f("index64", db.get_index<index64_index>(), [](auto&) { return true; });
-   f("index128", db.get_index<index128_index>(), [](auto&) { return true; });
-   f("index256", db.get_index<index256_index>(), [](auto&) { return true; });
-   f("index_double", db.get_index<index_double_index>(), [](auto&) { return true; });
-   f("index_long_double", db.get_index<index_long_double_index>(), [](auto&) { return true; });
-
-   f("global_property", db.get_index<global_property_multi_index>(), [](auto&) { return true; });
-   f("generated_transaction", db.get_index<generated_transaction_multi_index>(), [](auto&) { return true; });
-
-   f("permission", db.get_index<permission_index>(), [](auto&) { return true; });
-   f("permission_link", db.get_index<permission_link_index>(), [](auto&) { return true; });
-
-   f("resource_limits", db.get_index<resource_limits::resource_limits_index>(), [](auto&) { return true; });
-   f("resource_usage", db.get_index<resource_limits::resource_usage_index>(), [](auto&) { return true; });
-   f("resource_limits_state", db.get_index<resource_limits::resource_limits_state_index>(), [](auto&) { return true; });
-   f("resource_limits_config", db.get_index<resource_limits::resource_limits_config_index>(),
-     [](auto&) { return true; });
-}
-
-template <typename F>
 auto catch_and_log(F f) {
    try {
       return f();
@@ -321,7 +296,29 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          ilog("Placing initial state in block ${n}", ("n", block_state->block->block_num()));
 
       std::vector<table_delta> deltas;
-      for_each_table(chain_plug->chain().db(), [&, this](auto* name, auto& index, auto filter) {
+      auto&                    db = chain_plug->chain().db();
+
+      const auto&                                table_id_index = db.get_index<table_id_multi_index>();
+      std::map<uint64_t, const table_id_object*> removed_table_id;
+      for (auto& rem : table_id_index.stack().back().removed_values)
+         removed_table_id[rem.first._id] = &rem.second;
+
+      auto get_table_id = [&](uint64_t tid) -> const table_id_object& {
+         auto obj = table_id_index.find(tid);
+         if (obj)
+            return *obj;
+         auto it = removed_table_id.find(tid);
+         EOS_ASSERT(it != removed_table_id.end(), chain::plugin_exception, "can not found table id ${tid}",
+                    ("tid", tid));
+         return *it->second;
+      };
+
+      auto pack_row          = [](auto& row) { return fc::raw::pack(make_history_serial_wrapper(row)); };
+      auto pack_contract_row = [&](auto& row) {
+         return fc::raw::pack(make_history_table_wrapper(get_table_id(row.t_id._id), row));
+      };
+
+      auto process_table = [&](auto* name, auto& index, auto& pack_row) {
          if (fresh) {
             if (index.indices().empty())
                return;
@@ -329,8 +326,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             auto& delta = deltas.back();
             delta.name  = name;
             for (auto& row : index.indices())
-               if (filter(row))
-                  delta.rows.emplace_back(row.id._id, fc::raw::pack(make_history_serial_wrapper(row)));
+               delta.rows.emplace_back(row.id._id, pack_row(row));
          } else {
             if (index.stack().empty())
                return;
@@ -342,19 +338,38 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             delta.name  = name;
             for (auto& old : undo.old_values) {
                auto& row = index.get(old.first);
-               if (filter(row))
-                  delta.rows.emplace_back(old.first._id, fc::raw::pack(make_history_serial_wrapper(row)));
+               delta.rows.emplace_back(true, pack_row(row));
             }
             for (auto id : undo.new_ids) {
                auto& row = index.get(id);
-               if (filter(row))
-                  delta.rows.emplace_back(id._id, fc::raw::pack(make_history_serial_wrapper(row)));
+               delta.rows.emplace_back(true, pack_row(row));
             }
             for (auto& old : undo.removed_values)
-               if (filter(old.second))
-                  delta.removed.push_back(old.first._id);
+               delta.rows.emplace_back(false, pack_row(old.second));
          }
-      });
+      };
+
+      process_table("account", db.get_index<account_index>(), pack_row);
+
+      process_table("contract_table", db.get_index<table_id_multi_index>(), pack_row);
+      process_table("contract_row", db.get_index<key_value_index>(), pack_contract_row);
+      process_table("contract_index64", db.get_index<index64_index>(), pack_contract_row);
+      process_table("contract_index128", db.get_index<index128_index>(), pack_contract_row);
+      process_table("contract_index256", db.get_index<index256_index>(), pack_contract_row);
+      process_table("contract_index_double", db.get_index<index_double_index>(), pack_contract_row);
+      process_table("contract_index_long_double", db.get_index<index_long_double_index>(), pack_contract_row);
+
+      process_table("global_property", db.get_index<global_property_multi_index>(), pack_row);
+      process_table("generated_transaction", db.get_index<generated_transaction_multi_index>(), pack_row);
+
+      process_table("permission", db.get_index<permission_index>(), pack_row);
+      process_table("permission_link", db.get_index<permission_link_index>(), pack_row);
+
+      process_table("resource_limits", db.get_index<resource_limits::resource_limits_index>(), pack_row);
+      process_table("resource_usage", db.get_index<resource_limits::resource_usage_index>(), pack_row);
+      process_table("resource_limits_state", db.get_index<resource_limits::resource_limits_state_index>(), pack_row);
+      process_table("resource_limits_config", db.get_index<resource_limits::resource_limits_config_index>(), pack_row);
+
       auto deltas_bin = fc::raw::pack(deltas);
       EOS_ASSERT(deltas_bin.size() == (uint32_t)deltas_bin.size(), plugin_exception, "deltas is too big");
       history_log_header header{.block_num    = block_state->block->block_num(),

@@ -26,6 +26,17 @@ history_serial_wrapper<T> make_history_serial_wrapper(const T& obj) {
    return {obj};
 }
 
+template <typename T>
+struct history_table_wrapper {
+   const eosio::chain::table_id_object& table_id;
+   const T&                             obj;
+};
+
+template <typename T>
+history_table_wrapper<T> make_history_table_wrapper(const eosio::chain::table_id_object& table_id, const T& obj) {
+   return {table_id, obj};
+}
+
 namespace fc {
 
 template <typename T>
@@ -66,7 +77,6 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<std:
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::account_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.value));
    fc::raw::pack(ds, as_type<uint8_t>(obj.obj.vm_type));
    fc::raw::pack(ds, as_type<uint8_t>(obj.obj.vm_version));
@@ -82,20 +92,19 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::table_id_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.code.value));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.scope.value));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.table.value));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.payer.value));
-   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.count));
    return ds;
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::key_value_object>& obj) {
+datastream<ST>& operator<<(datastream<ST>& ds, const history_table_wrapper<eosio::chain::key_value_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.t_id._id));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.table_id.code.value));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.table_id.scope.value));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.table_id.table.value));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.primary_key));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.payer.value));
    fc::raw::pack(ds, as_type<eosio::chain::shared_string>(obj.obj.value));
@@ -128,10 +137,12 @@ void serialize_secondary_index_data(datastream<ST>& ds, const eosio::chain::key2
 }
 
 template <typename ST, typename T>
-datastream<ST>& serialize_secondary_index(datastream<ST>& ds, const T& obj) {
+datastream<ST>& serialize_secondary_index(datastream<ST>& ds, const eosio::chain::table_id_object& table_id,
+                                          const T& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.id._id));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.t_id._id));
+   fc::raw::pack(ds, as_type<uint64_t>(table_id.code.value));
+   fc::raw::pack(ds, as_type<uint64_t>(table_id.scope.value));
+   fc::raw::pack(ds, as_type<uint64_t>(table_id.table.value));
    fc::raw::pack(ds, as_type<uint64_t>(obj.primary_key));
    fc::raw::pack(ds, as_type<uint64_t>(obj.payer.value));
    serialize_secondary_index_data(ds, obj.secondary_key);
@@ -139,29 +150,29 @@ datastream<ST>& serialize_secondary_index(datastream<ST>& ds, const T& obj) {
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::index64_object>& obj) {
-   return serialize_secondary_index(ds, obj.obj);
+datastream<ST>& operator<<(datastream<ST>& ds, const history_table_wrapper<eosio::chain::index64_object>& obj) {
+   return serialize_secondary_index(ds, obj.table_id, obj.obj);
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::index128_object>& obj) {
-   return serialize_secondary_index(ds, obj.obj);
+datastream<ST>& operator<<(datastream<ST>& ds, const history_table_wrapper<eosio::chain::index128_object>& obj) {
+   return serialize_secondary_index(ds, obj.table_id, obj.obj);
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::index256_object>& obj) {
-   return serialize_secondary_index(ds, obj.obj);
+datastream<ST>& operator<<(datastream<ST>& ds, const history_table_wrapper<eosio::chain::index256_object>& obj) {
+   return serialize_secondary_index(ds, obj.table_id, obj.obj);
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::index_double_object>& obj) {
-   return serialize_secondary_index(ds, obj.obj);
+datastream<ST>& operator<<(datastream<ST>& ds, const history_table_wrapper<eosio::chain::index_double_object>& obj) {
+   return serialize_secondary_index(ds, obj.table_id, obj.obj);
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>&                                                       ds,
-                           const history_serial_wrapper<eosio::chain::index_long_double_object>& obj) {
-   return serialize_secondary_index(ds, obj.obj);
+datastream<ST>& operator<<(datastream<ST>&                                                      ds,
+                           const history_table_wrapper<eosio::chain::index_long_double_object>& obj) {
+   return serialize_secondary_index(ds, obj.table_id, obj.obj);
 }
 
 template <typename ST>
