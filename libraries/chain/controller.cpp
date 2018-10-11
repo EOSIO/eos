@@ -429,17 +429,17 @@ struct controller_impl {
 
    void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
       snapshot->write_section<genesis_state>([this]( auto &section ){
-         section.add_row(conf.genesis);
+         section.add_row(conf.genesis, db);
       });
 
       snapshot->write_section<block_state>([this]( auto &section ){
-         section.template add_row<block_header_state>(*fork_db.head());
+         section.template add_row<block_header_state>(*fork_db.head(), db);
       });
 
       controller_index_set::walk_indices([this, &snapshot]( auto utils ){
          snapshot->write_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ){
-            decltype(utils)::walk(db, [&section]( const auto &row ) {
-               section.add_row(row);
+            decltype(utils)::walk(db, [this, &section]( const auto &row ) {
+               section.add_row(row, db);
             });
          });
       });
@@ -451,7 +451,7 @@ struct controller_impl {
    void read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
       snapshot->read_section<block_state>([this]( auto &section ){
          block_header_state head_header_state;
-         section.read_row(head_header_state);
+         section.read_row(head_header_state, db);
 
          auto head_state = std::make_shared<block_state>(head_header_state);
          fork_db.set(head_state);
@@ -465,8 +465,8 @@ struct controller_impl {
          snapshot->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
             bool more = !section.empty();
             while(more) {
-               decltype(utils)::create(db, [&section, &more]( auto &row ) {
-                  more = section.read_row(row);
+               decltype(utils)::create(db, [this, &section, &more]( auto &row ) {
+                  more = section.read_row(row, db);
                });
             }
          });

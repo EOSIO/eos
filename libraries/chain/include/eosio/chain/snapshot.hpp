@@ -26,19 +26,13 @@ namespace eosio { namespace chain {
 
       template<typename T>
       struct snapshot_row_traits {
-         using row_type = std::decay_t<T>;
-         using value_type = const row_type&;
-      };
+         using value_type = std::decay_t<T>;
+         using snapshot_type = value_type;
 
-      template<typename T>
-      auto to_snapshot_row( const T& value ) -> typename snapshot_row_traits<T>::value_type {
-         return value;
+         static const snapshot_type& to_snapshot_row( const value_type& value, const chainbase::database& ) {
+            return value;
+         };
       };
-
-      template<typename T>
-      auto from_snapshot_row( typename snapshot_row_traits<T>::value_type&& row, T& value ) {
-         value = row;
-      }
 
       /**
        * Due to a pattern in our code of overloading `operator << ( std::ostream&, ... )` to provide
@@ -116,8 +110,8 @@ namespace eosio { namespace chain {
          class section_writer {
             public:
                template<typename T>
-               void add_row( const T& row ) {
-                  _writer.write_row(detail::make_row_writer(detail::to_snapshot_row(row)));
+               void add_row( const T& row, const chainbase::database& db ) {
+                  _writer.write_row(detail::make_row_writer(detail::snapshot_row_traits<T>::to_snapshot_row(row, db)));
                }
 
             private:
@@ -186,17 +180,22 @@ namespace eosio { namespace chain {
          class section_reader {
             public:
                template<typename T>
-               auto read_row( T& out ) -> std::enable_if_t<std::is_same<std::decay_t<T>, typename detail::snapshot_row_traits<T>::row_type>::value,bool> {
+               auto read_row( T& out ) -> std::enable_if_t<std::is_same<std::decay_t<T>, typename detail::snapshot_row_traits<T>::snapshot_type>::value,bool> {
                   auto reader = detail::make_row_reader(out);
                   return _reader.read_row(reader);
                }
 
                template<typename T>
-               auto read_row( T& out ) -> std::enable_if_t<!std::is_same<std::decay_t<T>, typename detail::snapshot_row_traits<T>::row_type>::value,bool> {
-                  auto temp = typename detail::snapshot_row_traits<T>::row_type();
+               auto read_row( T& out, chainbase::database& ) -> std::enable_if_t<std::is_same<std::decay_t<T>, typename detail::snapshot_row_traits<T>::snapshot_type>::value,bool> {
+                  return read_row(out);
+               }
+
+               template<typename T>
+               auto read_row( T& out, chainbase::database& db ) -> std::enable_if_t<!std::is_same<std::decay_t<T>, typename detail::snapshot_row_traits<T>::snapshot_type>::value,bool> {
+                  auto temp = typename detail::snapshot_row_traits<T>::snapshot_type();
                   auto reader = detail::make_row_reader(temp);
                   bool result = _reader.read_row(reader);
-                  detail::from_snapshot_row(std::move(temp), out);
+                  detail::snapshot_row_traits<T>::from_snapshot_row(std::move(temp), out, db);
                   return result;
                }
 

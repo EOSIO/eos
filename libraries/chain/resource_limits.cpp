@@ -76,8 +76,8 @@ void resource_limits_manager::calculate_integrity_hash( fc::sha256::encoder& enc
 void resource_limits_manager::add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
    resource_index_set::walk_indices([this, &snapshot]( auto utils ){
       snapshot->write_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ){
-         decltype(utils)::walk(_db, [&section]( const auto &row ) {
-            section.add_row(row);
+         decltype(utils)::walk(_db, [this, &section]( const auto &row ) {
+            section.add_row(row, _db);
          });
       });
    });
@@ -88,8 +88,8 @@ void resource_limits_manager::read_from_snapshot( const snapshot_reader_ptr& sna
       snapshot->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
          bool more = !section.empty();
          while(more) {
-            decltype(utils)::create(_db, [&section, &more]( auto &row ) {
-               more = section.read_row(row);
+            decltype(utils)::create(_db, [this, &section, &more]( auto &row ) {
+               more = section.read_row(row, _db);
             });
          }
       });
