@@ -68,6 +68,7 @@ uint64_t convert_to_type(const string& str, const string& desc);
 class read_only {
    const controller& db;
    const fc::microseconds abi_serializer_max_time;
+   bool  shorten_abi_errors = true;
 
 public:
    static const string KEYi64;
@@ -76,6 +77,8 @@ public:
       : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
 
    void validate() const {}
+
+   void set_shorten_abi_errors( bool f ) { shorten_abi_errors = f; }
 
    using get_info_params = empty;
 
@@ -434,7 +437,7 @@ public:
             copy_inline_row(*itr2, data);
 
             if (p.json) {
-               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data, abi_serializer_max_time));
+               result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors ) );
             } else {
                result.rows.emplace_back(fc::variant(data));
             }
@@ -495,7 +498,7 @@ public:
             copy_inline_row(*itr, data);
 
             if (p.json) {
-               result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data, abi_serializer_max_time));
+               result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors ) );
             } else {
                result.rows.emplace_back(fc::variant(data));
             }

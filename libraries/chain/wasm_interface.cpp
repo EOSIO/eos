@@ -1911,8 +1911,6 @@ std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
    in >> s;
    if (s == "wavm")
       runtime = eosio::chain::wasm_interface::vm_type::wavm;
-   else if (s == "binaryen")
-      runtime = eosio::chain::wasm_interface::vm_type::binaryen;
    else if (s == "wabt")
       runtime = eosio::chain::wasm_interface::vm_type::wabt;
    else

@@ -514,9 +514,9 @@ void producer_plugin::set_program_options(
          ("greylist-account", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "account that can not access to extended CPU/NET virtual resources")
          ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
-          "offset of non last block producing time in micro second. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
+          "offset of non last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
-          "offset of last block producing time in micro second. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
+          "offset of last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("incoming-defer-ratio", bpo::value<double>()->default_value(1.0),
           "ratio between incoming transations and deferred transactions when both are exhausted")
          ;
@@ -1357,15 +1357,17 @@ bool producer_plugin_impl::maybe_produce_block() {
    });
 
    try {
-      produce_block();
-      return true;
-   } catch ( const guard_exception& e ) {
-      app().get_plugin<chain_plugin>().handle_guard_exception(e);
+      try {
+         produce_block();
+         return true;
+      } catch ( const guard_exception& e ) {
+         app().get_plugin<chain_plugin>().handle_guard_exception(e);
+         return false;
+      } FC_LOG_AND_DROP();
+   } catch ( boost::interprocess::bad_alloc&) {
+      raise(SIGUSR1);
       return false;
-   } catch ( boost::interprocess::bad_alloc& ) {
-      chain_plugin::handle_db_exhaustion();
-      return false;
-   } FC_LOG_AND_DROP();
+   }
 
    fc_dlog(_log, "Aborting block due to produce_block error");
    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
