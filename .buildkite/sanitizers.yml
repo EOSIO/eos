@@ -38,6 +38,7 @@ steps:
           - WASM_ROOT=/root/opt/wasm
           - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/opt/wasm/bin
           - CI=true
+          - UBSAN_OPTIONS=print_stacktrace=1
     timeout: 60
 
   - wait
