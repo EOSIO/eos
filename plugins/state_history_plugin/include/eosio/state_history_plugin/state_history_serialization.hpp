@@ -456,6 +456,10 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.net_usage));
    fc::raw::pack(ds, as_type<bool>(obj.obj.scheduled));
    history_serialize_container(ds, as_type<std::vector<eosio::chain::action_trace>>(obj.obj.action_traces));
+   // todo
+   //   failed_dtrx_trace
+   //   except
+   //   except_ptr
    return ds;
 }
 
