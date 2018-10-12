@@ -249,6 +249,68 @@ class Utils:
 
         return rtn
 
+    @staticmethod
+    def compare(obj1,obj2,context):
+        type1=type(obj1)
+        type2=type(obj2)
+        if type1!=type2:
+            return "obj1(%s) and obj2(%s) are different types, so cannot be compared, context=%s" % (type1,type2,context)
+
+        if obj1 is None and obj2 is None:
+            return None
+
+        typeName=type1.__name__
+        if type1 == str or type1 == int or type1 == float or type1 == bool:
+            if obj1!=obj2:
+                return "obj1=%s and obj2=%s are different (type=%s), context=%s" % (obj1,obj2,typeName,context)
+            return None
+
+        if type1 == list:
+            len1=len(obj1)
+            len2=len(obj2)
+            diffSizes=False
+            minLen=len1
+            if len1!=len2:
+                diffSizes=True
+                minLen=min([len1,len2])
+
+            for i in range(minLen):
+                nextContext=context + "[%d]" % (i)
+                ret=Utils.compare(obj1[i],obj2[i], nextContext)
+                if ret is not None:
+                    return ret
+
+            if diffSizes:
+                return "left and right side %s comparison have different sizes %d != %d, context=%s" % (typeName,len1,len2,context)
+            return None
+
+        if type1 == dict:
+            keys1=sorted(obj1.keys())
+            keys2=sorted(obj2.keys())
+            len1=len(keys1)
+            len2=len(keys2)
+            diffSizes=False
+            minLen=len1
+            if len1!=len2:
+                diffSizes=True
+                minLen=min([len1,len2])
+
+            for i in range(minLen):
+                key=keys1[i]
+                nextContext=context + "[\"%s\"]" % (key)
+                if key not in obj2:
+                    return "right side does not contain key=%s (has %s) that left side does, context=%s" % (key,keys2,context)
+                ret=Utils.compare(obj1[key],obj2[key], nextContext)
+                if ret is not None:
+                    return ret
+
+            if diffSizes:
+                return "left and right side %s comparison have different number of keys %d != %d, context=%s" % (typeName,len1,len2,context)
+
+            return None
+
+        return "comparison of %s type is not supported, context=%s" % (typeName,context)
+
 ###########################################################################################
 class Account(object):
     # pylint: disable=too-few-public-methods
