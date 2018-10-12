@@ -253,7 +253,6 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::permission_level>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.actor.value));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.permission.value));
    return ds;
@@ -262,7 +261,6 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>&                                                      ds,
                            const history_serial_wrapper<eosio::chain::permission_level_weight>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, make_history_serial_wrapper(as_type<eosio::chain::permission_level>(obj.obj.permission)));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.weight));
    return ds;
@@ -407,7 +405,6 @@ operator<<(datastream<ST>&                                                      
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::action>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.account.value));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.value));
    history_serialize_container(ds, as_type<std::vector<eosio::chain::permission_level>>(obj.obj.authorization));

@@ -149,10 +149,16 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       void operator()(get_status_request_v0&) {
          auto&                chain = plugin->chain_plug->chain();
          get_status_result_v0 result;
+         result.head_block_num              = chain.head_block_num();
+         result.head_block_id               = chain.head_block_id();
          result.last_irreversible_block_num = chain.last_irreversible_block_num();
          result.last_irreversible_block_id  = chain.last_irreversible_block_id();
-         result.state_begin_block_num       = plugin->chain_state_log.begin_block();
-         result.state_end_block_num         = plugin->chain_state_log.end_block();
+         result.block_state_begin_block     = plugin->block_state_log.begin_block();
+         result.block_state_end_block       = plugin->block_state_log.end_block();
+         result.trace_begin_block           = plugin->trace_log.begin_block();
+         result.trace_end_block             = plugin->trace_log.end_block();
+         result.chain_state_begin_block     = plugin->chain_state_log.begin_block();
+         result.chain_state_end_block       = plugin->chain_state_log.end_block();
          send(std::move(result));
       }
 

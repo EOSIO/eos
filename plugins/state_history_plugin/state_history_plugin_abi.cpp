@@ -6,10 +6,16 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "get_status_result_v0", "fields": [
+                { "name": "head_block_num", "type": "uint32" },
+                { "name": "head_block_id", "type": "checksum256" },
                 { "name": "last_irreversible_block_num", "type": "uint32" },
                 { "name": "last_irreversible_block_id", "type": "checksum256" },
-                { "name": "state_begin_block_num", "type": "uint32" },
-                { "name": "state_end_block_num", "type": "uint32" }
+                { "name": "block_state_begin_block", "type": "uint32" },
+                { "name": "block_state_end_block", "type": "uint32" },
+                { "name": "trace_begin_block", "type": "uint32" },
+                { "name": "trace_end_block", "type": "uint32" },
+                { "name": "chain_state_begin_block", "type": "uint32" },
+                { "name": "chain_state_end_block", "type": "uint32" }
             ]
         },
         {
@@ -39,7 +45,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "action_v0", "fields": [
+            "name": "action", "fields": [
                 { "name": "account", "type": "name" },
                 { "name": "name", "type": "name" },
                 { "name": "authorization", "type": "permission_level[]" },
@@ -73,7 +79,6 @@ extern const char* const state_history_plugin_abi = R"({
             "name": "action_trace_v0", "fields": [
                 { "name": "receipt", "type": "action_receipt" },
                 { "name": "act", "type": "action" },
-
                 { "name": "context_free", "type": "bool" },
                 { "name": "elapsed", "type": "int64" },
                 { "name": "console", "type": "string" },
@@ -123,7 +128,7 @@ extern const char* const state_history_plugin_abi = R"({
             "name": "block_header", "fields": [
                 { "name": "timestamp", "type": "block_timestamp_type" },
                 { "name": "producer", "type": "name" },
-                { "name": "confirmed; ", "type": "uint16" },
+                { "name": "confirmed", "type": "uint16" },
                 { "name": "previous", "type": "checksum256" },
                 { "name": "transaction_mroot", "type": "checksum256" },
                 { "name": "action_mroot", "type": "checksum256" },
@@ -141,6 +146,21 @@ extern const char* const state_history_plugin_abi = R"({
             "name": "signed_block", "base": "signed_block_header", "fields": [
                 { "name": "transactions", "type": "transaction_receipt[]" },
                 { "name": "block_extensions", "type": "extension[]" }
+            ]
+        },
+        {   "name": "transaction_header", "fields": [
+                { "name": "expiration", "type": "time_point_sec" },
+                { "name": "ref_block_num", "type": "uint16" },
+                { "name": "ref_block_prefix", "type": "uint32" },
+                { "name": "max_net_usage_words", "type": "varuint32" },
+                { "name": "max_cpu_usage_ms", "type": "uint8" },
+                { "name": "delay_sec", "type": "varuint32" }
+            ]
+        },
+        {   "name": "transaction", "base": "transaction_header", "fields": [
+                { "name": "context_free_actions", "type": "action[]" },
+                { "name": "actions", "type": "action[]" },
+                { "name": "transaction_extensions", "type": "extension[]" }
             ]
         },
         {
@@ -291,13 +311,13 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "permission_level_v0", "fields": [
+            "name": "permission_level", "fields": [
                 { "type": "name", "name": "actor" },
                 { "type": "name", "name": "permission" }
             ]
         },
         {
-            "name": "permission_level_weight_v0", "fields": [
+            "name": "permission_level_weight", "fields": [
                 { "type": "permission_level", "name": "permission" },
                 { "type": "uint16", "name": "weight" }
             ]
@@ -409,7 +429,6 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "request", "types": ["get_status_request_v0", "get_block_request_v0"] },
         { "name": "result", "types": ["get_status_result_v0", "get_block_result_v0"] },
 
-        { "name": "action", "types": ["action_v0"] },
         { "name": "action_receipt", "types": ["action_receipt_v0"] },
         { "name": "action_trace", "types": ["action_trace_v0"] },
         { "name": "transaction_trace", "types": ["transaction_trace_v0"] },
@@ -428,8 +447,6 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "global_property", "types": ["global_property_v0"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
         { "name": "key_weight", "types": ["key_weight_v0"] },
-        { "name": "permission_level", "types": ["permission_level_v0"] },
-        { "name": "permission_level_weight", "types": ["permission_level_weight_v0"] },
         { "name": "wait_weight", "types": ["wait_weight_v0"] },
         { "name": "shared_authority", "types": ["shared_authority_v0"] },
         { "name": "permission", "types": ["permission_v0"] },
