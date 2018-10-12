@@ -79,13 +79,6 @@ namespace eosio { namespace chain {
       >
    >;
 
-   struct snapshot_key_value_object {
-      uint64_t              table_ordinal;
-      uint64_t              primary_key;
-      account_name          payer;
-      fc::blob              value;
-   };
-
    struct by_primary;
    struct by_secondary;
 
@@ -137,15 +130,6 @@ namespace eosio { namespace chain {
    typedef secondary_index<key256_t,index256_object_type>::index_object index256_object;
    typedef secondary_index<key256_t,index256_object_type>::index_index  index256_index;
 
-   template<typename SecondaryKey>
-   struct snapshot_secondary_index
-   {
-      uint64_t      table_ordinal;
-      uint64_t      primary_key;
-      account_name  payer;
-      SecondaryKey  secondary_key;
-   };
-
    struct soft_double_less {
       bool operator()( const float64_t& lhs, const float64_t& rhs )const {
          return f64_lt(lhs, rhs);
@@ -173,6 +157,29 @@ namespace eosio { namespace chain {
     */
    typedef secondary_index<float128_t,index_long_double_object_type,soft_long_double_less>::index_object  index_long_double_object;
    typedef secondary_index<float128_t,index_long_double_object_type,soft_long_double_less>::index_index   index_long_double_index;
+
+   /**
+    * helper template to map from an index type to the best tag
+    * to use when traversing by table_id
+    */
+   template<typename T>
+   struct object_to_table_id_tag;
+
+#define DECLARE_TABLE_ID_TAG( object, tag ) \
+   template<> \
+   struct object_to_table_id_tag<object> { \
+      using tag_type = tag;\
+   };
+
+   DECLARE_TABLE_ID_TAG(key_value_object, by_scope_primary)
+   DECLARE_TABLE_ID_TAG(index64_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index128_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index256_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index_double_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index_long_double_object, by_primary)
+
+   template<typename T>
+   using object_to_table_id_tag_t = typename object_to_table_id_tag<T>::tag_type;
 
 namespace config {
    template<>
@@ -231,4 +238,13 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::index_double_object, eosio::chain::index_
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::index_long_double_object, eosio::chain::index_long_double_index)
 
 FC_REFLECT(eosio::chain::table_id_object, (code)(scope)(table) )
+FC_REFLECT(eosio::chain::key_value_object, (primary_key)(payer)(value) )
 
+#define REFLECT_SECONDARY(type)\
+  FC_REFLECT(type, (primary_key)(payer)(secondary_key) )
+
+REFLECT_SECONDARY(eosio::chain::index64_object)
+REFLECT_SECONDARY(eosio::chain::index128_object)
+REFLECT_SECONDARY(eosio::chain::index256_object)
+REFLECT_SECONDARY(eosio::chain::index_double_object)
+REFLECT_SECONDARY(eosio::chain::index_long_double_object)

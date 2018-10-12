@@ -28,6 +28,16 @@ namespace eosio { namespace chain {
             }
          }
 
+         template<typename Secondary, typename Key, typename F>
+         static void walk_range( const chainbase::database& db, const Key& begin_key, const Key& end_key, F function ) {
+            const auto& idx = db.get_index<Index, Secondary>();
+            auto begin_itr = idx.lower_bound(begin_key);
+            auto end_itr = idx.lower_bound(end_key);
+            for (auto itr = begin_itr; itr != end_itr; ++itr) {
+               function(*itr);
+            }
+         }
+
          template<typename F>
          static void create( chainbase::database& db, F cons ) {
             db.create<typename index_t::value_type>(cons);

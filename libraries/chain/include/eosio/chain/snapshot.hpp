@@ -125,11 +125,16 @@ namespace eosio { namespace chain {
          };
 
          template<typename T, typename F>
-         void write_section(F f) {
-            write_start_section(detail::snapshot_section_traits<T>::section_name());
+         void write_section(const std::string suffix, F f) {
+            write_start_section(suffix + detail::snapshot_section_traits<T>::section_name());
             auto section = section_writer(*this);
             f(section);
             write_end_section();
+         }
+
+         template<typename T, typename F>
+         void write_section(F f) {
+            write_section<T>(std::string(), f);
          }
 
       virtual ~snapshot_writer(){};
@@ -214,11 +219,16 @@ namespace eosio { namespace chain {
          };
 
       template<typename T, typename F>
-      void read_section(F f) {
-         set_section(detail::snapshot_section_traits<T>::section_name());
+      void read_section(const std::string& suffix, F f) {
+         set_section(suffix + detail::snapshot_section_traits<T>::section_name());
          auto section = section_reader(*this);
          f(section);
          clear_section();
+      }
+
+      template<typename T, typename F>
+      void read_section(F f) {
+         read_section<T>(std::string(), f);
       }
 
       virtual void validate() const = 0;
