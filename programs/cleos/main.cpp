@@ -899,9 +899,17 @@ struct create_account_subcommand {
    string buy_ram_eos;
    bool transfer;
    bool simple;
+	string cas_description;
 
    create_account_subcommand(CLI::App* actionRoot, bool s) : simple(s) {
-      auto createAccount = actionRoot->add_subcommand( (simple ? "account" : "newaccount"), localized("Create an account, buy ram, stake for bandwidth for the account"));
+
+	if (!simple) {
+		cas_description = "Create an account, buy ram, stake cpu/net, and transfer voting power/unstake rights to created account";
+	} else {
+	        cas_description = "Create an account without purchasing ram, staking, or giving voting/rights";
+	}
+
+      auto createAccount = actionRoot->add_subcommand( (simple ? "account" : "newaccount"), localized(cas_description.data()));
       createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
       createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
