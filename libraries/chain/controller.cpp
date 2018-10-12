@@ -447,9 +447,15 @@ struct controller_impl {
                   ("table",table_row.table)
             );
 
-            snapshot->write_section<value_t>(table_suffix, [this, &table_row]( auto& section ) {
-               auto tid_key = boost::make_tuple(table_row.id);
-               auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
+            auto tid_key = boost::make_tuple(table_row.id);
+            auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
+
+            // don't include empty ranges in the snapshot
+            if (utils_t::template empty_range<by_table_id>(db, tid_key, next_tid_key)) {
+               return;
+            }
+
+            snapshot->write_section<value_t>(table_suffix, [this, &tid_key, &next_tid_key]( auto& section ) {
                utils_t::template walk_range<by_table_id>(db, tid_key, next_tid_key, [this, &section]( const auto &row ) {
                   section.add_row(row, db);
                });
@@ -470,6 +476,10 @@ struct controller_impl {
                   ("scope", table_row.scope)
                   ("table",table_row.table)
             );
+
+            if (!snapshot->has_section<value_t>(table_suffix)) {
+               return;
+            }
 
             snapshot->read_section<value_t>(table_suffix, [this, t_id = table_row.id]( auto& section ) {
                bool more = !section.empty();

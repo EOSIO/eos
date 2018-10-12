@@ -75,6 +75,17 @@ void variant_snapshot_reader::validate() const {
    }
 }
 
+bool variant_snapshot_reader::has_section( const string& section_name ) {
+   const auto& sections = snapshot["sections"].get_array();
+   for( const auto& section: sections ) {
+      if (section["name"].as_string() == section_name) {
+         return true;
+      }
+   }
+
+   return false;
+}
+
 void variant_snapshot_reader::set_section( const string& section_name ) {
    const auto& sections = snapshot["sections"].get_array();
    for( const auto& section: sections ) {
@@ -228,6 +239,44 @@ bool istream_snapshot_reader::validate_section() const {
    snapshot.seekg(snapshot.tellg() + std::streamoff(section_size));
 
    return true;
+}
+
+bool istream_snapshot_reader::has_section( const string& section_name ) {
+   auto restore_pos = fc::make_scoped_exit([this,pos=snapshot.tellg()](){
+      snapshot.seekg(pos);
+   });
+
+   const std::streamoff header_size = sizeof(ostream_snapshot_writer::magic_number) + sizeof(current_snapshot_version);
+
+   auto next_section_pos = header_pos + header_size;
+
+   while (true) {
+      snapshot.seekg(next_section_pos);
+      uint64_t section_size = 0;
+      snapshot.read((char*)&section_size,sizeof(section_size));
+      if (section_size == std::numeric_limits<uint64_t>::max()) {
+         break;
+      }
+
+      next_section_pos = snapshot.tellg() + std::streamoff(section_size);
+
+      uint64_t ignore = 0;
+      snapshot.read((char*)&ignore,sizeof(ignore));
+
+      bool match = true;
+      for(auto c : section_name) {
+         if(snapshot.get() != c) {
+            match = false;
+            break;
+         }
+      }
+
+      if (match && snapshot.get() == 0) {
+         return true;
+      }
+   }
+
+   return false;
 }
 
 void istream_snapshot_reader::set_section( const string& section_name ) {
