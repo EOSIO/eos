@@ -5,6 +5,7 @@
 #pragma once
 
 #include <eosio/chain/database_utils.hpp>
+#include <eosio/chain/exceptions.hpp>
 #include <fc/variant_object.hpp>
 #include <boost/core/demangle.hpp>
 #include <ostream>
@@ -155,16 +156,50 @@ namespace eosio { namespace chain {
       };
 
       template<typename T>
+      struct is_chainbase_object {
+         static constexpr bool value = false;
+      };
+
+      template<uint16_t TypeNumber, typename Derived>
+      struct is_chainbase_object<chainbase::object<TypeNumber, Derived>> {
+         static constexpr bool value = true;
+      };
+
+      template<typename T>
+      constexpr bool is_chainbase_object_v = is_chainbase_object<T>::value;
+
+      struct row_validation_helper {
+         template<typename T, typename F>
+         static auto apply(const T& data, F f) -> std::enable_if_t<is_chainbase_object_v<T>> {
+            auto orig = data.id;
+            f();
+            EOS_ASSERT(orig == data.id, snapshot_exception,
+                       "Snapshot for ${type} mutates row member \"id\" which is illegal",
+                       ("type",boost::core::demangle( typeid( T ).name() )));
+         }
+
+         template<typename T, typename F>
+         static auto apply(const T&, F f) -> std::enable_if_t<!is_chainbase_object_v<T>> {
+            f();
+         }
+      };
+
+      template<typename T>
       struct snapshot_row_reader : abstract_snapshot_row_reader {
          explicit snapshot_row_reader( T& data )
          :data(data) {}
 
+
          void provide(std::istream& in) const override {
-            fc::raw::unpack(in, data);
+            row_validation_helper::apply(data, [&in,this](){
+               fc::raw::unpack(in, data);
+            });
          }
 
          void provide(const fc::variant& var) const override {
-            fc::from_variant(var, data);
+            row_validation_helper::apply(data, [&var,this]() {
+               fc::from_variant(var, data);
+            });
          }
 
          std::string row_type_name() const override {
