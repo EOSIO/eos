@@ -51,10 +51,10 @@ Usage: ./cleos create SUBCOMMAND
 
 Subcommands:
   key                         Create a new keypair and print the public and private keys
-  account                     Create a new account on the blockchain
+  account                     Create a new account on the blockchain (assumes system contract does not restrict RAM usage)
 
 $ ./cleos create account
-Create a new account on the blockchain
+Create a new account on the blockchain (assumes system contract does not restrict RAM usage)
 Usage: ./cleos create account [OPTIONS] creator name OwnerKey ActiveKey
 
 Positionals:
@@ -896,7 +896,11 @@ struct create_account_subcommand {
    bool simple;
 
    create_account_subcommand(CLI::App* actionRoot, bool s) : simple(s) {
-      auto createAccount = actionRoot->add_subcommand( (simple ? "account" : "newaccount"), localized("Create an account, buy ram, stake for bandwidth for the account"));
+      auto createAccount = actionRoot->add_subcommand(
+                              (simple ? "account" : "newaccount"),
+                              (simple ? localized("Create a new account on the blockchain (assumes system contract does not restrict RAM usage)")
+                                      : localized("Create a new account on the blockchain with initial resources") )
+      );
       createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
       createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
