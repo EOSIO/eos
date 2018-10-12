@@ -148,7 +148,7 @@ public:
                       const vector<string> &beneficiary_tel,
                       const vector<string> &beneficiary_certificates_type,
                       const vector<string> &beneficiary_certificates_num,
-                      const vector<string> &quantity,
+                      const vector<string> &sponsor_quantity,
                       const vector<string> &weitght,
                       const vector<string> &beneficiary_order_num,
                       const vector<string> &beneficiary_state ) {
@@ -193,7 +193,7 @@ public:
             rec.beneficiary_tel = beneficiary_tel[i];
             rec.beneficiary_certificates_type = beneficiary_certificates_type[i];
             rec.beneficiary_certificates_num = beneficiary_certificates_num[i];
-            rec.quantity = quantity[i];
+            rec.sponsor_quantity = sponsor_quantity[i];
             rec.weitght = weitght[i];
             rec.beneficiary_order_num = beneficiary_order_num[i];
             rec.beneficiary_state = beneficiary_state[i];
@@ -257,7 +257,7 @@ public:
             itr->beneficiary_tel,
             itr->beneficiary_certificates_type,
             itr->beneficiary_certificates_num,
-            itr->quantity,
+            itr->sponsor_quantity,
             itr->weitght,
             itr->beneficiary_order_num,
             itr->beneficiary_state,
@@ -330,7 +330,7 @@ private:
       string beneficiary_tel;
       string beneficiary_certificates_type;
       string beneficiary_certificates_num;
-      string quantity;
+      string sponsor_quantity;
       string weitght;
       string beneficiary_order_num;
       string beneficiary_state;
