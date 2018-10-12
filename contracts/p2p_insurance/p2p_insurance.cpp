@@ -1,10 +1,12 @@
 #include <eosiolib/eosio.hpp>
+#include <eosiolib/action.hpp>
 #include <string>
 #include <vector>
 
 using eosio::indexed_by;
 using eosio::const_mem_fun;
 using eosio::contract;
+using eosio::multi_index;
 
 using std::string;
 using std::vector;
@@ -16,17 +18,47 @@ public:
 
    //添加联系人
    //@abi action
-   void createinsure( const string contract_id, string Insurance_holder, const string &quantity, const string &Insurance_num, const string &Insurance_company_id, const string &Insurance_company_name, const string &download_url, const string &time, const string &state, const const string &loan_id ) {
-
-      require_auth( eosio::string_to_name( Insurance_company_id.c_str()));
-      require_recipient( eosio::string_to_name( Insurance_holder.c_str()));
-
-   }
+//   void createinsure( const string contract_id, string Insurance_holder, const string &quantity, const string &Insurance_num, const string &Insurance_company_id, const string &Insurance_company_name, const string &download_url, const string &time, const string &state, const const string &loan_id ) {
+//
+//      require_auth( eosio::string_to_name( Insurance_company_id.c_str()));
+//      require_recipient( eosio::string_to_name( Insurance_holder.c_str()));
+//
+//   }
 
    //@abi action
-   void cancelinsure( const const string &loan_id, string Insurance_holder, string Insurance_company_id ) {
-      require_auth( eosio::string_to_name( Insurance_company_id.c_str()));
-      require_recipient( eosio::string_to_name( Insurance_holder.c_str()));
+   void createinsure( const string &loan_id,
+                      const string &contract_id,
+                      const string &insurance_holder_id,
+                      const string &insurance_holder_name,
+                      const string &insurance_holder_tel,
+                      const string &insurance_holder_certificates_type,
+                      const string &insurance_holder_certificates_num,
+                      const string &insurance_holder_address,
+                      const string &loan_purposes,
+                      const string &loan_principal,
+                      const string &loan_interest,
+                      const string &loan_term,
+                      const string &repayment_method,
+                      const string &premium,
+                      const string &start_date,
+                      const string &end_date,
+                      const string &repayment_date,
+                      const string &insure_quantity,
+                      const string &insurance_company_id,
+                      const string &insurance_company_name,
+                      const string &load_confirm_time,
+                      const string &load_confirm_state,
+                      const string &download_url,
+                      const string &time ) {
+      require_auth( eosio::string_to_name( insurance_company_id.c_str()));
+      require_recipient( eosio::string_to_name( insurance_holder_id.c_str()));
+   }
+
+
+   //@abi action
+   void cancelinsure( const string &loan_id, const string &insurance_holder_id, const string &insurance_company_id ) {
+      require_auth( eosio::string_to_name( insurance_company_id.c_str()));
+      require_recipient( eosio::string_to_name( insurance_holder_id.c_str()));
    }
 
    //@abi action
@@ -45,15 +77,17 @@ public:
                       const string &beneficiary_certificates_num,
                       const string &quantity,
                       const string &weitght,
-                      const string &insurance_num,
                       const string &beneficiary_order_num,
-                      const string &insurance_holder,
-                      const string &insurance_company_id,
-                      const string &insurance_company_name,
-                      const string &download_url,
-                      const string &time,
-                      const string &beneficiary_state ) {
-
+                      const string &beneficiary_state,
+                      const string &insurance_company_id
+//                      const string &insurance_num,
+//                      const string &insurance_holder,
+//                      const string &insurance_company_name,
+//                      const string &download_url,
+//                      const string &time,
+   ) {
+      require_auth( eosio::string_to_name( insurance_company_id.c_str()));
+      require_recipient( eosio::string_to_name( beneficiary_id.c_str()));
    }
 
    //@abi action
@@ -67,13 +101,14 @@ public:
                       const string &beneficiary_id,
                       const string &time,
                       const string &insurance_company_id ) {
-
+      require_auth( eosio::string_to_name( insurance_company_id.c_str()));
+      require_recipient( eosio::string_to_name( beneficiary_id.c_str()));
    }
 
    //@abi action
-   void changestate( const const string &loan_id, string Insurance_holder, const string State, string Insurance_company_id ) {
-      require_auth( eosio::string_to_name( Insurance_company_id.c_str()));
-      require_recipient( eosio::string_to_name( Insurance_holder.c_str()));
+   void changestate( const string &loan_id, const string &insurance_holder_id, const string state, string insurance_company_id ) {
+      require_auth( eosio::string_to_name( insurance_company_id.c_str()));
+      require_recipient( eosio::string_to_name( insurance_holder_id.c_str()));
    }
 
    //////  add new action
@@ -101,6 +136,8 @@ public:
                    const string &insurance_company_name,
                    const string &load_confirm_time,
                    const string &load_confirm_state,
+                   const string &download_url,
+                   const string &time,
                    const vector<string> &beneficiary_id,
                    const vector<string> &beneficiary_name,
                    const vector<string> &beneficiary_tel,
@@ -109,10 +146,61 @@ public:
                    const vector<string> &quantity,
                    const vector<string> &weitght,
                    const vector<string> &beneficiary_order_num,
-                   const vector<string> &download_url,
-                   const vector<string> &time,
                    const vector<string> &beneficiary_state ) {
+      require_auth( eosio::string_to_name( insurance_company_id.c_str()));
+      require_recipient( eosio::string_to_name( insurance_holder_id.c_str()));
 
+      holderTable holder( _self, eosio::string_to_name( loan_id.c_str()));
+
+      holder.emplace( eosio::string_to_name( insurance_company_id.c_str()), [&]( holderinfo &rec ) {
+         rec.loan_id = loan_id;
+         rec.contract_id = contract_id;
+         rec.insurance_holder_id = insurance_holder_id;
+         rec.insurance_holder_name = insurance_holder_name;
+         rec.insurance_holder_tel = insurance_holder_tel;
+         rec.insurance_holder_certificates_type = insurance_holder_certificates_type;
+         rec.insurance_holder_certificates_num = insurance_holder_certificates_num;
+         rec.insurance_holder_address = insurance_holder_address;
+         rec.loan_purposes = loan_purposes;
+         rec.loan_principal = loan_principal;
+         rec.loan_interest = loan_interest;
+         rec.loan_term = loan_term;
+         rec.repayment_method = repayment_method;
+         rec.premium = premium;
+         rec.start_date = start_date;
+         rec.end_date = end_date;
+         rec.repayment_date = repayment_date;
+         rec.insure_quantity = insure_quantity;
+         rec.insurance_company_id = insurance_company_id;
+         rec.insurance_company_name = insurance_company_name;
+         rec.load_confirm_time = load_confirm_time;
+         rec.load_confirm_state = load_confirm_state;
+         rec.download_url = download_url;
+         rec.time = time;
+      } );
+
+      beneficTable beneficiary( _self, eosio::string_to_name( loan_id.c_str()));
+
+      for ( int i = 0; i < beneficiary_id.size(); ++i ) {
+         beneficiary.emplace( eosio::string_to_name( insurance_company_id.c_str()), [&]( beneficinfo &rec ) {
+            rec.loan_id = loan_id;
+            rec.contract_id = contract_id;
+            rec.beneficiary_id = beneficiary_id[i];
+            rec.beneficiary_name = beneficiary_name[i];
+            rec.beneficiary_tel = beneficiary_tel[i];
+            rec.beneficiary_certificates_type = beneficiary_certificates_type[i];
+            rec.beneficiary_certificates_num = beneficiary_certificates_num[i];
+            rec.quantity = quantity[i];
+            rec.weitght = weitght[i];
+            rec.beneficiary_order_num = beneficiary_order_num[i];
+            rec.beneficiary_state = beneficiary_state[i];
+            rec.insurance_company_id = insurance_company_id;
+//            rec.insurance_num = insurance_num;
+//            rec.insurance_holder = insurance_holder;
+//            rec.download_url = download_url;
+//            rec.time = time;
+         } );
+      }
    }
 
    //@abi action
@@ -123,7 +211,10 @@ public:
                    const string &download_url,
                    const string &time,
                    const string &state ) {
+      require_auth( eosio::string_to_name( insurance_company_id.c_str()));
 
+      SEND_INLINE_ACTION( *this, repayment, { eosio::string_to_name( insurance_company_id.c_str()), N( active ) },
+            { loan_id, insurance_company_id } );
    }
 
    //@abi action
@@ -134,58 +225,139 @@ public:
                      const string &download_url,
                      const string &time,
                      const string &state ) {
-
+      require_auth( eosio::string_to_name( insurance_company_id.c_str()));
+      clearstate( loan_id );
    }
 
    //@abi action
-   void repayment() {
-      // contract
-      // beneficiary
+   void repayment( const string &loan_id, const string &insurance_company_id ) {
+      require_auth( eosio::string_to_name( insurance_company_id.c_str()));
+
+      holderTable holder( _self, eosio::string_to_name( loan_id.c_str()));
+
+      for ( auto itr = holder.begin(); itr != holder.end(); ++itr ) {
+         SEND_INLINE_ACTION( *this, createinsure, { eosio::string_to_name( insurance_company_id.c_str()), N( active ) }, {
+            itr->loan_id,
+            itr->contract_id,
+            itr->insurance_holder_id,
+            itr->insurance_holder_name,
+            itr->insurance_holder_tel,
+            itr->insurance_holder_certificates_type,
+            itr->insurance_holder_certificates_num,
+            itr->insurance_holder_address,
+            itr->loan_purposes,
+            itr->loan_principal,
+            itr->loan_interest,
+            itr->loan_term,
+            itr->repayment_method,
+            itr->premium,
+            itr->start_date,
+            itr->end_date,
+            itr->repayment_date,
+            itr->insure_quantity,
+            itr->insurance_company_id,
+            itr->insurance_company_name,
+            itr->load_confirm_time,
+            itr->load_confirm_state,
+            itr->download_url,
+            itr->time
+         } );
+      }
+
+      beneficTable beneficiary( _self, eosio::string_to_name( loan_id.c_str()));
+
+      for ( auto itr = beneficiary.begin(); itr != beneficiary.end(); ++itr ) {
+         SEND_INLINE_ACTION( *this, modaddinsure, { eosio::string_to_name( insurance_company_id.c_str()), N( active ) }, {
+            itr->loan_id,
+            itr->contract_id,
+            itr->beneficiary_id,
+            itr->beneficiary_name,
+            itr->beneficiary_tel,
+            itr->beneficiary_certificates_type,
+            itr->beneficiary_certificates_num,
+            itr->quantity,
+            itr->weitght,
+            itr->beneficiary_order_num,
+            itr->beneficiary_state,
+            itr->insurance_company_id
+//            itr->insurance_num,
+//            itr->insurance_holder,
+//            itr->insurance_company_name,
+         } );
+      }
+
+      clearstate( loan_id );
    }
 
-   //abi action
-   void contract( const string &loan_id,
-                  const string &insurance_num,
-                  const string &contract_id,
-                  const string &quantity,
-                  const string &insurance_company_id,
-                  const string &insurance_company_name,
-                  const string &,
-                  const string &insurance_holder_id,
-                  const string &insurance_holder_name,
-                  const string &insurance_holder_tel,
-                  const string &insurance_holder_certificates_type,
-                  const string &insurance_holder_certificates_num,
-                  const string &insurance_holder_address,
-                  const string &loan_purposes,
-                  const string &loan_principal,
-                  const string &loan_interest,
-                  const string &loan_term,
-                  const string &repayment_method,
-                  const string &premium,
-                  const string &start_date,
-                  const string &end_date,
-                  const string &repayment_date ) {
+   void clearstate( const string &loan_id ) {
+      holderTable holder( _self, eosio::string_to_name( loan_id.c_str()));
+      for ( auto itr = holder.begin(); itr != holder.end(); ) {
+         itr = holder.erase( itr );
+      }
 
-   }
-
-   //abi action
-   void beneficiary( const string &contract_id,
-                     const string &beneficiary,
-                     const string &quantity,
-                     const string &weitght,
-                     const string &beneficiary_state ) {
-
+      beneficTable beneficiary( _self, eosio::string_to_name( loan_id.c_str()));
+      for ( auto itr = beneficiary.begin(); itr != beneficiary.end(); ) {
+         itr = beneficiary.erase( itr );
+      }
    }
 
 private:
-
    struct holderinfo {
+      string loan_id;
+      string contract_id;
+      string insurance_holder_id;
+      string insurance_holder_name;
+      string insurance_holder_tel;
+      string insurance_holder_certificates_type;
+      string insurance_holder_certificates_num;
+      string insurance_holder_address;
+      string loan_purposes;
+      string loan_principal;
+      string loan_interest;
+      string loan_term;
+      string repayment_method;
+      string premium;
+      string start_date;
+      string end_date;
+      string repayment_date;
+      string insure_quantity;
+      string insurance_company_id;
+      string insurance_company_name;
+      string load_confirm_time;
+      string load_confirm_state;
+      string download_url;
+      string time;
 
+      uint64_t primary_key() const { return eosio::string_to_name( loan_id.c_str()); }
    };
+
+   struct beneficinfo {
+      string loan_id;
+      string contract_id;
+      string beneficiary_id;
+      string beneficiary_name;
+      string beneficiary_tel;
+      string beneficiary_certificates_type;
+      string beneficiary_certificates_num;
+      string quantity;
+      string weitght;
+      string beneficiary_order_num;
+      string beneficiary_state;
+      string insurance_company_id;
+//      string insurance_num;
+//      string insurance_holder;
+//      string insurance_company_name;
+//      string download_url;
+//      string time;
+
+      uint64_t primary_key() const { return eosio::string_to_name( beneficiary_id.c_str()); }
+   };
+
+   typedef multi_index<N( holderinfo ), holderinfo> holderTable;
+   typedef multi_index<N( beneficinfo ), beneficinfo> beneficTable;
 
 };
 
-EOSIO_ABI( P2PInsurance, ( createinsure )( cancelinsure )( modaddinsure )( moddelinsure )
-( changestate ))
+EOSIO_ABI( P2PInsurance, ( createinsure )( cancelinsure )( modaddinsure )( moddelinsure )( changestate )
+      ( addinsure )( verifypas )( verifyunpas )( repayment ))
 

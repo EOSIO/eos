@@ -11,6 +11,17 @@ public:
    /// @abi action
    void hi( account_name user ) {
       print( "Hello, ", name{ user } );
+      SEND_INLINE_ACTION( *this, bye, { _self, N( active ) }, { user } );
+      print( "Hello, ", name{ user } );
+      SEND_INLINE_ACTION( *this, bye2, { _self, N( active ) }, { user } );
+   }
+
+   void bye( account_name user ) {
+      print( "bye, ", name{ user } );
+   }
+
+   void bye2( account_name user ) {
+      print( "bye2, ", name{ user } );
    }
 
    /// @abi actoin
@@ -47,4 +58,4 @@ public:
 
 };
 
-EOSIO_ABI( hello, ( hi )( addword )( delword )( modword )( testvec )( addint )( modint )( delint ))
+EOSIO_ABI( hello, ( hi )( addword )( delword )( modword )( testvec )( addint )( modint )( delint )( bye )( bye2 ))
