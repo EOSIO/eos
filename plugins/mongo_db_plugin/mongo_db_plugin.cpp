@@ -113,6 +113,7 @@ public:
    /// @return true if act should be added to mongodb, false to skip it
    bool filter_include( const account_name& receiver, const action_name& act_name,
                         const vector<chain::permission_level>& authorization ) const;
+   bool filter_include( const transaction& trx ) const;
 
    void init();
    void wipe_database();
@@ -261,6 +262,30 @@ bool mongo_db_plugin_impl::filter_include( const account_name& receiver, const a
 
    return true;
 }
+
+bool mongo_db_plugin_impl::filter_include( const transaction& trx ) const
+{
+   if( !filter_on_star || !filter_out.empty() ) {
+      bool include = false;
+      for( const auto& a : trx.actions ) {
+         if( filter_include( a.account, a.name, a.authorization ) ) {
+            include = true;
+            break;
+         }
+      }
+      if( !include ) {
+         for( const auto& a : trx.context_free_actions ) {
+            if( filter_include( a.account, a.name, a.authorization ) ) {
+               include = true;
+               break;
+            }
+         }
+      }
+      return include;
+   }
+   return true;
+}
+
 
 template<typename Queue, typename Entry>
 void mongo_db_plugin_impl::queue( Queue& queue, const Entry& e ) {
@@ -701,25 +726,8 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
 
    const auto& trx = t->trx;
 
-   if( !filter_on_star || !filter_out.empty() ) {
-      bool include = false;
-      for( const auto& a : trx.actions ) {
-         if( filter_include( a.account, a.name, a.authorization ) ) {
-            include = true;
-            break;
-         }
-      }
-      if( !include ) {
-         for( const auto& a : trx.context_free_actions ) {
-            if( filter_include( a.account, a.name, a.authorization ) ) {
-               include = true;
-               break;
-            }
-         }
-      }
-      if( !include ) return;
-   }
-
+   if( !filter_include( trx ) ) return;
+   
    auto trans_doc = bsoncxx::builder::basic::document{};
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -1070,7 +1078,9 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
             const auto& pt = receipt.trx.get<packed_transaction>();
             // get id via get_raw_transaction() as packed_transaction.id() mutates internal transaction state
             const auto& raw = pt.get_raw_transaction();
-            const auto& id = fc::raw::unpack<transaction>( raw ).id();
+            const auto& trx = fc::raw::unpack<transaction>( raw );
+            if( !filter_include( trx ) ) continue;
+            const auto& id = trx.id();
             trx_id_str = id.str();
          } else {
             const auto& id = receipt.trx.get<transaction_id_type>();
@@ -1083,7 +1093,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
                                                                       kvp( "updatedAt", b_date{now} ) ) ) );
 
          mongocxx::model::update_one update_op{make_document( kvp( "trx_id", trx_id_str ) ), update_doc.view()};
-         update_op.upsert( true );
+         update_op.upsert( false );
          bulk.append( update_op );
          transactions_in_block = true;
       }
