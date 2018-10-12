@@ -2,6 +2,7 @@
 
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/exception.hpp>
+#include <cyberway/chaindb/names.hpp>
 #include <cyberway/chaindb/driver_interface.hpp>
 #include <cyberway/chaindb/mongo_driver.hpp>
 
@@ -48,133 +49,11 @@ namespace cyberway { namespace chaindb {
 
     driver_interface::~driver_interface() = default;
 
-    namespace _detail { namespace {
-        // name can't contains _ that is why they are used for internal db and key names
-        const string& system_code_name() {
-            static const string name = "_CYBERWAY_";
-            return name;
-        }
-
-        const string& unknown_name() {
-            static const string name = "_UNKNOWN_";
-            return name;
-        }
-
-        const string& scope_field_name() {
-            static const string name = "_SCOPE_";
-            return name;
-        }
-
-        const string& payer_field_name() {
-            static const string name = "_PAYER_";
-            return name;
-        }
-
-        const string& size_field_name() {
-            static const string name = "_SIZE_";
-            return name;
-        }
-
+    namespace { namespace _detail {
         const vector<string>& reserved_fields() {
             static const vector<string> fields = {scope_field_name(), payer_field_name(), size_field_name()};
             return fields;
         }
-
-        ///----
-
-        inline string code_name(const account_name& code) {
-            if (!code.empty()) {
-                return code.to_string();
-            }
-            return system_code_name();
-        }
-
-        inline string code_name(const account_name_t code) {
-            return code_name(account_name(code));
-        }
-
-        template <typename Info>
-        inline string code_name(const Info& info) {
-            return code_name(info.code);
-        }
-
-        ///----
-
-        inline string scope_name(const account_name& scope) {
-            return code_name(scope);
-        }
-
-        template <typename Info>
-        inline string scope_name(const Info& info) {
-            return scope_name(info.scope);
-        }
-
-        ///---
-
-        inline string payer_name(const account_name& payer) {
-            return payer.to_string();
-        }
-
-        ///----
-
-        inline string table_name(const eosio::chain::table_name& table) {
-            if (!table.empty()) {
-                return table.to_string();
-            }
-            return unknown_name();
-        }
-
-        inline string table_name(const table_name_t table) {
-            return table_name(eosio::chain::table_name(table));
-        }
-
-        inline string table_name(const table_def* table) {
-            if (table) {
-                return table_name(table->name);
-            }
-            return unknown_name();
-        }
-
-        template <typename Info>
-        inline string table_name(const Info& info) {
-            return table_name(info.table);
-        }
-
-        template<typename Info>
-        inline string full_table_name(const Info& info) {
-            return code_name(info).append(".").append(table_name(info));
-        }
-
-        ///-----
-
-        inline string index_name(const eosio::chain::index_name& index) {
-            if (!index.empty()) {
-                return index.to_string();
-            }
-            return unknown_name();
-        }
-
-        inline string index_name(const index_name_t index) {
-            return index_name(eosio::chain::index_name(index));
-        }
-
-        template <typename Info>
-        inline string index_name(const Info& info) {
-            return index_name(info.index);
-        }
-
-        inline string index_name(const index_def* index) {
-            if (index) {
-                return index_name(index->name);
-            }
-            return unknown_name();
-        }
-
-        template<typename Info>
-        inline string full_index_name(const Info& info) {
-            return full_table_name(info).append(".").append(index_name(info.index));
-        }
-
     } } // namespace _detail
 
     class abi_info {
@@ -199,7 +78,7 @@ namespace cyberway { namespace chaindb {
                     i.index = &index;
 
                     struct_def dst;
-                    dst.name = _detail::full_index_name(i);
+                    dst.name = full_index_name(i);
                     for (auto& key: index.orders) {
                         for (auto& field: src.fields) {
                             if (field.name == key.field) {
@@ -234,14 +113,14 @@ namespace cyberway { namespace chaindb {
             const table_info& info, const void* data, const size_t size, const microseconds& max_time
         ) const {
             CYBERWAY_ASSERT(info.table, unknown_table_exception, "NULL table");
-            return to_object_("table", [&]{return _detail::full_table_name(info);}, info.table->type, data, size, max_time);
+            return to_object_("table", [&]{return full_table_name(info);}, info.table->type, data, size, max_time);
         }
 
         variant to_object(
             const index_info& info, const void* data, const size_t size, const microseconds& max_time
         ) const {
             CYBERWAY_ASSERT(info.index, unknown_index_exception, "NULL index");
-            auto type = _detail::full_index_name(info);
+            auto type = full_index_name(info);
             return to_object_("index", [&](){return type;}, type, data, size, max_time);
         }
 
@@ -249,7 +128,7 @@ namespace cyberway { namespace chaindb {
             const table_info& info, const variant& value, const microseconds& max_time
         ) const {
             CYBERWAY_ASSERT(info.table, unknown_table_exception, "NULL table");
-            return to_bytes_("table", [&]{return _detail::full_table_name(info);}, info.table->type, value, max_time);
+            return to_bytes_("table", [&]{return full_table_name(info);}, info.table->type, value, max_time);
         }
 
         void mark_removed() {
@@ -262,10 +141,6 @@ namespace cyberway { namespace chaindb {
 
         const abi_def& abi() const {
             return abi_;
-        }
-
-        string code_name() const {
-            return _detail::code_name(code_);
         }
 
     private:
@@ -358,19 +233,19 @@ namespace cyberway { namespace chaindb {
         const cursor_info& lower_bound(const index_request& request, const char* key, const size_t size) const {
             auto index = get_index(request);
             auto value = index.abi->to_object(index, key, size, max_abi_time);
-            return driver->lower_bound(index, value);
+            return driver->lower_bound(index, std::move(value));
         }
 
         const cursor_info& upper_bound(const index_request& request, const char* key, const size_t size) const {
             auto index = get_index(request);
             auto value = index.abi->to_object(index, key, size, max_abi_time);
-            return driver->upper_bound(index, value);
+            return driver->upper_bound(index, std::move(value));
         }
 
         const cursor_info& find(const index_request& request, primary_key_t pk, const char* key, size_t size) const {
             auto index = get_index(request);
             auto value = index.abi->to_object(index, key, size, max_abi_time);
-            return driver->find(index, pk, value);
+            return driver->find(index, pk, std::move(value));
         }
 
         const cursor_info& end(const index_request& request) const {
@@ -383,20 +258,20 @@ namespace cyberway { namespace chaindb {
             return driver->available_primary_key(table);
         }
 
-        int32_t datasize(cursor_t id) const {
-            auto& cursor = driver->current(id);
-            return static_cast<int32_t>(object_data(cursor).size());
+        int32_t datasize(const cursor_request& request) const {
+            auto& cursor = driver->current(request);
+            init_cursor_blob(cursor);
+            return static_cast<int32_t>(cursor.blob.size());
         }
 
-        const cursor_info& data(cursor_t id, const char* data, const size_t size) const {
-            auto& cursor = driver->current(id);
-
-            auto& src = object_data(cursor);
-            CYBERWAY_ASSERT(src.size() == size, invalid_data_size_exception,
+        const cursor_info& data(const cursor_request& request, const char* data, const size_t size) const {
+            auto& cursor = driver->current(request);
+            init_cursor_blob(cursor);
+            CYBERWAY_ASSERT(cursor.blob.size() == size, invalid_data_size_exception,
                 "Wrong data size (${data_size} != ${object_size}) for the table ${table}",
-                ("data_size", size)("object_size", src.size())("table", _detail::full_table_name(cursor.info)));
+                ("data_size", size)("object_size", cursor.blob.size())("table", full_table_name(cursor.index)));
 
-            ::memcpy(const_cast<char*>(data), src.data(), src.size());
+            ::memcpy(const_cast<char*>(data), cursor.blob.data(), cursor.blob.size());
             return cursor;
         }
 
@@ -404,7 +279,6 @@ namespace cyberway { namespace chaindb {
             apply_context&, const table_request& request, const account_name& payer,
             const primary_key_t pk, const char* data, const size_t size
         ) const {
-            using namespace _detail;
 
             auto info = get_table<index_info>(request);
             auto& table = static_cast<const table_info&>(info);
@@ -412,7 +286,7 @@ namespace cyberway { namespace chaindb {
             auto raw_value = table.abi->to_object(table, data, size, max_abi_time);
             auto value = add_service_fields(table, payer, raw_value, pk, size);
 
-            auto inserted_pk = driver->insert(table, value);
+            auto inserted_pk = driver->insert(table, std::move(value));
             CYBERWAY_ASSERT(inserted_pk == pk, driver_primary_key_exception,
                 "Driver returns ${ipk} instead of ${pk} on inserting into the table ${table}",
                 ("ipk", inserted_pk)("pk", pk)("table", full_table_name(table)));
@@ -424,7 +298,7 @@ namespace cyberway { namespace chaindb {
 
             info.index = &get_pk_index(table);
 
-            auto& cursor = driver->lower_bound(info, key);
+            auto& cursor = driver->lower_bound(info, std::move(key));
             CYBERWAY_ASSERT(cursor.pk == pk, driver_primary_key_exception,
                 "Driver returns ${ipk} instead of ${pk} on loading from the table ${table}",
                 ("ipk", cursor.pk)("pk", pk)("table", full_table_name(table)));
@@ -438,13 +312,12 @@ namespace cyberway { namespace chaindb {
             apply_context&, const table_request& request, account_name payer,
             const primary_key_t pk, const char* data, size_t size
         ) const {
-            using namespace _detail;
 
             auto table = get_table<table_info>(request);
 
             auto raw_value = table.abi->to_object(table, data, size, max_abi_time);
 
-            auto orig_value = driver->value(pk);
+            auto orig_value = driver->value(table, pk);
             validate_object(table, orig_value, pk);
             auto& orig_object = orig_value.get_object();
 
@@ -454,7 +327,7 @@ namespace cyberway { namespace chaindb {
 
             auto value = add_service_fields(table, payer, raw_value, pk, size);
 
-            auto updated_pk = driver->update(table, value);
+            auto updated_pk = driver->update(table, std::move(value));
             CYBERWAY_ASSERT(updated_pk == pk, driver_primary_key_exception,
                 "Driver returns ${upk} instead of ${pk} on updating of the table ${table}",
                 ("upk", updated_pk)("pk", pk)("table", full_table_name(table)));
@@ -466,11 +339,9 @@ namespace cyberway { namespace chaindb {
         }
 
         primary_key_t remove(apply_context&, const table_request& request, primary_key_t pk) const {
-            using namespace _detail;
-
             auto table = get_table<table_info>(request);
 
-            auto orig_value = driver->value(pk);
+            auto orig_value = driver->value(table, pk);
             validate_object(table, orig_value, pk);
             auto& orig_object = orig_value.get_object();
 
@@ -493,7 +364,7 @@ namespace cyberway { namespace chaindb {
             auto info = find_table<Info>(request);
             CYBERWAY_ASSERT(info.table, unknown_table_exception,
                 "ABI table ${table} doesn't exists",
-                ("table", _detail::full_table_name(request)));
+                ("table", full_table_name(request)));
 
             return info;
         }
@@ -502,7 +373,7 @@ namespace cyberway { namespace chaindb {
             auto info = find_index(request);
             CYBERWAY_ASSERT(info.index, unknown_index_exception,
                 "ABI index ${index} doesn't exists",
-                ("index", _detail::full_index_name(request)));
+                ("index", full_index_name(request)));
 
             return info;
         }
@@ -554,29 +425,25 @@ namespace cyberway { namespace chaindb {
             return info;
         }
 
-        const bytes& object_data(const cursor_info& cursor) const {
-            CYBERWAY_ASSERT(cursor.info.abi != nullptr && cursor.info.table != nullptr, broken_driver_exception,
+        void init_cursor_blob(const cursor_info& cursor) const {
+            CYBERWAY_ASSERT(cursor.index.abi != nullptr && cursor.index.table != nullptr, broken_driver_exception,
                 "Driver returns bad information about abi.");
 
-            auto& data = driver->data(cursor);
-            if (data.size()) return data;
+            if (!cursor.blob.empty()) return;
 
             auto& value = driver->value(cursor);
-            validate_object(cursor.info, value, cursor.pk);
+            validate_object(cursor.index, value, cursor.pk);
 
-            auto buffer = cursor.info.abi->to_bytes(cursor.info, value, max_abi_time);
-            driver->mutable_data(cursor) = std::move(buffer);
-            return data;
+            auto buffer = cursor.index.abi->to_bytes(cursor.index, value, max_abi_time);
+            driver->set_blob(cursor, std::move(buffer));
         }
 
         void validate_object(const table_info& table, const variant& value, const primary_key_t pk) const {
-            using namespace _detail;
-
             CYBERWAY_ASSERT(value.is_object(), broken_driver_exception,
                 "ChainDB driver returns not object.");
             auto& object = value.get_object();
 
-            auto& fields = reserved_fields();
+            auto& fields = _detail::reserved_fields();
             for (auto& field: fields) {
                 CYBERWAY_ASSERT(object.end() != object.find(field), driver_absent_field_exception,
                     "ChainDB driver returns object without field ${name} for the table ${table}.",
@@ -595,11 +462,9 @@ namespace cyberway { namespace chaindb {
         }
 
         void validate_service_fields(const table_info& table, const variant& value, const primary_key_t pk) const {
-            using namespace _detail;
-
             // type is object - should be checked before this call
             auto& object = value.get_object();
-            auto& fields = reserved_fields();
+            auto& fields = _detail::reserved_fields();
 
             for (auto& field: fields) {
                 CYBERWAY_ASSERT(object.end() == object.find(field), reserved_field_name_exception,
@@ -653,8 +518,8 @@ namespace cyberway { namespace chaindb {
         return impl_->has_abi(code);
     }
 
-    void chaindb_controller::close(cursor_t cursor) {
-        impl_->driver->close(cursor);
+    void chaindb_controller::close(const cursor_request& request) {
+        impl_->driver->close(request);
     }
 
     void chaindb_controller::close_all_cursors(const account_name& code) {
@@ -677,28 +542,28 @@ namespace cyberway { namespace chaindb {
         return impl_->end(request).id;
     }
 
-    cursor_t chaindb_controller::clone(cursor_t cursor) {
-        return impl_->driver->clone(cursor).id;
+    cursor_t chaindb_controller::clone(const cursor_request& request) {
+        return impl_->driver->clone(request).id;
     }
 
-    primary_key_t chaindb_controller::current(cursor_t cursor) {
-        return impl_->driver->current(cursor).pk;
+    primary_key_t chaindb_controller::current(const cursor_request& request) {
+        return impl_->driver->current(request).pk;
     }
 
-    primary_key_t chaindb_controller::next(cursor_t cursor) {
-        return impl_->driver->next(cursor).pk;
+    primary_key_t chaindb_controller::next(const cursor_request& request) {
+        return impl_->driver->next(request).pk;
     }
 
-    primary_key_t chaindb_controller::prev(cursor_t cursor) {
-        return impl_->driver->prev(cursor).pk;
+    primary_key_t chaindb_controller::prev(const cursor_request& request) {
+        return impl_->driver->prev(request).pk;
     }
 
-    int32_t chaindb_controller::datasize(cursor_t cursor) {
-        return impl_->datasize(cursor);
+    int32_t chaindb_controller::datasize(const cursor_request& request) {
+        return impl_->datasize(request);
     }
 
-    primary_key_t chaindb_controller::data(cursor_t cursor, const char* data, size_t size) {
-        return impl_->data(cursor, data, size).pk;
+    primary_key_t chaindb_controller::data(const cursor_request& request, const char* data, size_t size) {
+        return impl_->data(request, data, size).pk;
     }
 
     primary_key_t chaindb_controller::available_primary_key(const table_request& request) {

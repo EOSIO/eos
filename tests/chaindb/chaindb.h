@@ -12,7 +12,9 @@ typedef int32_t cursor_t;
 static constexpr cursor_t invalid_cursor = (-1);
 
 typedef uint64_t primary_key_t;
-static constexpr primary_key_t unset_primary_key = (-1);
+static constexpr primary_key_t end_primary_key = (-1);
+static constexpr primary_key_t unset_primary_key = (-2);
+
 
 int32_t chaindb_init(const char*);
 

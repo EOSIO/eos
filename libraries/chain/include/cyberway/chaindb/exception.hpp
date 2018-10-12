@@ -31,6 +31,24 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(driver_absent_field_exception, chaindb_internal_exception,
                                      3710004, "ChainDB driver object without required key")
 
+        FC_DECLARE_DERIVED_EXCEPTION(driver_out_of_range_exception, chaindb_internal_exception,
+                                     3710005, "ChainDB driver object try to locate object in out of range")
+
+        FC_DECLARE_DERIVED_EXCEPTION(driver_invalid_cursor_exception, chaindb_internal_exception,
+                                     3710006, "ChainDB driver cursor doesn't exist")
+
+        FC_DECLARE_DERIVED_EXCEPTION(driver_absent_object_exception, chaindb_internal_exception,
+                                     3710007, "ChainDB driver can't find object")
+
+        FC_DECLARE_DERIVED_EXCEPTION(driver_insert_exception, chaindb_internal_exception,
+                                     3710008, "ChainDB driver fail to insert object")
+
+        FC_DECLARE_DERIVED_EXCEPTION(driver_update_exception, chaindb_internal_exception,
+                                     3710009, "ChainDB driver fail to update object")
+
+        FC_DECLARE_DERIVED_EXCEPTION(driver_delete_exception, chaindb_internal_exception,
+                                     3710010, "ChainDB driver fail to delete object")
+
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_abi_exception, chaindb_exception,
                                  3720000, "ChainDB ABI exception")
 

@@ -97,7 +97,7 @@ private:
     const account_name_t code_;
     const account_name_t scope_;
 
-    mutable primary_key_t next_primary_key_ = unset_primary_key;
+    mutable primary_key_t next_primary_key_ = end_primary_key;
 
     struct item: public T {
         template<typename Constructor>
@@ -148,7 +148,7 @@ private:
             return result;
         }
         const_iterator_impl& operator++() {
-            chaindb_assert(primary_key_ != unset_primary_key, "cannot increment end iterator");
+            chaindb_assert(primary_key_ != end_primary_key, "cannot increment end iterator");
             primary_key_ = chaindb_next(cursor_);
             item_.reset();
             return *this;
@@ -163,7 +163,7 @@ private:
             lazy_load_end_cursor();
             primary_key_ = chaindb_prev(cursor_);
             item_.reset();
-            chaindb_assert(primary_key_ != unset_primary_key, "out of range on decrement of iterator");
+            chaindb_assert(primary_key_ != end_primary_key, "out of range on decrement of iterator");
             return *this;
         }
 
@@ -182,7 +182,7 @@ private:
             item_ = src.item_;
 
             src.cursor_ = invalid_cursor;
-            src.primary_key_ = unset_primary_key;
+            src.primary_key_ = end_primary_key;
             src.item_.reset();
 
             return *this;
@@ -223,19 +223,19 @@ private:
 
         const multi_index* multidx_ = nullptr;
         mutable cursor_t cursor_ = invalid_cursor;
-        mutable primary_key_t primary_key_ = unset_primary_key;
+        mutable primary_key_t primary_key_ = end_primary_key;
         mutable item_ptr item_;
 
         void load_object() const {
             chaindb_assert(!item_ || !item_->deleted_, "cannot load deleted object");
             if (item_) return;
 
-            chaindb_assert(primary_key_ != unset_primary_key, "cannot load object from end iterator");
+            chaindb_assert(primary_key_ != end_primary_key, "cannot load object from end iterator");
             item_ = multidx_->load_object(cursor_, primary_key_);
         }
 
         void lazy_load_end_cursor() {
-            if (primary_key_ != unset_primary_key || cursor_ != invalid_cursor) return;
+            if (primary_key_ != end_primary_key || cursor_ != invalid_cursor) return;
 
             cursor_ = chaindb_end(get_code(), get_scope(), table_name(), index_name());
             chaindb_assert(cursor_ != invalid_cursor, "unable to open end iterator");
@@ -339,7 +339,7 @@ private:
             auto key = extractor_type()(itm);
             auto pk = primary_key_extractor_type()(itm);
             cursor_t cursor;
-            safe_allocate(size, "invalid size of key", [&](auto& data, auto& size) {
+            safe_allocate(pack_size(key), "invalid size of key", [&](auto& data, auto& size) {
                 pack_object(key, data, size);
                 cursor = chaindb_find(get_code(), get_scope(), table_name(), index_name(), pk, data, size);
             });
@@ -455,9 +455,9 @@ public:
     }
 
     primary_key_t available_primary_key() const {
-        if (next_primary_key_ == unset_primary_key) {
+        if (next_primary_key_ == end_primary_key) {
             next_primary_key_ = chaindb_available_primary_key(get_code(), get_scope(), table_name());
-            chaindb_assert(next_primary_key_ != unset_primary_key, "no available primary key");
+            chaindb_assert(next_primary_key_ != end_primary_key, "no available primary key");
         }
         return next_primary_key_;
     }
@@ -493,7 +493,7 @@ public:
 
         auto& obj = static_cast<T&>(*ptr);
         auto pk = primary_key_extractor_type()(obj);
-        chaindb_assert(pk != unset_primary_key, "invalid value of primary key");
+        chaindb_assert(pk != end_primary_key, "invalid value of primary key");
 
         cursor_t cursor;
         safe_allocate(pack_size(obj), "invalid size of object", [&](auto& data, auto& size) {

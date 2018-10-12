@@ -288,8 +288,8 @@ namespace eosio { namespace chain {
                 break;
             }
         }
-        EOS_ASSERT( pk_type && *pk_type == "i64", abi_serialization_primary_key_exception,
-           "The field ${field} of the table ${table} is declared as primary and it should has type i64", ("field", k.field)("table", t.name) );
+        EOS_ASSERT( pk_type && *pk_type == "uint64", abi_serialization_primary_key_exception,
+           "The field ${field} of the table ${table} is declared as primary and it should has type uint64", ("field", k.field)("table", t.name) );
 
         for( const auto& i : t.indexes ) {
           for( const auto& o : i.orders ) {

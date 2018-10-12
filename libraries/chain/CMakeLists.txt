@@ -90,6 +90,7 @@ add_library( eosio_chain
              webassembly/wabt.cpp
 
              chaindb/controller.cpp
+             chaindb/names.cpp
              ${CHAINDB_SRCS}
 
 #             get_config.cpp

@@ -12,12 +12,12 @@ namespace eosio { namespace chain {
     public:
         using context_aware_api::context_aware_api;
 
-        cursor_t chaindb_clone(cursor_t cursor) {
-            return context.chaindb.clone(cursor);
+        cursor_t chaindb_clone(account_name_t code, cursor_t cursor) {
+            return context.chaindb.clone({code, cursor});
         }
 
-        void chaindb_close(cursor_t cursor) {
-            context.chaindb.close(cursor);
+        void chaindb_close(account_name_t code, cursor_t cursor) {
+            context.chaindb.close({code, cursor});
         }
 
         cursor_t chaindb_lower_bound(
@@ -47,24 +47,24 @@ namespace eosio { namespace chain {
             return context.chaindb.end({code, scope, table, index});
         }
 
-        primary_key_t chaindb_current(cursor_t cursor) {
-            return context.chaindb.current(cursor);
+        primary_key_t chaindb_current(account_name_t code, cursor_t cursor) {
+            return context.chaindb.current({code, cursor});
         }
 
-        primary_key_t chaindb_next(cursor_t cursor) {
-            return context.chaindb.next(cursor);
+        primary_key_t chaindb_next(account_name_t code, cursor_t cursor) {
+            return context.chaindb.next({code, cursor});
         }
 
-        primary_key_t chaindb_prev(cursor_t cursor) {
-            return context.chaindb.prev(cursor);
+        primary_key_t chaindb_prev(account_name_t code, cursor_t cursor) {
+            return context.chaindb.prev({code, cursor});
         }
 
-        int32_t chaindb_datasize(cursor_t cursor) {
-            return context.chaindb.datasize(cursor);
+        int32_t chaindb_datasize(account_name_t code, cursor_t cursor) {
+            return context.chaindb.datasize({code, cursor});
         }
 
-        primary_key_t chaindb_data(cursor_t cursor, array_ptr<const char> data, size_t size) {
-            return context.chaindb.data(cursor, data, size);
+        primary_key_t chaindb_data(account_name_t code, cursor_t cursor, array_ptr<const char> data, size_t size) {
+            return context.chaindb.data({code, cursor}, data, size);
         }
 
         primary_key_t chaindb_available_primary_key(account_name_t code, account_name_t scope, table_name_t table) {
@@ -93,20 +93,20 @@ namespace eosio { namespace chain {
     }; // class chaindb_api
 
     REGISTER_INTRINSICS( chaindb_api,
-        (chaindb_clone,       int(int)  )
-        (chaindb_close,       void(int) )
+        (chaindb_clone,       int(int64_t, int)  )
+        (chaindb_close,       void(int64_t, int) )
 
         (chaindb_lower_bound, int(int64_t, int64_t, int64_t, int64_t, int, int)          )
         (chaindb_upper_bound, int(int64_t, int64_t, int64_t, int64_t, int, int)          )
         (chaindb_find,        int(int64_t, int64_t, int64_t, int64_t, int64_t, int, int) )
         (chaindb_end,         int(int64_t, int64_t, int64_t, int64_t)                    )
 
-        (chaindb_current,     int64_t(int) )
-        (chaindb_next,        int64_t(int) )
-        (chaindb_prev,        int64_t(int) )
+        (chaindb_current,     int64_t(int64_t, int) )
+        (chaindb_next,        int64_t(int64_t, int) )
+        (chaindb_prev,        int64_t(int64_t, int) )
 
-        (chaindb_datasize,    int(int)               )
-        (chaindb_data,        int64_t(int, int, int) )
+        (chaindb_datasize,    int(int64_t, int)               )
+        (chaindb_data,        int64_t(int64_t, int, int, int) )
 
         (chaindb_available_primary_key, int64_t(int64_t, int64_t, int64_t) )
 
