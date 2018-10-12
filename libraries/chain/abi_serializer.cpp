@@ -118,7 +118,7 @@ namespace eosio { namespace chain {
          structs[st.name] = st;
 
       for( const auto& td : abi.types ) {
-         EOS_ASSERT(_is_type(td.type, 0, deadline, max_serialization_time), invalid_type_inside_abi, "invalid type", ("type",td.type));
+         EOS_ASSERT(_is_type(td.type, 0, deadline, max_serialization_time), invalid_type_inside_abi, "invalid type ${type}", ("type",td.type));
          EOS_ASSERT(!_is_type(td.new_type_name, 0, deadline, max_serialization_time), duplicate_abi_type_def_exception, "type already exists", ("new_type_name",td.new_type_name));
          typedefs[td.new_type_name] = td.type;
       }
@@ -226,7 +226,7 @@ namespace eosio { namespace chain {
          }
       } FC_CAPTURE_AND_RETHROW( (t) ) }
       for( const auto& t : typedefs ) { try {
-         EOS_ASSERT(_is_type(t.second, 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",t.second) );
+         EOS_ASSERT(_is_type(t.second, 0, deadline, max_serialization_time), invalid_type_inside_abi, "${type}", ("type",t.second) );
       } FC_CAPTURE_AND_RETHROW( (t) ) }
       for( const auto& s : structs ) { try {
          if( s.second.base != type_name() ) {
@@ -242,23 +242,23 @@ namespace eosio { namespace chain {
          }
          for( const auto& field : s.second.fields ) { try {
             EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-            EOS_ASSERT(_is_type(_remove_bin_extension(field.type), 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",field.type) );
+            EOS_ASSERT(_is_type(_remove_bin_extension(field.type), 0, deadline, max_serialization_time), invalid_type_inside_abi, "${type}", ("type",field.type) );
          } FC_CAPTURE_AND_RETHROW( (field) ) }
       } FC_CAPTURE_AND_RETHROW( (s) ) }
       for( const auto& s : variants ) { try {
          for( const auto& type : s.second.types ) { try {
             EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-            EOS_ASSERT(_is_type(type, 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",type) );
+            EOS_ASSERT(_is_type(type, 0, deadline, max_serialization_time), invalid_type_inside_abi, "${type}", ("type",type) );
          } FC_CAPTURE_AND_RETHROW( (type) ) }
       } FC_CAPTURE_AND_RETHROW( (s) ) }
       for( const auto& a : actions ) { try {
         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-        EOS_ASSERT(_is_type(a.second, 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",a.second) );
+        EOS_ASSERT(_is_type(a.second, 0, deadline, max_serialization_time), invalid_type_inside_abi, "${type}", ("type",a.second) );
       } FC_CAPTURE_AND_RETHROW( (a)  ) }
 
       for( const auto& t : tables ) { try {
         EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception, "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-        EOS_ASSERT(_is_type(t.second, 0, deadline, max_serialization_time), invalid_type_inside_abi, "", ("type",t.second) );
+        EOS_ASSERT(_is_type(t.second, 0, deadline, max_serialization_time), invalid_type_inside_abi, "${type}", ("type",t.second) );
       } FC_CAPTURE_AND_RETHROW( (t)  ) }
    }
 
