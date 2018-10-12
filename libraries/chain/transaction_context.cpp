@@ -9,6 +9,40 @@
 
 namespace eosio { namespace chain {
 
+   deadline_timer::deadline_timer() {
+      if(initialized)
+         return;
+      struct sigaction act;
+      act.sa_handler = timer_expired;
+      sigemptyset(&act.sa_mask);
+      act.sa_flags = 0;
+      sigaction(SIGALRM, &act, NULL);
+      initialized = true;
+   }
+
+   void deadline_timer::start(fc::time_point tp) {
+      microseconds x = tp.time_since_epoch() - fc::time_point::now().time_since_epoch();
+      if(x.count() < 18)
+         expired = 1;
+      else if(x.count() < 1000000) {
+         struct itimerval enable = {{0, 0}, {0, (int)x.count()-15}};
+         expired = 0;
+         setitimer(ITIMER_REAL, &enable, NULL);
+      }
+   }
+
+   void deadline_timer::stop() {
+      struct itimerval disable = {{0, 0}, {0, 0}};
+      setitimer(ITIMER_REAL, &disable, NULL);
+   }
+
+   deadline_timer::~deadline_timer() {
+      stop();
+   }
+
+   void deadline_timer::timer_expired(int) {
+         expired = 1;
+   }
    volatile sig_atomic_t deadline_timer::expired = 0;
    bool deadline_timer::initialized = false;
 
