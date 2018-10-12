@@ -128,7 +128,7 @@ if(ENABLE_COVERAGE_TESTING)
     COMMAND ctest -R ${ctest_tests} -E ${ctest_exclude_tests}
 
     COMMENT "Capturing lcov counters and generating report"
-    COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ./tools/llvm-gcov.sh --output-file ${Coverage_NAME}.info
+    COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ${CMAKE_SOURCE_DIR}/tools/llvm-gcov.sh --output-file ${Coverage_NAME}.info
 
     COMMENT "Processing code coverage counters and generating report."
     COMMAND ${GENHTML_PATH} -o ${Coverage_NAME} ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info
