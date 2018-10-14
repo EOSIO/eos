@@ -39,11 +39,15 @@ namespace eosio { namespace chain {
          }
 
          template<typename Secondary, typename Key>
-         static bool empty_range( const chainbase::database& db, const Key& begin_key, const Key& end_key ) {
+         static size_t size_range( const chainbase::database& db, const Key& begin_key, const Key& end_key ) {
             const auto& idx = db.get_index<Index, Secondary>();
             auto begin_itr = idx.lower_bound(begin_key);
             auto end_itr = idx.lower_bound(end_key);
-            return begin_itr == end_itr;
+            size_t res = 0;
+            while (begin_itr != end_itr) {
+               res++; ++begin_itr;
+            }
+            return res;
          }
 
          template<typename F>

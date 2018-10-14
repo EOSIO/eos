@@ -31,12 +31,12 @@ using resource_limits::resource_limits_manager;
 using controller_index_set = index_set<
    account_index,
    account_sequence_index,
-   table_id_multi_index,
    global_property_multi_index,
    dynamic_global_property_multi_index,
    block_summary_multi_index,
    transaction_multi_index,
-   generated_transaction_multi_index
+   generated_transaction_multi_index,
+   table_id_multi_index
 >;
 
 using contract_database_index_set = index_set<
@@ -420,6 +420,8 @@ struct controller_impl {
 
    void calculate_contract_tables_integrity_hash( sha256::encoder& enc ) const {
       index_utils<table_id_multi_index>::walk(db, [this, &enc]( const table_id_object& table_row ){
+         fc::raw::pack(enc, table_row);
+
          contract_database_index_set::walk_indices([this, &enc, &table_row]( auto utils ) {
             using value_t = typename decltype(utils)::index_t::value_type;
             using by_table_id = object_to_table_id_tag_t<value_t>;
@@ -434,28 +436,23 @@ struct controller_impl {
    }
 
    void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
-      index_utils<table_id_multi_index>::walk(db, [this, &snapshot]( const table_id_object& table_row ){
-         contract_database_index_set::walk_indices([this, &snapshot, &table_row]( auto utils ) {
-            using utils_t = decltype(utils);
-            using value_t = typename decltype(utils)::index_t::value_type;
-            using by_table_id = object_to_table_id_tag_t<value_t>;
+      snapshot->write_section("contract_tables", [this]( auto& section ) {
+         index_utils<table_id_multi_index>::walk(db, [this, &section]( const table_id_object& table_row ){
+            // add a row for the table
+            section.add_row(table_row, db);
 
-            std::string table_suffix = fc::format_string("[${code}:${scope}:${table}]",
-                  mutable_variant_object()
-                  ("code", table_row.code)
-                  ("scope", table_row.scope)
-                  ("table",table_row.table)
-            );
+            // followed by a size row and then N data rows for each type of table
+            contract_database_index_set::walk_indices([this, &section, &table_row]( auto utils ) {
+               using utils_t = decltype(utils);
+               using value_t = typename decltype(utils)::index_t::value_type;
+               using by_table_id = object_to_table_id_tag_t<value_t>;
 
-            auto tid_key = boost::make_tuple(table_row.id);
-            auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
+               auto tid_key = boost::make_tuple(table_row.id);
+               auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
 
-            // don't include empty ranges in the snapshot
-            if (utils_t::template empty_range<by_table_id>(db, tid_key, next_tid_key)) {
-               return;
-            }
+               unsigned_int size = utils_t::template size_range<by_table_id>(db, tid_key, next_tid_key);
+               section.add_row(size, db);
 
-            snapshot->write_section<value_t>(table_suffix, [this, &tid_key, &next_tid_key]( auto& section ) {
                utils_t::template walk_range<by_table_id>(db, tid_key, next_tid_key, [this, &section]( const auto &row ) {
                   section.add_row(row, db);
                });
@@ -465,38 +462,44 @@ struct controller_impl {
    }
 
    void read_contract_tables_from_snapshot( const snapshot_reader_ptr& snapshot ) {
-      index_utils<table_id_multi_index>::walk(db, [this, &snapshot]( const table_id_object& table_row ){
-         contract_database_index_set::walk_indices([this, &snapshot, &table_row]( auto utils ) {
-            using utils_t = decltype(utils);
-            using value_t = typename decltype(utils)::index_t::value_type;
+      snapshot->read_section("contract_tables", [this]( auto& section ) {
+         bool more = true;
+         while (more) {
+            // read the row for the table
+            table_id_object::id_type t_id;
+            index_utils<table_id_multi_index>::create(db, [this, &section, &t_id](auto& row) {
+               section.read_row(row, db);
+               t_id = row.id;
+            });
 
-            std::string table_suffix = fc::format_string("[${code}:${scope}:${table}]",
-                  mutable_variant_object()
-                  ("code", table_row.code)
-                  ("scope", table_row.scope)
-                  ("table",table_row.table)
-            );
+            // read the size and data rows for each type of table
+            contract_database_index_set::walk_indices([this, &section, &t_id, &more](auto utils) {
+               using utils_t = decltype(utils);
 
-            if (!snapshot->has_section<value_t>(table_suffix)) {
-               return;
-            }
+               unsigned_int size;
+               section.read_row(size, db);
 
-            snapshot->read_section<value_t>(table_suffix, [this, t_id = table_row.id]( auto& section ) {
-               bool more = !section.empty();
-               while(more) {
-                  utils_t::create(db, [this, &section, &more, &t_id]( auto &row ) {
+               for (size_t idx = 0; idx < size.value; idx++) {
+                  utils_t::create(db, [this, &section, &more, &t_id](auto& row) {
                      row.t_id = t_id;
                      more = section.read_row(row, db);
                   });
                }
             });
-         });
+         }
       });
    }
 
    sha256 calculate_integrity_hash() const {
       sha256::encoder enc;
       controller_index_set::walk_indices([this, &enc]( auto utils ){
+         using value_t = typename decltype(utils)::index_t::value_type;
+
+         // skip the table_id_object as its inlined with contract tables section
+         if (std::is_same<value_t, table_id_object>::value) {
+            return;
+         }
+
          decltype(utils)::walk(db, [&enc]( const auto &row ) {
             fc::raw::pack(enc, row);
          });
@@ -519,7 +522,14 @@ struct controller_impl {
       });
 
       controller_index_set::walk_indices([this, &snapshot]( auto utils ){
-         snapshot->write_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ){
+         using value_t = typename decltype(utils)::index_t::value_type;
+
+         // skip the table_id_object as its inlined with contract tables section
+         if (std::is_same<value_t, table_id_object>::value) {
+            return;
+         }
+
+         snapshot->write_section<value_t>([this]( auto& section ){
             decltype(utils)::walk(db, [this, &section]( const auto &row ) {
                section.add_row(row, db);
             });
@@ -546,7 +556,14 @@ struct controller_impl {
       });
 
       controller_index_set::walk_indices([this, &snapshot]( auto utils ){
-         snapshot->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
+         using value_t = typename decltype(utils)::index_t::value_type;
+
+         // skip the table_id_object as its inlined with contract tables section
+         if (std::is_same<value_t, table_id_object>::value) {
+            return;
+         }
+
+         snapshot->read_section<value_t>([this]( auto& section ) {
             bool more = !section.empty();
             while(more) {
                decltype(utils)::create(db, [this, &section, &more]( auto &row ) {
