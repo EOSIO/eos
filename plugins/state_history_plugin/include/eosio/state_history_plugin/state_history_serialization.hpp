@@ -45,6 +45,14 @@ const T& as_type(const T& x) {
 }
 
 template <typename ST, typename T>
+datastream<ST>& history_serialize_ptr(datastream<ST>& ds, const T* p) {
+   fc::raw::pack(ds, bool(p));
+   if (p)
+      fc::raw::pack(ds, make_history_serial_wrapper(*p));
+   return ds;
+}
+
+template <typename ST, typename T>
 datastream<ST>& history_serialize_container(datastream<ST>& ds, const T& v) {
    fc::raw::pack(ds, unsigned_int(v.size()));
    for (auto& x : v)
@@ -441,6 +449,12 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, as_type<int64_t>(obj.obj.elapsed.count()));
    fc::raw::pack(ds, as_type<std::string>(obj.obj.console));
    history_serialize_container(ds, as_type<flat_set<eosio::chain::account_delta>>(obj.obj.account_ram_deltas));
+
+   fc::optional<std::string> e;
+   if (obj.obj.except)
+      e = obj.obj.except->to_string();
+   fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
+
    history_serialize_container(ds, as_type<std::vector<eosio::chain::action_trace>>(obj.obj.inline_traces));
    return ds;
 }
@@ -456,10 +470,13 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.net_usage));
    fc::raw::pack(ds, as_type<bool>(obj.obj.scheduled));
    history_serialize_container(ds, as_type<std::vector<eosio::chain::action_trace>>(obj.obj.action_traces));
-   // todo
-   //   failed_dtrx_trace
-   //   except
-   //   except_ptr
+
+   fc::optional<std::string> e;
+   if (obj.obj.except)
+      e = obj.obj.except->to_string();
+   fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
+
+   history_serialize_ptr(ds, as_type<eosio::chain::transaction_trace*>(obj.obj.failed_dtrx_trace.get()));
    return ds;
 }
 

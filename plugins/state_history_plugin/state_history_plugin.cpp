@@ -272,6 +272,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       if (p->receipt) {
          if (is_onblock(p))
             onblock_trace = p;
+         else if (p->failed_dtrx_trace)
+            cached_traces[p->failed_dtrx_trace->id] = p;
          else
             cached_traces[p->id] = p;
       }
@@ -289,7 +291,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void store_traces(const block_state_ptr& block_state) {
-      std::vector<transaction_trace_ptr> traces{onblock_trace};
+      std::vector<transaction_trace_ptr> traces;
+      if (onblock_trace)
+         traces.push_back(onblock_trace);
       for (auto& r : block_state->block->transactions) {
          transaction_id_type id;
          if (r.trx.contains<transaction_id_type>())
@@ -298,7 +302,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             id = r.trx.get<packed_transaction>().id();
          auto it = cached_traces.find(id);
          if (it == cached_traces.end() || !it->second->receipt) {
-            ilog("missing trace for transaction {id}", ("id", id));
+            ilog("missing trace for transaction ${id}", ("id", id));
             continue;
          }
          traces.push_back(it->second);
