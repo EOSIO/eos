@@ -42,6 +42,10 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
+    const cursor_info& mongodb_driver::current(const cursor_info&) {
+        NOT_SUPPORTED;
+    }
+
     const cursor_info& mongodb_driver::current(const cursor_request&) {
         NOT_SUPPORTED;
     }

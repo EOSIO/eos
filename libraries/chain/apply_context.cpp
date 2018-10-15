@@ -55,7 +55,7 @@ action_trace apply_context::exec_one()
             control.check_contract_list( receiver );
             control.check_action_list( act.account, act.name );
          }
-         if( a.abi.size() > 0 && chaindb.has_abi(receiver) ) {
+         if( a.abi.size() > 0 && !chaindb.has_abi(receiver) ) {
             chaindb.add_abi(receiver, a.get_abi());
          }
          try {

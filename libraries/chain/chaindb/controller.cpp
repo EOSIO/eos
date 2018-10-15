@@ -54,6 +54,18 @@ namespace cyberway { namespace chaindb {
             static const vector<string> fields = {scope_field_name(), payer_field_name(), size_field_name()};
             return fields;
         }
+
+        template <typename Info>
+        const index_def& get_pk_index(const Info& info) {
+            // abi structure is already validated by abi_serializer
+            return info.table->indexes.front();
+        }
+
+        template <typename Info>
+        const field_name& get_pk_field(const Info& info) {
+            // abi structure is already validated by abi_serializer
+            return get_pk_index(info).orders.front().field;
+        }
     } } // namespace _detail
 
     class abi_info {
@@ -63,9 +75,9 @@ namespace cyberway { namespace chaindb {
         : code_(code),
           abi_(std::move(abi)) {
 
-            serializer_.set_abi(abi, max_time);
+            serializer_.set_abi(abi_, max_time);
 
-            for (auto& table: abi.tables) {
+            for (auto& table: abi_.tables) {
                 // if abi was loaded instead of declared
                 if (!table.code) table.code = table.name.value;
                 auto& src = serializer_.get_struct(serializer_.resolve_type(table.type));
@@ -101,6 +113,7 @@ namespace cyberway { namespace chaindb {
                 table_info info(code_, code_);
                 info.table = &t;
                 info.abi = this;
+                info.pk_field = &_detail::get_pk_field(info);
 
                 driver.verify_table_structure(info, max_time);
 
@@ -296,9 +309,10 @@ namespace cyberway { namespace chaindb {
             key_object(*table.pk_field, pk);
             variant key(std::move(key_object));
 
-            info.index = &get_pk_index(table);
+            info.index = &_detail::get_pk_index(table);
 
             auto& cursor = driver->lower_bound(info, std::move(key));
+            driver->current(cursor);
             CYBERWAY_ASSERT(cursor.pk == pk, driver_primary_key_exception,
                 "Driver returns ${ipk} instead of ${pk} on loading from the table ${table}",
                 ("ipk", cursor.pk)("pk", pk)("table", full_table_name(table)));
@@ -378,18 +392,6 @@ namespace cyberway { namespace chaindb {
             return info;
         }
 
-        template <typename Info>
-        const index_def& get_pk_index(const Info& info) const {
-            // abi structure is already validated by abi_serializer
-            return info.table->indexes.front();
-        }
-
-        template <typename Info>
-        const field_name& get_pk_field(const Info& info) const {
-            // abi structure is already validated by abi_serializer
-            return get_pk_index(info).orders.front().field;
-        }
-
         template <typename Info, typename Request>
         Info find_table(const Request& request) const {
             account_name code(request.code);
@@ -405,7 +407,7 @@ namespace cyberway { namespace chaindb {
             for (auto& t: tables) {
                 if (t.code == request.table) {
                     info.table = &t;
-                    info.pk_field = &get_pk_field(info);
+                    info.pk_field = &_detail::get_pk_field(info);
                     break;
                 }
             }

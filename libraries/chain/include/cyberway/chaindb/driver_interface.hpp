@@ -54,6 +54,7 @@ namespace cyberway { namespace chaindb {
         virtual const cursor_info& find(index_info, primary_key_t, variant key) = 0;
         virtual const cursor_info& end(index_info) = 0;
 
+        virtual const cursor_info& current(const cursor_info&) = 0;
         virtual const cursor_info& current(const cursor_request&) = 0;
         virtual const cursor_info& next(const cursor_request&) = 0;
         virtual const cursor_info& prev(const cursor_request&) = 0;

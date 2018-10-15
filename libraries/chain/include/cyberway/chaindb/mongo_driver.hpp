@@ -24,6 +24,7 @@ namespace cyberway { namespace chaindb {
         const cursor_info& find(index_info, primary_key_t, variant key) override;
         const cursor_info& end(index_info) override;
 
+        const cursor_info& current(const cursor_info&) override;
         const cursor_info& current(const cursor_request&) override;
         const cursor_info& next(const cursor_request&) override;
         const cursor_info& prev(const cursor_request&) override;

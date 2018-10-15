@@ -743,6 +743,12 @@ namespace cyberway { namespace chaindb {
         return cursor;
     }
 
+    const cursor_info& mongodb_driver::current(const cursor_info& info) {
+        auto& cursor = const_cast<mongodb_cursor&>(static_cast<const mongodb_cursor&>(info));
+        cursor.current();
+        return cursor;
+    }
+
     const cursor_info& mongodb_driver::current(const cursor_request& request) {
         auto loc = impl_->get_cursor(request);
         loc.cursor.current();
