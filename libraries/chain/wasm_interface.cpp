@@ -57,6 +57,10 @@ namespace eosio { namespace chain {
       my->get_instantiated_module(code_id, code, context.trx_context)->apply(context);
    }
 
+   void wasm_interface::exit() {
+      my->runtime_interface->immediately_exit_currently_running_module();
+   }
+
    wasm_instantiated_module_interface::~wasm_instantiated_module_interface() {}
    wasm_runtime_interface::~wasm_runtime_interface() {}
 
@@ -948,7 +952,7 @@ public:
    }
 
    void eosio_exit(int32_t code) {
-      throw wasm_exit{code};
+      context.control.get_wasm_interface().exit();
    }
 
 };

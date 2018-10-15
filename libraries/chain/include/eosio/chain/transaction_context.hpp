@@ -1,8 +1,22 @@
 #pragma once
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/trace.hpp>
+#include <signal.h>
 
 namespace eosio { namespace chain {
+
+   struct deadline_timer {
+         deadline_timer();
+         ~deadline_timer();
+
+         void start(fc::time_point tp);
+         void stop();
+
+         static volatile sig_atomic_t expired;
+      private:
+         static void timer_expired(int);
+         static bool initialized;
+   };
 
    class transaction_context {
       private:
@@ -108,6 +122,8 @@ namespace eosio { namespace chain {
          fc::time_point                pseudo_start;
          fc::microseconds              billed_time;
          fc::microseconds              billing_timer_duration_limit;
+
+         deadline_timer                _deadline_timer;
    };
 
 } }

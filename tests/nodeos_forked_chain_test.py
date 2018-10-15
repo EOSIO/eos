@@ -55,7 +55,10 @@ def analyzeBPs(bps0, bps1, expectDivergence):
             bpsStr+=str(blockNum0)+"->"+prod0
 
         if index is None:
-            return
+            if expectDivergence:
+                errorInDivergence=True
+                break
+            return None
 
         bpsStr0=None
         bpsStr2=None
@@ -84,13 +87,17 @@ def analyzeBPs(bps0, bps1, expectDivergence):
             bpsStr0+=str(blockNum0)+numDiff+"->"+prod0+prodDiff
             bpsStr1+=str(blockNum1)+numDiff+"->"+prod1+prodDiff
         if errorInDivergence:
-            msg="Failed analyzing block producers - "
-            if expectDivergence:
-                msg+="nodes indicate different block producers for the same blocks, but did not expect them to diverge."
-            else:
-                msg+="did not expect nodes to indicate different block producers for the same blocks."
-            msg+="\n  Matching Blocks= %s \n  Diverging branch node0= %s \n  Diverging branch node1= %s" % (bpsStr,bpsStr0,bpsStr1)
-            Utils.errorExit(msg)
+            break
+
+    if errorInDivergence:
+        msg="Failed analyzing block producers - "
+        if expectDivergence:
+            msg+="nodes indicate different block producers for the same blocks, but did not expect them to diverge."
+        else:
+            msg+="did not expect nodes to indicate different block producers for the same blocks."
+        msg+="\n  Matching Blocks= %s \n  Diverging branch node0= %s \n  Diverging branch node1= %s" % (bpsStr,bpsStr0,bpsStr1)
+        Utils.errorExit(msg)
+
     return firstDivergence
 
 def getMinHeadAndLib(prodNodes):

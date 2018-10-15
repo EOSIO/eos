@@ -276,6 +276,10 @@ namespace Platform
 		return signalType;
 	}
 
+	void immediately_exit() {
+		siglongjmp(signalReturnEnv,1);
+	}
+
 	CallStack captureCallStack(Uptr numOmittedFramesFromTop)
 	{
 		#if 0
