@@ -288,7 +288,6 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "global_property_v0", "fields": [
-                { "type": "uint64", "name": "id" },
                 { "type": "uint32?", "name": "proposed_schedule_block_num" },
                 { "type": "producer_schedule", "name": "proposed_schedule" },
                 { "type": "chain_config", "name": "configuration" }
@@ -296,7 +295,6 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "generated_transaction_v0", "fields": [
-                { "type": "uint64", "name": "id" },
                 { "type": "checksum256", "name": "trx_id" },
                 { "type": "name", "name": "sender" },
                 { "type": "uint128", "name": "sender_id" },
@@ -308,7 +306,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "key_weight_v0", "fields": [
+            "name": "key_weight", "fields": [
                 { "type": "public_key", "name": "key" },
                 { "type": "uint16", "name": "weight" }
             ]
@@ -326,7 +324,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "wait_weight_v0", "fields": [
+            "name": "wait_weight", "fields": [
                 { "type": "uint32", "name": "wait_sec" },
                 { "type": "uint16", "name": "weight" }
             ]
@@ -387,7 +385,6 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "resource_limits_state_v0", "fields": [
-                { "type": "uint64", "name": "id" },
                 { "type": "usage_accumulator", "name": "average_block_net_usage" },
                 { "type": "usage_accumulator", "name": "average_block_cpu_usage" },
                 { "type": "uint64", "name": "pending_net_usage" },
@@ -417,7 +414,6 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "resource_limits_config_v0", "fields": [
-                { "type": "uint64", "name": "id" },
                 { "type": "elastic_limit_parameters", "name": "cpu_limit_parameters" },
                 { "type": "elastic_limit_parameters", "name": "net_limit_parameters" },
                 { "type": "uint32", "name": "account_cpu_usage_average_window" },
@@ -449,8 +445,6 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "chain_config", "types": ["chain_config_v0"] },
         { "name": "global_property", "types": ["global_property_v0"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
-        { "name": "key_weight", "types": ["key_weight_v0"] },
-        { "name": "wait_weight", "types": ["wait_weight_v0"] },
         { "name": "shared_authority", "types": ["shared_authority_v0"] },
         { "name": "permission", "types": ["permission_v0"] },
         { "name": "permission_link", "types": ["permission_link_v0"] },
@@ -471,13 +465,13 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index256", "type": "contract_index256", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "contract_index_double", "type": "contract_index_double", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "contract_index_long_double", "type": "contract_index_long_double", "key_names": ["code", "scope", "table", "primary_key"] },
-        { "name": "global_property", "type": "global_property", "key_names": ["id"] },
-        { "name": "generated_transaction", "type": "generated_transaction", "key_names": ["id"] },
+        { "name": "global_property", "type": "global_property", "key_names": [] },
+        { "name": "generated_transaction", "type": "generated_transaction", "key_names": ["trx_id"] },
         { "name": "permission", "type": "permission", "key_names": ["id"] },
         { "name": "permission_link", "type": "permission_link", "key_names": ["id"] },
         { "name": "resource_limits", "type": "resource_limits", "key_names": ["id"] },
         { "name": "resource_usage", "type": "resource_usage", "key_names": ["id"] },
-        { "name": "resource_limits_state", "type": "resource_limits_state", "key_names": ["id"] },
-        { "name": "resource_limits_config", "type": "resource_limits_config", "key_names": ["id"] }
+        { "name": "resource_limits_state", "type": "resource_limits_state", "key_names": [] },
+        { "name": "resource_limits_config", "type": "resource_limits_config", "key_names": [] }
     ]
 })";

@@ -225,8 +225,6 @@ template <typename ST>
 datastream<ST>& operator<<(datastream<ST>&                                                     ds,
                            const history_serial_wrapper<eosio::chain::global_property_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
-
    fc::raw::pack(ds, as_type<optional<eosio::chain::block_num_type>>(obj.obj.proposed_schedule_block_num));
    fc::raw::pack(ds, make_history_serial_wrapper(
                          as_type<eosio::chain::shared_producer_schedule_type>(obj.obj.proposed_schedule)));
@@ -239,7 +237,6 @@ template <typename ST>
 datastream<ST>& operator<<(datastream<ST>&                                                           ds,
                            const history_serial_wrapper<eosio::chain::generated_transaction_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<eosio::chain::transaction_id_type>(obj.obj.trx_id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.sender.value));
    fc::raw::pack(ds, as_type<__uint128_t>(obj.obj.sender_id));
@@ -253,7 +250,6 @@ datastream<ST>& operator<<(datastream<ST>&                                      
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::key_weight>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<eosio::chain::public_key_type>(obj.obj.key));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.weight));
    return ds;
@@ -276,7 +272,6 @@ datastream<ST>& operator<<(datastream<ST>&                                      
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::wait_weight>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.wait_sec));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.weight));
    return ds;
@@ -359,7 +354,6 @@ datastream<ST>&
 operator<<(datastream<ST>&                                                                            ds,
            const history_serial_wrapper<eosio::chain::resource_limits::resource_limits_state_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, make_history_serial_wrapper(
                          as_type<eosio::chain::resource_limits::usage_accumulator>(obj.obj.average_block_net_usage)));
    fc::raw::pack(ds, make_history_serial_wrapper(
@@ -401,7 +395,6 @@ datastream<ST>&
 operator<<(datastream<ST>&                                                                             ds,
            const history_serial_wrapper<eosio::chain::resource_limits::resource_limits_config_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, make_history_serial_wrapper(as_type<eosio::chain::resource_limits::elastic_limit_parameters>(
                          obj.obj.cpu_limit_parameters)));
    fc::raw::pack(ds, make_history_serial_wrapper(as_type<eosio::chain::resource_limits::elastic_limit_parameters>(
