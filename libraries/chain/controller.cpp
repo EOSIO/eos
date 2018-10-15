@@ -463,7 +463,7 @@ struct controller_impl {
 
    void read_contract_tables_from_snapshot( const snapshot_reader_ptr& snapshot ) {
       snapshot->read_section("contract_tables", [this]( auto& section ) {
-         bool more = true;
+         bool more = !section.empty();
          while (more) {
             // read the row for the table
             table_id_object::id_type t_id;
@@ -477,7 +477,7 @@ struct controller_impl {
                using utils_t = decltype(utils);
 
                unsigned_int size;
-               section.read_row(size, db);
+               more = section.read_row(size, db);
 
                for (size_t idx = 0; idx < size.value; idx++) {
                   utils_t::create(db, [this, &section, &more, &t_id](auto& row) {
