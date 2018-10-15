@@ -16,7 +16,7 @@ args=TestHelper.parse_args({"-p","-n","-d","-s","--nodes-file","--seed"
 pnodes=args.p
 topo=args.s
 delay=args.d
-total_nodes = pnodes if args.n == 0 else args.n
+total_nodes = pnodes if args.n < pnodes else args.n
 debug=args.v
 nodesFile=args.nodes_file
 dontLaunch=nodesFile is not None
@@ -97,6 +97,13 @@ try:
         errorExit("Failed to spread and validate funds.")
 
     print("Funds spread validated")
+
+    if not dontKill:
+        cluster.killall(allInstances=killAll)
+    else:
+        print("NOTE: Skip killing nodes, block log verification will be limited")
+
+    cluster.compareBlockLogs()
 
     testSuccessful=True
 finally:

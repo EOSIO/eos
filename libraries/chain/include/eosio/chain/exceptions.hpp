@@ -230,7 +230,7 @@ namespace eosio { namespace chain {
                                     3060004, "Contract Query Exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
-                                 3060100, "Database exception" )
+                                 3060100, "Guard Exception" )
 
       FC_DECLARE_DERIVED_EXCEPTION( database_guard_exception, guard_exception,
                                     3060101, "Database usage is at unsafe levels" )

@@ -51,10 +51,10 @@ Usage: ./cleos create SUBCOMMAND
 
 Subcommands:
   key                         Create a new keypair and print the public and private keys
-  account                     Create a new account on the blockchain
+  account                     Create a new account on the blockchain (assumes system contract does not restrict RAM usage)
 
 $ ./cleos create account
-Create a new account on the blockchain
+Create a new account on the blockchain (assumes system contract does not restrict RAM usage)
 Usage: ./cleos create account [OPTIONS] creator name OwnerKey ActiveKey
 
 Positionals:
@@ -896,7 +896,11 @@ struct create_account_subcommand {
    bool simple;
 
    create_account_subcommand(CLI::App* actionRoot, bool s) : simple(s) {
-      auto createAccount = actionRoot->add_subcommand( (simple ? "account" : "newaccount"), localized("Create an account, buy ram, stake for bandwidth for the account"));
+      auto createAccount = actionRoot->add_subcommand(
+                              (simple ? "account" : "newaccount"),
+                              (simple ? localized("Create a new account on the blockchain (assumes system contract does not restrict RAM usage)")
+                                      : localized("Create a new account on the blockchain with initial resources") )
+      );
       createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
       createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
@@ -3053,19 +3057,21 @@ int main( int argc, char** argv ) {
       }
    );
 
-   // sudo subcommand
-   auto sudo = app.add_subcommand("sudo", localized("Sudo contract commands"), false);
-   sudo->require_subcommand();
+   // wrap subcommand
+   auto wrap = app.add_subcommand("wrap", localized("Wrap contract commands"), false);
+   wrap->require_subcommand();
 
-   // sudo exec
+   // wrap exec
+   string wrap_con = "eosio.wrap";
    executer = "";
    string trx_to_exec;
-   auto sudo_exec = sudo->add_subcommand("exec", localized("Execute a transaction while bypassing authorization checks"));
-   add_standard_transaction_options(sudo_exec);
-   sudo_exec->add_option("executer", executer, localized("Account executing the transaction and paying for the deferred transaction RAM"))->required();
-   sudo_exec->add_option("transaction", trx_to_exec, localized("The JSON string or filename defining the transaction to execute"))->required();
+   auto wrap_exec = wrap->add_subcommand("exec", localized("Execute a transaction while bypassing authorization checks"));
+   add_standard_transaction_options(wrap_exec);
+   wrap_exec->add_option("executer", executer, localized("Account executing the transaction and paying for the deferred transaction RAM"))->required();
+   wrap_exec->add_option("transaction", trx_to_exec, localized("The JSON string or filename defining the transaction to execute"))->required();
+   wrap_exec->add_option("--contract,-c", wrap_con, localized("The account which controls the wrap contract"));
 
-   sudo_exec->set_callback([&] {
+   wrap_exec->set_callback([&] {
       fc::variant trx_var;
       try {
          trx_var = json_from_file_or_string(trx_to_exec);
@@ -3073,14 +3079,14 @@ int main( int argc, char** argv ) {
 
       auto accountPermissions = get_account_permissions(tx_permission);
       if( accountPermissions.empty() ) {
-         accountPermissions = vector<permission_level>{{executer, config::active_name}, {"eosio.sudo", config::active_name}};
+         accountPermissions = vector<permission_level>{{executer, config::active_name}, {wrap_con, config::active_name}};
       }
 
       auto args = fc::mutable_variant_object()
          ("executer", executer )
          ("trx", trx_var);
 
-      send_actions({chain::action{accountPermissions, "eosio.sudo", "exec", variant_to_bin( N(eosio.sudo), N(exec), args ) }});
+      send_actions({chain::action{accountPermissions, wrap_con, "exec", variant_to_bin( wrap_con, N(exec), args ) }});
    });
 
    // system subcommand
