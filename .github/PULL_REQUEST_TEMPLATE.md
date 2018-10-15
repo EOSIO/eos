@@ -1,18 +1,9 @@
 <!-- PLEASE FILL OUT THE FOLLOWING MARKDOWN TEMPLATE -->
-<!-- Reference issues or pull requests where possible (use '#XX' or 'GH-XX' where XX is the issue or pull request number). -->
-<!-- For checking checkboxes, replace the space between the square brackets with an 'x'. -->
+<!-- Give your PR a title that is sufficient to understand what is being changed. -->
 
 **Change Description**
-<!-- Check the box that best fits the type of change you made. -->
 
-- [ ] Bug fix
-- [ ] User experience enhancement
-- [ ] New functionality
-- [ ] RPC
-- [ ] Deprecation
-- [ ] Refactoring 
-
-<!-- Describe the change you made, the motivation for it, and the impact it will have. -->
+<!-- Describe the change you made, the motivation for it, and the impact it will have. Reference issues or pull requests where possible (use '#XX' or 'GH-XX' where XX is the issue or pull request number). -->
 
 **Consensus Changes**
 
