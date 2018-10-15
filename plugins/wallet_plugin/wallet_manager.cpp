@@ -63,7 +63,10 @@ std::string wallet_manager::create(const std::string& name) {
    EOS_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
 
    auto wallet_filename = dir / (name + file_ext);
-
+   
+   // Create parent directory if it doesn't exist
+   if (!fc::exists(dir)) fc::create_directories(dir);
+   
    if (fc::exists(wallet_filename)) {
       EOS_THROW(chain::wallet_exist_exception, "Wallet with name: '${n}' already exists at ${path}", ("n", name)("path",fc::path(wallet_filename)));
    }
