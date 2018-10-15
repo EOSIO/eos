@@ -246,7 +246,7 @@ namespace eosio { namespace chain {
       my->block_stream.write((char*)&totem, sizeof(totem));
 
       if (first_block) {
-         auto ret = append(first_block);
+         append(first_block);
       }
 
       auto pos = my->block_stream.tellp();
