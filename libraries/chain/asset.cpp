@@ -79,4 +79,22 @@ asset asset::from_string(const string& from)
    FC_CAPTURE_LOG_AND_RETHROW( (from) )
 }
 
+string extended_asset::to_string()const {
+   return quantity.to_string() + "@" + contract.to_string();
+}
+
+extended_asset extended_asset::from_string(const string& from)
+{ try {
+   auto s = fc::trim(from);
+
+   // Find at sign in order to split asset and contract
+   auto at_pos = s.find('@');
+   EOS_ASSERT((at_pos != string::npos), asset_type_exception, "Extended asset's asset and contract should be separated with '@'");
+
+   auto asset_str = s.substr(0, at_pos);
+   auto contract_str = fc::trim(s.substr(at_pos + 1));
+
+   return extended_asset(asset::from_string(asset_str), name(contract_str));
+} FC_CAPTURE_LOG_AND_RETHROW( (from) ) }
+
 } }  // eosio::types
