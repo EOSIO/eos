@@ -96,13 +96,10 @@ private:
 };
 
 struct extended_asset  {
-   extended_asset(){}
-   extended_asset( asset a, name n ):quantity(a),contract(n){}
-   asset quantity;
-   name contract;
-
-   static extended_asset from_string(const string& from);
-   string                to_string()const;
+  extended_asset(){}
+  extended_asset( asset a, name n ):quantity(a),contract(n){}
+  asset quantity;
+  name contract;
 };
 
 bool  operator <  (const asset& a, const asset& b);
@@ -114,13 +111,6 @@ namespace fc {
 inline void to_variant(const eosio::chain::asset& var, fc::variant& vo) { vo = var.to_string(); }
 inline void from_variant(const fc::variant& var, eosio::chain::asset& vo) {
    vo = eosio::chain::asset::from_string(var.get_string());
-}
-}
-
-namespace fc {
-inline void to_variant(const eosio::chain::extended_asset& var, fc::variant& vo) { vo = var.to_string(); }
-inline void from_variant(const fc::variant& var, eosio::chain::extended_asset& vo) {
-   vo = eosio::chain::extended_asset::from_string(var.get_string());
 }
 }
 
