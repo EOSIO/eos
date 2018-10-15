@@ -186,6 +186,7 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
+include(utils)
 add_subdirectory( externals )
 
 if ("${CORE_SYMBOL_NAME}" STREQUAL "")
@@ -207,7 +208,6 @@ endif()
 message( STATUS "Using '${EOSIO_ROOT_KEY}' as public key for 'eosio' account" )
 
 include(wasm)
-
 add_subdirectory( libraries )
 add_subdirectory( contracts )
 add_subdirectory( plugins )
@@ -240,6 +240,6 @@ install(FILES libraries/fc/secp256k1/upstream/COPYING DESTINATION ${CMAKE_INSTAL
 install(FILES externals/binaryen/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.binaryen)
 install(FILES libraries/fc/src/network/LICENSE.go DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ )
 
-include(installer)
-
+#include(installer)
+include(package)
 include(doxygen)
