@@ -7,7 +7,143 @@
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 
+#pragma push_macro("N")
+#undef N
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/stats.hpp>
+#include <boost/accumulators/statistics/min.hpp>
+#include <boost/accumulators/statistics/max.hpp>
+#include <boost/accumulators/statistics/weighted_mean.hpp>
+#include <boost/accumulators/statistics/weighted_variance.hpp>
+#pragma pop_macro("N")
+
+#include <chrono>
+
 namespace eosio { namespace chain {
+
+namespace bacc = boost::accumulators;
+
+   struct deadline_timer_verify {
+      deadline_timer_verify() {
+         //keep longest first in list. You're effectively going to take test_intervals[0]*sizeof(test_intervals[0])
+         //time to do the the "calibration" 
+         int test_intervals[] = {50000, 10000, 5000, 1000, 500, 100, 50, 10};
+
+         struct sigaction act;
+         sigemptyset(&act.sa_mask);
+         act.sa_handler = timer_hit;
+         act.sa_flags = 0;
+         if(sigaction(SIGALRM, &act, NULL))
+            return;
+
+         sigset_t alrm;
+         sigemptyset(&alrm);
+         sigaddset(&alrm, SIGALRM);
+         int dummy;
+
+         for(int& interval : test_intervals) {
+            unsigned int loops = test_intervals[0]/interval;
+
+            for(unsigned int i = 0; i < loops; ++i) {
+               struct itimerval enable = {{0, 0}, {0, interval}};
+               hit = 0;
+               auto start = std::chrono::high_resolution_clock::now();
+               if(setitimer(ITIMER_REAL, &enable, NULL))
+                  return;
+               while(!hit) {}
+               auto end = std::chrono::high_resolution_clock::now();
+               int timer_slop = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() - interval;
+
+               //since more samples are run for the shorter expirations, weigh the longer expirations accordingly. This
+               //helps to make a few results more fair. Two such examples: AWS c4&i5 xen instances being rather stable
+               //down to 100us but then struggling with 50us and 10us. MacOS having performance that seems to correlate
+               //with expiry length; that is, long expirations have high error, short expirations have low error.
+               //That said, for these platforms, a tighter tolerance may possibly be achieved by taking performance
+               //metrics in mulitple bins and appliying the slop based on which bin a deadline resides in. Not clear
+               //if that's worth the extra complexity at this point.
+               samples(timer_slop, bacc::weight = interval/(float)test_intervals[0]);
+            }
+         }
+         timer_overhead = bacc::mean(samples) + sqrt(bacc::variance(samples))*2; //target 95% of expirations before deadline
+         use_deadline_timer = timer_overhead < 1000;
+
+         act.sa_handler = SIG_DFL;
+         sigaction(SIGALRM, &act, NULL);
+      }
+
+      static void timer_hit(int) {
+         hit = 1;
+      }
+      static volatile sig_atomic_t hit;
+
+      bacc::accumulator_set<int, bacc::stats<bacc::tag::mean, bacc::tag::min, bacc::tag::max, bacc::tag::variance>, float> samples;
+      bool use_deadline_timer = false;
+      int timer_overhead;
+   };
+   volatile sig_atomic_t deadline_timer_verify::hit;
+   static deadline_timer_verify deadline_timer_verification;
+
+   deadline_timer::deadline_timer() {
+      if(initialized)
+         return;
+      initialized = true;
+
+      #define TIMER_STATS_FORMAT "min:${min}us max:${max}us mean:${mean}us stddev:${stddev}us"
+      #define TIMER_STATS \
+         ("min", bacc::min(deadline_timer_verification.samples))("max", bacc::max(deadline_timer_verification.samples)) \
+         ("mean", (int)bacc::mean(deadline_timer_verification.samples))("stddev", (int)sqrt(bacc::variance(deadline_timer_verification.samples))) \
+         ("t", deadline_timer_verification.timer_overhead)
+
+      if(deadline_timer_verification.use_deadline_timer) {
+         struct sigaction act;
+         act.sa_handler = timer_expired;
+         sigemptyset(&act.sa_mask);
+         act.sa_flags = 0;
+         if(sigaction(SIGALRM, &act, NULL) == 0) {
+            ilog("Using ${t}us deadline timer for checktime: " TIMER_STATS_FORMAT, TIMER_STATS);
+            return;
+         }
+      }
+
+      wlog("Using polled checktime; deadline timer too inaccurate: " TIMER_STATS_FORMAT, TIMER_STATS);
+      deadline_timer_verification.use_deadline_timer = false; //set in case sigaction() fails above
+   }
+
+   void deadline_timer::start(fc::time_point tp) {
+      if(tp == fc::time_point::maximum()) {
+         expired = 0;
+         return;
+      }
+      if(!deadline_timer_verification.use_deadline_timer) {
+         expired = 1;
+         return;
+      }
+      microseconds x = tp.time_since_epoch() - fc::time_point::now().time_since_epoch();
+      if(x.count() <= deadline_timer_verification.timer_overhead)
+         expired = 1;
+      else {
+         struct itimerval enable = {{0, 0}, {0, (int)x.count()-deadline_timer_verification.timer_overhead}};
+         expired = 0;
+         expired |= !!setitimer(ITIMER_REAL, &enable, NULL);
+      }
+   }
+
+   void deadline_timer::stop() {
+      if(expired)
+         return;
+      struct itimerval disable = {{0, 0}, {0, 0}};
+      setitimer(ITIMER_REAL, &disable, NULL);
+   }
+
+   deadline_timer::~deadline_timer() {
+      stop();
+   }
+
+   void deadline_timer::timer_expired(int) {
+      expired = 1;
+   }
+   volatile sig_atomic_t deadline_timer::expired = 0;
+   bool deadline_timer::initialized = false;
 
    transaction_context::transaction_context( controller& c,
                                              const signed_transaction& t,
@@ -131,6 +267,8 @@ namespace eosio { namespace chain {
          add_net_usage( initial_net_usage );  // Fail early if current net usage is already greater than the calculated limit
 
       checktime(); // Fail early if deadline has already been exceeded
+
+      _deadline_timer.start(_deadline);
 
       is_initialized = true;
    }
@@ -293,6 +431,8 @@ namespace eosio { namespace chain {
 
    void transaction_context::checktime()const {
       if (!control.skip_trx_checks()) {
+         if(BOOST_LIKELY(_deadline_timer.expired == false))
+            return;
          auto now = fc::time_point::now();
          if( BOOST_UNLIKELY( now > _deadline ) ) {
             // edump((now-start)(now-pseudo_start));
@@ -330,6 +470,7 @@ namespace eosio { namespace chain {
       billed_time = now - pseudo_start;
       deadline_exception_code = deadline_exception::code_value; // Other timeout exceptions cannot be thrown while billable timer is paused.
       pseudo_start = fc::time_point();
+      _deadline_timer.stop();
    }
 
    void transaction_context::resume_billing_timer() {
@@ -344,6 +485,7 @@ namespace eosio { namespace chain {
          _deadline = deadline;
          deadline_exception_code = deadline_exception::code_value;
       }
+      _deadline_timer.start(_deadline);
    }
 
    void transaction_context::validate_cpu_usage_to_bill( int64_t billed_us, bool check_minimum )const {
