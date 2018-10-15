@@ -192,7 +192,7 @@ struct multi_index_impl {
         }
 
         constexpr static table_name_t table_name() { return name_extractor<TableName>::get_name(); }
-        constexpr static index_name_t index_name() { return name_extractor<TableName>::get_name(); }
+        constexpr static index_name_t index_name() { return name_extractor<IndexName>::get_name(); }
         account_name_t get_code() const            { return multidx_->get_code(); }
         account_name_t get_scope() const           { return multidx_->get_scope(); }
 
@@ -405,7 +405,7 @@ struct multi_index_impl {
 
         template<typename Lambda>
         void modify(const_iterator itr, account_name_t payer, Lambda&& updater) const {
-            chaindb_assert(itr != cend(), "cannot pass end iterator to modify2");
+            chaindb_assert(itr != cend(), "cannot pass end iterator to modify");
             multidx_->modify(*itr, payer, std::forward<Lambda&&>(updater));
         }
 
