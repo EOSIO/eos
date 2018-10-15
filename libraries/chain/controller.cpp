@@ -15,6 +15,7 @@
 
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/chain_snapshot.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -513,6 +514,10 @@ struct controller_impl {
    }
 
    void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
+      snapshot->write_section<chain_snapshot_header>([this]( auto &section ){
+         section.add_row(chain_snapshot_header(), db);
+      });
+
       snapshot->write_section<genesis_state>([this]( auto &section ){
          section.add_row(conf.genesis, db);
       });
@@ -543,6 +548,13 @@ struct controller_impl {
    }
 
    void read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
+      snapshot->read_section<chain_snapshot_header>([this]( auto &section ){
+         chain_snapshot_header header;
+         section.read_row(header, db);
+         header.validate();
+      });
+
+
       snapshot->read_section<block_state>([this]( auto &section ){
          block_header_state head_header_state;
          section.read_row(head_header_state, db);
