@@ -829,6 +829,8 @@ void ensure_keosd_running(CLI::App* app) {
         pargs.push_back("");
         pargs.push_back("--https-server-address");
         pargs.push_back("");
+        pargs.push_back("--unix-socket-path");
+        pargs.push_back(string(key_store_executable_name) + ".sock");
 
         ::boost::process::child keos(binPath, pargs,
                                      bp::std_in.close(),
