@@ -86,6 +86,10 @@ void producer_api_plugin::plugin_startup() {
             INVOKE_R_V(producer, get_whitelist_blacklist), 201),
        CALL(producer, producer, set_whitelist_blacklist, 
             INVOKE_V_R(producer, set_whitelist_blacklist, producer_plugin::whitelist_blacklist), 201),   
+       CALL(producer, producer, get_integrity_hash,
+            INVOKE_R_V(producer, get_integrity_hash), 201),
+       CALL(producer, producer, create_snapshot,
+            INVOKE_R_V(producer, create_snapshot), 201),
    });
 }
 

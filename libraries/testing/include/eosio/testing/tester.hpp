@@ -83,10 +83,10 @@ namespace eosio { namespace testing {
          virtual ~base_tester() {};
 
          void              init(bool push_genesis = true, db_read_mode read_mode = db_read_mode::SPECULATIVE);
-         void              init(controller::config config);
+         void              init(controller::config config, const snapshot_reader_ptr& snapshot = nullptr);
 
          void              close();
-         void              open();
+         void              open( const snapshot_reader_ptr& snapshot );
          bool              is_same_chain( base_tester& other );
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
@@ -262,6 +262,10 @@ namespace eosio { namespace testing {
 
             fc::raw::unpack(o->value.data(), o->value.size(), obj);
             return true;
+         }
+
+         const controller::config& get_config() const {
+            return cfg;
          }
 
       protected:
