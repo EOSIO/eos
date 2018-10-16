@@ -41,16 +41,11 @@ echo "class Eosio < Formula
    
    option :universal
 
-   depends_on \"cmake\" => :build
-   depends_on \"automake\" => :build
-   depends_on \"libtool\" => :build
-   depends_on \"wget\" => :build
-   depends_on \"gmp\" => :build
-   depends_on \"gettext\" => :build
-   depends_on \"doxygen\" => :build
-   depends_on \"graphviz\" => :build
-   depends_on \"lcov\" => :build
-   depends_on :xcode => :build
+   depends_on \"gmp\" 
+   depends_on \"gettext\"
+   depends_on \"openssl\"
+   depends_on \"gmp\"
+   depends_on :xcode
    depends_on :macos => :high_sierra
    depends_on :arch =>  :intel
   

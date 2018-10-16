@@ -232,6 +232,21 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/EosioTester.cmake.in ${C
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/EosioTesterBuild.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/EosioTester.cmake @ONLY)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/EosioTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/)
 
+configure_file(${CMAKE_SOURCE_DIR}/LICENSE 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/wabt/LICENSE 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.wabt COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/softfloat/COPYING.txt 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.softfloat COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/wasm-jit/LICENSE 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.wavm COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/secp256k1/upstream/COPYING 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.secp256k1 COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/src/network/LICENSE.go 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.go COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/externals/binaryen/LICENSE 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.binaryen COPYONLY)
+
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/)
 install(FILES libraries/wabt/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.wabt)
 install(FILES libraries/softfloat/COPYING.txt DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.softfloat)
@@ -240,6 +255,5 @@ install(FILES libraries/fc/secp256k1/upstream/COPYING DESTINATION ${CMAKE_INSTAL
 install(FILES externals/binaryen/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.binaryen)
 install(FILES libraries/fc/src/network/LICENSE.go DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ )
 
-#include(installer)
 include(package)
 include(doxygen)
