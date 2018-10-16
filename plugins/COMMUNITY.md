@@ -6,10 +6,12 @@ Third parties are encouraged to make pull requests to this file (`develop` branc
 
 | Description | URL |
 | ----------- | --- |
-| Watch for specific actions and send them to an HTTP URL | https://github.com/eosauthority/eosio-watcher-plugin |
-| Kafka | https://github.com/TP-Lab/kafka_plugin |
-| SQL | https://github.com/asiniscalchi/eosio_sql_plugin |
+| BP Heartbeat  | https://github.com/bancorprotocol/eos-producer-heartbeat-plugin |
 | ElasticSearch | https://github.com/EOSLaoMao/elasticsearch_plugin |
+| Kafka | https://github.com/TP-Lab/kafka_plugin |
+| MySQL | https://github.com/eosBLACK/eosio_mysqldb_plugin |
+| SQL | https://github.com/asiniscalchi/eosio_sql_plugin |
+| Watch for specific actions and send them to an HTTP URL | https://github.com/eosauthority/eosio-watcher-plugin |
 | ZMQ / history | https://github.com/cc32d9/eos_zmq_plugin |
 
 ## DISCLAIMER:

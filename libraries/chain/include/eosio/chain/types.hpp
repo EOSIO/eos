@@ -96,6 +96,25 @@ namespace eosio { namespace chain {
    template<typename T>
    using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
 
+   /**
+    * For bugs in boost interprocess we moved our blob data to shared_string
+    * this wrapper allows us to continue that while also having a type-level distinction for
+    * serialization and to/from variant
+    */
+   class shared_blob : public shared_string {
+      public:
+         shared_blob() = default;
+
+         template <typename InputIterator>
+         shared_blob(InputIterator f, InputIterator l, const allocator_type& a)
+         :shared_string(f,l,a)
+         {}
+
+         shared_blob(const allocator_type& a)
+         :shared_string(a)
+         {}
+   };
+
    using action_name      = name;
    using scope_name       = name;
    using account_name     = name;

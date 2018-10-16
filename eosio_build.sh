@@ -85,7 +85,7 @@
                DOXYGEN=true
             ;;
             s)
-               if [ "${#OPTARG}" -gt 6 ] || [ -z "${#OPTARG}" ]; then
+               if [ "${#OPTARG}" -gt 7 ] || [ -z "${#OPTARG}" ]; then
                   printf "\\n\\tInvalid argument: %s\\n" "${OPTARG}" 1>&2
                   usage
                   exit 1
@@ -265,7 +265,7 @@
       -DCMAKE_C_COMPILER="${C_COMPILER}" -DWASM_ROOT="${WASM_ROOT}" -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
       -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
       -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
-      -DCMAKE_INSTALL_PREFIX="/usr/local/eosio" "${SOURCE_DIR}"
+      -DCMAKE_INSTALL_PREFIX="/usr/local/eosio" ${LOCAL_CMAKE_FLAGS} "${SOURCE_DIR}"
    then
       printf "\\n\\t>>>>>>>>>>>>>>>>>>>> CMAKE building EOSIO has exited with the above error.\\n\\n"
       exit -1

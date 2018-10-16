@@ -3528,6 +3528,8 @@ BOOST_AUTO_TEST_CASE(abi_deep_structs_validate)
 
 BOOST_AUTO_TEST_CASE(variants)
 {
+   using eosio::testing::fc_exception_message_starts_with;
+
    auto duplicate_variant_abi = R"({
       "version": "eosio::abi/1.1",
       "variants": [
@@ -3575,13 +3577,18 @@ BOOST_AUTO_TEST_CASE(variants)
       BOOST_CHECK_THROW( abi_serializer( fc::json::from_string(variant_abi_invalid_type).as<abi_def>(), max_serialization_time ), invalid_type_inside_abi );
 
       // expected array containing variant
-      BOOST_CHECK_THROW( abis.variant_to_binary("v1", fc::json::from_string(R"(9)"), max_serialization_time), abi_exception );
-      BOOST_CHECK_THROW( abis.variant_to_binary("v1", fc::json::from_string(R"([4])"), max_serialization_time), abi_exception );
-      BOOST_CHECK_THROW( abis.variant_to_binary("v1", fc::json::from_string(R"([4, 5])"), max_serialization_time), abi_exception );
-      BOOST_CHECK_THROW( abis.variant_to_binary("v1", fc::json::from_string(R"(["4", 5, 6])"), max_serialization_time), abi_exception );
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("v1", fc::json::from_string(R"(9)"), max_serialization_time),
+                             pack_exception, fc_exception_message_starts_with("Expected input to be an array of two items while processing variant 'v1'") );
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("v1", fc::json::from_string(R"([4])"), max_serialization_time),
+                             pack_exception, fc_exception_message_starts_with("Expected input to be an array of two items while processing variant 'v1") );
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("v1", fc::json::from_string(R"([4, 5])"), max_serialization_time),
+                             pack_exception, fc_exception_message_starts_with("Encountered non-string as first item of input array while processing variant 'v1") );
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("v1", fc::json::from_string(R"(["4", 5, 6])"), max_serialization_time),
+                             pack_exception, fc_exception_message_starts_with("Expected input to be an array of two items while processing variant 'v1'") );
 
       // type is not valid within this variant
-      BOOST_CHECK_THROW( abis.variant_to_binary("v1", fc::json::from_string(R"(["int9", 21])"), max_serialization_time), abi_exception );
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("v1", fc::json::from_string(R"(["int9", 21])"), max_serialization_time),
+                             pack_exception, fc_exception_message_starts_with("Specified type 'int9' in input array is not valid within the variant 'v1'") );
 
       verify_round_trip_conversion(abis, "v1", R"(["int8",21])", "0015");
       verify_round_trip_conversion(abis, "v1", R"(["string","abcd"])", "010461626364");
@@ -3594,6 +3601,8 @@ BOOST_AUTO_TEST_CASE(variants)
 
 BOOST_AUTO_TEST_CASE(extend)
 {
+   using eosio::testing::fc_exception_message_starts_with;
+
    auto abi = R"({
       "version": "eosio::abi/1.1",
       "structs": [
@@ -3603,18 +3612,27 @@ BOOST_AUTO_TEST_CASE(extend)
             {"name": "i2", "type": "int8$"},
             {"name": "a", "type": "int8[]$"},
             {"name": "o", "type": "int8?$"},
+         ]},
+         {"name": "s2", "base": "", "fields": [
+            {"name": "i0", "type": "int8"},
+            {"name": "i1", "type": "int8$"},
+            {"name": "i2", "type": "int8"},
          ]}
       ],
    })";
+   // NOTE: Ideally this ABI would be rejected during validation for an improper definition for struct "s2".
+   //       Such a check is not yet implemented during validation, but it can check during serialization.
 
    try {
       abi_serializer abis(fc::json::from_string(abi).as<abi_def>(), max_serialization_time );
 
       // missing i1
-      BOOST_CHECK_THROW( abis.variant_to_binary("s", fc::json::from_string(R"({"i0":5})"), max_serialization_time), abi_exception );
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s", fc::json::from_string(R"({"i0":5})"), max_serialization_time),
+                             pack_exception, fc_exception_message_starts_with("Missing field 'i1' in input object while processing struct") );
 
       // Unexpected 'a'
-      BOOST_CHECK_THROW( abis.variant_to_binary("s", fc::json::from_string(R"({"i0":5,"i1":6,"a":[8,9,10]})"), max_serialization_time), pack_exception );
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s", fc::json::from_string(R"({"i0":5,"i1":6,"a":[8,9,10]})"), max_serialization_time),
+                             pack_exception, fc_exception_message_starts_with("Unexpected field 'a' found in input object while processing struct") );
 
       verify_round_trip_conversion(abis, "s", R"({"i0":5,"i1":6})", "0506");
       verify_round_trip_conversion(abis, "s", R"({"i0":5,"i1":6,"i2":7})", "050607");
@@ -3627,6 +3645,11 @@ BOOST_AUTO_TEST_CASE(extend)
       verify_round_trip_conversion(abis, "s", R"([5,6,7,[8,9,10]])", "0506070308090a", R"({"i0":5,"i1":6,"i2":7,"a":[8,9,10]})");
       verify_round_trip_conversion(abis, "s", R"([5,6,7,[8,9,10],null])", "0506070308090a00", R"({"i0":5,"i1":6,"i2":7,"a":[8,9,10],"o":null})");
       verify_round_trip_conversion(abis, "s", R"([5,6,7,[8,9,10],31])", "0506070308090a011f", R"({"i0":5,"i1":6,"i2":7,"a":[8,9,10],"o":31})");
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s2", fc::json::from_string(R"({"i0":1})"), max_serialization_time),
+                             abi_exception, fc_exception_message_starts_with("Encountered field 'i2' without binary extension designation while processing struct") );
+
+
    } FC_LOG_AND_RETHROW()
 }
 
@@ -3660,10 +3683,10 @@ BOOST_AUTO_TEST_CASE(abi_serialize_incomplete_json_array)
       abi_serializer abis( fc::json::from_string(abi).as<abi_def>(), max_serialization_time );
 
       BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s", fc::json::from_string(R"([])"), max_serialization_time),
-                             pack_exception, fc_exception_message_starts_with("Early end to array specifying the fields of struct") );
+                             pack_exception, fc_exception_message_starts_with("Early end to input array specifying the fields of struct") );
 
       BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s", fc::json::from_string(R"([1,2])"), max_serialization_time),
-                             pack_exception, fc_exception_message_starts_with("Early end to array specifying the fields of struct") );
+                             pack_exception, fc_exception_message_starts_with("Early end to input array specifying the fields of struct") );
 
       verify_round_trip_conversion(abis, "s", R"([1,2,3])", "010203", R"({"i0":1,"i1":2,"i2":3})");
 
@@ -3672,7 +3695,7 @@ BOOST_AUTO_TEST_CASE(abi_serialize_incomplete_json_array)
 
 BOOST_AUTO_TEST_CASE(abi_serialize_incomplete_json_object)
 {
-   using eosio::testing::fc_exception_message_is;
+   using eosio::testing::fc_exception_message_starts_with;
 
    auto abi = R"({
       "version": "eosio::abi/1.0",
@@ -3692,10 +3715,10 @@ BOOST_AUTO_TEST_CASE(abi_serialize_incomplete_json_object)
       abi_serializer abis( fc::json::from_string(abi).as<abi_def>(), max_serialization_time );
 
       BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s2", fc::json::from_string(R"({})"), max_serialization_time),
-                             pack_exception, fc_exception_message_is("Missing 'f0' in variant object") );
+                             pack_exception, fc_exception_message_starts_with("Missing field 'f0' in input object") );
 
       BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s2", fc::json::from_string(R"({"f0":{"i0":1}})"), max_serialization_time),
-                             pack_exception, fc_exception_message_is("Missing 'i1' in variant object") );
+                             pack_exception, fc_exception_message_starts_with("Missing field 'i1' in input object") );
 
       verify_round_trip_conversion(abis, "s2", R"({"f0":{"i0":1,"i1":2},"i2":3})", "010203");
 
@@ -3723,12 +3746,249 @@ BOOST_AUTO_TEST_CASE(abi_serialize_json_mismatching_type)
       abi_serializer abis( fc::json::from_string(abi).as<abi_def>(), max_serialization_time );
 
       BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s2", fc::json::from_string(R"({"f0":1,"i1":2})"), max_serialization_time),
-                             pack_exception, fc_exception_message_is("Failed to serialize struct 's1' in variant object") );
+                             pack_exception, fc_exception_message_is("Unexpected input encountered while processing struct 's2.f0'") );
 
       verify_round_trip_conversion(abis, "s2", R"({"f0":{"i0":1},"i1":2})", "0102");
 
    } FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE(abi_serialize_detailed_error_messages)
+{
+   using eosio::testing::fc_exception_message_is;
+
+   auto abi = R"({
+      "version": "eosio::abi/1.1",
+      "types": [
+         {"new_type_name": "foo", "type": "s2"},
+         {"new_type_name": "bar", "type": "foo"},
+         {"new_type_name": "s1array", "type": "s1[]"},
+         {"new_type_name": "s1arrayarray", "type": "s1array[]"}
+      ],
+      "structs": [
+         {"name": "s1", "base": "", "fields": [
+            {"name": "i0", "type": "int8"},
+            {"name": "i1", "type": "int8"}
+         ]},
+         {"name": "s2", "base": "", "fields": [
+            {"name": "f0", "type": "s1"},
+            {"name": "i2", "type": "int8"}
+         ]},
+         {"name": "s3", "base": "s1", "fields": [
+            {"name": "i2", "type": "int8"},
+            {"name": "f3", "type": "v2"},
+            {"name": "f4", "type": "foo$"},
+            {"name": "f5", "type": "s1$"}
+         ]},
+         {"name": "s4", "base": "", "fields": [
+            {"name": "f0", "type": "int8[]"},
+            {"name": "f1", "type": "s1[]"}
+         ]},
+         {"name": "s5", "base": "", "fields": [
+            {"name": "f0", "type": "v2[]"},
+         ]},
+      ],
+      "variants": [
+         {"name": "v1", "types": ["s3", "int8", "s4"]},
+         {"name": "v2", "types": ["foo", "bar"]},
+      ],
+   })";
+
+   try {
+      abi_serializer abis( fc::json::from_string(abi).as<abi_def>(), max_serialization_time );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("bar", fc::json::from_string(R"({"f0":{"i0":1},"i2":3})"), max_serialization_time),
+                             pack_exception, fc_exception_message_is("Missing field 'i1' in input object while processing struct 's2.f0'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s3", fc::json::from_string(R"({"i0":1,"i2":3})"), max_serialization_time),
+                             pack_exception, fc_exception_message_is("Missing field 'i1' in input object while processing struct 's3'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s3", fc::json::from_string(R"({"i0":1,"i1":2,"i2":3,"f3":["s2",{}]})"), max_serialization_time),
+                             pack_exception, fc_exception_message_is("Specified type 's2' in input array is not valid within the variant 's3.f3'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s3", fc::json::from_string(R"({"i0":1,"i1":2,"i2":3,"f3":["bar",{"f0":{"i0":11},"i2":13}]})"), max_serialization_time),
+                             pack_exception, fc_exception_message_is("Missing field 'i1' in input object while processing struct 's3.f3.<variant(1)=bar>.f0'") );
+
+      verify_round_trip_conversion(abis, "s3", R"({"i0":1,"i1":2,"i2":3,"f3":["bar",{"f0":{"i0":11,"i1":12},"i2":13}]})", "010203010b0c0d");
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("v1", fc::json::from_string(R"(["s3",{"i0":1,"i1":2,"i2":3,"f3":["bar",{"f0":{"i0":11,"i1":12},"i2":13}],"f5":0}])"), max_serialization_time),
+                             pack_exception, fc_exception_message_is("Unexpected field 'f5' found in input object while processing struct 'v1.<variant(0)=s3>'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("v1", fc::json::from_string(R"(["s4",{"f0":[0,1],"f1":[{"i0":2,"i1":3},{"i1":5}]}])"), max_serialization_time),
+                             pack_exception, fc_exception_message_is("Missing field 'i0' in input object while processing struct 'v1.<variant(2)=s4>.f1[1]'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s2[]", fc::json::from_string(R"([{"f0":{"i0":1,"i1":2},"i2":3},{"f0":{"i0":4},"i2":6}])"), max_serialization_time),
+                             pack_exception, fc_exception_message_is("Missing field 'i1' in input object while processing struct 'ARRAY[1].f0'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s5", fc::json::from_string(R"({"f0":[["bar",{"f0":{"i0":1,"i1":2},"i2":3}],["foo",{"f0":{"i0":4},"i2":6}]]})"), max_serialization_time),
+                             pack_exception, fc_exception_message_is("Missing field 'i1' in input object while processing struct 's5.f0[1].<variant(0)=foo>.f0'") );
+
+      verify_round_trip_conversion( abis, "s1arrayarray", R"([[{"i0":1,"i1":2},{"i0":3,"i1":4}],[{"i0":5,"i1":6},{"i0":7,"i1":8},{"i0":9,"i1":10}]])", "0202010203040305060708090a");
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s1arrayarray", fc::json::from_string(R"([[{"i0":1,"i1":2},{"i0":3,"i1":4}],[{"i0":6,"i1":6},{"i0":7,"i1":8},{"i1":10}]])"), max_serialization_time),
+                             pack_exception, fc_exception_message_is("Missing field 'i0' in input object while processing struct 'ARRAY[1][2]'") );
+   } FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(abi_serialize_short_error_messages)
+{
+   using eosio::testing::fc_exception_message_is;
+
+   auto abi = R"({
+      "version": "eosio::abi/1.1",
+      "types": [
+         {"new_type_name": "foo", "type": "s2"},
+         {"new_type_name": "bar", "type": "foo"},
+         {"new_type_name": "s1array", "type": "s1[]"},
+         {"new_type_name": "s1arrayarray", "type": "s1array[]"}
+      ],
+      "structs": [
+         {"name": "s1", "base": "", "fields": [
+            {"name": "i0", "type": "int8"},
+            {"name": "i1", "type": "int8"}
+         ]},
+         {"name": "s2", "base": "", "fields": [
+            {"name": "f0", "type": "s1"},
+            {"name": "i2", "type": "int8"}
+         ]},
+         {"name": "very_very_very_very_very_very_very_very_very_very_long_struct_name_s3", "base": "s1", "fields": [
+            {"name": "i2", "type": "int8"},
+            {"name": "f3", "type": "v2"},
+            {"name": "f4", "type": "foo$"},
+            {"name": "very_very_very_very_very_very_very_very_very_very_long_field_name_f5", "type": "s1$"}
+         ]},
+         {"name": "s4", "base": "", "fields": [
+            {"name": "f0", "type": "int8[]"},
+            {"name": "f1", "type": "s1[]"}
+         ]},
+         {"name": "s5", "base": "", "fields": [
+            {"name": "f0", "type": "v2[]"},
+         ]},
+      ],
+      "variants": [
+         {"name": "v1", "types": ["very_very_very_very_very_very_very_very_very_very_long_struct_name_s3", "int8", "s4"]},
+         {"name": "v2", "types": ["foo", "bar"]},
+      ],
+   })";
+
+   try {
+      abi_serializer abis( fc::json::from_string(abi).as<abi_def>(), max_serialization_time );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("bar", fc::json::from_string(R"({"f0":{"i0":1},"i2":3})"), max_serialization_time, true),
+                             pack_exception, fc_exception_message_is("Missing field 'i1' in input object while processing struct 's1'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary( "very_very_very_very_very_very_very_very_very_very_long_struct_name_s3",
+                                                     fc::json::from_string(R"({"i0":1,"i2":3})"), max_serialization_time, true ),
+                             pack_exception,
+                             fc_exception_message_is("Missing field 'i1' in input object while processing struct 'very_very_very_very_very_very_very_very_very_very_long_...ame_s3'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary( "very_very_very_very_very_very_very_very_very_very_long_struct_name_s3",
+                                                     fc::json::from_string(R"({"i0":1,"i1":2,"i2":3,"f3":["s2",{}]})"), max_serialization_time, true ),
+                             pack_exception, fc_exception_message_is("Specified type 's2' in input array is not valid within the variant 'v2'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary( "very_very_very_very_very_very_very_very_very_very_long_struct_name_s3",
+                                                     fc::json::from_string(R"({"i0":1,"i1":2,"i2":3,"f3":["bar",{"f0":{"i0":11},"i2":13}]})"), max_serialization_time, true ),
+                             pack_exception, fc_exception_message_is("Missing field 'i1' in input object while processing struct 's1'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary( "v1",
+         fc::json::from_string(R"(["very_very_very_very_very_very_very_very_very_very_long_struct_name_s3",{"i0":1,"i1":2,"i2":3,"f3":["bar",{"f0":{"i0":11,"i1":12},"i2":13}],"very_very_very_very_very_very_very_very_very_very_long_field_name_f5":0}])"),
+                                                    max_serialization_time, true ),
+                             pack_exception,
+                             fc_exception_message_is("Unexpected field 'very_very_very_very_very_very_very_very_very_very_long_...ame_f5' found in input object while processing struct 'very_very_very_very_very_very_very_very_very_very_long_...ame_s3'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("v1", fc::json::from_string(R"(["s4",{"f0":[0,1],"f1":[{"i0":2,"i1":3},{"i1":5}]}])"), max_serialization_time, true),
+                             pack_exception, fc_exception_message_is("Missing field 'i0' in input object while processing struct 's1'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s2[]", fc::json::from_string(R"([{"f0":{"i0":1,"i1":2},"i2":3},{"f0":{"i0":4},"i2":6}])"), max_serialization_time, true),
+                             pack_exception, fc_exception_message_is("Missing field 'i1' in input object while processing struct 's1'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s5", fc::json::from_string(R"({"f0":[["bar",{"f0":{"i0":1,"i1":2},"i2":3}],["foo",{"f0":{"i0":4},"i2":6}]]})"), max_serialization_time, true),
+                             pack_exception, fc_exception_message_is("Missing field 'i1' in input object while processing struct 's1'") );
+
+      BOOST_CHECK_EXCEPTION( abis.variant_to_binary("s1arrayarray", fc::json::from_string(R"([[{"i0":1,"i1":2},{"i0":3,"i1":4}],[{"i0":6,"i1":6},{"i0":7,"i1":8},{"i1":10}]])"), max_serialization_time, true),
+                             pack_exception, fc_exception_message_is("Missing field 'i0' in input object while processing struct 's1'") );
+   } FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(abi_deserialize_detailed_error_messages)
+{
+   using eosio::testing::fc_exception_message_is;
+
+   auto abi = R"({
+      "version": "eosio::abi/1.1",
+      "types": [
+         {"new_type_name": "oint", "type": "int8?"},
+         {"new_type_name": "os1", "type": "s1?"}
+      ],
+      "structs": [
+         {"name": "s1", "base": "", "fields": [
+            {"name": "i0", "type": "int8"},
+            {"name": "i1", "type": "int8"}
+         ]},
+         {"name": "s2", "base": "", "fields": [
+            {"name": "f0", "type": "int8[]"},
+            {"name": "f1", "type": "s1[]"}
+         ]},
+         {"name": "s3", "base": "s1", "fields": [
+            {"name": "i3", "type": "int8"},
+            {"name": "i4", "type": "int8$"},
+            {"name": "i5", "type": "int8"}
+         ]},
+         {"name": "s4", "base": "", "fields": [
+            {"name": "f0", "type": "oint[]"}
+         ]},
+         {"name": "s5", "base": "", "fields": [
+            {"name": "f0", "type": "os1[]"},
+            {"name": "f1", "type": "v1[]"},
+         ]},
+         {"name": "s6", "base": "", "fields": [
+         ]},
+      ],
+      "variants": [
+         {"name": "v1", "types": ["int8", "s1"]},
+      ],
+   })";
+
+   try {
+      abi_serializer abis( fc::json::from_string(abi).as<abi_def>(), max_serialization_time );
+
+      BOOST_CHECK_EXCEPTION( abis.binary_to_variant("s2", fc::variant("020102").as<bytes>(), max_serialization_time),
+                             unpack_exception, fc_exception_message_is("Stream unexpectedly ended; unable to unpack field 'f1' of struct 's2'") );
+
+      BOOST_CHECK_EXCEPTION( abis.binary_to_variant("s2", fc::variant("0201020103").as<bytes>(), max_serialization_time),
+                             unpack_exception, fc_exception_message_is("Stream unexpectedly ended; unable to unpack field 'i1' of struct 's2.f1[0]'") );
+
+      BOOST_CHECK_EXCEPTION( abis.binary_to_variant("s2", fc::variant("020102ff").as<bytes>(), max_serialization_time),
+                             unpack_exception, fc_exception_message_is("Unable to unpack size of array 's2.f1'") );
+
+      BOOST_CHECK_EXCEPTION( abis.binary_to_variant("s3", fc::variant("010203").as<bytes>(), max_serialization_time),
+                             abi_exception, fc_exception_message_is("Encountered field 'i5' without binary extension designation while processing struct 's3'") );
+
+      BOOST_CHECK_EXCEPTION( abis.binary_to_variant("s3", fc::variant("02010304").as<bytes>(), max_serialization_time),
+                             abi_exception, fc_exception_message_is("Encountered field 'i5' without binary extension designation while processing struct 's3'") );
+
+      // This check actually points to a problem with the current abi_serializer.
+      // An array of optionals (which is unfortunately not rejected in validation) leads to an unpack_exception here because one of the optional elements is not present.
+      // However, abis.binary_to_variant("s4", fc::variant("03010101020103").as<bytes>(), max_serialization_time) would work just fine!
+      BOOST_CHECK_EXCEPTION( abis.binary_to_variant("s4", fc::variant("030101000103").as<bytes>(), max_serialization_time),
+                             unpack_exception, fc_exception_message_is("Invalid packed array 's4.f0[1]'") );
+
+      BOOST_CHECK_EXCEPTION( abis.binary_to_variant("s4", fc::variant("020101").as<bytes>(), max_serialization_time),
+                             unpack_exception, fc_exception_message_is("Unable to unpack optional of built-in type 'int8' while processing 's4.f0[1]'") );
+
+      BOOST_CHECK_EXCEPTION( abis.binary_to_variant("s5", fc::variant("02010102").as<bytes>(), max_serialization_time),
+                             unpack_exception, fc_exception_message_is("Unable to unpack presence flag of optional 's5.f0[1]'") );
+
+      BOOST_CHECK_EXCEPTION( abis.binary_to_variant("s5", fc::variant("0001").as<bytes>(), max_serialization_time),
+                             unpack_exception, fc_exception_message_is("Unable to unpack tag of variant 's5.f1[0]'") );
+
+      BOOST_CHECK_EXCEPTION( abis.binary_to_variant("s5", fc::variant("00010501").as<bytes>(), max_serialization_time),
+                             unpack_exception, fc_exception_message_is("Unpacked invalid tag (5) for variant 's5.f1[0]'") );
+
+      BOOST_CHECK_EXCEPTION( abis.binary_to_variant("s5", fc::variant("00010101").as<bytes>(), max_serialization_time),
+                             unpack_exception, fc_exception_message_is("Stream unexpectedly ended; unable to unpack field 'i1' of struct 's5.f1[0].<variant(1)=s1>'") );
+
+   } FC_LOG_AND_RETHROW()
+}
 
 BOOST_AUTO_TEST_SUITE_END()

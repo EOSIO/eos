@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/types.hpp>
+#include <eosio/chain/database_utils.hpp>
 #include <eosio/chain/authority.hpp>
 #include <eosio/chain/block_timestamp.hpp>
 #include <eosio/chain/abi_def.hpp>
@@ -25,8 +25,8 @@ namespace eosio { namespace chain {
       digest_type          code_version;
       block_timestamp_type creation_date;
 
-      shared_string  code;
-      shared_string  abi;
+      shared_blob    code;
+      shared_blob    abi;
 
       void set_abi( const eosio::chain::abi_def& a ) {
          abi.resize( fc::raw::pack_size( a ) );
@@ -81,4 +81,5 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_ind
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_sequence_object, eosio::chain::account_sequence_index)
 
 
-FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(code_version)(code)(creation_date))
+FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date)(code)(abi))
+FC_REFLECT(eosio::chain::account_sequence_object, (name)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence))

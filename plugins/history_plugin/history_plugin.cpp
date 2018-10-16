@@ -206,7 +206,7 @@ namespace eosio {
 
          void record_account_action( account_name n, const base_action_trace& act ) {
             auto& chain = chain_plug->chain();
-            auto& db = chain.db();
+            chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
 
             const auto& idx = db.get_index<account_history_index, by_account_action_seq>();
             auto itr = idx.lower_bound( boost::make_tuple( name(n.value+1), 0 ) );
@@ -227,7 +227,7 @@ namespace eosio {
 
          void on_system_action( const action_trace& at ) {
             auto& chain = chain_plug->chain();
-            auto& db = chain.db();
+            chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
             if( at.act.name == N(newaccount) )
             {
                const auto create = at.act.data_as<chain::newaccount>();
@@ -256,7 +256,7 @@ namespace eosio {
             if( filter( at ) ) {
                //idump((fc::json::to_pretty_string(at)));
                auto& chain = chain_plug->chain();
-               auto& db = chain.db();
+               chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
 
                db.create<action_history_object>( [&]( auto& aho ) {
                   auto ps = fc::raw::pack_size( at );
@@ -344,10 +344,12 @@ namespace eosio {
          EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
          auto& chain = my->chain_plug->chain();
 
-         chain.db().add_index<account_history_index>();
-         chain.db().add_index<action_history_index>();
-         chain.db().add_index<account_control_history_multi_index>();
-         chain.db().add_index<public_key_history_multi_index>();
+         chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
+         // TODO: Use separate chainbase database for managing the state of the history_plugin (or remove deprecated history_plugin entirely) 
+         db.add_index<account_history_index>();
+         db.add_index<action_history_index>();
+         db.add_index<account_control_history_multi_index>();
+         db.add_index<public_key_history_multi_index>();
 
          my->applied_transaction_connection.emplace(
                chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ) {

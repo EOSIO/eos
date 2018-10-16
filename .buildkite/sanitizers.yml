@@ -1,0 +1,66 @@
+steps:
+  - command: |
+        echo "--- :hammer: Building with Undefined Sanitizer" && \
+        /usr/bin/cmake -GNinja \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_CXX_COMPILER=clang++-4.0 \
+        -DCMAKE_C_COMPILER=clang-4.0 \
+        -DBOOST_ROOT="${BOOST_ROOT}" \
+        -DWASM_ROOT="${WASM_ROOT}" \
+        -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" \
+        -DBUILD_MONGO_DB_PLUGIN=true \
+        -DENABLE_COVERAGE_TESTING=true\
+        -DBUILD_DOXYGEN=false -DCMAKE_CXX_FLAGS="-fsanitize=undefined -fsanitize-recover=all -g -fno-omit-frame-pointer" \
+        -DCMAKE_C_FLAGS="-fsanitize=undefined -fsanitize-recover=all -g -fno-omit-frame-pointer" \
+        -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=undefined -fsanitize-recover=all -rtlib=compiler-rt -lgcc_s -pthread" \
+        -DCMAKE_MODULE_LINKER_FLAGS="-fsanitize=undefined -fsanitize-recover=all -rtlib=compiler-rt -lgcc_s -pthread" && \
+        echo "--- :shinto_shrine: Running ninja" && \
+        /usr/bin/ninja | tee ninja.log && \
+        echo "--- :compression: Compressing build directory" && \
+        tar -pczf build.tar.gz *
+        echo "--- :beers: Done"
+    label: ":_: Undefined Sanitizer"
+    agents:
+      - "role=automation-builder-large"
+    artifact_paths:
+      - "build.tar.gz"
+      - "ninja.log"
+    plugins:
+      docker#v1.4.0:
+        image: "eosio/ci:ubuntu18"
+        command: ["--privileged"]
+        workdir: /data/job
+        mounts:
+          - /etc/buildkite-agent/config:/config
+        environment:
+          - BOOST_ROOT=/root/opt/boost
+          - OPENSSL_ROOT_DIR=/usr/include/openssl
+          - WASM_ROOT=/root/opt/wasm
+          - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/opt/wasm/bin
+          - CI=true
+          - UBSAN_OPTIONS=print_stacktrace=1
+    timeout: 60
+
+  - wait
+
+  - command: |
+        echo "--- :arrow_down: Downloading build directory" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":_: Undefined Sanitizer" && \
+        tar -zxf build.tar.gz --no-same-owner && \
+        echo "--- :m: Starting MongoDB" && \
+        $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
+        echo "+++ :microscope: Running tests" && \
+        ctest -j8 -LE _tests -V -O sanitizer.log
+    label: ":_: Undefined Sanitizer Tests"
+    agents:
+      - "role=automation-builder-large"
+    artifact_paths:
+      - "mongod.log"
+      - "sanitizer.log"
+    plugins:
+      docker#v1.4.0:
+        image: "eosio/ci:ubuntu18"
+        workdir: /data/job
+        mounts:
+          - /etc/buildkite-agent/config:/config
+    timeout: 120

@@ -1,4 +1,5 @@
 cmake_minimum_required( VERSION 3.5 )
+message(STATUS "Setting up Eosio Tester @VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@ at @EOS_ROOT_DIR@")
 
 set(CMAKE_CXX_COMPILER @CMAKE_CXX_COMPILER@)
 set(CMAKE_C_COMPILER   @CMAKE_C_COMPILER@)
@@ -49,7 +50,6 @@ else()
    find_library(libsecp256k1 secp256k1 @CMAKE_INSTALL_FULL_LIBDIR@)  
 endif()
 
-find_library(libbinaryen binaryen @CMAKE_INSTALL_FULL_LIBDIR@)
 find_library(libwasm WASM @CMAKE_INSTALL_FULL_LIBDIR@)
 find_library(libwast WAST @CMAKE_INSTALL_FULL_LIBDIR@)
 find_library(libwabt wabt @CMAKE_INSTALL_FULL_LIBDIR@)
@@ -76,7 +76,6 @@ macro(add_eosio_test test_name)
        ${libtester}
        ${libchain}
        ${libfc}
-       ${libbinaryen}
        ${libwast}
        ${libwasm}
        ${libwabt}
