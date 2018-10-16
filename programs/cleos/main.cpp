@@ -2303,15 +2303,18 @@ int main( int argc, char** argv ) {
    string abiPath;
    bool shouldSend = true;
    bool contract_clear = false;
+   bool suppress_duplicate_check = false;
    auto codeSubcommand = setSubcommand->add_subcommand("code", localized("Create or update the code on an account"));
    codeSubcommand->add_option("account", account, localized("The account to set code for"))->required();
    codeSubcommand->add_option("code-file", wasmPath, localized("The fullpath containing the contract WASM"));//->required();
    codeSubcommand->add_flag( "-c,--clear", contract_clear, localized("Remove code on an account"));
+   codeSubcommand->add_flag( "--suppress-duplicate-check", suppress_duplicate_check, localized("Don't check for duplicate"));
 
    auto abiSubcommand = setSubcommand->add_subcommand("abi", localized("Create or update the abi on an account"));
    abiSubcommand->add_option("account", account, localized("The account to set the ABI for"))->required();
    abiSubcommand->add_option("abi-file", abiPath, localized("The fullpath containing the contract ABI"));//->required();
    abiSubcommand->add_flag( "-c,--clear", contract_clear, localized("Remove abi on an account"));
+   abiSubcommand->add_flag( "--suppress-duplicate-check", suppress_duplicate_check, localized("Don't check for duplicate"));
 
    auto contractSubcommand = setSubcommand->add_subcommand("contract", localized("Create or update the contract on an account"));
    contractSubcommand->add_option("account", account, localized("The account to publish a contract for"))
@@ -2323,9 +2326,24 @@ int main( int argc, char** argv ) {
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
 //                                ->check(CLI::ExistingFile);
    contractSubcommand->add_flag( "-c,--clear", contract_clear, localized("Rmove contract on an account"));
+   contractSubcommand->add_flag( "--suppress-duplicate-check", suppress_duplicate_check, localized("Don't check for duplicate"));
 
    std::vector<chain::action> actions;
    auto set_code_callback = [&]() {
+
+      std::vector<char> old_wasm;
+      bool duplicate = false;
+      fc::sha256 old_hash, new_hash;
+      if (!suppress_duplicate_check) {
+         try {
+            const auto result = call(get_code_hash_func, fc::mutable_variant_object("account_name", account));
+            old_hash = fc::sha256(result["code_hash"].as_string());
+         } catch (...) {
+            std::cerr << "Failed to get existing code hash, continue without duplicate check..." << std::endl;
+            suppress_duplicate_check = true;
+         }
+      }
+
       bytes code_bytes;
       if(!contract_clear){
         std::string wasm;
@@ -2346,20 +2364,42 @@ int main( int argc, char** argv ) {
         if(wasm.compare(0, 8, binary_wasm_header))
            std::cerr << localized("WARNING: ") << wasmPath << localized(" doesn't look like a binary WASM file. Is it something else, like WAST? Trying anyways...") << std::endl;
         code_bytes = bytes(wasm.begin(), wasm.end());
-
       } else {
         code_bytes = bytes();
       }
 
+      if (!suppress_duplicate_check) {
+         if (code_bytes.size()) {
+            new_hash = fc::sha256::hash(&(code_bytes[0]), code_bytes.size());
+         }
+         duplicate = (old_hash == new_hash);
+      }
 
-      actions.emplace_back( create_setcode(account, code_bytes ) );
-      if ( shouldSend ) {
-         std::cerr << localized("Setting Code...") << std::endl;
-         send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      if (!duplicate) {
+         actions.emplace_back( create_setcode(account, code_bytes ) );
+         if ( shouldSend ) {
+            std::cerr << localized("Setting Code...") << std::endl;
+            send_actions(std::move(actions), 10000, packed_transaction::zlib);
+         }
+      } else {
+         std::cout << "Skipping set code because the new code is the same as the existing code" << std::endl;
       }
    };
 
    auto set_abi_callback = [&]() {
+
+      bytes old_abi;
+      bool duplicate = false;
+      if (!suppress_duplicate_check) {
+         try {
+            const auto result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
+            old_abi = result["abi"].as_blob().data;
+         } catch (...) {
+            std::cerr << "Failed to get existing raw abi, continue without duplicate check..." << std::endl;
+            suppress_duplicate_check = true;
+         }
+      }
+
       bytes abi_bytes;
       if(!contract_clear){
         fc::path cpath(contractPath);
@@ -2374,17 +2414,24 @@ int main( int argc, char** argv ) {
         EOS_ASSERT( fc::exists( abiPath ), abi_file_not_found, "no abi file found ${f}", ("f", abiPath)  );
 
         abi_bytes = fc::raw::pack(fc::json::from_file(abiPath).as<abi_def>());
-
       } else {
         abi_bytes = bytes();
       }
 
-      try {
-         actions.emplace_back( create_setabi(account, abi_bytes) );
-      } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
-      if ( shouldSend ) {
-         std::cerr << localized("Setting ABI...") << std::endl;
-         send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      if (!suppress_duplicate_check) {
+         duplicate = (old_abi.size() == abi_bytes.size() && std::equal(old_abi.begin(), old_abi.end(), abi_bytes.begin()));
+      }
+
+      if (!duplicate) {
+         try {
+            actions.emplace_back( create_setabi(account, abi_bytes) );
+         } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
+         if ( shouldSend ) {
+            std::cerr << localized("Setting ABI...") << std::endl;
+            send_actions(std::move(actions), 10000, packed_transaction::zlib);
+         }
+      } else {
+         std::cout << "Skipping set abi because the new abi is the same as the existing abi" << std::endl;
       }
    };
 
@@ -2396,8 +2443,12 @@ int main( int argc, char** argv ) {
       shouldSend = false;
       set_code_callback();
       set_abi_callback();
-      std::cerr << localized("Publishing contract...") << std::endl;
-      send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      if (actions.size()) {
+         std::cerr << localized("Publishing contract...") << std::endl;
+         send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      } else {
+         std::cout << "no transaction is sent" << std::endl;
+      }
    });
    codeSubcommand->set_callback(set_code_callback);
    abiSubcommand->set_callback(set_abi_callback);
@@ -3083,6 +3134,7 @@ int main( int argc, char** argv ) {
       if (verbose_errors) {
          elog("connect error: ${e}", ("e", e.to_detail_string()));
       }
+      return 1;
    } catch (const fc::exception& e) {
       // attempt to extract the error code if one is present
       if (!print_recognized_errors(e, verbose_errors)) {

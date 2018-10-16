@@ -852,10 +852,22 @@ namespace eosio {
       }
       block_id_type head_id;
       block_id_type lib_id;
-      uint32_t lib_num;
+      block_id_type remote_head_id;
+      uint32_t remote_head_num = 0;
       try {
-         lib_num = cc.last_irreversible_block_num();
-         lib_id = cc.last_irreversible_block_id();
+         if (last_handshake_recv.generation >= 1) {
+            remote_head_id = last_handshake_recv.head_id;
+            remote_head_num = block_header::num_from_id(remote_head_id);
+            fc_dlog(logger, "maybe truncating branch at  = ${h}:${id}",("h",remote_head_num)("id",remote_head_id));
+         }
+
+         // base our branch off of the last handshake we sent the peer instead of our current
+         // LIB which could have moved forward in time as packets were in flight.
+         if (last_handshake_sent.generation >= 1) {
+            lib_id = last_handshake_sent.last_irreversible_block_id;
+         } else {
+            lib_id = cc.last_irreversible_block_id();
+         }
          head_id = cc.fork_db_head_block_id();
       }
       catch (const assert_exception &ex) {
@@ -872,6 +884,13 @@ namespace eosio {
       block_id_type null_id;
       for (auto bid = head_id; bid != null_id && bid != lib_id; ) {
          try {
+
+            // if the last handshake received indicates that we are catching up on a fork
+            // that the peer is already partially aware of, no need to resend blocks
+            if (remote_head_id == bid) {
+               break;
+            }
+
             signed_block_ptr b = cc.fetch_block_by_id(bid);
             if ( b ) {
                bid = b->previous;
@@ -886,7 +905,7 @@ namespace eosio {
       }
       size_t count = 0;
       if (!bstack.empty()) {
-         if (bstack.back()->previous == lib_id) {
+         if (bstack.back()->previous == lib_id || bstack.back()->previous == remote_head_id) {
             count = bstack.size();
             while (bstack.size()) {
                enqueue(*bstack.back());
