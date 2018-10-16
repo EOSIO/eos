@@ -79,17 +79,12 @@ namespace eosio {
     fc::sha256 node_id; ///< for duplicate notification
   };
 
-   typedef std::chrono::system_clock::duration::rep tstamp;
-   typedef int32_t                                  tdist;
-
-   static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8, "system_clock is expected to be at least 64 bits");
-
-   struct time_message {
-              tstamp  org;       //!< origin timestamp
-              tstamp  rec;       //!< receive timestamp
-              tstamp  xmt;       //!< transmit timestamp
-      mutable tstamp  dst;       //!< destination timestamp
-   };
+  struct time_message {
+            tstamp  org;       //!< origin timestamp
+            tstamp  rec;       //!< receive timestamp
+            tstamp  xmt;       //!< transmit timestamp
+    mutable tstamp  dst;       //!< destination timestamp
+  };
 
   enum id_list_modes {
     none,
