@@ -20,7 +20,11 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "get_block_request_v0", "fields": [
-                { "name": "block_num", "type": "uint32" }
+                { "name": "block_num", "type": "uint32" },
+                { "name": "fetch_block", "type": "bool" },
+                { "name": "fetch_block_state", "type": "bool" },
+                { "name": "fetch_traces", "type": "bool" },
+                { "name": "fetch_deltas", "type": "bool" }
             ]
         },
         {

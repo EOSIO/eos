@@ -42,9 +42,9 @@ auto catch_and_log(F f) {
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                        chain_plug = nullptr;
-   history_log                                          block_state_log{"block_state_history"};
-   history_log                                          trace_log{"trace_history"};
-   history_log                                          chain_state_log{"chain_state_history"};
+   fc::optional<history_log>                            block_state_log;
+   fc::optional<history_log>                            trace_log;
+   fc::optional<history_log>                            chain_state_log;
    bool                                                 stopping = false;
    fc::optional<scoped_connection>                      applied_transaction_connection;
    fc::optional<scoped_connection>                      accepted_block_connection;
@@ -155,23 +155,32 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          result.head_block_id               = chain.head_block_id();
          result.last_irreversible_block_num = chain.last_irreversible_block_num();
          result.last_irreversible_block_id  = chain.last_irreversible_block_id();
-         result.block_state_begin_block     = plugin->block_state_log.begin_block();
-         result.block_state_end_block       = plugin->block_state_log.end_block();
-         result.trace_begin_block           = plugin->trace_log.begin_block();
-         result.trace_end_block             = plugin->trace_log.end_block();
-         result.chain_state_begin_block     = plugin->chain_state_log.begin_block();
-         result.chain_state_end_block       = plugin->chain_state_log.end_block();
+         if (plugin->block_state_log) {
+            result.block_state_begin_block = plugin->block_state_log->begin_block();
+            result.block_state_end_block   = plugin->block_state_log->end_block();
+         }
+         if (plugin->trace_log) {
+            result.trace_begin_block = plugin->trace_log->begin_block();
+            result.trace_end_block   = plugin->trace_log->end_block();
+         }
+         if (plugin->chain_state_log) {
+            result.chain_state_begin_block = plugin->chain_state_log->begin_block();
+            result.chain_state_end_block   = plugin->chain_state_log->end_block();
+         }
          send(std::move(result));
       }
 
       void operator()(get_block_request_v0& req) {
          // ilog("${b} get_block_request_v0", ("b", req.block_num));
          get_block_result_v0 result{req.block_num};
-         // todo: client select which datasets to receive
-         plugin->get_block(req.block_num, result.block);
-         plugin->get_data(plugin->block_state_log, req.block_num, result.block_state);
-         plugin->get_data(plugin->trace_log, req.block_num, result.traces);
-         plugin->get_data(plugin->chain_state_log, req.block_num, result.deltas);
+         if (req.fetch_block)
+            plugin->get_block(req.block_num, result.block);
+         if (req.fetch_block_state && plugin->block_state_log)
+            plugin->get_data(*plugin->block_state_log, req.block_num, result.block_state);
+         if (req.fetch_traces && plugin->trace_log)
+            plugin->get_data(*plugin->trace_log, req.block_num, result.traces);
+         if (req.fetch_deltas && plugin->chain_state_log)
+            plugin->get_data(*plugin->chain_state_log, req.block_num, result.deltas);
          send(std::move(result));
       }
 
@@ -280,7 +289,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_accepted_block(const block_state_ptr& block_state) {
-      // todo: config options
       store_block_state(block_state);
       store_traces(block_state);
       store_chain_state(block_state);
@@ -291,6 +299,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void store_traces(const block_state_ptr& block_state) {
+      if (!trace_log)
+         return;
       std::vector<transaction_trace_ptr> traces;
       if (onblock_trace)
          traces.push_back(onblock_trace);
@@ -316,7 +326,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       history_log_header header{.block_num    = block_state->block->block_num(),
                                 .block_id     = block_state->block->id(),
                                 .payload_size = sizeof(uint32_t) + traces_bin.size()};
-      trace_log.write_entry(header, block_state->block->previous, [&](auto& stream) {
+      trace_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
          uint32_t s = (uint32_t)traces_bin.size();
          stream.write((char*)&s, sizeof(s));
          if (!traces_bin.empty())
@@ -325,7 +335,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void store_chain_state(const block_state_ptr& block_state) {
-      bool fresh = chain_state_log.begin_block() == chain_state_log.end_block();
+      if (!chain_state_log)
+         return;
+      bool fresh = chain_state_log->begin_block() == chain_state_log->end_block();
       if (fresh)
          ilog("Placing initial state in block ${n}", ("n", block_state->block->block_num()));
 
@@ -409,7 +421,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       history_log_header header{.block_num    = block_state->block->block_num(),
                                 .block_id     = block_state->block->id(),
                                 .payload_size = sizeof(uint32_t) + deltas_bin.size()};
-      chain_state_log.write_entry(header, block_state->block->previous, [&](auto& stream) {
+      chain_state_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
          uint32_t s = (uint32_t)deltas_bin.size();
          stream.write((char*)&s, sizeof(s));
          if (!deltas_bin.empty())
@@ -427,7 +439,10 @@ void state_history_plugin::set_program_options(options_description& cli, options
    auto options = cfg.add_options();
    options("state-history-dir", bpo::value<bfs::path>()->default_value("state-history"),
            "the location of the state-history directory (absolute path or relative to application data dir)");
-   options("delete-state-history", bpo::bool_switch()->default_value(false), "clear state history database");
+   options("delete-state-history", bpo::bool_switch()->default_value(false), "clear state history files");
+   options("block-state-history", bpo::bool_switch()->default_value(false), "enable block state history");
+   options("trace-history", bpo::bool_switch()->default_value(false), "enable trace history");
+   options("chain-state-history", bpo::bool_switch()->default_value(false), "enable chain state history");
    options("state-history-endpoint", bpo::value<string>()->default_value("0.0.0.0:8080"),
            "the endpoint upon which to listen for incoming connections");
 }
@@ -462,14 +477,17 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
          ilog("Deleting state history");
          boost::filesystem::remove_all(state_history_dir);
       }
-
       boost::filesystem::create_directories(state_history_dir);
-      my->block_state_log.open((state_history_dir / "block_state_history.log").string(),
-                               (state_history_dir / "block_state_history.index").string());
-      my->trace_log.open((state_history_dir / "trace_history.log").string(),
-                         (state_history_dir / "trace_history.index").string());
-      my->chain_state_log.open((state_history_dir / "chain_state_history.log").string(),
-                               (state_history_dir / "chain_state_history.index").string());
+
+      if (options.at("block-state-history").as<bool>())
+         my->block_state_log.emplace("block_state_history", (state_history_dir / "block_state_history.log").string(),
+                                     (state_history_dir / "block_state_history.index").string());
+      if (options.at("trace-history").as<bool>())
+         my->trace_log.emplace("trace_history", (state_history_dir / "trace_history.log").string(),
+                               (state_history_dir / "trace_history.index").string());
+      if (options.at("chain-state-history").as<bool>())
+         my->chain_state_log.emplace("chain_state_history", (state_history_dir / "chain_state_history.log").string(),
+                                     (state_history_dir / "chain_state_history.index").string());
    }
    FC_LOG_AND_RETHROW()
 } // state_history_plugin::plugin_initialize

@@ -39,7 +39,11 @@ struct get_status_result_v0 {
 };
 
 struct get_block_request_v0 {
-   uint32_t block_num = 0;
+   uint32_t block_num         = 0;
+   bool     fetch_block       = false;
+   bool     fetch_block_state = false;
+   bool     fetch_traces      = false;
+   bool     fetch_deltas      = false;
 };
 
 struct get_block_result_v0 {
@@ -78,5 +82,5 @@ FC_REFLECT(
     eosio::get_status_result_v0,
     (head_block_num)(head_block_id)(last_irreversible_block_num)(last_irreversible_block_id)(block_state_begin_block)(
         block_state_end_block)(trace_begin_block)(trace_end_block)(chain_state_begin_block)(chain_state_end_block));
-FC_REFLECT(eosio::get_block_request_v0, (block_num));
+FC_REFLECT(eosio::get_block_request_v0, (block_num)(fetch_block)(fetch_block_state)(fetch_traces)(fetch_deltas));
 FC_REFLECT(eosio::get_block_result_v0, (block_num)(block)(block_state)(traces)(deltas));

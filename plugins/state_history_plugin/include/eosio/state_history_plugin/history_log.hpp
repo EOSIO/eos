@@ -55,8 +55,7 @@ struct history_summary {
 
 class history_log {
  private:
-   const char* const    name     = "";
-   bool                 _is_open = false;
+   const char* const    name = "";
    std::string          log_filename;
    std::string          index_filename;
    std::fstream         log;
@@ -66,30 +65,19 @@ class history_log {
    chain::block_id_type last_block_id;
 
  public:
-   history_log(const char* const name)
-       : name(name) {}
+   history_log(const char* const name, std::string log_filename, std::string index_filename)
+       : name(name)
+       , log_filename(std::move(log_filename))
+       , index_filename(std::move(index_filename)) {
+      open_log();
+      open_index();
+   }
 
-   bool     is_open() const { return _is_open; }
    uint32_t begin_block() const { return _begin_block; }
    uint32_t end_block() const { return _end_block; }
 
-   void open(std::string log_filename, std::string index_filename) {
-      this->log_filename   = std::move(log_filename);
-      this->index_filename = std::move(index_filename);
-      open_log();
-      open_index();
-      _is_open = true;
-   }
-
-   void close() {
-      log.close();
-      index.close();
-      _is_open = false;
-   }
-
    template <typename F>
    void write_entry(history_log_header header, const chain::block_id_type& prev_id, F write_payload) {
-      EOS_ASSERT(_is_open, chain::plugin_exception, "writing to closed ${name}.log", ("name", name));
       EOS_ASSERT(_begin_block == _end_block || header.block_num <= _end_block, chain::plugin_exception,
                  "missed a block in ${name}.log", ("name", name));
 
@@ -127,7 +115,6 @@ class history_log {
 
    // returns stream positioned at payload
    std::fstream& get_entry(uint32_t block_num, history_log_header& header) {
-      EOS_ASSERT(_is_open, chain::plugin_exception, "reading from closed ${name}.log", ("name", name));
       EOS_ASSERT(block_num >= _begin_block && block_num < _end_block, chain::plugin_exception,
                  "read non-existing block in ${name}.log", ("name", name));
       log.seekg(get_pos(block_num));
