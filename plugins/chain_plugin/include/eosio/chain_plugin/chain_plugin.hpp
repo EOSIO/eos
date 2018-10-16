@@ -36,6 +36,7 @@ namespace eosio {
    using fc::optional;
    using boost::container::flat_set;
    using chain::asset;
+   using chain::symbol;
    using chain::authority;
    using chain::account_name;
    using chain::action_name;
@@ -137,7 +138,8 @@ public:
    };
 
    struct get_account_params {
-      name account_name;
+      name             account_name;
+      optional<symbol> expected_core_symbol;
    };
    get_account_results get_account( const get_account_params& params )const;
 
@@ -697,7 +699,7 @@ FC_REFLECT( eosio::chain_apis::read_only::get_account_results,
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(wasm)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_hash_results, (account_name)(code_hash) )
 FC_REFLECT( eosio::chain_apis::read_only::get_abi_results, (account_name)(abi) )
-FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name) )
+FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name)(expected_core_symbol) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name)(code_as_wasm) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_hash_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_abi_params, (account_name) )
