@@ -186,6 +186,7 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
+include(utils)
 add_subdirectory( externals )
 
 if ("${CORE_SYMBOL_NAME}" STREQUAL "")
@@ -207,7 +208,6 @@ endif()
 message( STATUS "Using '${EOSIO_ROOT_KEY}' as public key for 'eosio' account" )
 
 include(wasm)
-
 add_subdirectory( libraries )
 add_subdirectory( contracts )
 add_subdirectory( plugins )
@@ -238,6 +238,21 @@ install(FILES ${CMAKE_BINARY_DIR}/modules/eosio-config.cmake DESTINATION ${CMAKE
 configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/EosioTester.cmake.in ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/eosio)
 
+configure_file(${CMAKE_SOURCE_DIR}/LICENSE 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/wabt/LICENSE 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.wabt COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/softfloat/COPYING.txt 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.softfloat COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/wasm-jit/LICENSE 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.wavm COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/secp256k1/upstream/COPYING 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.secp256k1 COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/src/network/LICENSE.go 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.go COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/externals/binaryen/LICENSE 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.binaryen COPYONLY)
+
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/)
 install(FILES libraries/wabt/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.wabt)
 install(FILES libraries/softfloat/COPYING.txt DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.softfloat)
@@ -246,6 +261,5 @@ install(FILES libraries/fc/secp256k1/upstream/COPYING DESTINATION ${CMAKE_INSTAL
 install(FILES externals/binaryen/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.binaryen)
 install(FILES libraries/fc/src/network/LICENSE.go DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ )
 
-include(installer)
-
+include(package)
 include(doxygen)
