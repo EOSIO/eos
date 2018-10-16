@@ -44,6 +44,8 @@ enum TransactionStatus {
 struct TransactionTrace { // new ones will override old ones, typically when status is changed
     bytes id;
 
+    uint32_t block_num;
+
     bool scheduled;
 
     TransactionStatus status;
@@ -70,7 +72,9 @@ struct Action {
     unsigned code_seq;
     unsigned abi_seq;
 
+    uint32_t block_num;
     bytes tx_id; // the transaction that generated this action
+
     string console;
 };
 
@@ -83,7 +87,7 @@ using ActionPtr = std::shared_ptr<Action>;
 
 FC_REFLECT_ENUM(kafka::TransactionStatus, (executed)(soft_fail)(hard_fail)(delayed)(expired)(unknown))
 
-FC_REFLECT(kafka::Block, (id)(num)(timestamp)(block)(tx_count)(action_count)(context_free_action_count))
+FC_REFLECT(kafka::Block, (id)(num)(timestamp)(lib)(block)(tx_count)(action_count)(context_free_action_count))
 FC_REFLECT(kafka::Transaction, (id)(block_id)(block_num)(block_time)(block_seq)(action_count)(context_free_action_count))
-FC_REFLECT(kafka::TransactionTrace, (id)(scheduled)(status)(net_usage_words)(cpu_usage_us)(exception))
-FC_REFLECT(kafka::Action, (global_seq)(recv_seq)(parent_seq)(account)(name)(auth)(data)(receiver)(auth_seq)(code_seq)(abi_seq)(tx_id)(console))
+FC_REFLECT(kafka::TransactionTrace, (id)(block_num)(scheduled)(status)(net_usage_words)(cpu_usage_us)(exception))
+FC_REFLECT(kafka::Action, (global_seq)(recv_seq)(parent_seq)(account)(name)(auth)(data)(receiver)(auth_seq)(code_seq)(abi_seq)(block_num)(tx_id)(console))

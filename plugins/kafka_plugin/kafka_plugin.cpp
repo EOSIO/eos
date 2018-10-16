@@ -53,6 +53,7 @@ void kafka_plugin::set_program_options(options_description&, options_description
             ("kafka-message-send-max-retries", bpo::value<unsigned>()->default_value(2), "Kafka how many times to retry sending a failing MessageSet")
             ("kafka-start-block-num", bpo::value<unsigned>()->default_value(1), "Kafka starts syncing from which block number")
             ("kafka-statistics-interval-ms", bpo::value<unsigned>()->default_value(0), "Kafka statistics emit interval, maximum is 86400000, 0 disables statistics")
+            ("kafka-fixed-partition", bpo::value<int>()->default_value(-1), "Kafka specify fixed partition for all topics, -1 disables specify")
             ;
     // TODO: security options
 }
@@ -107,6 +108,10 @@ void kafka_plugin::plugin_initialize(const variables_map& options) {
             options.at("kafka-transaction-trace-topic").as<string>(),
             options.at("kafka-action-topic").as<string>()
     );
+
+    if (options.at("kafka-fixed-partition").as<int>() >= 0) {
+        kafka_->set_partition(options.at("kafka-fixed-partition").as<int>());
+    }
 
     unsigned start_block_num = options.at("kafka-start-block-num").as<unsigned>();
 

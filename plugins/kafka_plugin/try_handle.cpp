@@ -14,11 +14,4 @@ void handle(std::function<void()> handler, const std::string& desc) {
     }
 }
 
-void loop_handle(const std::atomic<bool>& done, const std::string& desc, std::function<void()> handler) {
-    while (!done) {
-        handle(handler, desc);
-    }
-    ilog("kafka_plugin ${desc} thread shutdown gracefully", ("desc", desc));
-}
-
 }
