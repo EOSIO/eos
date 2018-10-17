@@ -2413,7 +2413,7 @@ namespace eosio {
       }
       switch (msg.known_blocks.mode) {
       case none : {
-         if (msg.known_trx.mode != normal) {
+         if (msg.known_trx.mode != catch_up) {
             return;
          }
          break;
