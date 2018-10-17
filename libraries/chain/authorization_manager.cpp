@@ -22,24 +22,76 @@ namespace eosio { namespace chain {
    :_control(c),_db(d){}
 
    void authorization_manager::add_indices() {
-      _db.add_index<permission_index>();
+      _db.add_database_index<permission_index>();
       _db.add_database_index<permission_usage_index>();
       _db.add_index<permission_link_index>();
 
-      eosio::chain::abi_def abi;
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "usage", "",
-        {{"id", "uint64"},
-         {"time", "uint64"}}
-      });
+      {
+          eosio::chain::abi_def abi;
+          abi.structs.emplace_back( eosio::chain::struct_def{
+            "usage", "",
+            {{"id", "uint64"},
+             {"time", "uint64"}}
+          });
+    
+          abi.tables.emplace_back( eosio::chain::table_def {
+            name{chaindb::tag<permission_usage_object>::get_name()}.to_string(),
+            "usage",
+            {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+          });
 
-      abi.tables.emplace_back( eosio::chain::table_def {
-        name{chaindb::tag<permission_usage_object>::get_name()}.to_string(),
-        "usage",
-        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
-      });
+          abi.structs.emplace_back( eosio::chain::struct_def{
+            "permlevel", "",
+            {{"actor", "name"},
+             {"perm", "name"}}
+          });
 
-      chaindb_set_abi(0, abi);
+          abi.structs.emplace_back( eosio::chain::struct_def{
+            "keyweight", "",
+            {{"key", "public_key"},
+             {"weight", "uint16"}}
+          });
+
+          abi.structs.emplace_back( eosio::chain::struct_def{
+            "permweight", "",
+            {{"permission", "permlevel"},
+             {"weight", "uint16"}}
+          });
+
+          abi.structs.emplace_back( eosio::chain::struct_def{
+            "waitweight", "",
+            {{"wait", "uint32"},
+             {"weight", "uint16"}}
+          });
+    
+          abi.structs.emplace_back( eosio::chain::struct_def{
+            "permission", "",
+            {{"id", "uint64"},
+             {"usageid", "uint64"},
+             {"parent", "uint64"},
+             {"owner", "name"},
+             {"name", "name"},
+             {"updated", "uint64"},
+
+             {"threshold", "uint32"},
+             {"keys", "keyweight[]"},
+             {"accounts", "permweight[]"},
+             {"waits", "waitweight[]"}}
+          });
+    
+          abi.tables.emplace_back( eosio::chain::table_def {
+            name{chaindb::tag<permission_object>::get_name()}.to_string(),
+            "permission",
+            {
+               {name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
+               {name{chaindb::tag<by_parent>::get_name()}.to_string(), true, {"parent","id"}, {"asc","asc"}},
+               {name{chaindb::tag<by_owner>::get_name()}.to_string(), true, {"owner","name"}, {"asc","asc"}},
+               {name{chaindb::tag<by_name>::get_name()}.to_string(), true, {"name","id"}, {"asc","asc"}},
+            }
+          });
+
+          chaindb_set_abi(0, abi);
+      }
    }
 
    void authorization_manager::initialize_database() {

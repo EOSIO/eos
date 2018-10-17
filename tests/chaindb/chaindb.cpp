@@ -392,7 +392,7 @@ namespace _detail {
         }
 
         string table_name() const {
-            return name(table).to_string();
+            return string("a")+name(table).to_string();
         }
     }; // struct abi_table_request
 

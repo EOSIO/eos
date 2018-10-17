@@ -18,12 +18,41 @@
 
 #include <boost/hana.hpp>
 #include <boost/multi_index/mem_fun.hpp>
+#include <boost/tuple/tuple_comparison.hpp>
 
 #include "chaindb.h"
 
 using fc::raw::pack_size;
 
 #define chaindb_assert(_EXPR, ...) EOS_ASSERT(_EXPR, fc::exception, __VA_ARGS__)
+
+namespace boost { namespace tuples {
+
+template<typename T,typename I1>
+fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<I1>& value) {
+    // TODO Do streaming tuple values
+    fc::raw::pack(stream, boost::tuples::get<0>(value));
+    return stream;
+}
+
+template<typename T,typename I1, typename I2>
+fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<I1,I2>& value) {
+    // TODO Do streaming tuple values
+    fc::raw::pack(stream, boost::tuples::get<0>(value));
+    fc::raw::pack(stream, boost::tuples::get<1>(value));
+    return stream;
+}
+
+template<typename T,typename I1, typename I2, typename I3>
+fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<I1,I2,I3>& value) {
+    // TODO Do streaming tuple values
+    fc::raw::pack(stream, boost::tuples::get<0>(value));
+    fc::raw::pack(stream, boost::tuples::get<1>(value));
+    fc::raw::pack(stream, boost::tuples::get<2>(value));
+    return stream;
+}
+
+} } // namespace boost::tuples
 
 namespace chaindb {
 
@@ -117,6 +146,65 @@ struct ordered_unique {
     using tag_type = typename Tag::type;
     using extractor_type = KeyExtractor;
     using comparator_type = KeyComparator;
+};
+
+template<typename Key>
+struct key_comparator {
+    static bool compare_eq(const Key& left, const Key& right) {
+        return left == right;
+    }
+};
+
+template<typename... Indices>
+struct key_comparator<boost::tuple<Indices...>> {
+    using key_type = boost::tuple<Indices...>;
+
+    static bool compare_eq(const key_type& left, const key_type& right) {
+        return left == right;
+    }
+
+    template<typename Value>
+    static bool compare_eq(const key_type& left, const Value& value) {
+        return boost::tuples::get<0>(left) == value;
+    }
+
+    template<typename V1,typename V2>
+    static bool compare_eq(const key_type& left, const boost::tuple<V1,V2>& value) {
+        return boost::tuples::get<0>(left) == boost::tuples::get<0>(value) &&
+               boost::tuples::get<1>(left) == boost::tuples::get<1>(value);
+    }
+};
+
+template<typename Key>
+struct key_converter {
+    static Key convert(const Key& key) {
+        return key;
+    }
+};
+
+template<typename... Indices>
+struct key_converter<boost::tuple<Indices...>> {
+    template<typename Value>
+    static boost::tuple<Indices...> convert(const Value& value) {
+        boost::tuple<Indices...> index;
+        boost::tuples::get<0>(index) = value;
+        return index;
+    }
+
+    template<typename Value>
+    static boost::tuple<Indices...> convert(const boost::tuple<Value>& value) {
+        boost::tuple<Indices...> index;
+        boost::tuples::get<0>(index) = boost::tuples::get<0>(value);
+        return index;
+    }
+
+    template<typename V1,typename V2>
+    static boost::tuple<Indices...> convert(const boost::tuple<V1,V2>& value) {
+        boost::tuple<Indices...> index;
+        boost::tuples::get<0>(index) = boost::tuples::get<0>(value);
+        boost::tuples::get<1>(index) = boost::tuples::get<1>(value);
+        return index;
+    }
 };
 
 
@@ -338,6 +426,17 @@ struct multi_index_impl {
         const_iterator find(key_type&& key) const {
            return find(key);
         }
+        
+        template<typename Value>
+        const_iterator find(const Value& value) const {
+           auto key = key_converter<key_type>::convert(value);
+           auto itr = lower_bound(key);
+           auto etr = cend();
+           if (itr == etr) return etr;
+           if (!key_comparator<key_type>::compare_eq(extractor_type()(*itr), value)) return etr;
+           return itr;
+        }
+
         const_iterator find(const key_type& key) const {
            auto itr = lower_bound(key);
            auto etr = cend();
@@ -377,6 +476,11 @@ struct multi_index_impl {
             return const_iterator(multidx_, cursor);
         }
 
+        template<typename Value>
+        const_iterator lower_bound(const Value& value) const {
+            return lower_bound(key_converter<key_type>::convert(value));
+        }
+
         const_iterator upper_bound(key_type&& key) const {
            return upper_bound(key);
         }
@@ -387,6 +491,24 @@ struct multi_index_impl {
                 cursor = chaindb_upper_bound(get_code(), get_scope(), table_name(), index_name(), data, size);
             });
             return const_iterator(multidx_, cursor);
+        }
+
+        std::pair<const_iterator,const_iterator> equal_range(key_type&& key) const {
+            return upper_bound(key);
+        }
+        std::pair<const_iterator,const_iterator> equal_range(const key_type& key) const {
+            return make_pair(lower_bound(key), upper_bound(key));
+        }
+
+        template<typename Value>
+        std::pair<const_iterator,const_iterator> equal_range(const Value& value) const {
+            const_iterator lower = lower_bound(value);
+            const_iterator upper = lower;
+            auto etr = cend();
+            while(upper != etr && key_comparator<key_type>::compare_eq(extractor_type()(*upper), value))
+                ++upper;
+
+            return make_pair(lower, upper);
         }
 
         const_iterator iterator_to(const T& obj) const {
