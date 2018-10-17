@@ -2413,9 +2413,6 @@ namespace eosio {
       }
       switch (msg.known_blocks.mode) {
       case none : {
-         if (msg.known_trx.mode != normal) {
-            return;
-         }
          break;
       }
       case last_irr_catch_up:
