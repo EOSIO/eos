@@ -25,6 +25,41 @@ Block.one is neither launching nor operating any initial public blockchains base
 
 There is no public testnet running currently.
 
+**If you have previously installed EOSIO, please run the `eosio_uninstall` script (it is in the directory where you cloned EOSIO) before downloading and using the binary releases.**
+
+#### Mac OS X Brew Install
+```sh
+$ brew tap eosio/eosio
+$ brew install eosio
+```
+#### Mac OS X Brew Uninstall
+```sh
+$ brew remove eosio
+```
+#### Ubuntu 18.04 Debian Package Install
+```sh
+$ wget https://github.com/eosio/eos/releases/download/v1.4.1/eosio-1.4.1.ubuntu-18.04-x86_64.deb
+$ sudo apt install ./eosio-1.4.1.ubuntu-18.04-x86_64.deb
+```
+#### Ubuntu 16.04 Debian Package Install
+```sh
+$ wget https://github.com/eosio/eos/releases/download/v1.4.1/eosio-1.4.1.ubuntu-16.04-x86_64.deb
+$ sudo apt install ./eosio-1.4.1.ubuntu-16.04-x86_64.deb
+```
+#### Debian Package Uninstall
+```sh
+$ sudo apt remove eosio
+```
+#### RPM Package Install
+```sh
+$ wget https://github.com/eosio/eos/releases/download/v1.4.1/eosio-1.4.1.x86_64-0.x86_64.rpm
+$ sudo yum install ./eosio-1.4.1.x86_64-0.x86_64.rpm
+```
+#### RPM Package Uninstall
+```sh
+$ sudo yum remove eosio.cdt
+```
+
 ## Supported Operating Systems
 EOSIO currently supports the following operating systems:  
 1. Amazon 2017.09 and higher

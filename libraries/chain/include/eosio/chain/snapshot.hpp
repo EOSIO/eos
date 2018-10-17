@@ -74,6 +74,7 @@ namespace eosio { namespace chain {
 
       struct abstract_snapshot_row_writer {
          virtual void write(ostream_wrapper& out) const = 0;
+         virtual void write(fc::sha256::encoder& out) const = 0;
          virtual variant to_variant() const = 0;
          virtual std::string row_type_name() const = 0;
       };
@@ -83,8 +84,17 @@ namespace eosio { namespace chain {
          explicit snapshot_row_writer( const T& data )
          :data(data) {}
 
-         void write(ostream_wrapper& out) const override {
+         template<typename DataStream>
+         void write_stream(DataStream& out) const {
             fc::raw::pack(out, data);
+         }
+
+         void write(ostream_wrapper& out) const override {
+            write_stream(out);
+         }
+
+         void write(fc::sha256::encoder& out) const override {
+            write_stream(out);
          }
 
          fc::variant to_variant() const override {
@@ -354,6 +364,20 @@ namespace eosio { namespace chain {
          std::streampos header_pos;
          uint64_t       num_rows;
          uint64_t       cur_row;
+   };
+
+   class integrity_hash_snapshot_writer : public snapshot_writer {
+      public:
+         explicit integrity_hash_snapshot_writer(fc::sha256::encoder&  enc);
+
+         void write_start_section( const std::string& section_name ) override;
+         void write_row( const detail::abstract_snapshot_row_writer& row_writer ) override;
+         void write_end_section( ) override;
+         void finalize();
+
+      private:
+         fc::sha256::encoder&  enc;
+
    };
 
 }}
