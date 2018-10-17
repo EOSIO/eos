@@ -1301,12 +1301,16 @@ struct bidname_info_subcommand {
             return;
          }
          for ( auto& row : result.rows ) {
-            fc::time_point time(fc::microseconds(row["last_bid_time"].as_uint64()));
+            string time = row["last_bid_time"].as_string();
+            try {
+                time = (string)fc::time_point(fc::microseconds(to_uint64(time)));
+            } catch (fc::parse_error_exception&) {
+            }
             int64_t bid = row["high_bid"].as_int64();
             std::cout << std::left << std::setw(18) << "bidname:" << std::right << std::setw(24) << row["newname"].as_string() << "\n"
                       << std::left << std::setw(18) << "highest bidder:" << std::right << std::setw(24) << row["high_bidder"].as_string() << "\n"
                       << std::left << std::setw(18) << "highest bid:" << std::right << std::setw(24) << (bid > 0 ? bid : -bid) << "\n"
-                      << std::left << std::setw(18) << "last bid time:" << std::right << std::setw(24) << ((std::string)time).c_str() << std::endl;
+                      << std::left << std::setw(18) << "last bid time:" << std::right << std::setw(24) << time << std::endl;
             if (bid < 0) std::cout << "This auction has already closed" << std::endl;
          }
       });
