@@ -23,6 +23,23 @@ using bmi::const_mem_fun;
 using bmi::tag;
 using bmi::composite_key_compare;
 
+template<typename A>
+struct get_result_type {
+    using type = typename A::result_type;
+};
+
+template<typename Value, typename... Fields>
+struct composite_key2 {
+    using result_type = bool;
+
+    using key_type = boost::tuple<typename get_result_type<Fields>::type...>;
+
+    auto operator()(const Value& v) {
+        return boost::make_tuple(Fields()(v)...);
+        //return key_type();
+    }
+};
+
 template<typename Tag,typename KeyFromValue, typename CompareType = std::less<typename KeyFromValue::result_type>>
 struct ordered_unique2 {
    using tag_type = Tag;
@@ -33,6 +50,14 @@ struct ordered_unique2 {
 };
 
 struct by_id {};
+
+namespace eosio { namespace chain {
+
+struct by_parent {};
+struct by_owner {};
+struct by_name {};
+
+} } // namespace eosio::chain
 
 template<typename... Items>
 struct indexed_by2 {};
@@ -100,9 +125,7 @@ namespace chainbase {
                iterator upper_bound(const Key& key) const {return impl.upper_bound(key);}
 
                template<typename Key>
-               std::pair<iterator,iterator> equal_range(const Key& key) const {
-                   return std::make_pair(impl.lower_bound(key),impl.upper_bound(key));
-               }
+               std::pair<iterator,iterator> equal_range(const Key& key) const {return impl.equal_range(key);}
 
                iterator iterator_to(const value_type& value) const {return impl.iterator_to(value);}
 
