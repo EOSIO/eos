@@ -114,9 +114,6 @@ public:
                                 );
    }
    asset get_balance( const account_name& act ) {
-      //return get_currency_balance( config::system_account_name, symbol(CORE_SYMBOL), act );
-      //temporary code. current get_currency_balancy uses table name N(accounts) from currency.h
-      //generic_currency table name is N(account).
       const auto& db  = control->db();
       const auto* tbl = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(eosio.token), act, N(accounts)));
       share_type result = 0;
