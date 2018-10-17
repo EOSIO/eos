@@ -2561,8 +2561,10 @@ int main( int argc, char** argv ) {
          std::cout << fc::json::to_pretty_string(v) << std::endl;
       } else {
          std::cerr << localized("saving password to ${filename}", ("filename", password_file)) << std::endl;
+         auto password_str = fc::json::to_pretty_string(v);
+         boost::replace_all(password_str, "\"", "");
          std::ofstream out( password_file.c_str() );
-         out << fc::json::to_pretty_string(v);
+         out << password_str;
       }
    });
 
