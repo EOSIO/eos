@@ -65,15 +65,6 @@ void resource_limits_manager::initialize_database() {
    });
 }
 
-void resource_limits_manager::calculate_integrity_hash( fc::sha256::encoder& enc ) const {
-   resource_index_set::walk_indices([this, &enc]( auto utils ){
-      decltype(utils)::walk(_db, [this, &enc]( const auto &row ) {
-         using row_type = std::decay_t<decltype(row)>;
-         fc::raw::pack(enc, detail::snapshot_row_traits<row_type>::to_snapshot_row(row, _db));
-      });
-   });
-}
-
 void resource_limits_manager::add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
    resource_index_set::walk_indices([this, &snapshot]( auto utils ){
       snapshot->write_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ){

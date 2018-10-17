@@ -44,7 +44,6 @@ namespace eosio { namespace chain { namespace resource_limits {
 
          void add_indices();
          void initialize_database();
-         void calculate_integrity_hash( fc::sha256::encoder& enc ) const;
          void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const;
          void read_from_snapshot( const snapshot_reader_ptr& snapshot );
 
