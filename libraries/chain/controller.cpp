@@ -429,8 +429,9 @@ struct controller_impl {
 
             auto tid_key = boost::make_tuple(table_row.id);
             auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
-            decltype(utils)::template walk_range<by_table_id>(db, tid_key, next_tid_key, [&enc](const auto& row){
-               fc::raw::pack(enc, row);
+            decltype(utils)::template walk_range<by_table_id>(db, tid_key, next_tid_key, [this, &enc](const auto& row){
+               using row_type = std::decay_t<decltype(row)>;
+               fc::raw::pack(enc, detail::snapshot_row_traits<row_type>::to_snapshot_row(row, db));
             });
          });
       });
@@ -501,8 +502,9 @@ struct controller_impl {
             return;
          }
 
-         decltype(utils)::walk(db, [&enc]( const auto &row ) {
-            fc::raw::pack(enc, row);
+         decltype(utils)::walk(db, [this, &enc]( const auto &row ) {
+            using row_type = std::decay_t<decltype(row)>;
+            fc::raw::pack(enc, detail::snapshot_row_traits<row_type>::to_snapshot_row(row, db));
          });
       });
 

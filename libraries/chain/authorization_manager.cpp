@@ -37,8 +37,9 @@ namespace eosio { namespace chain {
 
    void authorization_manager::calculate_integrity_hash( fc::sha256::encoder& enc ) const {
       authorization_index_set::walk_indices([this, &enc]( auto utils ){
-         decltype(utils)::walk(_db, [&enc]( const auto &row ) {
-            fc::raw::pack(enc, row);
+         decltype(utils)::walk(_db, [this, &enc]( const auto &row ) {
+            using row_type = std::decay_t<decltype(row)>;
+            fc::raw::pack(enc, detail::snapshot_row_traits<row_type>::to_snapshot_row(row, _db));
          });
       });
    }
