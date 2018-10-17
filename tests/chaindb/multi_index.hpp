@@ -148,7 +148,7 @@ struct multi_index_impl {
 
     const account_name_t code_;
     const account_name_t scope_;
-    Allocator *allocator_;
+    Allocator allocator_;
 
     mutable primary_key_t next_primary_key_ = unset_primary_key;
 
@@ -163,7 +163,7 @@ struct multi_index_impl {
     
         template<typename Constructor>
         item(const multi_index_impl* midx, Constructor&& constructor)
-            : T(constructor, *midx->allocator_), multidx_(midx) 
+            : T(constructor, midx->allocator_), multidx_(midx) 
         {
         }
 
@@ -494,7 +494,7 @@ public:
 
 public:
     multi_index_impl(const account_name_t code, account_name_t scope, Allocator *allocator = nullptr)
-        : code_(code), scope_(scope), allocator_(allocator), primary_idx_(this) {}
+        : code_(code), scope_(scope), allocator_(*allocator), primary_idx_(this) {}
 
     constexpr static table_name_t table_name() { return name_extractor<TableName>::get_name(); }
 
