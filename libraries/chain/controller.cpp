@@ -154,7 +154,7 @@ struct controller_impl {
       }
 
       if ( read_mode == db_read_mode::SPECULATIVE ) {
-         EOS_ASSERT( head->block && head->block->transactions.size() == head->trxs.size(), block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
+         EOS_ASSERT( head->block, block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
          for( const auto& t : head->trxs )
             unapplied_transactions[t->signed_id] = t;
       }
