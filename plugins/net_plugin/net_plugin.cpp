@@ -2379,7 +2379,7 @@ namespace eosio {
       request_message req;
       bool send_req = false;
       if (msg.known_trx.mode != none) {
-         fc_dlog(logger,"this is a ${m} notice with ${n} blocks", ("m",modes_str(msg.known_trx.mode))("n",msg.known_trx.pending));
+         fc_dlog(logger,"this is a ${m} notice with ${n} transactions", ("m",modes_str(msg.known_trx.mode))("n",msg.known_trx.pending));
       }
       switch (msg.known_trx.mode) {
       case none:
