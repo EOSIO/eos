@@ -22,6 +22,8 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 
+#include <eosio/chain/chaindb_control.hpp>
+
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
@@ -337,7 +339,7 @@ struct controller_impl {
    void add_indices() {
       reversible_blocks.add_index<reversible_block_index>();
 
-      db.add_index<account_index>();
+      db.add_database_index<account_index>();
       db.add_index<account_sequence_index>();
 
       db.add_index<table_id_multi_index>();
@@ -356,6 +358,34 @@ struct controller_impl {
 
       authorization.add_indices();
       resource_limits.add_indices();
+
+      eosio::chain::abi_def abi;
+      add_abi_tables(abi);
+      authorization.add_abi_tables(abi);
+      chaindb_set_abi(0, abi);
+   }
+
+   void add_abi_tables(eosio::chain::abi_def &abi) {
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "account", "",
+        {{"id", "uint64"},
+         {"name", "name"},
+         {"vmtype", "uint8"},
+         {"vmversion", "uint8"},
+         {"privileged", "bool"},
+         {"lastcodeup", "time_point"},
+         {"codever", "checksum256"},
+         {"created", "block_timestamp_type"},
+         {"code", "string"},
+         {"abi", "string"}}
+      });
+
+      abi.tables.emplace_back( eosio::chain::table_def {
+        name{chaindb::tag<account_object>::get_name()}.to_string(),
+        "account",
+        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
+         {name{chaindb::tag<by_name>::get_name()}.to_string(), true, {"name"}, {"asc"}}}
+      });
    }
 
    void clear_all_undo() {

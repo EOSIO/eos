@@ -46,11 +46,11 @@ namespace eosio { namespace chain {
    using account_id_type = account_object::id_type;
 
    struct by_name;
-   using account_index = chainbase::shared_multi_index_container<
+   using account_index = chainbase::shared_multi_index_container2<
       account_object,
-      indexed_by<
-         ordered_unique<tag<by_id>, member<account_object, account_object::id_type, &account_object::id>>,
-         ordered_unique<tag<by_name>, member<account_object, account_name, &account_object::name>>
+      indexed_by2<
+         ordered_unique2<chaindb::tag<by_id>, member<account_object, account_object::id_type, &account_object::id>>,
+         ordered_unique2<chaindb::tag<by_name>, member<account_object, account_name, &account_object::name>>
       >
    >;
 
@@ -80,5 +80,6 @@ namespace eosio { namespace chain {
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_sequence_object, eosio::chain::account_sequence_index)
 
-
-FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(code_version)(code)(creation_date))
+FC_REFLECT(chainbase::oid<eosio::chain::account_object>, (_id));
+//FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(code_version)(code)(creation_date))
+FC_REFLECT(eosio::chain::account_object, (id)(name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date)(code)(abi))
