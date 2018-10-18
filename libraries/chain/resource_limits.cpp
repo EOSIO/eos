@@ -65,14 +65,6 @@ void resource_limits_manager::initialize_database() {
    });
 }
 
-void resource_limits_manager::calculate_integrity_hash( fc::sha256::encoder& enc ) const {
-   resource_index_set::walk_indices([this, &enc]( auto utils ){
-      decltype(utils)::walk(_db, [&enc]( const auto &row ) {
-         fc::raw::pack(enc, row);
-      });
-   });
-}
-
 void resource_limits_manager::add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
    resource_index_set::walk_indices([this, &snapshot]( auto utils ){
       snapshot->write_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ){

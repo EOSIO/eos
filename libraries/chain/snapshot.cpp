@@ -336,4 +336,26 @@ void istream_snapshot_reader::clear_section() {
    cur_row = 0;
 }
 
+integrity_hash_snapshot_writer::integrity_hash_snapshot_writer(fc::sha256::encoder& enc)
+:enc(enc)
+{
+}
+
+void integrity_hash_snapshot_writer::write_start_section( const std::string& )
+{
+   // no-op for structural details
+}
+
+void integrity_hash_snapshot_writer::write_row( const detail::abstract_snapshot_row_writer& row_writer ) {
+   row_writer.write(enc);
+}
+
+void integrity_hash_snapshot_writer::write_end_section( ) {
+   // no-op for structural details
+}
+
+void integrity_hash_snapshot_writer::finalize() {
+   // no-op for structural details
+}
+
 }}
