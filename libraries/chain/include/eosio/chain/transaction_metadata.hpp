@@ -6,6 +6,7 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/trace.hpp>
+#include <future>
 
 namespace eosio { namespace chain {
 
@@ -20,6 +21,7 @@ class transaction_metadata {
       signed_transaction                                         trx;
       packed_transaction                                         packed_trx;
       optional<pair<chain_id_type, flat_set<public_key_type>>>   signing_keys;
+      std::future<flat_set<public_key_type>>                     signing_keys_future;
       bool                                                       accepted = false;
       bool                                                       implicit = false;
       bool                                                       scheduled = false;
@@ -39,8 +41,13 @@ class transaction_metadata {
       }
 
       const flat_set<public_key_type>& recover_keys( const chain_id_type& chain_id ) {
-         if( !signing_keys || signing_keys->first != chain_id ) // Unlikely for more than one chain_id to be used in one nodeos instance
-            signing_keys = std::make_pair( chain_id, trx.get_signature_keys( chain_id ) );
+         if( !signing_keys || signing_keys->first != chain_id ) {// Unlikely for more than one chain_id to be used in one nodeos instance
+            if( signing_keys_future.valid() ) {
+               signing_keys = std::make_pair( chain_id, signing_keys_future.get());
+            } else {
+               signing_keys = std::make_pair( chain_id, trx.get_signature_keys( chain_id ));
+            }
+         }
          return signing_keys->second;
       }
 
