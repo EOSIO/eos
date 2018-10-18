@@ -84,7 +84,6 @@ Options:
 #include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
-#include <eosio/utilities/key_conversion.hpp>
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/config.hpp>
@@ -129,7 +128,6 @@ Options:
 using namespace std;
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::utilities;
 using namespace eosio::client::help;
 using namespace eosio::client::http;
 using namespace eosio::client::localize;
@@ -2732,7 +2730,7 @@ int main( int argc, char** argv ) {
          fc::set_console_echo(true);
       }
 
-      auto priv_key = fc::crypto::private_key::regenerate(*utilities::wif_to_key(str_private_key));
+      auto priv_key = private_key_type(str_private_key);
       trx.sign(priv_key, *chain_id);
 
       if(push_trx) {
