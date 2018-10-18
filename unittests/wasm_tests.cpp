@@ -16,9 +16,6 @@
 #include <noop/noop.wast.hpp>
 #include <noop/noop.abi.hpp>
 
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
-
 #include <fc/io/fstream.hpp>
 
 #include <Runtime/Runtime.h>
