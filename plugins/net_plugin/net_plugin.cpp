@@ -11,7 +11,6 @@
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/utilities/key_conversion.hpp>
 #include <eosio/chain/contract_types.hpp>
 
 #include <fc/network/message_buffer.hpp>
