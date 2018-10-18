@@ -1514,9 +1514,10 @@ namespace eosio {
       req.req_blocks.mode = catch_up;
       for (auto cc : my_impl->connections) {
          if (cc->fork_head == id ||
-             cc->fork_head_num > num)
+             cc->fork_head_num > num) {
             req.req_blocks.mode = none;
-         break;
+            break;
+         }
       }
       if( req.req_blocks.mode == catch_up ) {
          c->fork_head = id;
