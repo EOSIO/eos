@@ -14,8 +14,6 @@
 
 #include <eosio/testing/tester.hpp>
 
-#include <eosio/utilities/tempdir.hpp>
-
 #include <fc/crypto/digest.hpp>
 
 #include <boost/test/unit_test.hpp>
