@@ -327,7 +327,7 @@ namespace cyberway { namespace chaindb {
             auto itr = view.find(*table.pk_field);
             CYBERWAY_ASSERT(view.end() != itr, driver_primary_key_exception,
                 "External database locate row in the table ${table} for without primary key.",
-                ("table_name", full_table_name(table)));
+                ("table_name", get_full_table_name(table)));
             return itr->get_int64().value;
         }
     } } // namespace _detail
@@ -434,7 +434,7 @@ namespace cyberway { namespace chaindb {
                 auto itr = view.find(o.field);
                 CYBERWAY_ASSERT(view.end() != itr, driver_absent_field_exception,
                     "External database returns row in the table ${table} without the field ${field}.",
-                    ("table", full_table_name(index))("field", o.field));
+                    ("table", get_full_table_name(index))("field", o.field));
                 _detail::build_variant(object, o.field, *itr);
             }
             key_ = variant(std::move(object));
@@ -475,7 +475,7 @@ namespace cyberway { namespace chaindb {
         document create_find_document(const char* forward, const char* backward) const {
             document find;
 
-            find.append(kvp(scope_field_name(), scope_name(index)));
+            find.append(kvp(get_scope_field_name(), get_scope_name(index)));
             if (!find_key_.is_object()) return find;
 
             auto& find_object = find_key_.get_object();
@@ -487,7 +487,7 @@ namespace cyberway { namespace chaindb {
                 auto itr = find_object.find(o.field);
                 CYBERWAY_ASSERT(find_object.end() != itr, driver_absent_field_exception,
                     "External database returns the row in the table ${table} without the field ${field}.",
-                    ("table", full_table_name(index))("field", o.field));
+                    ("table", get_full_table_name(index))("field", o.field));
                 find.append(kvp(o.field, [&](sub_document doc){_detail::build_document(doc, cmp, itr->value());}));
             }
             return find;
@@ -563,7 +563,7 @@ namespace cyberway { namespace chaindb {
             CYBERWAY_ASSERT(find_cmp_->order != direction::Backward || itr != source_->end(),
                 driver_out_of_range_exception,
                 "External database tries to locate in the ${table} in out of range",
-                ("table", full_table_name(index)));
+                ("table", get_full_table_name(index)));
             init_pk_value();
         }
 
@@ -612,18 +612,18 @@ namespace cyberway { namespace chaindb {
             auto code_itr = code_cursor_map_.find(request.code);
             CYBERWAY_ASSERT(
                 code_cursor_map_.end() != code_itr, driver_invalid_cursor_exception,
-                "Cursor ${code}.${id} doesn't exist", ("code", code_name(request))("id", request.id));
+                "Cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
 
             auto cursor_itr = code_itr->second.find(request.id);
             CYBERWAY_ASSERT(
                 code_itr->second.end() != cursor_itr, driver_invalid_cursor_exception,
-                "Cursor ${code}.${id} doesn't exist", ("code", code_name(request))("id", request.id));
+                "Cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
 
             return cursor_location{cursor_itr->second, code_itr, cursor_itr, code_cursor_map_, code_itr->second};
         }
 
         collection get_db_table(const table_info& table) {
-            return mongo_conn_[code_name(table)][table_name(table)];
+            return mongo_conn_[get_code_name(table)][get_table_name(table)];
         }
 
         cursor_t get_next_cursor_id(code_cursor_map::iterator itr) {
@@ -664,7 +664,7 @@ namespace cyberway { namespace chaindb {
             for (auto& index: indexes) {
                 bool was_pk = false;
                 document doc;
-                doc.append(kvp(scope_field_name(), 1));
+                doc.append(kvp(get_scope_field_name(), 1));
                 for (auto& o: index.orders) {
                     if (_detail::is_asc_order(o.order)) {
                         doc.append(kvp(o.field, 1));
@@ -677,7 +677,7 @@ namespace cyberway { namespace chaindb {
                     doc.append(kvp(pk_field, 1));
                 }
 
-                auto db_index_name = index_name(index);
+                auto db_index_name = get_index_name(index);
                 try {
                     db_table.create_index(doc.view(), options::index().name(db_index_name).unique(index.unique));
                 } catch (const mongocxx::operation_exception& e) {
@@ -770,14 +770,14 @@ namespace cyberway { namespace chaindb {
     variant mongodb_driver::value(const table_info& table, const primary_key_t pk) {
         auto cursor = impl_->get_db_table(table).find(
             make_document(
-                kvp(scope_field_name(), scope_name(table)),
+                kvp(get_scope_field_name(), get_scope_name(table)),
                 kvp(*table.pk_field, static_cast<int64_t>(pk))),
             options::find().limit(1));
 
         auto itr = cursor.begin();
         CYBERWAY_ASSERT(cursor.end() != itr, driver_absent_object_exception,
             "External database doesn't contain object with primary key ${pk} in the table ${table}",
-            ("pk", pk)("table",full_table_name(table)));
+            ("pk", pk)("table", get_full_table_name(table)));
 
         return _detail::build_variant(*itr);
     }
@@ -794,7 +794,7 @@ namespace cyberway { namespace chaindb {
 
     primary_key_t mongodb_driver::available_primary_key(const table_info& table) {
         auto cursor = impl_->get_db_table(table).find(
-            make_document(kvp(scope_field_name(), scope_name(table))),
+            make_document(kvp(get_scope_field_name(), get_scope_name(table))),
             options::find()
                 .sort(make_document(kvp(*table.pk_field, -1)))
                 .limit(1));
@@ -807,9 +807,8 @@ namespace cyberway { namespace chaindb {
         return 1;
     }
 
-    primary_key_t mongodb_driver::insert(const table_info& table, variant value) {
+    primary_key_t mongodb_driver::insert(const table_info& table, const primary_key_t pk, variant value) {
         auto& object = value.get_object();
-        auto pk = object[*table.pk_field].as_uint64();
 
         document insert;
         _detail::build_document(insert, object);
@@ -817,40 +816,39 @@ namespace cyberway { namespace chaindb {
         auto inserted = impl_->get_db_table(table).insert_one(insert.view());
         CYBERWAY_ASSERT(inserted && inserted->result().inserted_count() == 1, driver_insert_exception,
             "Fail to insert object ${object} into the table ${table}",
-            ("object", object)("table", full_table_name(table)));
+            ("object", object)("table", get_full_table_name(table)));
 
         return pk;
     }
 
-    primary_key_t mongodb_driver::update(const table_info& table, variant value) {
+    primary_key_t mongodb_driver::update(const table_info& table, const primary_key_t pk, variant value) {
         auto& object = value.get_object();
-        auto pk = object[*table.pk_field].as_uint64();
 
         document update;
         _detail::build_document(update, object);
 
         auto updated = impl_->get_db_table(table).update_one(
             make_document(
-                kvp(scope_field_name(), scope_name(table)),
+                kvp(get_scope_field_name(), get_scope_name(table)),
                 kvp(*table.pk_field, static_cast<int64_t>(pk))),
             make_document(kvp("$set", update)));
         CYBERWAY_ASSERT(updated && updated->result().matched_count() == 1, driver_update_exception,
             "Fail to update object ${object} in the table ${table}",
-            ("object", object)("table", full_table_name(table)));
+            ("object", object)("table", get_full_table_name(table)));
 
         return pk;
     }
 
     primary_key_t mongodb_driver::remove(const table_info& table, primary_key_t pk) {
         auto doc = make_document(
-            kvp(scope_field_name(), scope_name(table)),
+            kvp(get_scope_field_name(), get_scope_name(table)),
             kvp(*table.pk_field, static_cast<int64_t>(pk)));
 
         auto deleted = impl_->get_db_table(table).delete_one(doc.view());
 
         CYBERWAY_ASSERT(deleted && deleted->result().matched_count() == 1, driver_update_exception,
             "Fail to delete object ${object} from the table ${table}",
-            ("object", bsoncxx::to_json(doc.view()))("table", full_table_name(table)));
+            ("object", bsoncxx::to_json(doc.view()))("table", get_full_table_name(table)));
 
         return pk;
     }

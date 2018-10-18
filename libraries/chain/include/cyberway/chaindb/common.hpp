@@ -20,11 +20,13 @@ namespace cyberway { namespace chaindb {
     using std::string;
 
     using eosio::chain::account_name;
+    using eosio::chain::table_name;
+    using eosio::chain::index_name;
     using eosio::chain::table_def;
     using eosio::chain::index_def;
 
-    using table_name_t = eosio::chain::table_name::value_type;
-    using index_name_t = eosio::chain::index_name::value_type;
+    using table_name_t = table_name::value_type;
+    using index_name_t = index_name::value_type;
     using account_name_t = account_name::value_type;
 
 } } // namespace cyberway::chaindb

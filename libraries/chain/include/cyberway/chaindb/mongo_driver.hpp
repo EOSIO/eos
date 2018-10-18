@@ -7,7 +7,7 @@
 
 namespace cyberway { namespace chaindb {
 
-    class mongodb_driver: public driver_interface {
+    class mongodb_driver final: public driver_interface {
     public:
         mongodb_driver(const std::string&);
         ~mongodb_driver();
@@ -29,15 +29,15 @@ namespace cyberway { namespace chaindb {
         const cursor_info& next(const cursor_request&) override;
         const cursor_info& prev(const cursor_request&) override;
 
-              variant  value(const table_info&, const primary_key_t) override;
+              variant  value(const table_info&, primary_key_t) override;
         const variant& value(const cursor_info&) override;
 
         void set_blob(const cursor_info&, bytes blob) override;
 
         primary_key_t available_primary_key(const table_info&) override;
 
-        primary_key_t insert(const table_info&, variant) override;
-        primary_key_t update(const table_info&, variant) override;
+        primary_key_t insert(const table_info&, primary_key_t, variant) override;
+        primary_key_t update(const table_info&, primary_key_t, variant) override;
         primary_key_t remove(const table_info&, primary_key_t) override;
 
     private:

@@ -16,9 +16,9 @@ namespace cyberway { namespace chaindb {
     struct table_info {
         const account_name code;
         const account_name scope;
-        const abi_info*    abi      = nullptr;
         const table_def*   table    = nullptr;
         const field_name*  pk_field = nullptr;
+        const abi_info*    abi      = nullptr;
 
         table_info(const account_name& code, const account_name& scope)
         : code(code), scope(scope)
@@ -59,15 +59,15 @@ namespace cyberway { namespace chaindb {
         virtual const cursor_info& next(const cursor_request&) = 0;
         virtual const cursor_info& prev(const cursor_request&) = 0;
 
-        virtual       variant  value(const table_info&, const primary_key_t) = 0;
+        virtual       variant  value(const table_info&, primary_key_t) = 0;
         virtual const variant& value(const cursor_info&) = 0;
 
         virtual void set_blob(const cursor_info&, bytes blob) = 0;
 
         virtual primary_key_t available_primary_key(const table_info&) = 0;
 
-        virtual primary_key_t insert(const table_info&, variant) = 0;
-        virtual primary_key_t update(const table_info&, variant) = 0;
+        virtual primary_key_t insert(const table_info&, primary_key_t, variant) = 0;
+        virtual primary_key_t update(const table_info&, primary_key_t, variant) = 0;
         virtual primary_key_t remove(const table_info&, primary_key_t) = 0;
     }; // class driver_interface
 

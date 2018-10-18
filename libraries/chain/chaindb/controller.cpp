@@ -50,8 +50,8 @@ namespace cyberway { namespace chaindb {
     driver_interface::~driver_interface() = default;
 
     namespace { namespace _detail {
-        const vector<string>& reserved_fields() {
-            static const vector<string> fields = {scope_field_name(), payer_field_name(), size_field_name()};
+        const vector<string>& get_reserved_fields() {
+            static const vector<string> fields = {get_scope_field_name(), get_payer_field_name(), get_size_field_name()};
             return fields;
         }
 
@@ -68,7 +68,7 @@ namespace cyberway { namespace chaindb {
         }
     } } // namespace _detail
 
-    class abi_info {
+    class abi_info final {
     public:
         abi_info() = default;
         abi_info(const account_name& code, abi_def abi, const microseconds& max_time)
@@ -90,7 +90,7 @@ namespace cyberway { namespace chaindb {
                     i.index = &index;
 
                     struct_def dst;
-                    dst.name = full_index_name(i);
+                    dst.name = get_full_index_name(i);
                     for (auto& key: index.orders) {
                         for (auto& field: src.fields) {
                             if (field.name == key.field) {
@@ -126,14 +126,14 @@ namespace cyberway { namespace chaindb {
             const table_info& info, const void* data, const size_t size, const microseconds& max_time
         ) const {
             CYBERWAY_ASSERT(info.table, unknown_table_exception, "NULL table");
-            return to_object_("table", [&]{return full_table_name(info);}, info.table->type, data, size, max_time);
+            return to_object_("table", [&]{return get_full_table_name(info);}, info.table->type, data, size, max_time);
         }
 
         variant to_object(
             const index_info& info, const void* data, const size_t size, const microseconds& max_time
         ) const {
             CYBERWAY_ASSERT(info.index, unknown_index_exception, "NULL index");
-            auto type = full_index_name(info);
+            auto type = get_full_index_name(info);
             return to_object_("index", [&](){return type;}, type, data, size, max_time);
         }
 
@@ -141,7 +141,7 @@ namespace cyberway { namespace chaindb {
             const table_info& info, const variant& value, const microseconds& max_time
         ) const {
             CYBERWAY_ASSERT(info.table, unknown_table_exception, "NULL table");
-            return to_bytes_("table", [&]{return full_table_name(info);}, info.table->type, value, max_time);
+            return to_bytes_("table", [&]{return get_full_table_name(info);}, info.table->type, value, max_time);
         }
 
         void mark_removed() {
@@ -202,7 +202,7 @@ namespace cyberway { namespace chaindb {
         }
     }; // struct abi_info
 
-    struct chaindb_controller::controller_impl_ {
+    struct chaindb_controller::controller_impl_ final {
         const microseconds max_abi_time;
         std::unique_ptr<driver_interface> driver;
 
@@ -282,7 +282,7 @@ namespace cyberway { namespace chaindb {
             init_cursor_blob(cursor);
             CYBERWAY_ASSERT(cursor.blob.size() == size, invalid_data_size_exception,
                 "Wrong data size (${data_size} != ${object_size}) for the table ${table}",
-                ("data_size", size)("object_size", cursor.blob.size())("table", full_table_name(cursor.index)));
+                ("data_size", size)("object_size", cursor.blob.size())("table", get_full_table_name(cursor.index)));
 
             ::memcpy(const_cast<char*>(data), cursor.blob.data(), cursor.blob.size());
             return cursor;
@@ -299,10 +299,10 @@ namespace cyberway { namespace chaindb {
             auto raw_value = table.abi->to_object(table, data, size, max_abi_time);
             auto value = add_service_fields(table, payer, raw_value, pk, size);
 
-            auto inserted_pk = driver->insert(table, std::move(value));
+            auto inserted_pk = driver->insert(table, pk, std::move(value));
             CYBERWAY_ASSERT(inserted_pk == pk, driver_primary_key_exception,
                 "Driver returns ${ipk} instead of ${pk} on inserting into the table ${table}",
-                ("ipk", inserted_pk)("pk", pk)("table", full_table_name(table)));
+                ("ipk", inserted_pk)("pk", pk)("table", get_full_table_name(table)));
 
             // open cursor from inserted pk
             mutable_variant_object key_object;
@@ -315,7 +315,7 @@ namespace cyberway { namespace chaindb {
             driver->current(cursor);
             CYBERWAY_ASSERT(cursor.pk == pk, driver_primary_key_exception,
                 "Driver returns ${ipk} instead of ${pk} on loading from the table ${table}",
-                ("ipk", cursor.pk)("pk", pk)("table", full_table_name(table)));
+                ("ipk", cursor.pk)("pk", pk)("table", get_full_table_name(table)));
 
             // TODO: update RAM usage
             // TODO: add to undo_session
@@ -336,15 +336,15 @@ namespace cyberway { namespace chaindb {
             auto& orig_object = orig_value.get_object();
 
             if (payer.empty()) {
-                payer = orig_object[payer_field_name()].as_string();
+                payer = orig_object[get_payer_field_name()].as_string();
             }
 
             auto value = add_service_fields(table, payer, raw_value, pk, size);
 
-            auto updated_pk = driver->update(table, std::move(value));
+            auto updated_pk = driver->update(table, pk, std::move(value));
             CYBERWAY_ASSERT(updated_pk == pk, driver_primary_key_exception,
                 "Driver returns ${upk} instead of ${pk} on updating of the table ${table}",
-                ("upk", updated_pk)("pk", pk)("table", full_table_name(table)));
+                ("upk", updated_pk)("pk", pk)("table", get_full_table_name(table)));
 
             // TODO: update RAM usage
             // TODO: add to undo_session
@@ -362,7 +362,7 @@ namespace cyberway { namespace chaindb {
             auto deleted_pk = driver->remove(table, pk);
             CYBERWAY_ASSERT(deleted_pk == pk, driver_primary_key_exception,
                 "Driver returns ${dpk} instead of ${pk} on deleting of the table ${table}",
-                ("dpk", deleted_pk)("pk", pk)("table", full_table_name(table)));
+                ("dpk", deleted_pk)("pk", pk)("table", get_full_table_name(table)));
 
             // TODO: update RAM usage
             // TODO: add to undo_session
@@ -378,7 +378,7 @@ namespace cyberway { namespace chaindb {
             auto info = find_table<Info>(request);
             CYBERWAY_ASSERT(info.table, unknown_table_exception,
                 "ABI table ${table} doesn't exists",
-                ("table", full_table_name(request)));
+                ("table", get_full_table_name(request)));
 
             return info;
         }
@@ -387,7 +387,7 @@ namespace cyberway { namespace chaindb {
             auto info = find_index(request);
             CYBERWAY_ASSERT(info.index, unknown_index_exception,
                 "ABI index ${index} doesn't exists",
-                ("index", full_index_name(request)));
+                ("index", get_full_index_name(request)));
 
             return info;
         }
@@ -445,44 +445,44 @@ namespace cyberway { namespace chaindb {
                 "ChainDB driver returns not object.");
             auto& object = value.get_object();
 
-            auto& fields = _detail::reserved_fields();
+            auto& fields = _detail::get_reserved_fields();
             for (auto& field: fields) {
                 CYBERWAY_ASSERT(object.end() != object.find(field), driver_absent_field_exception,
                     "ChainDB driver returns object without field ${name} for the table ${table}.",
-                    ("table", full_table_name(table))("name", field));
+                    ("table", get_full_table_name(table))("name", field));
             }
 
             auto itr = object.find(*table.pk_field);
             CYBERWAY_ASSERT(object.end() != itr, driver_primary_key_exception,
-                "ChainDB driver returns object without primary key", ("table", full_table_name(table)));
+                "ChainDB driver returns object without primary key", ("table", get_full_table_name(table)));
 
             CYBERWAY_ASSERT(variant::uint64_type == itr->value().get_type(), driver_primary_key_exception,
-                "ChainDB driver returns object with wrong type of primary key", ("table", full_table_name(table)));
+                "ChainDB driver returns object with wrong type of primary key", ("table", get_full_table_name(table)));
 
             CYBERWAY_ASSERT(pk == itr->value().as_uint64(), driver_primary_key_exception,
-                "ChainDB driver returns object with wrong value of primary key", ("table", full_table_name(table)));
+                "ChainDB driver returns object with wrong value of primary key", ("table", get_full_table_name(table)));
         }
 
         void validate_service_fields(const table_info& table, const variant& value, const primary_key_t pk) const {
             // type is object - should be checked before this call
             auto& object = value.get_object();
-            auto& fields = _detail::reserved_fields();
+            auto& fields = _detail::get_reserved_fields();
 
             for (auto& field: fields) {
                 CYBERWAY_ASSERT(object.end() == object.find(field), reserved_field_name_exception,
                     "The table ${table} can't use ${name} as field name.",
-                    ("table", full_table_name(table))("name", field));
+                    ("table", get_full_table_name(table))("name", field));
             }
 
             auto itr = object.find(*table.pk_field);
             CYBERWAY_ASSERT(object.end() != itr, primary_key_exception,
-                "The table ${table} doesn't have primary key", ("table", full_table_name(table)));
+                "The table ${table} doesn't have primary key", ("table", get_full_table_name(table)));
 
             CYBERWAY_ASSERT(variant::uint64_type == itr->value().get_type(), primary_key_exception,
-                "The table ${table} has wrong type of primary key", ("table", full_table_name(table)));
+                "The table ${table} has wrong type of primary key", ("table", get_full_table_name(table)));
 
             CYBERWAY_ASSERT(pk == itr->value().as_uint64(), primary_key_exception,
-                "The table ${table} has wrong value of primary key", ("table", full_table_name(table)));
+                "The table ${table} has wrong value of primary key", ("table", get_full_table_name(table)));
         }
 
         variant add_service_fields(
@@ -494,9 +494,9 @@ namespace cyberway { namespace chaindb {
             validate_service_fields(table, value, pk);
 
             mutable_variant_object object(value);
-            object(scope_field_name(), scope_name(table));
-            object(payer_field_name(), payer_name(payer));
-            object(size_field_name(), size);
+            object(get_scope_field_name(), get_scope_name(table));
+            object(get_payer_field_name(), get_payer_name(payer));
+            object(get_size_field_name(), size);
 
             return variant(std::move(object));
         }

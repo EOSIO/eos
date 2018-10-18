@@ -26,25 +26,25 @@ namespace cyberway { namespace chaindb {
     static constexpr primary_key_t unset_primary_key = (-2);
     static constexpr primary_key_t end_primary_key = (-1);
 
-    struct index_request {
+    struct index_request final {
         const account_name code;
         const account_name scope;
         const table_name_t table;
         const index_name_t index;
     }; // struct index_request
 
-    struct table_request {
+    struct table_request final {
         const account_name code;
         const account_name scope;
         const table_name_t table;
     }; // struct table_request
 
-    struct cursor_request {
+    struct cursor_request final {
         const account_name code;
         const cursor_t id;
     }; // struct cursor_request
 
-    class chaindb_controller {
+    class chaindb_controller final {
     public:
         chaindb_controller() = delete;
         chaindb_controller(const chaindb_controller&) = delete;
@@ -83,7 +83,7 @@ namespace cyberway { namespace chaindb {
         std::unique_ptr<controller_impl_> impl_;
     }; // class chaindb_controller
 
-    class chaindb_guard {
+    class chaindb_guard final {
     public:
         chaindb_guard() = delete;
         chaindb_guard(const chaindb_guard&) = delete;
