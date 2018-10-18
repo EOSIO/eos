@@ -48,6 +48,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    bool                                                 stopping = false;
    fc::optional<scoped_connection>                      applied_transaction_connection;
    fc::optional<scoped_connection>                      accepted_block_connection;
+   fc::optional<scoped_connection>                      irreversible_block_connection;
    string                                               endpoint_address = "0.0.0.0";
    uint16_t                                             endpoint_port    = 4321;
    std::unique_ptr<tcp::acceptor>                       acceptor;
@@ -68,8 +69,29 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void get_block(uint32_t block_num, fc::optional<bytes>& result) {
-      auto p = chain_plug->chain().fetch_block_by_number(block_num);
+      chain::signed_block_ptr p;
+      try {
+         p = chain_plug->chain().fetch_block_by_number(block_num);
+      } catch (...) {
+         return;
+      }
       result = fc::raw::pack(*p);
+   }
+
+   fc::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
+      if (block_state_log && block_num >= block_state_log->begin_block() && block_num < block_state_log->end_block())
+         return block_state_log->get_block_id(block_num);
+      if (trace_log && block_num >= trace_log->begin_block() && block_num < trace_log->end_block())
+         return trace_log->get_block_id(block_num);
+      if (chain_state_log && block_num >= chain_state_log->begin_block() && block_num < chain_state_log->end_block())
+         return chain_state_log->get_block_id(block_num);
+      try {
+         auto block = chain_plug->chain().fetch_block_by_number(block_num);
+         if (block)
+            return block->id();
+      } catch (...) {
+      }
+      return {};
    }
 
    struct session : std::enable_shared_from_this<session> {
@@ -78,6 +100,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       bool                                       sending = false;
       bool                                       sentAbi = false;
       std::vector<std::vector<char>>             send_queue;
+      fc::optional<get_blocks_request_v0>        current_request;
+      bool                                       need_to_send_update = false;
 
       session(std::shared_ptr<state_history_plugin_impl> plugin)
           : plugin(std::move(plugin)) {}
@@ -129,8 +153,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
 
       void send() {
-         if (sending || send_queue.empty())
+         if (sending)
             return;
+         if (send_queue.empty())
+            return send_get_blocks();
          sending = true;
          stream->binary(sentAbi);
          sentAbi = true;
@@ -151,10 +177,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       void operator()(get_status_request_v0&) {
          auto&                chain = plugin->chain_plug->chain();
          get_status_result_v0 result;
-         result.head_block_num              = chain.head_block_num();
-         result.head_block_id               = chain.head_block_id();
-         result.last_irreversible_block_num = chain.last_irreversible_block_num();
-         result.last_irreversible_block_id  = chain.last_irreversible_block_id();
+         result.head              = {chain.head_block_num(), chain.head_block_id()};
+         result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
          if (plugin->block_state_log) {
             result.block_state_begin_block = plugin->block_state_log->begin_block();
             result.block_state_end_block   = plugin->block_state_log->end_block();
@@ -170,18 +194,58 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          send(std::move(result));
       }
 
-      void operator()(get_block_request_v0& req) {
-         // ilog("${b} get_block_request_v0", ("b", req.block_num));
-         get_block_result_v0 result{req.block_num};
-         if (req.fetch_block)
-            plugin->get_block(req.block_num, result.block);
-         if (req.fetch_block_state && plugin->block_state_log)
-            plugin->get_data(*plugin->block_state_log, req.block_num, result.block_state);
-         if (req.fetch_traces && plugin->trace_log)
-            plugin->get_data(*plugin->trace_log, req.block_num, result.traces);
-         if (req.fetch_deltas && plugin->chain_state_log)
-            plugin->get_data(*plugin->chain_state_log, req.block_num, result.deltas);
+      void operator()(get_blocks_request_v0& req) {
+         for (auto& cp : req.have_positions) {
+            if (req.start_block_num <= cp.block_num)
+               continue;
+            auto id = plugin->get_block_id(cp.block_num);
+            if (!id || *id != cp.block_id)
+               req.start_block_num = cp.block_num;
+         }
+         req.have_positions.clear();
+         current_request = req;
+         send_get_blocks(true);
+      }
+
+      void operator()(get_blocks_ack_request_v0& req) {
+         if (!current_request)
+            return;
+         current_request->max_messages_in_flight += req.num_messages;
+         send_get_blocks();
+      }
+
+      void send_get_blocks(bool changed = false) {
+         if (changed)
+            need_to_send_update = true;
+         if (!send_queue.empty() || !need_to_send_update || !current_request ||
+             !current_request->max_messages_in_flight)
+            return;
+         auto&                chain = plugin->chain_plug->chain();
+         get_blocks_result_v0 result;
+         result.head              = {chain.head_block_num(), chain.head_block_id()};
+         result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
+         uint32_t current =
+             current_request->irreversible_only ? result.last_irreversible.block_num : result.head.block_num;
+         if (current_request->start_block_num <= current &&
+             current_request->start_block_num < current_request->end_block_num) {
+            auto block_id = plugin->get_block_id(current_request->start_block_num);
+            if (block_id) {
+               result.this_block = block_position{current_request->start_block_num, *block_id};
+               if (current_request->fetch_block)
+                  plugin->get_block(current_request->start_block_num, result.block);
+               if (current_request->fetch_block_state && plugin->block_state_log)
+                  plugin->get_data(*plugin->block_state_log, current_request->start_block_num, result.block_state);
+               if (current_request->fetch_traces && plugin->trace_log)
+                  plugin->get_data(*plugin->trace_log, current_request->start_block_num, result.traces);
+               if (current_request->fetch_deltas && plugin->chain_state_log)
+                  plugin->get_data(*plugin->chain_state_log, current_request->start_block_num, result.deltas);
+            }
+            ++current_request->start_block_num;
+         }
          send(std::move(result));
+         --current_request->max_messages_in_flight;
+         need_to_send_update = current_request->start_block_num <= current &&
+                               current_request->start_block_num < current_request->end_block_num;
       }
 
       template <typename F>
@@ -292,6 +356,20 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       store_block_state(block_state);
       store_traces(block_state);
       store_chain_state(block_state);
+      for (auto& s : sessions) {
+         auto& p = s.second;
+         if (p) {
+            if (p->current_request && block_state->block_num < p->current_request->start_block_num)
+               p->current_request->start_block_num = block_state->block_num;
+            p->send_get_blocks(true);
+         }
+      }
+   }
+
+   void on_irreversible_block() {
+      // todo: get irreversible from block_state in on_accepted_block instead
+      for (auto& s : sessions)
+         s.second->send_get_blocks(true);
    }
 
    void store_block_state(const block_state_ptr& block_state) {
@@ -458,6 +536,8 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
           chain.applied_transaction.connect([&](const transaction_trace_ptr& p) { my->on_applied_transaction(p); }));
       my->accepted_block_connection.emplace(
           chain.accepted_block.connect([&](const block_state_ptr& p) { my->on_accepted_block(p); }));
+      my->irreversible_block_connection.emplace(
+          chain.irreversible_block.connect([&](const block_state_ptr&) { my->on_irreversible_block(); }));
 
       auto                    dir_option = options.at("state-history-dir").as<bfs::path>();
       boost::filesystem::path state_history_dir;
@@ -497,6 +577,7 @@ void state_history_plugin::plugin_startup() { my->listen(); }
 void state_history_plugin::plugin_shutdown() {
    my->applied_transaction_connection.reset();
    my->accepted_block_connection.reset();
+   my->irreversible_block_connection.reset();
    while (!my->sessions.empty())
       my->sessions.begin()->second->close();
    my->stopping = true;

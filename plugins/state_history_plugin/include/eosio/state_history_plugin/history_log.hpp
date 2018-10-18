@@ -122,6 +122,15 @@ class history_log {
       return log;
    }
 
+   chain::block_id_type get_block_id(uint32_t block_num) {
+      EOS_ASSERT(block_num >= _begin_block && block_num < _end_block, chain::plugin_exception,
+                 "read non-existing block in ${name}.log", ("name", name));
+      history_summary summary;
+      index.seekg((block_num - _begin_block) * sizeof(summary));
+      index.read((char*)&summary, sizeof(summary));
+      return summary.block_id;
+   }
+
  private:
    bool get_last_block(uint64_t size) {
       history_log_header header;

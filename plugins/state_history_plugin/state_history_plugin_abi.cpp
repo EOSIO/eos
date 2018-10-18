@@ -5,11 +5,15 @@ extern const char* const state_history_plugin_abi = R"({
             "name": "get_status_request_v0", "fields": []
         },
         {
+            "name": "block_position", "fields": [
+                { "name": "block_num", "type": "uint32" },
+                { "name": "block_id", "type": "checksum256" }
+            ]
+        },
+        {
             "name": "get_status_result_v0", "fields": [
-                { "name": "head_block_num", "type": "uint32" },
-                { "name": "head_block_id", "type": "checksum256" },
-                { "name": "last_irreversible_block_num", "type": "uint32" },
-                { "name": "last_irreversible_block_id", "type": "checksum256" },
+                { "name": "head", "type": "block_position" },
+                { "name": "last_irreversible", "type": "block_position" },
                 { "name": "block_state_begin_block", "type": "uint32" },
                 { "name": "block_state_end_block", "type": "uint32" },
                 { "name": "trace_begin_block", "type": "uint32" },
@@ -19,8 +23,12 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "get_block_request_v0", "fields": [
-                { "name": "block_num", "type": "uint32" },
+            "name": "get_blocks_request_v0", "fields": [
+                { "name": "start_block_num", "type": "uint32" },
+                { "name": "end_block_num", "type": "uint32" },
+                { "name": "max_messages_in_flight", "type": "uint32" },
+                { "name": "have_positions", "type": "block_position[]" },
+                { "name": "irreversible_only", "type": "bool" },
                 { "name": "fetch_block", "type": "bool" },
                 { "name": "fetch_block_state", "type": "bool" },
                 { "name": "fetch_traces", "type": "bool" },
@@ -28,8 +36,15 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "get_block_result_v0", "fields": [
-                { "name": "block_num", "type": "uint32" },
+            "name": "get_blocks_ack_request_v0", "fields": [
+                { "name": "num_messages", "type": "uint32" }
+            ]
+        },
+        {
+            "name": "get_blocks_result_v0", "fields": [
+                { "name": "head", "type": "block_position" },
+                { "name": "last_irreversible", "type": "block_position" },
+                { "name": "this_block", "type": "block_position?" },
                 { "name": "block", "type": "bytes?" },
                 { "name": "block_state", "type": "bytes?" },
                 { "name": "traces", "type": "bytes?" },
@@ -429,8 +444,8 @@ extern const char* const state_history_plugin_abi = R"({
         { "new_type_name": "transaction_id", "type": "checksum256" }
     ],
     "variants": [
-        { "name": "request", "types": ["get_status_request_v0", "get_block_request_v0"] },
-        { "name": "result", "types": ["get_status_result_v0", "get_block_result_v0"] },
+        { "name": "request", "types": ["get_status_request_v0", "get_blocks_request_v0", "get_blocks_ack_request_v0"] },
+        { "name": "result", "types": ["get_status_result_v0", "get_blocks_result_v0"] },
 
         { "name": "action_receipt", "types": ["action_receipt_v0"] },
         { "name": "action_trace", "types": ["action_trace_v0"] },
