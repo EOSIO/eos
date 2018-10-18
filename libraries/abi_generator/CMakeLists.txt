@@ -60,5 +60,4 @@ target_link_libraries(abi_generator
 
 if (USE_PCH)
   set_target_properties(abi_generator PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
-  cotire(eos_utilities)
 endif(USE_PCH)
