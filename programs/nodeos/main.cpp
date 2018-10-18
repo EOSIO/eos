@@ -9,7 +9,6 @@
 #include <eosio/history_plugin/history_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/utilities/common.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
