@@ -450,7 +450,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             auto& delta = deltas.back();
             delta.name  = name;
             for (auto& row : index.indices())
-               delta.rows.emplace_back(row.id._id, pack_row(row));
+               delta.rows.emplace_back(true, pack_row(row));
          } else {
             if (index.stack().empty())
                return;

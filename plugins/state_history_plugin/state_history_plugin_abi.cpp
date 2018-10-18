@@ -314,13 +314,10 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "generated_transaction_v0", "fields": [
-                { "type": "checksum256", "name": "trx_id" },
                 { "type": "name", "name": "sender" },
                 { "type": "uint128", "name": "sender_id" },
                 { "type": "name", "name": "payer" },
-                { "type": "time_point", "name": "delay_until" },
-                { "type": "time_point", "name": "expiration" },
-                { "type": "time_point", "name": "published" },
+                { "type": "checksum256", "name": "trx_id" },
                 { "type": "bytes", "name": "packed_trx" }
             ]
         },
@@ -485,7 +482,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index_double", "type": "contract_index_double", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "contract_index_long_double", "type": "contract_index_long_double", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "global_property", "type": "global_property", "key_names": [] },
-        { "name": "generated_transaction", "type": "generated_transaction", "key_names": ["trx_id"] },
+        { "name": "generated_transaction", "type": "generated_transaction", "key_names": ["sender", "sender_id"] },
         { "name": "permission", "type": "permission", "key_names": ["id"] },
         { "name": "permission_link", "type": "permission_link", "key_names": ["id"] },
         { "name": "resource_limits", "type": "resource_limits", "key_names": ["id"] },

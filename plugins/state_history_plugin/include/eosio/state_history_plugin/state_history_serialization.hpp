@@ -237,13 +237,10 @@ template <typename ST>
 datastream<ST>& operator<<(datastream<ST>&                                                           ds,
                            const history_serial_wrapper<eosio::chain::generated_transaction_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<eosio::chain::transaction_id_type>(obj.obj.trx_id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.sender.value));
    fc::raw::pack(ds, as_type<__uint128_t>(obj.obj.sender_id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.payer.value));
-   fc::raw::pack(ds, as_type<fc::time_point>(obj.obj.delay_until));
-   fc::raw::pack(ds, as_type<fc::time_point>(obj.obj.expiration));
-   fc::raw::pack(ds, as_type<fc::time_point>(obj.obj.published));
+   fc::raw::pack(ds, as_type<eosio::chain::transaction_id_type>(obj.obj.trx_id));
    fc::raw::pack(ds, as_type<eosio::chain::shared_string>(obj.obj.packed_trx));
    return ds;
 }
