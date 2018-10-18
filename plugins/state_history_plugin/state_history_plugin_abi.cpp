@@ -14,8 +14,6 @@ extern const char* const state_history_plugin_abi = R"({
             "name": "get_status_result_v0", "fields": [
                 { "name": "head", "type": "block_position" },
                 { "name": "last_irreversible", "type": "block_position" },
-                { "name": "block_state_begin_block", "type": "uint32" },
-                { "name": "block_state_end_block", "type": "uint32" },
                 { "name": "trace_begin_block", "type": "uint32" },
                 { "name": "trace_end_block", "type": "uint32" },
                 { "name": "chain_state_begin_block", "type": "uint32" },
@@ -30,7 +28,6 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "have_positions", "type": "block_position[]" },
                 { "name": "irreversible_only", "type": "bool" },
                 { "name": "fetch_block", "type": "bool" },
-                { "name": "fetch_block_state", "type": "bool" },
                 { "name": "fetch_traces", "type": "bool" },
                 { "name": "fetch_deltas", "type": "bool" }
             ]
@@ -46,7 +43,6 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "last_irreversible", "type": "block_position" },
                 { "name": "this_block", "type": "block_position?" },
                 { "name": "block", "type": "bytes?" },
-                { "name": "block_state", "type": "bytes?" },
                 { "name": "traces", "type": "bytes?" },
                 { "name": "deltas", "type": "bytes?" }
             ]
