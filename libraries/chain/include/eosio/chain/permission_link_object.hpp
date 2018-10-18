@@ -44,21 +44,21 @@ namespace eosio { namespace chain {
 
    struct by_action_name;
    struct by_permission_name;
-   using permission_link_index = chainbase::shared_multi_index_container<
+   using permission_link_index = chainbase::shared_multi_index_container2<
       permission_link_object,
-      indexed_by<
-         ordered_unique<tag<by_id>,
+      indexed_by2<
+         ordered_unique2<chaindb::tag<by_id>,
             BOOST_MULTI_INDEX_MEMBER(permission_link_object, permission_link_object::id_type, id)
          >,
-         ordered_unique<tag<by_action_name>,
-            composite_key<permission_link_object,
+         ordered_unique2<chaindb::tag<by_action_name>,
+            composite_key2<permission_link_object,
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, account),
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, code),
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, action_name, message_type)
             >
          >,
-         ordered_unique<tag<by_permission_name>,
-            composite_key<permission_link_object,
+         ordered_unique2<chaindb::tag<by_permission_name>,
+            composite_key2<permission_link_object,
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, account),
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, permission_name, required_permission),
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, code),
@@ -79,4 +79,5 @@ namespace eosio { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_link_object, eosio::chain::permission_link_index)
 
+FC_REFLECT(chainbase::oid<eosio::chain::permission_link_object>, (_id));
 FC_REFLECT(eosio::chain::permission_link_object, (id)(account)(code)(message_type)(required_permission))

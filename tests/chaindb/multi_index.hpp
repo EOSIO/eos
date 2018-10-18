@@ -52,6 +52,16 @@ fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<I1,I
     return stream;
 }
 
+template<typename T,typename I1, typename I2, typename I3, typename I4>
+fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<I1,I2,I3,I4>& value) {
+    // TODO Do streaming tuple values
+    fc::raw::pack(stream, boost::tuples::get<0>(value));
+    fc::raw::pack(stream, boost::tuples::get<1>(value));
+    fc::raw::pack(stream, boost::tuples::get<2>(value));
+    fc::raw::pack(stream, boost::tuples::get<3>(value));
+    return stream;
+}
+
 } } // namespace boost::tuples
 
 namespace chaindb {

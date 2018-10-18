@@ -56,6 +56,8 @@ namespace eosio { namespace chain {
 struct by_parent {};
 struct by_owner {};
 struct by_name {};
+struct by_action_name {};
+struct by_permission_name {};
 
 } } // namespace eosio::chain
 

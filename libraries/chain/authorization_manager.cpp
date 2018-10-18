@@ -24,7 +24,7 @@ namespace eosio { namespace chain {
    void authorization_manager::add_indices() {
       _db.add_database_index<permission_index>();
       _db.add_database_index<permission_usage_index>();
-      _db.add_index<permission_link_index>();
+      _db.add_database_index<permission_link_index>();
 
       {
           eosio::chain::abi_def abi;
@@ -87,6 +87,25 @@ namespace eosio { namespace chain {
                {name{chaindb::tag<by_parent>::get_name()}.to_string(), true, {"parent","id"}, {"asc","asc"}},
                {name{chaindb::tag<by_owner>::get_name()}.to_string(), true, {"owner","name"}, {"asc","asc"}},
                {name{chaindb::tag<by_name>::get_name()}.to_string(), true, {"name","id"}, {"asc","asc"}},
+            }
+          });
+
+          abi.structs.emplace_back (eosio::chain::struct_def{
+              "permlink", "",
+             {{"id", "uint64"},
+              {"account","name"},
+              {"code","name"},
+              {"action","name"},
+              {"permission","name"}}
+          });
+
+          abi.tables.emplace_back( eosio::chain::table_def {
+            name{chaindb::tag<permission_link_object>::get_name()}.to_string(),
+            "permlink",
+            {
+               {name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
+               {name{chaindb::tag<by_action_name>::get_name()}.to_string(), true, {"account","code","action"}, {"asc","asc","asc"}},
+               {name{chaindb::tag<by_permission_name>::get_name()}.to_string(), true, {"account","permission","code","action"}, {"asc","asc","asc","asc"}},
             }
           });
 
