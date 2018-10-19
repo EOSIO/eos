@@ -1,0 +1,9 @@
+steps:
+  - command: |
+        echo "New pipeline"
+    label: "Docker build"
+    agents:
+      - "role=automation-builder-large"
+    timeout: 300
+
+  - wait
