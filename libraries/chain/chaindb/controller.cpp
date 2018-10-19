@@ -4,6 +4,7 @@
 #include <cyberway/chaindb/exception.hpp>
 #include <cyberway/chaindb/names.hpp>
 #include <cyberway/chaindb/driver_interface.hpp>
+#include <cyberway/chaindb/undo_state.hpp>
 #include <cyberway/chaindb/mongo_driver.hpp>
 
 #include <boost/algorithm/string.hpp>
@@ -205,6 +206,7 @@ namespace cyberway { namespace chaindb {
     struct chaindb_controller::controller_impl_ final {
         const microseconds max_abi_time;
         std::unique_ptr<driver_interface> driver;
+        std::unique_ptr<undo_stack> undo;
 
         controller_impl_(const microseconds& max_abi_time, const chaindb_type t, string p)
         : max_abi_time(max_abi_time) {
@@ -217,6 +219,7 @@ namespace cyberway { namespace chaindb {
                     CYBERWAY_ASSERT(false, unknown_connection_type_exception,
                         "Invalid type of ChainDB connection");
             }
+            undo = std::make_unique<undo_stack>(*driver);
         }
 
         ~controller_impl_() = default;
@@ -299,7 +302,7 @@ namespace cyberway { namespace chaindb {
             auto raw_value = table.abi->to_object(table, data, size, max_abi_time);
             auto value = add_service_fields(table, payer, raw_value, pk, size);
 
-            auto inserted_pk = driver->insert(table, pk, std::move(value));
+            auto inserted_pk = driver->insert(table, pk, value);
             CYBERWAY_ASSERT(inserted_pk == pk, driver_primary_key_exception,
                 "Driver returns ${ipk} instead of ${pk} on inserting into the table ${table}",
                 ("ipk", inserted_pk)("pk", pk)("table", get_full_table_name(table)));
@@ -313,12 +316,15 @@ namespace cyberway { namespace chaindb {
 
             auto& cursor = driver->lower_bound(info, std::move(key));
             driver->current(cursor);
+            // impossible case?
             CYBERWAY_ASSERT(cursor.pk == pk, driver_primary_key_exception,
                 "Driver returns ${ipk} instead of ${pk} on loading from the table ${table}",
                 ("ipk", cursor.pk)("pk", pk)("table", get_full_table_name(table)));
 
             // TODO: update RAM usage
-            // TODO: add to undo_session
+
+            undo->insert(table, pk, std::move(value));
+
             return cursor;
         }
 
@@ -341,13 +347,14 @@ namespace cyberway { namespace chaindb {
 
             auto value = add_service_fields(table, payer, raw_value, pk, size);
 
-            auto updated_pk = driver->update(table, pk, std::move(value));
+            auto updated_pk = driver->update(table, pk, value);
             CYBERWAY_ASSERT(updated_pk == pk, driver_primary_key_exception,
                 "Driver returns ${upk} instead of ${pk} on updating of the table ${table}",
                 ("upk", updated_pk)("pk", pk)("table", get_full_table_name(table)));
 
             // TODO: update RAM usage
-            // TODO: add to undo_session
+
+            undo->update(table, pk, std::move(value));
 
             return updated_pk;
         }
@@ -365,7 +372,8 @@ namespace cyberway { namespace chaindb {
                 ("dpk", deleted_pk)("pk", pk)("table", get_full_table_name(table)));
 
             // TODO: update RAM usage
-            // TODO: add to undo_session
+
+            undo->remove(table, pk, std::move(orig_value));
 
             return deleted_pk;
         }
@@ -518,6 +526,10 @@ namespace cyberway { namespace chaindb {
 
     bool chaindb_controller::has_abi(const account_name& code) {
         return impl_->has_abi(code);
+    }
+
+    chaindb_session chaindb_controller::start_undo_session(bool enabled) {
+        return impl_->undo->start_undo_session(enabled);
     }
 
     void chaindb_controller::close(const cursor_request& request) {

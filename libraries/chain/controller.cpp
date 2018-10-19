@@ -33,12 +33,14 @@ class maybe_session {
       maybe_session() = default;
 
       maybe_session( maybe_session&& other)
-      :_session(move(other._session))
+      :_session(move(other._session)),
+       _chaindb_session(move(other._chaindb_session))
       {
       }
 
-      explicit maybe_session(database& db) {
+      explicit maybe_session(database& db, chaindb_controller& chaindb) {
          _session = db.start_undo_session(true);
+         _chaindb_session = chaindb.start_undo_session(true);
       }
 
       maybe_session(const maybe_session&) = delete;
@@ -46,16 +48,25 @@ class maybe_session {
       void squash() {
          if (_session)
             _session->squash();
+         if (_chaindb_session) {
+            _chaindb_session->squash();
+         }
       }
 
       void undo() {
          if (_session)
             _session->undo();
+         if (_chaindb_session) {
+            _chaindb_session->undo();
+         }
       }
 
       void push() {
          if (_session)
             _session->push();
+         if (_chaindb_session) {
+            _chaindb_session->push();
+         }
       }
 
       maybe_session& operator = ( maybe_session&& mv ) {
@@ -66,11 +77,19 @@ class maybe_session {
             _session.reset();
          }
 
+         if (mv._chaindb_session) {
+            _chaindb_session = move(*mv._chaindb_session);
+            mv._chaindb_session.reset();
+         } else {
+            _chaindb_session.reset();
+         }
+
          return *this;
       };
 
    private:
       optional<database::session>     _session;
+      optional<chaindb_session>       _chaindb_session;
 };
 
 struct pending_state {
@@ -611,7 +630,7 @@ struct controller_impl {
    { try {
       maybe_session undo_session;
       if ( !self.skip_db_sessions() )
-         undo_session = maybe_session(db);
+         undo_session = maybe_session(db, chaindb);
 
       auto gtrx = generated_transaction(gto);
 
@@ -893,7 +912,7 @@ struct controller_impl {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-         pending.emplace(maybe_session(db));
+         pending.emplace(maybe_session(db, chaindb));
       } else {
          pending.emplace(maybe_session());
       }

@@ -18,6 +18,7 @@ namespace eosio { namespace chain {
 
    using cyberway::chaindb::chaindb_controller;
    using cyberway::chaindb::chaindb_type;
+   using cyberway::chaindb::chaindb_session;
 
    class authorization_manager;
 

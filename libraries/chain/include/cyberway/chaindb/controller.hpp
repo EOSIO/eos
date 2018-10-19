@@ -59,6 +59,8 @@ namespace cyberway { namespace chaindb {
         void close(const cursor_request&);
         void close_all_cursors(const account_name&);
 
+        chaindb_session start_undo_session(bool enabled);
+
         cursor_t lower_bound(const index_request&, const char* key, size_t);
         cursor_t upper_bound(const index_request&, const char* key, size_t);
         cursor_t find(const index_request&, primary_key_t, const char* key, size_t);

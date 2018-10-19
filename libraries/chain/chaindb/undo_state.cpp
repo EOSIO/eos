@@ -246,16 +246,16 @@ namespace cyberway { namespace chaindb {
             });
         }
 
-        void update(const table_info& table, const primary_key_t pk, const variant& value) {
-            update(get_table(table), pk, value);
+        void update(const table_info& table, const primary_key_t pk, variant value) {
+            update(get_table(table), pk, std::move(value));
         }
 
-        void remove(const table_info& table, const primary_key_t pk, const variant& value) {
-            remove(get_table(table), pk, value);
+        void remove(const table_info& table, const primary_key_t pk, variant value) {
+            remove(get_table(table), pk, std::move(value));
         }
 
-        void insert(const table_info& table, const primary_key_t pk, const variant& value) {
-            insert(get_table(table), pk, value);
+        void insert(const table_info& table, const primary_key_t pk, variant value) {
+            insert(get_table(table), pk, std::move(value));
         }
 
     private:
@@ -436,7 +436,7 @@ namespace cyberway { namespace chaindb {
             }
         }
 
-        void update(table_undo_stack& table, const primary_key_t pk, const variant& value) {
+        void update(table_undo_stack& table, const primary_key_t pk, variant value) {
             auto& head = table.head();
 
             if (head.new_ids.find(pk) != head.new_ids.end()) {
@@ -448,10 +448,10 @@ namespace cyberway { namespace chaindb {
                 return;
             }
 
-            head.old_values.emplace(pk, value);
+            head.old_values.emplace(pk, std::move(value));
         }
 
-        void remove(table_undo_stack& table, const primary_key_t pk, const variant& value) {
+        void remove(table_undo_stack& table, const primary_key_t pk, variant value) {
             auto& head = table.head();
 
             if (head.new_ids.count(pk)) {
@@ -470,10 +470,10 @@ namespace cyberway { namespace chaindb {
                 return;
             }
 
-            head.removed_values.emplace(pk, value);
+            head.removed_values.emplace(pk, std::move(value));
         }
 
-        void insert(table_undo_stack& table, const primary_key_t pk, const variant& value) {
+        void insert(table_undo_stack& table, const primary_key_t pk, variant value) {
             auto& head = table.head();
             head.new_ids.insert(pk);
         }
@@ -481,15 +481,16 @@ namespace cyberway { namespace chaindb {
         int64_t revision_ = 0;
         driver_interface& driver_;
         table_undo_stack_index tables_;
-
     }; // struct undo_stack::undo_stack_impl_
 
     undo_stack::undo_stack(driver_interface& driver)
     : impl_(new undo_stack_impl_(driver))
     { }
 
-    session undo_stack::start_undo_session(bool enabled) {
-        return session(*this, impl_->start_undo_session(enabled));
+    undo_stack::~undo_stack() = default;
+
+    chaindb_session undo_stack::start_undo_session(bool enabled) {
+        return chaindb_session(*this, impl_->start_undo_session(enabled));
     }
 
     void undo_stack::set_revision(const int64_t value) {
@@ -520,48 +521,56 @@ namespace cyberway { namespace chaindb {
         impl_->undo_all();
     }
 
-    void undo_stack::update(const table_info& table, const primary_key_t pk, const variant& value) {
-        impl_->update(table, pk, value);
+    void undo_stack::update(const table_info& table, const primary_key_t pk, variant value) {
+        impl_->update(table, pk, std::move(value));
     }
 
-    void undo_stack::remove(const table_info& table, const primary_key_t pk, const variant& value) {
-        impl_->remove(table, pk, value);
+    void undo_stack::remove(const table_info& table, const primary_key_t pk, variant value) {
+        impl_->remove(table, pk, std::move(value));
     }
 
-    void undo_stack::insert(const table_info& table, const primary_key_t pk, const variant& value) {
-        impl_->insert(table, pk, value);
+    void undo_stack::insert(const table_info& table, const primary_key_t pk, variant value) {
+        impl_->insert(table, pk, std::move(value));
     }
 
     //------
 
-    session::session(session&& mv)
+    chaindb_session::chaindb_session(undo_stack& stack, int64_t revision)
+    : stack_(stack),
+      revision_(revision) {
+        if (revision == -1) {
+            apply_ = false;
+        }
+    }
+
+    chaindb_session::chaindb_session(chaindb_session&& mv)
     : stack_(mv.stack_),
       apply_(mv.apply_),
       revision_(mv.revision_) {
         mv.apply_ = false;
     }
 
-    session::~session() {
+    chaindb_session::~chaindb_session() {
         if (apply_) {
             stack_.undo(revision_);
         }
     }
 
-    void session::push() {
+    void chaindb_session::push() {
         if (apply_) {
             apply_ = false;
             stack_.push(revision_);
         }
     }
 
-    void session::squash() {
+    void chaindb_session::squash() {
         if (apply_) {
             stack_.squash(revision_);
         }
         apply_ = false;
     }
 
-    void session::undo() {
+    void chaindb_session::undo() {
         if (apply_) {
             stack_.undo(revision_);
         }

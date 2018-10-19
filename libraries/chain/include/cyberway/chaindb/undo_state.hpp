@@ -11,7 +11,9 @@ namespace cyberway { namespace chaindb {
         undo_stack(const undo_stack&) = delete;
         undo_stack(undo_stack&&) = delete;
 
-        session start_undo_session(bool enabled);
+        ~undo_stack();
+
+        chaindb_session start_undo_session(bool enabled);
 
         void set_revision(int64_t revision);
         int64_t revision() const;
@@ -46,17 +48,17 @@ namespace cyberway { namespace chaindb {
         /**
          * Event on create objects
          */
-        void insert(const table_info&, primary_key_t pk, const variant& value);
+        void insert(const table_info&, primary_key_t pk, variant value);
 
         /**
          * Event on modify objects
          */
-        void update(const table_info&, primary_key_t pk, const variant& value);
+        void update(const table_info&, primary_key_t pk, variant value);
 
         /**
          * Event on remove objects
          */
-        void remove(const table_info&, primary_key_t pk, const variant& value);
+        void remove(const table_info&, primary_key_t pk, variant value);
 
     private:
         struct undo_stack_impl_;

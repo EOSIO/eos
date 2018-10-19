@@ -6,7 +6,7 @@ set(CHAINDB_INCS "")
 set(CHAINDB_LIBS "")
 set(CHAINDB_SRCS "")
 
-if (BUILD_CHAINDB_MONGO)
+if (BUILD_CYBERWAY_CHAINDB_MONGO)
 
     find_package(libmongoc-1.0 1.8)
 

@@ -807,7 +807,7 @@ namespace cyberway { namespace chaindb {
         return 1;
     }
 
-    primary_key_t mongodb_driver::insert(const table_info& table, const primary_key_t pk, variant value) {
+    primary_key_t mongodb_driver::insert(const table_info& table, const primary_key_t pk, const variant& value) {
         auto& object = value.get_object();
 
         document insert;
@@ -821,7 +821,7 @@ namespace cyberway { namespace chaindb {
         return pk;
     }
 
-    primary_key_t mongodb_driver::update(const table_info& table, const primary_key_t pk, variant value) {
+    primary_key_t mongodb_driver::update(const table_info& table, const primary_key_t pk, const variant& value) {
         auto& object = value.get_object();
 
         document update;

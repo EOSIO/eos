@@ -15,12 +15,12 @@ namespace cyberway { namespace chaindb {
     class chaindb_controller;
     class undo_stack;
 
-    class session final {
+    class chaindb_session final {
     public:
-        session(session&& mv);
-        ~session();
+        chaindb_session(chaindb_session&& mv);
+        ~chaindb_session();
 
-        session& operator=(session&& mv) = delete;
+        chaindb_session& operator=(chaindb_session&& mv) = delete;
 
         /** leaves the UNDO state on the stack when session goes out of scope */
         void push();
@@ -38,7 +38,7 @@ namespace cyberway { namespace chaindb {
     private:
         friend class undo_stack;
 
-        session(undo_stack& stack, int64_t revision);
+        chaindb_session(undo_stack& stack, int64_t revision);
 
         undo_stack& stack_;
         bool apply_ = true;

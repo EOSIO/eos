@@ -4,6 +4,9 @@
 #define NOT_SUPPORTED CYBERWAY_ASSERT(false, broken_driver_exception, "MongoDB driver is not supported")
 
 namespace cyberway { namespace chaindb {
+    struct mongodb_driver::mongodb_impl_ {
+    }; // struct mongodb_driver::mongodb_impl_
+
     mongodb_driver::mongodb_driver(const std::string&) {
         NOT_SUPPORTED;
     }
@@ -74,11 +77,11 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
-    primary_key_t mongodb_driver::insert(const table_info&, variant) {
+    primary_key_t mongodb_driver::insert(const table_info&, primary_key_t, const variant&) {
         NOT_SUPPORTED;
     }
 
-    primary_key_t mongodb_driver::update(const table_info&, variant) {
+    primary_key_t mongodb_driver::update(const table_info&, primary_key_t, const variant&) {
         NOT_SUPPORTED;
     }
 
