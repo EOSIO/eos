@@ -48,7 +48,7 @@
    DISK_MIN=20
    DOXYGEN=false
    ENABLE_COVERAGE_TESTING=false
-   CORE_SYMBOL_NAME="SYS"
+   CORE_SYMBOL_NAME="UOS"
    START_MAKE=true
    TEMP_DIR="/tmp"
    TIME_BEGIN=$( date -u +%s )
