@@ -18,6 +18,7 @@
 
 #include <boost/hana.hpp>
 #include <boost/multi_index/mem_fun.hpp>
+#include <boost/tuple/tuple_comparison.hpp>
 
 #include "chaindb.h"
 
@@ -25,14 +26,64 @@ using fc::raw::pack_size;
 
 #define chaindb_assert(_EXPR, ...) EOS_ASSERT(_EXPR, fc::exception, __VA_ARGS__)
 
+namespace boost { namespace tuples {
+
+template<typename T,typename I1>
+fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<I1>& value) {
+    // TODO Do streaming tuple values
+    fc::raw::pack(stream, boost::tuples::get<0>(value));
+    return stream;
+}
+
+template<typename T,typename I1, typename I2>
+fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<I1,I2>& value) {
+    // TODO Do streaming tuple values
+    fc::raw::pack(stream, boost::tuples::get<0>(value));
+    fc::raw::pack(stream, boost::tuples::get<1>(value));
+    return stream;
+}
+
+template<typename T,typename I1, typename I2, typename I3>
+fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<I1,I2,I3>& value) {
+    // TODO Do streaming tuple values
+    fc::raw::pack(stream, boost::tuples::get<0>(value));
+    fc::raw::pack(stream, boost::tuples::get<1>(value));
+    fc::raw::pack(stream, boost::tuples::get<2>(value));
+    return stream;
+}
+
+} } // namespace boost::tuples
+
 namespace chaindb {
+
+inline const uint64_t hash_64_fnv1a(const void* key, const uint64_t len) {
+    
+    const char* data = (char*)key;
+    uint64_t hash = 0xcbf29ce484222325;
+    uint64_t prime = 0x100000001b3;
+    
+    for(int i = 0; i < len; ++i) {
+        uint8_t value = data[i];
+        hash = hash ^ value;
+        hash *= prime;
+    }
+    
+    return hash;
+
+} //hash_64_fnv1a
+
+
+inline const uint64_t hash_64_fnv1a(const std::string& value) {
+    return hash_64_fnv1a(value.c_str(), value.length());
+}
 
 using boost::multi_index::const_mem_fun;
 
 template<index_name_t IndexName, typename Extractor>
 struct indexed_by {
-    enum constants { index_name = IndexName };
+    //enum constants { index_name = IndexName };
     typedef Extractor extractor_type;
+    using index_name = std::integral_constant<index_name_t,IndexName>;
 };
 
 struct primary_key_extractor {
@@ -79,46 +130,146 @@ void safe_allocate(const size_t size, const char* error_msg, Lambda&& callback) 
     callback(alloc.data, size);
 }
 
-template<table_name_t TableName, typename PrimaryKeyExtractor, typename T, typename... Indices>
-class multi_index {
-private:
-    static_assert(sizeof...(Indices) <= 16, "multi_index only supports a maximum of 16 secondary indices");
+template<class C> struct tag {
+    using type = C;
 
-    constexpr static bool validate_table_name(table_name_t n) {
-        // Limit table names to 12 characters so that
-        // the last character (4 bits) can be used to distinguish between the secondary indices.
-        return (n & 0x000000000000000FULL) == 0;
+    static uint64_t get_name() {
+        return hash_64_fnv1a(boost::core::demangle(typeid(C).name()));
+    }
+};
+
+template<typename C> struct default_comparator {
+};
+
+template<typename Tag, typename KeyExtractor, typename KeyComparator = default_comparator<typename KeyExtractor::result_type> > 
+struct ordered_unique {
+    using tag_type = typename Tag::type;
+    using extractor_type = KeyExtractor;
+    using comparator_type = KeyComparator;
+};
+
+template<typename Key>
+struct key_comparator {
+    static bool compare_eq(const Key& left, const Key& right) {
+        return left == right;
+    }
+};
+
+template<typename... Indices>
+struct key_comparator<boost::tuple<Indices...>> {
+    using key_type = boost::tuple<Indices...>;
+
+    static bool compare_eq(const key_type& left, const key_type& right) {
+        return left == right;
     }
 
-    static_assert(
-        validate_table_name(TableName),
-        "multi_index does not support table names with a length greater than 12");
+    template<typename Value>
+    static bool compare_eq(const key_type& left, const Value& value) {
+        return boost::tuples::get<0>(left) == value;
+    }
+
+    template<typename V1,typename V2>
+    static bool compare_eq(const key_type& left, const boost::tuple<V1,V2>& value) {
+        return boost::tuples::get<0>(left) == boost::tuples::get<0>(value) &&
+               boost::tuples::get<1>(left) == boost::tuples::get<1>(value);
+    }
+};
+
+template<typename Key>
+struct key_converter {
+    static Key convert(const Key& key) {
+        return key;
+    }
+};
+
+template<typename... Indices>
+struct key_converter<boost::tuple<Indices...>> {
+    template<typename Value>
+    static boost::tuple<Indices...> convert(const Value& value) {
+        boost::tuple<Indices...> index;
+        boost::tuples::get<0>(index) = value;
+        return index;
+    }
+
+    template<typename Value>
+    static boost::tuple<Indices...> convert(const boost::tuple<Value>& value) {
+        boost::tuple<Indices...> index;
+        boost::tuples::get<0>(index) = boost::tuples::get<0>(value);
+        return index;
+    }
+
+    template<typename V1,typename V2>
+    static boost::tuple<Indices...> convert(const boost::tuple<V1,V2>& value) {
+        boost::tuple<Indices...> index;
+        boost::tuples::get<0>(index) = boost::tuples::get<0>(value);
+        boost::tuples::get<1>(index) = boost::tuples::get<1>(value);
+        return index;
+    }
+};
+
+
+template<typename T>
+struct name_extractor;
+
+template<typename C>
+struct name_extractor<tag<C>> {
+    static uint64_t get_name() {
+        return tag<C>::get_name();
+    }
+};
+
+template<uint64_t N>
+struct name_extractor<std::integral_constant<uint64_t,N>> {
+    constexpr static uint64_t get_name() {return N;}
+};
+
+template<typename Tag, typename Extractor>
+struct PrimaryIndex {
+    using tag = Tag;
+    using extractor = Extractor;
+};
+
+template<typename TableName, typename Index, typename T, typename Allocator, typename... Indices>
+struct multi_index_impl {
+//private:
+    static_assert(sizeof...(Indices) <= 16, "multi_index only supports a maximum of 16 secondary indices");
 
     const account_name_t code_;
     const account_name_t scope_;
+    Allocator allocator_;
 
     mutable primary_key_t next_primary_key_ = end_primary_key;
 
     struct item: public T {
-        template<typename Constructor>
-        item(const multi_index* midx, Constructor&& constructor)
+        /*template<typename Constructor>
+        item(const multi_index_impl* midx, Constructor&& constructor)
             : multidx_(midx) {
             constructor(*this);
+        }*/
+    
+    
+    
+        template<typename Constructor>
+        item(const multi_index_impl* midx, Constructor&& constructor)
+            : T(constructor, midx->allocator_), multidx_(midx) 
+        {
         }
 
-        const multi_index* const multidx_;
+        const multi_index_impl* const multidx_;
         bool deleted_ = false;
+    
+        using value_type = T;
     }; // struct item
 
     using item_ptr = std::shared_ptr<item>;
 
     mutable std::vector<item_ptr> items_vector_;
 
-    using primary_key_extractor_type = PrimaryKeyExtractor;
+    using primary_key_extractor_type = typename Index::extractor;
 
-    template<index_name_t IndexName, typename Extractor> struct index;
+    template<typename IndexName, typename Extractor> struct index;
 
-    template<index_name_t IndexName>
+    template<typename IndexName>
     struct const_iterator_impl: public std::iterator<std::bidirectional_iterator_tag, const T> {
     public:
         friend bool operator == (const const_iterator_impl& a, const const_iterator_impl& b) {
@@ -128,8 +279,8 @@ private:
             return !(operator == (a, b));
         }
 
-        constexpr static table_name_t table_name() { return TableName; }
-        constexpr static index_name_t index_name() { return IndexName; }
+        constexpr static table_name_t table_name() { return name_extractor<TableName>::get_name(); }
+        constexpr static index_name_t index_name() { return name_extractor<IndexName>::get_name(); }
         account_name_t get_code() const            { return multidx_->get_code(); }
         account_name_t get_scope() const           { return multidx_->get_scope(); }
 
@@ -206,22 +357,22 @@ private:
             if (cursor_ != invalid_cursor) chaindb_close(cursor_);
         }
 
-    private:
-        friend multi_index;
+    //private:
+        friend multi_index_impl;
         template<index_name_t, typename> struct index;
 
-        const_iterator_impl(const multi_index* midx)
+        const_iterator_impl(const multi_index_impl* midx)
             : multidx_(midx) { }
 
-        const_iterator_impl(const multi_index* midx, const cursor_t cursor)
+        const_iterator_impl(const multi_index_impl* midx, const cursor_t cursor)
             : multidx_(midx), cursor_(cursor) {
             if (cursor_ != invalid_cursor) primary_key_ = chaindb_current(cursor);
         }
 
-        const_iterator_impl(const multi_index* midx, const cursor_t cursor, const primary_key_t pk)
+        const_iterator_impl(const multi_index_impl* midx, const cursor_t cursor, const primary_key_t pk)
             : multidx_(midx), cursor_(cursor), primary_key_(pk) {}
 
-        const multi_index* multidx_ = nullptr;
+        const multi_index_impl* multidx_ = nullptr;
         mutable cursor_t cursor_ = invalid_cursor;
         mutable primary_key_t primary_key_ = end_primary_key;
         mutable item_ptr item_;
@@ -240,24 +391,18 @@ private:
             cursor_ = chaindb_end(get_code(), get_scope(), table_name(), index_name());
             chaindb_assert(cursor_ != invalid_cursor, "unable to open end iterator");
         }
-    }; /// struct multi_index::const_iterator_impl
+    }; /// struct multi_index_impl::const_iterator_impl
 
-    template<index_name_t IndexName, typename Extractor>
+    template<typename IndexName, typename Extractor>
     struct index {
     public:
         using extractor_type = Extractor;
-        using key_type = typename std::decay<decltype(Extractor()(nullptr))>::type;
+        using key_type = typename std::decay<decltype(Extractor()(static_cast<const T&>(*(const T*)nullptr)))>::type;
         using const_iterator = const_iterator_impl<IndexName>;
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-        constexpr static bool validate_index_name(index_name_t n) {
-           return n != 0;
-        }
-
-        static_assert(validate_index_name(IndexName), "invalid index name used in multi_index");
-
-        constexpr static table_name_t table_name() { return TableName; }
-        constexpr static index_name_t index_name() { return IndexName; }
+        constexpr static table_name_t table_name() { return name_extractor<TableName>::get_name(); }
+        constexpr static index_name_t index_name() { return name_extractor<IndexName>::get_name(); }
         account_name_t get_code() const            { return multidx_->get_code(); }
         account_name_t get_scope() const           { return multidx_->get_scope(); }
 
@@ -281,6 +426,17 @@ private:
         const_iterator find(key_type&& key) const {
            return find(key);
         }
+        
+        template<typename Value>
+        const_iterator find(const Value& value) const {
+           auto key = key_converter<key_type>::convert(value);
+           auto itr = lower_bound(key);
+           auto etr = cend();
+           if (itr == etr) return etr;
+           if (!key_comparator<key_type>::compare_eq(extractor_type()(*itr), value)) return etr;
+           return itr;
+        }
+
         const_iterator find(const key_type& key) const {
            auto itr = lower_bound(key);
            auto etr = cend();
@@ -320,6 +476,11 @@ private:
             return const_iterator(multidx_, cursor);
         }
 
+        template<typename Value>
+        const_iterator lower_bound(const Value& value) const {
+            return lower_bound(key_converter<key_type>::convert(value));
+        }
+
         const_iterator upper_bound(key_type&& key) const {
            return upper_bound(key);
         }
@@ -332,12 +493,30 @@ private:
             return const_iterator(multidx_, cursor);
         }
 
+        std::pair<const_iterator,const_iterator> equal_range(key_type&& key) const {
+            return upper_bound(key);
+        }
+        std::pair<const_iterator,const_iterator> equal_range(const key_type& key) const {
+            return make_pair(lower_bound(key), upper_bound(key));
+        }
+
+        template<typename Value>
+        std::pair<const_iterator,const_iterator> equal_range(const Value& value) const {
+            const_iterator lower = lower_bound(value);
+            const_iterator upper = lower;
+            auto etr = cend();
+            while(upper != etr && key_comparator<key_type>::compare_eq(extractor_type()(*upper), value))
+                ++upper;
+
+            return make_pair(lower, upper);
+        }
+
         const_iterator iterator_to(const T& obj) const {
             const auto& itm = static_cast<const item&>(obj);
             chaindb_assert(itm.multidx_ == multidx_, "object passed to iterator_to is not in multi_index");
 
             auto key = extractor_type()(itm);
-            auto pk = primary_key_extractor_type()(itm);
+            auto pk = primary_key_extractor_type()(obj);
             cursor_t cursor;
             safe_allocate(pack_size(key), "invalid size of key", [&](auto& data, auto& size) {
                 pack_object(key, data, size);
@@ -362,24 +541,32 @@ private:
 
         static auto extract_key(const T& obj) { return extractor_type()(obj); }
 
-    private:
-        friend class multi_index;
+    //private:
+        friend struct multi_index_impl;
 
-        index(const multi_index* midx)
+        index(const multi_index_impl* midx)
             : multidx_(midx) { }
 
-        const multi_index* const multidx_;
-    }; /// struct multi_index::index
+        const multi_index_impl* const multidx_;
+    }; /// struct multi_index_impl::index
 
-    using indices_type = decltype(boost::hana::tuple<Indices...>());
+    template<typename... Idx>
+    struct index_container {
+        using type = decltype(boost::hana::tuple<Idx...>());
+    };
+
+    using indices_type = typename index_container<Indices...>::type; //decltype(boost::hana::tuple<Indices...>());
 
     indices_type indices_;
 
-    index<N(primary), PrimaryKeyExtractor> primary_idx_;
-
+    using primary_index_type = index<typename Index::tag,typename Index::extractor>;
+    primary_index_type primary_idx_;
+    //index<std::integral_constant<index_name_t,N(primary)>, PrimaryKeyExtractor> primary_idx_;
+    
     item_ptr find_object_in_cache(const primary_key_t pk) const {
         auto itr = std::find_if(items_vector_.rbegin(), items_vector_.rend(), [&pk](const auto& itm) {
-            return primary_key_extractor_type()(*itm) == pk;
+            auto& obj = static_cast<T&>(*itm);
+            return primary_key_extractor_type()(obj) == pk;
         });
         if (items_vector_.rend() != itr) {
             return (*itr);
@@ -393,7 +580,8 @@ private:
 
     void remove_object_from_cache(const primary_key_t pk) const {
         auto itr = std::find_if(items_vector_.rbegin(), items_vector_.rend(), [&pk](const auto& itm) {
-            return primary_key_extractor_type()(*itm) == pk;
+            auto& obj = static_cast<T&>(*itm);
+            return primary_key_extractor_type()(obj) == pk;
         });
         if (items_vector_.rend() != itr) {
             (*itr)->deleted_ = true;
@@ -416,20 +604,21 @@ private:
             });
         });
 
-        auto ptr_pk = primary_key_extractor_type()(*ptr);
+        auto& obj = static_cast<T&>(*ptr);
+        auto ptr_pk = primary_key_extractor_type()(obj);
         chaindb_assert(ptr_pk == pk, "invalid primary key of object");
         add_object_to_cache(ptr);
         return ptr;
     }
 public:
-    using const_iterator = const_iterator_impl<N(primary)>;
+    using const_iterator = typename primary_index_type::const_iterator; //const_iterator_impl<std::integral_constant<index_name_t,N(primary)>>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
 public:
-    multi_index(const account_name_t code, account_name_t scope)
-        : code_(code), scope_(scope), primary_idx_(this) {}
+    multi_index_impl(const account_name_t code, account_name_t scope, Allocator *allocator = nullptr)
+        : code_(code), scope_(scope), allocator_(*allocator), primary_idx_(this) {}
 
-    constexpr static table_name_t table_name() { return TableName; }
+    constexpr static table_name_t table_name() { return name_extractor<TableName>::get_name(); }
 
     account_name_t get_code() const  { return code_; }
     account_name_t get_scope() const { return scope_; }
@@ -462,18 +651,31 @@ public:
         return next_primary_key_;
     }
 
+    template<typename IndexTag>
+    auto get_index() const {
+        namespace hana = boost::hana;
+
+        auto res = hana::find_if(indices_, [](auto&& in) {
+            return std::is_same<typename std::decay<decltype(in)>::type::tag_type,tag<IndexTag>>();
+        });
+
+        static_assert(res != hana::nothing, "name provided is not the name of any secondary index within multi_index");
+
+        return index<IndexTag, typename std::decay<decltype(res.value())>::type::extractor_type>(this);
+    }
+
     template<index_name_t IndexName>
     auto get_index() const {
         namespace hana = boost::hana;
 
         auto res = hana::find_if(indices_, [](auto&& in) {
             return std::integral_constant<
-                bool, std::decay<decltype(in)>::type::index_name == IndexName>();
+                bool, std::decay<decltype(in)>::type::index_name::value == IndexName>();
         });
 
         static_assert(res != hana::nothing, "name provided is not the name of any secondary index within multi_index");
 
-        return index<IndexName, typename std::decay<decltype(res.value())>::type::extractor_type>(this);
+        return index<std::integral_constant<index_name_t,IndexName>, typename std::decay<decltype(res.value())>::type::extractor_type>(this);
     }
 
     const_iterator iterator_to(const T& obj) const {
@@ -575,5 +777,12 @@ public:
         chaindb_assert(dpk == pk, "unable to delete object");
     }
 };
+
+template<table_name_t TableName, typename PrimaryKeyExtractor, typename T, typename... Indices>
+using multi_index = multi_index_impl<
+    std::integral_constant<table_name_t,TableName>,
+    PrimaryIndex<std::integral_constant<index_name_t,N(primary)>,PrimaryKeyExtractor>,
+    T,
+    Indices...>;
 
 }  /// chaindb

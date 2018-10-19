@@ -17,10 +17,10 @@ namespace eosio { namespace chain {
    };
 
    struct by_account_permission;
-   using permission_usage_index = chainbase::shared_multi_index_container<
+   using permission_usage_index = chainbase::shared_multi_index_container2<
       permission_usage_object,
-      indexed_by<
-         ordered_unique<tag<by_id>, member<permission_usage_object, permission_usage_object::id_type, &permission_usage_object::id>>
+      indexed_by2<
+         ordered_unique2<chaindb::tag<by_id>, member<permission_usage_object, permission_usage_object::id_type, &permission_usage_object::id>>
       >
    >;
 
@@ -73,24 +73,24 @@ namespace eosio { namespace chain {
    struct by_parent;
    struct by_owner;
    struct by_name;
-   using permission_index = chainbase::shared_multi_index_container<
+   using permission_index = chainbase::shared_multi_index_container2<
       permission_object,
-      indexed_by<
-         ordered_unique<tag<by_id>, member<permission_object, permission_object::id_type, &permission_object::id>>,
-         ordered_unique<tag<by_parent>,
-            composite_key<permission_object,
+      indexed_by2<
+         ordered_unique2<chaindb::tag<by_id>, member<permission_object, permission_object::id_type, &permission_object::id>>,
+         ordered_unique2<chaindb::tag<by_parent>,
+            composite_key2<permission_object,
                member<permission_object, permission_object::id_type, &permission_object::parent>,
                member<permission_object, permission_object::id_type, &permission_object::id>
             >
          >,
-         ordered_unique<tag<by_owner>,
-            composite_key<permission_object,
+         ordered_unique2<chaindb::tag<by_owner>,
+            composite_key2<permission_object,
                member<permission_object, account_name, &permission_object::owner>,
                member<permission_object, permission_name, &permission_object::name>
             >
          >,
-         ordered_unique<tag<by_name>,
-            composite_key<permission_object,
+         ordered_unique2<chaindb::tag<by_name>,
+            composite_key2<permission_object,
                member<permission_object, permission_name, &permission_object::name>,
                member<permission_object, permission_object::id_type, &permission_object::id>
             >

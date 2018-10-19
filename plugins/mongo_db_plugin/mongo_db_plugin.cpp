@@ -134,7 +134,7 @@ public:
    bool store_action_traces = true;
 
    std::string db_name;
-   mongocxx::instance mongo_inst;
+   //mongocxx::instance mongo_inst;
    fc::optional<mongocxx::pool> mongo_pool;
 
    // consum thread
