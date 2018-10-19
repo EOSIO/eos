@@ -6,6 +6,7 @@
 
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/permission_object.hpp>
+#include <eosio/chain/abi_def.hpp>
 
 #include <utility>
 #include <functional>
@@ -26,6 +27,7 @@ namespace eosio { namespace chain {
          explicit authorization_manager(controller& c, chainbase::database& d);
 
          void add_indices();
+         void add_abi_tables(eosio::chain::abi_def &abi);
          void initialize_database();
 
          const permission_object& create_permission( account_name account,

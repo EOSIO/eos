@@ -360,8 +360,8 @@ struct controller_impl {
    void add_indices() {
       reversible_blocks.add_index<reversible_block_index>();
 
-      db.add_index<account_index>();
-      db.add_index<account_sequence_index>();
+      db.add_database_index<account_index>();
+      db.add_database_index<account_sequence_index>();
 
       db.add_index<table_id_multi_index>();
       db.add_index<key_value_index>();
@@ -371,14 +371,132 @@ struct controller_impl {
       db.add_index<index_double_index>();
       db.add_index<index_long_double_index>();
 
-      db.add_index<global_property_multi_index>();
-      db.add_index<dynamic_global_property_multi_index>();
-      db.add_index<block_summary_multi_index>();
+      db.add_database_index<global_property_multi_index>();
+      db.add_database_index<dynamic_global_property_multi_index>();
+      db.add_database_index<block_summary_multi_index>();
       db.add_index<transaction_multi_index>();
       db.add_index<generated_transaction_multi_index>();
 
       authorization.add_indices();
       resource_limits.add_indices();
+
+      eosio::chain::abi_def abi;
+      add_abi_tables(abi);
+      authorization.add_abi_tables(abi);
+      resource_limits.add_abi_tables(abi);
+      chaindb_set_abi(0, abi);
+   }
+
+   void add_abi_tables(eosio::chain::abi_def &abi) {
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "account", "",
+        {{"id", "uint64"},
+         {"name", "name"},
+         {"vmtype", "uint8"},
+         {"vmversion", "uint8"},
+         {"privileged", "bool"},
+         {"lastcodeup", "time_point"},
+         {"codever", "checksum256"},
+         {"created", "block_timestamp_type"},
+         {"code", "string"},
+         {"abi", "string"}}
+      });
+
+      abi.tables.emplace_back( eosio::chain::table_def {
+        name{chaindb::tag<account_object>::get_name()}.to_string(),
+        "account",
+        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
+         {name{chaindb::tag<by_name>::get_name()}.to_string(), true, {"name"}, {"asc"}}}
+      });
+
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "accountseq", "",
+        {{"id", "uint64"},
+         {"name", "name"},
+         {"recv", "uint64"},
+         {"auth", "uint64"},
+         {"code", "uint64"},
+         {"abi", "uint64"}}
+      });
+
+      abi.tables.emplace_back( eosio::chain::table_def {
+        name{chaindb::tag<account_sequence_object>::get_name()}.to_string(),
+        "accountseq",
+        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
+         {name{chaindb::tag<by_name>::get_name()}.to_string(), true, {"name"}, {"asc"}}}
+      });
+
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "producer_key", "",
+        {{"name", "name"},
+         {"key", "public_key"}}
+      });
+
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "producer_schedule", "",
+        {{"version","uint32"},
+         {"producers", "producer_key[]"}}
+      });
+
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "chain_config", "",
+        {{"max_block_net_usage", "uint64"},
+         {"target_block_net_usage_pct", "uint32"},
+         {"max_transaction_net_usage", "uint32"},
+         {"base_per_transaction_net_usage", "uint32"},
+         {"net_usage_leeway", "uint32"},
+         {"context_free_discount_net_usage_num", "uint32"},
+         {"context_free_discount_net_usage_den", "uint32"},
+         {"max_block_cpu_usage", "uint32"},
+         {"target_block_cpu_usage_pct", "uint32"},
+         {"max_transaction_cpu_usage", "uint32"},
+         {"min_transaction_cpu_usage", "uint32"},
+         {"max_transaction_lifetime", "uint32"},
+         {"deferred_trx_expiration_window", "uint32"},
+         {"max_transaction_delay", "uint32"},
+         {"max_inline_action_size", "uint32"},
+         {"max_inline_action_depth", "uint16"},
+         {"max_authority_depth", "uint16"}}
+      });
+
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "global_property", "",
+        {{"id", "uint64"},
+         {"proposed_schedule_block_num", "uint32?"},
+         {"proposed_schedule", "producer_schedule"},
+         {"configuration", "chain_config"}}
+      });
+
+      abi.tables.emplace_back( eosio::chain::table_def {
+        name{chaindb::tag<global_property_object>::get_name()}.to_string(),
+        "global_property",
+        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+      });
+
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "dynamic_global_property", "",
+        {{"id", "uint64"},
+         {"global_action_seq", "uint64"}}
+      });
+
+      abi.tables.emplace_back( eosio::chain::table_def {
+        name{chaindb::tag<dynamic_global_property_object>::get_name()}.to_string(),
+        "dynamic_global_property",
+        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+      });
+
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "block_summary", "",
+        {{"id", "uint64"},
+         {"block_id", "checksum256"}}
+      });
+
+      abi.tables.emplace_back( eosio::chain::table_def {
+        name{chaindb::tag<block_summary_object>::get_name()}.to_string(),
+        "block_summary",
+        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+      });
+
    }
 
    void clear_all_undo() {
