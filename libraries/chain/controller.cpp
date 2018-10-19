@@ -362,6 +362,7 @@ struct controller_impl {
       eosio::chain::abi_def abi;
       add_abi_tables(abi);
       authorization.add_abi_tables(abi);
+      resource_limits.add_abi_tables(abi);
       chaindb_set_abi(0, abi);
    }
 
@@ -403,6 +404,7 @@ struct controller_impl {
         {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
          {name{chaindb::tag<by_name>::get_name()}.to_string(), true, {"name"}, {"asc"}}}
       });
+
    }
 
    void clear_all_undo() {

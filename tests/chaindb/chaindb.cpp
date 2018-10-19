@@ -1074,7 +1074,7 @@ primary_key_t chaindb_available_primary_key(account_name_t code, account_name_t 
 
     auto itr = cursor.begin();
     if (cursor.end() != itr) return get_id_value(*itr) + 1;
-    return 1;
+    return 0;
 }
 
 cursor_t chaindb_insert(

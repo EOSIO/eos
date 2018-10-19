@@ -40,10 +40,105 @@ void resource_limits_state_object::update_virtual_net_limit( const resource_limi
 }
 
 void resource_limits_manager::add_indices() {
-   _db.add_index<resource_limits_index>();
-   _db.add_index<resource_usage_index>();
-   _db.add_index<resource_limits_state_index>();
-   _db.add_index<resource_limits_config_index>();
+   _db.add_database_index<resource_limits_index>();
+   _db.add_database_index<resource_usage_index>();
+   _db.add_database_index<resource_limits_state_index>();
+   _db.add_database_index<resource_limits_config_index>();
+}
+
+void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
+
+   abi.structs.emplace_back( eosio::chain::struct_def{
+     "resource_limit", "",
+     {{"id", "uint64"},
+      {"owner", "name"},
+      {"pending", "bool"},
+      {"net_weight", "int64"},
+      {"cpu_weight", "int64"},
+      {"ram_bytes", "int64"}}
+   });
+
+   abi.tables.emplace_back( eosio::chain::table_def {
+     name{chaindb::tag<resource_limits_object>::get_name()}.to_string(),
+     "resource_limit",
+     {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
+      {name{chaindb::tag<by_owner>::get_name()}.to_string(), true, {"pending","owner"}, {"asc","asc"}}}
+   });
+
+   abi.structs.emplace_back( eosio::chain::struct_def{
+     "accumulator", "",
+     {{"last_ordinal", "uint32"},
+      {"value_ex", "uint64"},
+      {"consumed", "uint64"}}
+   });
+
+   abi.structs.emplace_back( eosio::chain::struct_def{
+     "resource_usage", "",
+     {{"id", "uint64"},
+      {"owner", "name"},
+      {"net_usage", "accumulator"},
+      {"cpu_usage", "accumulator"},
+      {"ram_usage", "uint64"}}
+   });
+
+   abi.tables.emplace_back( eosio::chain::table_def {
+     name{chaindb::tag<resource_usage_object>::get_name()}.to_string(),
+     "resource_usage",
+     {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
+      {name{chaindb::tag<by_owner>::get_name()}.to_string(), true, {"owner"}, {"asc"}}}
+   });
+
+   abi.structs.emplace_back( eosio::chain::struct_def{
+     "ratio64", "",
+     {{"numerator", "uint64"},
+      {"denominator", "uint64"}}
+   });
+
+   abi.structs.emplace_back( eosio::chain::struct_def{
+     "elastic_limit_params", "",
+     {{"target", "uint64"},
+      {"max", "uint64"},
+      {"periods", "uint32"},
+      {"max_multiplier", "uint32"},
+      {"contract_rate", "ratio64"},
+      {"expand_rate", "ratio64"}}
+   });
+
+   abi.structs.emplace_back( eosio::chain::struct_def{
+     "resource_limits_config", "",
+     {{"id", "uint64"},
+      {"cpu_limit", "elastic_limit_params"},
+      {"net_limit", "elastic_limit_params"},
+      {"acc_cpu_usage_avg_window", "uint32"},
+      {"acc_net_usage_avg_window", "uint32"}}
+   });
+
+   abi.tables.emplace_back( eosio::chain::table_def {
+     name{chaindb::tag<resource_limits_config_object>::get_name()}.to_string(),
+     "resource_limits_config",
+     {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+   });
+
+   abi.structs.emplace_back( eosio::chain::struct_def{
+     "resource_limits_state", "",
+     {{"id", "uint64"},
+      {"avg_block_net_usage", "accumulator"},
+      {"avg_block_cpu_usage", "accumulator"},
+      {"pending_net_usage", "uint64"},
+      {"pending_cpu_usage", "uint64"},
+      {"total_net_weight", "uint64"},
+      {"total_cpu_weight", "uint64"},
+      {"total_ram_bytes", "uint64"},
+      {"virtual_net_limit", "uint64"},
+      {"virtual_cpu_limit", "uint64"}}
+   });
+
+   abi.tables.emplace_back( eosio::chain::table_def {
+     name{chaindb::tag<resource_limits_state_object>::get_name()}.to_string(),
+     "resource_limits_state",
+     {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+   });
+
 }
 
 void resource_limits_manager::initialize_database() {
@@ -258,7 +353,7 @@ void resource_limits_manager::get_account_limits( const account_name& account, i
 
 void resource_limits_manager::process_account_limit_updates() {
    auto& multi_index = _db.get_mutable_index<resource_limits_index>();
-   auto& by_owner_index = multi_index.indices().get<by_owner>();
+   const auto& by_owner_index = multi_index.indices().get<by_owner>();
 
    // convenience local lambda to reduce clutter
    auto update_state_and_value = [](uint64_t &total, int64_t &value, int64_t pending_value, const char* debug_which) -> void {
