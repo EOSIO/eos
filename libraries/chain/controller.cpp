@@ -352,7 +352,7 @@ struct controller_impl {
 
       db.add_database_index<global_property_multi_index>();
       db.add_database_index<dynamic_global_property_multi_index>();
-      db.add_index<block_summary_multi_index>();
+      db.add_database_index<block_summary_multi_index>();
       db.add_index<transaction_multi_index>();
       db.add_index<generated_transaction_multi_index>();
 
@@ -461,6 +461,18 @@ struct controller_impl {
       abi.tables.emplace_back( eosio::chain::table_def {
         name{chaindb::tag<dynamic_global_property_object>::get_name()}.to_string(),
         "dynamic_global_property",
+        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+      });
+
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "block_summary", "",
+        {{"id", "uint64"},
+         {"block_id", "checksum256"}}
+      });
+
+      abi.tables.emplace_back( eosio::chain::table_def {
+        name{chaindb::tag<block_summary_object>::get_name()}.to_string(),
+        "block_summary",
         {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
       });
 
