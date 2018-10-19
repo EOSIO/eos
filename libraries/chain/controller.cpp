@@ -340,7 +340,7 @@ struct controller_impl {
       reversible_blocks.add_index<reversible_block_index>();
 
       db.add_database_index<account_index>();
-      db.add_index<account_sequence_index>();
+      db.add_database_index<account_sequence_index>();
 
       db.add_index<table_id_multi_index>();
       db.add_index<key_value_index>();
@@ -383,6 +383,23 @@ struct controller_impl {
       abi.tables.emplace_back( eosio::chain::table_def {
         name{chaindb::tag<account_object>::get_name()}.to_string(),
         "account",
+        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
+         {name{chaindb::tag<by_name>::get_name()}.to_string(), true, {"name"}, {"asc"}}}
+      });
+
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "accountseq", "",
+        {{"id", "uint64"},
+         {"name", "name"},
+         {"recv", "uint64"},
+         {"auth", "uint64"},
+         {"code", "uint64"},
+         {"abi", "uint64"}}
+      });
+
+      abi.tables.emplace_back( eosio::chain::table_def {
+        name{chaindb::tag<account_sequence_object>::get_name()}.to_string(),
+        "accountseq",
         {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
          {name{chaindb::tag<by_name>::get_name()}.to_string(), true, {"name"}, {"asc"}}}
       });
