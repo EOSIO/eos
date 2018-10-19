@@ -29,6 +29,7 @@ struct abi_serializer {
    abi_serializer(){ configure_built_in_types(); }
    abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time );
    void set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time);
+   void add_struct(struct_def st);
 
    type_name resolve_type(const type_name& t)const;
    bool      is_array(const type_name& type)const;
@@ -122,7 +123,7 @@ private:
    bool _is_type(const type_name& type, size_t recursion_depth, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
 
    void validate(const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
-
+   void validate(const vector<table_def>& tabs, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const;
    friend struct impl::abi_from_variant;
    friend struct impl::abi_to_variant;
 };

@@ -22,6 +22,8 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 
+#include <cyberway/chaindb/controller.hpp>
+
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
@@ -31,12 +33,14 @@ class maybe_session {
       maybe_session() = default;
 
       maybe_session( maybe_session&& other)
-      :_session(move(other._session))
+      :_session(move(other._session)),
+       _chaindb_session(move(other._chaindb_session))
       {
       }
 
-      explicit maybe_session(database& db) {
+      explicit maybe_session(database& db, chaindb_controller& chaindb) {
          _session = db.start_undo_session(true);
+         _chaindb_session = chaindb.start_undo_session(true);
       }
 
       maybe_session(const maybe_session&) = delete;
@@ -44,16 +48,25 @@ class maybe_session {
       void squash() {
          if (_session)
             _session->squash();
+         if (_chaindb_session) {
+            _chaindb_session->squash();
+         }
       }
 
       void undo() {
          if (_session)
             _session->undo();
+         if (_chaindb_session) {
+            _chaindb_session->undo();
+         }
       }
 
       void push() {
          if (_session)
             _session->push();
+         if (_chaindb_session) {
+            _chaindb_session->push();
+         }
       }
 
       maybe_session& operator = ( maybe_session&& mv ) {
@@ -64,11 +77,19 @@ class maybe_session {
             _session.reset();
          }
 
+         if (mv._chaindb_session) {
+            _chaindb_session = move(*mv._chaindb_session);
+            mv._chaindb_session.reset();
+         } else {
+            _chaindb_session.reset();
+         }
+
          return *this;
       };
 
    private:
       optional<database::session>     _session;
+      optional<chaindb_session>       _chaindb_session;
 };
 
 struct pending_state {
@@ -92,6 +113,7 @@ struct pending_state {
 
 struct controller_impl {
    controller&                    self;
+   chaindb_controller             chaindb;
    chainbase::database            db;
    chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
@@ -145,6 +167,7 @@ struct controller_impl {
 
    controller_impl( const controller::config& cfg, controller& s  )
    :self(s),
+    chaindb(cfg.abi_serializer_max_time_ms, cfg.chaindb_address_type, cfg.chaindb_address),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size ),
@@ -607,7 +630,7 @@ struct controller_impl {
    { try {
       maybe_session undo_session;
       if ( !self.skip_db_sessions() )
-         undo_session = maybe_session(db);
+         undo_session = maybe_session(db, chaindb);
 
       auto gtrx = generated_transaction(gto);
 
@@ -889,7 +912,7 @@ struct controller_impl {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-         pending.emplace(maybe_session(db));
+         pending.emplace(maybe_session(db, chaindb));
       } else {
          pending.emplace(maybe_session());
       }
@@ -1405,6 +1428,8 @@ void controller::startup() {
 chainbase::database& controller::db()const { return my->db; }
 
 fork_database& controller::fork_db()const { return my->fork_db; }
+
+chaindb_controller& controller::chaindb() const { return my->chaindb; }
 
 
 void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count) {

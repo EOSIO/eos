@@ -11,9 +11,13 @@
 #include <algorithm>
 #include <set>
 
+namespace cyberway { namespace chaindb { class chaindb_controller; }}
+
 namespace chainbase { class database; }
 
 namespace eosio { namespace chain {
+
+using cyberway::chaindb::chaindb_controller;
 
 class controller;
 class transaction_context;
@@ -454,6 +458,7 @@ class apply_context {
       apply_context(controller& con, transaction_context& trx_ctx, const action& a, uint32_t depth=0)
       :control(con)
       ,db(con.db())
+      ,chaindb(con.chaindb())
       ,trx_context(trx_ctx)
       ,act(a)
       ,receiver(act.account)
@@ -585,6 +590,7 @@ class apply_context {
 
       controller&                   control;
       chainbase::database&          db;  ///< database where state is stored
+      chaindb_controller&           chaindb;
       transaction_context&          trx_context; ///< transaction context in which the action is running
       const action&                 act; ///< message being applied
       account_name                  receiver; ///< the code that is currently running
