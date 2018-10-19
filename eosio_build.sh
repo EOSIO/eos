@@ -277,23 +277,33 @@
 
    TIME_END=$(( $(date -u +%s) - ${TIME_BEGIN} ))
 
-   printf "\n\n${bldred}\t _______  _______  _______ _________ _______\n"
-   printf '\t(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
-   printf "\t| (    \/| (   ) || (    \/   ) (   | (   ) |\n"
-   printf "\t| (__    | |   | || (_____    | |   | |   | |\n"
-   printf "\t|  __)   | |   | |(_____  )   | |   | |   | |\n"
-   printf "\t| (      | |   | |      ) |   | |   | |   | |\n"
-   printf "\t| (____/\| (___) |/\____) |___) (___| (___) |\n"
-   printf "\t(_______/(_______)\_______)\_______/(_______)\n${txtrst}"
 
-   printf "\\n\\tEOSIO has been successfully built. %02d:%02d:%02d\\n\\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
+
+printf "\n\n${bldred}\t UUUUUUUU     UUUUUUUU     OOOOOOOOO        SSSSSSSSSSSSSSS\n"
+printf "\tU::::::U     U::::::U   OO:::::::::OO    SS:::::::::::::::S\n"
+printf "\tU::::::U     U::::::U OO:::::::::::::OO S:::::SSSSSS::::::S\n"
+printf "\tUU:::::U     U:::::UUO:::::::OOO:::::::OS:::::S     SSSSSSS\n"
+printf "\t U:::::U     U:::::U O::::::O   O::::::OS:::::S\n"            
+printf "\t U:::::D     D:::::U O:::::O     O:::::OS:::::S\n"            
+printf "\t U:::::D     D:::::U O:::::O     O:::::O S::::SSSS\n"         
+printf "\t U:::::D     D:::::U O:::::O     O:::::O  SS::::::SSSSS\n"    
+printf "\t U:::::D     D:::::U O:::::O     O:::::O    SSS::::::::SS \n" 
+printf "\t U:::::D     D:::::U O:::::O     O:::::O       SSSSSS::::S \n"
+printf "\t U:::::D     D:::::U O:::::O     O:::::O            S:::::S\n"
+printf "\t U::::::U   U::::::U O::::::O   O::::::O            S:::::S\n"
+printf "\t U:::::::UUU:::::::U O:::::::OOO:::::::OSSSSSSS     S:::::S\n"
+printf "\t  UU:::::::::::::UU   OO:::::::::::::OO S::::::SSSSSS:::::S\n"
+printf "\t    UU:::::::::UU       OO:::::::::OO   S:::::::::::::::SS \n"
+printf "\t      UUUUUUUUU           OOOOOOOOO      SSSSSSSSSSSSSSS  \n${txtrst}"
+ 
+ 
+  
+
+   printf "\\n\\tUOS has been successfully built. %02d:%02d:%02d\\n\\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
    printf "\\tTo verify your installation run the following commands:\\n"
 
    print_instructions
 
    printf "\\tFor more information:\\n"
-   printf "\\tEOSIO website: https://eos.io\\n"
-   printf "\\tEOSIO Telegram channel @ https://t.me/EOSProject\\n"
-   printf "\\tEOSIO resources: https://eos.io/resources/\\n"
-   printf "\\tEOSIO Stack Exchange: https://eosio.stackexchange.com\\n"
-   printf "\\tEOSIO wiki: https://github.com/EOSIO/eos/wiki\\n\\n\\n"
+   printf "\\tUOS website: https://u.community\\n"
+   printf "\\tUOS github: https://github.com/UOSnetwork/uos\\n\\n\\n"
