@@ -174,7 +174,7 @@ namespace cyberway { namespace chaindb {
             fc::datastream<const char*> ds(static_cast<const char*>(data), size);
             auto value = serializer_.binary_to_variant(type, ds, max_time);
 
-            ilog(
+            dlog(
                 "The ${value_type} '${type}': ${value}",
                 ("value_type", value_type)("type", db_type())("value", value));
 
@@ -191,7 +191,7 @@ namespace cyberway { namespace chaindb {
             const string& type, const variant& value, const microseconds& max_time
         ) const {
 
-            ilog(
+            dlog(
                 "The ${value_type} '${type}': ${value}",
                 ("value", value_type)("type", db_type())("value", value));
 
