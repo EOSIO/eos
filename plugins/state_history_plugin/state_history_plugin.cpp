@@ -14,6 +14,9 @@
 #include <boost/asio/strand.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
 #include <boost/signals2/connection.hpp>
 
 using tcp    = boost::asio::ip::tcp;
@@ -38,6 +41,17 @@ auto catch_and_log(F f) {
    } catch (...) {
       elog("unknown exception");
    }
+}
+
+namespace bio = boost::iostreams;
+static bytes zlib_compress_bytes(bytes in) {
+   bytes                  out;
+   bio::filtering_ostream comp;
+   comp.push(bio::zlib_compressor(bio::zlib::default_compression));
+   comp.push(bio::back_inserter(out));
+   bio::write(comp, in.data(), in.size());
+   bio::close(comp);
+   return out;
 }
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
@@ -384,7 +398,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       cached_traces.clear();
       onblock_trace.reset();
 
-      auto traces_bin = fc::raw::pack(make_history_serial_wrapper(traces));
+      auto traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_serial_wrapper(traces)));
       EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
 
       history_log_header header{.block_num    = block_state->block->block_num(),
@@ -480,7 +494,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       process_table("resource_limits_state", db.get_index<resource_limits::resource_limits_state_index>(), pack_row);
       process_table("resource_limits_config", db.get_index<resource_limits::resource_limits_config_index>(), pack_row);
 
-      auto deltas_bin = fc::raw::pack(deltas);
+      auto deltas_bin = zlib_compress_bytes(fc::raw::pack(deltas));
       EOS_ASSERT(deltas_bin.size() == (uint32_t)deltas_bin.size(), plugin_exception, "deltas is too big");
       history_log_header header{.block_num    = block_state->block->block_num(),
                                 .block_id     = block_state->block->id(),
