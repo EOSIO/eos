@@ -53,19 +53,19 @@ namespace eosio { namespace chain {
         uint64_t   global_action_sequence = 0;
    };
 
-   using global_property_multi_index = chainbase::shared_multi_index_container<
+   using global_property_multi_index = chainbase::shared_multi_index_container2<
       global_property_object,
-      indexed_by<
-         ordered_unique<tag<by_id>,
+      indexed_by2<
+         ordered_unique2<chaindb::tag<by_id>,
             BOOST_MULTI_INDEX_MEMBER(global_property_object, global_property_object::id_type, id)
          >
       >
    >;
 
-   using dynamic_global_property_multi_index = chainbase::shared_multi_index_container<
+   using dynamic_global_property_multi_index = chainbase::shared_multi_index_container2<
       dynamic_global_property_object,
-      indexed_by<
-         ordered_unique<tag<by_id>,
+      indexed_by2<
+         ordered_unique2<chaindb::tag<by_id>,
             BOOST_MULTI_INDEX_MEMBER(dynamic_global_property_object, dynamic_global_property_object::id_type, id)
          >
       >
@@ -77,10 +77,13 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::global_property_object, eosio::chain::glo
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::dynamic_global_property_object,
                          eosio::chain::dynamic_global_property_multi_index)
 
+FC_REFLECT(chainbase::oid<eosio::chain::global_property_object>, (_id))
+FC_REFLECT(chainbase::oid<eosio::chain::dynamic_global_property_object>, (_id))
+
 FC_REFLECT(eosio::chain::dynamic_global_property_object,
-           (global_action_sequence)
+           (id)(global_action_sequence)
           )
 
 FC_REFLECT(eosio::chain::global_property_object,
-           (proposed_schedule_block_num)(proposed_schedule)(configuration)
+           (id)(proposed_schedule_block_num)(proposed_schedule)(configuration)
           )
