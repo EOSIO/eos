@@ -31,11 +31,17 @@ Install:
 ./eosio_install.sh
 ```
 
-Add the seed nodes to the default config.ini
+Run and stop the node to generate the default config
 ```
-p2p-peer-address = 159.69.157.38
-p2p-peer-address = 159.69.157.39
-p2p-peer-address = 159.69.157.40
-p2p-peer-address = 159.69.157.41
-p2p-peer-address = 159.69.157.42
+nodeos
+Ctrl+C
+```
+
+Add the seed nodes to the default config at ~/.local/share/eosio/nodeos/config/config.ini
+```
+p2p-peer-address = node-1.u.community:9876
+p2p-peer-address = node-2.u.community:9876
+p2p-peer-address = node-3.u.community:9876
+p2p-peer-address = node-4.u.community:9876
+p2p-peer-address = node-5.u.community:9876
 ```
