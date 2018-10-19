@@ -1033,10 +1033,11 @@ struct approve_producer_subcommand {
                                ("table", "voters")
                                ("table_key", "owner")
                                ("lower_bound", voter.value)
+                               ("upper_bound", voter.value + 1)
                                ("limit", 1)
             );
             auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
-            if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
+            if ( res.rows.empty() ) {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
@@ -1079,10 +1080,11 @@ struct unapprove_producer_subcommand {
                                ("table", "voters")
                                ("table_key", "owner")
                                ("lower_bound", voter.value)
+                               ("upper_bound", voter.value + 1)
                                ("limit", 1)
             );
             auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
-            if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
+            if ( res.rows.empty() ) {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
@@ -1282,15 +1284,16 @@ struct bidname_subcommand {
 
 struct bidname_info_subcommand {
    bool print_json = false;
-   string newname_str;
+   name newname;
    bidname_info_subcommand(CLI::App* actionRoot) {
       auto list_producers = actionRoot->add_subcommand("bidnameinfo", localized("Get bidname info"));
       list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format"));
-      list_producers->add_option("newname", newname_str, localized("The bidding name"))->required();
+      list_producers->add_option("newname", newname, localized("The bidding name"))->required();
       list_producers->set_callback([this] {
          auto rawResult = call(get_table_func, fc::mutable_variant_object("json", true)
                                ("code", "eosio")("scope", "eosio")("table", "namebids")
-                               ("lower_bound", eosio::chain::string_to_name(newname_str.c_str()))("limit", 1));
+                               ("lower_bound", newname.value)
+                               ("upper_bound", newname.value + 1)("limit", 1));
          if ( print_json ) {
             std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
             return;
@@ -2954,8 +2957,8 @@ int main( int argc, char** argv ) {
                          ("scope", proposer)
                          ("table", "proposal")
                          ("table_key", "")
-                         ("lower_bound", eosio::chain::string_to_name(proposal_name.c_str()))
-                         ("upper_bound", "")
+                         ("lower_bound", name(proposal_name).value)
+                         ("upper_bound", name(proposal_name).value + 1)
                          ("limit", 1)
                          );
       //std::cout << fc::json::to_pretty_string(result) << std::endl;
@@ -2966,10 +2969,6 @@ int main( int argc, char** argv ) {
          return;
       }
       fc::mutable_variant_object obj = rows[0].get_object();
-      if (obj["proposal_name"] != proposal_name) {
-         std::cerr << "Proposal not found" << std::endl;
-         return;
-      }
       auto trx_hex = obj["packed_transaction"].as_string();
       vector<char> trx_blob(trx_hex.size()/2);
       fc::from_hex(trx_hex, trx_blob.data(), trx_blob.size());
