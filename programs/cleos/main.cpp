@@ -1296,7 +1296,8 @@ struct bidname_info_subcommand {
             return;
          }
          auto result = rawResult.as<eosio::chain_apis::read_only::get_table_rows_result>();
-         if ( result.rows.empty() ) {
+         // get_table_func does lower_bound to upper_bound search, so may return erroneous row entry
+         if ( result.rows.empty() || result.rows[0]["newname"].as_string() != newname_str ) {
             std::cout << "No bidname record found" << std::endl;
             return;
          }
