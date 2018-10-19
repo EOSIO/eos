@@ -10,6 +10,7 @@ namespace eosio { namespace chain {
 
 using type_name      = string;
 using field_name     = string;
+using code_type      = uint64_t;
 
 struct type_def {
    type_def() = default;
@@ -61,16 +62,30 @@ struct action_def {
    string      ricardian_contract;
 };
 
-struct index_def {
-    index_def() = default;
-    index_def(const type_name& name, const bool unique, const vector<field_name>& key_names, const vector<type_name>& key_orders)
-    : name(name), unique(unique), key_names(key_names), key_orders(key_orders)
-    { }
+struct order_def {
+   order_def() = default;
+   order_def(const field_name& field, const type_name& order)
+   : field(field), order(order)
+   { }
 
-    type_name          name;
-    bool               unique = false;
-    vector<field_name> key_names;
-    vector<type_name>  key_orders; // asc/desc
+   field_name field;
+   type_name  order; // asc/desc
+};
+
+struct index_def {
+   index_def() = default;
+   index_def(const index_name& name, const bool unique, const vector<order_def>& orders)
+   : name(name), unique(unique), orders(orders)
+   { }
+
+   index_def(const index_name& name, const code_type code, const bool unique, const vector<order_def>& orders)
+   : name(name), code(code), unique(unique), orders(orders)
+   { }
+
+   index_name         name;
+   code_type          code = 0;
+   bool               unique = false;
+   vector<order_def>  orders;
 };
 
 struct table_def {
@@ -79,10 +94,12 @@ struct table_def {
    :name(name), type(type), indexes(indexes)
    {}
 
+   table_def(const table_name& name, const code_type code, const type_name& type, const vector<index_def>& indexes)
+   :name(name), code(code), type(type), indexes(indexes)
+   {}
+
    table_name         name;        // the name of the table
-   type_name          index_type;  // the kind of index, i64, i128i128, etc
-   vector<field_name> key_names;   // names for the keys defined by key_types
-   vector<type_name>  key_types;   // the type of key parameters
+   code_type          code = 0;
    type_name          type;        // type of binary data stored in this table
    vector<index_def>  indexes;     //
 };
@@ -175,7 +192,8 @@ FC_REFLECT( eosio::chain::type_def                         , (new_type_name)(typ
 FC_REFLECT( eosio::chain::field_def                        , (name)(type) )
 FC_REFLECT( eosio::chain::struct_def                       , (name)(base)(fields) )
 FC_REFLECT( eosio::chain::action_def                       , (name)(type)(ricardian_contract) )
-FC_REFLECT( eosio::chain::index_def                        , (name)(unique)(key_names)(key_orders) )
+FC_REFLECT( eosio::chain::order_def                        , (field)(order) )
+FC_REFLECT( eosio::chain::index_def                        , (name)(unique)(orders) )
 FC_REFLECT( eosio::chain::table_def                        , (name)(type)(indexes) )
 FC_REFLECT( eosio::chain::clause_pair                      , (id)(body) )
 FC_REFLECT( eosio::chain::error_message                    , (error_code)(error_msg) )

@@ -40,7 +40,8 @@ namespace eosio { namespace chain {
 #define N(X) eosio::chain::string_to_name(#X)
 
    struct name {
-      uint64_t value = 0;
+      using value_type = uint64_t;
+      value_type value = 0;
       bool empty()const { return 0 == value; }
       bool good()const  { return !empty();   }
 

@@ -24,6 +24,8 @@
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 
+#include <cyberway/chaindb/controller.hpp>
+
 namespace eosio { namespace chain {
 
 
@@ -194,6 +196,8 @@ void apply_eosio_setabi(apply_context& context) {
    db.modify( account_sequence, [&]( auto& aso ) {
       aso.abi_sequence += 1;
    });
+
+   context.chaindb.remove_abi(act.account);
 
    if (new_size != old_size) {
       context.add_ram_usage( act.account, new_size - old_size );

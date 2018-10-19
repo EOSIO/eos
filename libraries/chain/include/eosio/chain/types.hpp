@@ -101,6 +101,7 @@ namespace eosio { namespace chain {
    using account_name     = name;
    using permission_name  = name;
    using table_name       = name;
+   using index_name       = name;
 
 
    /**

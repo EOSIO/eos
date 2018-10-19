@@ -246,7 +246,11 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "In \"light\" mode all incoming blocks headers will be fully validated; transactions in those validated blocks will be trusted \n")
          ("disable-ram-billing-notify-checks", bpo::bool_switch()->default_value(false),
           "Disable the check which subjectively fails a transaction if a contract bills more RAM to another account within the context of a notification handler (i.e. when the receiver is not the code of the action).")
-         ;
+         ("chaindb_type", bpo::value<cyberway::chaindb::chaindb_type>()->default_value(cyberway::chaindb::chaindb_type::MongoDB),
+          "Type of chaindb connection")
+         ("chaindb_address", bpo::value<string>()->default_value("mongodb://127.0.0.1:27017"),
+          "Connection address to chaindb")
+          ;
 
 // TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
@@ -392,11 +396,19 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          }
       }
 
+      if (options.count("chaindb_type"))
+         my->chain_config->chaindb_address_type = options.at("chaindb_type").as<cyberway::chaindb::chaindb_type>();
+
+      if (options.count("chaindb_address"))
+         my->chain_config->chaindb_address = options.at("chaindb_address").as<string>();
+
       if( options.count( "wasm-runtime" ))
          my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
 
-      if(options.count("abi-serializer-max-time-ms"))
+      if(options.count("abi-serializer-max-time-ms")) {
          my->abi_serializer_max_time_ms = fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000);
+         my->chain_config->abi_serializer_max_time_ms = my->abi_serializer_max_time_ms;
+      }
 
       my->chain_config->blocks_dir = my->blocks_dir;
       my->chain_config->state_dir = app().data_dir() / config::default_state_dir_name;
@@ -1053,7 +1065,8 @@ abi_def get_abi( const controller& db, const name& account ) {
 string get_table_type( const abi_def& abi, const name& table_name ) {
    for( const auto& t : abi.tables ) {
       if( t.name == table_name ){
-         return t.index_type;
+         return "i64";
+         // return t.index_type; // CYBERWAY
       }
    }
    EOS_ASSERT( false, chain::contract_table_query_exception, "Table ${table} is not specified in the ABI", ("table",table_name) );
