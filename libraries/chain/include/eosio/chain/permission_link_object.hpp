@@ -4,8 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/authority.hpp>
-
-#include "multi_index_includes.hpp"
+#include <eosio/chain/multi_index_includes.hpp>
 
 namespace eosio { namespace chain {
    /**
@@ -44,21 +43,21 @@ namespace eosio { namespace chain {
 
    struct by_action_name;
    struct by_permission_name;
-   using permission_link_index = chainbase::shared_multi_index_container2<
+   using permission_link_index = cyberway::chaindb::shared_multi_index_container<
       permission_link_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>,
+      cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>,
             BOOST_MULTI_INDEX_MEMBER(permission_link_object, permission_link_object::id_type, id)
          >,
-         ordered_unique2<chaindb::tag<by_action_name>,
-            composite_key2<permission_link_object,
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_action_name>,
+            cyberway::chaindb::composite_key<permission_link_object,
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, account),
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, code),
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, action_name, message_type)
             >
          >,
-         ordered_unique2<chaindb::tag<by_permission_name>,
-            composite_key2<permission_link_object,
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_permission_name>,
+            cyberway::chaindb::composite_key<permission_link_object,
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, account),
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, permission_name, required_permission),
                BOOST_MULTI_INDEX_MEMBER(permission_link_object, account_name, code),

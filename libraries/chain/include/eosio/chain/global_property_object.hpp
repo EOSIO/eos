@@ -12,7 +12,7 @@
 #include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/incremental_merkle.hpp>
 #include <chainbase/chainbase.hpp>
-#include "multi_index_includes.hpp"
+#include <eosio/chain/multi_index_includes.hpp>
 
 namespace eosio { namespace chain {
 
@@ -53,19 +53,19 @@ namespace eosio { namespace chain {
         uint64_t   global_action_sequence = 0;
    };
 
-   using global_property_multi_index = chainbase::shared_multi_index_container2<
+   using global_property_multi_index = cyberway::chaindb::shared_multi_index_container<
       global_property_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>,
+      cyberway::chaindb::indexed_by<
+          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>,
             BOOST_MULTI_INDEX_MEMBER(global_property_object, global_property_object::id_type, id)
          >
       >
    >;
 
-   using dynamic_global_property_multi_index = chainbase::shared_multi_index_container2<
+   using dynamic_global_property_multi_index = cyberway::chaindb::shared_multi_index_container<
       dynamic_global_property_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>,
+      cyberway::chaindb::indexed_by<
+          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>,
             BOOST_MULTI_INDEX_MEMBER(dynamic_global_property_object, dynamic_global_property_object::id_type, id)
          >
       >

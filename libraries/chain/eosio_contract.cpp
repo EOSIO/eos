@@ -159,7 +159,7 @@ void apply_eosio_setcode(apply_context& context) {
       a.code_version = code_id;
       a.code.resize( code_size );
       if( code_size > 0 )
-         memcpy( a.code.data(), act.code.data(), code_size );
+         memcpy( const_cast<char*>(a.code.data()), act.code.data(), code_size );
 
    });
 
@@ -189,7 +189,7 @@ void apply_eosio_setabi(apply_context& context) {
    db.modify( account, [&]( auto& a ) {
       a.abi.resize( abi_size );
       if( abi_size > 0 )
-         memcpy( a.abi.data(), act.abi.data(), abi_size );
+         memcpy( const_cast<char*>(a.abi.data()), act.abi.data(), abi_size );
    });
 
    const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);

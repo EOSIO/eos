@@ -3,7 +3,7 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-#include "multi_index_includes.hpp"
+#include <eosio/chain/multi_index_includes.hpp>
 
 
 namespace eosio { namespace chain { namespace resource_limits {
@@ -145,12 +145,12 @@ namespace eosio { namespace chain { namespace resource_limits {
    struct by_owner;
    struct by_dirty;
 
-   using resource_limits_index = chainbase::shared_multi_index_container2<
+   using resource_limits_index = cyberway::chaindb::shared_multi_index_container<
       resource_limits_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>, member<resource_limits_object, resource_limits_object::id_type, &resource_limits_object::id>>,
-         ordered_unique2<chaindb::tag<by_owner>,
-            composite_key2<resource_limits_object,
+      cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_limits_object, resource_limits_object::id_type, id)>,
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_owner>,
+            cyberway::chaindb::composite_key<resource_limits_object,
                BOOST_MULTI_INDEX_MEMBER(resource_limits_object, bool, pending),
                BOOST_MULTI_INDEX_MEMBER(resource_limits_object, account_name, owner)
             >
@@ -170,11 +170,11 @@ namespace eosio { namespace chain { namespace resource_limits {
       uint64_t                 ram_usage = 0;
    };
 
-   using resource_usage_index = chainbase::shared_multi_index_container2<
+   using resource_usage_index = cyberway::chaindb::shared_multi_index_container<
       resource_usage_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>, member<resource_usage_object, resource_usage_object::id_type, &resource_usage_object::id>>,
-         ordered_unique2<chaindb::tag<by_owner>, member<resource_usage_object, account_name, &resource_usage_object::owner> >
+       cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_usage_object, resource_usage_object::id_type, id)>,
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_owner>, BOOST_MULTI_INDEX_MEMBER(resource_usage_object, account_name, owner) >
       >
    >;
 
@@ -196,10 +196,10 @@ namespace eosio { namespace chain { namespace resource_limits {
       uint32_t account_net_usage_average_window = config::account_net_usage_average_window_ms / config::block_interval_ms;
    };
 
-   using resource_limits_config_index = chainbase::shared_multi_index_container2<
+   using resource_limits_config_index = cyberway::chaindb::shared_multi_index_container<
       resource_limits_config_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>, member<resource_limits_config_object, resource_limits_config_object::id_type, &resource_limits_config_object::id>>
+      cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_limits_config_object, resource_limits_config_object::id_type, id)>
       >
    >;
 
@@ -251,10 +251,10 @@ namespace eosio { namespace chain { namespace resource_limits {
 
    };
 
-   using resource_limits_state_index = chainbase::shared_multi_index_container2<
+   using resource_limits_state_index = cyberway::chaindb::shared_multi_index_container<
       resource_limits_state_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>, member<resource_limits_state_object, resource_limits_state_object::id_type, &resource_limits_state_object::id>>
+      cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_limits_state_object, resource_limits_state_object::id_type, id)>
       >
    >;
 

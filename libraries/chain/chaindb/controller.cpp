@@ -291,15 +291,41 @@ namespace cyberway { namespace chaindb {
             return cursor;
         }
 
+        const variant& value(const cursor_request& request) const {
+            auto& cursor = driver->current(request);
+            return driver->value(cursor);
+        }
+
         const cursor_info& insert(
             apply_context&, const table_request& request, const account_name& payer,
             const primary_key_t pk, const char* data, const size_t size
         ) const {
-
             auto info = get_table<index_info>(request);
             auto& table = static_cast<const table_info&>(info);
 
-            auto raw_value = table.abi->to_object(table, data, size, max_abi_time);
+            auto value = table.abi->to_object(table, data, size, max_abi_time);
+            auto& cursor = insert(info, payer, pk, value, size);
+
+            // TODO: update RAM usage
+
+            undo->insert(table, pk, std::move(value));
+
+            return cursor;
+        }
+
+        const cursor_info& insert(
+            const table_request& request, const account_name& payer,
+            const primary_key_t pk, variant value, const size_t size
+        ) const {
+            auto info = get_table<index_info>(request);
+            return insert(info, payer, pk, value, size);
+        }
+
+        const cursor_info& insert(
+            index_info& info, const account_name& payer,
+            const primary_key_t pk, const variant& raw_value, const size_t size
+        ) const {
+            auto& table = static_cast<const table_info&>(info);
             auto value = add_service_fields(table, payer, raw_value, pk, size);
 
             auto inserted_pk = driver->insert(table, pk, value);
@@ -321,21 +347,16 @@ namespace cyberway { namespace chaindb {
                 "Driver returns ${ipk} instead of ${pk} on loading from the table ${table}",
                 ("ipk", cursor.pk)("pk", pk)("table", get_full_table_name(table)));
 
-            // TODO: update RAM usage
-
-            undo->insert(table, pk, std::move(value));
-
             return cursor;
         }
 
         primary_key_t update(
             apply_context&, const table_request& request, account_name payer,
-            const primary_key_t pk, const char* data, size_t size
+            const primary_key_t pk, const char* data, const size_t size
         ) const {
-
             auto table = get_table<table_info>(request);
 
-            auto raw_value = table.abi->to_object(table, data, size, max_abi_time);
+            auto value = table.abi->to_object(table, data, size, max_abi_time);
 
             auto orig_value = driver->value(table, pk);
             validate_object(table, orig_value, pk);
@@ -345,16 +366,33 @@ namespace cyberway { namespace chaindb {
                 payer = orig_object[get_payer_field_name()].as_string();
             }
 
+            auto updated_pk = update(table, payer, pk, value, size);
+
+            // TODO: update RAM usage
+
+            undo->update(table, pk, std::move(value));
+
+            return updated_pk;
+        }
+
+        primary_key_t update(
+            const table_request& request, account_name payer,
+            const primary_key_t pk, variant value, const size_t size
+        ) const {
+            auto table = get_table<table_info>(request);
+            return update(table, payer, pk, value, size);
+        }
+
+        primary_key_t update(
+            const table_info& table, account_name payer,
+            const primary_key_t pk, const variant& raw_value, const size_t size
+        ) const {
             auto value = add_service_fields(table, payer, raw_value, pk, size);
 
             auto updated_pk = driver->update(table, pk, value);
             CYBERWAY_ASSERT(updated_pk == pk, driver_primary_key_exception,
                 "Driver returns ${upk} instead of ${pk} on updating of the table ${table}",
                 ("upk", updated_pk)("pk", pk)("table", get_full_table_name(table)));
-
-            // TODO: update RAM usage
-
-            undo->update(table, pk, std::move(value));
 
             return updated_pk;
         }
@@ -366,14 +404,25 @@ namespace cyberway { namespace chaindb {
             validate_object(table, orig_value, pk);
             auto& orig_object = orig_value.get_object();
 
-            auto deleted_pk = driver->remove(table, pk);
-            CYBERWAY_ASSERT(deleted_pk == pk, driver_primary_key_exception,
-                "Driver returns ${dpk} instead of ${pk} on deleting of the table ${table}",
-                ("dpk", deleted_pk)("pk", pk)("table", get_full_table_name(table)));
+            auto deleted_pk = remove(table, pk);
 
             // TODO: update RAM usage
 
             undo->remove(table, pk, std::move(orig_value));
+
+            return deleted_pk;
+        }
+
+        primary_key_t remove(const table_request& request, primary_key_t pk) const {
+            auto table = get_table<table_info>(request);
+            return remove(table, pk);
+        }
+
+        primary_key_t remove(const table_info& table, primary_key_t pk) const {
+            auto deleted_pk = driver->remove(table, pk);
+            CYBERWAY_ASSERT(deleted_pk == pk, driver_primary_key_exception,
+                "Driver returns ${dpk} instead of ${pk} on deleting of the table ${table}",
+                ("dpk", deleted_pk)("pk", pk)("table", get_full_table_name(table)));
 
             return deleted_pk;
         }
@@ -486,7 +535,8 @@ namespace cyberway { namespace chaindb {
             CYBERWAY_ASSERT(object.end() != itr, primary_key_exception,
                 "The table ${table} doesn't have primary key", ("table", get_full_table_name(table)));
 
-            CYBERWAY_ASSERT(variant::uint64_type == itr->value().get_type(), primary_key_exception,
+            auto type = itr->value().get_type();
+            CYBERWAY_ASSERT(variant::uint64_type == type || variant::int64_type == type, primary_key_exception,
                 "The table ${table} has wrong type of primary key", ("table", get_full_table_name(table)));
 
             CYBERWAY_ASSERT(pk == itr->value().as_uint64(), primary_key_exception,
@@ -580,6 +630,10 @@ namespace cyberway { namespace chaindb {
         return impl_->data(request, data, size).pk;
     }
 
+    const variant& chaindb_controller::value(const cursor_request& request) {
+        return impl_->value(request);
+    }
+
     primary_key_t chaindb_controller::available_primary_key(const table_request& request) {
         return impl_->available_primary_key(request);
     }
@@ -600,6 +654,22 @@ namespace cyberway { namespace chaindb {
 
     primary_key_t chaindb_controller::remove(apply_context& ctx, const table_request& request, primary_key_t pk) {
         return impl_->remove(ctx, request, pk);
+    }
+
+    cursor_t chaindb_controller::insert(
+        const table_request& request, const account_name& payer, primary_key_t pk, variant data, size_t size
+    ) {
+        return impl_->insert(request, payer, pk, std::move(data), size).id;
+    }
+
+    primary_key_t chaindb_controller::update(
+        const table_request& request, const account_name& payer, primary_key_t pk, variant data, size_t size
+    ) {
+        return impl_->update(request, payer, pk, std::move(data), size);
+    }
+
+    primary_key_t chaindb_controller::remove(const table_request& request, primary_key_t pk) {
+        return impl_->remove(request, pk);
     }
 
 } } // namespace cyberway::chaindb

@@ -177,7 +177,7 @@ struct controller_impl {
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),
-    resource_limits( db ),
+    resource_limits( db, chaindb ),
     authorization( s, db ),
     conf( cfg ),
     chain_id( cfg.genesis.compute_chain_id() ),
@@ -358,10 +358,16 @@ struct controller_impl {
    }
 
    void add_indices() {
+      eosio::chain::abi_def abi;
+      add_abi_tables(abi);
+      authorization.add_abi_tables(abi);
+      resource_limits.add_abi_tables(abi);
+      chaindb.add_abi(0, abi);
+
       reversible_blocks.add_index<reversible_block_index>();
 
-      db.add_database_index<account_index>();
-      db.add_database_index<account_sequence_index>();
+      db.add_chaindb_index<account_index>(chaindb);
+      db.add_chaindb_index<account_sequence_index>(chaindb);
 
       db.add_index<table_id_multi_index>();
       db.add_index<key_value_index>();
@@ -371,20 +377,14 @@ struct controller_impl {
       db.add_index<index_double_index>();
       db.add_index<index_long_double_index>();
 
-      db.add_database_index<global_property_multi_index>();
-      db.add_database_index<dynamic_global_property_multi_index>();
-      db.add_database_index<block_summary_multi_index>();
+      db.add_chaindb_index<global_property_multi_index>(chaindb);
+      db.add_chaindb_index<dynamic_global_property_multi_index>(chaindb);
+      db.add_chaindb_index<block_summary_multi_index>(chaindb);
       db.add_index<transaction_multi_index>();
       db.add_index<generated_transaction_multi_index>();
 
       authorization.add_indices();
       resource_limits.add_indices();
-
-      eosio::chain::abi_def abi;
-      add_abi_tables(abi);
-      authorization.add_abi_tables(abi);
-      resource_limits.add_abi_tables(abi);
-      chaindb_set_abi(0, abi);
    }
 
    void add_abi_tables(eosio::chain::abi_def &abi) {
@@ -403,10 +403,11 @@ struct controller_impl {
       });
 
       abi.tables.emplace_back( eosio::chain::table_def {
-        name{chaindb::tag<account_object>::get_name()}.to_string(),
         "account",
-        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
-         {name{chaindb::tag<by_name>::get_name()}.to_string(), true, {"name"}, {"asc"}}}
+        cyberway::chaindb::tag<account_object>::get_code(),
+        "account",
+        {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {"name", cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}}}
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
@@ -420,10 +421,11 @@ struct controller_impl {
       });
 
       abi.tables.emplace_back( eosio::chain::table_def {
-        name{chaindb::tag<account_sequence_object>::get_name()}.to_string(),
         "accountseq",
-        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
-         {name{chaindb::tag<by_name>::get_name()}.to_string(), true, {"name"}, {"asc"}}}
+        cyberway::chaindb::tag<account_sequence_object>::get_code(),
+        "accountseq",
+        {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {"name", cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}}}
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
@@ -468,9 +470,10 @@ struct controller_impl {
       });
 
       abi.tables.emplace_back( eosio::chain::table_def {
-        name{chaindb::tag<global_property_object>::get_name()}.to_string(),
+        "gproperty",
+        cyberway::chaindb::tag<global_property_object>::get_code(),
         "global_property",
-        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+        {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
@@ -480,9 +483,10 @@ struct controller_impl {
       });
 
       abi.tables.emplace_back( eosio::chain::table_def {
-        name{chaindb::tag<dynamic_global_property_object>::get_name()}.to_string(),
+        "gdynproperty",
+        cyberway::chaindb::tag<dynamic_global_property_object>::get_code(),
         "dynamic_global_property",
-        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+        {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
@@ -492,11 +496,11 @@ struct controller_impl {
       });
 
       abi.tables.emplace_back( eosio::chain::table_def {
-        name{chaindb::tag<block_summary_object>::get_name()}.to_string(),
+        "blocksum",
+        cyberway::chaindb::tag<block_summary_object>::get_code(),
         "block_summary",
-        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+        {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
       });
-
    }
 
    void clear_all_undo() {

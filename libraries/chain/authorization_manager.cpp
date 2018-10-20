@@ -20,9 +20,9 @@ namespace eosio { namespace chain {
    :_control(c),_db(d){}
 
    void authorization_manager::add_indices() {
-      _db.add_database_index<permission_index>();
-      _db.add_database_index<permission_usage_index>();
-      _db.add_database_index<permission_link_index>();
+      _db.add_chaindb_index<permission_index>(_control.chaindb());
+      _db.add_chaindb_index<permission_usage_index>(_control.chaindb());
+      _db.add_chaindb_index<permission_link_index>(_control.chaindb());
    }
 
    void authorization_manager::add_abi_tables(eosio::chain::abi_def &abi) {
@@ -33,9 +33,10 @@ namespace eosio { namespace chain {
       });
 
       abi.tables.emplace_back( eosio::chain::table_def {
-        name{chaindb::tag<permission_usage_object>::get_name()}.to_string(),
+        "permusage",
+        cyberway::chaindb::tag<permission_usage_object>::get_code(),
         "usage",
-        {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+        {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
@@ -78,13 +79,14 @@ namespace eosio { namespace chain {
       });
 
       abi.tables.emplace_back( eosio::chain::table_def {
-        name{chaindb::tag<permission_object>::get_name()}.to_string(),
+        "permission",
+        cyberway::chaindb::tag<permission_object>::get_code(),
         "permission",
         {
-           {name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
-           {name{chaindb::tag<by_parent>::get_name()}.to_string(), true, {"parent","id"}, {"asc","asc"}},
-           {name{chaindb::tag<by_owner>::get_name()}.to_string(), true, {"owner","name"}, {"asc","asc"}},
-           {name{chaindb::tag<by_name>::get_name()}.to_string(), true, {"name","id"}, {"asc","asc"}},
+           {"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+           {"parent", cyberway::chaindb::tag<by_parent>::get_code(), true, {{"parent", "asc"}, {"id","asc"}}},
+           {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner","asc"}, {"name","asc"}}},
+           {"name", cyberway::chaindb::tag<by_name>::get_code(), true, {{"name","asc"}, {"id","asc"}}},
         }
       });
 
@@ -98,12 +100,13 @@ namespace eosio { namespace chain {
       });
 
       abi.tables.emplace_back( eosio::chain::table_def {
-        name{chaindb::tag<permission_link_object>::get_name()}.to_string(),
+        "permlink",
+        cyberway::chaindb::tag<permission_link_object>::get_code(),
         "permlink",
         {
-           {name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
-           {name{chaindb::tag<by_action_name>::get_name()}.to_string(), true, {"account","code","action"}, {"asc","asc","asc"}},
-           {name{chaindb::tag<by_permission_name>::get_name()}.to_string(), true, {"account","permission","code","action"}, {"asc","asc","asc","asc"}},
+           {"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+           {"action", cyberway::chaindb::tag<by_action_name>::get_code(), true, {{"account","asc"},{"code", "asc"},{"action","asc"}}},
+           {"permission", cyberway::chaindb::tag<by_permission_name>::get_code(), true, {{"account","asc"},{"permission","asc"},{"code","asc"},{"action","asc"}}},
         }
       });
    }

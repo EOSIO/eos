@@ -7,13 +7,12 @@
 #include <eosio/chain/authority.hpp>
 #include <eosio/chain/block_timestamp.hpp>
 #include <eosio/chain/abi_def.hpp>
-
-#include "multi_index_includes.hpp"
+#include <eosio/chain/multi_index_includes.hpp>
 
 namespace eosio { namespace chain {
 
    class account_object : public chainbase::object<account_object_type, account_object> {
-      OBJECT_CTOR(account_object,(code)(abi))
+      OBJECT_CTOR(account_object)
 
       id_type              id;
       account_name         name;
@@ -25,12 +24,12 @@ namespace eosio { namespace chain {
       digest_type          code_version;
       block_timestamp_type creation_date;
 
-      shared_string  code;
-      shared_string  abi;
+      string  code;
+      string  abi;
 
       void set_abi( const eosio::chain::abi_def& a ) {
          abi.resize( fc::raw::pack_size( a ) );
-         fc::datastream<char*> ds( abi.data(), abi.size() );
+         fc::datastream<char*> ds( const_cast<char*>(abi.data()), abi.size() );
          fc::raw::pack( ds, a );
       }
 
@@ -46,11 +45,11 @@ namespace eosio { namespace chain {
    using account_id_type = account_object::id_type;
 
    struct by_name;
-   using account_index = chainbase::shared_multi_index_container2<
+   using account_index = cyberway::chaindb::shared_multi_index_container<
       account_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>, member<account_object, account_object::id_type, &account_object::id>>,
-         ordered_unique2<chaindb::tag<by_name>, member<account_object, account_name, &account_object::name>>
+      cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(account_object, account_object::id_type, id)>,
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_name>, BOOST_MULTI_INDEX_MEMBER(account_object, account_name, name)>
       >
    >;
 
@@ -67,11 +66,11 @@ namespace eosio { namespace chain {
    };
 
    struct by_name;
-   using account_sequence_index = chainbase::shared_multi_index_container2<
+   using account_sequence_index = cyberway::chaindb::shared_multi_index_container<
       account_sequence_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>, member<account_sequence_object, account_sequence_object::id_type, &account_sequence_object::id>>,
-         ordered_unique2<chaindb::tag<by_name>, member<account_sequence_object, account_name, &account_sequence_object::name>>
+      cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(account_sequence_object, account_sequence_object::id_type, id)>,
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_name>, BOOST_MULTI_INDEX_MEMBER(account_sequence_object, account_name, name)>
       >
    >;
 

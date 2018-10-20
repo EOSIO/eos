@@ -86,8 +86,8 @@ struct authority {
 
 
 struct shared_authority {
-   shared_authority( chainbase::allocator<char> alloc )
-   :keys(alloc),accounts(alloc),waits(alloc){}
+   shared_authority( chainbase::allocator<char> )
+   {}
 
    shared_authority& operator=(const authority& a) {
       threshold = a.threshold;
@@ -97,10 +97,10 @@ struct shared_authority {
       return *this;
    }
 
-   uint32_t                                   threshold = 0;
-   shared_vector<key_weight>                  keys;
-   shared_vector<permission_level_weight>     accounts;
-   shared_vector<wait_weight>                 waits;
+   uint32_t                            threshold = 0;
+   vector<key_weight>                  keys;
+   vector<permission_level_weight>     accounts;
+   vector<wait_weight>                 waits;
 
    operator authority()const { return to_authority(); }
    authority to_authority()const {

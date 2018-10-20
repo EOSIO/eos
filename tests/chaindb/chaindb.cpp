@@ -13,9 +13,7 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 
-#include <eosio/chain/chaindb.h>
-
-#include <eosio/chain/multi_index_includes.hpp>
+#include "chaindb.h"
 
 #define _chaindb_internal_assert(_EXPR, ...) EOS_ASSERT(_EXPR, fc::assert_exception, __VA_ARGS__)
 #define scope_kvp(__SCOPE) _detail::kvp(_detail::get_scope_key(), _detail::name(__SCOPE).to_string())
