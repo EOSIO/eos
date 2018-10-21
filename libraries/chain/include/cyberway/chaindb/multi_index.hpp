@@ -248,7 +248,7 @@ private:
 
     using item_ptr = std::shared_ptr<item>;
 
-    mutable std::vector<item_ptr> items_vector_;
+    mutable std::map<primary_key_t, item_ptr> items_map_;
 
     using primary_key_extractor_type = typename Index::extractor;
 
@@ -405,28 +405,22 @@ private:
     primary_index_type primary_idx_;
 
     item_ptr find_object_in_cache(const primary_key_t pk) const {
-        auto itr = std::find_if(items_vector_.rbegin(), items_vector_.rend(), [&pk](const auto& itm) {
-            auto& obj = static_cast<T&>(*itm);
-            return primary_key_extractor_type()(obj) == pk;
-        });
-        if (items_vector_.rend() != itr) {
-            return (*itr);
+        auto itr = items_map_.find(pk);
+        if (items_map_.end() != itr) {
+            return (*itr).second;
         }
         return item_ptr();
     }
 
-    void add_object_to_cache(item_ptr ptr) const {
-        items_vector_.push_back(std::move(ptr));
+    void add_object_to_cache(const primary_key_t pk, item_ptr ptr) const {
+        items_map_.emplace(pk, std::move(ptr));
     }
 
     void remove_object_from_cache(const primary_key_t pk) const {
-        auto itr = std::find_if(items_vector_.rbegin(), items_vector_.rend(), [&pk](const auto& itm) {
-            auto& obj = static_cast<T&>(*itm);
-            return primary_key_extractor_type()(obj) == pk;
-        });
-        if (items_vector_.rend() != itr) {
-            (*itr)->deleted_ = true;
-            items_vector_.erase(--(itr.base()));
+        auto itr = items_map_.find(pk);
+        if (items_map_.end() != itr) {
+            (*itr).second->deleted_ = true;
+            items_map_.erase(itr);
         }
     }
 
@@ -443,7 +437,7 @@ private:
         auto& obj = static_cast<T&>(*ptr);
         auto ptr_pk = primary_key_extractor_type()(obj);
         CYBERWAY_INDEX_ASSERT(ptr_pk == pk, "invalid primary key of object");
-        add_object_to_cache(ptr);
+        add_object_to_cache(pk, ptr);
         return ptr;
     }
 
@@ -676,7 +670,7 @@ public:
 
     template<typename Lambda>
     const_iterator emplace(const account_name_t payer, Lambda&& constructor) const {
-        auto ptr = std::make_unique<item>(this, [&](auto& itm) {
+        auto ptr = std::make_shared<item>(this, [&](auto& itm) {
             constructor(static_cast<T&>(itm));
         });
 
@@ -692,6 +686,7 @@ public:
 
         CYBERWAY_INDEX_ASSERT(cursor != invalid_cursor, "unable to create object");
 
+        add_object_to_cache(pk, ptr);
         next_primary_key_ = pk + 1;
         return const_iterator(this, cursor, pk);
     }
@@ -714,7 +709,6 @@ public:
 
         auto mpk = primary_key_extractor_type()(obj);
         if (mpk != pk) {
-            remove_object_from_cache(pk);
             CYBERWAY_INDEX_ASSERT(pk == mpk, "updater cannot change primary key when modifying an object");
         }
 
