@@ -328,7 +328,7 @@ private:
             if (this == &src) return *this;
 
             multidx_ = src.multidx_;
-            cursor_ = controller().clone(get_cursor_request());
+            cursor_ = controller().clone(src.get_cursor_request());
             primary_key_ = src.primary_key_;
             item_ = src.item_;
 
