@@ -63,7 +63,7 @@ void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
      cyberway::chaindb::tag<resource_limits_object>::get_code(),
      "resource_limit",
      {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-      {"name", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"pending","asc"}, {"owner","asc"}}}}
+      {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"pending","asc"}, {"owner","asc"}}}}
    });
 
    abi.structs.emplace_back( eosio::chain::struct_def{

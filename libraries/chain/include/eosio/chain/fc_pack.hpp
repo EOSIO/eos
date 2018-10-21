@@ -17,6 +17,9 @@ namespace fc {
 
         template<typename Stream, typename T>
         inline void unpack(Stream& s, chainbase::oid<T>& o);
+
+        template<typename Stream>
+        inline void unpack(Stream& s, typename std::vector<bool>::reference& o);
     } // namespace raw
 } // namespace fc
 
@@ -42,6 +45,14 @@ namespace fc {
         template<typename Stream, typename T>
         inline void unpack(Stream& s, chainbase::oid<T>& o) {
             fc::raw::unpack(s, o._id);
+        }
+
+        /** std::vector<bool> has custom implementation and pack bools as bits */
+        template<typename Stream>
+        inline void unpack(Stream& s, typename std::vector<bool>::reference& o) {
+            bool v;
+            fc::raw::unpack(s, v);
+            o = v;
         }
     } // namespace raw
 } // namespace fc
