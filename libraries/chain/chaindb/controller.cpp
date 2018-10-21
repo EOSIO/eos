@@ -340,14 +340,7 @@ namespace cyberway { namespace chaindb {
 
             info.index = &_detail::get_pk_index(table);
 
-            auto& cursor = driver->lower_bound(info, std::move(key));
-            driver->current(cursor);
-            // impossible case?
-            CYBERWAY_ASSERT(cursor.pk == pk, driver_primary_key_exception,
-                "Driver returns ${ipk} instead of ${pk} on loading from the table ${table}",
-                ("ipk", cursor.pk)("pk", pk)("table", get_full_table_name(table)));
-
-            return cursor;
+            return driver->opt_find_by_pk(info, pk, std::move(key));
         }
 
         primary_key_t update(

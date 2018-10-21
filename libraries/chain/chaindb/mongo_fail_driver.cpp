@@ -45,6 +45,10 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
+    const cursor_info& mongodb_driver::opt_find_by_pk(index_info, primary_key_t) {
+        NOT_SUPPORTED;
+    }
+
     const cursor_info& mongodb_driver::current(const cursor_info&) {
         NOT_SUPPORTED;
     }

@@ -381,6 +381,16 @@ namespace cyberway { namespace chaindb {
             find_pk_ = locate_pk;
         }
 
+        void open_by_pk(const cmp_info& find_cmp, variant key, const primary_key_t locate_pk) {
+            source_.reset();
+            reset();
+            pk = locate_pk;
+
+            find_cmp_ = &find_cmp;
+            find_key_ = std::move(key);
+            find_pk_ = unset_primary_key;
+        }
+
         void open_end() {
             pk = end_primary_key;
             source_.reset();
@@ -740,6 +750,12 @@ namespace cyberway { namespace chaindb {
     const cursor_info& mongodb_driver::end(index_info index) {
         auto& cursor = impl_->create_cursor(std::move(index));
         cursor.open_end();
+        return cursor;
+    }
+
+    const cursor_info& mongodb_driver::opt_find_by_pk(index_info index, primary_key_t pk, variant key) {
+        auto& cursor = impl_->create_cursor(std::move(index));
+        cursor.open_by_pk(_detail::start_from(), std::move(key), pk);
         return cursor;
     }
 
