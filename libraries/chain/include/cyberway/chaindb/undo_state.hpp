@@ -17,6 +17,7 @@ namespace cyberway { namespace chaindb {
 
         void set_revision(int64_t revision);
         int64_t revision() const;
+        bool enabled() const;
 
         /** leaves the UNDO state on the stack when session goes out of scope */
         void push(int64_t revision);
@@ -48,7 +49,7 @@ namespace cyberway { namespace chaindb {
         /**
          * Event on create objects
          */
-        void insert(const table_info&, primary_key_t pk, variant value);
+        void insert(const table_info&, primary_key_t pk);
 
         /**
          * Event on modify objects

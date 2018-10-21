@@ -507,6 +507,7 @@ struct controller_impl {
       // Rewind the database to the last irreversible block
       db.with_write_lock([&] {
          db.undo_all();
+         chaindb.undo_all();
          /*
          FC_ASSERT(db.revision() == self.head_block_num(),
                    "Chainbase revision does not match head block num",

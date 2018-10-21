@@ -304,11 +304,9 @@ namespace cyberway { namespace chaindb {
             auto& table = static_cast<const table_info&>(info);
 
             auto value = table.abi->to_object(table, data, size, max_abi_time);
-            auto& cursor = insert(info, payer, pk, value, size);
+            auto& cursor = insert(info, std::move(value), payer, pk, size);
 
             // TODO: update RAM usage
-
-            undo->insert(table, pk, std::move(value));
 
             return cursor;
         }
@@ -318,20 +316,24 @@ namespace cyberway { namespace chaindb {
             const primary_key_t pk, variant value, const size_t size
         ) const {
             auto info = get_table<index_info>(request);
-            return insert(info, payer, pk, value, size);
+            return insert(info, std::move(value), payer, pk, size);
         }
 
         const cursor_info& insert(
-            index_info& info, const account_name& payer,
-            const primary_key_t pk, const variant& raw_value, const size_t size
+            index_info& info, variant raw_value,
+            const account_name& payer, const primary_key_t pk, const size_t size
         ) const {
             auto& table = static_cast<const table_info&>(info);
-            auto value = add_service_fields(table, payer, raw_value, pk, size);
+            auto value = add_service_fields(table, std::move(raw_value), payer, pk, size);
 
             auto inserted_pk = driver->insert(table, pk, value);
             CYBERWAY_ASSERT(inserted_pk == pk, driver_primary_key_exception,
                 "Driver returns ${ipk} instead of ${pk} on inserting into the table ${table}",
                 ("ipk", inserted_pk)("pk", pk)("table", get_full_table_name(table)));
+
+            if (undo->enabled()) {
+                undo->insert(table, pk);
+            }
 
             // open cursor from inserted pk
             mutable_variant_object key_object;
@@ -348,22 +350,10 @@ namespace cyberway { namespace chaindb {
             const primary_key_t pk, const char* data, const size_t size
         ) const {
             auto table = get_table<table_info>(request);
-
             auto value = table.abi->to_object(table, data, size, max_abi_time);
-
-            auto orig_value = driver->value(table, pk);
-            validate_object(table, orig_value, pk);
-            auto& orig_object = orig_value.get_object();
-
-            if (payer.empty()) {
-                payer = orig_object[get_payer_field_name()].as_string();
-            }
-
-            auto updated_pk = update(table, payer, pk, value, size);
+            auto updated_pk = update(table, std::move(value), payer, pk, size);
 
             // TODO: update RAM usage
-
-            undo->update(table, pk, std::move(value));
 
             return updated_pk;
         }
@@ -373,14 +363,26 @@ namespace cyberway { namespace chaindb {
             const primary_key_t pk, variant value, const size_t size
         ) const {
             auto table = get_table<table_info>(request);
-            return update(table, payer, pk, value, size);
+            return update(table, std::move(value), payer, pk, size);
         }
 
         primary_key_t update(
-            const table_info& table, account_name payer,
-            const primary_key_t pk, const variant& raw_value, const size_t size
+            const table_info& table, variant raw_value,
+            account_name payer, const primary_key_t pk, const size_t size
         ) const {
-            auto value = add_service_fields(table, payer, raw_value, pk, size);
+            auto orig_value = driver->value(table, pk);
+            validate_object(table, orig_value, pk);
+            auto& orig_object = orig_value.get_object();
+
+            if (payer.empty()) {
+                payer = orig_object[get_payer_field_name()].as_string();
+            }
+
+            if (undo->enabled()) {
+                undo->update(table, pk, std::move(orig_value));
+            }
+
+            auto value = add_service_fields(table, std::move(raw_value), payer, pk, size);
 
             auto updated_pk = driver->update(table, pk, value);
             CYBERWAY_ASSERT(updated_pk == pk, driver_primary_key_exception,
@@ -392,18 +394,11 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t remove(apply_context&, const table_request& request, primary_key_t pk) const {
             auto table = get_table<table_info>(request);
-
-            auto orig_value = driver->value(table, pk);
-            validate_object(table, orig_value, pk);
-            auto& orig_object = orig_value.get_object();
-
-            auto deleted_pk = remove(table, pk);
+            auto removed_pk = remove(table, pk);
 
             // TODO: update RAM usage
 
-            undo->remove(table, pk, std::move(orig_value));
-
-            return deleted_pk;
+            return removed_pk;
         }
 
         primary_key_t remove(const table_request& request, primary_key_t pk) const {
@@ -412,6 +407,14 @@ namespace cyberway { namespace chaindb {
         }
 
         primary_key_t remove(const table_info& table, primary_key_t pk) const {
+            auto orig_value = driver->value(table, pk);
+            validate_object(table, orig_value, pk);
+            auto& orig_object = orig_value.get_object();
+
+            if (undo->enabled()) {
+                undo->remove(table, pk, std::move(orig_value));
+            }
+
             auto deleted_pk = driver->remove(table, pk);
             CYBERWAY_ASSERT(deleted_pk == pk, driver_primary_key_exception,
                 "Driver returns ${dpk} instead of ${pk} on deleting of the table ${table}",
@@ -427,8 +430,7 @@ namespace cyberway { namespace chaindb {
         Info get_table(const Request& request) const {
             auto info = find_table<Info>(request);
             CYBERWAY_ASSERT(info.table, unknown_table_exception,
-                "ABI table ${table} doesn't exists",
-                ("table", get_full_table_name(request)));
+                "ABI table ${table} doesn't exists", ("table", get_full_table_name(request)));
 
             return info;
         }
@@ -436,8 +438,7 @@ namespace cyberway { namespace chaindb {
         index_info get_index(const index_request& request) const {
             auto info = find_index(request);
             CYBERWAY_ASSERT(info.index, unknown_index_exception,
-                "ABI index ${index} doesn't exists",
-                ("index", get_full_index_name(request)));
+                "ABI index ${index} doesn't exists", ("index", get_full_index_name(request)));
 
             return info;
         }
@@ -491,8 +492,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void validate_object(const table_info& table, const variant& value, const primary_key_t pk) const {
-            CYBERWAY_ASSERT(value.is_object(), broken_driver_exception,
-                "ChainDB driver returns not object.");
+            CYBERWAY_ASSERT(value.is_object(), broken_driver_exception, "ChainDB driver returns not object.");
             auto& object = value.get_object();
 
             auto& fields = _detail::get_reserved_fields();
@@ -506,7 +506,8 @@ namespace cyberway { namespace chaindb {
             CYBERWAY_ASSERT(object.end() != itr, driver_primary_key_exception,
                 "ChainDB driver returns object without primary key", ("table", get_full_table_name(table)));
 
-            CYBERWAY_ASSERT(variant::uint64_type == itr->value().get_type(), driver_primary_key_exception,
+            auto type = itr->value().get_type();
+            CYBERWAY_ASSERT(variant::uint64_type == type || variant::int64_type == type, driver_primary_key_exception,
                 "ChainDB driver returns object with wrong type of primary key", ("table", get_full_table_name(table)));
 
             CYBERWAY_ASSERT(pk == itr->value().as_uint64(), driver_primary_key_exception,
@@ -537,14 +538,13 @@ namespace cyberway { namespace chaindb {
         }
 
         variant add_service_fields(
-            const table_info& table,
-            const account_name& payer, const variant& value, const primary_key_t pk, size_t size
+            const table_info& table, variant value, const account_name& payer, const primary_key_t pk, size_t size
         ) const {
             using namespace _detail;
 
             validate_service_fields(table, value, pk);
 
-            mutable_variant_object object(value);
+            mutable_variant_object object(std::move(value));
             object(get_scope_field_name(), get_scope_name(table));
             object(get_payer_field_name(), get_payer_name(payer));
             object(get_size_field_name(), size);
@@ -573,6 +573,10 @@ namespace cyberway { namespace chaindb {
 
     chaindb_session chaindb_controller::start_undo_session(bool enabled) {
         return impl_->undo->start_undo_session(enabled);
+    }
+
+    void chaindb_controller::undo_all() {
+        return impl_->undo->undo_all();
     }
 
     void chaindb_controller::close(const cursor_request& request) {
