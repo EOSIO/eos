@@ -77,8 +77,8 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::global_property_object, eosio::chain::glo
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::dynamic_global_property_object,
                          eosio::chain::dynamic_global_property_multi_index)
 
-FC_REFLECT(chainbase::oid<eosio::chain::global_property_object>, (_id))
-FC_REFLECT(chainbase::oid<eosio::chain::dynamic_global_property_object>, (_id))
+//FC_REFLECT(chainbase::oid<eosio::chain::global_property_object>, (_id))
+//FC_REFLECT(chainbase::oid<eosio::chain::dynamic_global_property_object>, (_id))
 
 FC_REFLECT(eosio::chain::dynamic_global_property_object,
            (id)(global_action_sequence)
