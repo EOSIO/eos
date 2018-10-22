@@ -27,37 +27,22 @@
 
 namespace boost { namespace tuples {
 
-template<typename T,typename I1>
-fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<I1>& value) {
-    // TODO Do streaming tuple values
-    fc::raw::pack(stream, boost::tuples::get<0>(value));
-    return stream;
-}
+namespace _detail {
+    template<int I, int IMax> struct pack {
+        template<typename T, typename V> void operator()(T& stream, const V& value) const {
+            fc::raw::pack(stream, get<I>(value));
+            pack<I + 1, IMax>()(stream, value);
+        }
+    }; // struct pack
 
-template<typename T,typename I1, typename I2>
-fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<I1,I2>& value) {
-    // TODO Do streaming tuple values
-    fc::raw::pack(stream, boost::tuples::get<0>(value));
-    fc::raw::pack(stream, boost::tuples::get<1>(value));
-    return stream;
-}
+    template<int I> struct pack<I, I> {
+        template<typename... T> void operator()(T&&...) const { }
+    }; // struct pack
+} // namespace _detail
 
-template<typename T,typename I1, typename I2, typename I3>
-fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<I1,I2,I3>& value) {
-    // TODO Do streaming tuple values
-    fc::raw::pack(stream, boost::tuples::get<0>(value));
-    fc::raw::pack(stream, boost::tuples::get<1>(value));
-    fc::raw::pack(stream, boost::tuples::get<2>(value));
-    return stream;
-}
-
-template<typename T,typename I1, typename I2, typename I3, typename I4>
-fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<I1,I2,I3,I4>& value) {
-    // TODO Do streaming tuple values
-    fc::raw::pack(stream, boost::tuples::get<0>(value));
-    fc::raw::pack(stream, boost::tuples::get<1>(value));
-    fc::raw::pack(stream, boost::tuples::get<2>(value));
-    fc::raw::pack(stream, boost::tuples::get<3>(value));
+template<typename T, typename... Indicies>
+fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<Indicies...>& value) {
+    _detail::pack<0, length<tuple<Indicies...>>::value>()(stream, value);
     return stream;
 }
 
@@ -123,13 +108,6 @@ void safe_allocate(const Size size, const char* error_msg, Lambda&& callback) {
 
 using boost::multi_index::const_mem_fun;
 
-struct primary_key_extractor {
-    template<typename T>
-    primary_key_t operator()(const T& o) const {
-        return o.primary_key();
-    }
-}; // struct primary_key_extractor
-
 template<class C> struct tag {
     using type = C;
 
@@ -138,8 +116,34 @@ template<class C> struct tag {
     }
 }; // struct tag
 
-template<typename C> struct default_comparator {
-}; // struct default_comparator
+namespace _detail {
+    template <typename T> constexpr T& min(T& a, T& b) {
+        return a > b ? b : a;
+    }
+
+    template<int I, int Max> struct comparator_helper {
+        template<typename L, typename V>
+        bool operator()(const L& left, const V& value) const {
+            return boost::tuples::get<I>(left) == boost::tuples::get<I>(value) &&
+                comparator_helper<I + 1, Max>()(left, value);
+        }
+    }; // struct comparator_helper
+
+    template<int I> struct comparator_helper<I, I> {
+        template<typename... L> bool operator()(L&&...) const { return true; }
+    }; // struct comparator_helper
+
+    template<int I, int Max> struct converter_helper {
+        template<typename L, typename V> void operator()(L& left, const V& value) const {
+            boost::tuples::get<I>(left) = boost::tuples::get<I>(value);
+            converter_helper<I + 1, Max>()(left, value);
+        }
+    }; // struct converter_helper
+
+    template<int I> struct converter_helper<I, I> {
+        template<typename... L> void operator()(L&&...) const { }
+    }; // struct converter_helper
+} // namespace _detail
 
 template<typename Key>
 struct key_comparator {
@@ -152,19 +156,18 @@ template<typename... Indices>
 struct key_comparator<boost::tuple<Indices...>> {
     using key_type = boost::tuple<Indices...>;
 
-    static bool compare_eq(const key_type& left, const key_type& right) {
-        return left == right;
-    }
-
     template<typename Value>
     static bool compare_eq(const key_type& left, const Value& value) {
         return boost::tuples::get<0>(left) == value;
     }
 
-    template<typename V1,typename V2>
-    static bool compare_eq(const key_type& left, const boost::tuple<V1,V2>& value) {
-        return boost::tuples::get<0>(left) == boost::tuples::get<0>(value) &&
-               boost::tuples::get<1>(left) == boost::tuples::get<1>(value);
+    template<typename... Values>
+    static bool compare_eq(const key_type& left, const boost::tuple<Values...>& value) {
+        using value_type = boost::tuple<Values...>;
+        using namespace _detail;
+        using boost::tuples::length;
+
+        return comparator_helper<0, min(length<value_type>::value, length<key_type>::value)>()(left, value);
     }
 }; // struct key_comparator
 
@@ -177,25 +180,23 @@ struct key_converter {
 
 template<typename... Indices>
 struct key_converter<boost::tuple<Indices...>> {
+    using key_type = boost::tuple<Indices...>;
+
     template<typename Value>
-    static boost::tuple<Indices...> convert(const Value& value) {
-        boost::tuple<Indices...> index;
+    static key_type convert(const Value& value) {
+        key_type index;
         boost::tuples::get<0>(index) = value;
         return index;
     }
 
-    template<typename Value>
-    static boost::tuple<Indices...> convert(const boost::tuple<Value>& value) {
-        boost::tuple<Indices...> index;
-        boost::tuples::get<0>(index) = boost::tuples::get<0>(value);
-        return index;
-    }
+    template<typename... Values>
+    static key_type convert(const boost::tuple<Values...>& value) {
+        using namespace _detail;
+        using boost::tuples::length;
+        using value_type = boost::tuple<Values...>;
 
-    template<typename V1, typename V2>
-    static boost::tuple<Indices...> convert(const boost::tuple<V1, V2>& value) {
-        boost::tuple<Indices...> index;
-        boost::tuples::get<0>(index) = boost::tuples::get<0>(value);
-        boost::tuples::get<1>(index) = boost::tuples::get<1>(value);
+        key_type index;
+        converter_helper<0, min(length<value_type>::value, length<key_type>::value)>()(index, value);
         return index;
     }
 }; // struct key_converter
@@ -215,8 +216,7 @@ struct code_extractor<std::integral_constant<uint64_t, N>> {
     constexpr static uint64_t get_code() {return N;}
 }; // struct code_extractor
 
-template<typename Tag, typename Extractor>
-struct PrimaryIndex {
+template<typename Tag, typename Extractor> struct PrimaryIndex {
     using tag = Tag;
     using extractor = Extractor;
 }; // struct PrimaryIndex
