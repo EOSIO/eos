@@ -3,7 +3,7 @@ steps:
         echo "New pipeline!" && \
         pwd && \
         ls && \
-        cd eos/Docker && \
+        cd Docker && \
         docker build . -t eosio/eos
     label: "Docker build"
     agents:
