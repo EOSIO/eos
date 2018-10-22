@@ -8,7 +8,7 @@ steps:
         gcloud
     label: "Docker build"
     agents:
-      - "role=automation-builder-large"
+      - "role=automation-builder-fleet,aws:instance-type=m5d.2xlarge"
     timeout: 300
 
   - wait
