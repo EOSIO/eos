@@ -3,8 +3,9 @@ steps:
         echo "New pipeline!" && \
         pwd && \
         ls && \
-        cd Docker && \
-        docker build . -t eosio/eos
+        cd Docker/builder && \
+        docker build -t eosio/builder -t eosio/builder:$BUILDKITE_BRANCH . --build-arg branch=$BUILDKITE_BRANCH && \
+        gcloud
     label: "Docker build"
     agents:
       - "role=automation-builder-large"
