@@ -1,6 +1,6 @@
 steps:
   - command: |
-        echo "New pipeline"
+        echo "New pipeline!"
     label: "Docker build"
     agents:
       - "role=automation-builder-large"
