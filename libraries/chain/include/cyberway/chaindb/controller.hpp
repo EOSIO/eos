@@ -64,6 +64,7 @@ namespace cyberway { namespace chaindb {
 
         chaindb_session start_undo_session(bool enabled);
         void undo_all();
+        void commit(int64_t revision);
 
         cursor_t lower_bound(const index_request&, const char* key, size_t);
         cursor_t upper_bound(const index_request&, const char* key, size_t);

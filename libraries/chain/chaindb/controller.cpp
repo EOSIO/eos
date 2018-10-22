@@ -579,6 +579,10 @@ namespace cyberway { namespace chaindb {
         return impl_->undo->undo_all();
     }
 
+    void chaindb_controller::commit(const int64_t revision) {
+        return impl_->undo->commit(revision);
+    }
+
     void chaindb_controller::close(const cursor_request& request) {
         impl_->driver->close(request);
     }

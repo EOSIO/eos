@@ -245,6 +245,7 @@ struct controller_impl {
       auto lh_block_num = log_head->block_num();
 
       db.commit( s->block_num );
+      chaindb.commit( s->block_num );
 
       if( s->block_num <= lh_block_num ) {
 //         edump((s->block_num)("double call to on_irr"));
