@@ -3,7 +3,6 @@ steps:
         echo "New pipeline!" && \
         pwd && \
         ls && \
-        cd Docker/builder && \
         ls -lah /usr/bin && \
         gcloud
     label: "Docker build"
