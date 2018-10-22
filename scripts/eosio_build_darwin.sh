@@ -159,8 +159,8 @@
 						printf "\\tExiting now.\\n\\n"
 						exit 1;
 					fi
-               if [[ "$DEP" == "llvm@4" ]]; then
-                  "${BREW}" unlink ${DEP}
+                                        if [[ "$DEP" == "llvm@4" ]]; then
+                                                "${BREW}" unlink ${DEP}
 					elif ! "${BREW}" unlink ${DEP} && "${BREW}" link --force ${DEP}
 					then
 						printf "\\tHomebrew exited with the above errors.\\n"
