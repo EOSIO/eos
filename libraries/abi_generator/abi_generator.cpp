@@ -288,8 +288,9 @@ void abi_generator::handle_decl(const Decl* decl) { try {
         }
 
         if(params.size() >= 2) {
-          table.index_type = params[1];
-          ABI_ASSERT(table.index_type == "i64", "Only i64 index is supported. ${index_type}",("index_type",table.index_type));
+          // TODO: CyberWay
+          // table.index_type = params[1];
+          // ABI_ASSERT(table.index_type == "i64", "Only i64 index is supported. ${index_type}",("index_type",table.index_type));
         } else { try {
           guess_index_type(table, *s);
         } FC_CAPTURE_AND_RETHROW( (type_name) ) }
@@ -345,7 +346,8 @@ void abi_generator::guess_index_type(table_def& table, const struct_def s) {
   vector<field_def> fields;
   get_all_fields(s, fields);
   if( is_i64_index(fields) ) {
-    table.index_type = "i64";
+    // TODO: CyberWay
+    // table.index_type = "i64";
   } else {
     ABI_ASSERT(false, "Unable to guess index type");
   }
@@ -356,28 +358,29 @@ void abi_generator::guess_key_names(table_def& table, const struct_def s) {
   vector<field_def> fields;
   get_all_fields(s, fields);
 
- if( table.index_type == "i64") {
-
-    table.key_names.clear();
-    table.key_types.clear();
-
-    unsigned int key_size = 0;
-    bool valid_key = false;
-    for(auto& f : fields) {
-      table.key_names.emplace_back(f.name);
-      table.key_types.emplace_back(f.type);
-      key_size += type_size[f.type]/8;
-
-      if(table.index_type == "i64" && key_size >= sizeof(uint64_t)) {
-        valid_key = true;
-        break;
-      }
-    }
-
-    ABI_ASSERT(valid_key, "Unable to guess key names");
-  } else {
-    ABI_ASSERT(false, "Unable to guess key names");
-  }
+// TODO: CyberWay
+// if( table.index_type == "i64") {
+//
+//    table.key_names.clear();
+//    table.key_types.clear();
+//
+//    unsigned int key_size = 0;
+//    bool valid_key = false;
+//    for(auto& f : fields) {
+//      table.key_names.emplace_back(f.name);
+//      table.key_types.emplace_back(f.type);
+//      key_size += type_size[f.type]/8;
+//
+//      if(table.index_type == "i64" && key_size >= sizeof(uint64_t)) {
+//        valid_key = true;
+//        break;
+//      }
+//    }
+//
+//    ABI_ASSERT(valid_key, "Unable to guess key names");
+//  } else {
+//    ABI_ASSERT(false, "Unable to guess key names");
+//  }
 }
 
 const table_def* abi_generator::find_table(const table_name& name) {

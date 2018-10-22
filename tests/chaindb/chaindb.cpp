@@ -353,9 +353,8 @@ namespace _detail {
     }
 
     const string& get_primary_index_name() {
-        //static string name = "primary";
-        static string nm = name{chaindb::tag<by_id>::get_name()}.to_string();
-        return nm;
+        static string name = "primary";
+        return name;
     }
 
     const string& get_id_key() {

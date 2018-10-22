@@ -1,5 +1,7 @@
 #include <chainbase/chainbase.hpp>
 #include <fc/filesystem.hpp>
+// TODO: CyberWay
+// #include <cyberway/chaindb/chaindb_controller.hpp>
 
 #include <memory>
 
@@ -15,6 +17,8 @@ struct chainbase_fixture {
    chainbase_fixture()
    : _tempdir()
    , _db(std::make_unique<chainbase::database>(_tempdir.path(), chainbase::database::read_write, MAX_SIZE))
+   // TODO: CyberWay
+   // , _chaidb(std::make_unique<cyberway::chaindb::chaindb_controller>(cyberway::chaindb::chaindb_type::MongoDB, "mongodb://127.0.0.1:27017"))
    {
    }
 
@@ -26,6 +30,9 @@ struct chainbase_fixture {
 
    fc::temp_directory                    _tempdir;
    std::unique_ptr<chainbase::database>  _db;
+
+// TODO: CyberWay
+//   std::unique_ptr<cyberway::chaindb::chaindb_controller> _chaindb;
 };
 
 } }  // eosio::testing
