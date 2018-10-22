@@ -4,7 +4,7 @@ steps:
         pwd && \
         ls && \
         cd Docker/builder && \
-        docker build -t eosio/builder -t eosio/builder:$BUILDKITE_BRANCH . --build-arg branch=$BUILDKITE_BRANCH && \
+        ls -lah /usr/bin && \
         gcloud
     label: "Docker build"
     agents:
