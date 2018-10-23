@@ -4,7 +4,7 @@ steps:
         pwd && \
         ls && \
         ls -lah /usr/bin && \
-        gcloud
+        gcloud --version
     label: "Docker build"
     agents:
       role: "automation-builder-fleet"
