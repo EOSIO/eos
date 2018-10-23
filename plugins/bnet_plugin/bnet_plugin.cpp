@@ -1383,7 +1383,10 @@ namespace eosio {
 
 
       if( app().get_plugin<chain_plugin>().chain().get_read_mode() == chain::db_read_mode::READ_ONLY ) {
-         my->_request_trx = false;
+         if (my->_request_trx) {
+            my->_request_trx = false;
+            ilog( "forced bnet-no-trx to true since in read-only mode" );
+         }
       }
 
       const auto address = boost::asio::ip::make_address( my->_bnet_endpoint_address );
