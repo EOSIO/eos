@@ -78,6 +78,7 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME} PRIVATE -Wl,${whole_archive_flag}
 
 include(additionalPlugins)
 
+copy_bin( ${NODE_EXECUTABLE_NAME} )
 install( TARGETS
    ${NODE_EXECUTABLE_NAME}
 

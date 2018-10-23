@@ -1,4 +1,5 @@
 cmake_minimum_required( VERSION 3.5 )
+message(STATUS "Setting up Eosio Tester @VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@ at @EOS_ROOT_DIR@")
 
 set(CMAKE_CXX_COMPILER @CMAKE_CXX_COMPILER@)
 set(CMAKE_C_COMPILER   @CMAKE_C_COMPILER@)
@@ -50,7 +51,6 @@ else()
    find_library(libsecp256k1 secp256k1 @CMAKE_BINARY_DIR@/libraries/fc/secp256k1)
 endif()
 
-find_library(libbinaryen binaryen @CMAKE_BINARY_DIR@/externals/binaryen/lib)
 find_library(libwasm WASM @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WASM)
 find_library(libwast WAST @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WAST)
 find_library(libir IR     @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/IR)
@@ -77,7 +77,6 @@ macro(add_eosio_test test_name)
        ${libtester}
        ${libchain}
        ${libfc}
-       ${libbinaryen}
        ${libwast}
        ${libwasm}
        ${libwabt}
@@ -175,7 +174,7 @@ if(ENABLE_COVERAGE_TESTING)
     # Run tests
     COMMAND ./tools/ctestwrapper.sh -R ${ctest_tests} -E ${ctest_exclude_tests}
 
-    COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ./tools/llvm-gcov.sh --output-file ${Coverage_NAME}.info
+    COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ${CMAKE_SOURCE_DIR}/tools/llvm-gcov.sh --output-file ${Coverage_NAME}.info
 
     COMMAND ${LCOV_PATH} -remove ${Coverage_NAME}.info '*/boost/*' '/usr/lib/*' '/usr/include/*' '*/externals/*' '*/fc/*' '*/wasm-jit/*' --output-file ${Coverage_NAME}_filtered.info
 

@@ -26,6 +26,7 @@
 #include <fc/crypto/private_key.hpp>
 #include <fc/crypto/public_key.hpp>
 #include <fc/io/json.hpp>
+#include <fc/optional.hpp>
 #include <fc/network/ip.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/log/logger_config.hpp>
@@ -387,63 +388,65 @@ string producer_names::producer_name(unsigned int producer_number) {
 }
 
 struct launcher_def {
-  bool force_overwrite;
-  size_t total_nodes;
-  size_t prod_nodes;
-  size_t producers;
-  size_t next_node;
-  string shape;
-  p2p_plugin p2p;
-  allowed_connection allowed_connections = PC_NONE;
-  bfs::path genesis;
-  bfs::path output;
-  bfs::path host_map_file;
-  bfs::path server_ident_file;
-  bfs::path stage;
+   bool force_overwrite;
+   size_t total_nodes;
+   size_t prod_nodes;
+   size_t producers;
+   size_t next_node;
+   string shape;
+   p2p_plugin p2p;
+   allowed_connection allowed_connections = PC_NONE;
+   bfs::path genesis;
+   bfs::path output;
+   bfs::path host_map_file;
+   bfs::path server_ident_file;
+   bfs::path stage;
 
-  string erd;
-  bfs::path config_dir_base;
-  bfs::path data_dir_base;
-  bool skip_transaction_signatures = false;
-  string eosd_extra_args;
-  std::map<uint,string> specific_nodeos_args;
-  testnet_def network;
-  string gelf_endpoint;
-  vector <string> aliases;
-  vector <host_def> bindings;
-  int per_host = 0;
-  last_run_def last_run;
-  int start_delay = 0;
-  bool gelf_enabled;
-  bool nogen;
-  bool boot;
-  bool add_enable_stale_production = false;
-  string launch_name;
-  string launch_time;
-  server_identities servers;
-  producer_set_def producer_set;
-   vector<string> genesis_block;
+   string erd;
+   bfs::path config_dir_base;
+   bfs::path data_dir_base;
+   bool skip_transaction_signatures = false;
+   string eosd_extra_args;
+   std::map<uint,string> specific_nodeos_args;
+   testnet_def network;
+   string gelf_endpoint;
+   vector <string> aliases;
+   vector <host_def> bindings;
+   int per_host = 0;
+   last_run_def last_run;
+   int start_delay = 0;
+   bool gelf_enabled;
+   bool nogen;
+   bool boot;
+   bool add_enable_stale_production = false;
+   string launch_name;
+   string launch_time;
+   server_identities servers;
+   producer_set_def producer_set;
    string start_temp;
    string start_script;
+   fc::optional<uint32_t> max_block_cpu_usage;
+   fc::optional<uint32_t> max_transaction_cpu_usage;
+   eosio::chain::genesis_state genesis_from_file;
 
    void assign_name (eosd_def &node, bool is_bios);
 
-  void set_options (bpo::options_description &cli);
-  void initialize (const variables_map &vmap);
+   void set_options (bpo::options_description &cli);
+   void initialize (const variables_map &vmap);
    void init_genesis ();
-  void load_servers ();
-  bool generate ();
-  void define_network ();
-  void bind_nodes ();
-  host_def *find_host (const string &name);
-  host_def *find_host_by_name_or_address (const string &name);
-  host_def *deploy_config_files (tn_node_def &node);
-  string compose_scp_command (const host_def &host, const bfs::path &source,
-                              const bfs::path &destination);
-  void write_config_file (tn_node_def &node);
-  void write_logging_config_file (tn_node_def &node);
-  void write_genesis_file (tn_node_def &node);
-  void write_setprods_file ();
+   void load_servers ();
+   bool generate ();
+   void define_network ();
+   void bind_nodes ();
+   host_def *find_host (const string &name);
+   host_def *find_host_by_name_or_address (const string &name);
+   host_def *deploy_config_files (tn_node_def &node);
+   string compose_scp_command (const host_def &host, const bfs::path &source,
+                               const bfs::path &destination);
+   void write_config_file (tn_node_def &node);
+   void write_logging_config_file (tn_node_def &node);
+   void write_genesis_file (tn_node_def &node);
+   void write_setprods_file ();
    void write_bios_boot ();
 
    bool   is_bios_ndx (size_t ndx);
@@ -451,25 +454,25 @@ struct launcher_def {
    bool   next_ndx(size_t &ndx);
    size_t skip_ndx (size_t from, size_t offset);
 
-  void make_ring ();
-  void make_star ();
-  void make_mesh ();
-  void make_custom ();
-  void write_dot_file ();
-  void format_ssh (const string &cmd, const string &host_name, string &ssh_cmd_line);
-  void do_command(const host_def& host, const string& name, vector<pair<string, string>> env_pairs, const string& cmd);
-  bool do_ssh (const string &cmd, const string &host_name);
-  void prep_remote_config_dir (eosd_def &node, host_def *host);
-  void launch (eosd_def &node, string &gts);
-  void kill (launch_modes mode, string sig_opt);
-  static string get_node_num(uint16_t node_num);
-  pair<host_def, eosd_def> find_node(uint16_t node_num);
-  vector<pair<host_def, eosd_def>> get_nodes(const string& node_number_list);
-  void bounce (const string& node_numbers);
-  void down (const string& node_numbers);
-  void roll (const string& host_names);
-  void start_all (string &gts, launch_modes mode);
-  void ignite ();
+   void make_ring ();
+   void make_star ();
+   void make_mesh ();
+   void make_custom ();
+   void write_dot_file ();
+   void format_ssh (const string &cmd, const string &host_name, string &ssh_cmd_line);
+   void do_command(const host_def& host, const string& name, vector<pair<string, string>> env_pairs, const string& cmd);
+   bool do_ssh (const string &cmd, const string &host_name);
+   void prep_remote_config_dir (eosd_def &node, host_def *host);
+   void launch (eosd_def &node, string &gts);
+   void kill (launch_modes mode, string sig_opt);
+   static string get_node_num(uint16_t node_num);
+   pair<host_def, eosd_def> find_node(uint16_t node_num);
+   vector<pair<host_def, eosd_def>> get_nodes(const string& node_number_list);
+   void bounce (const string& node_numbers);
+   void down (const string& node_numbers);
+   void roll (const string& host_names);
+   void start_all (string &gts, launch_modes mode);
+   void ignite ();
 };
 
 void
@@ -482,7 +485,7 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("mode,m",bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),"connection mode, combination of \"any\", \"producers\", \"specified\", \"none\"")
     ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"star\" \"mesh\" or give a filename for custom")
     ("p2p-plugin", bpo::value<string>()->default_value("net"),"select a p2p plugin to use (either net or bnet). Defaults to net.")
-    ("genesis,g",bpo::value<bfs::path>(&genesis)->default_value("./genesis.json"),"set the path to genesis.json")
+    ("genesis,g",bpo::value<string>()->default_value("./genesis.json"),"set the path to genesis.json")
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "nodeos does not require transaction signatures.")
     ("nodeos", bpo::value<string>(&eosd_extra_args), "forward nodeos command line argument(s) to each instance of nodeos, enclose arg(s) in quotes")
     ("specific-num", bpo::value<vector<uint>>()->composing(), "forward nodeos command line argument(s) (using \"--specific-nodeos\" flag) to this specific instance of nodeos. This parameter can be entered multiple times and requires a paired \"--specific-nodeos\" flag")
@@ -490,14 +493,16 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
     ("boot",bpo::bool_switch(&boot)->default_value(false),"After deploying the nodes and generating a boot script, invoke it.")
     ("nogen",bpo::bool_switch(&nogen)->default_value(false),"launch nodes without writing new config files")
-    ("host-map",bpo::value<bfs::path>(&host_map_file)->default_value(""),"a file containing mapping specific nodes to hosts. Used to enhance the custom shape argument")
-    ("servers",bpo::value<bfs::path>(&server_ident_file)->default_value(""),"a file containing ip addresses and names of individual servers to deploy as producers or non-producers ")
+    ("host-map",bpo::value<string>(),"a file containing mapping specific nodes to hosts. Used to enhance the custom shape argument")
+    ("servers",bpo::value<string>(),"a file containing ip addresses and names of individual servers to deploy as producers or non-producers ")
     ("per-host",bpo::value<int>(&per_host)->default_value(0),"specifies how many nodeos instances will run on a single host. Use 0 to indicate all on one.")
     ("network-name",bpo::value<string>(&network.name)->default_value("testnet_"),"network name prefix used in GELF logging source")
     ("enable-gelf-logging",bpo::value<bool>(&gelf_enabled)->default_value(true),"enable gelf logging appender in logging configuration file")
     ("gelf-endpoint",bpo::value<string>(&gelf_endpoint)->default_value("10.160.11.21:12201"),"hostname:port or ip:port of GELF endpoint")
     ("template",bpo::value<string>(&start_temp)->default_value("testnet.template"),"the startup script template")
     ("script",bpo::value<string>(&start_script)->default_value("bios_boot.sh"),"the generated startup script name")
+    ("max-block-cpu-usage",bpo::value<uint32_t>(),"Provide the \"max-block-cpu-usage\" value to use in the genesis.json file")
+    ("max-transaction-cpu-usage",bpo::value<uint32_t>(),"Provide the \"max-transaction-cpu-usage\" value to use in the genesis.json file")
         ;
 }
 
@@ -527,6 +532,22 @@ launcher_def::initialize (const variables_map &vmap) {
         exit (-1);
       }
     }
+  }
+
+  if (vmap.count("max-block-cpu-usage")) {
+     max_block_cpu_usage = vmap["max-block-cpu-usage"].as<uint32_t>();
+  }
+
+  if (vmap.count("max-transaction-cpu-usage")) {
+     max_transaction_cpu_usage = vmap["max-transaction-cpu-usage"].as<uint32_t>();
+  }
+
+  genesis = vmap["genesis"].as<string>();
+  if (vmap.count("host-map")) {
+     host_map_file = vmap["host-map"].as<string>();
+  }
+  if (vmap.count("servers")) {
+     server_ident_file = vmap["servers"].as<string>();
   }
 
   if (vmap.count("specific-num")) {
@@ -1157,27 +1178,20 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
 
 void
 launcher_def::init_genesis () {
-  bfs::path genesis_path = bfs::current_path() / "genesis.json";
-   bfs::ifstream src(genesis_path);
-   if (!src.good()) {
+   const bfs::path genesis_path = genesis.is_complete() ? genesis : bfs::current_path() / genesis;
+   if (!bfs::exists(genesis_path)) {
       cout << "generating default genesis file " << genesis_path << endl;
       eosio::chain::genesis_state default_genesis;
       fc::json::save_to_file( default_genesis, genesis_path, true );
-      src.open(genesis_path);
    }
    string bioskey = string(network.nodes["bios"].keys[0].get_public_key());
-   string str;
-   string prefix("initial_key");
-   while(getline(src,str)) {
-      size_t pos = str.find(prefix);
-      if (pos != string::npos) {
-         size_t cut = str.find("EOS",pos);
-         genesis_block.push_back(str.substr(0,cut) + bioskey + "\",");
-      }
-      else {
-         genesis_block.push_back(str);
-      }
-   }
+
+   fc::json::from_file(genesis_path).as<eosio::chain::genesis_state>(genesis_from_file);
+   genesis_from_file.initial_key = public_key_type(bioskey);
+   if (max_block_cpu_usage)
+      genesis_from_file.initial_configuration.max_block_cpu_usage = *max_block_cpu_usage;
+   if (max_transaction_cpu_usage)
+      genesis_from_file.initial_configuration.max_transaction_cpu_usage = *max_transaction_cpu_usage;
 }
 
 void
@@ -1191,10 +1205,7 @@ launcher_def::write_genesis_file(tn_node_def &node) {
   }
 
   filename = dd / "genesis.json";
-  bfs::ofstream gf ( dd / "genesis.json");
-  for (auto &line : genesis_block) {
-     gf << line << "\n";
-  }
+  fc::json::save_to_file( genesis_from_file, dd / "genesis.json", true );
 }
 
 void
@@ -1707,6 +1718,13 @@ launcher_def::bounce (const string& node_numbers) {
       const string node_num = node.get_node_num();
       cout << "Bouncing " << node.name << endl;
       string cmd = "./scripts/eosio-tn_bounce.sh " + eosd_extra_args;
+      if (node_num != "bios" && !specific_nodeos_args.empty()) {
+         const auto node_num_i = boost::lexical_cast<uint16_t,string>(node_num);
+         if (specific_nodeos_args.count(node_num_i)) {
+            cmd += " " + specific_nodeos_args[node_num_i];
+         }
+      }
+
       do_command(host, node.name, { { "EOSIO_HOME", host.eosio_home }, { "EOSIO_NODE", node_num } }, cmd);
    }
 }

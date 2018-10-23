@@ -96,4 +96,8 @@ std::unique_ptr<wasm_instantiated_module_interface> wabt_runtime::instantiate_mo
    return std::make_unique<wabt_instantiated_module>(std::move(env), initial_memory, instantiated_module);
 }
 
+void wabt_runtime::immediately_exit_currently_running_module() {
+   throw wasm_exit();
+}
+
 }}}}

@@ -4,11 +4,9 @@
  */
 #pragma once
 
+#include <eosio/chain/database_utils.hpp>
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/multi_index_includes.hpp>
-#include <softfloat.hpp>
-
-#include <chainbase/chainbase.hpp>
 
 #include <array>
 #include <type_traits>
@@ -64,7 +62,7 @@ namespace eosio { namespace chain {
       table_id              t_id;
       uint64_t              primary_key;
       account_name          payer = 0;
-      shared_string         value;
+      shared_blob           value;
    };
 
    using key_value_index = chainbase::shared_multi_index_container<
@@ -160,6 +158,29 @@ namespace eosio { namespace chain {
    typedef secondary_index<float128_t,index_long_double_object_type,soft_long_double_less>::index_object  index_long_double_object;
    typedef secondary_index<float128_t,index_long_double_object_type,soft_long_double_less>::index_index   index_long_double_index;
 
+   /**
+    * helper template to map from an index type to the best tag
+    * to use when traversing by table_id
+    */
+   template<typename T>
+   struct object_to_table_id_tag;
+
+#define DECLARE_TABLE_ID_TAG( object, tag ) \
+   template<> \
+   struct object_to_table_id_tag<object> { \
+      using tag_type = tag;\
+   };
+
+   DECLARE_TABLE_ID_TAG(key_value_object, by_scope_primary)
+   DECLARE_TABLE_ID_TAG(index64_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index128_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index256_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index_double_object, by_primary)
+   DECLARE_TABLE_ID_TAG(index_long_double_object, by_primary)
+
+   template<typename T>
+   using object_to_table_id_tag_t = typename object_to_table_id_tag<T>::tag_type;
+
 namespace config {
    template<>
    struct billable_size<table_id_object> {
@@ -216,5 +237,14 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::index256_object, eosio::chain::index256_i
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::index_double_object, eosio::chain::index_double_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::index_long_double_object, eosio::chain::index_long_double_index)
 
-FC_REFLECT(eosio::chain::table_id_object, (id)(code)(scope)(table) )
-FC_REFLECT(eosio::chain::key_value_object, (id)(t_id)(primary_key)(value)(payer) )
+FC_REFLECT(eosio::chain::table_id_object, (code)(scope)(table)(payer)(count) )
+FC_REFLECT(eosio::chain::key_value_object, (primary_key)(payer)(value) )
+
+#define REFLECT_SECONDARY(type)\
+  FC_REFLECT(type, (primary_key)(payer)(secondary_key) )
+
+REFLECT_SECONDARY(eosio::chain::index64_object)
+REFLECT_SECONDARY(eosio::chain::index128_object)
+REFLECT_SECONDARY(eosio::chain::index256_object)
+REFLECT_SECONDARY(eosio::chain::index_double_object)
+REFLECT_SECONDARY(eosio::chain::index_long_double_object)
