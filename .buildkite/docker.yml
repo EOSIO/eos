@@ -3,6 +3,7 @@ steps:
         echo "AUTHENTICATING GOOGLE SERVICE ACCOUNT" && \
         echo $PATH && \
         ls -lah /usr/bin && \
+        ls -lah /usr/bin/gcloud-dir && \
         gcloud --quiet auth activate-service-account b1-automation-svc@b1-automation-dev.iam.gserviceaccount.com --key-file=/etc/gcp-service-account.json && \
         docker-credential-gcr configure-docker && \
         echo "BUILDING BUILD IMAGE" && \
@@ -10,7 +11,7 @@ steps:
         docker build -t eosio/builder:latest -t eosio/builder:$BUILDKITE_COMMIT . --build-arg branch=$BUILDKITE_COMMIT && \
         docker tag eosio/builder:$BUILDKITE_COMMIT gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
         docker tag eosio/builder:latest gcr.io/b1-automation-dev/eosio/builder:latest && \
-        echo "PUSHING DOCKER IMAGES"
+        echo "PUSHING DOCKER IMAGES" && \
         docker push gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
         docker push gcr.io/b1-automation-dev/eosio/builder:latest && \
         echo "TRASHING OLD IMAGES" && \
@@ -25,11 +26,12 @@ steps:
       aws:instance-type: "m5d.2xlarge"
     plugins:
       docker#v1.4.0:
-        image: "ubuntu"
+        image: "docker"
         workdir: /data/job
+        command: ["--privileged"]
         volumes:
           - "/etc/gcp-service-account.json:/etc/gcp-service-account.json"
-          - "/usr/bin:/usr/bin"
+          - "/usr/bin/gcloud-dir:/usr/bin/gcloud-dir"
     timeout: 300
 
   - wait
