@@ -1,4 +1,4 @@
-FROM gcr.io/b1-automation-dev/eosio/builder
+FROM eosio/builder
 ARG branch=master
 ARG symbol=SYS
 
