@@ -3,14 +3,13 @@ steps:
         echo "AUTHENTICATING GOOGLE SERVICE ACCOUNT" && \
         gcloud --quiet auth activate-service-account b1-automation-svc@b1-automation-dev.iam.gserviceaccount.com --key-file=/etc/gcp-service-account.json && \
         docker-credential-gcr configure-docker && \
-        echo "BUILDING BUILD IMAGE" && \
-        cd Docker && \
-        docker build -t eosio/eos:latest -t eosio/eos:$BUILDKITE_BRANCH . --build-arg branch=$BUILDKITE_BRANCH && \
-        docker tag eosio/eos:$BUILDKITE_BRANCH gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_BRANCH && \
-        docker image list && \
-        docker push gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_BRANCH && \
-        docker tag eosio/eos:latest gcr.io/b1-automation-dev/eosio/eos:latest && \
-        docker push gcr.io/b1-automation-dev/eosio/eos:latest
+        echo "BUILDING IMAGE" && \
+        cd Docker/dev && \
+        docker build -t eosio/eos-dev:latest -t eosio/eos-dev:$BUILDKITE_BRANCH . --build-arg branch=$BUILDKITE_BRANCH && \
+        docker tag eosio/eos-dev:$BUILDKITE_BRANCH gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_BRANCH && \
+        docker push gcr.io/b1-automation-dev/eosio/eos-dev:$BUILDKITE_BRANCH && \
+        docker tag eosio/eos-dev:latest gcr.io/b1-automation-dev/eosio/eos-dev:latest && \
+        docker push gcr.io/b1-automation-dev/eosio/eos-dev:latest
     label: "Docker build"
     agents:
       role: "automation-builder-fleet"
