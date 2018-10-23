@@ -25,6 +25,10 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
+    void mongodb_driver::apply_changes() {
+        NOT_SUPPORTED;
+    }
+
     void mongodb_driver::verify_table_structure(const table_info&, const microseconds&) {
         NOT_SUPPORTED;
     }

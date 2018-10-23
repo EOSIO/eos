@@ -235,10 +235,18 @@ namespace cyberway { namespace chaindb {
             return false;
         }
 
+        void apply_changes(const int64_t apply_revision) {
+            CYBERWAY_SESSION_ASSERT(apply_revision == revision,
+                "Wrong push revision ${apply_revision} != ${revision}",
+                ("revision", revision)("apply_revision", apply_revision));
+            driver.apply_changes();
+        }
+
         void push(const int64_t push_revision) {
             CYBERWAY_SESSION_ASSERT(push_revision == revision,
                 "Wrong push revision ${push_revision} != ${revision}",
                 ("revision", revision)("push_revision", push_revision));
+            driver.apply_changes();
             stage = undo_stage::Unknown;
         }
 
@@ -545,6 +553,10 @@ namespace cyberway { namespace chaindb {
         return impl_->enabled();
     }
 
+    void undo_stack::apply_changes(const int64_t revision) {
+        impl_->apply_changes(revision);
+    }
+
     void undo_stack::push(const int64_t push_revision) {
         impl_->push(push_revision);
     }
@@ -563,6 +575,10 @@ namespace cyberway { namespace chaindb {
 
     void undo_stack::undo_all() {
         impl_->undo_all();
+    }
+
+    void undo_stack::undo() {
+        impl_->undo(impl_->revision);
     }
 
     void undo_stack::update(const table_info& table, const primary_key_t pk, variant value) {
@@ -597,6 +613,13 @@ namespace cyberway { namespace chaindb {
     chaindb_session::~chaindb_session() {
         if (apply_) {
             stack_.undo(revision_);
+        }
+    }
+
+    void chaindb_session::apply_changes() {
+        if (apply_) {
+            apply_ = false;
+            stack_.apply_changes(revision_);
         }
     }
 

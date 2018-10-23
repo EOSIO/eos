@@ -69,6 +69,12 @@ class maybe_session {
          }
       }
 
+      void apply_changes() {
+         if (_chaindb_session) {
+            _chaindb_session->apply_changes();
+         }
+      }
+
       maybe_session& operator = ( maybe_session&& mv ) {
          if (mv._session) {
             _session = move(*mv._session);
@@ -108,6 +114,10 @@ struct pending_state {
 
    void push() {
       _db_session.push();
+   }
+
+   void apply_changes() {
+      _db_session.apply_changes();
    }
 };
 
@@ -157,7 +167,7 @@ struct controller_impl {
       }
       head = prev;
       db.undo();
-
+      chaindb.undo();
    }
 
 
@@ -347,6 +357,7 @@ struct controller_impl {
       }
       while( db.revision() > head->block_num ) {
          db.undo();
+         chaindb.undo();
       }
 
    }
@@ -623,6 +634,8 @@ struct controller_impl {
       });
 
       try {
+         pending->apply_changes();
+
          if (add_to_fork_db) {
             pending->_pending_block_state->validated = true;
             auto new_bsp = fork_db.add(pending->_pending_block_state);

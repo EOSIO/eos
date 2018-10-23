@@ -575,6 +575,10 @@ namespace cyberway { namespace chaindb {
         return impl_->undo->start_undo_session(enabled);
     }
 
+    void chaindb_controller::undo() {
+        return impl_->undo->undo();
+    }
+
     void chaindb_controller::undo_all() {
         return impl_->undo->undo_all();
     }

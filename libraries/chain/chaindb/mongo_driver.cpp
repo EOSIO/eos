@@ -606,13 +606,18 @@ namespace cyberway { namespace chaindb {
         code_info(code_info&&) = default;
 
         ~code_info() {
-            for (auto& table: tables_bulk_write_) {
-                table.second.execute();
-            }
+            apply_changes();
         }
 
         bool empty() const {
             return cursor_map.empty() && tables_bulk_write_.empty();
+        }
+
+        void apply_changes() {
+            for (auto& table: tables_bulk_write_) {
+                table.second.execute();
+            }
+            tables_bulk_write_.clear();
         }
 
         void apply_changes(const table_name& table) {
@@ -696,6 +701,20 @@ namespace cyberway { namespace chaindb {
             auto itr = code_map_.find(table.code);
             if (code_map_.end() != itr) {
                 itr->second.apply_changes(table.table->name);
+                if (itr->second.empty()) {
+                    code_map_.erase(itr);
+                }
+            }
+        }
+
+        void apply_changes() {
+            for (auto itr = code_map_.begin(), etr = code_map_.end(); etr != itr;) {
+                itr->second.apply_changes();
+                if (itr->second.empty()) {
+                    code_map_.erase(itr++);
+                } else {
+                    ++itr;
+                }
             }
         }
 
@@ -788,6 +807,10 @@ namespace cyberway { namespace chaindb {
         impl_->code_map_.erase(code);
     }
 
+    void mongodb_driver::apply_changes() {
+        impl_->apply_changes();
+    }
+
     void mongodb_driver::verify_table_structure(const table_info& table, const microseconds& max_time) {
         impl_->verify_table_structure(table, max_time);
     }
@@ -874,6 +897,8 @@ namespace cyberway { namespace chaindb {
     }
 
     primary_key_t mongodb_driver::available_primary_key(const table_info& table) {
+        impl_->apply_changes(table);
+
         auto cursor = impl_->get_db_table(table).find(
             make_document(kvp(get_scope_field_name(), get_scope_name(table))),
             options::find()

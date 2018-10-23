@@ -16,6 +16,7 @@ namespace cyberway { namespace chaindb {
 
         void close(const cursor_request&) override;
         void close_all_cursors(const account_name& code) override;
+        void apply_changes() override;
 
         void verify_table_structure(const table_info&, const microseconds&) override;
 
