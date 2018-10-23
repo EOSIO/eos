@@ -107,7 +107,7 @@ namespace cyberway { namespace chaindb {
                 }
 
                 case undo_stage::Stack:
-                    return stack_.front();
+                    return stack_.back();
 
             }
 
@@ -597,6 +597,7 @@ namespace cyberway { namespace chaindb {
 
     chaindb_session::chaindb_session(undo_stack& stack, int64_t revision)
     : stack_(stack),
+      apply_(true),
       revision_(revision) {
         if (revision == -1) {
             apply_ = false;
