@@ -54,7 +54,7 @@ namespace eosio { namespace chain {
       }
 
       std::unique_ptr<wasm_instantiated_module_interface>& get_instantiated_module( const digest_type& code_id,
-                                                                                    const shared_string& code,
+                                                                                    const string& code,
                                                                                     transaction_context& trx_context )
       {
          auto it = instantiation_cache.find(code_id);

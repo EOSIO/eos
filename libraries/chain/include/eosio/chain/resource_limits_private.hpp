@@ -3,7 +3,7 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-#include "multi_index_includes.hpp"
+#include <eosio/chain/multi_index_includes.hpp>
 
 
 namespace eosio { namespace chain { namespace resource_limits {
@@ -145,12 +145,12 @@ namespace eosio { namespace chain { namespace resource_limits {
    struct by_owner;
    struct by_dirty;
 
-   using resource_limits_index = chainbase::shared_multi_index_container2<
+   using resource_limits_index = cyberway::chaindb::shared_multi_index_container<
       resource_limits_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>, member<resource_limits_object, resource_limits_object::id_type, &resource_limits_object::id>>,
-         ordered_unique2<chaindb::tag<by_owner>,
-            composite_key2<resource_limits_object,
+      cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_limits_object, resource_limits_object::id_type, id)>,
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_owner>,
+            cyberway::chaindb::composite_key<resource_limits_object,
                BOOST_MULTI_INDEX_MEMBER(resource_limits_object, bool, pending),
                BOOST_MULTI_INDEX_MEMBER(resource_limits_object, account_name, owner)
             >
@@ -170,11 +170,11 @@ namespace eosio { namespace chain { namespace resource_limits {
       uint64_t                 ram_usage = 0;
    };
 
-   using resource_usage_index = chainbase::shared_multi_index_container2<
+   using resource_usage_index = cyberway::chaindb::shared_multi_index_container<
       resource_usage_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>, member<resource_usage_object, resource_usage_object::id_type, &resource_usage_object::id>>,
-         ordered_unique2<chaindb::tag<by_owner>, member<resource_usage_object, account_name, &resource_usage_object::owner> >
+       cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_usage_object, resource_usage_object::id_type, id)>,
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_owner>, BOOST_MULTI_INDEX_MEMBER(resource_usage_object, account_name, owner) >
       >
    >;
 
@@ -196,10 +196,10 @@ namespace eosio { namespace chain { namespace resource_limits {
       uint32_t account_net_usage_average_window = config::account_net_usage_average_window_ms / config::block_interval_ms;
    };
 
-   using resource_limits_config_index = chainbase::shared_multi_index_container2<
+   using resource_limits_config_index = cyberway::chaindb::shared_multi_index_container<
       resource_limits_config_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>, member<resource_limits_config_object, resource_limits_config_object::id_type, &resource_limits_config_object::id>>
+      cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_limits_config_object, resource_limits_config_object::id_type, id)>
       >
    >;
 
@@ -251,10 +251,10 @@ namespace eosio { namespace chain { namespace resource_limits {
 
    };
 
-   using resource_limits_state_index = chainbase::shared_multi_index_container2<
+   using resource_limits_state_index = cyberway::chaindb::shared_multi_index_container<
       resource_limits_state_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>, member<resource_limits_state_object, resource_limits_state_object::id_type, &resource_limits_state_object::id>>
+      cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_limits_state_object, resource_limits_state_object::id_type, id)>
       >
    >;
 
@@ -267,14 +267,14 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_state_ob
 
 FC_REFLECT(eosio::chain::resource_limits::impl::exponential_moving_average_accumulator<>, (last_ordinal)(value_ex)(consumed));
 
-FC_REFLECT(chainbase::oid<eosio::chain::resource_limits::resource_limits_object>, (_id));
+//FC_REFLECT(chainbase::oid<eosio::chain::resource_limits::resource_limits_object>, (_id));
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_object, (id)(owner)(pending)(net_weight)(cpu_weight)(ram_bytes));
 
-FC_REFLECT(chainbase::oid<eosio::chain::resource_limits::resource_usage_object>, (_id));
+//FC_REFLECT(chainbase::oid<eosio::chain::resource_limits::resource_usage_object>, (_id));
 FC_REFLECT(eosio::chain::resource_limits::resource_usage_object, (id)(owner)(net_usage)(cpu_usage)(ram_usage));
 
-FC_REFLECT(chainbase::oid<eosio::chain::resource_limits::resource_limits_config_object>, (_id));
+//FC_REFLECT(chainbase::oid<eosio::chain::resource_limits::resource_limits_config_object>, (_id));
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (id)(cpu_limit_parameters)(net_limit_parameters)(account_cpu_usage_average_window)(account_net_usage_average_window));
 
-FC_REFLECT(chainbase::oid<eosio::chain::resource_limits::resource_limits_state_object>, (_id));
+//FC_REFLECT(chainbase::oid<eosio::chain::resource_limits::resource_limits_state_object>, (_id));
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)(average_block_net_usage)(average_block_cpu_usage)(pending_net_usage)(pending_cpu_usage)(total_net_weight)(total_cpu_weight)(total_ram_bytes)(virtual_net_limit)(virtual_cpu_limit)); 

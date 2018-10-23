@@ -46,12 +46,15 @@ namespace cyberway { namespace chaindb {
 
         virtual void close(const cursor_request&) = 0;
         virtual void close_all_cursors(const account_name& code) = 0;
+        virtual void apply_changes() = 0;
 
         virtual void verify_table_structure(const table_info&, const microseconds&) = 0;
 
         virtual const cursor_info& lower_bound(index_info, variant key) = 0;
         virtual const cursor_info& upper_bound(index_info, variant key) = 0;
         virtual const cursor_info& find(index_info, primary_key_t, variant key) = 0;
+        virtual const cursor_info& opt_find_by_pk(index_info, primary_key_t, variant key) = 0;
+
         virtual const cursor_info& end(index_info) = 0;
 
         virtual const cursor_info& current(const cursor_info&) = 0;
@@ -61,8 +64,7 @@ namespace cyberway { namespace chaindb {
 
         virtual       variant  value(const table_info&, primary_key_t) = 0;
         virtual const variant& value(const cursor_info&) = 0;
-
-        virtual void set_blob(const cursor_info&, bytes blob) = 0;
+        virtual       void     set_blob(const cursor_info&, bytes blob) = 0;
 
         virtual primary_key_t available_primary_key(const table_info&) = 0;
 

@@ -4,8 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/types.hpp>
-
-#include "multi_index_includes.hpp"
+#include <eosio/chain/multi_index_includes.hpp>
 
 namespace eosio { namespace chain {
    /**
@@ -26,10 +25,10 @@ namespace eosio { namespace chain {
    };
 
    struct by_block_id;
-   using block_summary_multi_index = chainbase::shared_multi_index_container2<
+   using block_summary_multi_index = cyberway::chaindb::shared_multi_index_container<
       block_summary_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(block_summary_object, block_summary_object::id_type, id)>
+      cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(block_summary_object, block_summary_object::id_type, id)>
    //      ordered_unique<tag<by_block_id>, BOOST_MULTI_INDEX_MEMBER(block_summary_object, block_id_type, block_id)>
       >
    >;
@@ -38,5 +37,5 @@ namespace eosio { namespace chain {
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::block_summary_object, eosio::chain::block_summary_multi_index)
 
-FC_REFLECT( chainbase::oid<eosio::chain::block_summary_object>, (_id));
+//FC_REFLECT( chainbase::oid<eosio::chain::block_summary_object>, (_id));
 FC_REFLECT( eosio::chain::block_summary_object, (id)(block_id) )

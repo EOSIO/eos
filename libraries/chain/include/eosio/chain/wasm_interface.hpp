@@ -64,7 +64,7 @@ namespace eosio { namespace chain {
          static void validate(const controller& control, const bytes& code);
 
          //Calls apply or error on a given code
-         void apply(const digest_type& code_id, const shared_string& code, apply_context& context);
+         void apply(const digest_type& code_id, const string& code, apply_context& context);
 
       private:
          unique_ptr<struct wasm_interface_impl> my;

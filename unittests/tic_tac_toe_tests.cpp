@@ -11,8 +11,9 @@
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 
-#include <proxy/proxy.wast.hpp>
-#include <proxy/proxy.abi.hpp>
+//TODO: CyberWay
+//#include <proxy/proxy.wast.hpp>
+//#include <proxy/proxy.abi.hpp>
 
 #include <Runtime/Runtime.h>
 

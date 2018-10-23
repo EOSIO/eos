@@ -25,6 +25,10 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
+    void mongodb_driver::apply_changes() {
+        NOT_SUPPORTED;
+    }
+
     void mongodb_driver::verify_table_structure(const table_info&, const microseconds&) {
         NOT_SUPPORTED;
     }
@@ -42,6 +46,10 @@ namespace cyberway { namespace chaindb {
     }
 
     const cursor_info& mongodb_driver::end(index_info) {
+        NOT_SUPPORTED;
+    }
+
+    const cursor_info& mongodb_driver::opt_find_by_pk(index_info, primary_key_t) {
         NOT_SUPPORTED;
     }
 

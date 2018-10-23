@@ -22,6 +22,8 @@ namespace cyberway { namespace chaindb {
 
         chaindb_session& operator=(chaindb_session&& mv) = delete;
 
+        void apply_changes();
+
         /** leaves the UNDO state on the stack when session goes out of scope */
         void push();
 

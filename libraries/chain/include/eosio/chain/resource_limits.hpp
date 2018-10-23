@@ -5,6 +5,8 @@
 #include <chainbase/chainbase.hpp>
 #include <set>
 
+#include <cyberway/chaindb/common.hpp>
+
 namespace eosio { namespace chain { namespace resource_limits {
    namespace impl {
       template<typename T>
@@ -37,8 +39,8 @@ namespace eosio { namespace chain { namespace resource_limits {
 
    class resource_limits_manager {
       public:
-         explicit resource_limits_manager(chainbase::database& db)
-         :_db(db)
+         explicit resource_limits_manager(chainbase::database& db, cyberway::chaindb::chaindb_controller& chaindb)
+         :_db(db), _chaindb(chaindb)
          {
          }
 
@@ -78,6 +80,7 @@ namespace eosio { namespace chain { namespace resource_limits {
 
       private:
          chainbase::database& _db;
+         cyberway::chaindb::chaindb_controller& _chaindb;
    };
 } } } /// eosio::chain
 

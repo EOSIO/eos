@@ -52,6 +52,9 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(session_exception, chaindb_internal_exception,
                                      3710011, "ChainDB session failed")
 
+        FC_DECLARE_DERIVED_EXCEPTION(index_exception, chaindb_internal_exception,
+                                     3710012, "ChainDB multi_index failed")
+
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_abi_exception, chaindb_exception,
                                  3720000, "ChainDB ABI exception")
 

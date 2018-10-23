@@ -6,7 +6,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/chain_config.hpp>
 
-#include "multi_index_includes.hpp"
+#include <eosio/chain/multi_index_includes.hpp>
 
 namespace eosio { namespace chain {
 class producer_object : public chainbase::object<producer_object_type, producer_object> {

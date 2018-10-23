@@ -11,7 +11,7 @@
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 
-#include "multi_index_includes.hpp"
+#include <eosio/chain/multi_index_includes.hpp>
 
 namespace eosio { namespace chain {
    using boost::multi_index_container;

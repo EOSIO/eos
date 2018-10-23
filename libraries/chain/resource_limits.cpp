@@ -40,10 +40,10 @@ void resource_limits_state_object::update_virtual_net_limit( const resource_limi
 }
 
 void resource_limits_manager::add_indices() {
-   _db.add_database_index<resource_limits_index>();
-   _db.add_database_index<resource_usage_index>();
-   _db.add_database_index<resource_limits_state_index>();
-   _db.add_database_index<resource_limits_config_index>();
+   _db.add_chaindb_index<resource_limits_index>(_chaindb);
+   _db.add_chaindb_index<resource_usage_index>(_chaindb);
+   _db.add_chaindb_index<resource_limits_state_index>(_chaindb);
+   _db.add_chaindb_index<resource_limits_config_index>(_chaindb);
 }
 
 void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
@@ -59,10 +59,11 @@ void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
    });
 
    abi.tables.emplace_back( eosio::chain::table_def {
-     name{chaindb::tag<resource_limits_object>::get_name()}.to_string(),
+     "reslimit",
+     cyberway::chaindb::tag<resource_limits_object>::get_code(),
      "resource_limit",
-     {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
-      {name{chaindb::tag<by_owner>::get_name()}.to_string(), true, {"pending","owner"}, {"asc","asc"}}}
+     {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+      {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"pending","asc"}, {"owner","asc"}}}}
    });
 
    abi.structs.emplace_back( eosio::chain::struct_def{
@@ -82,10 +83,11 @@ void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
    });
 
    abi.tables.emplace_back( eosio::chain::table_def {
-     name{chaindb::tag<resource_usage_object>::get_name()}.to_string(),
+     "resusage",
+     cyberway::chaindb::tag<resource_usage_object>::get_code(),
      "resource_usage",
-     {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}},
-      {name{chaindb::tag<by_owner>::get_name()}.to_string(), true, {"owner"}, {"asc"}}}
+     {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+      {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}}
    });
 
    abi.structs.emplace_back( eosio::chain::struct_def{
@@ -114,9 +116,10 @@ void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
    });
 
    abi.tables.emplace_back( eosio::chain::table_def {
-     name{chaindb::tag<resource_limits_config_object>::get_name()}.to_string(),
+     "resconfig",
+     cyberway::chaindb::tag<resource_limits_config_object>::get_code(),
      "resource_limits_config",
-     {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+     {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
    });
 
    abi.structs.emplace_back( eosio::chain::struct_def{
@@ -134,9 +137,10 @@ void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
    });
 
    abi.tables.emplace_back( eosio::chain::table_def {
-     name{chaindb::tag<resource_limits_state_object>::get_name()}.to_string(),
+     "resstate",
+     cyberway::chaindb::tag<resource_limits_state_object>::get_code(),
      "resource_limits_state",
-     {{name{chaindb::tag<by_id>::get_name()}.to_string(), true, {"id"}, {"asc"}}}
+     {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
    });
 
 }

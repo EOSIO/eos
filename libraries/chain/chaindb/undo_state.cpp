@@ -204,8 +204,7 @@ namespace cyberway { namespace chaindb {
         { }
 
         void set_revision(const int64_t value) {
-            CYBERWAY_SESSION_ASSERT(!tables.empty(),
-                "Cannot set revision while there is an existing undo stack.");
+            CYBERWAY_SESSION_ASSERT(!tables.empty(), "Cannot set revision while there is an existing undo stack.");
             revision = value;
         }
 
@@ -216,16 +215,39 @@ namespace cyberway { namespace chaindb {
                     auto& table = const_cast<table_undo_stack&>(const_table); // not critical
                     table.start_session(revision);
                 }
+                stage = undo_stage::New;
                 return revision;
             } else {
                 return -1;
             }
         }
 
+        bool enabled() const {
+            switch (stage) {
+                case undo_stage::Stack:
+                case undo_stage::New:
+                    return true;
+
+                case undo_stage::Unknown:
+                case undo_stage::Rollback:
+                    break;
+            }
+            return false;
+        }
+
+        void apply_changes(const int64_t apply_revision) {
+            CYBERWAY_SESSION_ASSERT(apply_revision == revision,
+                "Wrong push revision ${apply_revision} != ${revision}",
+                ("revision", revision)("apply_revision", apply_revision));
+            driver.apply_changes();
+        }
+
         void push(const int64_t push_revision) {
             CYBERWAY_SESSION_ASSERT(push_revision == revision,
                 "Wrong push revision ${push_revision} != ${revision}",
                 ("revision", revision)("push_revision", push_revision));
+            driver.apply_changes();
+            stage = undo_stage::Unknown;
         }
 
         void undo(const int64_t undo_revision) {
@@ -233,6 +255,7 @@ namespace cyberway { namespace chaindb {
                 undo(table, undo_revision, revision);
             });
             --revision;
+            stage = undo_stage::Rollback;
         }
 
         void squash(const int64_t squash_revision) {
@@ -240,31 +263,41 @@ namespace cyberway { namespace chaindb {
                 squash(table, squash_revision, revision);
             });
             --revision;
+            stage = undo_stage::Unknown;
         }
 
         void commit(const int64_t commit_revision) {
             for_tables([&](auto& table){
                 commit(table, commit_revision);
             });
-            revision = commit_revision;
+            if (tables.empty()) {
+                stage = undo_stage::Unknown;
+            }
         }
 
         void undo_all() {
             for_tables([&](auto& table) {
                 undo_all(table);
             });
+            stage = undo_stage::Rollback;
         }
 
         void update(const table_info& table, const primary_key_t pk, variant value) {
+            CYBERWAY_SESSION_ASSERT(enabled(), "Wrong stage ${stage} on updating of the table ${table}.",
+                ("stage", stage)("table", get_full_table_name(table)));
             update(get_table(table), pk, std::move(value));
         }
 
         void remove(const table_info& table, const primary_key_t pk, variant value) {
+            CYBERWAY_SESSION_ASSERT(enabled(), "Wrong stage ${stage} on removing from the table ${table}.",
+                ("stage", stage)("table", get_full_table_name(table)));
             remove(get_table(table), pk, std::move(value));
         }
 
-        void insert(const table_info& table, const primary_key_t pk, variant value) {
-            insert(get_table(table), pk, std::move(value));
+        void insert(const table_info& table, const primary_key_t pk) {
+            CYBERWAY_SESSION_ASSERT(enabled(), "Wrong stage ${stage} on inserting into the table ${table}.",
+                ("stage", stage)("table", get_full_table_name(table)));
+            insert(get_table(table), pk);
         }
 
         void undo(table_undo_stack& table, const int64_t undo_revision, const int64_t test_revision) {
@@ -462,7 +495,7 @@ namespace cyberway { namespace chaindb {
             head.removed_values.emplace(pk, std::move(value));
         }
 
-        void insert(table_undo_stack& table, const primary_key_t pk, variant value) {
+        void insert(table_undo_stack& table, const primary_key_t pk) {
             auto& head = table.head();
             head.new_ids.insert(pk);
         }
@@ -492,6 +525,7 @@ namespace cyberway { namespace chaindb {
             }
         }
 
+        undo_stage stage = undo_stage::Unknown;
         int64_t revision = 0;
         driver_interface& driver;
         table_undo_stack_index tables;
@@ -515,6 +549,14 @@ namespace cyberway { namespace chaindb {
         return impl_->revision;
     }
 
+    bool undo_stack::enabled() const {
+        return impl_->enabled();
+    }
+
+    void undo_stack::apply_changes(const int64_t revision) {
+        impl_->apply_changes(revision);
+    }
+
     void undo_stack::push(const int64_t push_revision) {
         impl_->push(push_revision);
     }
@@ -535,6 +577,10 @@ namespace cyberway { namespace chaindb {
         impl_->undo_all();
     }
 
+    void undo_stack::undo() {
+        impl_->undo(impl_->revision);
+    }
+
     void undo_stack::update(const table_info& table, const primary_key_t pk, variant value) {
         impl_->update(table, pk, std::move(value));
     }
@@ -543,8 +589,8 @@ namespace cyberway { namespace chaindb {
         impl_->remove(table, pk, std::move(value));
     }
 
-    void undo_stack::insert(const table_info& table, const primary_key_t pk, variant value) {
-        impl_->insert(table, pk, std::move(value));
+    void undo_stack::insert(const table_info& table, const primary_key_t pk) {
+        impl_->insert(table, pk);
     }
 
     //------
@@ -567,6 +613,13 @@ namespace cyberway { namespace chaindb {
     chaindb_session::~chaindb_session() {
         if (apply_) {
             stack_.undo(revision_);
+        }
+    }
+
+    void chaindb_session::apply_changes() {
+        if (apply_) {
+            apply_ = false;
+            stack_.apply_changes(revision_);
         }
     }
 

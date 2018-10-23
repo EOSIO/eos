@@ -8,6 +8,8 @@
 
 #include <chainbase/chainbase.hpp>
 
+#include <eosio/chain/fc_pack.hpp>
+
 #include <fc/container/flat_fwd.hpp>
 #include <fc/io/varint.hpp>
 #include <fc/io/enum_type.hpp>

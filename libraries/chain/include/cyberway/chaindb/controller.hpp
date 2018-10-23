@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include <fc/variant.hpp>
+
 #include <cyberway/chaindb/common.hpp>
 
 namespace eosio { namespace chain {
@@ -9,6 +11,7 @@ namespace eosio { namespace chain {
 } } // namespace eosio::chain
 
 namespace cyberway { namespace chaindb {
+    using fc::variant;
     using fc::microseconds;
 
     using eosio::chain::account_name;
@@ -60,10 +63,14 @@ namespace cyberway { namespace chaindb {
         void close_all_cursors(const account_name&);
 
         chaindb_session start_undo_session(bool enabled);
+        void undo();
+        void undo_all();
+        void commit(int64_t revision);
 
         cursor_t lower_bound(const index_request&, const char* key, size_t);
         cursor_t upper_bound(const index_request&, const char* key, size_t);
         cursor_t find(const index_request&, primary_key_t, const char* key, size_t);
+
         cursor_t end(const index_request&);
         cursor_t clone(const cursor_request&);
 
@@ -74,11 +81,17 @@ namespace cyberway { namespace chaindb {
         int32_t       datasize(const cursor_request&);
         primary_key_t data(const cursor_request&, const char*, size_t);
 
+        const variant& value(const cursor_request&);
+
         primary_key_t available_primary_key(const table_request&);
 
         cursor_t      insert(apply_context&, const table_request&, const account_name&, primary_key_t, const char*, size_t);
         primary_key_t update(apply_context&, const table_request&, const account_name&, primary_key_t, const char*, size_t);
         primary_key_t remove(apply_context&, const table_request&, primary_key_t);
+
+        cursor_t      insert(const table_request&, const account_name&, primary_key_t, variant, size_t);
+        primary_key_t update(const table_request&, const account_name&, primary_key_t, variant, size_t);
+        primary_key_t remove(const table_request&, primary_key_t);
 
     private:
         struct controller_impl_;

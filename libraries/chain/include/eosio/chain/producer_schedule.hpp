@@ -35,8 +35,8 @@ namespace eosio { namespace chain {
    };
 
    struct shared_producer_schedule_type {
-      shared_producer_schedule_type( chainbase::allocator<char> alloc )
-      :producers(alloc){}
+      shared_producer_schedule_type( chainbase::allocator<char> )
+      {}
 
       shared_producer_schedule_type& operator=( const producer_schedule_type& a ) {
          version = a.version;
@@ -61,8 +61,8 @@ namespace eosio { namespace chain {
          producers.clear();
       }
 
-      uint32_t                                       version = 0; ///< sequentially incrementing version number
-      shared_vector<producer_key>                    producers;
+      uint32_t                                version = 0; ///< sequentially incrementing version number
+      vector<producer_key>                    producers;
    };
 
 

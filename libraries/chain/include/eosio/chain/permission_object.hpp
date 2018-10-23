@@ -4,8 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/authority.hpp>
-
-#include "multi_index_includes.hpp"
+#include <eosio/chain/multi_index_includes.hpp>
 
 namespace eosio { namespace chain {
 
@@ -17,10 +16,10 @@ namespace eosio { namespace chain {
    };
 
    struct by_account_permission;
-   using permission_usage_index = chainbase::shared_multi_index_container2<
+   using permission_usage_index = cyberway::chaindb::shared_multi_index_container<
       permission_usage_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>, member<permission_usage_object, permission_usage_object::id_type, &permission_usage_object::id>>
+      cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(permission_usage_object, permission_usage_object::id_type, id)>
       >
    >;
 
@@ -73,26 +72,26 @@ namespace eosio { namespace chain {
    struct by_parent;
    struct by_owner;
    struct by_name;
-   using permission_index = chainbase::shared_multi_index_container2<
+   using permission_index = cyberway::chaindb::shared_multi_index_container<
       permission_object,
-      indexed_by2<
-         ordered_unique2<chaindb::tag<by_id>, member<permission_object, permission_object::id_type, &permission_object::id>>,
-         ordered_unique2<chaindb::tag<by_parent>,
-            composite_key2<permission_object,
-               member<permission_object, permission_object::id_type, &permission_object::parent>,
-               member<permission_object, permission_object::id_type, &permission_object::id>
+       cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(permission_object, permission_object::id_type, id)>,
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_parent>,
+            cyberway::chaindb::composite_key<permission_object,
+               BOOST_MULTI_INDEX_MEMBER(permission_object, permission_object::id_type, parent),
+               BOOST_MULTI_INDEX_MEMBER(permission_object, permission_object::id_type, id)
             >
          >,
-         ordered_unique2<chaindb::tag<by_owner>,
-            composite_key2<permission_object,
-               member<permission_object, account_name, &permission_object::owner>,
-               member<permission_object, permission_name, &permission_object::name>
+        cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_owner>,
+           cyberway::chaindb::composite_key<permission_object,
+               BOOST_MULTI_INDEX_MEMBER(permission_object, account_name, owner),
+               BOOST_MULTI_INDEX_MEMBER(permission_object, permission_name, name)
             >
          >,
-         ordered_unique2<chaindb::tag<by_name>,
-            composite_key2<permission_object,
-               member<permission_object, permission_name, &permission_object::name>,
-               member<permission_object, permission_object::id_type, &permission_object::id>
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_name>,
+            cyberway::chaindb::composite_key<permission_object,
+               BOOST_MULTI_INDEX_MEMBER(permission_object, permission_name, name),
+               BOOST_MULTI_INDEX_MEMBER(permission_object, permission_object::id_type, id)
             >
          >
       >
@@ -110,8 +109,8 @@ namespace eosio { namespace chain {
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_object, eosio::chain::permission_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_usage_object, eosio::chain::permission_usage_index)
 
-FC_REFLECT(chainbase::oid<eosio::chain::permission_object>, (_id))
+//FC_REFLECT(chainbase::oid<eosio::chain::permission_object>, (_id))
 FC_REFLECT(eosio::chain::permission_object, (id)(usage_id)(parent)(owner)(name)(last_updated)(auth))
 
-FC_REFLECT(chainbase::oid<eosio::chain::permission_usage_object>, (_id))
+//FC_REFLECT(chainbase::oid<eosio::chain::permission_usage_object>, (_id))
 FC_REFLECT(eosio::chain::permission_usage_object, (id)(last_used))
