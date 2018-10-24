@@ -84,7 +84,6 @@ Options:
 #include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
-#include <eosio/utilities/key_conversion.hpp>
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/config.hpp>
@@ -129,7 +128,6 @@ Options:
 using namespace std;
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::utilities;
 using namespace eosio::client::help;
 using namespace eosio::client::http;
 using namespace eosio::client::localize;
@@ -1033,10 +1031,11 @@ struct approve_producer_subcommand {
                                ("table", "voters")
                                ("table_key", "owner")
                                ("lower_bound", voter.value)
+                               ("upper_bound", voter.value + 1)
                                ("limit", 1)
             );
             auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
-            if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
+            if ( res.rows.empty() ) {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
@@ -1079,10 +1078,11 @@ struct unapprove_producer_subcommand {
                                ("table", "voters")
                                ("table_key", "owner")
                                ("lower_bound", voter.value)
+                               ("upper_bound", voter.value + 1)
                                ("limit", 1)
             );
             auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
-            if ( res.rows.empty() || res.rows[0]["owner"].as_string() != name(voter).to_string() ) {
+            if ( res.rows.empty() ) {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
@@ -1282,15 +1282,16 @@ struct bidname_subcommand {
 
 struct bidname_info_subcommand {
    bool print_json = false;
-   string newname_str;
+   name newname;
    bidname_info_subcommand(CLI::App* actionRoot) {
       auto list_producers = actionRoot->add_subcommand("bidnameinfo", localized("Get bidname info"));
       list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format"));
-      list_producers->add_option("newname", newname_str, localized("The bidding name"))->required();
+      list_producers->add_option("newname", newname, localized("The bidding name"))->required();
       list_producers->set_callback([this] {
          auto rawResult = call(get_table_func, fc::mutable_variant_object("json", true)
                                ("code", "eosio")("scope", "eosio")("table", "namebids")
-                               ("lower_bound", eosio::chain::string_to_name(newname_str.c_str()))("limit", 1));
+                               ("lower_bound", newname.value)
+                               ("upper_bound", newname.value + 1)("limit", 1));
          if ( print_json ) {
             std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
             return;
@@ -1301,12 +1302,16 @@ struct bidname_info_subcommand {
             return;
          }
          for ( auto& row : result.rows ) {
-            fc::time_point time(fc::microseconds(row["last_bid_time"].as_uint64()));
+            string time = row["last_bid_time"].as_string();
+            try {
+                time = (string)fc::time_point(fc::microseconds(to_uint64(time)));
+            } catch (fc::parse_error_exception&) {
+            }
             int64_t bid = row["high_bid"].as_int64();
             std::cout << std::left << std::setw(18) << "bidname:" << std::right << std::setw(24) << row["newname"].as_string() << "\n"
                       << std::left << std::setw(18) << "highest bidder:" << std::right << std::setw(24) << row["high_bidder"].as_string() << "\n"
                       << std::left << std::setw(18) << "highest bid:" << std::right << std::setw(24) << (bid > 0 ? bid : -bid) << "\n"
-                      << std::left << std::setw(18) << "last bid time:" << std::right << std::setw(24) << ((std::string)time).c_str() << std::endl;
+                      << std::left << std::setw(18) << "last bid time:" << std::right << std::setw(24) << time << std::endl;
             if (bid < 0) std::cout << "This auction has already closed" << std::endl;
          }
       });
@@ -2728,7 +2733,7 @@ int main( int argc, char** argv ) {
          fc::set_console_echo(true);
       }
 
-      auto priv_key = fc::crypto::private_key::regenerate(*utilities::wif_to_key(str_private_key));
+      auto priv_key = private_key_type(str_private_key);
       trx.sign(priv_key, *chain_id);
 
       if(push_trx) {
@@ -2950,8 +2955,8 @@ int main( int argc, char** argv ) {
                          ("scope", proposer)
                          ("table", "proposal")
                          ("table_key", "")
-                         ("lower_bound", eosio::chain::string_to_name(proposal_name.c_str()))
-                         ("upper_bound", "")
+                         ("lower_bound", name(proposal_name).value)
+                         ("upper_bound", name(proposal_name).value + 1)
                          ("limit", 1)
                          );
       //std::cout << fc::json::to_pretty_string(result) << std::endl;
@@ -2962,10 +2967,6 @@ int main( int argc, char** argv ) {
          return;
       }
       fc::mutable_variant_object obj = rows[0].get_object();
-      if (obj["proposal_name"] != proposal_name) {
-         std::cerr << "Proposal not found" << std::endl;
-         return;
-      }
       auto trx_hex = obj["packed_transaction"].as_string();
       vector<char> trx_blob(trx_hex.size()/2);
       fc::from_hex(trx_hex, trx_blob.data(), trx_blob.size());
