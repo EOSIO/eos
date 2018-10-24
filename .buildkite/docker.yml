@@ -22,16 +22,8 @@ steps:
         docker rmi gcr.io/b1-automation-dev/eosio/eos:latest
     label: "Docker build builder"
     agents:
-      role: "automation-builder-fleet"
+      role: "automation-docker-builder-fleet"
       aws:instance-type: "m5d.2xlarge"
-    plugins:
-      docker#v1.4.0:
-        image: "docker"
-        workdir: /data/job
-        command: ["--privileged"]
-        volumes:
-          - "/etc/gcp-service-account.json:/etc/gcp-service-account.json"
-          - "/usr/bin/gcloud-dir:/usr/bin/gcloud-dir"
     timeout: 300
 
   - wait
@@ -57,14 +49,8 @@ steps:
         docker rmi gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT
     label: "Docker build eos"
     agents:
-      role: "automation-builder-fleet"
+      role: "automation-docker-builder-fleet"
       aws:instance-type: "m5d.2xlarge"
-    plugins:
-      docker#v1.4.0:
-        image: "ubuntu"
-        workdir: /data/job
-        volumes:
-          - "/etc/gcp-service-account.json:/etc/gcp-service-account.json"
     timeout: 300
 
   - wait
@@ -91,14 +77,8 @@ steps:
         docker rmi gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT
     label: "Docker build eos-dev"
     agents:
-      role: "automation-builder-fleet"
+      role: "automation-docker-builder-fleet"
       aws:instance-type: "m5d.2xlarge"
-    plugins:
-      docker#v1.4.0:
-        image: "ubuntu"
-        workdir: /data/job
-        volumes:
-          - "/etc/gcp-service-account.json:/etc/gcp-service-account.json"
     timeout: 300
 
   - wait
