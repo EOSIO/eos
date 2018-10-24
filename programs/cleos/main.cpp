@@ -681,58 +681,134 @@ inline asset to_asset( const string& s ) {
 }
 
 struct set_account_permission_subcommand {
-   string accountStr;
-   string permissionStr;
-   string authorityJsonOrFile;
-   string parentStr;
+   name account;
+   name permission;
+   string authority_json_or_file;
+   name parent;
+   bool add_code;
+   bool remove_code;
 
    set_account_permission_subcommand(CLI::App* accountCmd) {
       auto permissions = accountCmd->add_subcommand("permission", localized("set parameters dealing with account permissions"));
-      permissions->add_option("account", accountStr, localized("The account to set/delete a permission authority for"))->required();
-      permissions->add_option("permission", permissionStr, localized("The permission name to set/delete an authority for"))->required();
-      permissions->add_option("authority", authorityJsonOrFile, localized("[delete] NULL, [create/update] public key, JSON string, or filename defining the authority"))->required();
-      permissions->add_option("parent", parentStr, localized("[create] The permission name of this parents permission (Defaults to: \"Active\")"));
+      permissions->add_option("account", account, localized("The account to set/delete a permission authority for"))->required();
+      permissions->add_option("permission", permission, localized("The permission name to set/delete an authority for"))->required();
+      permissions->add_option("authority", authority_json_or_file, localized("[delete] NULL, [create/update] public key, JSON string or filename defining the authority, [code] contract name"));
+      permissions->add_option("parent", parent, localized("[create] The permission name of this parents permission, defaults to 'active'"));
+      permissions->add_flag("--add-code", add_code, localized("[code] add '${code}' permission to specified permission authority", ("code", name(config::eosio_code_name))));
+      permissions->add_flag("--remove-code", remove_code, localized("[code] remove '${code}' permission from specified permission authority", ("code", name(config::eosio_code_name))));
 
       add_standard_transaction_options(permissions, "account@active");
 
       permissions->set_callback([this] {
-         name account = name(accountStr);
-         name permission = name(permissionStr);
-         bool is_delete = boost::iequals(authorityJsonOrFile, "null");
+         EOSC_ASSERT( !(add_code && remove_code), "ERROR: Either --add-code or --remove-code can be set" );
+         EOSC_ASSERT( (add_code ^ remove_code) || !authority_json_or_file.empty(), "ERROR: authority should be specified unless add or remove code permission" );
 
-         if (is_delete) {
-            send_actions({create_deleteauth(account, permission)});
-         } else {
-            authority auth = parse_json_authority_or_key(authorityJsonOrFile);
+         authority auth;
 
-            name parent;
-            if (parentStr.size() == 0 && permissionStr != "owner") {
+         bool need_parent = parent.empty() && (permission != name("owner"));
+         bool need_auth = add_code || remove_code;
+
+         if ( !need_auth && boost::iequals(authority_json_or_file, "null") ) {
+            send_actions( { create_deleteauth(account, permission) } );
+            return;
+         }
+
+         if ( need_parent || need_auth ) {
+            fc::variant json = call(get_account_func, fc::mutable_variant_object("account_name", account.to_string()));
+            auto res = json.as<eosio::chain_apis::read_only::get_account_results>();
+            auto itr = std::find_if(res.permissions.begin(), res.permissions.end(), [&](const auto& perm) {
+               return perm.perm_name == permission;
+            });
+
+            if ( need_parent ) {
                // see if we can auto-determine the proper parent
-               const auto account_result = call(get_account_func, fc::mutable_variant_object("account_name", accountStr));
-               const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
-               auto permissionPredicate = [this](const auto& perm) {
-                  return perm.is_object() &&
-                        perm.get_object().contains("perm_name") &&
-                        boost::equals(perm.get_object()["perm_name"].get_string(), permissionStr);
-               };
-
-               auto itr = boost::find_if(existing_permissions, permissionPredicate);
-               if (itr != existing_permissions.end()) {
-                  parent = name((*itr).get_object()["parent"].get_string());
+               if ( itr != res.permissions.end() ) {
+                  parent = (*itr).parent;
                } else {
                   // if this is a new permission and there is no parent we default to "active"
                   parent = name(config::active_name);
-
                }
-            } else {
-               parent = name(parentStr);
             }
 
-            send_actions({create_updateauth(account, permission, parent, auth)});
+            if ( need_auth ) {
+               auto actor = (authority_json_or_file.empty()) ? account : name(authority_json_or_file);
+               auto code_name = name(config::eosio_code_name);
+
+               if ( itr != res.permissions.end() ) {
+                  // fetch existing authority
+                  auth = std::move((*itr).required_auth);
+
+                  auto code_perm = permission_level { actor, code_name };
+                  auto itr2 = std::lower_bound(auth.accounts.begin(), auth.accounts.end(), code_perm, [&](const auto& perm_level, const auto& value) {
+                     return perm_level.permission < value; // Safe since valid authorities must order the permissions in accounts in ascending order
+                  });
+
+                  if ( add_code ) {
+                     if ( itr2 != auth.accounts.end() && itr2->permission == code_perm ) {
+                        // authority already contains code permission, promote its weight to satisfy threshold
+                        if ( (*itr2).weight < auth.threshold ) {
+                           if ( auth.threshold > std::numeric_limits<weight_type>::max() ) {
+                              std::cerr << "ERROR: Threshold is too high to be satisfied by sole code permission" << std::endl;
+                              return;
+                           }
+                           std::cerr << localized("The weight of '${actor}@${code}' in '${permission}' permission authority will be increased up to threshold",
+                                                  ("actor", actor)("code", code_name)("permission", permission)) << std::endl;
+                           (*itr2).weight = static_cast<weight_type>(auth.threshold);
+                        } else {
+                           std::cerr << localized("ERROR: The permission '${permission}' already contains '${actor}@${code}'",
+                                                  ("permission", permission)("actor", actor)("code", code_name)) << std::endl;
+                           return ;
+                        }
+                     } else {
+                        // add code permission to specified authority
+                        if ( auth.threshold > std::numeric_limits<weight_type>::max() ) {
+                           std::cerr << "ERROR: Threshold is too high to be satisfied by sole code permission" << std::endl;
+                           return;
+                        }
+                        auth.accounts.insert( itr2, permission_level_weight {
+                           .permission = { actor, code_name },
+                           .weight = static_cast<weight_type>(auth.threshold)
+                        });
+                     }
+                  } else {
+                     if ( itr2 != auth.accounts.end() && itr2->permission == code_perm ) {
+                        // remove code permission, if authority becomes empty by the removal of code permission, delete permission
+                        auth.accounts.erase( itr2 );
+                        if ( auth.keys.empty() && auth.accounts.empty() && auth.waits.empty() ) {
+                           send_actions( { create_deleteauth(account, permission) } );
+                           return;
+                        }
+                     } else {
+                        // authority doesn't contain code permission
+                        std::cerr << localized("ERROR: '${actor}@${code}' does not exist in '${permission}' permission authority",
+                                               ("actor", actor)("code", code_name)("permission", permission)) << std::endl;
+                        return;
+                     }
+                  }
+               } else {
+                  if ( add_code ) {
+                     // create new permission including code permission
+                     auth.threshold = 1;
+                     auth.accounts.push_back( permission_level_weight {
+                        .permission = { actor, code_name },
+                        .weight = 1
+                     });
+                  } else {
+                     // specified permission doesn't exist, so failed to remove code permission from it
+                     std::cerr << localized("ERROR: The permission '${permission}' does not exist", ("permission", permission)) << std::endl;
+                     return;
+                  }
+               }
+            }
          }
+
+         if ( !need_auth ) {
+            auth = parse_json_authority_or_key(authority_json_or_file);
+         }
+
+         send_actions( { create_updateauth(account, permission, parent, auth) } );
       });
    }
-
 };
 
 struct set_action_permission_subcommand {
