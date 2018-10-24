@@ -404,12 +404,12 @@ struct controller_impl {
         "account", "",
         {{"id", "uint64"},
          {"name", "name"},
-         {"vmtype", "uint8"},
-         {"vmversion", "uint8"},
+         {"vm_type", "uint8"},
+         {"vm_version", "uint8"},
          {"privileged", "bool"},
-         {"lastcodeup", "time_point"},
-         {"codever", "checksum256"},
-         {"created", "block_timestamp_type"},
+         {"last_code_update", "time_point"},
+         {"code_version", "checksum256"},
+         {"creation_date", "block_timestamp_type"},
          {"code", "string"},
          {"abi", "string"}}
       });
@@ -549,7 +549,7 @@ struct controller_impl {
         "gtransaction",
         {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {"trxid", cyberway::chaindb::tag<by_trx_id>::get_code(), true, {{"trx_id", "asc"}}},
-         {"expirtion", cyberway::chaindb::tag<by_expiration>::get_code(), true, {{"expiration","asc"}, {"id","asc"}}},
+         {"expiration", cyberway::chaindb::tag<by_expiration>::get_code(), true, {{"expiration","asc"}, {"id","asc"}}},
          {"delay", cyberway::chaindb::tag<by_delay>::get_code(), true, {{"delay_until", "asc"}, {"id", "asc"}}},
          {"senderid", cyberway::chaindb::tag<by_sender_id>::get_code(), true, {{"sender", "asc"}, {"sender_id", "asc"}}}}
       });

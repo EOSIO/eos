@@ -67,7 +67,7 @@ void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
    });
 
    abi.structs.emplace_back( eosio::chain::struct_def{
-     "accumulator", "",
+     "usage_accumulator", "",
      {{"last_ordinal", "uint32"},
       {"value_ex", "uint64"},
       {"consumed", "uint64"}}
@@ -77,8 +77,8 @@ void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
      "resource_usage", "",
      {{"id", "uint64"},
       {"owner", "name"},
-      {"net_usage", "accumulator"},
-      {"cpu_usage", "accumulator"},
+      {"net_usage", "usage_accumulator"},
+      {"cpu_usage", "usage_accumulator"},
       {"ram_usage", "uint64"}}
    });
 
@@ -125,8 +125,8 @@ void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
    abi.structs.emplace_back( eosio::chain::struct_def{
      "resource_limits_state", "",
      {{"id", "uint64"},
-      {"avg_block_net_usage", "accumulator"},
-      {"avg_block_cpu_usage", "accumulator"},
+      {"avg_block_net_usage", "usage_accumulator"},
+      {"avg_block_cpu_usage", "usage_accumulator"},
       {"pending_net_usage", "uint64"},
       {"pending_cpu_usage", "uint64"},
       {"total_net_weight", "uint64"},
