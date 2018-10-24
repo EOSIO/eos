@@ -16,10 +16,10 @@ steps:
         docker push gcr.io/b1-automation-dev/eosio/builder:latest && \
         echo "TRASHING OLD IMAGES" && \
         docker image list && \
-        docker rmi eosio/eos:$BUILDKITE_COMMIT && \
-        docker rmi eosio/eos:latest && \
-        docker rmi gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_COMMIT && \
-        docker rmi gcr.io/b1-automation-dev/eosio/eos:latest
+        docker rmi eosio/builder:$BUILDKITE_COMMIT && \
+        docker rmi eosio/builder:latest && \
+        docker rmi gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
+        docker rmi gcr.io/b1-automation-dev/eosio/builder:latest
     label: "Docker build builder"
     agents:
       role: "automation-docker-builder-fleet"
