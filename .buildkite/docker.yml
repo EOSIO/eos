@@ -35,7 +35,7 @@ steps:
         echo "BUILDING EOS IMAGE" && \
         docker pull gcr.io/b1-automation-dev/eosio/builder:latest && \
         cd Docker/dev && \
-        docker build -t eosio/eos:latest -t eosio/eos:$BUILDKITE_COMMIT . --build-arg branch=$BUILDKITE_COMMIT && \
+        docker build -t eosio/eos:latest -t eosio/eos:$BUILDKITE_COMMIT . --build-arg branch=$BUILDKITE_BRANCH && \
         docker tag eosio/eos:$BUILDKITE_COMMIT gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_COMMIT && \
         docker tag eosio/eos:latest gcr.io/b1-automation-dev/eosio/eos:latest && \
         echo "PUSHING DOCKER IMAGES" && \
