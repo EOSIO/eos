@@ -392,7 +392,7 @@ struct controller_impl {
       db.add_chaindb_index<global_property_multi_index>(chaindb);
       db.add_chaindb_index<dynamic_global_property_multi_index>(chaindb);
       db.add_chaindb_index<block_summary_multi_index>(chaindb);
-      db.add_index<transaction_multi_index>();
+      db.add_chaindb_index<transaction_multi_index>(chaindb);
       db.add_index<generated_transaction_multi_index>();
 
       authorization.add_indices();
@@ -512,6 +512,22 @@ struct controller_impl {
         cyberway::chaindb::tag<block_summary_object>::get_code(),
         "block_summary",
         {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
+      });
+
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "transaction", "",
+        {{"id", "uint64"},
+         {"expiration", "time_point_sec"},
+         {"trx_id", "checksum256"}}
+      });
+
+      abi.tables.emplace_back( eosio::chain::table_def {
+        "transaction",
+        cyberway::chaindb::tag<transaction_object>::get_code(),
+        "transaction",
+        {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {"trxid", cyberway::chaindb::tag<by_trx_id>::get_code(), true, {{"trx_id", "asc"}}},
+         {"expirtion", cyberway::chaindb::tag<by_expiration>::get_code(), true, {{"expiration","asc"}, {"id","asc"}}}}
       });
    }
 

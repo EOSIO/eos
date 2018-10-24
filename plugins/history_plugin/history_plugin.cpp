@@ -44,7 +44,7 @@ namespace eosio {
 
    struct by_action_sequence_num;
    struct by_account_action_seq;
-   struct by_trx_id;
+   //struct by_trx_id;
 
    using action_history_index = chainbase::shared_multi_index_container<
       action_history_object,

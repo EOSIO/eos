@@ -31,6 +31,8 @@ namespace eosio { namespace chain {
     struct by_name {};
     struct by_action_name {};
     struct by_permission_name {};
+    struct by_trx_id {};
+    struct by_expiration {};
 
 } } // namespace eosio::chain
 
