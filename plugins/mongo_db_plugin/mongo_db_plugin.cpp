@@ -811,7 +811,7 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
    }
 
    bool added = false;
-   bool in_filter = (store_action_traces || store_transaction_traces) && start_block_reached &&
+   const bool in_filter = (store_action_traces || store_transaction_traces) && start_block_reached &&
                     filter_include( atrace.receipt.receiver, atrace.act.name, atrace.act.authorization );
    write_ttrace |= in_filter;
    if( start_block_reached && store_action_traces && in_filter ) {
