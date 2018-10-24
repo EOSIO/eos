@@ -83,10 +83,10 @@ namespace eosio { namespace testing {
          virtual ~base_tester() {};
 
          void              init(bool push_genesis = true, db_read_mode read_mode = db_read_mode::SPECULATIVE);
-         void              init(controller::config config);
+         void              init(controller::config config, const snapshot_reader_ptr& snapshot = nullptr);
 
          void              close();
-         void              open();
+         void              open( const snapshot_reader_ptr& snapshot );
          bool              is_same_chain( base_tester& other );
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
@@ -264,6 +264,10 @@ namespace eosio { namespace testing {
             return true;
          }
 
+         const controller::config& get_config() const {
+            return cfg;
+         }
+
       protected:
          signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false, uint32_t skip_flag = 0 );
          void             _start_block(fc::time_point block_time);
@@ -332,9 +336,7 @@ namespace eosio { namespace testing {
          vcfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
 
          for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-            if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--binaryen"))
-               vcfg.wasm_runtime = chain::wasm_interface::vm_type::binaryen;
-            else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
+            if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
                vcfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
             else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
                vcfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;

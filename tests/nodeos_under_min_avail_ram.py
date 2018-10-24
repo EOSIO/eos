@@ -55,7 +55,7 @@ class NamedAccounts:
 # --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
 
-args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"})
+args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run","--wallet-port"})
 Utils.Debug=args.v
 totalNodes=4
 cluster=Cluster(walletd=True)
@@ -63,17 +63,19 @@ dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontKill=args.leave_running
 killAll=args.clean_run
+walletPort=args.wallet_port
 
-walletMgr=WalletMgr(True)
+walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
 
-WalletdName="keosd"
+WalletdName=Utils.EosWalletName
 ClientName="cleos"
 
 try:
     TestHelper.printSystemInfo("BEGIN")
+    cluster.setWalletMgr(walletMgr)
 
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
@@ -83,7 +85,7 @@ try:
     maxRAMFlag="--chain-state-db-size-mb"
     maxRAMValue=1010
     extraNodeosArgs=" %s %d %s %d " % (minRAMFlag, minRAMValue, maxRAMFlag, maxRAMValue)
-    if cluster.launch(onlyBios=False, dontKill=dontKill, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes, extraNodeosArgs=extraNodeosArgs, useBiosBootFile=False) is False:
+    if cluster.launch(onlyBios=False, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes, extraNodeosArgs=extraNodeosArgs, useBiosBootFile=False) is False:
         Utils.cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
 
@@ -97,12 +99,6 @@ try:
     testWalletName="test"
 
     Print("Creating wallet \"%s\"." % (testWalletName))
-    walletMgr.killall(allInstances=killAll)
-    walletMgr.cleanup()
-    if walletMgr.launch() is False:
-        Utils.cmdError("%s" % (WalletdName))
-        errorExit("Failed to stand up eos walletd.")
-
     testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount])
 
     for _, account in cluster.defProducerAccounts.items():
@@ -127,7 +123,7 @@ try:
         transferAmount="70000000.0000 {0}".format(CORE_SYMBOL)
         Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
         nodes[0].transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer")
-        trans=nodes[0].delegatebw(account, 1000000.0000, 68000000.0000, exitOnError=True)
+        trans=nodes[0].delegatebw(account, 1000000.0000, 68000000.0000, waitForTransBlock=True, exitOnError=True)
 
     contractAccount=cluster.createAccountKeys(1)[0]
     contractAccount.name="contracttest"
@@ -137,7 +133,7 @@ try:
     transferAmount="90000000.0000 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, contractAccount.name))
     nodes[0].transferFunds(cluster.eosioAccount, contractAccount, transferAmount, "test transfer")
-    trans=nodes[0].delegatebw(contractAccount, 1000000.0000, 88000000.0000, exitOnError=True)
+    trans=nodes[0].delegatebw(contractAccount, 1000000.0000, 88000000.0000, waitForTransBlock=True, exitOnError=True)
 
     contractDir="contracts/integration_test"
     wasmFile="integration_test.wasm"

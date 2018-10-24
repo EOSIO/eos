@@ -383,7 +383,7 @@ try {
    chain.create_account(acc1a);
    chain.produce_block();
 
-   chainbase::database &db = chain.control->db();
+   const chainbase::database &db = chain.control->db();
 
    using resource_usage_object = eosio::chain::resource_limits::resource_usage_object;
    using by_owner = eosio::chain::resource_limits::by_owner;

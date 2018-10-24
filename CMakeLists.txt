@@ -26,8 +26,8 @@ set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 
 set(VERSION_MAJOR 1)
-set(VERSION_MINOR 3)
-set(VERSION_PATCH 2)
+set(VERSION_MINOR 4)
+set(VERSION_PATCH 1)
 
 set( CLI_CLIENT_EXECUTABLE_NAME cleos )
 set( NODE_EXECUTABLE_NAME nodeos )
@@ -186,6 +186,7 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
+include(utils)
 add_subdirectory( externals )
 
 if ("${CORE_SYMBOL_NAME}" STREQUAL "")
@@ -207,7 +208,6 @@ endif()
 message( STATUS "Using '${EOSIO_ROOT_KEY}' as public key for 'eosio' account" )
 
 include(wasm)
-
 add_subdirectory( libraries )
 add_subdirectory( contracts )
 add_subdirectory( plugins )
@@ -228,10 +228,38 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testnet.template ${CMAKE_CURRENT_BINA
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosio.version.in ${CMAKE_CURRENT_BINARY_DIR}/eosio.version.hpp)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/eosio.version.hpp DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/EosioTester.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/EosioTester.cmake @ONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/EosioTesterBuild.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/EosioTester.cmake @ONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/EosioTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/)
+set(EOS_ROOT_DIR ${CMAKE_BINARY_DIR})
+configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/eosio-config.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/eosio/eosio-config.cmake @ONLY)
+configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/EosioTesterBuild.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/eosio/EosioTester.cmake @ONLY)
 
-include(installer)
+set(EOS_ROOT_DIR ${CMAKE_INSTALL_PREFIX})
+configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/eosio-config.cmake.in ${CMAKE_BINARY_DIR}/modules/eosio-config.cmake @ONLY)
+install(FILES ${CMAKE_BINARY_DIR}/modules/eosio-config.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/eosio)
+configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/EosioTester.cmake.in ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake @ONLY)
+install(FILES ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/eosio)
 
+configure_file(${CMAKE_SOURCE_DIR}/LICENSE 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/wabt/LICENSE 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.wabt COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/softfloat/COPYING.txt 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.softfloat COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/wasm-jit/LICENSE 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.wavm COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/secp256k1/upstream/COPYING 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.secp256k1 COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/src/network/LICENSE.go 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.go COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/externals/binaryen/LICENSE 
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.binaryen COPYONLY)
+
+install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/)
+install(FILES libraries/wabt/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.wabt)
+install(FILES libraries/softfloat/COPYING.txt DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.softfloat)
+install(FILES libraries/wasm-jit/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.wavm)
+install(FILES libraries/fc/secp256k1/upstream/COPYING DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.secp256k1)
+install(FILES externals/binaryen/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.binaryen)
+install(FILES libraries/fc/src/network/LICENSE.go DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ )
+
+include(package)
 include(doxygen)

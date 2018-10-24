@@ -52,6 +52,8 @@ class wabt_runtime : public eosio::chain::wasm_runtime_interface {
       wabt_runtime();
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) override;
 
+      void immediately_exit_currently_running_module() override;
+
    private:
       wabt::ReadBinaryOptions read_binary_options;  //note default ctor will look at each option in feature.def and default to DISABLED for the feature
 };
@@ -371,7 +373,8 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>> 
       size_t length = args.at((uint32_t)offset).get_i32();
       T* base = array_ptr_impl<T>(vars, ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         wlog( "misaligned array of const values" );
+         if(vars.ctx.control.contracts_console())
+            wlog( "misaligned array of const values" );
          std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
          T* copy_ptr = &copy[0];
          memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
@@ -387,7 +390,8 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>> 
       size_t length = args.at((uint32_t)offset).get_i32();
       T* base = array_ptr_impl<T>(vars, ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         wlog( "misaligned array of values" );
+         if(vars.ctx.control.contracts_console())
+            wlog( "misaligned array of values" );
          std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
          T* copy_ptr = &copy[0];
          memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
@@ -500,7 +504,8 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
       uint32_t ptr = args.at((uint32_t)offset).get_i32();
       T* base = array_ptr_impl<T>(vars, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         wlog( "misaligned const pointer" );
+         if(vars.ctx.control.contracts_console())
+            wlog( "misaligned const pointer" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
@@ -514,7 +519,8 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
       uint32_t ptr = args.at((uint32_t)offset).get_i32();
       T* base = array_ptr_impl<T>(vars, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         wlog( "misaligned pointer" );
+         if(vars.ctx.control.contracts_console())
+            wlog( "misaligned pointer" );
          T copy;
          memcpy( (void*)&copy, (void*)base, sizeof(T) );
          Ret ret = Then(vars, &copy, rest..., args, (uint32_t)offset - 1);
@@ -603,7 +609,8 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
       EOS_ASSERT(ptr != 0, binaryen_exception, "references cannot be created for null pointers");
       T* base = array_ptr_impl<T>(vars, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         wlog( "misaligned const reference" );
+         if(vars.ctx.control.contracts_console())
+            wlog( "misaligned const reference" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
@@ -619,7 +626,8 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
       EOS_ASSERT(ptr != 0, binaryen_exception, "references cannot be created for null pointers");
       T* base = array_ptr_impl<T>(vars, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         wlog( "misaligned reference" );
+         if(vars.ctx.control.contracts_console())
+            wlog( "misaligned reference" );
          T copy;
          memcpy( (void*)&copy, (void*)base, sizeof(T) );
          Ret ret = Then(vars, copy, rest..., args, (uint32_t)offset - 1);
