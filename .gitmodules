@@ -1,6 +1,6 @@
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
-	url = https://github.com/eosio/chainbase
+	url = https://github.com/mmcs85/chainbase
         ignore = dirty
 [submodule "libraries/appbase"]
 	path = libraries/appbase
