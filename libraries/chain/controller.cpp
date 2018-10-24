@@ -7,6 +7,7 @@
 
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/block_summary_object.hpp>
+#include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -20,11 +21,11 @@
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
-#include <fc/thread_pool.hpp>
-
 #include <fc/variant_object.hpp>
 
-#include <eosio/chain/eosio_contract.hpp>
+#include <boost/asio/thread_pool.hpp>
+#include <boost/asio/post.hpp>
+
 
 namespace eosio { namespace chain {
 
@@ -134,7 +135,7 @@ struct controller_impl {
    optional<fc::microseconds>     subjective_cpu_leeway;
    bool                           trusted_producer_light_validation = false;
    uint32_t                       snapshot_head_block = 0;
-   fc::thread_pool                thread_pool;
+   optional<boost::asio::thread_pool>  thread_pool;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -145,6 +146,14 @@ struct controller_impl {
     *  can query this list when scheduling new transactions into blocks.
     */
    map<digest_type, transaction_metadata_ptr>     unapplied_transactions;
+
+   // async on thread_pool and return future
+   template<typename F>
+   auto async_thread_pool( F&& f ) {
+      auto task = std::make_shared<std::packaged_task<decltype( f() )()>>( std::forward<F>( f ) );
+      boost::asio::post( *thread_pool, [task]() { (*task)(); } );
+      return task->get_future();
+   }
 
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
@@ -337,7 +346,7 @@ struct controller_impl {
 
    void init(const snapshot_reader_ptr& snapshot) {
 
-      thread_pool.init( 5 );
+      thread_pool.emplace( 5 );
 
       if (snapshot) {
          EOS_ASSERT(!head, fork_database_exception, "");
@@ -397,7 +406,8 @@ struct controller_impl {
    ~controller_impl() {
       pending.reset();
 
-      thread_pool.stop();
+      thread_pool->join();
+      thread_pool->stop();
 
       db.flush();
       reversible_blocks.flush();
@@ -1202,7 +1212,7 @@ struct controller_impl {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>( pt );
                if( !self.skip_auth_check() ) {
-                  mtrx->signing_keys_future = thread_pool.async( [this, mtrx]() {
+                  mtrx->signing_keys_future = async_thread_pool( [this, mtrx]() {
                      return mtrx->trx.get_signature_keys( this->chain_id );
                   } );
                }
