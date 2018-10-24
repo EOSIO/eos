@@ -244,7 +244,7 @@ struct controller_impl {
       bool append_to_blog = false;
       if (!log_head) {
          if (s->block) {
-            EOS_ASSERT(s->block_num == blog.first_block_num(), block_log_exception, "block log has no blocks and is appending the wrong first block.  Expected ${expecgted}, but received: ${actual}",
+            EOS_ASSERT(s->block_num == blog.first_block_num(), block_log_exception, "block log has no blocks and is appending the wrong first block.  Expected ${expected}, but received: ${actual}",
                       ("expected", blog.first_block_num())("actual", s->block_num));
             append_to_blog = true;
          } else {
