@@ -93,7 +93,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ctest -j8 -LE _tests -V -O sanitizer.log
+        ctest -j8 -LE _tests -V -O sanitizer.log || true
     label: ":_: Undefined Sanitizer Tests"
     agents:
       - "role=automation-builder-large"
@@ -115,7 +115,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ctest -j8 -LE _tests -V -O sanitizer.log
+        ctest -j8 -LE _tests -V -O sanitizer.log || true
     label: ":_: Address Sanitizer Tests"
     agents:
       - "role=automation-builder-large"
