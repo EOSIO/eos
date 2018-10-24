@@ -27,55 +27,55 @@ namespace eosio { namespace chain {
 
    void authorization_manager::add_abi_tables(eosio::chain::abi_def &abi) {
       abi.structs.emplace_back( eosio::chain::struct_def{
-        "usage", "",
+        "permission_usage", "",
         {{"id", "uint64"},
-         {"time", "uint64"}}
+         {"last_used", "uint64"}}
       });
 
       abi.tables.emplace_back( eosio::chain::table_def {
         "permusage",
         cyberway::chaindb::tag<permission_usage_object>::get_code(),
-        "usage",
+        "permission_usage",
         {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
-        "permlevel", "",
+        "permission_level", "",
         {{"actor", "name"},
-         {"perm", "name"}}
+         {"permission", "name"}}
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
-        "keyweight", "",
+        "key_weight", "",
         {{"key", "public_key"},
          {"weight", "uint16"}}
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
-        "permweight", "",
-        {{"permission", "permlevel"},
+        "permission_level_weight", "",
+        {{"permission", "permission_level"},
          {"weight", "uint16"}}
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
-        "waitweight", "",
-        {{"wait", "uint32"},
+        "wait_weight", "",
+        {{"wait_sec", "uint32"},
          {"weight", "uint16"}}
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
         "permission", "",
         {{"id", "uint64"},
-         {"usageid", "uint64"},
+         {"usage_id", "uint64"},
          {"parent", "uint64"},
          {"owner", "name"},
          {"name", "name"},
-         {"updated", "uint64"},
+         {"last_updated", "uint64"},
 
          {"threshold", "uint32"},
-         {"keys", "keyweight[]"},
-         {"accounts", "permweight[]"},
-         {"waits", "waitweight[]"}}
+         {"keys", "key_weight[]"},
+         {"accounts", "permission_level_weight[]"},
+         {"waits", "wait_weight[]"}}
       });
 
       abi.tables.emplace_back( eosio::chain::table_def {
@@ -95,8 +95,8 @@ namespace eosio { namespace chain {
          {{"id", "uint64"},
           {"account","name"},
           {"code","name"},
-          {"action","name"},
-          {"permission","name"}}
+          {"message_type","name"},
+          {"required_permission","name"}}
       });
 
       abi.tables.emplace_back( eosio::chain::table_def {
@@ -105,8 +105,8 @@ namespace eosio { namespace chain {
         "permlink",
         {
            {"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-           {"action", cyberway::chaindb::tag<by_action_name>::get_code(), true, {{"account","asc"},{"code", "asc"},{"action","asc"}}},
-           {"permission", cyberway::chaindb::tag<by_permission_name>::get_code(), true, {{"account","asc"},{"permission","asc"},{"code","asc"},{"action","asc"}}},
+           {"action", cyberway::chaindb::tag<by_action_name>::get_code(), true, {{"account","asc"},{"code", "asc"},{"message_type","asc"}}},
+           {"permission", cyberway::chaindb::tag<by_permission_name>::get_code(), true, {{"account","asc"},{"required_permission","asc"},{"code","asc"},{"message_type","asc"}}},
         }
       });
    }

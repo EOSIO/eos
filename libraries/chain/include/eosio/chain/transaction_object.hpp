@@ -30,13 +30,13 @@ namespace eosio { namespace chain {
 
    struct by_expiration;
    struct by_trx_id;
-   using transaction_multi_index = chainbase::shared_multi_index_container<
+   using transaction_multi_index = cyberway::chaindb::shared_multi_index_container<
       transaction_object,
-      indexed_by<
-         ordered_unique< tag<by_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_object::id_type, id)>,
-         ordered_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_id_type, trx_id)>,
-         ordered_unique< tag<by_expiration>,
-            composite_key< transaction_object,
+      cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique< cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_object::id_type, id)>,
+         cyberway::chaindb::ordered_unique< cyberway::chaindb::tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_id_type, trx_id)>,
+         cyberway::chaindb::ordered_unique< cyberway::chaindb::tag<by_expiration>,
+            cyberway::chaindb::composite_key< transaction_object,
                BOOST_MULTI_INDEX_MEMBER( transaction_object, time_point_sec, expiration ),
                BOOST_MULTI_INDEX_MEMBER( transaction_object, transaction_object::id_type, id)
             >
@@ -48,4 +48,4 @@ namespace eosio { namespace chain {
 } }
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::transaction_object, eosio::chain::transaction_multi_index)
-
+FC_REFLECT(eosio::chain::transaction_object, (id)(expiration)(trx_id))
