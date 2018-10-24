@@ -393,7 +393,7 @@ struct controller_impl {
       db.add_chaindb_index<dynamic_global_property_multi_index>(chaindb);
       db.add_chaindb_index<block_summary_multi_index>(chaindb);
       db.add_chaindb_index<transaction_multi_index>(chaindb);
-      db.add_index<generated_transaction_multi_index>();
+      db.add_chaindb_index<generated_transaction_multi_index>(chaindb);
 
       authorization.add_indices();
       resource_limits.add_indices();
@@ -528,6 +528,30 @@ struct controller_impl {
         {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {"trxid", cyberway::chaindb::tag<by_trx_id>::get_code(), true, {{"trx_id", "asc"}}},
          {"expirtion", cyberway::chaindb::tag<by_expiration>::get_code(), true, {{"expiration","asc"}, {"id","asc"}}}}
+      });
+
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "gtransaction", "",
+        {{"id", "uint64"},
+         {"trx_id", "checksum256"},
+         {"sender", "name"},
+         {"sender_id", "uint128"},
+         {"payer", "name"},
+         {"delay_until", "time_point"},
+         {"expiration", "time_point"},
+         {"published", "time_point"},
+         {"packed_trx", "string"}}
+      });
+
+      abi.tables.emplace_back( eosio::chain::table_def {
+        "gtransaction",
+        cyberway::chaindb::tag<generated_transaction_object>::get_code(),
+        "gtransaction",
+        {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {"trxid", cyberway::chaindb::tag<by_trx_id>::get_code(), true, {{"trx_id", "asc"}}},
+         {"expirtion", cyberway::chaindb::tag<by_expiration>::get_code(), true, {{"expiration","asc"}, {"id","asc"}}},
+         {"delay", cyberway::chaindb::tag<by_delay>::get_code(), true, {{"delay_until", "asc"}, {"id", "asc"}}},
+         {"senderid", cyberway::chaindb::tag<by_sender_id>::get_code(), true, {{"sender", "asc"}, {"sender_id", "asc"}}}}
       });
    }
 

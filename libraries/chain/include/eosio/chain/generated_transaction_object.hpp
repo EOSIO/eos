@@ -24,7 +24,7 @@ namespace eosio { namespace chain {
     */
    class generated_transaction_object : public chainbase::object<generated_transaction_object_type, generated_transaction_object>
    {
-         OBJECT_CTOR(generated_transaction_object, (packed_trx) )
+         OBJECT_CTOR(generated_transaction_object)
 
          id_type                       id;
          transaction_id_type           trx_id;
@@ -34,12 +34,12 @@ namespace eosio { namespace chain {
          time_point                    delay_until; /// this generated transaction will not be applied until the specified time
          time_point                    expiration; /// this generated transaction will not be applied after this time
          time_point                    published;
-         shared_string                 packed_trx;
+         string                        packed_trx;
 
          uint32_t set( const transaction& trx ) {
             auto trxsize = fc::raw::pack_size( trx );
             packed_trx.resize( trxsize );
-            fc::datastream<char*> ds( packed_trx.data(), trxsize );
+            fc::datastream<char*> ds( const_cast<char*>(packed_trx.data()), trxsize );
             fc::raw::pack( ds, trx );
             return trxsize;
          }
@@ -51,25 +51,25 @@ namespace eosio { namespace chain {
    struct by_status;
    struct by_sender_id;
 
-   using generated_transaction_multi_index = chainbase::shared_multi_index_container<
+   using generated_transaction_multi_index = cyberway::chaindb::shared_multi_index_container<
       generated_transaction_object,
-      indexed_by<
-         ordered_unique< tag<by_id>, BOOST_MULTI_INDEX_MEMBER(generated_transaction_object, generated_transaction_object::id_type, id)>,
-         ordered_unique< tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, transaction_id_type, trx_id)>,
-         ordered_unique< tag<by_expiration>,
-            composite_key< generated_transaction_object,
+      cyberway::chaindb::indexed_by<
+         cyberway::chaindb::ordered_unique< cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(generated_transaction_object, generated_transaction_object::id_type, id)>,
+         cyberway::chaindb::ordered_unique< cyberway::chaindb::tag<by_trx_id>, BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, transaction_id_type, trx_id)>,
+         cyberway::chaindb::ordered_unique< cyberway::chaindb::tag<by_expiration>,
+            cyberway::chaindb::composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, time_point, expiration),
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
             >
          >,
-         ordered_unique< tag<by_delay>,
-            composite_key< generated_transaction_object,
+         cyberway::chaindb::ordered_unique< cyberway::chaindb::tag<by_delay>,
+            cyberway::chaindb::composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, time_point, delay_until),
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
             >
          >,
-         ordered_unique< tag<by_sender_id>,
-            composite_key< generated_transaction_object,
+         cyberway::chaindb::ordered_unique< cyberway::chaindb::tag<by_sender_id>,
+            cyberway::chaindb::composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, account_name, sender),
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, uint128_t, sender_id)
             >
@@ -115,3 +115,4 @@ namespace eosio { namespace chain {
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_multi_index)
+FC_REFLECT(eosio::chain::generated_transaction_object, (id)(trx_id)(sender)(sender_id)(payer)(delay_until)(expiration)(published)(packed_trx))
