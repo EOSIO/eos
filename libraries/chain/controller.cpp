@@ -342,11 +342,14 @@ struct controller_impl {
             ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
       replaying = false;
       replay_head_time.reset();
+
+      EOS_ASSERT( false, checkpoint_exception, "replay done");
+
    }
 
    void init(const snapshot_reader_ptr& snapshot) {
 
-      thread_pool.emplace( 5 );
+      thread_pool.emplace( conf.thread_pool_size );
 
       if (snapshot) {
          EOS_ASSERT(!head, fork_database_exception, "");
@@ -1213,7 +1216,7 @@ struct controller_impl {
                auto mtrx = std::make_shared<transaction_metadata>( pt );
                if( !self.skip_auth_check() ) {
                   mtrx->signing_keys_future = async_thread_pool( [this, mtrx]() {
-                     return mtrx->trx.get_signature_keys( this->chain_id );
+                     return std::make_pair( this->chain_id, mtrx->trx.get_signature_keys( this->chain_id ) );
                   } );
                }
                packed_transactions.emplace_back( std::move( mtrx ) );
