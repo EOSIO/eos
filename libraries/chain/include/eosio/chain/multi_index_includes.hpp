@@ -150,24 +150,25 @@ namespace cyberway { namespace chaindb {
        iterator find(const chainbase::oid<Type>& k) const { return impl.find(k._id); }
 
        template<typename Modifier>
-       bool modify(iterator position, Modifier mod) {
-           impl.modify(position, 0, mod);
+       bool modify(iterator position, Modifier&& mod) {
+           impl.modify(position, std::forward<Modifier>(mod));
            return true;
        }
 
        iterator erase(iterator position) { return impl.erase(position); }
 
-       template<typename... Args>
-       emplace_return_type emplace(Args&&... args) {
+       template<typename Constructor, typename Allocator>
+       emplace_return_type emplace(Constructor&& constructor, Allocator&&) {
            try {
-               Object obj(args...);
-               auto iter = impl.emplace(0, [&](Object& o) {
-                   o = obj;
-               });
+               auto iter = impl.emplace(std::forward<Constructor>(constructor));
                return std::make_pair(iter, true);
            } catch (const fc::exception& err) {
                return std::make_pair(end(), false);
            }
+       }
+
+       emplace_return_type emplace(value_type) {
+           return std::make_pair(end(), false);
        }
 
        iterator iterator_to(const value_type& x) const {

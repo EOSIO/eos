@@ -84,14 +84,14 @@ template<typename Size, typename Lambda>
 void safe_allocate(const Size size, const char* error_msg, Lambda&& callback) {
     CYBERWAY_INDEX_ASSERT(size > 0, error_msg);
 
-    constexpr static size_t max_stack_data_size = 512;
+    constexpr static size_t max_stack_data_size = 65536;
 
     struct allocator {
         char* data = nullptr;
         const bool use_malloc;
         const size_t size;
         allocator(const size_t s)
-            : use_malloc(s > max_stack_data_size), size(s) {
+        : use_malloc(s > max_stack_data_size), size(s) {
             if (use_malloc) data = static_cast<char*>(malloc(s));
         }
 
@@ -232,23 +232,54 @@ private:
     Allocator allocator_;
     chaindb_controller& controller_;
 
-    mutable primary_key_t next_primary_key_ = end_primary_key;
+    struct item_data: public cache_item_data {
+        struct storage: public T {
+            template<typename Constructor>
+            storage(cache_item& cache, Constructor&& constructor, Allocator alloc)
+            : T(std::forward<Constructor>(constructor), alloc),
+              cache(cache)
+            { }
 
-    struct item: public T {
+            cache_item& cache;
+        } item;
+
         template<typename Constructor>
-        item(const multi_index* midx, Constructor&& constructor)
-        : T(constructor, midx->allocator_), multidx_(midx)
+        item_data(cache_item& cache, Allocator alloc, Constructor&& constructor)
+        : item(cache, std::forward<Constructor>(constructor), alloc)
         { }
 
-        const multi_index* const multidx_ = nullptr;
-        bool deleted_ = false;
+        static const T& get_T(const cache_item_ptr& cache) {
+            return static_cast<const T&>(static_cast<const item_data*>(cache->data.get())->item);
+        }
+
+        static cache_item& get_cache(const T& o) {
+            return const_cast<cache_item&>(static_cast<const storage&>(o).cache);
+        }
 
         using value_type = T;
-    }; // struct item
+    }; // struct item_data
 
-    using item_ptr = std::shared_ptr<item>;
+    struct variant_converter: public cache_converter_interface {
+        variant_converter(Allocator& allocator)
+        : allocator(allocator)
+        { }
 
-    mutable std::map<primary_key_t, item_ptr> items_map_;
+        ~variant_converter() = default;
+
+        cache_item_data_ptr convert_variant(cache_item& itm, const primary_key_t pk, const variant& value) const override {
+            auto ptr = std::make_unique<item_data>(itm, allocator, [&](auto& o) {
+                T& obj = static_cast<T&>(o);
+                fc::from_variant(value, obj);
+            });
+
+            auto& obj = static_cast<const T&>(ptr->item);
+            auto ptr_pk = primary_key_extractor_type()(obj);
+            CYBERWAY_INDEX_ASSERT(ptr_pk == pk, "invalid primary key of object");
+            return ptr;
+        }
+
+        Allocator& allocator;
+    } variant_converter_;
 
     using primary_key_extractor_type = typename Index::extractor;
 
@@ -269,11 +300,11 @@ private:
 
         const T& operator*() const {
             load_object();
-            return *static_cast<const T*>(item_.get());
+            return item_data::get_T(item_);
         }
         const T* operator->() const {
             load_object();
-            return static_cast<const T*>(item_.get());
+            return &item_data::get_T(item_);
         }
 
         const_iterator_impl operator++(int) {
@@ -366,11 +397,10 @@ private:
         const multi_index* multidx_ = nullptr;
         mutable cursor_t cursor_ = invalid_cursor;
         mutable primary_key_t primary_key_ = end_primary_key;
-        mutable item_ptr item_;
+        mutable cache_item_ptr item_;
 
         void load_object() const {
-            CYBERWAY_INDEX_ASSERT(!item_ || !item_->deleted_, "cannot load deleted object");
-            if (item_) return;
+            if (item_ && !item_->is_deleted()) return;
 
             CYBERWAY_INDEX_ASSERT(primary_key_ != end_primary_key, "cannot load object from end iterator");
             item_ = multidx().load_object(cursor_, primary_key_);
@@ -392,6 +422,16 @@ private:
         }
     }; // struct multi_index::const_iterator_impl
 
+    cache_item_ptr load_object(const cursor_t cursor, const primary_key_t pk) const {
+        // controller will call as to convert_object()
+        auto ptr = controller_.get_cache_item({get_code(), cursor}, pk, variant_converter_);
+
+        auto& obj = item_data::get_T(ptr);
+        auto ptr_pk = primary_key_extractor_type()(obj);
+        CYBERWAY_INDEX_ASSERT(ptr_pk == pk, "invalid primary key of object");
+        return ptr;
+    }
+
     template<typename... Idx>
     struct index_container {
         using type = decltype(boost::hana::tuple<Idx...>());
@@ -403,43 +443,6 @@ private:
 
     using primary_index_type = index<typename Index::tag, typename Index::extractor>;
     primary_index_type primary_idx_;
-
-    item_ptr find_object_in_cache(const primary_key_t pk) const {
-        auto itr = items_map_.find(pk);
-        if (items_map_.end() != itr) {
-            return (*itr).second;
-        }
-        return item_ptr();
-    }
-
-    void add_object_to_cache(const primary_key_t pk, item_ptr ptr) const {
-        items_map_.emplace(pk, std::move(ptr));
-    }
-
-    void remove_object_from_cache(const primary_key_t pk) const {
-        auto itr = items_map_.find(pk);
-        if (items_map_.end() != itr) {
-            (*itr).second->deleted_ = true;
-            items_map_.erase(itr);
-        }
-    }
-
-    item_ptr load_object(const cursor_t cursor, const primary_key_t pk) const {
-        auto ptr = find_object_in_cache(pk);
-        if (ptr) return ptr;
-
-        auto variant = controller_.value({get_code(), cursor});
-        ptr = std::make_shared<item>(this, [&](auto& itm) {
-            T& obj = static_cast<T&>(itm);
-            fc::from_variant(variant, obj);
-        });
-
-        auto& obj = static_cast<T&>(*ptr);
-        auto ptr_pk = primary_key_extractor_type()(obj);
-        CYBERWAY_INDEX_ASSERT(ptr_pk == pk, "invalid primary key of object");
-        add_object_to_cache(pk, ptr);
-        return ptr;
-    }
 
 public:
     template<typename IndexName, typename Extractor>
@@ -562,10 +565,11 @@ public:
         }
 
         const_iterator iterator_to(const T& obj) const {
-            const auto& itm = static_cast<const item&>(obj);
-            CYBERWAY_INDEX_ASSERT(itm.multidx_ == multidx_, "object passed to iterator_to is not in multi_index");
+            const auto& d = item_data::get_cache(obj);
+            CYBERWAY_INDEX_ASSERT(d.is_valid_converter(multidx_->variant_converter_),
+                "object passed to iterator_to is not in multi_index");
 
-            auto key = extractor_type()(itm);
+            auto key = extractor_type()(obj);
             auto pk = primary_key_extractor_type()(obj);
             cursor_t cursor;
             safe_allocate(fc::raw::pack_size(key), "invalid size of key", [&](auto& data, auto& size) {
@@ -613,7 +617,8 @@ public:
 
 public:
     multi_index(Allocator* allocator, chaindb_controller& controller)
-    : allocator_(*allocator), controller_(controller), primary_idx_(this) {}
+    : allocator_(*allocator), controller_(controller), variant_converter_(allocator_), primary_idx_(this)
+    { }
 
     constexpr static table_name_t table_name()  { return code_extractor<TableName>::get_code(); }
     constexpr static account_name_t get_code()  { return 0; }
@@ -644,11 +649,7 @@ public:
     }
 
     primary_key_t available_primary_key() const {
-        if (next_primary_key_ == end_primary_key) {
-            next_primary_key_ = controller_.available_primary_key(get_table_request());
-            CYBERWAY_INDEX_ASSERT(next_primary_key_ != end_primary_key, "no available primary key");
-        }
-        return next_primary_key_;
+        return controller_.available_primary_key(get_table_request());
     }
 
     template<typename IndexTag>
@@ -669,38 +670,38 @@ public:
     }
 
     template<typename Lambda>
-    const_iterator emplace(const account_name_t payer, Lambda&& constructor) const {
-        auto ptr = std::make_shared<item>(this, [&](auto& itm) {
-            constructor(static_cast<T&>(itm));
+    const_iterator emplace(Lambda&& constructor) const {
+        auto item = controller_.create_cache_item(get_table_request(), variant_converter_);
+        auto pk = item->pk;
+        item->data = std::make_unique<item_data>(*item.get(), allocator_, [&](auto& o) {
+            constructor(static_cast<T&>(o));
+            o.id = pk;
         });
 
-        auto& obj = static_cast<T&>(*ptr);
-        auto pk = primary_key_extractor_type()(obj);
-        CYBERWAY_INDEX_ASSERT(pk != end_primary_key, "invalid value of primary key");
+        auto& obj = item_data::get_T(item);
+        auto obj_pk = primary_key_extractor_type()(obj);
+        CYBERWAY_INDEX_ASSERT(obj_pk == item->pk, "invalid value of primary key");
 
         cursor_t cursor;
         fc::variant value;
         fc::to_variant(obj, value);
         auto size = fc::raw::pack_size(obj);
-        cursor = controller_.insert(get_table_request(), payer, pk, std::move(value), size);
-
+        cursor = controller_.insert(get_table_request(), item, std::move(value), size);
         CYBERWAY_INDEX_ASSERT(cursor != invalid_cursor, "unable to create object");
 
-        add_object_to_cache(pk, ptr);
-        next_primary_key_ = pk + 1;
         return const_iterator(this, cursor, pk);
     }
 
     template<typename Lambda>
-    void modify(const_iterator itr, const account_name_t payer, Lambda&& updater) const {
+    void modify(const_iterator itr, Lambda&& updater) const {
         CYBERWAY_INDEX_ASSERT(itr != end(), "cannot pass end iterator to modify");
-        modify(*itr, payer, std::forward<Lambda&&>(updater));
+        modify(*itr, std::forward<Lambda&&>(updater));
     }
 
     template<typename Lambda>
-    void modify(const T& obj, const account_name_t payer, Lambda&& updater) const {
-        const auto& itm = static_cast<const item&>(obj);
-        CYBERWAY_INDEX_ASSERT(itm.multidx_ == this, "object passed to modify is not in multi_index");
+    void modify(const T& obj, Lambda&& updater) const {
+        const auto& d = item_data::get_cache(obj);
+        CYBERWAY_INDEX_ASSERT(d.is_valid_converter(variant_converter_), "object passed to modify is not in multi_index");
 
         auto pk = primary_key_extractor_type()(obj);
 
@@ -708,14 +709,12 @@ public:
         updater(mobj);
 
         auto mpk = primary_key_extractor_type()(obj);
-        if (mpk != pk) {
-            CYBERWAY_INDEX_ASSERT(pk == mpk, "updater cannot change primary key when modifying an object");
-        }
+        CYBERWAY_INDEX_ASSERT(pk == mpk, "updater cannot change primary key when modifying an object");
 
         auto size = fc::raw::pack_size(obj);
         fc::variant value;
         fc::to_variant(obj, value);
-        auto upk = controller_.update(get_table_request(), payer, pk, std::move(value), size);
+        auto upk = controller_.update(get_table_request(), pk, std::move(value), size);
         CYBERWAY_INDEX_ASSERT(upk == pk, "unable to update object");
     }
 
@@ -743,11 +742,11 @@ public:
     }
 
     void erase(const T& obj) const {
-        const auto& itm = static_cast<const item&>(obj);
-        CYBERWAY_INDEX_ASSERT(itm.multidx_ == this, "object passed to modify is not in multi_index");
+        auto& d = item_data::get_cache(obj);
+        CYBERWAY_INDEX_ASSERT(d.is_valid_converter(variant_converter_), "object passed to delete is not in multi_index");
+        d.mark_deleted();
 
         auto pk = primary_key_extractor_type()(obj);
-        remove_object_from_cache(pk);
         auto dpk = controller_.remove(get_table_request(), pk);
         CYBERWAY_INDEX_ASSERT(dpk == pk, "unable to delete object");
     }
