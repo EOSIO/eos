@@ -398,7 +398,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       cached_traces.clear();
       onblock_trace.reset();
 
-      auto traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_serial_wrapper(traces)));
+      auto& db         = chain_plug->chain().db();
+      auto  traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_serial_wrapper(db, traces)));
       EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
 
       history_log_header header{.block_num    = block_state->block->block_num(),
@@ -437,9 +438,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          return *it->second;
       };
 
-      auto pack_row          = [](auto& row) { return fc::raw::pack(make_history_serial_wrapper(row)); };
+      auto pack_row          = [&](auto& row) { return fc::raw::pack(make_history_serial_wrapper(db, row)); };
       auto pack_contract_row = [&](auto& row) {
-         return fc::raw::pack(make_history_table_wrapper(get_table_id(row.t_id._id), row));
+         return fc::raw::pack(make_history_context_wrapper(get_table_id(row.t_id._id), row));
       };
 
       auto process_table = [&](auto* name, auto& index, auto& pack_row) {
@@ -464,12 +465,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                auto& row = index.get(old.first);
                delta.rows.emplace_back(true, pack_row(row));
             }
+            for (auto& old : undo.removed_values)
+               delta.rows.emplace_back(false, pack_row(old.second));
             for (auto id : undo.new_ids) {
                auto& row = index.get(id);
                delta.rows.emplace_back(true, pack_row(row));
             }
-            for (auto& old : undo.removed_values)
-               delta.rows.emplace_back(false, pack_row(old.second));
          }
       };
 

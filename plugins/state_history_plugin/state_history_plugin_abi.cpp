@@ -342,7 +342,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "shared_authority_v0", "fields": [
+            "name": "authority", "fields": [
                 { "type": "uint32", "name": "threshold" },
                 { "type": "key_weight[]", "name": "keys" },
                 { "type": "permission_level_weight[]", "name": "accounts" },
@@ -351,18 +351,15 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "permission_v0", "fields": [
-                { "type": "uint64", "name": "id" },
-                { "type": "uint64", "name": "usage_id" },
-                { "type": "uint64", "name": "parent" },
                 { "type": "name", "name": "owner" },
                 { "type": "name", "name": "name" },
+                { "type": "name", "name": "parent" },
                 { "type": "time_point", "name": "last_updated" },
-                { "type": "shared_authority", "name": "auth" }
+                { "type": "authority", "name": "auth" }
             ]
         },
         {
             "name": "permission_link_v0", "fields": [
-                { "type": "uint64", "name": "id" },
                 { "type": "name", "name": "account" },
                 { "type": "name", "name": "code" },
                 { "type": "name", "name": "message_type" },
@@ -457,7 +454,6 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "chain_config", "types": ["chain_config_v0"] },
         { "name": "global_property", "types": ["global_property_v0"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
-        { "name": "shared_authority", "types": ["shared_authority_v0"] },
         { "name": "permission", "types": ["permission_v0"] },
         { "name": "permission_link", "types": ["permission_link_v0"] },
         { "name": "resource_limits", "types": ["resource_limits_v0"] },
@@ -479,8 +475,8 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index_long_double", "type": "contract_index_long_double", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "global_property", "type": "global_property", "key_names": [] },
         { "name": "generated_transaction", "type": "generated_transaction", "key_names": ["sender", "sender_id"] },
-        { "name": "permission", "type": "permission", "key_names": ["id"] },
-        { "name": "permission_link", "type": "permission_link", "key_names": ["id"] },
+        { "name": "permission", "type": "permission", "key_names": ["owner", "name"] },
+        { "name": "permission_link", "type": "permission_link", "key_names": ["account", "code", "message_type"] },
         { "name": "resource_limits", "type": "resource_limits", "key_names": ["id"] },
         { "name": "resource_usage", "type": "resource_usage", "key_names": ["id"] },
         { "name": "resource_limits_state", "type": "resource_limits_state", "key_names": [] },
