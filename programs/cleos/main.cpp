@@ -950,7 +950,7 @@ struct register_producer_subcommand {
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
       register_producer->add_option("url", url, localized("url where info about producer can be found"), true);
       register_producer->add_option("location", loc, localized("relative location for purpose of nearest neighbor scheduling"), true);
-      add_standard_transaction_options(register_producer);
+      add_standard_transaction_options(register_producer, "account@active");
 
 
       register_producer->set_callback([this] {
@@ -1005,7 +1005,7 @@ struct create_account_subcommand {
                                  (localized("Transfer voting power and right to unstake EOS to receiver")));
       }
 
-      add_standard_transaction_options(createAccount);
+      add_standard_transaction_options(createAccount, "creator@active");
 
       createAccount->set_callback([this] {
             if( !active_key_str.size() )
@@ -1044,7 +1044,7 @@ struct unregister_producer_subcommand {
    unregister_producer_subcommand(CLI::App* actionRoot) {
       auto unregister_producer = actionRoot->add_subcommand("unregprod", localized("Unregister an existing producer"));
       unregister_producer->add_option("account", producer_str, localized("The account to unregister as a producer"))->required();
-      add_standard_transaction_options(unregister_producer);
+      add_standard_transaction_options(unregister_producer, "account@active");
 
       unregister_producer->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -1064,7 +1064,7 @@ struct vote_producer_proxy_subcommand {
       auto vote_proxy = actionRoot->add_subcommand("proxy", localized("Vote your stake through a proxy"));
       vote_proxy->add_option("voter", voter_str, localized("The voting account"))->required();
       vote_proxy->add_option("proxy", proxy_str, localized("The proxy account"))->required();
-      add_standard_transaction_options(vote_proxy);
+      add_standard_transaction_options(vote_proxy, "voter@active");
 
       vote_proxy->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -1085,7 +1085,7 @@ struct vote_producers_subcommand {
       auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for one or more producers"));
       vote_producers->add_option("voter", voter_str, localized("The voting account"))->required();
       vote_producers->add_option("producers", producer_names, localized("The account(s) to vote for. All options from this position and following will be treated as the producer list."))->required();
-      add_standard_transaction_options(vote_producers);
+      add_standard_transaction_options(vote_producers, "voter@active");
 
       vote_producers->set_callback([this] {
 
@@ -1109,7 +1109,7 @@ struct approve_producer_subcommand {
       auto approve_producer = actionRoot->add_subcommand("approve", localized("Add one producer to list of voted producers"));
       approve_producer->add_option("voter", voter, localized("The voting account"))->required();
       approve_producer->add_option("producer", producer_name, localized("The account to vote for"))->required();
-      add_standard_transaction_options(approve_producer);
+      add_standard_transaction_options(approve_producer, "voter@active");
 
       approve_producer->set_callback([this] {
             auto result = call(get_table_func, fc::mutable_variant_object("json", true)
@@ -1157,7 +1157,7 @@ struct unapprove_producer_subcommand {
       auto approve_producer = actionRoot->add_subcommand("unapprove", localized("Remove one producer from list of voted producers"));
       approve_producer->add_option("voter", voter, localized("The voting account"))->required();
       approve_producer->add_option("producer", producer_name, localized("The account to remove from voted producers"))->required();
-      add_standard_transaction_options(approve_producer);
+      add_standard_transaction_options(approve_producer, "voter@active");
 
       approve_producer->set_callback([this] {
             auto result = call(get_table_func, fc::mutable_variant_object("json", true)
@@ -1302,7 +1302,7 @@ struct delegate_bandwidth_subcommand {
       delegate_bandwidth->add_option("--buyram", buy_ram_amount, localized("The amount of EOS to buyram"));
       delegate_bandwidth->add_option("--buy-ram-bytes", buy_ram_bytes, localized("The amount of RAM to buy in number of bytes"));
       delegate_bandwidth->add_flag("--transfer", transfer, localized("Transfer voting power and right to unstake EOS to receiver"));
-      add_standard_transaction_options(delegate_bandwidth);
+      add_standard_transaction_options(delegate_bandwidth, "from@active");
 
       delegate_bandwidth->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -1337,7 +1337,7 @@ struct undelegate_bandwidth_subcommand {
       undelegate_bandwidth->add_option("receiver", receiver_str, localized("The account to undelegate bandwidth from"))->required();
       undelegate_bandwidth->add_option("unstake_net_quantity", unstake_net_amount, localized("The amount of EOS to undelegate for network bandwidth"))->required();
       undelegate_bandwidth->add_option("unstake_cpu_quantity", unstake_cpu_amount, localized("The amount of EOS to undelegate for CPU bandwidth"))->required();
-      add_standard_transaction_options(undelegate_bandwidth);
+      add_standard_transaction_options(undelegate_bandwidth, "from@active");
 
       undelegate_bandwidth->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -1360,7 +1360,7 @@ struct bidname_subcommand {
       bidname->add_option("bidder", bidder_str, localized("The bidding account"))->required();
       bidname->add_option("newname", newname_str, localized("The bidding name"))->required();
       bidname->add_option("bid", bid_amount, localized("The amount of EOS to bid"))->required();
-      add_standard_transaction_options(bidname);
+      add_standard_transaction_options(bidname, "bidder@active");
       bidname->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("bidder", bidder_str)
@@ -1461,7 +1461,7 @@ struct buyram_subcommand {
       buyram->add_option("amount", amount, localized("The amount of EOS to pay for RAM, or number of bytes/kibibytes of RAM if --bytes/--kbytes is set"))->required();
       buyram->add_flag("--kbytes,-k", kbytes, localized("buyram in number of kibibytes (KiB)"));
       buyram->add_flag("--bytes,-b", bytes, localized("buyram in number of bytes"));
-      add_standard_transaction_options(buyram);
+      add_standard_transaction_options(buyram, "payer@active");
       buyram->set_callback([this] {
          EOSC_ASSERT( !kbytes || !bytes, "ERROR: --kbytes and --bytes cannot be set at the same time" );
          if (kbytes || bytes) {
@@ -1482,7 +1482,7 @@ struct sellram_subcommand {
       auto sellram = actionRoot->add_subcommand("sellram", localized("Sell RAM"));
       sellram->add_option("account", receiver_str, localized("The account to receive EOS for sold RAM"))->required();
       sellram->add_option("bytes", amount, localized("Number of RAM bytes to sell"))->required();
-      add_standard_transaction_options(sellram);
+      add_standard_transaction_options(sellram, "account@active");
 
       sellram->set_callback([this] {
             fc::variant act_payload = fc::mutable_variant_object()
@@ -1500,7 +1500,7 @@ struct claimrewards_subcommand {
    claimrewards_subcommand(CLI::App* actionRoot) {
       auto claim_rewards = actionRoot->add_subcommand("claimrewards", localized("Claim producer rewards"));
       claim_rewards->add_option("owner", owner, localized("The account to claim rewards for"))->required();
-      add_standard_transaction_options(claim_rewards);
+      add_standard_transaction_options(claim_rewards, "owner@active");
 
       claim_rewards->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -1517,7 +1517,7 @@ struct regproxy_subcommand {
    regproxy_subcommand(CLI::App* actionRoot) {
       auto register_proxy = actionRoot->add_subcommand("regproxy", localized("Register an account as a proxy (for voting)"));
       register_proxy->add_option("proxy", proxy, localized("The proxy account to register"))->required();
-      add_standard_transaction_options(register_proxy);
+      add_standard_transaction_options(register_proxy, "proxy@active");
 
       register_proxy->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -1535,7 +1535,7 @@ struct unregproxy_subcommand {
    unregproxy_subcommand(CLI::App* actionRoot) {
       auto unregister_proxy = actionRoot->add_subcommand("unregproxy", localized("Unregister an account as a proxy (for voting)"));
       unregister_proxy->add_option("proxy", proxy, localized("The proxy account to unregister"))->required();
-      add_standard_transaction_options(unregister_proxy);
+      add_standard_transaction_options(unregister_proxy, "proxy@active");
 
       unregister_proxy->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -1557,7 +1557,7 @@ struct canceldelay_subcommand {
       cancel_delay->add_option("canceling_account", canceling_account, localized("Account from authorization on the original delayed transaction"))->required();
       cancel_delay->add_option("canceling_permission", canceling_permission, localized("Permission from authorization on the original delayed transaction"))->required();
       cancel_delay->add_option("trx_id", trx_id, localized("The transaction id of the original delayed transaction"))->required();
-      add_standard_transaction_options(cancel_delay);
+      add_standard_transaction_options(cancel_delay, "canceling_account@canceling_permission");
 
       cancel_delay->set_callback([this] {
          auto canceling_auth = permission_level{canceling_account, canceling_permission};
@@ -2931,7 +2931,7 @@ int main( int argc, char** argv ) {
    };
 
    auto propose_action = msig->add_subcommand("propose", localized("Propose action"));
-   add_standard_transaction_options(propose_action);
+   add_standard_transaction_options(propose_action, "proposer@active");
    propose_action->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
    propose_action->add_option("trx_permissions", transaction_perm, localized("The JSON string or filename defining transaction permissions"))->required();
@@ -3002,7 +3002,7 @@ int main( int argc, char** argv ) {
 
    //multisige propose transaction
    auto propose_trx = msig->add_subcommand("propose_trx", localized("Propose transaction"));
-   add_standard_transaction_options(propose_trx);
+   add_standard_transaction_options(propose_trx, "proposer@active");
    propose_trx->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    propose_trx->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
    propose_trx->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
@@ -3094,7 +3094,7 @@ int main( int argc, char** argv ) {
 
    // multisig approve
    auto approve = msig->add_subcommand("approve", localized("Approve proposed transaction"));
-   add_standard_transaction_options(approve);
+   add_standard_transaction_options(approve, "proposer@active");
    approve->add_option("proposer", proposer, localized("proposer name (string)"))->required();
    approve->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    approve->add_option("permissions", perm, localized("The JSON string of filename defining approving permissions"))->required();
@@ -3102,7 +3102,7 @@ int main( int argc, char** argv ) {
 
    // multisig unapprove
    auto unapprove = msig->add_subcommand("unapprove", localized("Unapprove proposed transaction"));
-   add_standard_transaction_options(unapprove);
+   add_standard_transaction_options(unapprove, "proposer@active");
    unapprove->add_option("proposer", proposer, localized("proposer name (string)"))->required();
    unapprove->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    unapprove->add_option("permissions", perm, localized("The JSON string of filename defining approving permissions"))->required();
@@ -3111,7 +3111,7 @@ int main( int argc, char** argv ) {
    // multisig cancel
    string canceler;
    auto cancel = msig->add_subcommand("cancel", localized("Cancel proposed transaction"));
-   add_standard_transaction_options(cancel);
+   add_standard_transaction_options(cancel, "canceler@active");
    cancel->add_option("proposer", proposer, localized("proposer name (string)"))->required();
    cancel->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    cancel->add_option("canceler", canceler, localized("canceler name (string)"));
@@ -3139,7 +3139,7 @@ int main( int argc, char** argv ) {
    // multisig exec
    string executer;
    auto exec = msig->add_subcommand("exec", localized("Execute proposed transaction"));
-   add_standard_transaction_options(exec);
+   add_standard_transaction_options(exec, "executer@active");
    exec->add_option("proposer", proposer, localized("proposer name (string)"))->required();
    exec->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    exec->add_option("executer", executer, localized("account paying for execution (string)"));
@@ -3174,7 +3174,7 @@ int main( int argc, char** argv ) {
    executer = "";
    string trx_to_exec;
    auto wrap_exec = wrap->add_subcommand("exec", localized("Execute a transaction while bypassing authorization checks"));
-   add_standard_transaction_options(wrap_exec);
+   add_standard_transaction_options(wrap_exec, "executer@active & --contract@active");
    wrap_exec->add_option("executer", executer, localized("Account executing the transaction and paying for the deferred transaction RAM"))->required();
    wrap_exec->add_option("transaction", trx_to_exec, localized("The JSON string or filename defining the transaction to execute"))->required();
    wrap_exec->add_option("--contract,-c", wrap_con, localized("The account which controls the wrap contract"));
