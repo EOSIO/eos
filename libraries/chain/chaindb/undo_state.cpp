@@ -98,18 +98,19 @@ namespace cyberway { namespace chaindb {
 
         undo_state& head() {
             switch (stage_) {
-                case undo_stage::Unknown:
-                case undo_stage::Rollback:
-                    break;
-
                 case undo_stage::New: {
                     stage_ = undo_stage::Stack;
                     stack_.emplace_back(revision_);
                 }
 
+                case undo_stage::Unknown:
+                case undo_stage::Rollback:
+                    if (stack_.empty()) {
+                        break;
+                    }
+
                 case undo_stage::Stack:
                     return stack_.back();
-
             }
 
             CYBERWAY_SESSION_ASSERT(false,
@@ -121,8 +122,6 @@ namespace cyberway { namespace chaindb {
             switch (stage_) {
                 case undo_stage::Unknown:
                 case undo_stage::Rollback:
-                    break;
-
                 case undo_stage::Stack:
                     CYBERWAY_SESSION_ASSERT(size() >= 2,
                         "The table ${table} doesn't have 2 states.", ("table", get_full_table_name(info_)));
@@ -156,7 +155,9 @@ namespace cyberway { namespace chaindb {
             switch (stage_) {
                 case undo_stage::Unknown:
                 case undo_stage::Rollback:
-                    break;
+                    if (stack_.empty()) {
+                        break;
+                    }
 
                 case undo_stage::Stack: {
                     stack_.pop_back();
@@ -518,7 +519,7 @@ namespace cyberway { namespace chaindb {
 
         template <typename Lambda>
         void for_tables(Lambda&& lambda) {
-            for (auto itr = tables.begin(), etr = tables.end(); etr != itr; ) {
+            for (auto itr = tables.begin(); tables.end() != itr; ) {
                 auto& table = const_cast<table_undo_stack&>(*itr);
                 lambda(table);
 

@@ -274,14 +274,14 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t available_pk(const table_request& request) const {
             auto table = get_table<table_info>(request);
-            return get_next_pk(table) - 1;
+            return driver->available_pk(table);
         }
 
         primary_key_t get_next_pk(const table_info& table) const {
             auto next_pk = cache->get_next_pk(table);
             if (next_pk == unset_primary_key) {
                 next_pk = driver->available_pk(table);
-                cache->set_next_pk(table, next_pk);
+                cache->set_next_pk(table, next_pk + 1);
             }
             return next_pk;
         }

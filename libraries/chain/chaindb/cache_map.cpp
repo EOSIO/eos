@@ -85,7 +85,7 @@ namespace cyberway { namespace chaindb {
 
     primary_key_t cache_map::get_next_pk(const table_info& table) const {
         auto cache = impl_->find(table);
-        if (cache) return cache->next_pk++;
+        if (cache && cache->next_pk != unset_primary_key) return cache->next_pk++;
 
         return unset_primary_key;
     }
