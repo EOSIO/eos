@@ -3067,7 +3067,7 @@ int main( int argc, char** argv ) {
          ("proposal_name", proposal_name)
          ("level", perm_var);
 
-      auto accountPermissions = tx_permission.empty() ? vector<chain::permission_level>{{sender,config::active_name}} : get_account_permissions(tx_permission);
+      auto accountPermissions = tx_permission.empty() ? vector<chain::permission_level>{{proposer,config::active_name}} : get_account_permissions(tx_permission);
       send_actions({chain::action{accountPermissions, "eosio.msig", action, variant_to_bin( N(eosio.msig), action, args ) }});
    };
 
