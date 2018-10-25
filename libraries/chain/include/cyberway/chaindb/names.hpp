@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cyberway/chaindb/common.hpp>
+#include <algorithm>
 
 namespace cyberway { namespace chaindb {
 
@@ -14,7 +15,9 @@ namespace cyberway { namespace chaindb {
 
     inline string get_code_name(const account_name& code) {
         if (!code.empty()) {
-            return code.to_string();
+            string str = code.to_string();
+            std::replace( str.begin(), str.end(), '.', '-');
+            return str;
         }
         return get_system_code_name();
     }
