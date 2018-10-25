@@ -342,9 +342,6 @@ struct controller_impl {
             ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
       replaying = false;
       replay_head_time.reset();
-
-      EOS_ASSERT( false, checkpoint_exception, "replay done");
-
    }
 
    void init(const snapshot_reader_ptr& snapshot) {
