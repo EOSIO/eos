@@ -227,9 +227,9 @@ vector<chain::permission_level> get_account_permissions(const vector<string>& pe
       if( pieces.size() == 1 ) pieces.push_back( "active" );
       return chain::permission_level{ .actor = pieces[0], .permission = pieces[1] };
    });
-   vector<chain::permission_level> accountPermissions;
-   boost::range::copy(fixedPermissions, back_inserter(accountPermissions));
-   return accountPermissions;
+   vector<chain::permission_level> account_permissions;
+   boost::range::copy(fixedPermissions, back_inserter(account_permissions));
+   return account_permissions;
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions, const chain::permission_level& default_permission) {
@@ -960,8 +960,8 @@ struct register_producer_subcommand {
          } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
 
          auto regprod_var = regproducer_variant(producer_str, producer_key, url, loc );
-         auto accountPermissions = get_account_permissions(tx_permission, {producer_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(regproducer), regprod_var)});
+         auto account_permissions = get_account_permissions(tx_permission, {producer_str,config::active_name});
+         send_actions({create_action(account_permissions, config::system_account_name, N(regproducer), regprod_var)});
       });
    }
 };
@@ -1050,8 +1050,8 @@ struct unregister_producer_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("producer", producer_str);
 
-         auto accountPermissions = get_account_permissions(tx_permission, {producer_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(unregprod), act_payload)});
+         auto account_permissions = get_account_permissions(tx_permission, {producer_str,config::active_name});
+         send_actions({create_action(account_permissions, config::system_account_name, N(unregprod), act_payload)});
       });
    }
 };
@@ -1071,8 +1071,8 @@ struct vote_producer_proxy_subcommand {
                   ("voter", voter_str)
                   ("proxy", proxy_str)
                   ("producers", std::vector<account_name>{});
-         auto accountPermissions = get_account_permissions(tx_permission, {voter_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)});
+         auto account_permissions = get_account_permissions(tx_permission, {voter_str,config::active_name});
+         send_actions({create_action(account_permissions, config::system_account_name, N(voteproducer), act_payload)});
       });
    }
 };
@@ -1095,8 +1095,8 @@ struct vote_producers_subcommand {
                   ("voter", voter_str)
                   ("proxy", "")
                   ("producers", producer_names);
-         auto accountPermissions = get_account_permissions(tx_permission, {voter_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)});
+         auto account_permissions = get_account_permissions(tx_permission, {voter_str,config::active_name});
+         send_actions({create_action(account_permissions, config::system_account_name, N(voteproducer), act_payload)});
       });
    }
 };
@@ -1143,8 +1143,8 @@ struct approve_producer_subcommand {
                ("voter", voter)
                ("proxy", "")
                ("producers", prods);
-            auto accountPermissions = get_account_permissions(tx_permission, {voter,config::active_name});
-            send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)});
+            auto account_permissions = get_account_permissions(tx_permission, {voter,config::active_name});
+            send_actions({create_action(account_permissions, config::system_account_name, N(voteproducer), act_payload)});
       });
    }
 };
@@ -1190,8 +1190,8 @@ struct unapprove_producer_subcommand {
                ("voter", voter)
                ("proxy", "")
                ("producers", prods);
-            auto accountPermissions = get_account_permissions(tx_permission, {voter,config::active_name});
-            send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)});
+            auto account_permissions = get_account_permissions(tx_permission, {voter,config::active_name});
+            send_actions({create_action(account_permissions, config::system_account_name, N(voteproducer), act_payload)});
       });
    }
 };
@@ -1311,8 +1311,8 @@ struct delegate_bandwidth_subcommand {
                   ("stake_net_quantity", to_asset(stake_net_amount))
                   ("stake_cpu_quantity", to_asset(stake_cpu_amount))
                   ("transfer", transfer);
-         auto accountPermissions = get_account_permissions(tx_permission, {from_str,config::active_name});
-         std::vector<chain::action> acts{create_action(accountPermissions, config::system_account_name, N(delegatebw), act_payload)};
+         auto account_permissions = get_account_permissions(tx_permission, {from_str,config::active_name});
+         std::vector<chain::action> acts{create_action(account_permissions, config::system_account_name, N(delegatebw), act_payload)};
          EOSC_ASSERT( !(buy_ram_amount.size()) || !buy_ram_bytes, "ERROR: --buyram and --buy-ram-bytes cannot be set at the same time" );
          if (buy_ram_amount.size()) {
             acts.push_back( create_buyram(from_str, receiver_str, to_asset(buy_ram_amount)) );
@@ -1345,8 +1345,8 @@ struct undelegate_bandwidth_subcommand {
                   ("receiver", receiver_str)
                   ("unstake_net_quantity", to_asset(unstake_net_amount))
                   ("unstake_cpu_quantity", to_asset(unstake_cpu_amount));
-         auto accountPermissions = get_account_permissions(tx_permission, {from_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(undelegatebw), act_payload)});
+         auto account_permissions = get_account_permissions(tx_permission, {from_str,config::active_name});
+         send_actions({create_action(account_permissions, config::system_account_name, N(undelegatebw), act_payload)});
       });
    }
 };
@@ -1366,8 +1366,8 @@ struct bidname_subcommand {
                   ("bidder", bidder_str)
                   ("newname", newname_str)
                   ("bid", to_asset(bid_amount));
-         auto accountPermissions = get_account_permissions(tx_permission, {bidder_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(bidname), act_payload)});
+         auto account_permissions = get_account_permissions(tx_permission, {bidder_str,config::active_name});
+         send_actions({create_action(account_permissions, config::system_account_name, N(bidname), act_payload)});
       });
    }
 };
@@ -1488,8 +1488,8 @@ struct sellram_subcommand {
             fc::variant act_payload = fc::mutable_variant_object()
                ("account", receiver_str)
                ("bytes", amount);
-            auto accountPermissions = get_account_permissions(tx_permission, {receiver_str,config::active_name});
-            send_actions({create_action(accountPermissions, config::system_account_name, N(sellram), act_payload)});
+            auto account_permissions = get_account_permissions(tx_permission, {receiver_str,config::active_name});
+            send_actions({create_action(account_permissions, config::system_account_name, N(sellram), act_payload)});
          });
    }
 };
@@ -1505,8 +1505,8 @@ struct claimrewards_subcommand {
       claim_rewards->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("owner", owner);
-         auto accountPermissions = get_account_permissions(tx_permission, {owner,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(claimrewards), act_payload)});
+         auto account_permissions = get_account_permissions(tx_permission, {owner,config::active_name});
+         send_actions({create_action(account_permissions, config::system_account_name, N(claimrewards), act_payload)});
       });
    }
 };
@@ -1523,8 +1523,8 @@ struct regproxy_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("proxy", proxy)
                   ("isproxy", true);
-         auto accountPermissions = get_account_permissions(tx_permission, {proxy,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(regproxy), act_payload)});
+         auto account_permissions = get_account_permissions(tx_permission, {proxy,config::active_name});
+         send_actions({create_action(account_permissions, config::system_account_name, N(regproxy), act_payload)});
       });
    }
 };
@@ -1541,8 +1541,8 @@ struct unregproxy_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("proxy", proxy)
                   ("isproxy", false);
-         auto accountPermissions = get_account_permissions(tx_permission, {proxy,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(regproxy), act_payload)});
+         auto account_permissions = get_account_permissions(tx_permission, {proxy,config::active_name});
+         send_actions({create_action(account_permissions, config::system_account_name, N(regproxy), act_payload)});
       });
    }
 };
@@ -1564,8 +1564,8 @@ struct canceldelay_subcommand {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("canceling_auth", canceling_auth)
                   ("trx_id", trx_id);
-         auto accountPermissions = get_account_permissions(tx_permission, canceling_auth);
-         send_actions({create_action(accountPermissions, config::system_account_name, N(canceldelay), act_payload)});
+         auto account_permissions = get_account_permissions(tx_permission, canceling_auth);
+         send_actions({create_action(account_permissions, config::system_account_name, N(canceldelay), act_payload)});
       });
    }
 };
@@ -2866,9 +2866,9 @@ int main( int argc, char** argv ) {
             action_args_var = json_from_file_or_string(data, fc::json::relaxed_parser);
          } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data", data))
       }
-      auto accountPermissions = get_account_permissions(tx_permission);
+      auto account_permissions = get_account_permissions(tx_permission);
 
-      send_actions({chain::action{accountPermissions, contract_account, action, variant_to_bin( contract_account, action, action_args_var ) }});
+      send_actions({chain::action{account_permissions, contract_account, action, variant_to_bin( contract_account, action, action_args_var ) }});
    });
 
    // push transaction
@@ -2967,16 +2967,16 @@ int main( int argc, char** argv ) {
          trxperm = transaction_perm_var.as<vector<permission_level>>();
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong transaction permissions format: '${data}'", ("data",transaction_perm_var));
 
-      auto accountPermissions = get_account_permissions(tx_permission);
-      if (accountPermissions.empty()) {
+      auto account_permissions = get_account_permissions(tx_permission);
+      if (account_permissions.empty()) {
          if (!proposer.empty()) {
-            accountPermissions = vector<permission_level>{{proposer, config::active_name}};
+            account_permissions = vector<permission_level>{{proposer, config::active_name}};
          } else {
             EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <proposer> or -p)");
          }
       }
       if (proposer.empty()) {
-         proposer = name(accountPermissions.at(0).actor).to_string();
+         proposer = name(account_permissions.at(0).actor).to_string();
       }
 
       transaction trx;
@@ -2997,7 +2997,7 @@ int main( int argc, char** argv ) {
          ("requested", requested_perm_var)
          ("trx", trx_var);
 
-      send_actions({chain::action{accountPermissions, "eosio.msig", "propose", variant_to_bin( N(eosio.msig), N(propose), args ) }});
+      send_actions({chain::action{account_permissions, "eosio.msig", "propose", variant_to_bin( N(eosio.msig), N(propose), args ) }});
    });
 
    //multisige propose transaction
@@ -3019,16 +3019,16 @@ int main( int argc, char** argv ) {
          trx_var = json_from_file_or_string(trx_to_push);
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_push))
 
-      auto accountPermissions = get_account_permissions(tx_permission);
-      if (accountPermissions.empty()) {
+      auto account_permissions = get_account_permissions(tx_permission);
+      if (account_permissions.empty()) {
          if (!proposer.empty()) {
-            accountPermissions = vector<permission_level>{{proposer, config::active_name}};
+            account_permissions = vector<permission_level>{{proposer, config::active_name}};
          } else {
             EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <proposer> or -p)");
          }
       }
       if (proposer.empty()) {
-         proposer = name(accountPermissions.at(0).actor).to_string();
+         proposer = name(account_permissions.at(0).actor).to_string();
       }
 
       auto args = fc::mutable_variant_object()
@@ -3037,7 +3037,7 @@ int main( int argc, char** argv ) {
          ("requested", requested_perm_var)
          ("trx", trx_var);
 
-      send_actions({chain::action{accountPermissions, "eosio.msig", "propose", variant_to_bin( N(eosio.msig), N(propose), args ) }});
+      send_actions({chain::action{account_permissions, "eosio.msig", "propose", variant_to_bin( N(eosio.msig), N(propose), args ) }});
    });
 
 
@@ -3088,8 +3088,8 @@ int main( int argc, char** argv ) {
          ("proposal_name", proposal_name)
          ("level", perm_var);
 
-      auto accountPermissions = get_account_permissions(tx_permission, {proposer,config::active_name});
-      send_actions({chain::action{accountPermissions, "eosio.msig", action, variant_to_bin( N(eosio.msig), action, args ) }});
+      auto account_permissions = get_account_permissions(tx_permission, {proposer,config::active_name});
+      send_actions({chain::action{account_permissions, "eosio.msig", action, variant_to_bin( N(eosio.msig), action, args ) }});
    };
 
    // multisig approve
@@ -3116,23 +3116,23 @@ int main( int argc, char** argv ) {
    cancel->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    cancel->add_option("canceler", canceler, localized("canceler name (string)"));
    cancel->set_callback([&]() {
-      auto accountPermissions = get_account_permissions(tx_permission);
-      if (accountPermissions.empty()) {
+      auto account_permissions = get_account_permissions(tx_permission);
+      if (account_permissions.empty()) {
          if (!canceler.empty()) {
-            accountPermissions = vector<permission_level>{{canceler, config::active_name}};
+            account_permissions = vector<permission_level>{{canceler, config::active_name}};
          } else {
             EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <canceler> or -p)");
          }
       }
       if (canceler.empty()) {
-         canceler = name(accountPermissions.at(0).actor).to_string();
+         canceler = name(account_permissions.at(0).actor).to_string();
       }
       auto args = fc::mutable_variant_object()
          ("proposer", proposer)
          ("proposal_name", proposal_name)
          ("canceler", canceler);
 
-      send_actions({chain::action{accountPermissions, "eosio.msig", "cancel", variant_to_bin( N(eosio.msig), N(cancel), args ) }});
+      send_actions({chain::action{account_permissions, "eosio.msig", "cancel", variant_to_bin( N(eosio.msig), N(cancel), args ) }});
       }
    );
 
@@ -3144,16 +3144,16 @@ int main( int argc, char** argv ) {
    exec->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    exec->add_option("executer", executer, localized("account paying for execution (string)"));
    exec->set_callback([&] {
-      auto accountPermissions = get_account_permissions(tx_permission);
-      if (accountPermissions.empty()) {
+      auto account_permissions = get_account_permissions(tx_permission);
+      if (account_permissions.empty()) {
          if (!executer.empty()) {
-            accountPermissions = vector<permission_level>{{executer, config::active_name}};
+            account_permissions = vector<permission_level>{{executer, config::active_name}};
          } else {
             EOS_THROW(missing_auth_exception, "Authority is not provided (either by multisig parameter <executer> or -p)");
          }
       }
       if (executer.empty()) {
-         executer = name(accountPermissions.at(0).actor).to_string();
+         executer = name(account_permissions.at(0).actor).to_string();
       }
 
       auto args = fc::mutable_variant_object()
@@ -3161,7 +3161,7 @@ int main( int argc, char** argv ) {
          ("proposal_name", proposal_name)
          ("executer", executer);
 
-      send_actions({chain::action{accountPermissions, "eosio.msig", "exec", variant_to_bin( N(eosio.msig), N(exec), args ) }});
+      send_actions({chain::action{account_permissions, "eosio.msig", "exec", variant_to_bin( N(eosio.msig), N(exec), args ) }});
       }
    );
 
@@ -3185,16 +3185,16 @@ int main( int argc, char** argv ) {
          trx_var = json_from_file_or_string(trx_to_exec);
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_exec))
 
-      auto accountPermissions = get_account_permissions(tx_permission);
-      if( accountPermissions.empty() ) {
-         accountPermissions = vector<permission_level>{{executer, config::active_name}, {wrap_con, config::active_name}};
+      auto account_permissions = get_account_permissions(tx_permission);
+      if( account_permissions.empty() ) {
+         account_permissions = vector<permission_level>{{executer, config::active_name}, {wrap_con, config::active_name}};
       }
 
       auto args = fc::mutable_variant_object()
          ("executer", executer )
          ("trx", trx_var);
 
-      send_actions({chain::action{accountPermissions, wrap_con, "exec", variant_to_bin( wrap_con, N(exec), args ) }});
+      send_actions({chain::action{account_permissions, wrap_con, "exec", variant_to_bin( wrap_con, N(exec), args ) }});
    });
 
    // system subcommand
