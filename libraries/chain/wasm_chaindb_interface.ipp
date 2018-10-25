@@ -68,7 +68,7 @@ namespace eosio { namespace chain {
         }
 
         primary_key_t chaindb_available_primary_key(account_name_t code, account_name_t scope, table_name_t table) {
-            return context.chaindb.available_primary_key({code, scope, table});
+            return context.chaindb.available_pk({code, scope, table});
         }
 
         cursor_t chaindb_insert(

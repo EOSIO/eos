@@ -60,6 +60,6 @@ namespace cyberway { namespace chaindb {
 
         const primary_key_t pk;
         cache_item_data_ptr data;
-    }; // struct cache_item
+    }; // class cache_item
 
 } } // namespace cyberway::chaindb

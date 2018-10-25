@@ -7,6 +7,7 @@
 #include <cyberway/chaindb/undo_state.hpp>
 #include <cyberway/chaindb/exception.hpp>
 #include <cyberway/chaindb/names.hpp>
+#include <cyberway/chaindb/cache_map.hpp>
 
 /** Session exception is a critical errors and they doesn't handle by chain */
 #define CYBERWAY_SESSION_ASSERT(expr, FORMAT, ...)                      \
@@ -199,8 +200,9 @@ namespace cyberway { namespace chaindb {
                     bmi::member<table_undo_stack, const field_name,   &table_undo_stack::pk_field>>>>>;
 
     struct undo_stack::undo_stack_impl_ final {
-        undo_stack_impl_(driver_interface& driver)
-        : driver(driver)
+        undo_stack_impl_(driver_interface& driver, cache_map& cache)
+        : driver(driver),
+          cache(cache)
         { }
 
         void set_revision(const int64_t value) {
@@ -310,6 +312,7 @@ namespace cyberway { namespace chaindb {
                 ("revision", head.revision)("undo_revision", undo_revision)("test_revision", test_revision));
 
             for (auto& item: head.old_values) try {
+                cache.update(table.info(), item.first, item.second);
                 driver.update(table.info(), item.first, std::move(item.second));
             } catch (const driver_update_exception&) {
                 CYBERWAY_SESSION_ASSERT(false,
@@ -317,6 +320,7 @@ namespace cyberway { namespace chaindb {
             }
 
             for (auto pk: head.new_ids) try {
+                cache.remove(table.info(), pk);
                 driver.remove(table.info(), pk);
             } catch (const driver_delete_exception&) {
                 CYBERWAY_SESSION_ASSERT(false,
@@ -324,6 +328,7 @@ namespace cyberway { namespace chaindb {
             }
 
             for (auto& item: head.removed_values) try {
+                cache.remove(table.info(), item.first);
                 driver.insert(table.info(), item.first, std::move(item.second));
             } catch (const driver_insert_exception&) {
                 CYBERWAY_SESSION_ASSERT(false,
@@ -528,11 +533,12 @@ namespace cyberway { namespace chaindb {
         undo_stage stage = undo_stage::Unknown;
         int64_t revision = 0;
         driver_interface& driver;
+        cache_map& cache;
         table_undo_stack_index tables;
     }; // struct undo_stack::undo_stack_impl_
 
-    undo_stack::undo_stack(driver_interface& driver)
-    : impl_(new undo_stack_impl_(driver))
+    undo_stack::undo_stack(driver_interface& driver, cache_map& cache)
+    : impl_(new undo_stack_impl_(driver, cache))
     { }
 
     undo_stack::~undo_stack() = default;

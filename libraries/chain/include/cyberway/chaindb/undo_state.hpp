@@ -4,9 +4,11 @@
 
 namespace cyberway { namespace chaindb {
 
+    class cache_map;
+
     class undo_stack final {
     public:
-        undo_stack(driver_interface&);
+        undo_stack(driver_interface&, cache_map&);
 
         undo_stack(const undo_stack&) = delete;
         undo_stack(undo_stack&&) = delete;

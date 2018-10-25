@@ -43,6 +43,26 @@ namespace cyberway { namespace chaindb {
         const cursor_t id;
     }; // struct cursor_request
 
+    class abi_info;
+
+    struct table_info {
+        const account_name code;
+        const account_name scope;
+        const table_def*   table    = nullptr;
+        const field_name*  pk_field = nullptr;
+        const abi_info*    abi      = nullptr;
+
+        table_info(const account_name& code, const account_name& scope)
+        : code(code), scope(scope)
+        { }
+    }; // struct table_info
+
+    struct index_info: public table_info {
+        const index_def* index = nullptr;
+
+        using table_info::table_info;
+    }; // struct index_info
+
     class chaindb_controller final {
     public:
         chaindb_controller() = delete;
@@ -78,9 +98,9 @@ namespace cyberway { namespace chaindb {
         primary_key_t data(const cursor_request&, const char*, size_t);
 
         cache_item_ptr create_cache_item(const table_request&, const cache_converter_interface&);
-        cache_item_ptr get_cache_item(const cursor_request&, primary_key_t, const cache_converter_interface&);
+        cache_item_ptr get_cache_item(const cursor_request&, const table_request&, primary_key_t, const cache_converter_interface&);
 
-        primary_key_t available_primary_key(const table_request&);
+        primary_key_t available_pk(const table_request&);
 
         cursor_t      insert(apply_context&, const table_request&, const account_name&, primary_key_t, const char*, size_t);
         primary_key_t update(apply_context&, const table_request&, const account_name&, primary_key_t, const char*, size_t);

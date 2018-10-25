@@ -233,9 +233,9 @@ private:
     chaindb_controller& controller_;
 
     struct item_data: public cache_item_data {
-        struct storage: public T {
+        struct item_type: public T {
             template<typename Constructor>
-            storage(cache_item& cache, Constructor&& constructor, Allocator alloc)
+            item_type(cache_item& cache, Constructor&& constructor, Allocator alloc)
             : T(std::forward<Constructor>(constructor), alloc),
               cache(cache)
             { }
@@ -253,7 +253,7 @@ private:
         }
 
         static cache_item& get_cache(const T& o) {
-            return const_cast<cache_item&>(static_cast<const storage&>(o).cache);
+            return const_cast<cache_item&>(static_cast<const item_type&>(o).cache);
         }
 
         using value_type = T;
@@ -424,7 +424,7 @@ private:
 
     cache_item_ptr load_object(const cursor_t cursor, const primary_key_t pk) const {
         // controller will call as to convert_object()
-        auto ptr = controller_.get_cache_item({get_code(), cursor}, pk, variant_converter_);
+        auto ptr = controller_.get_cache_item({get_code(), cursor}, get_table_request(), pk, variant_converter_);
 
         auto& obj = item_data::get_T(ptr);
         auto ptr_pk = primary_key_extractor_type()(obj);
@@ -649,7 +649,7 @@ public:
     }
 
     primary_key_t available_primary_key() const {
-        return controller_.available_primary_key(get_table_request());
+        return controller_.available_pk(get_table_request());
     }
 
     template<typename IndexTag>
