@@ -62,6 +62,7 @@ namespace eosio { namespace chain {
             uint64_t                 state_guard_size       =  chain::config::default_state_guard_size;
             uint64_t                 reversible_cache_size  =  chain::config::default_reversible_cache_size;
             uint64_t                 reversible_guard_size  =  chain::config::default_reversible_guard_size;
+            uint16_t                 thread_pool_size       =  chain::config::default_controller_thread_pool_size;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
             bool                     disable_replay_opts    =  false;
