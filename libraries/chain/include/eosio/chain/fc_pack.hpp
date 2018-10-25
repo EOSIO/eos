@@ -6,10 +6,12 @@ namespace fc {
     class variant;
 
     template<typename T>
-    inline void to_variant(const chainbase::oid<T>& var,  variant& vo);
+    inline void to_variant(const chainbase::oid<T>& var, variant& vo);
 
     template<typename T>
-    inline void from_variant(const variant& var,  chainbase::oid<T>& vo);
+    inline void from_variant(const variant& var, chainbase::oid<T>& vo);
+
+    inline void to_variant(const std::vector<bool>& t, variant& vo);
 
     namespace raw {
         template<typename Stream, typename T>
@@ -19,7 +21,7 @@ namespace fc {
         inline void unpack(Stream& s, chainbase::oid<T>& o);
 
         template<typename Stream>
-        inline void unpack(Stream& s, typename std::vector<bool>::reference& o);
+        inline void unpack(Stream& s, std::vector<bool>& value);
     } // namespace raw
 } // namespace fc
 
@@ -27,13 +29,22 @@ namespace fc {
 
 namespace fc {
     template<typename T>
-    inline void to_variant(const chainbase::oid<T>& var,  variant& vo) {
+    inline void to_variant(const chainbase::oid<T>& var, variant& vo) {
         vo = var._id;
     }
 
     template<typename T>
-    inline void from_variant(const variant& var,  chainbase::oid<T>& vo) {
+    inline void from_variant(const variant& var, chainbase::oid<T>& vo) {
         vo._id = var.as_int64();
+    }
+
+    inline void to_variant(const std::vector<bool>& vect, variant& v) {
+        std::vector<variant> vars(vect.size());
+        size_t i = 0;
+        for (bool b : vect) {
+            vars[i++] = variant(b);
+        }
+        v = std::move(vars);
     }
 
     namespace raw {
@@ -49,10 +60,20 @@ namespace fc {
 
         /** std::vector<bool> has custom implementation and pack bools as bits */
         template<typename Stream>
-        inline void unpack(Stream& s, typename std::vector<bool>::reference& o) {
-            bool v;
-            fc::raw::unpack(s, v);
-            o = v;
+        inline void unpack(Stream& s, std::vector<bool>& value) {
+            // TODO: can serialize as bitmap to save up to 8x storage (implement proper pack)
+            unsigned_int size;
+            fc::raw::unpack(s, size);
+            FC_ASSERT(size.value <= MAX_NUM_ARRAY_ELEMENTS);
+            value.resize(size.value);
+            auto itr = value.begin();
+            auto end = value.end();
+            while (itr != end) {
+                bool b = true;
+                fc::raw::unpack(s, b);
+                *itr = b;
+                ++itr;
+            }
         }
     } // namespace raw
 } // namespace fc
