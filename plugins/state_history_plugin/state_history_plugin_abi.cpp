@@ -368,9 +368,7 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "resource_limits_v0", "fields": [
-                { "type": "uint64", "name": "id" },
                 { "type": "name", "name": "owner" },
-                { "type": "bool", "name": "pending" },
                 { "type": "int64", "name": "net_weight" },
                 { "type": "int64", "name": "cpu_weight" },
                 { "type": "int64", "name": "ram_bytes" }
@@ -385,7 +383,6 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "resource_usage_v0", "fields": [
-                { "type": "uint64", "name": "id" },
                 { "type": "name", "name": "owner" },
                 { "type": "usage_accumulator", "name": "net_usage" },
                 { "type": "usage_accumulator", "name": "cpu_usage" },
@@ -477,8 +474,8 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "generated_transaction", "type": "generated_transaction", "key_names": ["sender", "sender_id"] },
         { "name": "permission", "type": "permission", "key_names": ["owner", "name"] },
         { "name": "permission_link", "type": "permission_link", "key_names": ["account", "code", "message_type"] },
-        { "name": "resource_limits", "type": "resource_limits", "key_names": ["id"] },
-        { "name": "resource_usage", "type": "resource_usage", "key_names": ["id"] },
+        { "name": "resource_limits", "type": "resource_limits", "key_names": ["owner"] },
+        { "name": "resource_usage", "type": "resource_usage", "key_names": ["owner"] },
         { "name": "resource_limits_state", "type": "resource_limits_state", "key_names": [] },
         { "name": "resource_limits_config", "type": "resource_limits_config", "key_names": [] }
     ]

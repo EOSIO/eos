@@ -325,10 +325,10 @@ datastream<ST>& operator<<(datastream<ST>&                                      
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>&                                                                      ds,
                            const history_serial_wrapper<eosio::chain::resource_limits::resource_limits_object>& obj) {
+   EOS_ASSERT(!obj.obj.pending, eosio::chain::plugin_exception,
+              "accepted_block sent while resource_limits_object in pending state");
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.owner.value));
-   fc::raw::pack(ds, as_type<bool>(obj.obj.pending));
    fc::raw::pack(ds, as_type<int64_t>(obj.obj.net_weight));
    fc::raw::pack(ds, as_type<int64_t>(obj.obj.cpu_weight));
    fc::raw::pack(ds, as_type<int64_t>(obj.obj.ram_bytes));
@@ -349,7 +349,6 @@ template <typename ST>
 datastream<ST>& operator<<(datastream<ST>&                                                                     ds,
                            const history_serial_wrapper<eosio::chain::resource_limits::resource_usage_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.id._id));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.owner.value));
    fc::raw::pack(ds, make_history_serial_wrapper(
                          obj.db, as_type<eosio::chain::resource_limits::usage_accumulator>(obj.obj.net_usage)));
