@@ -233,6 +233,9 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/EosioTester.cmake.in ${C
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/EosioTesterBuild.cmake.in ${CMAKE_BINARY_DIR}/lib/cmake/EosioTester.cmake @ONLY)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/EosioTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/ChaindbMongo.cmake ${CMAKE_CURRENT_BINARY_DIR}/ChaindbMongo.cmake COPYONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ChaindbMongo.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/)
+
 include(installer)
 
 include(doxygen)

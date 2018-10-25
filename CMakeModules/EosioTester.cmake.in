@@ -1,3 +1,5 @@
+include(ChaindbMongo)
+
 cmake_minimum_required( VERSION 3.5 )
 
 set(CMAKE_CXX_COMPILER @CMAKE_CXX_COMPILER@)
@@ -121,17 +123,21 @@ macro(add_eosio_test test_name)
        ${Boost_CHRONO_LIBRARY}
        ${Boost_IOSTREAMS_LIBRARY}
        ${Boost_DATE_TIME_LIBRARY}
+       ${CHAINDB_LIBS}
        ${PLATFORM_SPECIFIC_LIBS}
       )
 
    #### TODO /usr/local/include is a hack for fc and some other includes
    target_include_directories( ${test_name} PUBLIC
                                ${Boost_INCLUDE_DIRS}
+                               ${CHAINDB_INCS}
                                @OPENSSL_INCLUDE_DIR@
                                @CMAKE_INSTALL_PREFIX@
                                @CMAKE_INSTALL_FULL_INCLUDEDIR@
                                @CMAKE_INSTALL_FULL_INCLUDEDIR@/wasm-jit
                                @CMAKE_INSTALL_FULL_INCLUDEDIR@/softfloat )
+
+   target_compile_definitions( ${test_name} PUBLIC ${CHAINDB_DEFS})
 
    #Manually run unit_test for all supported runtimes
    #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
