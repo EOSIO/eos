@@ -232,6 +232,13 @@ vector<chain::permission_level> get_account_permissions(const vector<string>& pe
    return accountPermissions;
 }
 
+vector<chain::permission_level> get_account_permissions(const vector<string>& permissions, const chain::permission_level& default_permission) {
+   if (permissions.empty())
+      return vector<chain::permission_level>{default_permission};
+   else
+      return get_account_permissions(tx_permission);
+}
+
 template<typename T>
 fc::variant call( const std::string& url,
                   const std::string& path,
@@ -507,7 +514,7 @@ void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_trans
 
 chain::action create_newaccount(const name& creator, const name& newaccount, public_key_type owner, public_key_type active) {
    return action {
-      tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
+      get_account_permissions(tx_permission, {creator,config::active_name}),
       eosio::chain::newaccount{
          .creator      = creator,
          .name         = newaccount,
@@ -526,7 +533,7 @@ chain::action create_buyram(const name& creator, const name& newaccount, const a
          ("payer", creator.to_string())
          ("receiver", newaccount.to_string())
          ("quant", quantity.to_string());
-   return create_action(tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
+   return create_action(get_account_permissions(tx_permission, {creator,config::active_name}),
                         config::system_account_name, N(buyram), act_payload);
 }
 
@@ -535,7 +542,7 @@ chain::action create_buyrambytes(const name& creator, const name& newaccount, ui
          ("payer", creator.to_string())
          ("receiver", newaccount.to_string())
          ("bytes", numbytes);
-   return create_action(tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
+   return create_action(get_account_permissions(tx_permission, {creator,config::active_name}),
                         config::system_account_name, N(buyrambytes), act_payload);
 }
 
@@ -546,7 +553,7 @@ chain::action create_delegate(const name& from, const name& receiver, const asse
          ("stake_net_quantity", net.to_string())
          ("stake_cpu_quantity", cpu.to_string())
          ("transfer", transfer);
-   return create_action(tx_permission.empty() ? vector<chain::permission_level>{{from,config::active_name}} : get_account_permissions(tx_permission),
+   return create_action(get_account_permissions(tx_permission, {from,config::active_name}),
                         config::system_account_name, N(delegatebw), act_payload);
 }
 
@@ -565,7 +572,7 @@ chain::action create_open(const string& contract, const name& owner, symbol sym,
       ("symbol", sym)
       ("ram_payer", ram_payer);
     return action {
-      tx_permission.empty() ? vector<chain::permission_level>{{ram_payer,config::active_name}} : get_account_permissions(tx_permission),
+      get_account_permissions(tx_permission, {ram_payer,config::active_name}),
       contract, "open", variant_to_bin( contract, N(open), open_ )
    };
 }
@@ -579,14 +586,14 @@ chain::action create_transfer(const string& contract, const name& sender, const 
       ("memo", memo);
 
    return action {
-      tx_permission.empty() ? vector<chain::permission_level>{{sender,config::active_name}} : get_account_permissions(tx_permission),
+      get_account_permissions(tx_permission, {sender,config::active_name}),
       contract, "transfer", variant_to_bin( contract, N(transfer), transfer )
    };
 }
 
 chain::action create_setabi(const name& account, const bytes& abi) {
    return action {
-      tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
+      get_account_permissions(tx_permission, {account,config::active_name}),
       setabi{
          .account   = account,
          .abi       = abi
@@ -596,7 +603,7 @@ chain::action create_setabi(const name& account, const bytes& abi) {
 
 chain::action create_setcode(const name& account, const bytes& code) {
    return action {
-      tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
+      get_account_permissions(tx_permission, {account,config::active_name}),
       setcode{
          .account   = account,
          .vmtype    = 0,
@@ -607,22 +614,22 @@ chain::action create_setcode(const name& account, const bytes& code) {
 }
 
 chain::action create_updateauth(const name& account, const name& permission, const name& parent, const authority& auth) {
-   return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
+   return action { get_account_permissions(tx_permission, {account,config::active_name}),
                    updateauth{account, permission, parent, auth}};
 }
 
 chain::action create_deleteauth(const name& account, const name& permission) {
-   return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
+   return action { get_account_permissions(tx_permission, {account,config::active_name}),
                    deleteauth{account, permission}};
 }
 
 chain::action create_linkauth(const name& account, const name& code, const name& type, const name& requirement) {
-   return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
+   return action { get_account_permissions(tx_permission, {account,config::active_name}),
                    linkauth{account, code, type, requirement}};
 }
 
 chain::action create_unlinkauth(const name& account, const name& code, const name& type) {
-   return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
+   return action { get_account_permissions(tx_permission, {account,config::active_name}),
                    unlinkauth{account, code, type}};
 }
 
