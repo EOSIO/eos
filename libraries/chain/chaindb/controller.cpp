@@ -4,6 +4,7 @@
 #include <cyberway/chaindb/exception.hpp>
 #include <cyberway/chaindb/names.hpp>
 #include <cyberway/chaindb/driver_interface.hpp>
+#include <cyberway/chaindb/cache_map.hpp>
 #include <cyberway/chaindb/undo_state.hpp>
 #include <cyberway/chaindb/mongo_driver.hpp>
 
@@ -206,6 +207,7 @@ namespace cyberway { namespace chaindb {
     struct chaindb_controller::controller_impl_ final {
         const microseconds max_abi_time;
         std::unique_ptr<driver_interface> driver;
+        std::unique_ptr<cache_map> cache;
         std::unique_ptr<undo_stack> undo;
 
         controller_impl_(const microseconds& max_abi_time, const chaindb_type t, string p)
@@ -219,7 +221,8 @@ namespace cyberway { namespace chaindb {
                     CYBERWAY_ASSERT(false, unknown_connection_type_exception,
                         "Invalid type of ChainDB connection");
             }
-            undo = std::make_unique<undo_stack>(*driver);
+            cache = std::make_unique<cache_map>();
+            undo = std::make_unique<undo_stack>(*driver, *cache);
         }
 
         ~controller_impl_() = default;
@@ -269,9 +272,18 @@ namespace cyberway { namespace chaindb {
             return driver->end(index);
         }
 
-        primary_key_t available_primary_key(const table_request& request) const {
+        primary_key_t available_pk(const table_request& request) const {
             auto table = get_table<table_info>(request);
-            return driver->available_primary_key(table);
+            return driver->available_pk(table);
+        }
+
+        primary_key_t get_next_pk(const table_info& table) const {
+            auto next_pk = cache->get_next_pk(table);
+            if (next_pk == unset_primary_key) {
+                next_pk = driver->available_pk(table);
+                cache->set_next_pk(table, next_pk + 1);
+            }
+            return next_pk;
         }
 
         int32_t datasize(const cursor_request& request) const {
@@ -291,9 +303,27 @@ namespace cyberway { namespace chaindb {
             return cursor;
         }
 
-        const variant& value(const cursor_request& request) const {
-            auto& cursor = driver->current(request);
-            return driver->value(cursor);
+        cache_item_ptr create_cache_item(const table_request& request, const cache_converter_interface& converter) {
+            auto table = get_table<table_info>(request);
+            auto next_pk = get_next_pk(table);
+            return std::make_shared<cache_item>(next_pk, converter);
+        }
+
+        cache_item_ptr get_cache_item(
+            const cursor_request& cursor_req, const table_request& table_req,
+            const primary_key_t pk, const cache_converter_interface& converter
+        ) {
+            auto table = get_table<table_info>(table_req);
+
+            auto item = cache->find(table, pk);
+            if (!item) {
+                auto& cursor = driver->current(cursor_req);
+                auto value = driver->value(cursor);
+                item = std::make_shared<cache_item>(pk, converter);
+                item->convert_variant(value);
+                cache->insert(table, item);
+            }
+            return item;
         }
 
         const cursor_info& insert(
@@ -312,11 +342,12 @@ namespace cyberway { namespace chaindb {
         }
 
         const cursor_info& insert(
-            const table_request& request, const account_name& payer,
-            const primary_key_t pk, variant value, const size_t size
+            const table_request& request, cache_item_ptr item, variant value, const size_t size
         ) const {
             auto info = get_table<index_info>(request);
-            return insert(info, std::move(value), payer, pk, size);
+            auto pk = item->pk;
+            cache->insert(info, std::move(item));
+            return insert(info, std::move(value), 0, pk, size);
         }
 
         const cursor_info& insert(
@@ -359,11 +390,10 @@ namespace cyberway { namespace chaindb {
         }
 
         primary_key_t update(
-            const table_request& request, account_name payer,
-            const primary_key_t pk, variant value, const size_t size
+            const table_request& request, const primary_key_t pk, variant value, const size_t size
         ) const {
             auto table = get_table<table_info>(request);
-            return update(table, std::move(value), payer, pk, size);
+            return update(table, std::move(value), 0, pk, size);
         }
 
         primary_key_t update(
@@ -403,6 +433,7 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t remove(const table_request& request, primary_key_t pk) const {
             auto table = get_table<table_info>(request);
+            cache->remove(table, pk);
             return remove(table, pk);
         }
 
@@ -635,12 +666,21 @@ namespace cyberway { namespace chaindb {
         return impl_->data(request, data, size).pk;
     }
 
-    const variant& chaindb_controller::value(const cursor_request& request) {
-        return impl_->value(request);
+    cache_item_ptr chaindb_controller::create_cache_item(
+        const table_request& table, const cache_converter_interface& converter
+    ) {
+        return impl_->create_cache_item(table, converter);
     }
 
-    primary_key_t chaindb_controller::available_primary_key(const table_request& request) {
-        return impl_->available_primary_key(request);
+    cache_item_ptr chaindb_controller::get_cache_item(
+        const cursor_request& cursor, const table_request& table,
+        const primary_key_t pk, const cache_converter_interface& converter
+    ) {
+        return impl_->get_cache_item(cursor, table, pk, converter);
+    }
+
+    primary_key_t chaindb_controller::available_pk(const table_request& request) {
+        return impl_->available_pk(request);
     }
 
     cursor_t chaindb_controller::insert(
@@ -662,15 +702,15 @@ namespace cyberway { namespace chaindb {
     }
 
     cursor_t chaindb_controller::insert(
-        const table_request& request, const account_name& payer, primary_key_t pk, variant data, size_t size
+        const table_request& request, cache_item_ptr item, variant data, size_t size
     ) {
-        return impl_->insert(request, payer, pk, std::move(data), size).id;
+        return impl_->insert(request, item, std::move(data), size).id;
     }
 
     primary_key_t chaindb_controller::update(
-        const table_request& request, const account_name& payer, primary_key_t pk, variant data, size_t size
+        const table_request& request, primary_key_t pk, variant data, size_t size
     ) {
-        return impl_->update(request, payer, pk, std::move(data), size);
+        return impl_->update(request, pk, std::move(data), size);
     }
 
     primary_key_t chaindb_controller::remove(const table_request& request, primary_key_t pk) {

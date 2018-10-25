@@ -5,13 +5,13 @@
 #include <fc/variant.hpp>
 
 #include <cyberway/chaindb/common.hpp>
+#include <cyberway/chaindb/cache_item.hpp>
 
 namespace eosio { namespace chain {
     class apply_context;
 } } // namespace eosio::chain
 
 namespace cyberway { namespace chaindb {
-    using fc::variant;
     using fc::microseconds;
 
     using eosio::chain::account_name;
@@ -24,10 +24,6 @@ namespace cyberway { namespace chaindb {
 
     using cursor_t = int32_t;
     static constexpr cursor_t invalid_cursor = (-1);
-
-    using primary_key_t = uint64_t;
-    static constexpr primary_key_t unset_primary_key = (-2);
-    static constexpr primary_key_t end_primary_key = (-1);
 
     struct index_request final {
         const account_name code;
@@ -46,6 +42,26 @@ namespace cyberway { namespace chaindb {
         const account_name code;
         const cursor_t id;
     }; // struct cursor_request
+
+    class abi_info;
+
+    struct table_info {
+        const account_name code;
+        const account_name scope;
+        const table_def*   table    = nullptr;
+        const field_name*  pk_field = nullptr;
+        const abi_info*    abi      = nullptr;
+
+        table_info(const account_name& code, const account_name& scope)
+        : code(code), scope(scope)
+        { }
+    }; // struct table_info
+
+    struct index_info: public table_info {
+        const index_def* index = nullptr;
+
+        using table_info::table_info;
+    }; // struct index_info
 
     class chaindb_controller final {
     public:
@@ -81,16 +97,17 @@ namespace cyberway { namespace chaindb {
         int32_t       datasize(const cursor_request&);
         primary_key_t data(const cursor_request&, const char*, size_t);
 
-        const variant& value(const cursor_request&);
+        cache_item_ptr create_cache_item(const table_request&, const cache_converter_interface&);
+        cache_item_ptr get_cache_item(const cursor_request&, const table_request&, primary_key_t, const cache_converter_interface&);
 
-        primary_key_t available_primary_key(const table_request&);
+        primary_key_t available_pk(const table_request&);
 
         cursor_t      insert(apply_context&, const table_request&, const account_name&, primary_key_t, const char*, size_t);
         primary_key_t update(apply_context&, const table_request&, const account_name&, primary_key_t, const char*, size_t);
         primary_key_t remove(apply_context&, const table_request&, primary_key_t);
 
-        cursor_t      insert(const table_request&, const account_name&, primary_key_t, variant, size_t);
-        primary_key_t update(const table_request&, const account_name&, primary_key_t, variant, size_t);
+        cursor_t      insert(const table_request&, cache_item_ptr, variant, size_t);
+        primary_key_t update(const table_request&, primary_key_t, variant, size_t);
         primary_key_t remove(const table_request&, primary_key_t);
 
     private:

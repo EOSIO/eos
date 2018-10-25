@@ -605,6 +605,8 @@ namespace cyberway { namespace chaindb {
         code_info() = default;
         code_info(code_info&&) = default;
 
+        code_info& operator=(code_info&&) = default;
+
         ~code_info() {
             apply_changes();
         }
@@ -896,7 +898,7 @@ namespace cyberway { namespace chaindb {
         cursor.blob = std::move(blob);
     }
 
-    primary_key_t mongodb_driver::available_primary_key(const table_info& table) {
+    primary_key_t mongodb_driver::available_pk(const table_info& table) {
         impl_->apply_changes(table);
 
         auto cursor = impl_->get_db_table(table).find(

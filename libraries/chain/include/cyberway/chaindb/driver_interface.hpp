@@ -9,27 +9,7 @@ namespace cyberway { namespace chaindb {
     using fc::variant;
 
     using eosio::chain::bytes;
-    using eosio::chain::field_name;
 
-    class abi_info;
-
-    struct table_info {
-        const account_name code;
-        const account_name scope;
-        const table_def*   table    = nullptr;
-        const field_name*  pk_field = nullptr;
-        const abi_info*    abi      = nullptr;
-
-        table_info(const account_name& code, const account_name& scope)
-        : code(code), scope(scope)
-        { }
-    }; // struct table_info
-
-    struct index_info: public table_info {
-        const index_def* index = nullptr;
-
-        using table_info::table_info;
-    }; // struct index_info
 
     struct cursor_info {
         cursor_t      id = invalid_cursor;
@@ -66,7 +46,7 @@ namespace cyberway { namespace chaindb {
         virtual const variant& value(const cursor_info&) = 0;
         virtual       void     set_blob(const cursor_info&, bytes blob) = 0;
 
-        virtual primary_key_t available_primary_key(const table_info&) = 0;
+        virtual primary_key_t available_pk(const table_info&) = 0;
 
         virtual primary_key_t insert(const table_info&, primary_key_t, const variant&) = 0;
         virtual primary_key_t update(const table_info&, primary_key_t, const variant&) = 0;

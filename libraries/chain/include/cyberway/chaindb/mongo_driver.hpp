@@ -36,7 +36,7 @@ namespace cyberway { namespace chaindb {
         const variant& value(const cursor_info&) override;
               void     set_blob(const cursor_info&, bytes blob) override;
 
-        primary_key_t available_primary_key(const table_info&) override;
+        primary_key_t available_pk(const table_info&) override;
 
         primary_key_t insert(const table_info&, primary_key_t, const variant&) override;
         primary_key_t update(const table_info&, primary_key_t, const variant&) override;
