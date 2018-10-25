@@ -4,8 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/transaction.hpp>
-#include <eosio/chain/block.hpp>
-#include <eosio/chain/trace.hpp>
+#include <eosio/chain/types.hpp>
 #include <future>
 
 namespace eosio { namespace chain {
