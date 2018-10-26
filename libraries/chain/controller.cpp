@@ -1178,13 +1178,18 @@ struct controller_impl {
          start_block( b->timestamp, b->confirmed, s , producer_block_id);
 
          std::vector<transaction_metadata_ptr> packed_transactions;
+         packed_transactions.reserve( b->transactions.size() );
          for( const auto& receipt : b->transactions ) {
             if( receipt.trx.contains<packed_transaction>()) {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>( pt );
                if( !self.skip_auth_check() ) {
-                  mtrx->signing_keys_future = async_thread_pool( [this, mtrx]() {
-                     return std::make_pair( this->chain_id, mtrx->trx.get_signature_keys( this->chain_id ) );
+                  std::weak_ptr<transaction_metadata> mtrx_wp = mtrx;
+                  mtrx->signing_keys_future = async_thread_pool( [chain_id = this->chain_id, mtrx_wp]() {
+                     auto mtrx = mtrx_wp.lock();
+                     return mtrx ?
+                            std::make_pair( chain_id, mtrx->trx.get_signature_keys( chain_id ) ) :
+                            std::make_pair( chain_id, decltype( mtrx->trx.get_signature_keys( chain_id ) ){} );
                   } );
                }
                packed_transactions.emplace_back( std::move( mtrx ) );
