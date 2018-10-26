@@ -22,30 +22,30 @@ void statetrack_plugin::plugin_startup() {
 
    auto& ti_index = db.get_index<ti_index_type>();
 
-   ti_index.connect_emplace( [&](const auto& tio ) {
-        elog("STATETRACK table_id_object emplace: ${tio}", ("tio", tio.id));
+   ti_index.connect_emplace( [&](decltype(v) v ) {
+        elog("STATETRACK table_id_object emplace: ${v}", ("v", v.id));
    });
 
-   ti_index.connect_modify( [&](const auto& tio ) {
-        elog("STATETRACK table_id_object modify: ${tio}", ("tio", tio.id));
+   ti_index.connect_modify( [&](decltype(v) v ) {
+        elog("STATETRACK table_id_object modify: ${v}", ("v", tio.id));
    });
 
-   ti_index.connect_remove( [&](const auto& tio ) {
-        elog("STATETRACK table_id_object remove: ${tio}", ("tio", tio.id));
+   ti_index.connect_remove( [&](decltype(v) v ) {
+        elog("STATETRACK table_id_object remove: ${v}", ("v", tio.id));
    });
 
    auto& kv_index = db.get_index<kv_index_type>();
    
-   kv_index.connect_emplace( [&](const auto& kvo ) {
-        elog("STATETRACK kv_index_type emplace: ${kvo}", ("kvo", kvo.id));
+   kv_index.connect_emplace( [&](decltype(v) v ) {
+        elog("STATETRACK kv_index_type emplace: ${v}", ("v", kvo.id));
    });
 
-   kv_index.connect_modify( [&](const auto& kvo ) {
-        elog("STATETRACK kv_index_type modify: ${kvo}", ("kvo", kvo.id));
+   kv_index.connect_modify( [&](decltype(v) v ) {
+        elog("STATETRACK kv_index_type modify: ${v}", ("v", kvo.id));
    });
 
-   kv_index.connect_remove( [&](const auto& kvo ) {
-        elog("STATETRACK kv_index_type remove: ${kvo}", ("kvo", kvo.id));
+   kv_index.connect_remove( [&](decltype(v) v ) {
+        elog("STATETRACK kv_index_type remove: ${v}", ("v", kvo.id));
    });
 }
 
