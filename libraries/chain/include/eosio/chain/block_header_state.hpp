@@ -1,7 +1,6 @@
 #pragma once
 #include <eosio/chain/block_header.hpp>
 #include <eosio/chain/incremental_merkle.hpp>
-#include <future>
 
 namespace eosio { namespace chain {
 
@@ -26,7 +25,6 @@ struct block_header_state {
     public_key_type                   block_signing_key;
     vector<uint8_t>                   confirm_count;
     vector<header_confirmation>       confirmations;
-    std::shared_future<public_key_type> block_signing_key_future;
 
     block_header_state   next( const signed_block_header& h, bool trust = false )const;
     block_header_state   generate_next( block_timestamp_type when )const;
