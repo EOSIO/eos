@@ -105,6 +105,7 @@ namespace eosio { namespace testing {
          else
             cfg.wasm_runtime = chain::wasm_interface::vm_type::binaryen;
       }
+      cfg.chaindb_address = "mongodb://127.0.0.1:27017";
 
       open();
 
