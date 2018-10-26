@@ -291,7 +291,7 @@ struct controller_impl {
             // when applying a snapshot, head may not be present
             // when not applying a snapshot, make sure this is the next block
             if (!head || s->block_num == head->block_num + 1) {
-               apply_block(s->block, controller::block_status::complete);
+               apply_block(s, controller::block_status::complete);
                head = s;
             } else {
                // otherwise, assert the one odd case where initializing a chain
@@ -1171,8 +1171,9 @@ struct controller_impl {
       static_cast<signed_block_header&>(*p->block) = p->header;
    } /// sign_block
 
-   void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
+   void apply_block( const block_state_ptr& bs, controller::block_status s ) { try {
       try {
+         auto& b = bs->block;
          EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
          auto producer_block_id = b->id();
          start_block( b->timestamp, b->confirmed, s , producer_block_id);
@@ -1230,6 +1231,11 @@ struct controller_impl {
                         ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back()) );
          }
 
+         if( bs->block_signing_key_future.valid() ) {
+            // if block signing verification delayed for light validation then verify it here
+            bs->verify_signee();
+         }
+
          finalize_block();
 
          // this implicitly asserts that all header fields (less the signature) are identical
@@ -1268,7 +1274,15 @@ struct controller_impl {
          EOS_ASSERT( s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block" );
          emit( self.pre_accepted_block, b );
          bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
-         auto new_header_state = fork_db.add( b, trust );
+         auto new_header_state = fork_db.add( b, trust || conf.block_validation_mode == validation_mode::LIGHT );
+         if( !trust && conf.block_validation_mode == validation_mode::LIGHT ) {
+            std::weak_ptr<block_state> new_header_state_wp = new_header_state;
+            new_header_state->block_signing_key_future = async_thread_pool(
+                  [new_header_state_wp]() {
+                     auto new_header_state = new_header_state_wp.lock();
+                     return new_header_state ? new_header_state->signee() : decltype( new_header_state->signee() ){};
+                  } );
+         }
          if (conf.trusted_producers.count(b->producer)) {
             trusted_producer_light_validation = true;
          };
@@ -1290,7 +1304,7 @@ struct controller_impl {
 
       if( new_head->header.previous == head->id ) {
          try {
-            apply_block( new_head->block, s );
+            apply_block( new_head, s );
             fork_db.mark_in_current_chain( new_head, true );
             fork_db.set_validity( new_head, true );
             head = new_head;
@@ -1298,54 +1312,64 @@ struct controller_impl {
             fork_db.set_validity( new_head, false ); // Removes new_head from fork_db index, so no need to mark it as not in the current chain.
             throw;
          }
-      } else if( new_head->id != head->id ) {
-         ilog("switching forks from ${current_head_id} (block number ${current_head_num}) to ${new_head_id} (block number ${new_head_num})",
-              ("current_head_id", head->id)("current_head_num", head->block_num)("new_head_id", new_head->id)("new_head_num", new_head->block_num) );
-         auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
-
-         for( auto itr = branches.second.begin(); itr != branches.second.end(); ++itr ) {
-            fork_db.mark_in_current_chain( *itr , false );
-            pop_block();
+      } else {
+         if( new_head->block_signing_key_future.valid() ) {
+            // if block signing verification delayed for light validation then verify it here
+            new_head->verify_signee();
          }
-         EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
-                    "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
 
-         for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
-            optional<fc::exception> except;
-            try {
-               apply_block( (*ritr)->block, (*ritr)->validated ? controller::block_status::validated : controller::block_status::complete );
-               head = *ritr;
-               fork_db.mark_in_current_chain( *ritr, true );
-               (*ritr)->validated = true;
+         if( new_head->id != head->id ) {
+            ilog( "switching forks from ${current_head_id} (block number ${current_head_num}) to ${new_head_id} (block number ${new_head_num})",
+                  ("current_head_id", head->id)( "current_head_num", head->block_num )( "new_head_id", new_head->id )(
+                        "new_head_num", new_head->block_num ) );
+            auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
+
+            for( auto itr = branches.second.begin(); itr != branches.second.end(); ++itr ) {
+               fork_db.mark_in_current_chain( *itr, false );
+               pop_block();
             }
-            catch (const fc::exception& e) { except = e; }
-            if (except) {
-               elog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
+            EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
+                        "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
 
-               // ritr currently points to the block that threw
-               // if we mark it invalid it will automatically remove all forks built off it.
-               fork_db.set_validity( *ritr, false );
-
-               // pop all blocks from the bad fork
-               // ritr base is a forward itr to the last block successfully applied
-               auto applied_itr = ritr.base();
-               for( auto itr = applied_itr; itr != branches.first.end(); ++itr ) {
-                  fork_db.mark_in_current_chain( *itr , false );
-                  pop_block();
-               }
-               EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
-                          "loss of sync between fork_db and chainbase during fork switch reversal" ); // _should_ never fail
-
-               // re-apply good blocks
-               for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
-                  apply_block( (*ritr)->block, controller::block_status::validated /* we previously validated these blocks*/ );
+            for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr ) {
+               optional<fc::exception> except;
+               try {
+                  apply_block( *ritr, (*ritr)->validated ? controller::block_status::validated
+                                                         : controller::block_status::complete );
                   head = *ritr;
                   fork_db.mark_in_current_chain( *ritr, true );
+                  (*ritr)->validated = true;
                }
-               throw *except;
-            } // end if exception
-         } /// end for each block in branch
-         ilog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
+               catch( const fc::exception& e ) { except = e; }
+               if( except ) {
+                  elog( "exception thrown while switching forks ${e}", ("e", except->to_detail_string()) );
+
+                  // ritr currently points to the block that threw
+                  // if we mark it invalid it will automatically remove all forks built off it.
+                  fork_db.set_validity( *ritr, false );
+
+                  // pop all blocks from the bad fork
+                  // ritr base is a forward itr to the last block successfully applied
+                  auto applied_itr = ritr.base();
+                  for( auto itr = applied_itr; itr != branches.first.end(); ++itr ) {
+                     fork_db.mark_in_current_chain( *itr, false );
+                     pop_block();
+                  }
+                  EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
+                              "loss of sync between fork_db and chainbase during fork switch reversal" ); // _should_ never fail
+
+                  // re-apply good blocks
+                  for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
+                     apply_block( *ritr,
+                                  controller::block_status::validated /* we previously validated these blocks*/ );
+                     head = *ritr;
+                     fork_db.mark_in_current_chain( *ritr, true );
+                  }
+                  throw *except;
+               } // end if exception
+            } /// end for each block in branch
+            ilog( "successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id) );
+         }
       }
    } /// push_block
 
