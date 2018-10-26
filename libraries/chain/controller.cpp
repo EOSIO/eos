@@ -386,7 +386,9 @@ struct controller_impl {
          db.undo();
       }
 
-      ilog( "database initialized with hash: ${hash}", ("hash", calculate_integrity_hash()));
+      if( snapshot ) {
+         ilog( "database initialized with hash: ${hash}", ("hash", calculate_integrity_hash()) );
+      }
 
    }
 
