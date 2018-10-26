@@ -7,6 +7,7 @@
 
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/block_summary_object.hpp>
+#include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -20,10 +21,11 @@
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
-
 #include <fc/variant_object.hpp>
 
-#include <eosio/chain/eosio_contract.hpp>
+#include <boost/asio/thread_pool.hpp>
+#include <boost/asio/post.hpp>
+
 
 namespace eosio { namespace chain {
 
@@ -133,6 +135,7 @@ struct controller_impl {
    optional<fc::microseconds>     subjective_cpu_leeway;
    bool                           trusted_producer_light_validation = false;
    uint32_t                       snapshot_head_block = 0;
+   optional<boost::asio::thread_pool>  thread_pool;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -143,6 +146,14 @@ struct controller_impl {
     *  can query this list when scheduling new transactions into blocks.
     */
    map<digest_type, transaction_metadata_ptr>     unapplied_transactions;
+
+   // async on thread_pool and return future
+   template<typename F>
+   auto async_thread_pool( F&& f ) {
+      auto task = std::make_shared<std::packaged_task<decltype( f() )()>>( std::forward<F>( f ) );
+      boost::asio::post( *thread_pool, [task]() { (*task)(); } );
+      return task->get_future();
+   }
 
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
@@ -335,6 +346,8 @@ struct controller_impl {
 
    void init(const snapshot_reader_ptr& snapshot) {
 
+      thread_pool.emplace( conf.thread_pool_size );
+
       if (snapshot) {
          EOS_ASSERT(!head, fork_database_exception, "");
          snapshot->validate();
@@ -392,6 +405,9 @@ struct controller_impl {
 
    ~controller_impl() {
       pending.reset();
+
+      thread_pool->join();
+      thread_pool->stop();
 
       db.flush();
       reversible_blocks.flush();
@@ -1161,14 +1177,27 @@ struct controller_impl {
          auto producer_block_id = b->id();
          start_block( b->timestamp, b->confirmed, s , producer_block_id);
 
+         std::vector<transaction_metadata_ptr> packed_transactions;
+         for( const auto& receipt : b->transactions ) {
+            if( receipt.trx.contains<packed_transaction>()) {
+               auto& pt = receipt.trx.get<packed_transaction>();
+               auto mtrx = std::make_shared<transaction_metadata>( pt );
+               if( !self.skip_auth_check() ) {
+                  mtrx->signing_keys_future = async_thread_pool( [this, mtrx]() {
+                     return std::make_pair( this->chain_id, mtrx->trx.get_signature_keys( this->chain_id ) );
+                  } );
+               }
+               packed_transactions.emplace_back( std::move( mtrx ) );
+            }
+         }
+
          transaction_trace_ptr trace;
 
+         size_t packed_idx = 0;
          for( const auto& receipt : b->transactions ) {
             auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
             if( receipt.trx.contains<packed_transaction>() ) {
-               auto& pt = receipt.trx.get<packed_transaction>();
-               auto mtrx = std::make_shared<transaction_metadata>(pt);
-               trace = push_transaction( mtrx, fc::time_point::maximum(), receipt.cpu_usage_us, true );
+               trace = push_transaction( packed_transactions.at(packed_idx++), fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else if( receipt.trx.contains<transaction_id_type>() ) {
                trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else {
@@ -1251,16 +1280,7 @@ struct controller_impl {
       } FC_LOG_AND_RETHROW( )
    }
 
-   void push_confirmation( const header_confirmation& c ) {
-      EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a confirmation when there is a pending block");
-      fork_db.add( c );
-      emit( self.accepted_confirmation, c );
-      if ( read_mode != db_read_mode::IRREVERSIBLE ) {
-         maybe_switch_forks();
-      }
-   }
-
-   void maybe_switch_forks( controller::block_status s = controller::block_status::complete ) {
+   void maybe_switch_forks( controller::block_status s ) {
       auto new_head = fork_db.head();
 
       if( new_head->header.previous == head->id ) {
@@ -1630,11 +1650,6 @@ void controller::push_block( const signed_block_ptr& b, block_status s ) {
    validate_db_available_size();
    validate_reversible_available_size();
    my->push_block( b, s );
-}
-
-void controller::push_confirmation( const header_confirmation& c ) {
-   validate_db_available_size();
-   my->push_confirmation( c );
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
