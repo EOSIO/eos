@@ -46,7 +46,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void mark_deleted() {
-            assert(is_deleted_);
+            assert(!is_deleted_);
             is_deleted_ = true;
         }
 
