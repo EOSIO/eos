@@ -387,7 +387,8 @@ struct controller_impl {
       }
 
       if( snapshot ) {
-         ilog( "database initialized with hash: ${hash}", ("hash", calculate_integrity_hash()) );
+         const auto hash = calculate_integrity_hash();
+         ilog( "database initialized with hash: ${hash}", ("hash", hash) );
       }
 
    }
