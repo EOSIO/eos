@@ -306,7 +306,7 @@ namespace eosio {
 
 
         int next_session_id()const {
-           static int session_count = 0;
+           static std::atomic<int> session_count(0);
            return ++session_count;
         }
 
