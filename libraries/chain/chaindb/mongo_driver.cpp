@@ -480,6 +480,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void reset() {
+            if (!blob.empty()) blob.clear();
             if (!object_.is_null()) object_.clear();
             if (!key_.is_null()) key_.clear();
         }
