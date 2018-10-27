@@ -14,54 +14,46 @@ static appbase::abstract_plugin& _statetrack_plugin = app().register_plugin<stat
 
 using namespace eosio;
 
-
 typedef typename chainbase::get_index_type<chain::key_value_object>::type kv_index_type;
-typedef typename chainbase::get_index_type<chain::table_id_object>::type ti_index_type;
-
-typedef boost::signals2::signal<void (const chain::table_id_object&)> st1;
-typedef st1::slot_type sst1;
-
 
 class statetrack_plugin_impl {
    public:
-    void ti_callback(const chain::table_id_object& tio);
-
+     abi_def get_kvo_abi( const chainbase::database& db, const chain::key_value_object& tio );
+     
 };
 
-void statetrack_plugin_impl::ti_callback(const chain::table_id_object& tio) {
-    elog("STATETRACK table_id_object emplace: ${tio}", ("tio", tio.id));
-}
+abi_def statetrack_plugin_impl::get_kvo_abi( const chainbase::database& db, const chain::key_value_object& kvo ) {
+   const auto &d = db.db();
 
+   const chain::table_id_object *tio = d.find<chain::table_id_object>(kvo.t_id);
+   EOS_ASSERT(tio != nullptr, chain::account_query_exception, "Fail to retrieve table_id_object for ${t_id}", ("t_id", kvo.t_id) );
+   
+   const account_object *co = d.find<chain::account_object, by_name>(tio->code);
+   EOS_ASSERT(co != nullptr, chain::account_query_exception, "Fail to retrieve account for ${account}", ("account", account) );
+   
+   abi_def abi;
+   abi_serializer::to_abi(co->abi, abi);
+   return abi;
+}
+   
 void statetrack_plugin::plugin_startup() {
     const chainbase::database& db = app().get_plugin<chain_plugin>().chain().db();
-
-    const auto& ti_index = db.get_index<ti_index_type>();
-
-    ti_index.applied_emplace = [&](const chain::table_id_object& tio) {
-         elog("STATETRACK table_id_object modify: ${tio}", ("tio", tio.id));
-    };
-
-//    ti_index.connect_modify( [&](decltype(tio) tio ) {
-//         elog("STATETRACK table_id_object modify: ${tio}", ("tio", tio.id));
-//    });
-
-//    ti_index.connect_remove( [&](decltype(tio) tio ) {
-//         elog("STATETRACK table_id_object remove: ${tio}", ("tio", tio.id));
-//    });
-
-//    auto& kv_index = db.get_index<kv_index_type>();
    
-//    kv_index.connect_emplace( [&](decltype(kvo) kvo ) {
-//         elog("STATETRACK kv_index_type emplace: ${kvo}", ("kvo", kvo.id));
-//    });
-
-//    kv_index.connect_modify( [&](decltype(kvo) kvo ) {
-//         elog("STATETRACK kv_index_type modify: ${kvo}", ("kvo", kvo.id));
-//    });
-
-//    kv_index.connect_remove( [&](decltype(kvo) kvo ) {
-//         elog("STATETRACK kv_index_type remove: ${kvo}", ("kvo", kvo.id));
-//    });
+    auto& kv_index = db.get_index<kv_index_type>();
+   
+    kv_index.applied_emplace = [&](const chain::key_value_object& kvo) {
+         elog("STATETRACK key_value_object emplace: ${kvo}", ("kvo", kvo.id));
+       
+         
+    };
+   
+    kv_index.applied_modify = [&](const chain::key_value_object& kvo) {
+         elog("STATETRACK key_value_object modify: ${kvo}", ("kvo", kvo.id));
+    };
+   
+    kv_index.applied_remove = [&](const chain::key_value_object& kvo) {
+         elog("STATETRACK key_value_object remove: ${kvo}", ("kvo", kvo.id));
+    };
 }
 
 }
