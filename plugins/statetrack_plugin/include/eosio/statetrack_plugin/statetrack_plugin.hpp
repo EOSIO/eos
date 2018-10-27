@@ -30,6 +30,7 @@ public:
    void plugin_shutdown() {}
 
 private:
+        std::unique_ptr<class statetrack_plugin_impl> my;
 };
 
 }
