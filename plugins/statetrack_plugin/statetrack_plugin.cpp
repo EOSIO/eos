@@ -73,10 +73,27 @@ db_op_row statetrack_plugin_impl::get_db_op_row(const chainbase::database& db, c
 
     const chain::table_id_object& tio = get_kvo_tio(db, kvo);
 
-    row.id = kvo.primary_key;
+    row.id = kvo.id;
     row.op_type = op_type;
     row.code = tio.code;
-    row.scope = tio.scope;
+    
+    std::string scope = tio.scope.to_string();
+
+    if(scope.length() > 0 && scope[0] == '.') {
+        vector<char> v;
+        uint64_t sym = tio.scope;
+        for( int i = 0; i < 7; ++i ) {
+            char c = (char)(sym & 0xff);
+            if( !c ) break;
+            v.emplace_back(c);
+            sym >>= 8;
+         }
+         row.scope = std::string(v.begin(),v.end());
+    }
+    else {
+        row.scope = scope;
+    }
+
     row.table = tio.table;
 
     if(op_type == op_type_enum::CREATE || 

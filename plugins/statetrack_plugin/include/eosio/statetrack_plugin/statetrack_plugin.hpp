@@ -15,6 +15,8 @@ namespace eosio {
 
 using namespace appbase;
 
+typedef chain::key_value_object::id_type kvo_id_type;
+
 enum op_type_enum { 
    CREATE, 
    MODIFY, 
@@ -22,10 +24,10 @@ enum op_type_enum {
 };
 
 struct db_op_row {
-   uint64_t            id;
+   kvo_id_type         id;
    op_type_enum        op_type;
    account_name        code;
-   chain::scope_name   scope;
+   fc::string          scope;
    chain::table_name   table;
    account_name        payer;
    fc::variant         value;
