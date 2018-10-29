@@ -20,12 +20,13 @@ class statetrack_plugin_impl {
      const chain::account_object& get_tio_co(const chainbase::database& db, const chain::table_id_object& tio);
      const abi_def& get_co_abi(const chain::account_object& co );
      fc::variant get_kvo_row(const chainbase::database& db, const chain::table_id_object& tio, const chain::key_value_object& kvo, bool json = true);
-     db_op_row get_db_op_row(const chainbase::database& db, const chain::key_value_object& kvo, op_type_enum op_type, bool json = true);
+     db_op get_db_op(const chainbase::database& db, const chain::key_value_object& kvo, op_type_enum op_type, bool json = true);
+     db_rev get_db_rev(const int64_t revision, op_type_enum op_type);
 
      static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
         data.resize( obj.value.size() );
         memcpy( data.data(), obj.value.data(), obj.value.size() );
-    }
+     }
     private:
         fc::microseconds abi_serializer_max_time = fc::microseconds(1000 * 1000);
         bool shorten_abi_errors = true;
@@ -68,14 +69,14 @@ fc::variant statetrack_plugin_impl::get_kvo_row(const chainbase::database& db, c
     }
 }
 
-db_op_row statetrack_plugin_impl::get_db_op_row(const chainbase::database& db, const chain::key_value_object& kvo, op_type_enum op_type, bool json) {
-    db_op_row row;
+db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const chain::key_value_object& kvo, op_type_enum op_type, bool json) {
+    db_op op;
 
     const chain::table_id_object& tio = get_kvo_tio(db, kvo);
 
-    row.id = kvo.id;
-    row.op_type = op_type;
-    row.code = tio.code;
+    op.id = kvo.id;
+    op.op_type = op_type;
+    op.code = tio.code;
     
     std::string scope = tio.scope.to_string();
 
@@ -88,20 +89,27 @@ db_op_row statetrack_plugin_impl::get_db_op_row(const chainbase::database& db, c
             v.emplace_back(c);
             sym >>= 8;
          }
-         row.scope = std::string(v.begin(),v.end());
+         op.scope = std::string(v.begin(),v.end());
     }
     else {
-        row.scope = scope;
+        op.scope = scope;
     }
 
-    row.table = tio.table;
+    op.table = tio.table;
 
     if(op_type == op_type_enum::CREATE || 
        op_type == op_type_enum::MODIFY) {
-        row.value = get_kvo_row(db, tio, kvo, json);
+        op.value = get_kvo_row(db, tio, kvo, json);
     }
 
-    return row;
+    return op;
+}
+
+db_rev statetrack_plugin_impl::get_db_rev(const int64_t revision, op_type_enum op_type) {
+    db_rev rev;
+    rev.op_type = op_type;
+    rev.revision = revision;
+    return rev;
 }
 
 // Plugin implementation
@@ -142,8 +150,23 @@ void statetrack_plugin::plugin_startup() {
         };
     
         kv_index.applied_remove = [&](const chain::key_value_object& kvo) {
-            fc::string data = fc::json::to_string(my->get_db_op_row(db, kvo, op_type_enum::REMOVE));
+            fc::string data = fc::json::to_string(my->get_db_op(db, kvo, op_type_enum::REMOVE));
             ilog("STATETRACK key_value_object remove: ${data}", ("data", data));
+        };
+       
+        kv_index.applied_undo = [&](const int64_t revision) {
+            fc::string data = fc::json::to_string(my->get_db_rev(revision, op_type_enum::UNDO));
+            ilog("STATETRACK undo: ${data}", ("data", data));
+        };
+       
+        kv_index.applied_squash = [&](const int64_t revision) {
+            fc::string data = fc::json::to_string(my->get_db_rev(revision, op_type_enum::SQUASH));
+            ilog("STATETRACK squash: ${data}", ("data", data));
+        };
+       
+        kv_index.applied_commit = [&](const int64_t revision) {
+            fc::string data = fc::json::to_string(my->get_db_rev(revision, op_type_enum::COMMIT));
+            ilog("STATETRACK commit: ${data}", ("data", data));
         };
    }
    FC_LOG_AND_RETHROW()
