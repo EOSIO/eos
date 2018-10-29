@@ -7,7 +7,7 @@
 #include <eosio/statetrack_plugin/statetrack_plugin.hpp>
 
 namespace {
-  const char* SENDER_BIND = "zmq-sender-bind";
+  const char* SENDER_BIND = "st-zmq-sender-bind";
   const char* SENDER_BIND_DEFAULT = "tcp://127.0.0.1:5556";
 }
 
@@ -145,6 +145,14 @@ void statetrack_plugin::set_program_options(options_description&, options_descri
    cfg.add_options()
       (SENDER_BIND, bpo::value<string>()->default_value(SENDER_BIND_DEFAULT),
        "ZMQ Sender Socket binding")
+      ;
+   cfg.add_options()
+      ("st-filter-on,f", bpo::value<vector<string>>()->composing(),
+       "Track tables which match code:scope:table.")
+      ;
+   cfg.add_options()
+      ("st-filter-out,F", bpo::value<vector<string>>()->composing(),
+       "Do not track tables which match code:scope:table.")
       ;
 }
 
