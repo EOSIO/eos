@@ -1173,7 +1173,7 @@ struct controller_impl {
 
    void apply_block( const block_state_ptr& bs, controller::block_status s ) { try {
       try {
-         auto& b = bs->block;
+         const auto& b = bs->block;
          EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
          auto producer_block_id = b->id();
          start_block( b->timestamp, b->confirmed, s , producer_block_id);
@@ -1233,7 +1233,7 @@ struct controller_impl {
 
          if( bs->block_signing_key_future.valid() ) {
             // if block signing verification delayed for light validation then verify it here
-            bs->verify_signee();
+            bs->verify_signee_future();
          }
 
          finalize_block();
@@ -1277,7 +1277,7 @@ struct controller_impl {
                (s == controller::block_status::irreversible || s == controller::block_status::validated);
          const bool skip_validate_signee = trust || conf.block_validation_mode == validation_mode::LIGHT;
          auto new_header_state = fork_db.add( b, skip_validate_signee );
-         if( !trust && conf.block_validation_mode == validation_mode::LIGHT ) {
+         if( !trust && skip_validate_signee ) {
             std::weak_ptr<block_state> new_header_state_wp = new_header_state;
             new_header_state->block_signing_key_future = async_thread_pool(
                   [new_header_state_wp]() {
@@ -1317,7 +1317,7 @@ struct controller_impl {
       } else {
          if( new_head->block_signing_key_future.valid() ) {
             // if block signing verification delayed for light validation then verify it here
-            new_head->verify_signee();
+            new_head->verify_signee_future();
          }
 
          if( new_head->id != head->id ) {
