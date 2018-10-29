@@ -49,7 +49,7 @@ namespace cyberway { namespace chaindb {
         const account_name code;
         const account_name scope;
         const table_def*   table    = nullptr;
-        const field_name*  pk_field = nullptr;
+        const order_def*   pk_order = nullptr;
         const abi_info*    abi      = nullptr;
 
         table_info(const account_name& code, const account_name& scope)

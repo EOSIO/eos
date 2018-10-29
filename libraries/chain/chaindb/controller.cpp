@@ -1,4 +1,8 @@
+#include <map>
+
 #include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/name.hpp>
+#include <eosio/chain/symbol.hpp>
 
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/exception.hpp>
@@ -12,9 +16,11 @@
 
 namespace cyberway { namespace chaindb {
 
+    using eosio::chain::name;
+    using eosio::chain::symbol;
     using eosio::chain::struct_def;
-    using eosio::chain::field_def;
     using eosio::chain::abi_serializer;
+    using eosio::chain::type_name;
 
     using fc::variant;
     using fc::variants;
@@ -23,6 +29,8 @@ namespace cyberway { namespace chaindb {
     using fc::time_point;
 
     using std::vector;
+
+    using eosio::chain::abi_serialization_deadline_exception;
 
     std::ostream& operator<<(std::ostream& osm, const chaindb_type t) {
         switch (t) {
@@ -52,6 +60,27 @@ namespace cyberway { namespace chaindb {
     driver_interface::~driver_interface() = default;
 
     namespace { namespace _detail {
+        using struct_def_map = std::map<type_name, struct_def>;
+
+        struct_def_map init_system_types() {
+            struct_def_map types;
+
+            types.emplace("asset", struct_def{
+                "asset", "", {
+                    {"amount", "uint64"},
+                    {"decs", "uint8"},
+                    {"sym", "symbol_code"},
+                }
+            });
+
+            return types;
+        }
+
+        const struct_def_map& get_system_types() {
+            static struct_def_map types = init_system_types();
+            return types;
+        }
+
         const vector<string>& get_reserved_fields() {
             static const vector<string> fields = {get_scope_field_name(), get_payer_field_name(), get_size_field_name()};
             return fields;
@@ -64,63 +93,164 @@ namespace cyberway { namespace chaindb {
         }
 
         template <typename Info>
-        const field_name& get_pk_field(const Info& info) {
+        const order_def& get_pk_order(const Info& info) {
             // abi structure is already validated by abi_serializer
-            return get_pk_index(info).orders.front().field;
+            return get_pk_index(info).orders.front();
         }
+
+        variant get_pk_value(const table_info& table, const primary_key_t pk) {
+            auto& pk_order = *table.pk_order;
+
+            variant value;
+            switch (pk_order.type.front()) {
+                case 'i': // int64
+                case 'u': // uint64
+                    value = variant(pk);
+                    break;
+                case 'n': // name
+                    value = variant(name(pk).to_string());
+                    break;
+                case 's': // symbol_code
+                    value = variant(symbol(pk).name());
+                    break;
+                default:
+                    CYBERWAY_ASSERT(false, primary_key_exception, "Invalid type of primary key");
+            }
+
+            for (auto itr = pk_order.path.rbegin(), etr = pk_order.path.rend(); etr != itr; ++itr) {
+                value = variant(mutable_variant_object(*itr, value));
+            }
+            return value;
+        }
+
     } } // namespace _detail
 
-    class abi_info final {
+    class index_builder final {
+        index_info info_;
+        abi_serializer& serializer_;
+        abi_def& abi_;
+
     public:
-        abi_info() = default;
-        abi_info(const account_name& code, abi_def abi, const microseconds& max_time)
-        : code_(code),
-          abi_(std::move(abi)) {
+        index_builder(const account_name& code, abi_serializer& serializer, abi_def& abi)
+        : info_(code, code),
+          serializer_(serializer),
+          abi_(abi)
+        { }
 
-            serializer_.set_abi(abi_, max_time);
+        const struct_def& get_struct(type_name type) const {
+            type = serializer_.resolve_type(type);
 
-            for (auto& table: abi_.tables) {
+            auto& system_map = _detail::get_system_types();
+            auto itr = system_map.find(type);
+            if (system_map.end() != itr) {
+                return itr->second;
+            }
+
+            return serializer_.get_struct(type);
+        }
+
+        void build_index(table_def& table, index_def& index, const struct_def* table_struct) {
+            struct_def index_struct;
+
+            info_.table = &table;
+            info_.index = &index;
+            index_struct.name = get_full_index_name(info_);
+
+            for (auto& order: index.orders) {
+                CYBERWAY_ASSERT(order.order == "asc" || order.order == "desc", invalid_index_description_exception,
+                    "invalid type of index order '${order}' for the ${index}",
+                    ("order", order.order)("index", index_struct.name));
+
+                auto src_struct = table_struct;
+                boost::split(order.path, order.field, [](char c){return c == '.';}, boost::algorithm::token_compress_on);
+                auto size = order.path.size();
+                for (auto& key: order.path) {
+                    --size;
+                    for (auto& src_field: src_struct->fields) {
+                        if (src_field.name != key) continue;
+                        if (!size) {
+                            order.type = src_field.type;
+                            index_struct.fields.push_back(src_field);
+                        } else {
+                            src_struct = &get_struct(src_field.type);
+                        }
+                        break;
+                    }
+                }
+                CYBERWAY_ASSERT(!order.type.empty(), invalid_index_description_exception,
+                    "Can't find type for fields of the index ${index}", ("index", index_struct.name));
+            }
+
+            CYBERWAY_ASSERT(index.orders.size() == index_struct.fields.size(), invalid_index_description_exception,
+                "Can't find description for fields of the index ${index}", ("index", index_struct.name));
+
+            abi_.structs.push_back(index_struct);
+            serializer_.add_struct(std::move(index_struct));
+        }
+
+        void validate_pk_index(table_def& table) const {
+            CYBERWAY_ASSERT(!table.indexes.empty(), invalid_primary_key_exception,
+                "The table ${table} must contain at least one index", ("table", get_table_name(table)));
+
+            auto& p = table.indexes.front();
+            CYBERWAY_ASSERT(p.unique && p.orders.size() == 1, invalid_primary_key_exception,
+                "The primary index ${index} of the table ${table} should be unique and has one field",
+                ("table", get_table_name(table))("index", get_index_name(p)));
+
+            auto& k = p.orders.front();
+            CYBERWAY_ASSERT(k.type == "uint64" || k.type == "name" || k.type == "symbol_code", invalid_primary_key_exception,
+                "The field ${field} of the table ${table} is declared as primary "
+                "and it should has type uint64 or name or symbol_code",
+                ("field", k.field)("table", get_table_name(table)));
+        }
+
+        void build_indexes(const time_point& deadline, const microseconds& max_time) {
+            for (auto& table: abi_.tables) { try {
+                CYBERWAY_ASSERT(time_point::now() < deadline, abi_serialization_deadline_exception,
+                    "serialization time limit ${t}us exceeded", ("t", max_time));
+
                 // if abi was loaded instead of declared
                 if (!table.code) table.code = table.name.value;
-                auto& src = serializer_.get_struct(serializer_.resolve_type(table.type));
+                auto table_struct = &serializer_.get_struct(serializer_.resolve_type(table.type));
+
                 for (auto& index: table.indexes) {
                     // if abi was loaded instead of declared
                     if (!index.code) index.code = index.name.value;
 
-                    index_info i(code, code);
-                    i.table = &table;
-                    i.index = &index;
-
-                    struct_def dst;
-                    dst.name = get_full_index_name(i);
-                    for (auto& key: index.orders) {
-                        for (auto& field: src.fields) {
-                            if (field.name == key.field) {
-                                dst.fields.push_back(field);
-                                break;
-                            }
-                        }
-                    }
-
-                    abi_.structs.push_back(dst);
-                    serializer_.add_struct(std::move(dst));
+                    build_index(table, index, table_struct);
                 }
-            }
+                validate_pk_index(table);
+
+            } FC_CAPTURE_AND_RETHROW((table)) }
+        }
+    }; // struct index_builder
+
+    class abi_info final {
+    public:
+        abi_info() = default;
+
+        abi_info(const account_name& code, abi_def abi, const time_point& deadline, const microseconds& max_time)
+        : code_(code),
+          abi_(std::move(abi)) {
+            serializer_.set_abi(abi_, max_time);
+
+            index_builder builder(code, serializer_, abi_);
+            builder.build_indexes(deadline, max_time);
         }
 
         void verify_tables_structure(
             driver_interface& driver, const time_point& deadline, const microseconds& max_time
         ) const {
             for (auto& t: abi_.tables) {
+                CYBERWAY_ASSERT(time_point::now() < deadline, abi_serialization_deadline_exception,
+                    "serialization time limit ${t}us exceeded", ("t", max_time));
+
                 table_info info(code_, code_);
                 info.table = &t;
                 info.abi = this;
-                info.pk_field = &_detail::get_pk_field(info);
+                info.pk_order = &_detail::get_pk_order(info);
 
                 driver.verify_table_structure(info, max_time);
-
-                CYBERWAY_ASSERT(time_point::now() < deadline, eosio::chain::abi_serialization_deadline_exception,
-                    "serialization time limit ${t}us exceeded", ("t", max_time) );
             }
         }
 
@@ -229,7 +359,7 @@ namespace cyberway { namespace chaindb {
 
         void set_abi(const account_name& code, abi_def abi) {
             time_point deadline = time_point::now() + max_abi_time;
-            abi_info info(code, std::move(abi), max_abi_time);
+            abi_info info(code, std::move(abi), deadline, max_abi_time);
             info.verify_tables_structure(*driver.get(), deadline, max_abi_time);
             abi_map_.erase(code);
             abi_map_.emplace(code, std::move(info));
@@ -366,14 +496,11 @@ namespace cyberway { namespace chaindb {
                 undo->insert(table, pk);
             }
 
-            // open cursor from inserted pk
-            mutable_variant_object key_object;
-            key_object(*table.pk_field, pk);
-            variant key(std::move(key_object));
-
             info.index = &_detail::get_pk_index(table);
+            
+            auto pk_key_value = _detail::get_pk_value(table, pk);
 
-            return driver->opt_find_by_pk(info, pk, std::move(key));
+            return driver->opt_find_by_pk(info, pk, std::move(pk_key_value));
         }
 
         primary_key_t update(
@@ -489,7 +616,7 @@ namespace cyberway { namespace chaindb {
             for (auto& t: tables) {
                 if (t.code == request.table) {
                     info.table = &t;
-                    info.pk_field = &_detail::get_pk_field(info);
+                    info.pk_order = &_detail::get_pk_order(info);
                     break;
                 }
             }
@@ -522,6 +649,54 @@ namespace cyberway { namespace chaindb {
             driver->set_blob(cursor, std::move(buffer));
         }
 
+        template <typename Exception>
+        void validate_pk_field(const table_info& table, variant value, const primary_key_t pk) const {
+            auto& pk_order = *table.pk_order;
+            for (auto& key: pk_order.path) {
+                CYBERWAY_ASSERT(value.is_object(), Exception,
+                    "The table ${table} has wrong primary key structure", ("table", get_full_table_name(table)));
+
+                auto& object = value.get_object();
+                auto itr = object.find(key);
+                CYBERWAY_ASSERT(object.end() != itr, Exception,
+                    "The table ${table} doesn't have a primary key", ("table", get_full_table_name(table)));
+
+                value = (*itr).value();
+            }
+
+            auto type = value.get_type();
+            switch(pk_order.type.front()) {
+                case 'i':   // int64
+                case 'u': { // uint64
+                    CYBERWAY_ASSERT(variant::uint64_type == type || variant::int64_type == type, Exception,
+                        "The table ${table} has wrong type of primary key", ("table", get_full_table_name(table)));
+                    CYBERWAY_ASSERT(pk == value.as_uint64(), Exception,
+                        "The table ${table} has wrong value of primary key", ("table", get_full_table_name(table)));
+                    break;
+                }
+                case 'n': { // name
+                    CYBERWAY_ASSERT(variant::string_type == type, Exception,
+                       "The table ${table} has wrong type of primary key", ("table", get_full_table_name(table)));
+                    CYBERWAY_ASSERT(name(pk).to_string() == value.as_string(), Exception,
+                        "The table ${table} has wrong value of primary key", ("table", get_full_table_name(table)));
+                    break;
+                }
+                case 's': { // symbol_code
+                    CYBERWAY_ASSERT(variant::string_type == type, Exception,
+                        "The table ${table} has wrong type of primary key", ("table", get_full_table_name(table)));
+                    auto str_value = value.as_string();
+                    CYBERWAY_ASSERT(symbol::valid_name(str_value), Exception,
+                        "The table ${table} has wrong value of primary key", ("table", get_full_table_name(table)));
+                    CYBERWAY_ASSERT(eosio::chain::string_to_symbol(0, str_value.c_str()) == pk, Exception,
+                        "The table ${table} has wrong value of primary key", ("table", get_full_table_name(table)));
+                    break;
+                }
+                default:
+                    CYBERWAY_ASSERT(false, Exception,
+                        "The table ${table} has wrong type of primary key", ("table", get_full_table_name(table)));
+            }
+        }
+
         void validate_object(const table_info& table, const variant& value, const primary_key_t pk) const {
             CYBERWAY_ASSERT(value.is_object(), broken_driver_exception, "ChainDB driver returns not object.");
             auto& object = value.get_object();
@@ -533,39 +708,20 @@ namespace cyberway { namespace chaindb {
                     ("table", get_full_table_name(table))("name", field));
             }
 
-            auto itr = object.find(*table.pk_field);
-            CYBERWAY_ASSERT(object.end() != itr, driver_primary_key_exception,
-                "ChainDB driver returns object without primary key", ("table", get_full_table_name(table)));
-
-            auto type = itr->value().get_type();
-            CYBERWAY_ASSERT(variant::uint64_type == type || variant::int64_type == type, driver_primary_key_exception,
-                "ChainDB driver returns object with wrong type of primary key", ("table", get_full_table_name(table)));
-
-            CYBERWAY_ASSERT(pk == itr->value().as_uint64(), driver_primary_key_exception,
-                "ChainDB driver returns object with wrong value of primary key", ("table", get_full_table_name(table)));
+            validate_pk_field<driver_primary_key_exception>(table, value, pk);
         }
 
         void validate_service_fields(const table_info& table, const variant& value, const primary_key_t pk) const {
             // type is object - should be checked before this call
             auto& object = value.get_object();
-            auto& fields = _detail::get_reserved_fields();
 
+            auto& fields = _detail::get_reserved_fields();
             for (auto& field: fields) {
                 CYBERWAY_ASSERT(object.end() == object.find(field), reserved_field_name_exception,
                     "The table ${table} can't use ${name} as field name.",
                     ("table", get_full_table_name(table))("name", field));
             }
-
-            auto itr = object.find(*table.pk_field);
-            CYBERWAY_ASSERT(object.end() != itr, primary_key_exception,
-                "The table ${table} doesn't have primary key", ("table", get_full_table_name(table)));
-
-            auto type = itr->value().get_type();
-            CYBERWAY_ASSERT(variant::uint64_type == type || variant::int64_type == type, primary_key_exception,
-                "The table ${table} has wrong type of primary key", ("table", get_full_table_name(table)));
-
-            CYBERWAY_ASSERT(pk == itr->value().as_uint64(), primary_key_exception,
-                "The table ${table} has wrong value of primary key", ("table", get_full_table_name(table)));
+            validate_pk_field<primary_key_exception>(table, value, pk);
         }
 
         variant add_service_fields(

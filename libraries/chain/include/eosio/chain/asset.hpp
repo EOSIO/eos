@@ -102,15 +102,44 @@ struct extended_asset  {
   name contract;
 };
 
+struct asset_info final {
+    share_type  amount;
+    uint8_t     decs;
+    symbol_code sym;
+
+    asset_info() = default;
+
+    asset_info(const asset& src)
+    : amount(src.get_amount()),
+      decs(src.get_symbol().decimals()),
+      sym(src.get_symbol().to_symbol_code())
+    { }
+
+    asset to_asset() const {
+       return asset(amount, symbol(sym.value << 8 | decs));
+    }
+};
+
 bool  operator <  (const asset& a, const asset& b);
 bool  operator <= (const asset& a, const asset& b);
 
 }} // namespace eosio::chain
 
+FC_REFLECT(eosio::chain::asset_info, (amount)(decs)(sym))
+
 namespace fc {
-inline void to_variant(const eosio::chain::asset& var, fc::variant& vo) { vo = var.to_string(); }
+inline void to_variant(const eosio::chain::asset& var, fc::variant& vo) {
+   eosio::chain::asset_info info(var);
+   fc::to_variant(info, vo);
+}
 inline void from_variant(const fc::variant& var, eosio::chain::asset& vo) {
-   vo = eosio::chain::asset::from_string(var.get_string());
+   if (var.get_type() == fc::variant::object_type) {
+      eosio::chain::asset_info info;
+      fc::from_variant(var, info);
+      vo = info.to_asset();
+   } else {
+      vo = eosio::chain::asset::from_string(var.get_string());
+   }
 }
 }
 

@@ -147,7 +147,6 @@ namespace eosio { namespace chain {
       EOS_ASSERT( variants.size() == abi.variants.value.size(), duplicate_abi_variant_def_exception, "duplicate variant definition detected" );
 
       validate(deadline, max_serialization_time);
-      validate(abi.tables, deadline, max_serialization_time);
    }
 
    void abi_serializer::add_struct(struct_def st) {
@@ -268,39 +267,7 @@ namespace eosio { namespace chain {
       } FC_CAPTURE_AND_RETHROW( (t)  ) }
    }
 
-   void abi_serializer::validate(const vector<table_def>& abi_tables, const fc::time_point& deadline, const fc::microseconds& max_serialization_time)const {
-      for( const auto& t : abi_tables ) { try {
-        EOS_ASSERT( fc::time_point::now() < deadline, abi_serialization_deadline_exception,
-           "serialization time limit ${t}us exceeded", ("t", max_serialization_time) );
-        EOS_ASSERT( !t.indexes.empty(), abi_serialization_primary_key_exception,
-           "The table ${table} must contain at least one index", ("table", t.name) );
-
-        auto& p = t.indexes.front();
-        EOS_ASSERT( p.unique && p.orders.size() == 1, abi_serialization_primary_key_exception,
-           "The primary index ${index} of the table ${table} should be unique and has one field", ("table", t.name)("index", p.name));
-
-        const type_name* pk_type = nullptr;
-        auto& k = p.orders.front();
-        auto& st = get_struct(t.type);
-        for( const auto& f: st.fields) {
-            if (f.name == k.field) {
-                pk_type = &f.type;
-                break;
-            }
-        }
-        EOS_ASSERT( pk_type && *pk_type == "uint64", abi_serialization_primary_key_exception,
-           "The field ${field} of the table ${table} is declared as primary and it should has type uint64", ("field", k.field)("table", t.name) );
-
-        for( const auto& i : t.indexes ) {
-          for( const auto& o : i.orders ) {
-            EOS_ASSERT( o.order == "asc" || o.order == "desc", abi_serialization_index_order_exception,
-               "invalid type of index order '${order}' for ${table}.${index}", ("order", o.order)("table", t.name)("index", i.name) );
-          }
-        }
-      } FC_CAPTURE_AND_RETHROW((t)) }
-   }
-
-   type_name abi_serializer::resolve_type(const type_name& type)const {
+    type_name abi_serializer::resolve_type(const type_name& type)const {
       auto itr = typedefs.find(type);
       if( itr != typedefs.end() ) {
          for( auto i = typedefs.size(); i > 0; --i ) { // avoid infinite recursion
