@@ -169,13 +169,40 @@ namespace eosio {
          return lhs.value() > rhs.value();
       }
 
+      struct symbol_info final {
+          uint8_t     decs;
+          symbol_code sym;
+
+          symbol_info() = default;
+
+          symbol_info(const symbol& src)
+          : decs(src.decimals()),
+            sym(src.to_symbol_code())
+          { }
+
+          operator symbol() const {
+              return symbol(sym.value << 8 | decs);
+          }
+      };
+
    } // namespace chain
 } // namespace eosio
 
+FC_REFLECT(eosio::chain::symbol_info, (decs)(sym))
+
 namespace fc {
-   inline void to_variant(const eosio::chain::symbol& var, fc::variant& vo) { vo = var.to_string(); }
+   inline void to_variant(const eosio::chain::symbol& var, fc::variant& vo) {
+      eosio::chain::symbol_info info(var);
+      fc::to_variant(info, vo);
+   }
    inline void from_variant(const fc::variant& var, eosio::chain::symbol& vo) {
-      vo = eosio::chain::symbol::from_string(var.get_string());
+      if (var.is_object()) {
+         eosio::chain::symbol_info info;
+         fc::from_variant(var, info);
+         vo = info;
+      } else {
+         vo = eosio::chain::symbol::from_string(var.get_string());
+      }
    }
 }
 

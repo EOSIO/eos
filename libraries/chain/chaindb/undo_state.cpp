@@ -46,6 +46,7 @@ namespace cyberway { namespace chaindb {
 
     class table_undo_stack final {
         const table_def table_def_;  // <- copy to replace pointer in info_
+        const order_def pk_order_;   // <- copy to replace pointer in info_
         table_info      info_;       // <- for const reference
         undo_stage      stage_ = undo_stage::Unknown;    // <- state machine - changes via actions
         int64_t         revision_ = impossible_revision; // <- part of state machine - changes via actions
@@ -63,15 +64,16 @@ namespace cyberway { namespace chaindb {
 
         table_undo_stack(const table_info& src, const int64_t revision)
         : table_def_(*src.table),   // <- one copy per serie of sessions - it is not very critical
+          pk_order_(*src.pk_order), // <- one copy per serie of sessions - it is not very critical
           info_(src),
           stage_(undo_stage::New),
           revision_(revision),
           code(src.code),
           scope(src.scope),
           table(src.table->name),
-          pk_field(*src.pk_field) { // <- one copy per serie of sessions - it is not very critical
+          pk_field(src.pk_order->field) { // <- one copy per serie of sessions - it is not very critical
             info_.table = &table_def_;
-            info_.pk_field = &pk_field;
+            info_.pk_order = &pk_order_;
 
         }
 
@@ -507,19 +509,19 @@ namespace cyberway { namespace chaindb {
         }
 
         table_undo_stack& get_table(const table_info& table) {
-            auto itr = tables.find(std::make_tuple(table.code, table.scope, table.table->name, *table.pk_field));
+            auto itr = tables.find(std::make_tuple(table.code, table.scope, table.table->name, table.pk_order->field));
             if (tables.end() != itr) return const_cast<table_undo_stack&>(*itr); // not critical
 
             auto result = tables.emplace(table, revision);
             CYBERWAY_SESSION_ASSERT(result.second,
                 "Fail to create stack for the table ${table} with the primary key ${pk}",
-                ("table", get_full_table_name(table))("pk", *table.pk_field));
+                ("table", get_full_table_name(table))("pk", table.pk_order->field));
             return const_cast<table_undo_stack&>(*result.first);
         }
 
         template <typename Lambda>
         void for_tables(Lambda&& lambda) {
-            for (auto itr = tables.begin(); tables.end() != itr; ) {
+            for (auto itr = tables.begin(), etr = tables.end(); etr != itr; ) {
                 auto& table = const_cast<table_undo_stack&>(*itr);
                 lambda(table);
 

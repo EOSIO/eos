@@ -57,6 +57,7 @@ namespace cyberway { namespace chaindb {
     using eosio::chain::index_name;
     using eosio::chain::table_def;
     using eosio::chain::index_def;
+    using eosio::chain::order_def;
     using eosio::chain::field_name;
 
     using table_name_t = table_name::value_type;

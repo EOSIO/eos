@@ -70,6 +70,9 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(invalid_primary_key_exception, chaindb_abi_exception,
                                      3720004, "Invalid primary key information")
 
+        FC_DECLARE_DERIVED_EXCEPTION(invalid_index_description_exception, chaindb_abi_exception,
+                                     3720005, "Invalid index description")
+
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_contract_exception, chaindb_exception,
                                  3730000, "ChainDB contract exception")
 
@@ -80,6 +83,6 @@ namespace cyberway { namespace chaindb {
                                      3730002, "Table contains reserved field name")
 
         FC_DECLARE_DERIVED_EXCEPTION(primary_key_exception, chaindb_contract_exception,
-                                     3730003, "Table doesn't have primary key field")
+                                     3730003, "Table has wrong type of primary key")
 
 } } // namespace cyberway::chaindb

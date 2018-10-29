@@ -61,9 +61,13 @@ namespace cyberway { namespace chaindb {
         return get_table_name(eosio::chain::table_name(table));
     }
 
+    inline string get_table_name(const table_def& table) {
+        return get_table_name(table.name);
+    }
+
     inline string get_table_name(const table_def* table) {
         if (table) {
-            return get_table_name(table->name);
+            return get_table_name(*table);
         }
         return get_unknown_name();
     }

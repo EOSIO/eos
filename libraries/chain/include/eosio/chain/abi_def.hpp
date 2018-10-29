@@ -68,8 +68,10 @@ struct order_def {
    : field(field), order(order)
    { }
 
-   field_name field;
-   type_name  order; // asc/desc
+   field_name         field;
+   type_name          order; // asc/desc
+   vector<field_name> path;
+   type_name          type;
 };
 
 struct index_def {

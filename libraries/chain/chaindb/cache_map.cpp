@@ -13,6 +13,7 @@ namespace cyberway { namespace chaindb {
 
     class cache_table_object final {
         const table_def table_def_;  // <- copy to replace pointer in info_
+        const order_def pk_order_;   // <- copy to replace pointer in info_
         table_info      info_;       // <- for const reference
 
     public:
@@ -23,13 +24,14 @@ namespace cyberway { namespace chaindb {
 
         cache_table_object(const table_info& src)
         : table_def_(*src.table),
+          pk_order_(*src.pk_order),
           info_(src),
           code(src.code),
           scope(src.scope),
           table(src.table->name),
-          pk_field(*src.pk_field) {
+          pk_field(src.pk_order->field) {
             info_.table = &table_def_;
-            info_.pk_field = &pk_field;
+            info_.pk_order = &pk_order_;
         }
 
         const table_info& info() const {
@@ -60,7 +62,7 @@ namespace cyberway { namespace chaindb {
         ~cache_map_impl_() = default;
 
         cache_table_object* find(const table_info& table) {
-            auto itr = tables.find(std::make_tuple(table.code, table.scope, table.table->name, *table.pk_field));
+            auto itr = tables.find(std::make_tuple(table.code, table.scope, table.table->name, table.pk_order->field));
             if (tables.end() != itr) return &const_cast<cache_table_object&>(*itr);
 
             return nullptr;
