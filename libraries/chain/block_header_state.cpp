@@ -180,7 +180,7 @@ namespace eosio { namespace chain {
     // ASSUMPTION FROM controller_impl::apply_block = all untrusted blocks will have their signatures pre-validated here
     // unless light validation in which case it is verified after applying transactions
     if( !skip_validate_signee ) {
-       result.verify_signee();
+       result.verify_signee( result.signee() );
     }
 
     return result;
@@ -236,17 +236,16 @@ namespace eosio { namespace chain {
     return fc::crypto::public_key( header.producer_signature, sig_digest(), true );
   }
 
-  void block_header_state::verify_signee() {
-     if( block_signing_key_future.valid() ) {
-        // if block signing verification delayed for light validation then verify it here
-        auto signee = block_signing_key_future.get();
-        EOS_ASSERT( block_signing_key == signee, wrong_signing_key, "block signed by wrong key",
-                    ("block_signing_key", block_signing_key)("signee", signee ) );
-        block_signing_key_future = decltype( block_signing_key_future ){};
-     } else {
-        EOS_ASSERT( block_signing_key == signee(), wrong_signing_key, "block not signed by expected key",
-                    ("result.block_signing_key", block_signing_key)("signee", signee() ) );
-     }
+  void block_header_state::verify_signee( const public_key_type& signee )const {
+     EOS_ASSERT( block_signing_key == signee, wrong_signing_key, "block not signed by expected key",
+                 ("block_signing_key", block_signing_key)( "signee", signee ) );
+  }
+
+  void block_header_state::verify_signee_future() {
+     EOS_ASSERT( block_signing_key_future.valid(), wrong_signing_key, "No future setup for signee" );
+     auto signee = block_signing_key_future.get();
+     verify_signee( signee );
+     block_signing_key_future = decltype( block_signing_key_future ){};
   }
 
   void block_header_state::add_confirmation( const header_confirmation& conf ) {
