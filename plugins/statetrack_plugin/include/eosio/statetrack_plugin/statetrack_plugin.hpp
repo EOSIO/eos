@@ -20,10 +20,13 @@ typedef chain::key_value_object::id_type kvo_id_type;
 enum op_type_enum { 
    CREATE, 
    MODIFY, 
-   REMOVE 
+   REMOVE,
+   UNDO,
+   SQUASH,
+   COMMIT
 };
 
-struct db_op_row {
+struct db_op {
    kvo_id_type         id;
    op_type_enum        op_type;
    account_name        code;
@@ -31,6 +34,11 @@ struct db_op_row {
    chain::table_name   table;
    account_name        payer;
    fc::variant         value;
+};
+   
+struct db_rev {
+   op_type_enum        op_type;
+   int64_t             revision;
 };
 
 class statetrack_plugin : public plugin<statetrack_plugin> {
@@ -56,4 +64,5 @@ private:
 }
 
 FC_REFLECT_ENUM( eosio::op_type_enum, (CREATE)(MODIFY)(REMOVE) )
-FC_REFLECT( eosio::db_op_row, (id)(op_type)(code)(scope)(table)(payer)(value) )
+FC_REFLECT( eosio::db_op, (id)(op_type)(code)(scope)(table)(payer)(value) )
+FC_REFLECT( eosio::db_rev, (op_type)(revision) )
