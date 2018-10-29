@@ -334,7 +334,7 @@ namespace cyberway { namespace chaindb {
             auto pos = order.path.size();
             for (auto& key: order.path) {
                 auto itr = object.find(key);
-                CYBERWAY_ASSERT(object.end() != itr, driver_absent_field_exception, "");
+                CYBERWAY_ASSERT(object.end() != itr, driver_absent_field_exception, "Wrong path");
 
                 --pos;
                 if (0 == pos) {
@@ -343,7 +343,7 @@ namespace cyberway { namespace chaindb {
                     object = itr->value().get_object();
                 }
             }
-            CYBERWAY_ASSERT(false, driver_absent_field_exception, "");
+            CYBERWAY_ASSERT(false, driver_absent_field_exception, "Invalid type of primary key");
         } catch (...) {
             CYBERWAY_ASSERT(false, driver_absent_field_exception,
                 "External database returns the row in the table ${table} without the field ${field}.",
@@ -354,11 +354,11 @@ namespace cyberway { namespace chaindb {
             auto& pk_order = *table.pk_order;
             auto pos = pk_order.path.size();
             for (auto& key: pk_order.path) {
-                --pos;
                 auto itr = view.find(key);
-                CYBERWAY_ASSERT(view.end() != itr, driver_primary_key_exception, "");
+                CYBERWAY_ASSERT(view.end() != itr, driver_primary_key_exception, "Wrong path");
 
-                if (pos == 0) {
+                --pos;
+                if (0 == pos) {
                     switch (pk_order.type.front()) {
                         case 'i': // int64
                         case 'u': // uint64
@@ -366,7 +366,7 @@ namespace cyberway { namespace chaindb {
                         case 'n': // name
                             return name(itr->get_utf8().value.data()).value;
                         case 's': // symbol_code
-                            return symbol(0, itr->get_utf8().value.data()).value();
+                            return symbol(0, itr->get_utf8().value.data()).to_symbol_code();
                         default:
                             break;
                     }
@@ -374,10 +374,10 @@ namespace cyberway { namespace chaindb {
                     view = itr->get_document().value;
                 }
             }
-            CYBERWAY_ASSERT(false, driver_primary_key_exception, "");
+            CYBERWAY_ASSERT(false, driver_primary_key_exception, "Invalid type of primary key");
         } catch (...) {
             CYBERWAY_ASSERT(false, driver_primary_key_exception,
-                "External database locate row in the table ${table} with wrong type of primary key.",
+                "External database locate row in the table ${table} with wrong value of primary key.",
                 ("table_name", get_full_table_name(table)));
         } }
 
@@ -395,7 +395,7 @@ namespace cyberway { namespace chaindb {
                     doc.append(kvp(pk_order.field, name(pk).to_string()));
                     break;
                 case 's': // symbol_code
-                    doc.append(kvp(pk_order.field, symbol(pk).name()));
+                    doc.append(kvp(pk_order.field, symbol(pk << 8).name()));
                     break;
                 default:
                     CYBERWAY_ASSERT(false, driver_primary_key_exception, "Invalid type of primary key");
@@ -431,15 +431,13 @@ namespace cyberway { namespace chaindb {
 
             if (source_.valid()) {
                 // it is faster to get object from exist cursor then to open a new cursor, locate, and get object
-                dst.find_key_ = get_key_value();
-                dst.find_pk_ = get_pk_value();
                 dst.object_ = get_object_value();
-                dst.key_ = dst.find_key_;
+                dst.find_key_ = dst.object_;
+                dst.find_pk_ = get_pk_value();
             } else {
                 dst.find_key_ = find_key_;
                 dst.find_pk_ = find_pk_;
                 dst.object_ = object_;
-                dst.key_ = key_;
             }
 
             return dst;
@@ -507,16 +505,6 @@ namespace cyberway { namespace chaindb {
             return object_;
         }
 
-        const variant& get_key_value() {
-            lazy_open();
-            if (is_end() || !key_.is_null()) return key_;
-
-            auto& view = *source_->begin();
-            key_ = _detail::build_variant(view);
-
-            return key_;
-        }
-
     private:
         collection db_table_;
 
@@ -525,7 +513,6 @@ namespace cyberway { namespace chaindb {
         primary_key_t find_pk_ = unset_primary_key;
 
         optional<mongocxx::cursor> source_;
-        variant key_;
         variant object_;
 
         bool is_end() const {
@@ -535,7 +522,7 @@ namespace cyberway { namespace chaindb {
         void change_direction(const cmp_info& find_cmp) {
             find_cmp_ = &find_cmp;
             if (source_.valid()) {
-                find_key_ = get_key_value();
+                find_key_ = get_object_value();
                 find_pk_ = get_pk_value();
             }
 
@@ -544,7 +531,6 @@ namespace cyberway { namespace chaindb {
 
         void reset() {
             if (!object_.is_null()) object_.clear();
-            if (!key_.is_null()) key_.clear();
         }
 
         document create_find_document(const char* forward, const char* backward) const {
@@ -1003,7 +989,7 @@ namespace cyberway { namespace chaindb {
             make_document(kvp("$set", update))));
 
 //        auto updated = impl_->get_db_table(table).update_one(
-//            _detail::make_pk_document(table, pk),
+//            _detail::make_pk_document(table, pk).view(),
 //            make_document(kvp("$set", update)));
 //
 //        CYBERWAY_ASSERT(updated && updated->result().matched_count() == 1, driver_update_exception,
@@ -1017,7 +1003,7 @@ namespace cyberway { namespace chaindb {
         impl_->get_mutable_db_table(table).append(delete_one(
             _detail::make_pk_document(table, pk).view()));
 
-//        auto deleted = impl_->get_db_table(table).delete_one(doc.view());
+//        auto deleted = impl_->get_db_table(table).delete_one(_detail::make_pk_document(table, pk).view()));
 //
 //        CYBERWAY_ASSERT(deleted && deleted->result().deleted_count() == 1, driver_update_exception,
 //            "Fail to delete object ${object} from the table ${table}",

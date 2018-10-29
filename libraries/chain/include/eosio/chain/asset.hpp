@@ -115,7 +115,7 @@ struct asset_info final {
       sym(src.get_symbol().to_symbol_code())
     { }
 
-    asset to_asset() const {
+    operator asset() const {
        return asset(amount, symbol(sym.value << 8 | decs));
     }
 };
@@ -136,7 +136,7 @@ inline void from_variant(const fc::variant& var, eosio::chain::asset& vo) {
    if (var.get_type() == fc::variant::object_type) {
       eosio::chain::asset_info info;
       fc::from_variant(var, info);
-      vo = info.to_asset();
+      vo = info;
    } else {
       vo = eosio::chain::asset::from_string(var.get_string());
    }

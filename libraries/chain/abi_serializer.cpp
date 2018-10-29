@@ -151,7 +151,8 @@ namespace eosio { namespace chain {
 
    void abi_serializer::add_struct(struct_def st) {
        EOS_ASSERT(!structs.count(st.name), duplicate_abi_struct_def_exception, "duplicate struct definition detected");
-       structs[st.name] = std::move(st);
+       auto key = st.name;
+       structs.emplace(std::move(key), std::move(st));
    }
 
    bool abi_serializer::is_builtin_type(const type_name& type)const {
