@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
+#include <zmq.hpp>
 #include <eosio/statetrack_plugin/statetrack_plugin.hpp>
 
 namespace {
