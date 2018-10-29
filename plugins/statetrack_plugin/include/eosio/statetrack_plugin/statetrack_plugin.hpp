@@ -18,12 +18,12 @@ using namespace appbase;
 typedef chain::key_value_object::id_type kvo_id_type;
 
 enum op_type_enum { 
-   CREATE, 
-   MODIFY, 
-   REMOVE,
-   UNDO,
-   SQUASH,
-   COMMIT
+   CREATE = 0, 
+   MODIFY = 1, 
+   REMOVE = 2,
+   UNDO   = 3,
+   SQUASH = 4,
+   COMMIT = 5
 };
 
 struct db_op {
@@ -63,6 +63,6 @@ private:
 
 }
 
-FC_REFLECT_ENUM( eosio::op_type_enum, (CREATE)(MODIFY)(REMOVE) )
+FC_REFLECT_ENUM( eosio::op_type_enum, (CREATE)(MODIFY)(REMOVE)(UNDO)(SQUASH)(COMMIT) )
 FC_REFLECT( eosio::db_op, (id)(op_type)(code)(scope)(table)(payer)(value) )
 FC_REFLECT( eosio::db_rev, (op_type)(revision) )
