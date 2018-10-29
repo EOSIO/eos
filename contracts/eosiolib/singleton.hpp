@@ -34,6 +34,11 @@ namespace  eosio {
        */
       struct row {
          /**
+          * Primary key to be stored into database table
+          */
+         uint64_t id = pk_value;
+
+         /**
           * Value to be stored inside the singleton table
           * 
           * @brief Value to be stored inside the singleton table
@@ -46,9 +51,9 @@ namespace  eosio {
           * @brief Get primary key of the data
           * @return uint64_t - Primary Key
           */
-         uint64_t primary_key() const { return pk_value; }
+         uint64_t primary_key() const { return id; }
 
-         EOSLIB_SERIALIZE( row, (value) )
+         EOSLIB_SERIALIZE( row, (id)(value) )
       };
 
       typedef eosio::multi_index<SingletonName, row> table;
