@@ -143,7 +143,7 @@ namespace eosio { namespace chain {
    *
    *  If the header specifies new_producers then apply them accordingly.
    */
-  block_header_state block_header_state::next( const signed_block_header& h, bool trust )const {
+  block_header_state block_header_state::next( const signed_block_header& h, bool skip_validate_signee )const {
     EOS_ASSERT( h.timestamp != block_timestamp_type(), block_validate_exception, "", ("h",h) );
     EOS_ASSERT( h.header_extensions.size() == 0, block_validate_exception, "no supported extensions" );
 
@@ -179,7 +179,7 @@ namespace eosio { namespace chain {
 
     // ASSUMPTION FROM controller_impl::apply_block = all untrusted blocks will have their signatures pre-validated here
     // unless light validation in which case it is verified after applying transactions
-    if( !trust ) {
+    if( !skip_validate_signee ) {
        result.verify_signee();
     }
 

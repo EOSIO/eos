@@ -139,7 +139,7 @@ namespace eosio { namespace chain {
       return n;
    }
 
-   block_state_ptr fork_database::add( signed_block_ptr b, bool trust ) {
+   block_state_ptr fork_database::add( signed_block_ptr b, bool skip_validate_signee ) {
       EOS_ASSERT( b, fork_database_exception, "attempt to add null block" );
       EOS_ASSERT( my->head, fork_db_block_not_found, "no head block set" );
 
@@ -150,7 +150,7 @@ namespace eosio { namespace chain {
       auto prior = by_id_idx.find( b->previous );
       EOS_ASSERT( prior != by_id_idx.end(), unlinkable_block_exception, "unlinkable block", ("id", string(b->id()))("previous", string(b->previous)) );
 
-      auto result = std::make_shared<block_state>( **prior, move(b), trust );
+      auto result = std::make_shared<block_state>( **prior, move(b), skip_validate_signee );
       EOS_ASSERT( result, fork_database_exception , "fail to add new block state" );
       return add(result);
    }

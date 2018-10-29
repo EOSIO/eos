@@ -1273,8 +1273,10 @@ struct controller_impl {
          EOS_ASSERT( b, block_validate_exception, "trying to push empty block" );
          EOS_ASSERT( s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block" );
          emit( self.pre_accepted_block, b );
-         bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
-         auto new_header_state = fork_db.add( b, trust || conf.block_validation_mode == validation_mode::LIGHT );
+         const bool trust = !conf.force_all_checks &&
+               (s == controller::block_status::irreversible || s == controller::block_status::validated);
+         const bool skip_validate_signee = trust || conf.block_validation_mode == validation_mode::LIGHT;
+         auto new_header_state = fork_db.add( b, skip_validate_signee );
          if( !trust && conf.block_validation_mode == validation_mode::LIGHT ) {
             std::weak_ptr<block_state> new_header_state_wp = new_header_state;
             new_header_state->block_signing_key_future = async_thread_pool(
