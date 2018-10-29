@@ -1,0 +1,60 @@
+{
+    "appenders": [
+        {
+            "args": {
+                "level_colors": [
+                    {
+                        "color": "green",
+                        "level": "debug"
+                    },
+                    {
+                        "color": "brown",
+                        "level": "warn"
+                    },
+                    {
+                        "color": "red",
+                        "level": "error"
+                    }
+                ],
+                "stream": "std_error"
+            },
+            "enabled": true,
+            "name": "stderr",
+            "type": "console"
+        },
+        {
+            "args": {
+                "level_colors": [
+                    {
+                        "color": "green",
+                        "level": "debug"
+                    },
+                    {
+                        "color": "brown",
+                        "level": "warn"
+                    },
+                    {
+                        "color": "red",
+                        "level": "error"
+                    }
+                ],
+                "stream": "std_out"
+            },
+            "enabled": true,
+            "name": "stdout",
+            "type": "console"
+        }
+    ],
+    "includes": [],
+    "loggers": [
+        {
+            "additivity": false,
+            "appenders": [
+                "stderr"
+            ],
+            "enabled": true,
+            "level": "info",
+            "name": "default"
+        }
+    ]
+}
