@@ -26,7 +26,7 @@ class statetrack_plugin_impl {
       context(1),
       sender_socket(context, ZMQ_PUSH) {}
    
-     void send_smq_msg(const string content);
+     void send_zmq_msg(const string content);
    
      const chain::table_id_object& get_kvo_tio(const chainbase::database& db, const chain::key_value_object& kvo);
      const chain::account_object& get_tio_co(const chainbase::database& db, const chain::table_id_object& tio);
@@ -60,7 +60,7 @@ class statetrack_plugin_impl {
 
 // statetrack plugin implementation
 
-void statetrack_plugin_impl::send_smq_msg(const fc::string content) {
+void statetrack_plugin_impl::send_zmq_msg(const fc::string content) {
   zmq::message_t message(content.length());
   unsigned char* ptr = (unsigned char*) message.data();
   memcpy(ptr, content.c_str(), content.length());
@@ -173,31 +173,37 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
       kv_index.applied_emplace = [&](const chain::key_value_object& kvo) {
           fc::string data = fc::json::to_string(my->get_db_op_row(db, kvo, op_type_enum::CREATE));
           ilog("STATETRACK key_value_object emplace: ${data}", ("data", data));
+          my->send_zmq_msg(data);
       };
   
       kv_index.applied_modify = [&](const chain::key_value_object& kvo) {
           fc::string data = fc::json::to_string(my->get_db_op_row(db, kvo, op_type_enum::MODIFY));
           ilog("STATETRACK key_value_object modify: ${data}", ("data", data));
+          my->send_zmq_msg(data);
       };
   
       kv_index.applied_remove = [&](const chain::key_value_object& kvo) {
           fc::string data = fc::json::to_string(my->get_db_op(db, kvo, op_type_enum::REMOVE));
           ilog("STATETRACK key_value_object remove: ${data}", ("data", data));
+          my->send_zmq_msg(data);
       };
      
       kv_index.applied_undo = [&](const int64_t revision) {
           fc::string data = fc::json::to_string(my->get_db_rev(revision, op_type_enum::UNDO));
           ilog("STATETRACK undo: ${data}", ("data", data));
+          my->send_zmq_msg(data);
       };
      
       kv_index.applied_squash = [&](const int64_t revision) {
           fc::string data = fc::json::to_string(my->get_db_rev(revision, op_type_enum::SQUASH));
           ilog("STATETRACK squash: ${data}", ("data", data));
+          my->send_zmq_msg(data);
       };
      
       kv_index.applied_commit = [&](const int64_t revision) {
           fc::string data = fc::json::to_string(my->get_db_rev(revision, op_type_enum::COMMIT));
           ilog("STATETRACK commit: ${data}", ("data", data));
+          my->send_zmq_msg(data);
       };
    }
    FC_LOG_AND_RETHROW()
