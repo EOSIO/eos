@@ -355,7 +355,7 @@ private:
                 cursor = chaindb_find(get_code(), get_scope(), table_name(), index_name(), pk, data, size);
             });
 
-            return const_iterator(multidx_, cursor, pk, item_ptr(&itm, false));
+            return const_iterator(multidx_, cursor, pk, item_ptr(const_cast<item*>(&itm), false));
         }
 
         template<typename Lambda>
