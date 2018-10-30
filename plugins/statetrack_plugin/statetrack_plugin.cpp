@@ -22,16 +22,6 @@ typedef typename chainbase::get_index_type<chain::key_value_object>::type kv_ind
 
 class statetrack_plugin_impl {
    public:
-        statetrack_plugin_impl() {
-            context = new zmq::context_t(1);
-            sender_socket = new zmq::socket_t(*context, ZMQ_PUSH);
-        }
-
-        ~statetrack_plugin_impl() {
-            delete sender_socket;
-            delete context;
-        }
-
         void send_zmq_msg(const string content);
 
         const chain::table_id_object& get_kvo_tio(const chainbase::database& db, const chain::key_value_object& kvo);
@@ -166,6 +156,9 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing statetrack plugin");
 
    try {
+       my->context = new zmq::context_t(1);
+       my->sender_socket = new zmq::socket_t(*my->context, ZMQ_PUSH);
+     
        my->socket_bind_str = options.at(SENDER_BIND).as<string>();
        if (my->socket_bind_str.empty()) {
           wlog("zmq-sender-bind not specified => eosio::statetrack_plugin disabled.");
@@ -234,6 +227,8 @@ void statetrack_plugin::plugin_shutdown() {
    if( ! my->socket_bind_str.empty() ) {
       my->sender_socket->disconnect(my->socket_bind_str);
       my->sender_socket->close();
+      delete my->sender_socket;
+      delete my->context;
    }
 }
 
