@@ -958,7 +958,7 @@ namespace cyberway { namespace chaindb {
             return _detail::get_pk_value(table, *itr) + 1;
         }
 
-        return 1;
+        return 0;
     }
 
     primary_key_t mongodb_driver::insert(const table_info& table, const primary_key_t pk, const variant& value) {
