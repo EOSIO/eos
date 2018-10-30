@@ -439,8 +439,8 @@ namespace eosio { namespace chain {
                                     3160007, "Invalid contract vm version" )
       FC_DECLARE_DERIVED_EXCEPTION( set_exact_code,          contract_exception,
                                     3160008, "Contract is already running this version of code" )
-      FC_DECLARE_DERIVED_EXCEPTION( wast_file_not_found,          contract_exception,
-                                    3160009, "No wast file found" )
+      FC_DECLARE_DERIVED_EXCEPTION( wasm_file_not_found,          contract_exception,
+                                    3160009, "No wasm file found" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_file_not_found,          contract_exception,
                                     3160010, "No abi file found" )
 
@@ -456,6 +456,10 @@ namespace eosio { namespace chain {
                                     3170004, "Producer schedule exception" )
       FC_DECLARE_DERIVED_EXCEPTION( producer_not_in_schedule,      producer_exception,
                                     3170006, "The producer is not part of current schedule" )
+      FC_DECLARE_DERIVED_EXCEPTION( snapshot_directory_not_found_exception,  producer_exception,
+                                    3170007, "The configured snapshot directory does not exist" )
+      FC_DECLARE_DERIVED_EXCEPTION( snapshot_exists_exception,  producer_exception,
+                                    3170008, "The requested snapshot already exists" )
 
    FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_exception,           chain_exception,
                                  3180000, "Reversible Blocks exception" )
@@ -510,4 +514,9 @@ namespace eosio { namespace chain {
                                     3230002, "Database API Exception" )
       FC_DECLARE_DERIVED_EXCEPTION( arithmetic_exception,   contract_api_exception,
                                     3230003, "Arithmetic Exception" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( snapshot_exception,    chain_exception,
+                                 3240000, "Snapshot exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( snapshot_validation_exception,   snapshot_exception,
+                                    3240001, "Snapshot Validation Exception" )
 } } // eosio::chain

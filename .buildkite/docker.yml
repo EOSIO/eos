@@ -1,0 +1,77 @@
+steps:
+  - command: |
+        echo "AUTHENTICATING GOOGLE SERVICE ACCOUNT" && \
+        gcloud --quiet auth activate-service-account b1-automation-svc@b1-automation-dev.iam.gserviceaccount.com --key-file=/etc/gcp-service-account.json && \
+        docker-credential-gcr configure-docker && \
+        echo "BUILDING BUILD IMAGE" && \
+        cd Docker/builder && \
+        docker build -t eosio/builder:latest -t eosio/builder:$BUILDKITE_COMMIT . --build-arg branch=$BUILDKITE_COMMIT && \
+        docker tag eosio/builder:$BUILDKITE_COMMIT gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
+        docker tag eosio/builder:latest gcr.io/b1-automation-dev/eosio/builder:latest && \
+        echo "PUSHING DOCKER IMAGES" && \
+        docker push gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
+        docker push gcr.io/b1-automation-dev/eosio/builder:latest && \
+        echo "TRASHING OLD IMAGES" && \
+        docker rmi eosio/builder:$BUILDKITE_COMMIT && \
+        docker rmi eosio/builder:latest && \
+        docker rmi gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
+        docker rmi gcr.io/b1-automation-dev/eosio/builder:latest
+    label: "Docker build builder"
+    agents:
+      role: "automation-docker-builder-fleet"
+      aws:instance-type: "m5d.2xlarge"
+    timeout: 300
+
+  - wait
+
+  - command: |
+        echo "AUTHENTICATING GOOGLE SERVICE ACCOUNT" && \
+        gcloud --quiet auth activate-service-account b1-automation-svc@b1-automation-dev.iam.gserviceaccount.com --key-file=/etc/gcp-service-account.json && \
+        docker-credential-gcr configure-docker && \
+        echo "BUILDING EOS IMAGE" && \
+        docker pull gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
+        cd Docker/dev && \
+        docker build -t eosio/eos:latest -t eosio/eos:$BUILDKITE_COMMIT . --build-arg branch=$BUILDKITE_BRANCH && \
+        docker tag eosio/eos:$BUILDKITE_COMMIT gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_COMMIT && \
+        docker tag eosio/eos:latest gcr.io/b1-automation-dev/eosio/eos:latest && \
+        echo "PUSHING DOCKER IMAGES" && \
+        docker push gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_COMMIT && \
+        docker push gcr.io/b1-automation-dev/eosio/eos:latest && \
+        echo "TRASHING OLD IMAGES" && \
+        docker rmi eosio/eos:$BUILDKITE_COMMIT && \
+        docker rmi eosio/eos:latest && \
+        docker rmi gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_COMMIT && \
+        docker rmi gcr.io/b1-automation-dev/eosio/eos:latest && \
+        docker rmi gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT
+    label: "Docker build eos"
+    agents:
+      role: "automation-docker-builder-fleet"
+      aws:instance-type: "m5d.2xlarge"
+    timeout: 300
+
+  - command: |
+        echo "AUTHENTICATING GOOGLE SERVICE ACCOUNT" && \
+        gcloud --quiet auth activate-service-account b1-automation-svc@b1-automation-dev.iam.gserviceaccount.com --key-file=/etc/gcp-service-account.json && \
+        docker-credential-gcr configure-docker && \
+        echo "BUILDING EOS DEV IMAGE" && \
+        docker pull gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
+        cd Docker/dev && \
+        docker build -t eosio/eos-dev:latest -t eosio/eos-dev:$BUILDKITE_COMMIT . --build-arg branch=$BUILDKITE_BRANCH && \
+        docker tag eosio/eos-dev:$BUILDKITE_COMMIT gcr.io/b1-automation-dev/eosio/eos-dev:$BUILDKITE_COMMIT && \
+        docker tag eosio/eos-dev:latest gcr.io/b1-automation-dev/eosio/eos-dev:latest && \
+        echo "PUSHING DOCKER IMAGES" && \
+        docker push gcr.io/b1-automation-dev/eosio/eos-dev:$BUILDKITE_COMMIT && \
+        docker push gcr.io/b1-automation-dev/eosio/eos-dev:latest && \
+        echo "TRASHING OLD IMAGES" && \
+        docker rmi eosio/eos-dev:$BUILDKITE_COMMIT && \
+        docker rmi eosio/eos-dev:latest && \
+        docker rmi gcr.io/b1-automation-dev/eosio/eos-dev:$BUILDKITE_COMMIT && \
+        docker rmi gcr.io/b1-automation-dev/eosio/eos-dev:latest && \
+        docker rmi gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT
+    label: "Docker build eos-dev"
+    agents:
+      role: "automation-docker-builder-fleet"
+      aws:instance-type: "m5d.2xlarge"
+    timeout: 300
+
+  - wait

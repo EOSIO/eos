@@ -14,11 +14,10 @@
 #include <eosio/chain/reversible_block_object.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
+#include <eosio/chain/snapshot.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
 
-#include <eosio/utilities/key_conversion.hpp>
-#include <eosio/utilities/common.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
 #include <boost/signals2/connection.hpp>
@@ -167,6 +166,7 @@ public:
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
    fc::microseconds                 abi_serializer_max_time_ms;
+   fc::optional<bfs::path>          snapshot_path;
 
 
    // retained references to channels for easy publication
@@ -220,6 +220,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the chain state database drops below this size (in MiB).")
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MiB) of the reversible blocks database")
          ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
+         ("chain-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
+          "Number of worker threads in controller thread pool")
          ("contracts-console", bpo::bool_switch()->default_value(false),
           "print contract's output to console")
          ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
@@ -285,6 +287,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("export-reversible-blocks", bpo::value<bfs::path>(),
            "export reversible block database in portable format into specified file and then exit")
          ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
+         ("snapshot", bpo::value<bfs::path>(), "File to read Snapshot State from")
          ;
 
 }
@@ -416,6 +419,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if( options.count( "reversible-blocks-db-guard-size-mb" ))
          my->chain_config->reversible_guard_size = options.at( "reversible-blocks-db-guard-size-mb" ).as<uint64_t>() * 1024 * 1024;
 
+      if( options.count( "chain-threads" )) {
+         my->chain_config->thread_pool_size = options.at( "chain-threads" ).as<uint16_t>();
+         EOS_ASSERT( my->chain_config->thread_pool_size > 0, plugin_config_exception,
+                     "chain-threads ${num} must be greater than 0", ("num", my->chain_config->thread_pool_size) );
+      }
+
       if( my->wasm_runtime )
          my->chain_config->wasm_runtime = *my->wasm_runtime;
 
@@ -531,44 +540,76 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          wlog("The --import-reversible-blocks option should be used by itself.");
       }
 
-      if( options.count( "genesis-json" )) {
-         EOS_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
-                     plugin_config_exception,
-                    "Genesis state can only be set on a fresh blockchain." );
+      if (options.count( "snapshot" )) {
+         my->snapshot_path = options.at( "snapshot" ).as<bfs::path>();
+         EOS_ASSERT( fc::exists(*my->snapshot_path), plugin_config_exception,
+                     "Cannot load snapshot, ${name} does not exist", ("name", my->snapshot_path->generic_string()) );
 
-         auto genesis_file = options.at( "genesis-json" ).as<bfs::path>();
-         if( genesis_file.is_relative()) {
-            genesis_file = bfs::current_path() / genesis_file;
+         // recover genesis information from the snapshot
+         auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
+         auto reader = std::make_shared<istream_snapshot_reader>(infile);
+         reader->validate();
+         reader->read_section<genesis_state>([this]( auto &section ){
+            section.read_row(my->chain_config->genesis);
+         });
+         infile.close();
+
+         EOS_ASSERT( options.count( "genesis-json" ) == 0 &&  options.count( "genesis-timestamp" ) == 0,
+                 plugin_config_exception,
+                 "--snapshot is incompatible with --genesis-json and --genesis-timestamp as the snapshot contains genesis information");
+
+         auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
+         EOS_ASSERT( !fc::exists(shared_mem_path),
+                 plugin_config_exception,
+                 "Snapshot can only be used to initialize an empty database." );
+
+         if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
+            auto log_genesis = block_log::extract_genesis_state(my->blocks_dir);
+            EOS_ASSERT( log_genesis.compute_chain_id() == my->chain_config->genesis.compute_chain_id(),
+                    plugin_config_exception,
+                    "Genesis information in blocks.log does not match genesis information in the snapshot");
          }
 
-         EOS_ASSERT( fc::is_regular_file( genesis_file ),
-                     plugin_config_exception,
-                    "Specified genesis file '${genesis}' does not exist.",
-                    ("genesis", genesis_file.generic_string()));
+      } else {
+         if( options.count( "genesis-json" )) {
+            EOS_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+                        plugin_config_exception,
+                       "Genesis state can only be set on a fresh blockchain." );
 
-         my->chain_config->genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
+            auto genesis_file = options.at( "genesis-json" ).as<bfs::path>();
+            if( genesis_file.is_relative()) {
+               genesis_file = bfs::current_path() / genesis_file;
+            }
 
-         ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
+            EOS_ASSERT( fc::is_regular_file( genesis_file ),
+                        plugin_config_exception,
+                       "Specified genesis file '${genesis}' does not exist.",
+                       ("genesis", genesis_file.generic_string()));
 
-         if( options.count( "genesis-timestamp" )) {
+            my->chain_config->genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
+
+            ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
+
+            if( options.count( "genesis-timestamp" )) {
+               my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
+                     options.at( "genesis-timestamp" ).as<string>());
+            }
+
+            wlog( "Starting up fresh blockchain with provided genesis state." );
+         } else if( options.count( "genesis-timestamp" )) {
+            EOS_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+                        plugin_config_exception,
+                       "Genesis state can only be set on a fresh blockchain." );
+
             my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
                   options.at( "genesis-timestamp" ).as<string>());
+
+            wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
+         } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
+            my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
+         } else {
+            wlog( "Starting up fresh blockchain with default genesis state." );
          }
-
-         wlog( "Starting up fresh blockchain with provided genesis state." );
-      } else if( options.count( "genesis-timestamp" )) {
-         EOS_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
-                     plugin_config_exception,
-                    "Genesis state can only be set on a fresh blockchain." );
-
-         my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
-               options.at( "genesis-timestamp" ).as<string>());
-
-         wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
-      } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
-         my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
-      } else {
-         wlog( "Starting up fresh blockchain with default genesis state." );
       }
 
       if ( options.count("read-mode") ) {
@@ -653,7 +694,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 void chain_plugin::plugin_startup()
 { try {
    try {
-      my->chain->startup();
+      if (my->snapshot_path) {
+         auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
+         auto reader = std::make_shared<istream_snapshot_reader>(infile);
+         my->chain->startup(reader);
+         infile.close();
+      } else {
+         my->chain->startup();
+      }
    } catch (const database_guard_exception& e) {
       log_guard_exception(e);
       // make sure to properly close the db
@@ -950,10 +998,19 @@ namespace chain_apis {
 
 const string read_only::KEYi64 = "i64";
 
+template<typename I>
+std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
+   static const char* digits = "0123456789abcdef";
+   std::string r(hlen, '0');
+   for(size_t i = 0, j = (hlen - 1) * 4 ; i < hlen; ++i, j -= 4)
+      r[i] = digits[(n>>j) & 0x0f];
+   return r;
+}
+
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
    const auto& rm = db.get_resource_limits_manager();
    return {
-      eosio::utilities::common::itoh(static_cast<uint32_t>(app().version())),
+      itoh(static_cast<uint32_t>(app().version())),
       db.get_chain_id(),
       db.fork_db_head_block_num(),
       db.last_irreversible_block_num(),
