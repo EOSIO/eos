@@ -144,8 +144,13 @@ void serialize_secondary_index_data(datastream<ST>& ds, const float128_t& obj) {
 
 template <typename ST>
 void serialize_secondary_index_data(datastream<ST>& ds, const eosio::chain::key256_t& obj) {
-   fc::raw::pack(ds, obj[0]);
-   fc::raw::pack(ds, obj[1]);
+   auto rev = [&](__uint128_t x) {
+      char* ch = reinterpret_cast<char*>(&x);
+      std::reverse(ch, ch + sizeof(x));
+      return x;
+   };
+   fc::raw::pack(ds, rev(obj[0]));
+   fc::raw::pack(ds, rev(obj[1]));
 }
 
 template <typename ST, typename T>

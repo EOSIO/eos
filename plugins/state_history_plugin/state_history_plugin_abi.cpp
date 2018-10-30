@@ -233,19 +233,13 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "contract_index256_key", "fields": [
-                { "type": "uint128", "name": "a0" },
-                { "type": "uint128", "name": "a1" }
-            ]
-        },
-        {
             "name": "contract_index256_v0", "fields": [
                 { "type": "name", "name": "code" },
                 { "type": "name", "name": "scope" },
                 { "type": "name", "name": "table" },
                 { "type": "uint64", "name": "primary_key" },
                 { "type": "name", "name": "payer" },
-                { "type": "contract_index256_key", "name": "secondary_key" }
+                { "type": "checksum256", "name": "secondary_key" }
             ]
         },
         {
