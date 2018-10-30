@@ -39,7 +39,7 @@ const static uint64_t owner_name  = N(owner);
 const static uint64_t eosio_any_name = N(eosio.any);
 const static uint64_t eosio_code_name = N(eosio.code);
 
-const static int      block_interval_ms = 500;
+const static int      block_interval_ms = 3000;
 const static int      block_interval_us = block_interval_ms*1000;
 const static uint64_t block_timestamp_epoch = 946684800000ll; // epoch is year 2000.
 
@@ -68,7 +68,7 @@ const static uint32_t   default_context_free_discount_net_usage_num  = 20; // TO
 const static uint32_t   default_context_free_discount_net_usage_den  = 100;
 const static uint32_t   transaction_id_net_usage                     = 32; // 32 bytes for the size of a transaction id
 
-const static uint32_t   default_max_block_cpu_usage                 = 200'000; /// max block cpu usage in microseconds
+const static uint32_t   default_max_block_cpu_usage                 = 2'500'000; /// max block cpu usage in microseconds
 const static uint32_t   default_target_block_cpu_usage_pct          = 10 * percent_1;
 const static uint32_t   default_max_transaction_cpu_usage           = 3*default_max_block_cpu_usage/4; /// max trx cpu usage in microseconds
 const static uint32_t   default_min_transaction_cpu_usage           = 100; /// min trx cpu usage in microseconds (10000 TPS equiv)
@@ -99,7 +99,7 @@ const static uint32_t   default_abi_serializer_max_time_ms = 15*1000; ///< defau
 /**
  *  The number of sequential blocks produced by a single producer
  */
-const static int producer_repetitions = 12;
+const static int producer_repetitions = 3;
 const static int max_producers = 125;
 
 const static size_t maximum_tracked_dpos_confirmations = 1024;     ///<
