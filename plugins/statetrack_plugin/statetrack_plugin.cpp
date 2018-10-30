@@ -203,11 +203,11 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
           my->send_zmq_msg(data);
       };
      
-      kv_index.applied_squash = [&](const int64_t revision) {
+      /*kv_index.applied_squash = [&](const int64_t revision) {
           fc::string data = fc::json::to_string(my->get_db_rev(revision, op_type_enum::SQUASH));
           ilog("STATETRACK squash: ${data}", ("data", data));
           my->send_zmq_msg(data);
-      };
+      };*/
      
       kv_index.applied_commit = [&](const int64_t revision) {
           fc::string data = fc::json::to_string(my->get_db_rev(revision, op_type_enum::COMMIT));
@@ -227,9 +227,9 @@ void statetrack_plugin::plugin_shutdown() {
    if( ! my->socket_bind_str.empty() ) {
       my->sender_socket->disconnect(my->socket_bind_str);
       my->sender_socket->close();
-      delete my->sender_socket;
-      delete my->context;
    }
+   delete my->sender_socket;
+   delete my->context;
 }
 
 }
