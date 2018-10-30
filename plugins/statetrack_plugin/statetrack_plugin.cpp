@@ -156,17 +156,17 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing statetrack plugin");
 
    try {
-       my->context = new zmq::context_t(1);
-       my->sender_socket = new zmq::socket_t(*my->context, ZMQ_PUSH);
+      my->socket_bind_str = options.at(SENDER_BIND).as<string>();
+      if (my->socket_bind_str.empty()) {
+         wlog("zmq-sender-bind not specified => eosio::statetrack_plugin disabled.");
+         return;
+      }
      
-       my->socket_bind_str = options.at(SENDER_BIND).as<string>();
-       if (my->socket_bind_str.empty()) {
-          wlog("zmq-sender-bind not specified => eosio::statetrack_plugin disabled.");
-          return;
-       }
+      my->context = new zmq::context_t(1);
+      my->sender_socket = new zmq::socket_t(*my->context, ZMQ_PUSH);
       
       ilog("Bind to ZMQ PUSH socket ${u}", ("u", my->socket_bind_str));
-      my->sender_socket->bind(my->socket_bind_str);
+      my->sender_socket->connect(my->socket_bind_str);
 
       ilog("Bind to ZMQ PUSH socket successful");
       
@@ -227,9 +227,9 @@ void statetrack_plugin::plugin_shutdown() {
    if( ! my->socket_bind_str.empty() ) {
       my->sender_socket->disconnect(my->socket_bind_str);
       my->sender_socket->close();
+      delete my->sender_socket;
+      delete my->context;
    }
-   delete my->sender_socket;
-   delete my->context;
 }
 
 }
