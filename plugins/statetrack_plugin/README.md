@@ -10,9 +10,14 @@ plugin = eosio::statetrack_plugin -- enables the state track plugin
 
 st-zmq-sender-bind = ENDPOINT -- specifies the PUSH socket connect endpoint. Default value: tcp://127.0.0.1:3000.
 
-### adding library on Mac
+### adding ZMQ library on Mac
 
-### adding library on Ubuntu
+```
+brew tap jmuncaster/homebrew-header-only
+brew install jmuncaster/header-only/cppzmq
+```
+
+### adding ZMQ library on Ubuntu
 
 ```
 apt-get install -y pkg-config libzmq5-dev
@@ -20,3 +25,7 @@ apt-get install -y pkg-config libzmq5-dev
 
 ### Building 
 
+```
+./eosio_build.sh
+./eosio_install.sh
+```
