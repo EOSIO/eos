@@ -71,7 +71,7 @@ namespace cyberway { namespace chaindb {
         chaindb_controller(const microseconds& max_abi_time, chaindb_type, string);
         ~chaindb_controller();
 
-        void drop_db();
+        void drop_db(const string& name = "");
 
         bool has_abi(const account_name&);
         void add_abi(const account_name&, abi_def);
@@ -114,6 +114,9 @@ namespace cyberway { namespace chaindb {
         cursor_t      insert(const table_request&, cache_item_ptr, variant, size_t);
         primary_key_t update(const table_request&, primary_key_t, variant, size_t);
         primary_key_t remove(const table_request&, primary_key_t);
+
+        variant value_by_key(const account_name code, const account_name scope, table_name_t tbl, primary_key_t pk);
+        variant value_at_cursor(const cursor_t, const index_request&, primary_key_t);
 
     private:
         struct controller_impl_;

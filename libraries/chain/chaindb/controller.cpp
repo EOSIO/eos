@@ -386,8 +386,8 @@ namespace cyberway { namespace chaindb {
 
         ~controller_impl_() = default;
 
-        void drop_db() {
-            driver->drop_db();
+        void drop_db(const string& name) {
+            driver->drop_db(name);
         }
 
         void set_abi(const account_name& code, abi_def abi) {
@@ -530,7 +530,7 @@ namespace cyberway { namespace chaindb {
             }
 
             info.index = &_detail::get_pk_index(table);
-            
+
             auto pk_key_value = _detail::get_pk_value(table, pk);
 
             return driver->opt_find_by_pk(info, pk, std::move(pk_key_value));
@@ -612,6 +612,25 @@ namespace cyberway { namespace chaindb {
                 ("dpk", deleted_pk)("pk", pk)("table", get_full_table_name(table)));
 
             return deleted_pk;
+        }
+
+        variant value_by_key(
+            const account_name code,
+            const account_name scope,
+            table_name_t tbl,
+            primary_key_t pk
+        ) {
+            const auto& abi = abi_map_[code];
+            table_info info(code, scope);
+            info.table = abi.find_table(tbl);
+            info.abi = &abi;
+            info.pk_order = &_detail::get_pk_order(info);
+            return driver->value(info, pk);
+        }
+
+        variant value_at_cursor(cursor_t cursor, const index_request& request, primary_key_t pk) {
+            auto idx = get_index(request);
+            return driver->value({cursor, idx, pk});
         }
 
     private:
@@ -763,8 +782,8 @@ namespace cyberway { namespace chaindb {
 
     chaindb_controller::~chaindb_controller() = default;
 
-    void chaindb_controller::drop_db() {
-        impl_->drop_db();
+    void chaindb_controller::drop_db(const string& name) {
+        impl_->drop_db(name);
     }
 
     void chaindb_controller::add_abi(const account_name& code, abi_def abi) {
@@ -899,6 +918,19 @@ namespace cyberway { namespace chaindb {
 
     primary_key_t chaindb_controller::remove(const table_request& request, primary_key_t pk) {
         return impl_->remove(request, pk);
+    }
+
+    variant chaindb_controller::value_by_key(
+        const account_name code,
+        const account_name scope,
+        const code_type tbl,
+        primary_key_t pk
+    ) {
+        return impl_->value_by_key(code, scope, tbl, pk);
+    }
+
+    variant chaindb_controller::value_at_cursor(const cursor_t cursor, const index_request& idx, primary_key_t pk) {
+        return impl_->value_at_cursor(cursor, idx, pk);
     }
 
 } } // namespace cyberway::chaindb
