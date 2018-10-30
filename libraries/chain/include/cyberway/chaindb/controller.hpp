@@ -71,6 +71,8 @@ namespace cyberway { namespace chaindb {
         chaindb_controller(const microseconds& max_abi_time, chaindb_type, string);
         ~chaindb_controller();
 
+        void drop_db();
+
         bool has_abi(const account_name&);
         void add_abi(const account_name&, abi_def);
         void remove_abi(const account_name&);
@@ -82,6 +84,9 @@ namespace cyberway { namespace chaindb {
         void undo();
         void undo_all();
         void commit(int64_t revision);
+
+        int64_t revision() const;
+        void set_revision(uint64_t revision);
 
         cursor_t lower_bound(const index_request&, const char* key, size_t);
         cursor_t upper_bound(const index_request&, const char* key, size_t);

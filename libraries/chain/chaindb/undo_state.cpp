@@ -209,7 +209,7 @@ namespace cyberway { namespace chaindb {
         { }
 
         void set_revision(const int64_t value) {
-            CYBERWAY_SESSION_ASSERT(!tables.empty(), "Cannot set revision while there is an existing undo stack.");
+            CYBERWAY_SESSION_ASSERT(tables.empty(), "Cannot set revision while there is an existing undo stack.");
             revision = value;
         }
 
