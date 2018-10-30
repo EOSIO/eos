@@ -386,6 +386,10 @@ namespace cyberway { namespace chaindb {
 
         ~controller_impl_() = default;
 
+        void drop_db() {
+            driver->drop_db();
+        }
+
         void set_abi(const account_name& code, abi_def abi) {
             time_point deadline = time_point::now() + max_abi_time;
             abi_info info(code, std::move(abi), deadline, max_abi_time);
@@ -759,6 +763,10 @@ namespace cyberway { namespace chaindb {
 
     chaindb_controller::~chaindb_controller() = default;
 
+    void chaindb_controller::drop_db() {
+        impl_->drop_db();
+    }
+
     void chaindb_controller::add_abi(const account_name& code, abi_def abi) {
         impl_->set_abi(code, std::move(abi));
     }
@@ -785,6 +793,13 @@ namespace cyberway { namespace chaindb {
 
     void chaindb_controller::commit(const int64_t revision) {
         return impl_->undo->commit(revision);
+    }
+
+    int64_t chaindb_controller::revision() const {
+        return impl_->undo->revision();
+    }
+    void chaindb_controller::set_revision(uint64_t revision) {
+        return impl_->undo->set_revision(revision);
     }
 
     void chaindb_controller::close(const cursor_request& request) {

@@ -845,6 +845,11 @@ namespace cyberway { namespace chaindb {
 
     mongodb_driver::~mongodb_driver() = default;
 
+    void mongodb_driver::drop_db() {
+        // TODO: maybe reset member vars and re-init, but now drop_db() usage is limited, looks like it's unneeded
+        impl_->mongo_conn_[get_system_code_name()].drop();
+    }
+
     const cursor_info& mongodb_driver::clone(const cursor_request& request) {
         return impl_->clone_cursor(request);
     }

@@ -22,6 +22,8 @@ namespace cyberway { namespace chaindb {
     public:
         virtual ~driver_interface();
 
+        virtual void drop_db() = 0;
+
         virtual const cursor_info& clone(const cursor_request&) = 0;
 
         virtual void close(const cursor_request&) = 0;

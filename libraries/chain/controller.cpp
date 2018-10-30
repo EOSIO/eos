@@ -283,6 +283,11 @@ struct controller_impl {
       emit( self.irreversible_block, s );
    }
 
+   void set_revision(uint64_t revision) {
+      db.set_revision(revision);
+      chaindb.set_revision(revision);
+   }
+
    void init() {
 
       /**
@@ -313,7 +318,7 @@ struct controller_impl {
 
             // the irreverible log is played without undo sessions enabled, so we need to sync the
             // revision ordinal to the appropriate expected value here.
-            db.set_revision(head->block_num);
+            set_revision(head->block_num);
 
             int rev = 0;
             while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
@@ -347,19 +352,18 @@ struct controller_impl {
                     ("blog_head",end->block_num())("head",head->block_num)  );
       }
 
-      EOS_ASSERT( db.revision() >= head->block_num, fork_database_exception, "fork database is inconsistent with shared memory",
-                 ("db",db.revision())("head",head->block_num) );
+      EOS_ASSERT(chaindb.revision() >= head->block_num, fork_database_exception, "fork database is inconsistent with shared memory",
+                 ("db",chaindb.revision())("head",head->block_num));
 
-      if( db.revision() > head->block_num ) {
+      if (chaindb.revision() > head->block_num) {
          wlog( "warning: database revision (${db}) is greater than head block number (${head}), "
                "attempting to undo pending changes",
-               ("db",db.revision())("head",head->block_num) );
+               ("db",chaindb.revision())("head",head->block_num) );
       }
-      while( db.revision() > head->block_num ) {
+      while (chaindb.revision() > head->block_num) {
          db.undo();
          chaindb.undo();
       }
-
    }
 
    ~controller_impl() {
@@ -573,6 +577,7 @@ struct controller_impl {
     */
    void initialize_fork_db() {
       wlog( " Initializing new blockchain with genesis state                  " );
+      chaindb.drop_db();
       producer_schedule_type initial_schedule{ 0, {{config::system_account_name, conf.genesis.initial_key}} };
 
       block_header_state genheader;
@@ -587,7 +592,7 @@ struct controller_impl {
       head = std::make_shared<block_state>( genheader );
       head->block = std::make_shared<signed_block>(genheader.header);
       fork_db.set( head );
-      db.set_revision( head->block_num );
+      set_revision(head->block_num);
 
       initialize_database();
    }
@@ -1086,8 +1091,8 @@ struct controller_impl {
       });
 
       if (!self.skip_db_sessions(s)) {
-         EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
-                     ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
+         EOS_ASSERT(chaindb.revision() == head->block_num, database_exception, "chaibdb revision is not on par with head block",
+                     ("chaindb.revision()", chaindb.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
          pending.emplace(maybe_session(db, chaindb));
       } else {
@@ -1253,7 +1258,7 @@ struct controller_impl {
          // on replay irreversible is not emitted by fork database, so emit it explicitly here
          if( s == controller::block_status::irreversible )
             emit( self.irreversible_block, new_header_state );
-            
+
       } FC_LOG_AND_RETHROW( )
    }
 
