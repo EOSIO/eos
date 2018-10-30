@@ -34,7 +34,6 @@ namespace eosio {
  *
  * each summary:
  *    uint64_t       position of entry in *.log
- *    block_id_type  block_id
  *
  * state payload:
  *    uint32_t    size of deltas
@@ -49,8 +48,7 @@ struct history_log_header {
 };
 
 struct history_summary {
-   uint64_t             pos = 0;
-   chain::block_id_type block_id;
+   uint64_t pos = 0;
 };
 
 class history_log {
@@ -105,7 +103,7 @@ class history_log {
       log.write((char*)&pos, sizeof(pos));
 
       index.seekg(0, std::ios_base::end);
-      history_summary summary{.pos = pos, .block_id = header.block_id};
+      history_summary summary{.pos = pos};
       index.write((char*)&summary, sizeof(summary));
       if (_begin_block == _end_block)
          _begin_block = header.block_num;
@@ -123,12 +121,9 @@ class history_log {
    }
 
    chain::block_id_type get_block_id(uint32_t block_num) {
-      EOS_ASSERT(block_num >= _begin_block && block_num < _end_block, chain::plugin_exception,
-                 "read non-existing block in ${name}.log", ("name", name));
-      history_summary summary;
-      index.seekg((block_num - _begin_block) * sizeof(summary));
-      index.read((char*)&summary, sizeof(summary));
-      return summary.block_id;
+      history_log_header header;
+      get_entry(block_num, header);
+      return header.block_id;
    }
 
  private:
@@ -232,7 +227,7 @@ class history_log {
          //      ("b", header.block_num)("pos", pos)("end", suffix_pos + sizeof(suffix))("suffix", suffix)("fs", size));
          EOS_ASSERT(suffix == pos, chain::plugin_exception, "corrupt ${name}.log (8)", ("name", name));
 
-         history_summary summary{.pos = pos, .block_id = header.block_id};
+         history_summary summary{.pos = pos};
          index.write((char*)&summary, sizeof(summary));
          pos = suffix_pos + sizeof(suffix);
          if (!(++num_found % 10000)) {

@@ -372,8 +372,6 @@ operator<<(datastream<ST>&                                                      
                                                              obj.obj.average_block_net_usage)));
    fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::resource_limits::usage_accumulator>(
                                                              obj.obj.average_block_cpu_usage)));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.pending_net_usage));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.pending_cpu_usage));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.total_net_weight));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.total_cpu_weight));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.total_ram_bytes));

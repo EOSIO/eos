@@ -61,7 +61,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    bool                                                 stopping = false;
    fc::optional<scoped_connection>                      applied_transaction_connection;
    fc::optional<scoped_connection>                      accepted_block_connection;
-   fc::optional<scoped_connection>                      irreversible_block_connection;
    string                                               endpoint_address = "0.0.0.0";
    uint16_t                                             endpoint_port    = 4321;
    std::unique_ptr<tcp::acceptor>                       acceptor;
@@ -370,12 +369,6 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
    }
 
-   void on_irreversible_block() {
-      // todo: get irreversible from block_state in on_accepted_block instead
-      for (auto& s : sessions)
-         s.second->send_get_blocks(true);
-   }
-
    void store_traces(const block_state_ptr& block_state) {
       if (!trace_log)
          return;
@@ -389,10 +382,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          else
             id = r.trx.get<packed_transaction>().id();
          auto it = cached_traces.find(id);
-         if (it == cached_traces.end() || !it->second->receipt) {
-            ilog("missing trace for transaction ${id}", ("id", id));
-            continue;
-         }
+         EOS_ASSERT(it != cached_traces.end() && it->second->receipt, plugin_exception,
+                    "missing trace for transaction ${id}", ("id", id));
          traces.push_back(it->second);
       }
       cached_traces.clear();
@@ -536,8 +527,6 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
           chain.applied_transaction.connect([&](const transaction_trace_ptr& p) { my->on_applied_transaction(p); }));
       my->accepted_block_connection.emplace(
           chain.accepted_block.connect([&](const block_state_ptr& p) { my->on_accepted_block(p); }));
-      my->irreversible_block_connection.emplace(
-          chain.irreversible_block.connect([&](const block_state_ptr&) { my->on_irreversible_block(); }));
 
       auto                    dir_option = options.at("state-history-dir").as<bfs::path>();
       boost::filesystem::path state_history_dir;
@@ -574,7 +563,6 @@ void state_history_plugin::plugin_startup() { my->listen(); }
 void state_history_plugin::plugin_shutdown() {
    my->applied_transaction_connection.reset();
    my->accepted_block_connection.reset();
-   my->irreversible_block_connection.reset();
    while (!my->sessions.empty())
       my->sessions.begin()->second->close();
    my->stopping = true;
