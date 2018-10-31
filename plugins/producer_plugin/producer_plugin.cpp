@@ -298,7 +298,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto existing = chain.fetch_block_by_id( id );
          if( existing ) { return; }
 
-         ilog("received incoming block ${id}", ("id", id));
+         // start processing of block
+         auto bsf = chain.create_block_state_future( block );
 
          // abort the pending block
          chain.abort_block();
@@ -311,7 +312,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          // push the new block
          bool except = false;
          try {
-            chain.push_block(block);
+            chain.push_block( bsf );
          } catch ( const guard_exception& e ) {
             app().get_plugin<chain_plugin>().handle_guard_exception(e);
             return;
