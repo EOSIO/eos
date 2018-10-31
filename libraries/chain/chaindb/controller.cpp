@@ -203,8 +203,10 @@ namespace cyberway { namespace chaindb {
 
                         --size;
                         if (!size) {
-                            order.type = src_field.type;
-                            dst_struct->fields.push_back(src_field);
+                            auto field = src_field;
+                            field.type = serializer_.resolve_type(src_field.type);
+                            order.type = field.type;
+                            dst_struct->fields.emplace_back(std::move(field));
                         } else {
                             src_struct = &get_struct(src_field.type);
 
