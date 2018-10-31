@@ -176,7 +176,6 @@ namespace eosio { namespace chain {
     result.id                        = result.header.id();
 
     // ASSUMPTION FROM controller_impl::apply_block = all untrusted blocks will have their signatures pre-validated here
-    // unless light validation in which case it is verified after applying transactions
     if( !skip_validate_signee ) {
        result.verify_signee( result.signee() );
     }
