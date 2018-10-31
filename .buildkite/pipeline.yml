@@ -23,11 +23,5 @@ steps:
 
   - wait
 
-  - label: "fake test %n"
-    command: "echo \"TODO Testing... done\""
-    parallelism: 10
-
-  - wait
-
   - label: ":slack:"
     command: ".buildkite/steps/slack.sh \"Pipeline complete successfully: ${BUILDKITE_MESSAGE}\" \"good\""
