@@ -431,7 +431,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       auto pack_row          = [&](auto& row) { return fc::raw::pack(make_history_serial_wrapper(db, row)); };
       auto pack_contract_row = [&](auto& row) {
-         return fc::raw::pack(make_history_context_wrapper(get_table_id(row.t_id._id), row));
+         return fc::raw::pack(make_history_context_wrapper(db, get_table_id(row.t_id._id), row));
       };
 
       auto process_table = [&](auto* name, auto& index, auto& pack_row) {
