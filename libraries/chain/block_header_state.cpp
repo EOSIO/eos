@@ -58,8 +58,6 @@ namespace eosio { namespace chain {
     result.blockroot_merkle = blockroot_merkle;
     result.blockroot_merkle.append( id );
 
-    auto block_mroot = result.blockroot_merkle.get_root();
-
     result.active_schedule                       = active_schedule;
     result.pending_schedule                      = pending_schedule;
     result.dpos_proposed_irreversible_blocknum   = dpos_proposed_irreversible_blocknum;
@@ -239,13 +237,6 @@ namespace eosio { namespace chain {
   void block_header_state::verify_signee( const public_key_type& signee )const {
      EOS_ASSERT( block_signing_key == signee, wrong_signing_key, "block not signed by expected key",
                  ("block_signing_key", block_signing_key)( "signee", signee ) );
-  }
-
-  void block_header_state::verify_signee_future() {
-     EOS_ASSERT( block_signing_key_future.valid(), wrong_signing_key, "No future setup for signee" );
-     auto signee = block_signing_key_future.get();
-     verify_signee( signee );
-     block_signing_key_future = decltype( block_signing_key_future ){};
   }
 
   void block_header_state::add_confirmation( const header_confirmation& conf ) {
