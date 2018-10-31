@@ -6,7 +6,7 @@ services:
     image: mongo
     restart: always
     volumes:
-      - cyberway-mongodb_data:/data/db
+      - cyberway-mongodb-data:/data/db
     ports:
       - 127.0.0.1:27018:27017
     networks:
@@ -24,7 +24,7 @@ services:
     expose:
       - "8888"
     volumes:
-      - cyberway-nodeos-data-volume:/opt/cyberway/bin/data-dir
+      - cyberway-nodeos-data:/opt/cyberway/bin/data-dir
       - /etc/cyberway/config.ini:/opt/cyberway/bin/data-dir/config.ini
     cap_add:
       - IPC_LOCK
@@ -39,17 +39,17 @@ services:
     links:
       - nodeosd
     volumes:
-      - cyberway-keosd-data-volume:/opt/cyberway/bin/data-dir
+      - cyberway-keosd-data:/opt/cyberway/bin/data-dir
     stop_grace_period: 10m
     networks:
       - cyberway-net
 
 volumes:
- cyberway-mongodb_data:
+ cyberway-mongodb-data:
    external: true
- cyberway-nodeos-data-volume:
+ cyberway-nodeos-data:
    external: true
- cyberway-keosd-data-volume:
+ cyberway-keosd-data:
    external: true
 
 networks:
