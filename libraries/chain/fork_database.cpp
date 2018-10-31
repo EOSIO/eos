@@ -124,6 +124,9 @@ namespace eosio { namespace chain {
    }
 
    block_state_ptr fork_database::add( block_state_ptr n ) {
+      EOS_ASSERT( n, fork_database_exception, "attempt to add null block state" );
+      EOS_ASSERT( my->head, fork_db_block_not_found, "no head block set" );
+
       auto inserted = my->index.insert(n);
       EOS_ASSERT( inserted.second, fork_database_exception, "duplicate block added?" );
 
