@@ -866,6 +866,17 @@ namespace cyberway { namespace chaindb {
             mongodb_cursor new_cursor(id, std::move(index), std::move(db_table));
             return add_cursor(itr, code, std::move(new_cursor));
         }
+
+        void drop_db() {
+            code_map_.clear();
+
+            auto db_list = mongo_conn_.list_databases();
+            for (auto& db: db_list) {
+                auto db_name = db["name"].get_utf8().value;
+                if (!db_name.starts_with(get_system_code_name())) continue;
+                mongo_conn_.database(db_name).drop();
+            }
+        }
     };
 
     mongodb_driver::mongodb_driver(const std::string& p)
@@ -874,9 +885,8 @@ namespace cyberway { namespace chaindb {
 
     mongodb_driver::~mongodb_driver() = default;
 
-    void mongodb_driver::drop_db(const string& name) {
-        // TODO: maybe reset member vars and re-init, but now drop_db() usage is limited, looks like it's unneeded
-        impl_->mongo_conn_[name.empty() ? get_system_code_name() : name].drop();
+    void mongodb_driver::drop_db() {
+        impl_->drop_db();
     }
 
     const cursor_info& mongodb_driver::clone(const cursor_request& request) {

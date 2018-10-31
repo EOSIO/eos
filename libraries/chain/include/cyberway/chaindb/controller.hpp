@@ -71,7 +71,7 @@ namespace cyberway { namespace chaindb {
         chaindb_controller(const microseconds& max_abi_time, chaindb_type, string);
         ~chaindb_controller();
 
-        void drop_db(const string& name = "");
+        void drop_db();
 
         bool has_abi(const account_name&);
         void add_abi(const account_name&, abi_def);

@@ -15,7 +15,8 @@ namespace cyberway { namespace chaindb {
 
     inline string get_code_name(const account_name& code) {
         if (!code.empty()) {
-            string str = code.to_string();
+            string str;
+            str.append(get_system_code_name()).append(code.to_string());
             std::replace( str.begin(), str.end(), '.', '-');
             return str;
         }
@@ -34,7 +35,7 @@ namespace cyberway { namespace chaindb {
     ///----
 
     inline string get_scope_name(const account_name& scope) {
-        return get_code_name(scope);
+        return scope.to_string();
     }
 
     template <typename Info>
