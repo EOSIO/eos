@@ -23,5 +23,11 @@ steps:
 
   - wait
 
+  - label: ":cop::skin-tone-2: deploy check"
+    command: ".buildkite/steps/deploy-test.sh"
+    timeout: 20
+
+  - wait
+
   - label: ":slack:"
     command: ".buildkite/steps/slack.sh \"Pipeline complete successfully: ${BUILDKITE_MESSAGE}\" \"good\""
