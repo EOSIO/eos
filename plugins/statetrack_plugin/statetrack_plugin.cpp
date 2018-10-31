@@ -217,7 +217,7 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
 
    try {
      if( options.count( "st-filter-on" )) {
-        auto fo = options.at( "filter-on" ).as<vector<string>>();
+        auto fo = options.at( "st-filter-on" ).as<vector<string>>();
         for( auto& s : fo ) {
            std::vector<std::string> v;
            boost::split( v, s, boost::is_any_of( ":" ));
@@ -228,7 +228,7 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
      }
      
      if( options.count( "st-filter-out" )) {
-        auto fo = options.at( "filter-out" ).as<vector<string>>();
+        auto fo = options.at( "st-filter-out" ).as<vector<string>>();
         for( auto& s : fo ) {
            std::vector<std::string> v;
            boost::split( v, s, boost::is_any_of( ":" ));
