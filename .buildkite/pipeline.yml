@@ -43,5 +43,5 @@ steps:
   - wait
 
   - command:
-    - "echo \"TODO: Send notification to Slack channel\""
+    - "curl -X POST -H 'Content-type: application/json' --data '{"text":":thumbsup: Cyberway: pipeline complete successfully"}' ${WEBHOOK}"
     label: ":slack:"
