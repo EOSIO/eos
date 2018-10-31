@@ -2,13 +2,14 @@
 set -euo pipefail
 
 SLACK_MESSAGE=${1:-"No message"}
+SLACK_COLOR=${2:-"bad"}
 
 curl -X POST -H 'Content-type: application/json' \
 --data "{\"text\":\"${SLACK_MESSAGE}\", \
     \"attachments\":[ \
         { \
              \"fallback\":\"${SLACK_MESSAGE}\", \
-             \"color\":\"good\", \
+             \"color\":\"${SLACK_COLOR}\", \
              \"fields\":[ \
                 { \
                    \"title\":\"Branch\", \
