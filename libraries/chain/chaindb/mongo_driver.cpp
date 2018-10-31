@@ -815,8 +815,8 @@ namespace cyberway { namespace chaindb {
             auto itr = code_map_.find(code);
             if (code_map_.end() == itr) return;
 
-            CYBERWAY_ASSERT(!itr->second.has_changes(), driver_has_unapplied_changes_exception,
-                "Chaindb has unapplied changes for the db ${db}", ("db", get_code_name(code)));
+//            CYBERWAY_ASSERT(!itr->second.has_changes(), driver_has_unapplied_changes_exception,
+//                "Chaindb has unapplied changes for the db ${db}", ("db", get_code_name(code)));
             code_map_.erase(itr);
         }
 
