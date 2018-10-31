@@ -1,10 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-docker images
-
 IMAGETAG=${BUILDKITE_BRANCH:-master}
 BRANCHNAME=${BUILDKITE_BRANCH:-master}
+
+docker images
 
 docker login -u=$DHUBU -p=$DHUBP
 docker push cyberway/cyberway:${IMAGETAG}
