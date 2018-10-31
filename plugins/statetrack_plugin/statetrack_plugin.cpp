@@ -14,15 +14,26 @@ namespace {
 namespace eosio {
 
 static appbase::abstract_plugin& _statetrack_plugin = app().register_plugin<statetrack_plugin>();
-
-using namespace eosio;
-
-
 typedef typename chainbase::get_index_type<chain::key_value_object>::type kv_index_type;
+  
+struct filter_entry {
+    name code;
+    name scope;
+    name table;
+
+    std::tuple<name, name, name> key() const {
+       return std::make_tuple(code, scope, table);
+    }
+
+    friend bool operator<( const filter_entry& a, const filter_entry& b ) {
+       return a.key() < b.key();
+    }
+ };
 
 class statetrack_plugin_impl {
    public:
         void send_zmq_msg(const string content);
+        bool filter(const chain::table_id_object& tio);
 
         const chain::table_id_object& get_kvo_tio(const chainbase::database& db, const chain::key_value_object& kvo);
         const chain::account_object& get_tio_co(const chainbase::database& db, const chain::table_id_object& tio);
@@ -37,20 +48,27 @@ class statetrack_plugin_impl {
         }
 
         static fc::string scope_sym_to_string(uint64_t sym_code) {
-            vector<char> v;
-            for( int i = 0; i < 7; ++i ) {
-                char c = (char)(sym_code & 0xff);
-                if( !c ) break;
-                v.emplace_back(c);
-                sym_code >>= 8;
+            fc::string scope = sym_code.to_string();
+            if(scope.length() > 0 && scope[0] == '.') {
+                vector<char> v;
+                for( int i = 0; i < 7; ++i ) {
+                    char c = (char)(sym_code & 0xff);
+                    if( !c ) break;
+                    v.emplace_back(c);
+                    sym_code >>= 8;
+                }
+                return fc::string(v.begin(),v.end());
             }
-            return fc::string(v.begin(),v.end());
+            return scope;
         }
 
         fc::string socket_bind_str;
         zmq::context_t* context;
         zmq::socket_t* sender_socket;
-        fc::microseconds abi_serializer_max_time;  
+  
+        std::vector<filter_entry> filter_on;
+        std::vector<filter_entry> filter_out;
+        fc::microseconds abi_serializer_max_time;
     private:
         bool shorten_abi_errors = true;
 };
@@ -61,6 +79,40 @@ void statetrack_plugin_impl::send_zmq_msg(const fc::string content) {
   zmq::message_t message(content.length());
   memcpy(message.data(), content.c_str(), content.length());
   sender_socket->send(message);
+}
+  
+bool statetrack_plugin_impl::filter(const chain::table_id_object& tio) {
+  auto code = tio.code;
+  auto scope = scope_sym_to_string(tio.scope);
+  auto table = tio.table;
+  
+  if(filter_on.size() > 0) {
+    bool pass_on = false;
+    if (filter_on.find({ code, 0, 0 }) != filter_on.end()) {
+      pass_on = true;
+    }
+    if (filter_on.find({ code, scope, 0 }) != filter_on.end()) {
+      pass_on = true;
+    }
+    if (filter_on.find({ code, scope, table }) != filter_on.end()) {
+      pass_on = true;
+    }
+    if (!pass_on) {  return false;  }
+  }
+
+  if(filter_out.size() > 0) {
+    if (filter_out.find({ code, 0, 0 }) != filter_out.end()) {
+      return false;
+    }
+    if (filter_out.find({ code, scope, 0 }) != filter_out.end()) {
+      return false;
+    }
+    if (filter_out.find({ code, scope, table }) != filter_out.end()) {
+      return false;
+    }
+  }
+
+  return true;
 }
    
 const chain::table_id_object& statetrack_plugin_impl::get_kvo_tio(const chainbase::database& db, const chain::key_value_object& kvo) {
@@ -106,16 +158,7 @@ db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const cha
     op.id = kvo.id;
     op.op_type = op_type;
     op.code = tio.code;
-    
-    fc::string scope = tio.scope.to_string();
-
-    if(scope.length() > 0 && scope[0] == '.') {
-        op.scope = scope_sym_to_string(tio.scope);
-    }
-    else {
-        op.scope = scope;
-    }
-
+    op.scope = scope_sym_to_string(tio.scope);
     op.table = tio.table;
 
     if(op_type == op_type_enum::CREATE || 
@@ -156,6 +199,28 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing statetrack plugin");
 
    try {
+     if( options.count( "st-filter-on" )) {
+        auto fo = options.at( "filter-on" ).as<vector<string>>();
+        for( auto& s : fo ) {
+           std::vector<std::string> v;
+           boost::split( v, s, boost::is_any_of( ":" ));
+           EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s", s));
+           filter_entry fe{v[0], v[1], v[2]};
+           my->filter_on.insert( fe );
+        }
+     }
+     
+     if( options.count( "st-filter-out" )) {
+        auto fo = options.at( "filter-out" ).as<vector<string>>();
+        for( auto& s : fo ) {
+           std::vector<std::string> v;
+           boost::split( v, s, boost::is_any_of( ":" ));
+           EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-out", ("s", s));
+           filter_entry fe{v[0], v[1], v[2]};
+           my->filter_out.insert( fe );
+        }
+     }
+
       my->socket_bind_str = options.at(SENDER_BIND).as<string>();
       if (my->socket_bind_str.empty()) {
          wlog("zmq-sender-bind not specified => eosio::statetrack_plugin disabled.");
@@ -180,21 +245,27 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
       auto& kv_index = db.get_index<kv_index_type>();
     
       kv_index.applied_emplace = [&](const chain::key_value_object& kvo) {
-          fc::string data = fc::json::to_string(my->get_db_op(db, kvo, op_type_enum::CREATE));
-          ilog("STATETRACK key_value_object emplace: ${data}", ("data", data));
-          my->send_zmq_msg(data);
+          if(my->filter(my->get_kvo_tio(db, kvo))) {
+            fc::string data = fc::json::to_string(my->get_db_op(db, kvo, op_type_enum::CREATE));
+            ilog("STATETRACK key_value_object emplace: ${data}", ("data", data));
+            my->send_zmq_msg(data);
+          }
       };
   
       kv_index.applied_modify = [&](const chain::key_value_object& kvo) {
-          fc::string data = fc::json::to_string(my->get_db_op(db, kvo, op_type_enum::MODIFY));
-          ilog("STATETRACK key_value_object modify: ${data}", ("data", data));
-          my->send_zmq_msg(data);
+          if(my->filter(my->get_kvo_tio(db, kvo))) {
+            fc::string data = fc::json::to_string(my->get_db_op(db, kvo, op_type_enum::MODIFY));
+            ilog("STATETRACK key_value_object modify: ${data}", ("data", data));
+            my->send_zmq_msg(data);
+          }
       };
   
       kv_index.applied_remove = [&](const chain::key_value_object& kvo) {
-          fc::string data = fc::json::to_string(my->get_db_op(db, kvo, op_type_enum::REMOVE));
-          ilog("STATETRACK key_value_object remove: ${data}", ("data", data));
-          my->send_zmq_msg(data);
+          if(my->filter(my->get_kvo_tio(db, kvo))) {
+            fc::string data = fc::json::to_string(my->get_db_op(db, kvo, op_type_enum::REMOVE));
+            ilog("STATETRACK key_value_object remove: ${data}", ("data", data));
+            my->send_zmq_msg(data);
+          }
       };
      
       kv_index.applied_undo = [&](const int64_t revision) {
