@@ -2,6 +2,11 @@ FROM cyberway/builder as builder
 ARG branch=master
 ARG symbol=CYBER
 
+RUN git clone https://github.com/GolosChain/cyberway.cdt --recursive \
+    && cd cyberway.cdt \
+    && ./build.sh \
+    && ./install.sh
+
 RUN git clone -b $branch https://github.com/GolosChain/cyberway.git --recursive \
     && cd cyberway \
     && echo "$branch:$(git rev-parse HEAD)" > /etc/cyberway-version \
@@ -29,6 +34,7 @@ COPY --from=builder /tmp/build/contracts /contracts
 COPY --from=builder /cyberway/Docker/config.ini /
 COPY --from=builder /etc/cyberway-version /etc
 COPY --from=builder /cyberway/Docker/nodeosd.sh /opt/cyberway/bin/nodeosd.sh
+COPY --from=builder /usr/local/eosio.cdt/* /usr/local/cyberway.cdt/
 
 ENV CYBERWAY_ROOT=/opt/cyberway
 RUN chmod +x /opt/cyberway/bin/nodeosd.sh
