@@ -116,8 +116,8 @@ namespace cyberway { namespace chaindb {
         primary_key_t update(const table_request&, primary_key_t, variant, size_t);
         primary_key_t remove(const table_request&, primary_key_t);
 
-        variant value_by_key(const account_name code, const account_name scope, table_name_t tbl, primary_key_t pk);
-        variant value_at_cursor(const cursor_t, const index_request&, primary_key_t);
+        variant value_by_pk(const table_request& request, primary_key_t pk);
+        variant value_at_cursor(const cursor_request& request);
 
     private:
         struct controller_impl_;
