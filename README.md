@@ -38,13 +38,13 @@ $ brew remove eosio
 ```
 #### Ubuntu 18.04 Debian Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.1/eosio-1.4.1.ubuntu-18.04-x86_64.deb
-$ sudo apt install ./eosio-1.4.1.ubuntu-18.04-x86_64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.4.2/eosio-1.4.2.ubuntu-18.04-x86_64.deb
+$ sudo apt install ./eosio-1.4.2.ubuntu-18.04-x86_64.deb
 ```
 #### Ubuntu 16.04 Debian Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.1/eosio-1.4.1.ubuntu-16.04-x86_64.deb
-$ sudo apt install ./eosio-1.4.1.ubuntu-16.04-x86_64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.4.2/eosio-1.4.2.ubuntu-16.04-x86_64.deb
+$ sudo apt install ./eosio-1.4.2.ubuntu-16.04-x86_64.deb
 ```
 #### Debian Package Uninstall
 ```sh
@@ -52,8 +52,8 @@ $ sudo apt remove eosio
 ```
 #### RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.1/eosio-1.4.1.x86_64-0.x86_64.rpm
-$ sudo yum install ./eosio-1.4.1.x86_64-0.x86_64.rpm
+$ wget https://github.com/eosio/eos/releases/download/v1.4.2/eosio-1.4.2.x86_64-0.x86_64.rpm
+$ sudo yum install ./eosio-1.4.2.x86_64-0.x86_64.rpm
 ```
 #### RPM Package Uninstall
 ```sh
