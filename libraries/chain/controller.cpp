@@ -316,7 +316,7 @@ struct controller_impl {
 
       auto start = fc::time_point::now();
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-         self.push_block( next, controller::block_status::irreversible );
+         replay_push_block( next, controller::block_status::irreversible );
          if( next->block_num() % 100 == 0 ) {
             std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
          }
@@ -332,7 +332,7 @@ struct controller_impl {
       int rev = 0;
       while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
          ++rev;
-         self.push_block( obj->get_block(), controller::block_status::validated );
+         replay_push_block( obj->get_block(), controller::block_status::validated );
       }
 
       ilog( "${n} reversible blocks replayed", ("n",rev) );
@@ -1231,11 +1231,6 @@ struct controller_impl {
                         ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back()) );
          }
 
-         if( bs->block_signing_key_future.valid() ) {
-            // if block signing verification delayed for light validation then verify it here
-            bs->verify_signee_future();
-         }
-
          finalize_block();
 
          // this implicitly asserts that all header fields (less the signature) are identical
@@ -1262,32 +1257,64 @@ struct controller_impl {
       }
    } FC_CAPTURE_AND_RETHROW() } /// apply_block
 
+   std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b ) {
+      EOS_ASSERT( b, block_validate_exception, "null block" );
 
-   void push_block( const signed_block_ptr& b, controller::block_status s ) {
+      auto id = b->id();
+
+      // no reason for a block_state if fork_db already knows about block
+      auto existing = fork_db.get_block( id );
+      EOS_ASSERT( !existing, fork_database_exception, "we already know about this block: ${id}", ("id", id) );
+
+      auto prev = fork_db.get_block( b->previous );
+      EOS_ASSERT( prev, unlinkable_block_exception, "unlinkable block ${id}", ("id", id)("previous", b->previous) );
+
+      return async_thread_pool( [b, prev]() {
+         const bool skip_validate_signee = false;
+         return std::make_shared<block_state>( *prev, move( b ), skip_validate_signee );
+      } );
+   }
+
+   void push_block( std::future<block_state_ptr>& block_state_future ) {
+      controller::block_status s = controller::block_status::complete;
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
 
       auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
          trusted_producer_light_validation = old_value;
       });
       try {
-         EOS_ASSERT( b, block_validate_exception, "trying to push empty block" );
-         EOS_ASSERT( s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block" );
+         block_state_ptr new_header_state = block_state_future.get();
+         auto& b = new_header_state->block;
          emit( self.pre_accepted_block, b );
-         const bool trust = !conf.force_all_checks &&
-               (s == controller::block_status::irreversible || s == controller::block_status::validated);
-         const bool skip_validate_signee = trust || conf.block_validation_mode == validation_mode::LIGHT;
-         auto new_header_state = fork_db.add( b, skip_validate_signee );
-         if( !trust && skip_validate_signee ) {
-            std::weak_ptr<block_state> new_header_state_wp = new_header_state;
-            new_header_state->block_signing_key_future = async_thread_pool(
-                  [new_header_state_wp]() {
-                     auto new_header_state = new_header_state_wp.lock();
-                     return new_header_state ? new_header_state->signee() : decltype( new_header_state->signee() ){};
-                  } );
-         }
+
+         fork_db.add( new_header_state );
+
          if (conf.trusted_producers.count(b->producer)) {
             trusted_producer_light_validation = true;
          };
+         emit( self.accepted_block_header, new_header_state );
+
+         if ( read_mode != db_read_mode::IRREVERSIBLE ) {
+            maybe_switch_forks( s );
+         }
+
+      } FC_LOG_AND_RETHROW( )
+   }
+
+   void replay_push_block( const signed_block_ptr& b, controller::block_status s ) {
+      self.validate_db_available_size();
+      self.validate_reversible_available_size();
+
+      EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
+
+      try {
+         EOS_ASSERT( b, block_validate_exception, "trying to push empty block" );
+         EOS_ASSERT( (s == controller::block_status::irreversible || s == controller::block_status::validated),
+                     block_validate_exception, "invalid block status for replay" );
+         emit( self.pre_accepted_block, b );
+         const bool skip_validate_signee = !conf.force_all_checks;
+         auto new_header_state = fork_db.add( b, skip_validate_signee );
+
          emit( self.accepted_block_header, new_header_state );
 
          if ( read_mode != db_read_mode::IRREVERSIBLE ) {
@@ -1315,11 +1342,6 @@ struct controller_impl {
             throw;
          }
       } else {
-         if( new_head->block_signing_key_future.valid() ) {
-            // if block signing verification delayed for light validation then verify it here
-            new_head->verify_signee_future();
-         }
-
          if( new_head->id != head->id ) {
             ilog( "switching forks from ${current_head_id} (block number ${current_head_num}) to ${new_head_id} (block number ${new_head_num})",
                   ("current_head_id", head->id)( "current_head_num", head->block_num )( "new_head_id", new_head->id )(
@@ -1677,10 +1699,14 @@ void controller::abort_block() {
    my->abort_block();
 }
 
-void controller::push_block( const signed_block_ptr& b, block_status s ) {
+std::future<block_state_ptr> controller::create_block_state_future( const signed_block_ptr& b ) {
+   return my->create_block_state_future( b );
+}
+
+void controller::push_block( std::future<block_state_ptr>& block_state_future ) {
    validate_db_available_size();
    validate_reversible_available_size();
-   my->push_block( b, s );
+   my->push_block( block_state_future );
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
