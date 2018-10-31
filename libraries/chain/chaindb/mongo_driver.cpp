@@ -378,7 +378,7 @@ namespace cyberway { namespace chaindb {
         } catch (...) {
             CYBERWAY_ASSERT(false, driver_primary_key_exception,
                 "External database locate row in the table ${table} with wrong value of primary key.",
-                ("table_name", get_full_table_name(table)));
+                ("table", get_full_table_name(table)));
         } }
 
         document make_pk_document(const table_info& table, primary_key_t pk) {
@@ -845,9 +845,9 @@ namespace cyberway { namespace chaindb {
 
     mongodb_driver::~mongodb_driver() = default;
 
-    void mongodb_driver::drop_db() {
+    void mongodb_driver::drop_db(const string& name) {
         // TODO: maybe reset member vars and re-init, but now drop_db() usage is limited, looks like it's unneeded
-        impl_->mongo_conn_[get_system_code_name()].drop();
+        impl_->mongo_conn_[name.empty() ? get_system_code_name() : name].drop();
     }
 
     const cursor_info& mongodb_driver::clone(const cursor_request& request) {
