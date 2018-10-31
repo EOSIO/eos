@@ -495,6 +495,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.meta",
                          my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.meta" );
             }
+          fc::remove_all( backup_dir ); // Replay complete, delete the unuseful backup_dir.
          }
       } else if( options.at( "replay-blockchain" ).as<bool>()) {
          ilog( "Replay requested: deleting state database" );
