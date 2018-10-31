@@ -22,11 +22,21 @@ IMAGETAG=${BUILDKITE_BRANCH:-master}
 if [[ "$IMAGETAG" != "master" ]]; then
     echo ":llama: Change docker-compose.yml"
     sed -i "s/cyberway\/cyberway:master/cyberway\/cyberway:${IMAGETAG}/g" docker-compose.yml
+    echo "----------------------------------------------"
     cat docker-compose.yml
+    echo "----------------------------------------------"
 fi
 
-docker-compose up -d
-sleep 10s
+docker-compose up -d || true
+sleep 15s
+
+NODE_STATUS=$(docker inspect --format "{{.State.Status}}" nodeosd)
+NODE_EXIT=$(docker inspect --format "{{.State.ExitCode}}" nodeosd)
+
+if [[ "$NODE_STATUS" == "exited" ]] || [[ "$NODE_EXIT" != "0" ]]; then
+    docker logs nodeosd
+    exit 1
+fi
 
 curl -s http://127.0.0.1:8888/v1/chain/get_info | jq '.'
 
@@ -36,3 +46,4 @@ echo -e "\nGet cleos version:"
 ./cleos.sh version client
 
 docker-compose down
+docker system prune
