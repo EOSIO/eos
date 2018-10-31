@@ -577,7 +577,7 @@ struct controller_impl {
     */
    void initialize_fork_db() {
       wlog( " Initializing new blockchain with genesis state                  " );
-      chaindb.drop_db();  // drops only system db, contract dbs are still alive. TODO: fix
+      chaindb.drop_db();
       producer_schedule_type initial_schedule{ 0, {{config::system_account_name, conf.genesis.initial_key}} };
 
       block_header_state genheader;

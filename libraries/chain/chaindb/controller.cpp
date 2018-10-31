@@ -386,8 +386,8 @@ namespace cyberway { namespace chaindb {
 
         ~controller_impl_() = default;
 
-        void drop_db(const string& name) {
-            driver->drop_db(name);
+        void drop_db() {
+            driver->drop_db();
         }
 
         void set_abi(const account_name& code, abi_def abi) {
@@ -782,8 +782,8 @@ namespace cyberway { namespace chaindb {
 
     chaindb_controller::~chaindb_controller() = default;
 
-    void chaindb_controller::drop_db(const string& name) {
-        impl_->drop_db(name);
+    void chaindb_controller::drop_db() {
+        impl_->drop_db();
     }
 
     void chaindb_controller::add_abi(const account_name& code, abi_def abi) {
@@ -827,6 +827,10 @@ namespace cyberway { namespace chaindb {
 
     void chaindb_controller::close_all_cursors(const account_name& code) {
         impl_->driver->close_all_cursors(code);
+    }
+
+    void chaindb_controller::apply_changes(const account_name& code) {
+        impl_->driver->apply_changes(code);
     }
 
     cursor_t chaindb_controller::lower_bound(const index_request& request, const char* key, size_t size) {

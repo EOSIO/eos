@@ -12,12 +12,14 @@ namespace cyberway { namespace chaindb {
         mongodb_driver(const std::string&);
         ~mongodb_driver();
 
-        void drop_db(const string& name) override;
+        void drop_db() override;
 
         const cursor_info& clone(const cursor_request&) override;
 
         void close(const cursor_request&) override;
         void close_all_cursors(const account_name& code) override;
+
+        void apply_changes(const account_name& code) override;
         void apply_changes() override;
 
         void verify_table_structure(const table_info&, const microseconds&) override;

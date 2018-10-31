@@ -55,6 +55,12 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(index_exception, chaindb_internal_exception,
                                      3710012, "ChainDB multi_index failed")
 
+        FC_DECLARE_DERIVED_EXCEPTION(driver_has_unapplied_changes_exception, chaindb_internal_exception,
+                                     3710013, "ChainDB driver has unapplied changes")
+
+        FC_DECLARE_DERIVED_EXCEPTION(driver_write_exception, chaindb_internal_exception,
+                                     3710014, "ChainDB driver write changes")
+
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_abi_exception, chaindb_exception,
                                  3720000, "ChainDB ABI exception")
 
