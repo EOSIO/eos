@@ -616,23 +616,14 @@ namespace cyberway { namespace chaindb {
             return deleted_pk;
         }
 
-        variant value_by_key(
-            const account_name code,
-            const account_name scope,
-            table_name_t tbl,
-            primary_key_t pk
-        ) {
-            const auto& abi = abi_map_[code];
-            table_info info(code, scope);
-            info.table = abi.find_table(tbl);
-            info.abi = &abi;
-            info.pk_order = &_detail::get_pk_order(info);
-            return driver->value(info, pk);
+        variant value_by_pk(const table_request& request, primary_key_t pk) {
+            auto table = get_table<table_info>(request);
+            return driver->value(table, pk);
         }
 
-        variant value_at_cursor(cursor_t cursor, const index_request& request, primary_key_t pk) {
-            auto idx = get_index(request);
-            return driver->value({cursor, idx, pk});
+        variant value_at_cursor(const cursor_request& request) {
+            auto& cursor = driver->current(request);
+            return driver->value(cursor);
         }
 
     private:
@@ -926,17 +917,12 @@ namespace cyberway { namespace chaindb {
         return impl_->remove(request, pk);
     }
 
-    variant chaindb_controller::value_by_key(
-        const account_name code,
-        const account_name scope,
-        const code_type tbl,
-        primary_key_t pk
-    ) {
-        return impl_->value_by_key(code, scope, tbl, pk);
+    variant chaindb_controller::value_by_pk(const table_request& request, primary_key_t pk) {
+        return impl_->value_by_pk(request, pk);
     }
 
-    variant chaindb_controller::value_at_cursor(const cursor_t cursor, const index_request& idx, primary_key_t pk) {
-        return impl_->value_at_cursor(cursor, idx, pk);
+    variant chaindb_controller::value_at_cursor(const cursor_request& request) {
+        return impl_->value_at_cursor(request);
     }
 
 } } // namespace cyberway::chaindb
