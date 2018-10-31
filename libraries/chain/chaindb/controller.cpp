@@ -829,6 +829,10 @@ namespace cyberway { namespace chaindb {
         impl_->driver->close_all_cursors(code);
     }
 
+    void chaindb_controller::apply_changes(const account_name& code) {
+        impl_->driver->apply_changes(code);
+    }
+
     cursor_t chaindb_controller::lower_bound(const index_request& request, const char* key, size_t size) {
         return impl_->lower_bound(request, key, size).id;
     }

@@ -12,6 +12,7 @@
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
 #include <mongocxx/exception/operation_exception.hpp>
+#include <mongocxx/exception/bulk_write_exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
 #include <mongocxx/exception/query_exception.hpp>
 
@@ -656,28 +657,35 @@ namespace cyberway { namespace chaindb {
 
         code_info& operator=(code_info&&) = default;
 
-        ~code_info() {
-            apply_changes();
-        }
+        ~code_info() = default;
 
         bool empty() const {
             return cursor_map.empty() && tables_bulk_write_.empty();
         }
 
-        void apply_changes() {
-            for (auto& table: tables_bulk_write_) {
-                table.second.execute();
-            }
-            tables_bulk_write_.clear();
+        bool has_changes() const {
+            return !tables_bulk_write_.empty();
         }
 
-        void apply_changes(const table_name& table) {
+        void apply_changes() { try {
+            auto tables = std::move(tables_bulk_write_);
+            for (auto& table: tables) {
+                table.second.execute();
+            }
+        } catch (const mongocxx::bulk_write_exception& e) {
+            throw_exception(e);
+        } }
+
+        void apply_changes(const table_name& table) { try {
             auto itr = tables_bulk_write_.find(table);
             if (tables_bulk_write_.end() != itr) {
-                itr->second.execute();
+                auto bulk = std::move(itr->second);
                 tables_bulk_write_.erase(itr);
+                bulk.execute();
             }
-        }
+        } catch (const mongocxx::bulk_write_exception& e) {
+            throw_exception(e);
+        } }
 
         bulk_write& get_changes_buffer(const table_name& table, collection db_table) {
             auto itr = tables_bulk_write_.find(table);
@@ -689,6 +697,11 @@ namespace cyberway { namespace chaindb {
 
     private:
         std::map<table_name, bulk_write> tables_bulk_write_;
+
+        void throw_exception(const mongocxx::bulk_write_exception& e) {
+            // TODO: add parsing of server_error for throwing of detailed exception
+            CYBERWAY_ASSERT(false, driver_write_exception, e.what());
+        }
     }; // struct code_info
 
     using code_map = std::map<account_name, code_info>;
@@ -758,6 +771,13 @@ namespace cyberway { namespace chaindb {
             }
         }
 
+        void apply_changes(const account_name& code) {
+            auto itr = code_map_.find(code);
+            if (code_map_.end() == itr) return;
+
+            itr->second.apply_changes();
+        }
+
         void apply_changes() {
             for (auto itr = code_map_.begin(), etr = code_map_.end(); etr != itr;) {
                 itr->second.apply_changes();
@@ -789,6 +809,15 @@ namespace cyberway { namespace chaindb {
             if (loc.code_info.empty()) {
                 loc.code_map.erase(loc.code_itr);
             }
+        }
+
+        void close_all_cursors(const account_name& code) {
+            auto itr = code_map_.find(code);
+            if (code_map_.end() == itr) return;
+
+            CYBERWAY_ASSERT(!itr->second.has_changes(), driver_has_unapplied_changes_exception,
+                "Chaindb has unapplied changes for the db ${db}", ("db", get_code_name(code)));
+            code_map_.erase(itr);
         }
 
         mongodb_cursor& clone_cursor(const cursor_request& request) {
@@ -859,7 +888,11 @@ namespace cyberway { namespace chaindb {
     }
 
     void mongodb_driver::close_all_cursors(const account_name& code) {
-        impl_->code_map_.erase(code);
+        impl_->close_all_cursors(code);
+    }
+
+    void mongodb_driver::apply_changes(const account_name& code) {
+        impl_->apply_changes(code);
     }
 
     void mongodb_driver::apply_changes() {

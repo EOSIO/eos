@@ -61,6 +61,7 @@ action_trace apply_context::exec_one()
          try {
             cyberway::chaindb::chaindb_guard guard(chaindb, receiver);
             control.get_wasm_interface().apply( a.code_version, a.code, *this );
+            chaindb.apply_changes(receiver);
          } catch( const wasm_exit& ) {}
 
       }
