@@ -1,47 +1,33 @@
 steps:
-  - command:
-    - "cd Docker/builder"
-    - "docker build -t cyberway/builder ."
-    label: ":docker: create base image"
+  - label: ":docker: create base image"
+    command: ".buildkite/steps/build-builder.sh"
     timeout: 60
 
   - wait
 
-  - command:
-    - "docker images"
-    - "docker login -u=$DHUBU -p=$DHUBP"
-    - "docker push cyberway/builder"
-    label: ":floppy_disk: upload base image"
-    branches: "master"
+  - label: ":floppy_disk: upload base image"
+    command: ".buildkite/steps/publish-builder.sh"
+    branches: "master ci-*"
 
   - wait
 
-  - command:
-    - "imagetag=\"${BUILDKITE_BRANCH}\""
-    - "cd Docker"
-    - "docker build -t cyberway/cyberway:$imagetag --build-arg branch=$BUILDKITE_BRANCH ."
-    label: ":docker: build docker image"
+  - label: ":docker: build docker image"
+    command: ".buildkite/steps/build-image.sh"
     timeout: 60
 
   - wait
 
-  - command:
-    - "docker images"
-    - "imagetag=\"${BUILDKITE_BRANCH}\""
-    - "docker login -u=$DHUBU -p=$DHUBP"
-    - "docker push cyberway/cyberway:$imagetag"
-    label: ":floppy_disk: upload image"
-    branches: "master"
+  - label: ":floppy_disk: upload image"
+    command: ".buildkite/steps/publish-image.sh"
+    branches: "master ci-*"
 
   - wait
 
-  - command:
-    - "echo \"TODO Testing... done\""
-    label: "fake test %n"
+  - label: "fake test %n"
+    command: "echo \"TODO Testing... done\""
     parallelism: 10
 
   - wait
 
-  - command: |
-      curl -X POST -H 'Content-type: application/json' --data '{"text":":thumbsup: Cyberway: pipeline complete successfully"}' ${WEBHOOK}
-    label: ":slack:"
+  - label: ":slack:"
+    command: ".buildkite/steps/slack.sh \"Pipeline complete successfully\""
