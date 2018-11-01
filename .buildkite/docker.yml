@@ -30,7 +30,7 @@ steps:
         docker-credential-gcr configure-docker && \
         echo "BUILDING EOS IMAGE" && \
         docker pull gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
-        cd Docker/dev && \
+        cd Docker && \
         docker build -t eosio/eos:latest -t eosio/eos:$BUILDKITE_COMMIT . --build-arg branch=$BUILDKITE_BRANCH && \
         docker tag eosio/eos:$BUILDKITE_COMMIT gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_COMMIT && \
         docker tag eosio/eos:latest gcr.io/b1-automation-dev/eosio/eos:latest && \
