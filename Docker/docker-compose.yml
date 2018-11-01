@@ -13,6 +13,7 @@ services:
       - cyberway-net
 
   nodeosd:
+    container_name: nodeosd
     image: cyberway/cyberway:master
     depends_on:
       - mongo
@@ -33,6 +34,7 @@ services:
       - cyberway-net
 
   keosd:
+    container_name: keosd
     image: cyberway/cyberway:master
     command: /opt/cyberway/bin/keosd --wallet-dir /opt/cyberway/bin/data-dir --http-server-address=127.0.0.1:8900 --http-alias=keosd:8900 --http-alias=localhost:8900
     hostname: keosd
