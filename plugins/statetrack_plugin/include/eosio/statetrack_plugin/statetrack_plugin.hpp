@@ -22,8 +22,7 @@ enum op_type_enum {
    MODIFY = 1, 
    REMOVE = 2,
    UNDO   = 3,
-   SQUASH = 4,
-   COMMIT = 5
+   COMMIT = 4
 };
 
 struct db_op {
@@ -63,6 +62,6 @@ private:
 
 }
 
-FC_REFLECT_ENUM( eosio::op_type_enum, (CREATE)(MODIFY)(REMOVE)(UNDO)(SQUASH)(COMMIT) )
+FC_REFLECT_ENUM( eosio::op_type_enum, (CREATE)(MODIFY)(REMOVE)(UNDO)(COMMIT) )
 FC_REFLECT( eosio::db_op, (id)(op_type)(code)(scope)(table)(payer)(value) )
 FC_REFLECT( eosio::db_rev, (op_type)(revision) )

@@ -5,6 +5,7 @@
 
 #include <zmq.hpp>
 #include <eosio/statetrack_plugin/statetrack_plugin.hpp>
+#include <boost/algorithm/string.hpp>
 
 namespace {
   const char* SENDER_BIND = "st-zmq-sender-bind";
@@ -50,15 +51,16 @@ class statetrack_plugin_impl {
             memcpy( data.data(), obj.value.data(), obj.value.size() );
         }
 
-        static fc::string scope_sym_to_string(uint64_t sym_code) {
+        static fc::string scope_sym_to_string(chain::scope_name sym_code) {
             fc::string scope = sym_code.to_string();
             if(scope.length() > 0 && scope[0] == '.') {
+                uint64_t scope_int = sym_code;
                 vector<char> v;
                 for( int i = 0; i < 7; ++i ) {
-                    char c = (char)(sym_code & 0xff);
+                    char c = (char)(scope_int & 0xff);
                     if( !c ) break;
                     v.emplace_back(c);
-                    sym_code >>= 8;
+                    scope_int >>= 8;
                 }
                 return fc::string(v.begin(),v.end());
             }
@@ -69,8 +71,8 @@ class statetrack_plugin_impl {
         zmq::context_t* context;
         zmq::socket_t* sender_socket;
   
-        std::vector<filter_entry> filter_on;
-        std::vector<filter_entry> filter_out;
+        std::set<filter_entry> filter_on;
+        std::set<filter_entry> filter_out;
         fc::microseconds abi_serializer_max_time;
     private:
         bool shorten_abi_errors = true;
@@ -182,14 +184,14 @@ db_rev statetrack_plugin_impl::get_db_rev(const int64_t revision, op_type_enum o
 void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::key_value_object& kvo, op_type_enum op_type) {
   if(filter(get_kvo_tio(db, kvo))) {
     fc::string data = fc::json::to_string(get_db_op(db, kvo, op_type));
-    ilog("STATETRACK key_value_object {op_type}: ${data}", ("op_type", op_type), ("data", data));
+    ilog("STATETRACK key_value_object {op_type}: ${data}", ("op_type", op_type) ("data", data));
     send_zmq_msg(data);
   }
 }
   
 void statetrack_plugin_impl::on_applied_rev(const int64_t revision, op_type_enum op_type) {
   fc::string data = fc::json::to_string(get_db_rev(revision, op_type));
-  ilog("STATETRACK {op_type}: ${data}", ("op_type", op_type), ("data", data));
+  ilog("STATETRACK {op_type}: ${data}", ("op_type", op_type) ("data", data));
   send_zmq_msg(data);
 }
 
@@ -248,7 +250,7 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
       my->sender_socket = new zmq::socket_t(*my->context, ZMQ_PUSH);
       
       ilog("Bind to ZMQ PUSH socket ${u}", ("u", my->socket_bind_str));
-      my->sender_socket->connect(my->socket_bind_str);
+      my->sender_socket->bind(my->socket_bind_str);
 
       ilog("Bind to ZMQ PUSH socket successful");
       
@@ -276,11 +278,7 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
       kv_index.applied_undo = [&](const int64_t revision) {
           my->on_applied_rev(revision, op_type_enum::UNDO);
       };
-     
-      /*kv_index.applied_squash = [&](const int64_t revision) {
-          my->on_applied_rev(revision, op_type_enum::SQUASH);
-      };*/
-     
+
       kv_index.applied_commit = [&](const int64_t revision) {
           my->on_applied_rev(revision, op_type_enum::COMMIT);
       };
