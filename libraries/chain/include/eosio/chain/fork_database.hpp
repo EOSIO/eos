@@ -41,7 +41,7 @@ namespace eosio { namespace chain {
           * throw on error.
           */
          block_state_ptr add( signed_block_ptr b, bool skip_validate_signee );
-         block_state_ptr add( block_state_ptr next_block );
+         block_state_ptr add( const block_state_ptr& next_block, bool skip_validate_previous );
          void            remove( const block_id_type& id );
 
          void            add( const header_confirmation& c );
