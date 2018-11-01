@@ -15,7 +15,14 @@ namespace {
 namespace eosio {
 
 static appbase::abstract_plugin& _statetrack_plugin = app().register_plugin<statetrack_plugin>();
+
+typedef typename chainbase::get_index_type<chain::account_object>::type co_index_type;
+typedef typename chainbase::get_index_type<chain::permission_object>::type po_index_type;
+typedef typename chainbase::get_index_type<chain::permission_link_object>::type plo_index_type;
+typedef typename chainbase::get_index_type<chain::table_id_object>::type ti_index_type;
 typedef typename chainbase::get_index_type<chain::key_value_object>::type kv_index_type;
+
+
   
 struct filter_entry {
     name code;
@@ -34,16 +41,27 @@ struct filter_entry {
 class statetrack_plugin_impl {
    public:
         void send_zmq_msg(const string content);
-        bool filter(const chain::table_id_object& tio);
+        bool filter(const chain::account_name& code, const fc::string& scope, const chain::table_name& table);
 
-        const chain::table_id_object& get_kvo_tio(const chainbase::database& db, const chain::key_value_object& kvo);
+        const chain::table_id_object* get_kvo_tio(const chainbase::database& db, const chain::key_value_object& kvo);
         const chain::account_object& get_tio_co(const chainbase::database& db, const chain::table_id_object& tio);
         const abi_def& get_co_abi(const chain::account_object& co );
         fc::variant get_kvo_row(const chainbase::database& db, const chain::table_id_object& tio, const chain::key_value_object& kvo, bool json = true);
-        db_op get_db_op(const chainbase::database& db, const chain::key_value_object& kvo, op_type_enum op_type, bool json = true);
+        
+        db_op get_db_op(const chainbase::database& db, const chain::account_object& co, op_type_enum op_type);
+        db_op get_db_op(const chainbase::database& db, const chain::permission_object& po, op_type_enum op_type);
+        db_op get_db_op(const chainbase::database& db, const chain::permission_link_object& plo, op_type_enum op_type);
+        db_op get_db_op(const chainbase::database& db, const chain::table_id_object& tio, const chain::key_value_object& kvo, op_type_enum op_type, bool json = true);
+        
         db_rev get_db_rev(const int64_t revision, op_type_enum op_type);
   
+        void on_applied_table(const chainbase::database& db, const chain::table_id_object& tio, op_type_enum op_type);
+
+        void on_applied_op(const chainbase::database& db, const chain::account_object& co, op_type_enum op_type);
+        void on_applied_op(const chainbase::database& db, const chain::permission_object& po, op_type_enum op_type);
+        void on_applied_op(const chainbase::database& db, const chain::permission_link_object& plo, op_type_enum op_type);
         void on_applied_op(const chainbase::database& db, const chain::key_value_object& kvo, op_type_enum op_type);
+
         void on_applied_rev(const int64_t revision, op_type_enum op_type);
 
         static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
@@ -55,6 +73,9 @@ class statetrack_plugin_impl {
             fc::string scope = sym_code.to_string();
             if(scope.length() > 0 && scope[0] == '.') {
                 uint64_t scope_int = sym_code;
+
+                ilog("TEST scope_int ${scope_int}", ("scope_int", scope_int));
+
                 vector<char> v;
                 for( int i = 0; i < 7; ++i ) {
                     char c = (char)(scope_int & 0xff);
@@ -81,16 +102,14 @@ class statetrack_plugin_impl {
 // statetrack plugin implementation
 
 void statetrack_plugin_impl::send_zmq_msg(const fc::string content) {
-  zmq::message_t message(content.length());
-  memcpy(message.data(), content.c_str(), content.length());
-  sender_socket->send(message);
+  if(sender_socket != nullptr) {
+    zmq::message_t message(content.length());
+    memcpy(message.data(), content.c_str(), content.length());
+    sender_socket->send(message);
+  }
 }
-  
-bool statetrack_plugin_impl::filter(const chain::table_id_object& tio) {
-  auto code = tio.code;
-  auto scope = scope_sym_to_string(tio.scope);
-  auto table = tio.table;
-  
+
+bool statetrack_plugin_impl::filter(const chain::account_name& code, const fc::string& scope, const chain::table_name& table) {
   if(filter_on.size() > 0) {
     bool pass_on = false;
     if (filter_on.find({ code, 0, 0 }) != filter_on.end()) {
@@ -120,10 +139,8 @@ bool statetrack_plugin_impl::filter(const chain::table_id_object& tio) {
   return true;
 }
    
-const chain::table_id_object& statetrack_plugin_impl::get_kvo_tio(const chainbase::database& db, const chain::key_value_object& kvo) {
-    const chain::table_id_object *tio = db.find<chain::table_id_object>(kvo.t_id);
-    EOS_ASSERT(tio != nullptr, chain::contract_table_query_exception, "Fail to retrieve table for ${t_id}", ("t_id", kvo.t_id) );
-    return *tio;
+const chain::table_id_object* statetrack_plugin_impl::get_kvo_tio(const chainbase::database& db, const chain::key_value_object& kvo) {
+    return db.find<chain::table_id_object>(kvo.t_id);
 }
 
 const chain::account_object& statetrack_plugin_impl::get_tio_co(const chainbase::database& db, const chain::table_id_object& tio) {
@@ -155,19 +172,72 @@ fc::variant statetrack_plugin_impl::get_kvo_row(const chainbase::database& db, c
     }
 }
 
-db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const chain::key_value_object& kvo, op_type_enum op_type, bool json) {
+db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const chain::account_object& co, op_type_enum op_type) {
     db_op op;
 
-    const chain::table_id_object& tio = get_kvo_tio(db, kvo);
+    name system = N(system);
 
-    op.id = kvo.id;
+    op.id = co.id._id;
+    op.op_type = op_type;
+    op.code = system;
+    op.scope = system.to_string();
+    op.table = N(accounts);
+
+    db_account account;
+    account.name = co.name;
+    account.vm_type = co.vm_type;
+    account.vm_version = co.vm_version;
+    account.privileged = co.privileged;
+    account.last_code_update = co.last_code_update;
+    account.code_version = co.code_version;
+    account.creation_date = co.creation_date;
+
+    op.value = fc::variant(account);
+
+    return op;
+}
+
+db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const chain::permission_object& po, op_type_enum op_type) {
+    db_op op;
+
+    name system = N(system);
+
+    op.id = po.id._id;
+    op.op_type = op_type;
+    op.code = system;
+    op.scope = system.to_string();
+    op.table = N(permissions);
+    op.value = fc::variant(po);
+
+    return op;
+}
+
+db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const chain::permission_link_object& plo, op_type_enum op_type) {
+    db_op op;
+
+    name system = N(system);
+
+    op.id = plo.id._id;
+    op.op_type = op_type;
+    op.code = system;
+    op.scope = system.to_string();
+    op.table = N(permission_links);
+    op.value = fc::variant(plo);
+
+    return op;
+}
+
+db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const chain::table_id_object& tio, const chain::key_value_object& kvo, op_type_enum op_type, bool json) {
+    db_op op;
+
+    op.id = kvo.primary_key;
     op.op_type = op_type;
     op.code = tio.code;
     op.scope = scope_sym_to_string(tio.scope);
     op.table = tio.table;
 
-    if(op_type == op_type_enum::CREATE || 
-       op_type == op_type_enum::MODIFY) {
+    if(op_type == op_type_enum::ROW_CREATE || 
+       op_type == op_type_enum::ROW_MODIFY) {
         op.value = get_kvo_row(db, tio, kvo, json);
     }
 
@@ -175,23 +245,93 @@ db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const cha
 }
 
 db_rev statetrack_plugin_impl::get_db_rev(const int64_t revision, op_type_enum op_type) {
-    db_rev rev;
-    rev.op_type = op_type;
-    rev.revision = revision;
+    db_rev rev = {op_type, revision};
     return rev;
 }
+
+void statetrack_plugin_impl::on_applied_table(const chainbase::database& db, const chain::table_id_object& tio, op_type_enum op_type) {
+    auto code = tio.code;
+    auto scope = scope_sym_to_string(tio.scope);
+    auto table = tio.table;
+
+    if(filter(code, scope, table)) {
+        db_table table;
+
+        table.op_type = op_type;
+        table.code = tio.code;
+        table.scope = scope_sym_to_string(tio.scope);
+        table.table = tio.table;
+
+        fc::string data = fc::json::to_string(table);
+        ilog("STATETRACK table_id_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
+        send_zmq_msg(data);
+    }
+}
+
+void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::account_object& co, op_type_enum op_type) {
+  name system = N(system);
+  auto code  = system;
+  auto scope = system.to_string();
+  auto table = N(accounts);
   
-void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::key_value_object& kvo, op_type_enum op_type) {
-  if(filter(get_kvo_tio(db, kvo))) {
-    fc::string data = fc::json::to_string(get_db_op(db, kvo, op_type));
-    ilog("STATETRACK key_value_object {op_type}: ${data}", ("op_type", op_type) ("data", data));
+  if(filter(code, scope, table)) {
+    fc::string data = fc::json::to_string(get_db_op(db, co, op_type));
+    ilog("STATETRACK account_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
+    send_zmq_msg(data);
+  }
+}
+
+void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::permission_object& po, op_type_enum op_type) {
+  name system = N(system);
+  auto code  = system;
+  auto scope = system.to_string();
+  auto table = N(permission);
+
+  if(filter(code, scope, table)) {
+    fc::string data = fc::json::to_string(get_db_op(db, po, op_type));
+    ilog("STATETRACK permission_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
+    send_zmq_msg(data);
+  }
+}
+
+void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::permission_link_object& plo, op_type_enum op_type) {
+  name system = N(system);
+  auto code  = system;
+  auto scope = system.to_string();
+  auto table = N(permission_links);
+  
+  if(filter(code, scope, table)) {
+    fc::string data = fc::json::to_string(get_db_op(db, plo, op_type));
+    ilog("STATETRACK permission_link_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
     send_zmq_msg(data);
   }
 }
   
+void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::key_value_object& kvo, op_type_enum op_type) {
+  
+  const chain::table_id_object* tio_ptr = get_kvo_tio(db, kvo);
+
+  if(tio_ptr == nullptr)
+    return;
+
+  const chain::table_id_object& tio = *tio_ptr;
+
+  auto code  = tio.code;
+  auto scope = scope_sym_to_string(tio.scope);
+  auto table = tio.table;
+
+  if(filter(code, scope, table)) {
+    fc::string data = fc::json::to_string(get_db_op(db, *tio_ptr, kvo, op_type));
+    ilog("STATETRACK key_value_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
+    send_zmq_msg(data);
+  }
+}
+
+
+  
 void statetrack_plugin_impl::on_applied_rev(const int64_t revision, op_type_enum op_type) {
   fc::string data = fc::json::to_string(get_db_rev(revision, op_type));
-  ilog("STATETRACK {op_type}: ${data}", ("op_type", op_type) ("data", data));
+  ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type)("data", data));
   send_zmq_msg(data);
 }
 
@@ -260,28 +400,98 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
       my->abi_serializer_max_time = chain_plug.get_abi_serializer_max_time();
       
       ilog("Binding database events");
+
+      auto undo_lambda = [&](const int64_t revision) {
+          my->on_applied_rev(revision, op_type_enum::REV_UNDO);
+      };
+
+      auto commit_lambda = [&](const int64_t revision) {
+          my->on_applied_rev(revision, op_type_enum::REV_COMMIT);
+      };
+
+      // account_object events
+
+      auto& co_inde = db.get_index<co_index_type>();
+
+      co_inde.applied_emplace = [&](const chain::account_object& co) {
+          my->on_applied_op(db, co, op_type_enum::ROW_CREATE);
+      };
+  
+      co_inde.applied_modify = [&](const chain::account_object& co) {
+          my->on_applied_op(db, co, op_type_enum::ROW_MODIFY);
+      };
+  
+      co_inde.applied_remove = [&](const chain::account_object& co) {
+          my->on_applied_op(db, co, op_type_enum::ROW_REMOVE);
+      };
+
+      co_inde.applied_undo = undo_lambda;
+      co_inde.applied_commit = commit_lambda;
+
+      // permisson_object events
+
+      auto& po_inde = db.get_index<po_index_type>();
+
+      po_inde.applied_emplace = [&](const chain::permission_object& po) {
+          my->on_applied_op(db, po, op_type_enum::ROW_CREATE);
+      };
+  
+      po_inde.applied_modify = [&](const chain::permission_object& po) {
+          my->on_applied_op(db, po, op_type_enum::ROW_MODIFY);
+      };
+  
+      po_inde.applied_remove = [&](const chain::permission_object& po) {
+          my->on_applied_op(db, po, op_type_enum::ROW_REMOVE);
+      };
+      
+      po_inde.applied_undo = undo_lambda;
+      po_inde.applied_commit = commit_lambda;
+      
+      // permisson_link_object events
+
+      auto& plo_inde = db.get_index<plo_index_type>();
+
+      plo_inde.applied_emplace = [&](const chain::permission_link_object& plo) {
+          my->on_applied_op(db, plo, op_type_enum::ROW_CREATE);
+      };
+  
+      plo_inde.applied_modify = [&](const chain::permission_link_object& plo) {
+          my->on_applied_op(db, plo, op_type_enum::ROW_MODIFY);
+      };
+  
+      plo_inde.applied_remove = [&](const chain::permission_link_object& plo) {
+          my->on_applied_op(db, plo, op_type_enum::ROW_REMOVE);
+      };
+
+      plo_inde.applied_undo = undo_lambda;
+      plo_inde.applied_commit = commit_lambda;
+
+      // table_id_object events
+
+      auto& ti_index = db.get_index<ti_index_type>();
+
+      ti_index.applied_remove = [&](const chain::table_id_object& tio) {
+          my->on_applied_table(db, tio, op_type_enum::TABLE_REMOVE);
+      };
+
+      // key_value_object events
       
       auto& kv_index = db.get_index<kv_index_type>();
-    
+      
       kv_index.applied_emplace = [&](const chain::key_value_object& kvo) {
-          my->on_applied_op(db, kvo, op_type_enum::CREATE);
+          my->on_applied_op(db, kvo, op_type_enum::ROW_CREATE);
       };
   
       kv_index.applied_modify = [&](const chain::key_value_object& kvo) {
-          my->on_applied_op(db, kvo, op_type_enum::MODIFY);
+          my->on_applied_op(db, kvo, op_type_enum::ROW_MODIFY);
       };
   
       kv_index.applied_remove = [&](const chain::key_value_object& kvo) {
-          my->on_applied_op(db, kvo, op_type_enum::REMOVE);
+          my->on_applied_op(db, kvo, op_type_enum::ROW_REMOVE);
       };
      
-      kv_index.applied_undo = [&](const int64_t revision) {
-          my->on_applied_rev(revision, op_type_enum::UNDO);
-      };
-
-      kv_index.applied_commit = [&](const int64_t revision) {
-          my->on_applied_rev(revision, op_type_enum::COMMIT);
-      };
+      kv_index.applied_undo = undo_lambda;
+      kv_index.applied_commit = commit_lambda;
    }
    FC_LOG_AND_RETHROW()
 }
