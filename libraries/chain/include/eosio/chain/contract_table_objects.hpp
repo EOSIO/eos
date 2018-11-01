@@ -185,7 +185,7 @@ namespace config {
    template<>
    struct billable_size<table_id_object> {
       static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 2;  ///< overhead for 2x indices internal-key and code,scope,table
-      static const uint64_t value = 44 + overhead; ///< 36 bytes for constant size fields + overhead
+      static const uint64_t value = 44 + overhead; ///< 44 bytes for constant size fields + overhead
    };
 
    template<>
