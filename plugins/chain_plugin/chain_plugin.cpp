@@ -574,10 +574,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          bfs::path genesis_file;
          bool genesis_timestamp_specified = false;
          fc::optional<genesis_state> existing_genesis;
-         genesis_state genesis;
 
          if( fc::exists( my->blocks_dir / "blocks.log" ) ) {
-            existing_genesis = block_log::extract_genesis_state( my->blocks_dir );
+            my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
+            existing_genesis = my->chain_config->genesis;
          }
 
          if( options.count( "genesis-json" )) {
@@ -591,16 +591,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                        "Specified genesis file '${genesis}' does not exist.",
                        ("genesis", genesis_file.generic_string()));
 
-            genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
+            my->chain_config->genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
          }
 
          if( options.count( "genesis-timestamp" ) ) {
-            genesis.initial_timestamp = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
+            my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
             genesis_timestamp_specified = true;
          }
 
          if( !existing_genesis ) {
-            my->chain_config->genesis = genesis;
             if( !genesis_file.empty() ) {
                if( genesis_timestamp_specified ) {
                   ilog( "Using genesis state provided in '${genesis}' but with adjusted genesis timestamp",
@@ -615,9 +614,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                wlog( "Starting up fresh blockchain with default genesis state." );
             }
          } else {
-            my->chain_config->genesis = *existing_genesis;
-            EOS_ASSERT( *existing_genesis == genesis, plugin_config_exception,
-                        "Genesis state provided via command line arguments does not match the existing genesis state in blocks.log" );
+            EOS_ASSERT( my->chain_config->genesis == *existing_genesis, plugin_config_exception,
+                        "Genesis state provided via command line arguments does not match the existing genesis state in blocks.log. "
+                        "It is not necessary to provide genesis state arguments when a blocks.log file already exists."
+                      );
          }
       }
 
