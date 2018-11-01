@@ -13,7 +13,6 @@ steps:
 
   - label: ":docker: build docker image"
     command: ".buildkite/steps/build-image.sh"
-    timeout: 60
 
   - wait
 
