@@ -73,9 +73,6 @@ class statetrack_plugin_impl {
             fc::string scope = sym_code.to_string();
             if(scope.length() > 0 && scope[0] == '.') {
                 uint64_t scope_int = sym_code;
-
-                ilog("TEST scope_int ${scope_int}", ("scope_int", scope_int));
-
                 vector<char> v;
                 for( int i = 0; i < 7; ++i ) {
                     char c = (char)(scope_int & 0xff);
