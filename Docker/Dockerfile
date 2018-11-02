@@ -2,17 +2,12 @@ FROM cyberway/builder:latest as builder
 ARG branch=master
 ARG symbol=CYBER
 
-RUN git clone https://github.com/GolosChain/cyberway.cdt --recursive \
-    && cd cyberway.cdt \
-    && ./build.sh \
-    && ./install.sh
-
 RUN git clone -b $branch https://github.com/GolosChain/cyberway.git --recursive \
     && cd cyberway \
     && echo "$branch:$(git rev-parse HEAD)" > /etc/cyberway-version \
     && cmake -H. -B"/tmp/build" \
         -GNinja \
-        -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_BUILD_TYPE=Release \
         -DWASM_ROOT=/opt/wasm \
         -DCMAKE_CXX_COMPILER=clang++ \
         -DCMAKE_C_COMPILER=clang \
