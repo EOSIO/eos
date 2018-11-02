@@ -29,7 +29,6 @@ COPY --from=builder /tmp/build/contracts /contracts
 COPY --from=builder /cyberway/Docker/config.ini /
 COPY --from=builder /etc/cyberway-version /etc
 COPY --from=builder /cyberway/Docker/nodeosd.sh /opt/cyberway/bin/nodeosd.sh
-COPY --from=builder /usr/local/eosio.cdt/* /usr/local/cyberway.cdt/
 
 ENV CYBERWAY_ROOT=/opt/cyberway
 RUN chmod +x /opt/cyberway/bin/nodeosd.sh
