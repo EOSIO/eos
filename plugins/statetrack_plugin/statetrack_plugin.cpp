@@ -504,6 +504,8 @@ void statetrack_plugin::plugin_shutdown() {
       my->sender_socket->close();
       delete my->sender_socket;
       delete my->context;
+      my->sender_socket = nullptr;
+      my->context = nullptr;
    }
 }
 
