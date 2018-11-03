@@ -39,9 +39,9 @@ Ctrl+C
 
 Add the seed nodes to the default config at ~/.local/share/eosio/nodeos/config/config.ini
 ```
-p2p-peer-address = node-1.u.community:9876
-p2p-peer-address = node-2.u.community:9876
-p2p-peer-address = node-3.u.community:9876
-p2p-peer-address = node-4.u.community:9876
-p2p-peer-address = node-5.u.community:9876
+p2p-peer-address = node-1.uos.network:9876
+p2p-peer-address = node-2.uos.network:9876
+p2p-peer-address = node-3.uos.network:9876
+p2p-peer-address = node-4.uos.network:9876
+p2p-peer-address = node-5.uos.network:9876
 ```
