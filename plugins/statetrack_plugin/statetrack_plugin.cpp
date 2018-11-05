@@ -99,11 +99,12 @@ class statetrack_plugin_impl {
 // statetrack plugin implementation
 
 void statetrack_plugin_impl::send_zmq_msg(const fc::string content) {
-  if(sender_socket != nullptr) {
-    zmq::message_t message(content.length());
-    memcpy(message.data(), content.c_str(), content.length());
-    sender_socket->send(message);
-  }
+  if(sender_socket == nullptr)
+    return;
+  
+  zmq::message_t message(content.length());
+  memcpy(message.data(), content.c_str(), content.length());
+  sender_socket->send(message);
 }
 
 bool statetrack_plugin_impl::filter(const chain::account_name& code, const fc::string& scope, const chain::table_name& table) {
@@ -247,6 +248,9 @@ db_rev statetrack_plugin_impl::get_db_rev(const int64_t revision, op_type_enum o
 }
 
 void statetrack_plugin_impl::on_applied_table(const chainbase::database& db, const chain::table_id_object& tio, op_type_enum op_type) {
+    if(sender_socket == nullptr)
+      return;
+  
     auto code = tio.code;
     auto scope = scope_sym_to_string(tio.scope);
     auto table = tio.table;
@@ -266,6 +270,9 @@ void statetrack_plugin_impl::on_applied_table(const chainbase::database& db, con
 }
 
 void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::account_object& co, op_type_enum op_type) {
+  if(sender_socket == nullptr)
+    return;
+  
   name system = N(system);
   auto code  = system;
   auto scope = system.to_string();
@@ -279,6 +286,9 @@ void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const 
 }
 
 void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::permission_object& po, op_type_enum op_type) {
+  if(sender_socket == nullptr)
+    return;
+  
   name system = N(system);
   auto code  = system;
   auto scope = system.to_string();
@@ -292,6 +302,9 @@ void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const 
 }
 
 void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::permission_link_object& plo, op_type_enum op_type) {
+  if(sender_socket == nullptr)
+    return;
+  
   name system = N(system);
   auto code  = system;
   auto scope = system.to_string();
@@ -305,6 +318,8 @@ void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const 
 }
   
 void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::key_value_object& kvo, op_type_enum op_type) {
+  if(sender_socket == nullptr)
+    return;
   
   const chain::table_id_object* tio_ptr = get_kvo_tio(db, kvo);
 
@@ -327,6 +342,9 @@ void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const 
 
   
 void statetrack_plugin_impl::on_applied_rev(const int64_t revision, op_type_enum op_type) {
+  if(sender_socket == nullptr)
+    return;
+  
   fc::string data = fc::json::to_string(get_db_rev(revision, op_type));
   ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type)("data", data));
   send_zmq_msg(data);
@@ -402,10 +420,6 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
           my->on_applied_rev(revision, op_type_enum::REV_UNDO);
       };
 
-      auto commit_lambda = [&](const int64_t revision) {
-          my->on_applied_rev(revision, op_type_enum::REV_COMMIT);
-      };
-
       // account_object events
 
       auto& co_inde = db.get_index<co_index_type>();
@@ -423,7 +437,6 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
       };
 
       co_inde.applied_undo = undo_lambda;
-      co_inde.applied_commit = commit_lambda;
 
       // permisson_object events
 
@@ -442,7 +455,6 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
       };
       
       po_inde.applied_undo = undo_lambda;
-      po_inde.applied_commit = commit_lambda;
       
       // permisson_link_object events
 
@@ -461,7 +473,6 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
       };
 
       plo_inde.applied_undo = undo_lambda;
-      plo_inde.applied_commit = commit_lambda;
 
       // table_id_object events
 
@@ -488,7 +499,6 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
       };
      
       kv_index.applied_undo = undo_lambda;
-      kv_index.applied_commit = commit_lambda;
    }
    FC_LOG_AND_RETHROW()
 }
@@ -505,7 +515,6 @@ void statetrack_plugin::plugin_shutdown() {
       delete my->sender_socket;
       delete my->context;
       my->sender_socket = nullptr;
-      my->context = nullptr;
    }
 }
 
