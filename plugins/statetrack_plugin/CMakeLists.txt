@@ -22,6 +22,7 @@ message(STATUS "[Additional Plugin] EOSIO ZeroMQ plugin enabled")
 file(GLOB HEADERS "include/eosio/statetrack_plugin/*.hpp")
 add_library( statetrack_plugin
              statetrack_plugin.cpp
+             statetrack_plugin_impl.cpp
              ${HEADERS} )
 
 target_link_libraries( statetrack_plugin ${ZeroMQ_LIBRARY} chain_plugin appbase fc )
