@@ -4,6 +4,7 @@
  */
 
 #include <zmq.hpp>
+#include <eosio/chain/trace.hpp>
 #include <eosio/statetrack_plugin/statetrack_plugin.hpp>
 #include <boost/algorithm/string.hpp>
 
@@ -22,8 +23,6 @@ typedef typename chainbase::get_index_type<chain::permission_link_object>::type 
 typedef typename chainbase::get_index_type<chain::table_id_object>::type ti_index_type;
 typedef typename chainbase::get_index_type<chain::key_value_object>::type kv_index_type;
 
-
-  
 struct filter_entry {
     name code;
     name scope;
@@ -40,6 +39,15 @@ struct filter_entry {
 
 class statetrack_plugin_impl {
    public:
+        statetrack_plugin_impl() {
+          blacklist_actions.emplace
+            (std::make_pair(chain::config::system_account_name,
+                            std::set<name>{ N(onblock) } ));
+          blacklist_actions.emplace
+            (std::make_pair(N(blocktwitter),
+                            std::set<name>{ N(tweet) } ));
+        }
+  
         void send_zmq_msg(const string content);
         bool filter(const chain::account_name& code, const fc::string& scope, const chain::table_name& table);
 
@@ -55,15 +63,21 @@ class statetrack_plugin_impl {
         
         db_rev get_db_rev(const int64_t revision, op_type_enum op_type);
   
+        //generic_index state tables
         void on_applied_table(const chainbase::database& db, const chain::table_id_object& tio, op_type_enum op_type);
-
+        //generic_index op
         void on_applied_op(const chainbase::database& db, const chain::account_object& co, op_type_enum op_type);
         void on_applied_op(const chainbase::database& db, const chain::permission_object& po, op_type_enum op_type);
         void on_applied_op(const chainbase::database& db, const chain::permission_link_object& plo, op_type_enum op_type);
         void on_applied_op(const chainbase::database& db, const chain::key_value_object& kvo, op_type_enum op_type);
-
+        //generic_index undo
         void on_applied_rev(const int64_t revision, op_type_enum op_type);
-
+        //blocks and transactions
+        void on_applied_transaction( const transaction_trace_ptr& ttp );
+        void on_accepted_block(const block_state_ptr& bsp);
+        void on_action_trace( const action_trace& at, const block_state_ptr& bsp );
+        void on_irreversible_block( const chain::block_state_ptr& bsp )
+  
         static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
             data.resize( obj.value.size() );
             memcpy( data.data(), obj.value.data(), obj.value.size() );
@@ -89,9 +103,16 @@ class statetrack_plugin_impl {
         zmq::context_t* context;
         zmq::socket_t* sender_socket;
   
+        std::map<transaction_id_type, transaction_trace_ptr> cached_traces;
+        std::map<name,std::set<name>>  blacklist_actions;
+  
         std::set<filter_entry> filter_on;
         std::set<filter_entry> filter_out;
         fc::microseconds abi_serializer_max_time;
+  
+        fc::optional<scoped_connection> applied_transaction_connection;
+        fc::optional<scoped_connection> accepted_block_connection;
+        fc::optional<scoped_connection> irreversible_block_connection;
     private:
         bool shorten_abi_errors = true;
 };
@@ -339,8 +360,6 @@ void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const 
   }
 }
 
-
-  
 void statetrack_plugin_impl::on_applied_rev(const int64_t revision, op_type_enum op_type) {
   if(sender_socket == nullptr)
     return;
@@ -350,6 +369,66 @@ void statetrack_plugin_impl::on_applied_rev(const int64_t revision, op_type_enum
   send_zmq_msg(data);
 }
 
+void statetrack_plugin_impl::on_applied_transaction( const transaction_trace_ptr& ttp )
+{
+  if (ttp->receipt) {
+    cached_traces[ttp->id] = ttp;
+  }
+}
+  
+void statetrack_plugin_impl::on_accepted_block(const block_state_ptr& bsp)
+{
+    //TODO send accepted block information
+  
+    for (auto& t : bsp->block->transactions) {
+      transaction_id_type id;
+      if (t.trx.contains<transaction_id_type>()) {
+        id = t.trx.get<transaction_id_type>();
+      }
+      else {
+        id = t.trx.get<packed_transaction>().id();
+      }
+
+      if( t.status == transaction_receipt_header::executed ) {
+        // Send traces only for executed transactions
+        auto it = cached_traces.find(id);
+        if (it == cached_traces.end() || !it->second->receipt) {
+          ilog("missing trace for transaction {id}", ("id", id));
+          continue;
+        }
+
+        for( const auto& atrace : it->second->action_traces ) {
+          on_action_trace( atrace, block_state );
+        }
+      }
+    }
+
+    cached_traces.clear();
+}
+
+
+void statetrack_plugin_impl::on_action_trace( const action_trace& at, const block_state_ptr& bsp )
+{
+  // check the action against the blacklist
+  auto search_acc = blacklist_actions.find(at.act.account);
+  if(search_acc != blacklist_actions.end()) {
+    auto search_act = search_acc->second.find(at.act.name);
+    if( search_act != search_acc->second.end() ) {
+      return;
+    }
+  }
+
+  auto& chain = chain_plug->chain();
+
+  //TODO send action trace
+}
+
+
+void statetrack_plugin_impl::on_irreversible_block( const chain::block_state_ptr& bsp )
+{
+  //TODO send irreversible block information
+} 
+  
 // Plugin implementation
 
 statetrack_plugin::statetrack_plugin():my(new statetrack_plugin_impl()){}
@@ -410,7 +489,8 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
       ilog("Bind to ZMQ PUSH socket successful");
       
       chain_plugin& chain_plug = app().get_plugin<chain_plugin>();
-      const chainbase::database& db = chain_plug.chain().db();
+      auto& chain = my->chain_plug->chain();
+      const chainbase::database& db = chain.db();
 
       my->abi_serializer_max_time = chain_plug.get_abi_serializer_max_time();
       
@@ -499,6 +579,21 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
       };
      
       kv_index.applied_undo = undo_lambda;
+     
+      my->applied_transaction_connection.emplace( 
+        chain.applied_transaction.connect([&]( const transaction_trace_ptr& ttp ) {
+          my->on_applied_transaction(ttp);  
+      }));
+
+      my->accepted_block_connection.emplace(
+        chain.accepted_block.connect([&](const block_state_ptr& bsp) {
+            my->on_accepted_block(bsp); 
+      }));
+
+      my->irreversible_block_connection.emplace( 
+        chain.irreversible_block.connect([&]( const chain::block_state_ptr& bsp ) {
+            my->on_irreversible_block( bsp ); 
+      }));
    }
    FC_LOG_AND_RETHROW()
 }
