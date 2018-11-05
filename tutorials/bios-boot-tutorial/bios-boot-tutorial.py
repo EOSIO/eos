@@ -187,7 +187,10 @@ def listProducers():
 def vote(b, e):
     for i in range(b, e):
         voter = accounts[i]['name']
-        prods = random.sample(range(firstProducer, firstProducer + numProducers), args.num_producers_vote)
+        k = args.num_producers_vote
+        if k > numProducers:
+            k = numProducers - 1
+        prods = random.sample(range(firstProducer, firstProducer + numProducers), k)
         prods = ' '.join(map(lambda x: accounts[x]['name'], prods))
         retry(args.cleos + 'system voteproducer prods ' + voter + ' ' + prods)
 
