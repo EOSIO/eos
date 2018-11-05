@@ -59,10 +59,7 @@ def getOutput(args):
     return proc.communicate()[0].decode('utf-8')
 
 def getJsonOutput(args):
-    print('bios-boot-tutorial.py:', args)
-    logFile.write(args + '\n')
-    proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE)
-    return json.loads(proc.communicate()[0])
+    return json.loads(getOutput(args))
 
 def sleep(t):
     print('sleep', t, '...')
