@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-
 #include <eosio/statetrack_plugin/statetrack_plugin.hpp>
+#include <eosio/statetrack_plugin/statetrack_plugin_impl.hpp>
 
 namespace {
   const char* SENDER_BIND = "st-zmq-sender-bind";
