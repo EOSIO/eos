@@ -50,6 +50,7 @@ namespace eosio { namespace chain {
       public:
 
          struct config {
+            flat_set<account_name>   sender_bypass_whiteblacklist;
             flat_set<account_name>   actor_whitelist;
             flat_set<account_name>   actor_blacklist;
             flat_set<account_name>   contract_whitelist;
@@ -202,6 +203,8 @@ namespace eosio { namespace chain {
          sha256 calculate_integrity_hash()const;
          void write_snapshot( const snapshot_writer_ptr& snapshot )const;
 
+         bool sender_avoids_whitelist_blacklist_enforcement( account_name sender )const;
+         void check_actor_list( const flat_set<account_name>& actors )const;
          void check_contract_list( account_name code )const;
          void check_action_list( account_name code, action_name action )const;
          void check_key_list( const public_key_type& key )const;
@@ -214,7 +217,6 @@ namespace eosio { namespace chain {
          bool is_resource_greylisted(const account_name &name) const;
          const flat_set<account_name> &get_resource_greylist() const;
 
-         void validate_referenced_accounts( const transaction& t )const;
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
          void validate_db_available_size() const;
