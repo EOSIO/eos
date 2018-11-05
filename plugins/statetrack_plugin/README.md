@@ -1,6 +1,9 @@
 # statetrack_plugin
 
-This plugin adds hooks on chainbase operations emplace, modify, remove, undo, squash and commit and routes the objects and revision numbers to a ZMQ queue.
+This plugin adds hooks on chainbase operations emplace, modify, remove, undo and routes the objects and revision numbers to a ZMQ queue.
+Also hooks blocks and transactions to the ZMQ queue.
+
+This is based on plugin: https://github.com/cc32d9/eos_zmq_plugin
 
 ### Configuration
 
