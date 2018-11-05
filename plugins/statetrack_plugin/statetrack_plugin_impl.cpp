@@ -2,7 +2,6 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-
 #include <eosio/statetrack_plugin/statetrack_plugin_impl.hpp>
 
 // statetrack plugin implementation
