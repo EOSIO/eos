@@ -4,6 +4,11 @@
  */
 #include <eosio/statetrack_plugin/statetrack_plugin_impl.hpp>
 
+namespace eosio {
+
+using namespace chain;
+using namespace chainbase;
+
 // statetrack plugin implementation
 
 void statetrack_plugin_impl::send_zmq_msg(const fc::string content) {
@@ -15,7 +20,7 @@ void statetrack_plugin_impl::send_zmq_msg(const fc::string content) {
   sender_socket->send(message);
 }
 
-bool statetrack_plugin_impl::filter(const chain::account_name& code, const fc::string& scope, const chain::table_name& table) {
+bool statetrack_plugin_impl::filter(const account_name& code, const fc::string& scope, const table_name& table) {
   if(filter_on.size() > 0) {
     bool pass_on = false;
     if (filter_on.find({ code, 0, 0 }) != filter_on.end()) {
@@ -45,28 +50,28 @@ bool statetrack_plugin_impl::filter(const chain::account_name& code, const fc::s
   return true;
 }
    
-const chain::table_id_object* statetrack_plugin_impl::get_kvo_tio(const chainbase::database& db, const chain::key_value_object& kvo) {
-    return db.find<chain::table_id_object>(kvo.t_id);
+const table_id_object* statetrack_plugin_impl::get_kvo_tio(const database& db, const key_value_object& kvo) {
+    return db.find<table_id_object>(kvo.t_id);
 }
 
-const chain::account_object& statetrack_plugin_impl::get_tio_co(const chainbase::database& db, const chain::table_id_object& tio) {
-    const chain::account_object *co = db.find<chain::account_object, chain::by_name>(tio.code);
-    EOS_ASSERT(co != nullptr, chain::account_query_exception, "Fail to retrieve account for ${code}", ("code", tio.code) );
+const account_object& statetrack_plugin_impl::get_tio_co(const database& db, const table_id_object& tio) {
+    const account_object *co = db.find<account_object, by_name>(tio.code);
+    EOS_ASSERT(co != nullptr, account_query_exception, "Fail to retrieve account for ${code}", ("code", tio.code) );
     return *co;
 }
 
-const abi_def& statetrack_plugin_impl::get_co_abi( const chain::account_object& co ) {   
+const abi_def& statetrack_plugin_impl::get_co_abi( const account_object& co ) {   
    abi_def* abi = new abi_def();
    abi_serializer::to_abi(co.abi, *abi);
    return *abi;
 }
 
-fc::variant statetrack_plugin_impl::get_kvo_row(const chainbase::database& db, const chain::table_id_object& tio, const chain::key_value_object& kvo, bool json) {
+fc::variant statetrack_plugin_impl::get_kvo_row(const database& db, const table_id_object& tio, const key_value_object& kvo, bool json) {
     vector<char> data;
     copy_inline_row(kvo, data);
 
     if (json) {
-        const chain::account_object& co = get_tio_co(db, tio);
+        const account_object& co = get_tio_co(db, tio);
         const abi_def& abi = get_co_abi(co);
 
         abi_serializer abis;
@@ -78,7 +83,7 @@ fc::variant statetrack_plugin_impl::get_kvo_row(const chainbase::database& db, c
     }
 }
 
-db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const chain::account_object& co, op_type_enum op_type) {
+db_op statetrack_plugin_impl::get_db_op(const database& db, const account_object& co, op_type_enum op_type) {
     db_op op;
 
     name system = N(system);
@@ -103,7 +108,7 @@ db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const cha
     return op;
 }
 
-db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const chain::permission_object& po, op_type_enum op_type) {
+db_op statetrack_plugin_impl::get_db_op(const database& db, const permission_object& po, op_type_enum op_type) {
     db_op op;
 
     name system = N(system);
@@ -118,7 +123,7 @@ db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const cha
     return op;
 }
 
-db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const chain::permission_link_object& plo, op_type_enum op_type) {
+db_op statetrack_plugin_impl::get_db_op(const database& db, const permission_link_object& plo, op_type_enum op_type) {
     db_op op;
 
     name system = N(system);
@@ -133,7 +138,7 @@ db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const cha
     return op;
 }
 
-db_op statetrack_plugin_impl::get_db_op(const chainbase::database& db, const chain::table_id_object& tio, const chain::key_value_object& kvo, op_type_enum op_type, bool json) {
+db_op statetrack_plugin_impl::get_db_op(const database& db, const table_id_object& tio, const key_value_object& kvo, op_type_enum op_type, bool json) {
     db_op op;
 
     op.id = kvo.primary_key;
@@ -155,7 +160,7 @@ db_rev statetrack_plugin_impl::get_db_rev(const int64_t revision, op_type_enum o
     return rev;
 }
 
-void statetrack_plugin_impl::on_applied_table(const chainbase::database& db, const chain::table_id_object& tio, op_type_enum op_type) {
+void statetrack_plugin_impl::on_applied_table(const database& db, const table_id_object& tio, op_type_enum op_type) {
     if(sender_socket == nullptr)
       return;
   
@@ -177,7 +182,7 @@ void statetrack_plugin_impl::on_applied_table(const chainbase::database& db, con
     }
 }
 
-void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::account_object& co, op_type_enum op_type) {
+void statetrack_plugin_impl::on_applied_op(const database& db, const account_object& co, op_type_enum op_type) {
   if(sender_socket == nullptr)
     return;
   
@@ -193,7 +198,7 @@ void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const 
   }
 }
 
-void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::permission_object& po, op_type_enum op_type) {
+void statetrack_plugin_impl::on_applied_op(const database& db, const permission_object& po, op_type_enum op_type) {
   if(sender_socket == nullptr)
     return;
   
@@ -209,7 +214,7 @@ void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const 
   }
 }
 
-void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::permission_link_object& plo, op_type_enum op_type) {
+void statetrack_plugin_impl::on_applied_op(const database& db, const permission_link_object& plo, op_type_enum op_type) {
   if(sender_socket == nullptr)
     return;
   
@@ -225,16 +230,16 @@ void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const 
   }
 }
   
-void statetrack_plugin_impl::on_applied_op(const chainbase::database& db, const chain::key_value_object& kvo, op_type_enum op_type) {
+void statetrack_plugin_impl::on_applied_op(const database& db, const key_value_object& kvo, op_type_enum op_type) {
   if(sender_socket == nullptr)
     return;
   
-  const chain::table_id_object* tio_ptr = get_kvo_tio(db, kvo);
+  const table_id_object* tio_ptr = get_kvo_tio(db, kvo);
 
   if(tio_ptr == nullptr)
     return;
 
-  const chain::table_id_object& tio = *tio_ptr;
+  const table_id_object& tio = *tio_ptr;
 
   auto code  = tio.code;
   auto scope = scope_sym_to_string(tio.scope);
@@ -285,7 +290,7 @@ void statetrack_plugin_impl::on_accepted_block(const block_state_ptr& bsp)
         }
 
         for( const auto& atrace : it->second->action_traces ) {
-          on_action_trace( atrace, block_state );
+          on_action_trace( atrace, bsp );
         }
       }
     }
@@ -296,6 +301,9 @@ void statetrack_plugin_impl::on_accepted_block(const block_state_ptr& bsp)
 
 void statetrack_plugin_impl::on_action_trace( const action_trace& at, const block_state_ptr& bsp )
 {
+  if(sender_socket == nullptr)
+    return;
+
   // check the action against the blacklist
   auto search_acc = blacklist_actions.find(at.act.account);
   if(search_acc != blacklist_actions.end()) {
@@ -307,11 +315,27 @@ void statetrack_plugin_impl::on_action_trace( const action_trace& at, const bloc
 
   auto& chain = chain_plug->chain();
 
-  //TODO send action trace
+  db_action da;
+  da.global_action_seq = at.receipt.global_sequence;
+  da.block_num = bsp->block->block_num();
+  da.block_time = bsp->block->timestamp;
+  da.action_trace = chain.to_variant_with_abi(at, abi_serializer_max_time);
+  da.last_irreversible_block = chain.last_irreversible_block_num();
+
+  fc::string data = fc::json::to_string(da);
+  ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type_enum::TRX_ACTION)("data", data));
+  send_zmq_msg(data);
 }
 
 
-void statetrack_plugin_impl::on_irreversible_block( const chain::block_state_ptr& bsp )
+void statetrack_plugin_impl::on_irreversible_block( const block_state_ptr& bsp )
 {
-  //TODO send irreversible block information
-} 
+  if(sender_socket == nullptr)
+    return;
+  
+  fc::string data = fc::json::to_string(get_db_rev(bsp->block_num, op_type_enum::REV_COMMIT));
+  ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type_enum::REV_COMMIT)("data", data));
+  send_zmq_msg(data);
+}
+
+}

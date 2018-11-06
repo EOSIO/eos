@@ -12,6 +12,9 @@ namespace {
 
 namespace eosio {
 
+using namespace chain;
+using namespace chainbase;
+
 static appbase::abstract_plugin& _statetrack_plugin = app().register_plugin<statetrack_plugin>();
 
 // Plugin implementation
@@ -67,17 +70,17 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
      
       my->context = new zmq::context_t(1);
       my->sender_socket = new zmq::socket_t(*my->context, ZMQ_PUSH);
+      my->chain_plug = app().find_plugin<chain_plugin>();
       
       ilog("Bind to ZMQ PUSH socket ${u}", ("u", my->socket_bind_str));
       my->sender_socket->bind(my->socket_bind_str);
 
       ilog("Bind to ZMQ PUSH socket successful");
-      
-      chain_plugin& chain_plug = app().get_plugin<chain_plugin>();
-      auto& chain = my->chain_plug->chain();
-      const chainbase::database& db = chain.db();
 
-      my->abi_serializer_max_time = chain_plug.get_abi_serializer_max_time();
+      auto& chain = my->chain_plug->chain();
+      const database& db = chain.db();
+
+      my->abi_serializer_max_time = my->chain_plug->get_abi_serializer_max_time();
       
       ilog("Binding database events");
 
@@ -89,15 +92,15 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
 
       auto& co_inde = db.get_index<co_index_type>();
 
-      co_inde.applied_emplace = [&](const chain::account_object& co) {
+      co_inde.applied_emplace = [&](const account_object& co) {
           my->on_applied_op(db, co, op_type_enum::ROW_CREATE);
       };
   
-      co_inde.applied_modify = [&](const chain::account_object& co) {
+      co_inde.applied_modify = [&](const account_object& co) {
           my->on_applied_op(db, co, op_type_enum::ROW_MODIFY);
       };
   
-      co_inde.applied_remove = [&](const chain::account_object& co) {
+      co_inde.applied_remove = [&](const account_object& co) {
           my->on_applied_op(db, co, op_type_enum::ROW_REMOVE);
       };
 
@@ -107,15 +110,15 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
 
       auto& po_inde = db.get_index<po_index_type>();
 
-      po_inde.applied_emplace = [&](const chain::permission_object& po) {
+      po_inde.applied_emplace = [&](const permission_object& po) {
           my->on_applied_op(db, po, op_type_enum::ROW_CREATE);
       };
   
-      po_inde.applied_modify = [&](const chain::permission_object& po) {
+      po_inde.applied_modify = [&](const permission_object& po) {
           my->on_applied_op(db, po, op_type_enum::ROW_MODIFY);
       };
   
-      po_inde.applied_remove = [&](const chain::permission_object& po) {
+      po_inde.applied_remove = [&](const permission_object& po) {
           my->on_applied_op(db, po, op_type_enum::ROW_REMOVE);
       };
       
@@ -125,15 +128,15 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
 
       auto& plo_inde = db.get_index<plo_index_type>();
 
-      plo_inde.applied_emplace = [&](const chain::permission_link_object& plo) {
+      plo_inde.applied_emplace = [&](const permission_link_object& plo) {
           my->on_applied_op(db, plo, op_type_enum::ROW_CREATE);
       };
   
-      plo_inde.applied_modify = [&](const chain::permission_link_object& plo) {
+      plo_inde.applied_modify = [&](const permission_link_object& plo) {
           my->on_applied_op(db, plo, op_type_enum::ROW_MODIFY);
       };
   
-      plo_inde.applied_remove = [&](const chain::permission_link_object& plo) {
+      plo_inde.applied_remove = [&](const permission_link_object& plo) {
           my->on_applied_op(db, plo, op_type_enum::ROW_REMOVE);
       };
 
@@ -143,7 +146,7 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
 
       auto& ti_index = db.get_index<ti_index_type>();
 
-      ti_index.applied_remove = [&](const chain::table_id_object& tio) {
+      ti_index.applied_remove = [&](const table_id_object& tio) {
           my->on_applied_table(db, tio, op_type_enum::TABLE_REMOVE);
       };
 
@@ -151,15 +154,15 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
       
       auto& kv_index = db.get_index<kv_index_type>();
       
-      kv_index.applied_emplace = [&](const chain::key_value_object& kvo) {
+      kv_index.applied_emplace = [&](const key_value_object& kvo) {
           my->on_applied_op(db, kvo, op_type_enum::ROW_CREATE);
       };
   
-      kv_index.applied_modify = [&](const chain::key_value_object& kvo) {
+      kv_index.applied_modify = [&](const key_value_object& kvo) {
           my->on_applied_op(db, kvo, op_type_enum::ROW_MODIFY);
       };
   
-      kv_index.applied_remove = [&](const chain::key_value_object& kvo) {
+      kv_index.applied_remove = [&](const key_value_object& kvo) {
           my->on_applied_op(db, kvo, op_type_enum::ROW_REMOVE);
       };
      
@@ -176,7 +179,7 @@ void statetrack_plugin::plugin_initialize(const variables_map& options) {
       }));
 
       my->irreversible_block_connection.emplace( 
-        chain.irreversible_block.connect([&]( const chain::block_state_ptr& bsp ) {
+        chain.irreversible_block.connect([&]( const block_state_ptr& bsp ) {
             my->on_irreversible_block( bsp ); 
       }));
    }
