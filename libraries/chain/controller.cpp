@@ -908,7 +908,6 @@ struct controller_impl {
 
       if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
-         dlog("${detail}", ("detail", trace->except->to_detail_string()));
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start, cpu_time_to_bill_us, billed_cpu_time_us, explicit_billed_cpu_time );
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
