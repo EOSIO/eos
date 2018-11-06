@@ -922,7 +922,6 @@ public:
    :context_aware_api(ctx,true){}
 
    void abort() {
-      edump(("abort() called"));
       EOS_ASSERT( false, abort_called, "abort() called");
    }
 
@@ -930,7 +929,6 @@ public:
    void eosio_assert( bool condition, null_terminated_ptr msg ) {
       if( BOOST_UNLIKELY( !condition ) ) {
          std::string message( msg );
-         edump((message));
          EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
@@ -938,14 +936,12 @@ public:
    void eosio_assert_message( bool condition, array_ptr<const char> msg, size_t msg_len ) {
       if( BOOST_UNLIKELY( !condition ) ) {
          std::string message( msg, msg_len );
-         edump((message));
          EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
    void eosio_assert_code( bool condition, uint64_t error_code ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         edump((error_code));
          EOS_THROW( eosio_assert_code_exception,
                     "assertion failure with error code: ${error_code}", ("error_code", error_code) );
       }
