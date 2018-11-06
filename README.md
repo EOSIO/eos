@@ -1,3 +1,4 @@
+
 # EOSIO - The Most Powerful Infrastructure for Decentralized Applications
 
 [![Build status](https://badge.buildkite.com/370fe5c79410f7d695e4e34c500b4e86e3ac021c6b1f739e20.svg?branch=master)](https://buildkite.com/EOSIO/eosio)
@@ -38,13 +39,13 @@ $ brew remove eosio
 ```
 #### Ubuntu 18.04 Debian Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.2/eosio-1.4.2.ubuntu-18.04-x86_64.deb
-$ sudo apt install ./eosio-1.4.2.ubuntu-18.04-x86_64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.4.3/eosio-1.4.3.ubuntu-18.04-x86_64.deb
+$ sudo apt install ./eosio-1.4.3.ubuntu-18.04-x86_64.deb
 ```
 #### Ubuntu 16.04 Debian Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.2/eosio-1.4.2.ubuntu-16.04-x86_64.deb
-$ sudo apt install ./eosio-1.4.2.ubuntu-16.04-x86_64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.4.3/eosio-1.4.3.ubuntu-16.04-x86_64.deb
+$ sudo apt install ./eosio-1.4.3.ubuntu-16.04-x86_64.deb
 ```
 #### Debian Package Uninstall
 ```sh
@@ -52,8 +53,8 @@ $ sudo apt remove eosio
 ```
 #### RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.2/eosio-1.4.2.x86_64-0.x86_64.rpm
-$ sudo yum install ./eosio-1.4.2.x86_64-0.x86_64.rpm
+$ wget https://github.com/eosio/eos/releases/download/v1.4.3/eosio-1.4.3.x86_64-0.x86_64.rpm
+$ sudo yum install ./eosio-1.4.3.x86_64-0.x86_64.rpm
 ```
 #### RPM Package Uninstall
 ```sh
