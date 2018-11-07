@@ -521,7 +521,8 @@ void state_history_plugin::set_program_options(options_description& cli, options
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {
    try {
-      // todo: check for --disable-replay-opts
+      EOS_ASSERT(options.at("disable-replay-opts").as<bool>(), plugin_exception,
+                 "state_history_plugin requires --disable-replay-opts");
 
       my->chain_plug = app().find_plugin<chain_plugin>();
       EOS_ASSERT(my->chain_plug, chain::missing_chain_plugin_exception, "");
