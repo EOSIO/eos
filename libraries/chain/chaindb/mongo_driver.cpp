@@ -71,7 +71,27 @@ namespace cyberway { namespace chaindb {
         const char* to_backward;
     }; // struct cmp_info
 
+    enum class mongo_code: int {
+        Unknown = -1,
+        Duplicate = 11000,
+        NoServer = 13053
+    };
+
     namespace { namespace _detail {
+
+        template <typename Exception>
+        mongo_code get_mongo_code(const Exception& e) {
+            auto value = static_cast<mongo_code>(e.code().value());
+
+            switch (value) {
+                case mongo_code::Duplicate:
+                case mongo_code::NoServer:
+                    return value;
+
+                default:
+                    return mongo_code::Unknown;
+            }
+        }
 
         variant build_variant(const document_view&);
 
@@ -405,6 +425,31 @@ namespace cyberway { namespace chaindb {
             return doc;
         }
 
+        template <typename Lambda>
+        void auto_reconnect(Lambda&& lambda) {
+            // TODO: move to program options
+            constexpr int max_iters = 12;
+            constexpr int sleep_seconds = 5;
+
+            for (int i = 0; i < max_iters; ++i) { try {
+                if (i > 0) {
+                    wlog("Fail to connect to MongoDB server, wait ${sec} seconds...", ("sec", sleep_seconds));
+                    sleep(sleep_seconds);
+                    wlog("Try again...");
+                }
+                lambda();
+                return;
+            } catch (const mongocxx::exception& e) {
+                if (_detail::get_mongo_code(e) == mongo_code::NoServer) {
+                    continue; // try again
+                }
+
+                throw;
+            } }
+
+            CYBERWAY_ASSERT(false, driver_open_exception, "Fail to connect to MongoDB server");
+        }
+
     } } // namespace _detail
 
     class mongodb_cursor: public cursor_info {
@@ -583,37 +628,39 @@ namespace cyberway { namespace chaindb {
             auto find = create_find_document(find_cmp_->from_forward, find_cmp_->from_backward);
             auto sort = create_sort_document();
 
-            source_.emplace(db_table_.find(find.view(), options::find().sort(sort.view())));
-
             const auto find_pk = find_pk_;
             find_pk_ = unset_primary_key;
 
-            init_pk_value();
-            if (unset_primary_key == find_pk || find_pk == pk || end_primary_key == pk) return;
-            if (index.index->unique || !find_cmp_->to_forward) return;
+            _detail::auto_reconnect([&]() {
+                source_.emplace(db_table_.find(find.view(), options::find().sort(sort.view())));
 
-            // locate cursor to primary key
+                init_pk_value();
+                if (unset_primary_key == find_pk || find_pk == pk || end_primary_key == pk) return;
+                if (index.index->unique || !find_cmp_->to_forward) return;
 
-            auto to_find = create_find_document(find_cmp_->to_forward, find_cmp_->to_backward);
-            auto to_cursor = db_table_.find(to_find.view(), options::find().sort(sort.view()).limit(1));
+                // locate cursor to primary key
 
-            auto to_pk = unset_primary_key;
-            auto to_itr = to_cursor.begin();
-            if (to_itr != to_cursor.end()) to_pk = _detail::get_pk_value(index, *to_itr);
+                auto to_find = create_find_document(find_cmp_->to_forward, find_cmp_->to_backward);
+                auto to_cursor = db_table_.find(to_find.view(), options::find().sort(sort.view()).limit(1));
 
-            // TODO: limitation by deadline
-            static constexpr int max_iters = 10000;
-            auto itr = source_->begin();
-            auto etr = source_->end();
-            for (int i = 0; i < max_iters && itr != etr; ++i, ++itr) {
-                pk = _detail::get_pk_value(index, *to_itr);
-                // range is end, but pk not found
-                if (to_pk == pk) break;
-                // ok, key is found
-                if (find_pk == pk) return;
-            }
+                auto to_pk = unset_primary_key;
+                auto to_itr = to_cursor.begin();
+                if (to_itr != to_cursor.end()) to_pk = _detail::get_pk_value(index, *to_itr);
 
-            open_end();
+                // TODO: limitation by deadline
+                static constexpr int max_iters = 10000;
+                auto itr = source_->begin();
+                auto etr = source_->end();
+                for (int i = 0; i < max_iters && itr != etr; ++i, ++itr) {
+                    pk = _detail::get_pk_value(index, *to_itr);
+                    // range is end, but pk not found
+                    if (to_pk == pk) break;
+                    // ok, key is found
+                    if (find_pk == pk) return;
+                }
+
+                open_end();
+            });
         }
 
         void lazy_next() {
@@ -670,7 +717,9 @@ namespace cyberway { namespace chaindb {
         void apply_changes() { try {
             auto tables = std::move(tables_bulk_write_);
             for (auto& table: tables) {
-                table.second.execute();
+                _detail::auto_reconnect([&]() {
+                    table.second.execute();
+                });
             }
         } catch (const mongocxx::bulk_write_exception& e) {
             throw_exception(e);
@@ -681,7 +730,9 @@ namespace cyberway { namespace chaindb {
             if (tables_bulk_write_.end() != itr) {
                 auto bulk = std::move(itr->second);
                 tables_bulk_write_.erase(itr);
-                bulk.execute();
+                _detail::auto_reconnect([&]() {
+                    bulk.execute();
+                });
             }
         } catch (const mongocxx::bulk_write_exception& e) {
             throw_exception(e);
@@ -699,8 +750,8 @@ namespace cyberway { namespace chaindb {
         std::map<table_name, bulk_write> tables_bulk_write_;
 
         void throw_exception(const mongocxx::bulk_write_exception& e) {
-            // TODO: add parsing of server_error for throwing of detailed exception
-            CYBERWAY_ASSERT(false, driver_write_exception, e.what());
+            CYBERWAY_ASSERT(_detail::get_mongo_code(e) == mongo_code::Duplicate, driver_write_exception, e.what());
+            CYBERWAY_ASSERT(false, driver_duplicate_exception, e.what());
         }
     }; // struct code_info
 
@@ -715,16 +766,21 @@ namespace cyberway { namespace chaindb {
     }; // struct cursor_location
 
     struct mongodb_driver::mongodb_impl_ {
-        mongocxx::instance mongo_inst_;
         mongocxx::client mongo_conn_;
         code_map code_map_;
 
         mongodb_impl_(const std::string& p) {
+            init_instance();
             mongocxx::uri uri{p};
             mongo_conn_ = mongocxx::client{uri};
         }
 
         ~mongodb_impl_() = default;
+
+        static mongocxx::instance& init_instance() {
+            static mongocxx::instance instance;
+            return instance;
+        }
 
         cursor_location get_cursor(const cursor_request& request) {
             auto code_itr = code_map_.find(request.code);
@@ -832,6 +888,8 @@ namespace cyberway { namespace chaindb {
             auto db_table = get_db_table(table);
             auto& indexes = table.table->indexes;
 
+            // TODO: add removing of old indexes
+
             for (auto& index: indexes) {
                 bool was_pk = false;
                 document doc;
@@ -849,12 +907,14 @@ namespace cyberway { namespace chaindb {
                 }
 
                 auto db_index_name = get_index_name(index);
-                try {
-                    db_table.create_index(doc.view(), options::index().name(db_index_name).unique(index.unique));
-                } catch (const mongocxx::operation_exception& e) {
-                    db_table.indexes().drop_one(db_index_name);
-                    db_table.create_index(doc.view(), options::index().name(db_index_name).unique(index.unique));
-                }
+                _detail::auto_reconnect([&]() {
+                    try {
+                        db_table.create_index(doc.view(), options::index().name(db_index_name).unique(index.unique));
+                    } catch (const mongocxx::operation_exception& e) {
+                        db_table.indexes().drop_one(db_index_name);
+                        db_table.create_index(doc.view(), options::index().name(db_index_name).unique(index.unique));
+                    }
+                });
             }
         }
 

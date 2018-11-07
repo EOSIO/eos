@@ -61,6 +61,12 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(driver_write_exception, chaindb_internal_exception,
                                      3710014, "ChainDB driver write changes")
 
+        FC_DECLARE_DERIVED_EXCEPTION(driver_duplicate_exception, chaindb_internal_exception,
+                                     3710015, "ChainDB driver duplicate unique records")
+
+        FC_DECLARE_DERIVED_EXCEPTION(driver_open_exception, chaindb_internal_exception,
+                                     3710016, "ChainDB driver fail to open database")
+
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_abi_exception, chaindb_exception,
                                  3720000, "ChainDB ABI exception")
 
