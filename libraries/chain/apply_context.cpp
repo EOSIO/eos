@@ -498,7 +498,7 @@ void apply_context::db_remove_i64( int iterator ) {
    const key_value_object& obj = keyval_cache.get( iterator );
 
    const auto& table_obj = keyval_cache.get_table( obj.t_id );
-   EOS_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
+   EOS_ASSERT( table_obj.code == receiver || privileged, table_access_violation, "db access violation" );
 
 //   require_write_lock( table_obj.scope );
 
