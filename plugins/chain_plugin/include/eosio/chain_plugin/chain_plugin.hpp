@@ -269,6 +269,7 @@ public:
       string      key_type;  // type of key specified by index_position
       string      index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
       string      encode_type{"dec"}; //dec, hex , default=dec
+      bool        reverse = false; // from upper to lower
     };
 
    struct get_table_rows_result {
@@ -431,11 +432,18 @@ public:
          auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
 
          unsigned int count = 0;
-         auto itr = lower;
-         for (; itr != upper; ++itr) {
+         auto itr = (!p.reverse ? lower : upper);
+         while ((!p.reverse && itr != upper) || (p.reverse && itr != lower)) {
+
+            if (p.reverse) --itr;
 
             const auto* itr2 = d.find<chain::key_value_object, chain::by_scope_primary>(boost::make_tuple(t_id->id, itr->primary_key));
-            if (itr2 == nullptr) continue;
+            if (itr2 == nullptr) { // should not happen
+               if (!p.reverse) ++itr;
+               if (fc::time_point::now() > end) 
+                  break;
+               continue;
+            }
             copy_inline_row(*itr2, data);
 
             if (p.json) {
@@ -443,12 +451,12 @@ public:
             } else {
                result.rows.emplace_back(fc::variant(data));
             }
-
+            if (!p.reverse) ++itr;
             if (++count == p.limit || fc::time_point::now() > end) {
                break;
             }
          }
-         if (itr != upper) {
+         if ((!p.reverse && itr != upper) || (p.reverse && itr != lower)) {
             result.more = true;
          }
       }
@@ -495,8 +503,11 @@ public:
          auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
 
          unsigned int count = 0;
-         auto itr = lower;
-         for (; itr != upper; ++itr) {
+         auto itr = (!p.reverse ? lower : upper);
+         while ((!p.reverse && itr != upper) || (p.reverse && itr != lower)) {
+
+            if (p.reverse) --itr;
+
             copy_inline_row(*itr, data);
 
             if (p.json) {
@@ -505,12 +516,12 @@ public:
                result.rows.emplace_back(fc::variant(data));
             }
 
+            if (!p.reverse) ++itr;
             if (++count == p.limit || fc::time_point::now() > end) {
-               ++itr;
                break;
             }
          }
-         if (itr != upper) {
+         if ((!p.reverse && itr != upper) || (p.reverse && itr != lower)) {
             result.more = true;
          }
       }
@@ -672,7 +683,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_n
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit) )

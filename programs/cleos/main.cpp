@@ -2120,6 +2120,7 @@ int main( int argc, char** argv ) {
    bool binary = false;
    uint32_t limit = 10;
    string index_position;
+   bool reverse = false;
    auto getTable = get->add_subcommand( "table", localized("Retrieve the contents of a database table"), false);
    getTable->add_option( "account", code, localized("The account who owns the table") )->required();
    getTable->add_option( "scope", scope, localized("The scope within the contract in which the table is found") )->required();
@@ -2137,7 +2138,8 @@ int main( int argc, char** argv ) {
                                    "\t\t\t\tSpecial type 'name' indicates an account name."));
    getTable->add_option( "--encode-type", encode_type,
                          localized("The encoding type of key_type (i64 , i128 , float64, float128) only support decimal encoding e.g. 'dec'"
-                                    "i256 - supports both 'dec' and 'hex', ripemd160 and sha256 is 'hex' only\n"));
+                                    "i256 - supports both 'dec' and 'hex', ripemd160 and sha256 is 'hex' only"));
+   getTable->add_flag("-r,--reverse", reverse, localized("Iterate reversely from upper bound to lower bound"));
 
 
    getTable->set_callback([&] {
@@ -2152,6 +2154,7 @@ int main( int argc, char** argv ) {
                          ("key_type",key_type)
                          ("index_position", index_position)
                          ("encode_type", encode_type)
+                         ("reverse", reverse)
                          );
 
       std::cout << fc::json::to_pretty_string(result)
