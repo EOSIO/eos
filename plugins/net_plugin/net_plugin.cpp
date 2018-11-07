@@ -63,15 +63,6 @@ namespace eosio {
 
    using net_message_ptr = shared_ptr<net_message>;
 
-   template<typename I>
-   std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
-      static const char* digits = "0123456789abcdef";
-      std::string r(hlen, '0');
-      for(size_t i = 0, j = (hlen - 1) * 4 ; i < hlen; ++i, j -= 4)
-         r[i] = digits[(n>>j) & 0x0f];
-      return r;
-   }
-
    struct node_transaction_state {
       transaction_id_type id;
       time_point_sec  expires;  /// time after which this may be purged.
@@ -852,10 +843,22 @@ namespace eosio {
       }
       block_id_type head_id;
       block_id_type lib_id;
-      uint32_t lib_num;
+      block_id_type remote_head_id;
+      uint32_t remote_head_num = 0;
       try {
-         lib_num = cc.last_irreversible_block_num();
-         lib_id = cc.last_irreversible_block_id();
+         if (last_handshake_recv.generation >= 1) {
+            remote_head_id = last_handshake_recv.head_id;
+            remote_head_num = block_header::num_from_id(remote_head_id);
+            fc_dlog(logger, "maybe truncating branch at  = ${h}:${id}",("h",remote_head_num)("id",remote_head_id));
+         }
+
+         // base our branch off of the last handshake we sent the peer instead of our current
+         // LIB which could have moved forward in time as packets were in flight.
+         if (last_handshake_sent.generation >= 1) {
+            lib_id = last_handshake_sent.last_irreversible_block_id;
+         } else {
+            lib_id = cc.last_irreversible_block_id();
+         }
          head_id = cc.fork_db_head_block_id();
       }
       catch (const assert_exception &ex) {
@@ -872,6 +875,13 @@ namespace eosio {
       block_id_type null_id;
       for (auto bid = head_id; bid != null_id && bid != lib_id; ) {
          try {
+
+            // if the last handshake received indicates that we are catching up on a fork
+            // that the peer is already partially aware of, no need to resend blocks
+            if (remote_head_id == bid) {
+               break;
+            }
+
             signed_block_ptr b = cc.fetch_block_by_id(bid);
             if ( b ) {
                bid = b->previous;
@@ -886,7 +896,7 @@ namespace eosio {
       }
       size_t count = 0;
       if (!bstack.empty()) {
-         if (bstack.back()->previous == lib_id) {
+         if (bstack.back()->previous == lib_id || bstack.back()->previous == remote_head_id) {
             count = bstack.size();
             while (bstack.size()) {
                enqueue(*bstack.back());
@@ -1344,19 +1354,16 @@ namespace eosio {
             }
 
             //scan the list of peers looking for another able to provide sync blocks.
-            while (cptr != cend) {
+            auto cstart_it = cptr;
+            do {
                //select the first one which is current and break out.
-               if ((*cptr)->current()) {
+               if((*cptr)->current()) {
                   source = *cptr;
                   break;
                }
-               else {
-                  // advance the iterator in a round robin fashion.
-                  if (++cptr == my_impl->connections.end()) {
+               if(++cptr == my_impl->connections.end())
                      cptr = my_impl->connections.begin();
-                  }
-               }
-            }
+            } while(cptr != cstart_it);
             // no need to check the result, either source advanced or the whole list was checked and the old source is reused.
          }
       }
@@ -1540,7 +1547,7 @@ namespace eosio {
       else {
          c->last_handshake_recv.last_irreversible_block_num = msg.known_trx.pending;
          reset_lib_num (c);
-         start_sync(c, msg.known_blocks.pending);
+         start_sync(c, msg.known_trx.pending);
       }
    }
 
@@ -2491,11 +2498,7 @@ namespace eosio {
       dispatcher->recv_transaction(c, tid);
       chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          if (result.contains<fc::exception_ptr>()) {
-            auto e_ptr = result.get<fc::exception_ptr>();
-            if (e_ptr->code() != tx_duplicate::code_value && e_ptr->code() != expired_tx_exception::code_value) {
-               elog("accept txn threw  ${m}",("m",result.get<fc::exception_ptr>()->to_detail_string()));
-               peer_elog(c, "bad packed_transaction : ${m}", ("m",result.get<fc::exception_ptr>()->what()));
-            }
+            peer_dlog(c, "bad packed_transaction : ${m}", ("m",result.get<fc::exception_ptr>()->what()));
          } else {
             auto trace = result.get<transaction_trace_ptr>();
             if (!trace->except) {

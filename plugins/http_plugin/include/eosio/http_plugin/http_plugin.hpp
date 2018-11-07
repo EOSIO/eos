@@ -40,6 +40,19 @@ namespace eosio {
     */
    using api_description = std::map<string, url_handler>;
 
+   struct http_plugin_defaults {
+      //If not empty, this string is prepended on to the various configuration
+      // items for setting listen addresses
+      string address_config_prefix;
+      //If empty, unix socket support will be completely disabled. If not empty,
+      // unix socket support is enabled with the given default path (treated relative
+      // to the datadir)
+      string default_unix_socket_path;
+      //If non 0, HTTP will be enabled by default on the given port number. If
+      // 0, HTTP will not be enabled by default
+      uint16_t default_http_port{0};
+   };
+
    /**
     *  This plugin starts an HTTP server and dispatches queries to
     *  registered handles based upon URL. The handler is passed the
@@ -47,18 +60,21 @@ namespace eosio {
     *  called with the response code and body.
     *
     *  The handler will be called from the appbase application io_service
-    *  thread.  The callback can be called from any thread and will 
+    *  thread.  The callback can be called from any thread and will
     *  automatically propagate the call to the http thread.
     *
     *  The HTTP service will run in its own thread with its own io_service to
     *  make sure that HTTP request processing does not interfer with other
-    *  plugins.  
+    *  plugins.
     */
    class http_plugin : public appbase::plugin<http_plugin>
    {
       public:
         http_plugin();
         virtual ~http_plugin();
+
+        //must be called before initialize
+        static void set_defaults(const http_plugin_defaults config);
 
         APPBASE_PLUGIN_REQUIRES()
         virtual void set_program_options(options_description&, options_description& cfg) override;
@@ -69,7 +85,7 @@ namespace eosio {
 
         void add_handler(const string& url, const url_handler&);
         void add_api(const api_description& api) {
-           for (const auto& call : api) 
+           for (const auto& call : api)
               add_handler(call.first, call.second);
         }
 
@@ -78,6 +94,8 @@ namespace eosio {
 
         bool is_on_loopback() const;
         bool is_secure() const;
+
+        bool verbose_errors()const;
 
       private:
         std::unique_ptr<class http_plugin_impl> my;

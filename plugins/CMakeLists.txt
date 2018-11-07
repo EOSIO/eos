@@ -17,6 +17,8 @@ add_subdirectory(db_size_api_plugin)
 #add_subdirectory(faucet_testnet_plugin)
 add_subdirectory(mongo_db_plugin)
 add_subdirectory(login_plugin)
+add_subdirectory(test_control_plugin)
+add_subdirectory(test_control_api_plugin)
 add_subdirectory(uos_plugins/uos_rates)
 
 # Forward variables to top level so packaging picks them up

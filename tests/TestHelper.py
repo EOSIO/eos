@@ -6,18 +6,36 @@ import platform
 
 import argparse
 
+class AppArgs:
+    def __init__(self):
+        self.args=[]
+
+    class AppArg:
+        def __init__(self, flag, type, help, default, choices=None):
+            self.flag=flag
+            self.type=type
+            self.help=help
+            self.default=default
+            self.choices=choices
+
+    def add(self, flag, type, help, default, choices=None):
+        arg=self.AppArg(flag, type, help, default, choices)
+        self.args.append(arg)
+
 # pylint: disable=too-many-instance-attributes
 class TestHelper(object):
     LOCAL_HOST="localhost"
     DEFAULT_PORT=8888
+    DEFAULT_WALLET_PORT=9899
 
     @staticmethod
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
-    def parse_args(includeArgs):
+    def parse_args(includeArgs, applicationSpecificArgs=AppArgs()):
         """Accepts set of arguments, builds argument parser and returns parse_args() output."""
         assert(includeArgs)
         assert(isinstance(includeArgs, set))
+        assert(isinstance(applicationSpecificArgs, AppArgs))
 
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
@@ -53,6 +71,12 @@ class TestHelper(object):
         if "--port" in includeArgs:
             parser.add_argument("-p", "--port", type=int, help="%s host port" % Utils.EosServerName,
                                      default=TestHelper.DEFAULT_PORT)
+        if "--wallet-host" in includeArgs:
+            parser.add_argument("--wallet-host", type=str, help="%s host" % Utils.EosWalletName,
+                                     default=TestHelper.LOCAL_HOST)
+        if "--wallet-port" in includeArgs:
+            parser.add_argument("--wallet-port", type=int, help="%s port" % Utils.EosWalletName,
+                                     default=TestHelper.DEFAULT_WALLET_PORT)
         if "--prod-count" in includeArgs:
             parser.add_argument("-c", "--prod-count", type=int, help="Per node producer count", default=1)
         if "--defproducera_prvt_key" in includeArgs:
@@ -81,6 +105,9 @@ class TestHelper(object):
             parser.add_argument("--clean-run", help="Kill all nodeos and kleos instances", action='store_true')
         if "--sanity-test" in includeArgs:
             parser.add_argument("--sanity-test", help="Validates nodeos and kleos are in path and can be started up.", action='store_true')
+
+        for arg in applicationSpecificArgs.args:
+            parser.add_argument(arg.flag, type=arg.type, help=arg.help, choices=arg.choices, default=arg.default)
 
         args = parser.parse_args()
         return args
@@ -121,7 +148,15 @@ class TestHelper(object):
             cluster.dumpErrorDetails()
             if walletMgr:
                 walletMgr.dumpErrorDetails()
+            cluster.printBlockLogIfNeeded()
             Utils.Print("== Errors see above ==")
+            if len(Utils.CheckOutputDeque)>0:
+                Utils.Print("== cout/cerr pairs from last %d calls to Utils. ==" % len(Utils.CheckOutputDeque))
+                for out, err, cmd in reversed(Utils.CheckOutputDeque):
+                    Utils.Print("cmd={%s}" % (" ".join(cmd)))
+                    Utils.Print("cout={%s}" % (out))
+                    Utils.Print("cerr={%s}\n" % (err))
+                Utils.Print("== cmd/cout/cerr pairs done. ==")
 
         if killEosInstances:
             Utils.Print("Shut down the cluster.")

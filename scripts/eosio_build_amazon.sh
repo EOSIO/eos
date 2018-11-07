@@ -23,7 +23,7 @@
 		exit 1
 	fi
 
-	if [ "${OS_VER}" -lt 2017 ]; then
+	if [[ "${OS_NAME}" == "Amazon Linux AMI" && "${OS_VER}" -lt 2017 ]]; then
 		printf "\\tYou must be running Amazon Linux 2017.09 or higher to install EOSIO.\\n"
 		printf "\\texiting now.\\n"
 		exit 1
@@ -53,9 +53,15 @@
 	fi
 	printf "\\t%s\\n" "${UPDATE}"
 
-	DEP_ARRAY=( git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 \
-	bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++72.x86_64 \
-	python27.x86_64 python36-devel.x86_64 libedit-devel.x86_64 doxygen.x86_64 graphviz.x86_64)
+	if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
+		DEP_ARRAY=( git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 \
+		bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++72.x86_64 \
+		python27.x86_64 python36-devel.x86_64 libedit-devel.x86_64 doxygen.x86_64 graphviz.x86_64)
+	else
+		DEP_ARRAY=( git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make bzip2 \
+		bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++.x86_64 \
+		python3.x86_64 python3-devel.x86_64 libedit-devel.x86_64 doxygen.x86_64 graphviz.x86_64)
+	fi
 	COUNT=1
 	DISPLAY=""
 	DEP=""
@@ -526,63 +532,6 @@ fi
 		printf "\\tMongo C++ driver installed at /usr/local/lib64/libmongocxx-static.a.\\n"
 	else
 		printf "\\tMongo C++ driver found at /usr/local/lib64/libmongocxx-static.a.\\n"
-	fi
-
-	printf "\\n\\tChecking secp256k1-zkp installation.\\n"
-    # install secp256k1-zkp (Cryptonomex branch)
-    if [ ! -e "/usr/local/lib/libsecp256k1.a" ]; then
-		printf "\\tInstalling secp256k1-zkp (Cryptonomex branch).\\n"
-		if ! cd "${TEMP_DIR}"
-		then
-			printf "\\n\\tUnable to enter directory %s.\\n" "${TEMP_DIR}"
-			printf "\\n\\tExiting now.\\n"
-			exit 1;
-		fi
-		if ! git clone https://github.com/cryptonomex/secp256k1-zkp.git
-		then
-			printf "\\tUnable to clone repo secp256k1-zkp @ https://github.com/cryptonomex/secp256k1-zkp.git.\\n"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		if ! cd "${TEMP_DIR}/secp256k1-zkp"
-		then
-			printf "\\n\\tUnable to cd into directory %s/secp256k1-zkp.\\n" "${TEMP_DIR}"
-			printf "\\n\\tExiting now.\\n"
-			exit 1;
-		fi
-		if ! ./autogen.sh
-		then
-			printf "\\tError running autogen for secp256k1-zkp.\\n"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		if ! ./configure
-		then
-			printf "\\tError running configure for secp256k1-zkp.\\n"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		if ! make -j"${JOBS}"
-		then
-			printf "\\tError compiling secp256k1-zkp.\\n"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		if ! sudo make install
-		then
-			printf "\\tError installing secp256k1-zkp.\\n"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		if ! rm -rf "${TEMP_DIR}/secp256k1-zkp"
-		then
-			printf "\\tError removing directory %s/secp256k1-zkp.\\n" "${TEMP_DIR}"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
-		printf "\\tsecp256k1 successfully installed @ /usr/local/lib/libsecp256k1.a.\\n"
-	else
-		printf "\\tsecp256k1 found @ /usr/local/lib/libsecp256k1.a.\\n"
 	fi
 
 	printf "\\n\\tChecking LLVM with WASM support.\\n"

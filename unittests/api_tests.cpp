@@ -437,6 +437,51 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
+// test require_recipient loop (doesn't cause infinite loop)
+BOOST_FIXTURE_TEST_CASE(require_notice_tests, TESTER) { try {
+      produce_blocks(2);
+      create_account( N(testapi) );
+      create_account( N(acc5) );
+      produce_blocks(1);
+      set_code( N(testapi), test_api_wast );
+      set_code( N(acc5), test_api_wast );
+      produce_blocks(1);
+
+      // test require_notice
+      signed_transaction trx;
+      auto tm = test_api_action<TEST_METHOD( "test_action", "require_notice_tests" )>{};
+
+      action act( std::vector<permission_level>{{N( testapi ), config::active_name}}, tm );
+      trx.actions.push_back( act );
+
+      set_transaction_headers( trx );
+      trx.sign( get_private_key( N( testapi ), "active" ), control->get_chain_id() );
+      auto res = push_transaction( trx );
+      BOOST_CHECK_EQUAL( res->receipt->status, transaction_receipt::executed );
+
+   } FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(ram_billing_in_notify_tests, TESTER) { try {
+   produce_blocks(2);
+   create_account( N(testapi) );
+   create_account( N(testapi2) );
+   produce_blocks(10);
+   set_code( N(testapi), test_api_wast );
+   produce_blocks(1);
+   set_code( N(testapi2), test_api_wast );
+   produce_blocks(1);
+
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | N(testapi) ) ),
+                          subjective_block_production_exception, fc_exception_message_is("Cannot charge RAM to other accounts during notify.") );
+
+
+   CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | 0 ) );
+
+   CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | N(testapi2) ) );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
+
 /*************************************************************************************
  * context free action tests
  *************************************************************************************/
@@ -968,15 +1013,16 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
       );
 
    {
-   produce_blocks(10);
-   transaction_trace_ptr trace;
-   auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->receipt->status != transaction_receipt::executed) { trace = t; } } );
+      produce_blocks(10);
+      transaction_trace_ptr trace;
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t && t->receipt && t->receipt->status != transaction_receipt::executed) { trace = t; } } );
 
-   // test error handling on deferred transaction failure
-   CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_trigger_error_handler", {});
+      // test error handling on deferred transaction failure
+      CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_trigger_error_handler", {});
 
-   BOOST_CHECK(trace);
-   BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::soft_fail);
+      BOOST_REQUIRE(trace);
+      BOOST_CHECK_EQUAL(trace->receipt->status, transaction_receipt::soft_fail);
+      c.disconnect();
    }
 
    // test test_transaction_size
@@ -996,7 +1042,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    // test send_action_recurse
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_recurse", {}), eosio::chain::transaction_exception,
          [](const eosio::chain::transaction_exception& e) {
-            return expect_assert_message(e, "inline action recursion depth reached");
+            return expect_assert_message(e, "max inline action depth per transaction reached");
          }
       );
 
@@ -1098,7 +1144,27 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 
    produce_blocks(10);
 
+   //repeated deferred transactions
    {
+      vector<transaction_trace_ptr> traces;
+      auto c = control->applied_transaction.connect([&]( const transaction_trace_ptr& t) {
+         if (t && t->scheduled) {
+            traces.push_back( t );
+         }
+      } );
+
+      CALL_TEST_FUNCTION(*this, "test_transaction", "repeat_deferred_transaction", fc::raw::pack( (uint32_t)5 ) );
+
+      produce_block();
+
+      c.disconnect();
+
+      BOOST_CHECK_EQUAL( traces.size(), 5 );
+   }
+
+   produce_blocks(10);
+
+{
    // Trigger a tx which in turn sends a deferred tx with payer != receiver
    // Payer is alice in this case, this tx should fail since we don't have the authorization of alice
    dtt_action dtt_act1;
@@ -1898,23 +1964,9 @@ BOOST_FIXTURE_TEST_CASE(new_api_feature_tests, TESTER) { try {
       });
 
    // change privilege
-   {
-      chainbase::database &db = control->db();
-      const account_object &account = db.get<account_object, by_name>(N(testapi));
-      db.modify(account, [&](account_object &v) {
-         v.privileged = true;
-      });
-   }
-
-#ifndef NON_VALIDATING_TEST
-   {
-      chainbase::database &db = validating_node->db();
-      const account_object &account = db.get<account_object, by_name>(N(testapi));
-      db.modify(account, [&](account_object &v) {
-         v.privileged = true;
-      });
-   }
-#endif
+   push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
+                                                       ("account", "testapi")
+                                                       ("is_priv", 1));
 
    CALL_TEST_FUNCTION( *this, "test_transaction", "new_feature", {} );
 

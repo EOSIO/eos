@@ -15,16 +15,39 @@
 
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/chain_snapshot.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
+
+#include <fc/variant_object.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
 
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
+
+using controller_index_set = index_set<
+   account_index,
+   account_sequence_index,
+   global_property_multi_index,
+   dynamic_global_property_multi_index,
+   block_summary_multi_index,
+   transaction_multi_index,
+   generated_transaction_multi_index,
+   table_id_multi_index
+>;
+
+using contract_database_index_set = index_set<
+   key_value_index,
+   index64_index,
+   index128_index,
+   index256_index,
+   index_double_index,
+   index_long_double_index
+>;
 
 class maybe_session {
    public:
@@ -83,6 +106,8 @@ struct pending_state {
 
    controller::block_status           _block_status = controller::block_status::incomplete;
 
+   optional<block_id_type>            _producer_block_id;
+
    void push() {
       _db_session.push();
    }
@@ -106,6 +131,8 @@ struct controller_impl {
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
    optional<fc::microseconds>     subjective_cpu_leeway;
+   bool                           trusted_producer_light_validation = false;
+   uint32_t                       snapshot_head_block = 0;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -127,6 +154,7 @@ struct controller_impl {
       }
 
       if ( read_mode == db_read_mode::SPECULATIVE ) {
+         EOS_ASSERT( head->block, block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
          for( const auto& t : head->trxs )
             unapplied_transactions[t->signed_id] = t;
       }
@@ -213,20 +241,30 @@ struct controller_impl {
          blog.read_head();
 
       const auto& log_head = blog.head();
-      EOS_ASSERT( log_head, block_log_exception, "block log head can not be found" );
-      auto lh_block_num = log_head->block_num();
+      bool append_to_blog = false;
+      if (!log_head) {
+         if (s->block) {
+            EOS_ASSERT(s->block_num == blog.first_block_num(), block_log_exception, "block log has no blocks and is appending the wrong first block.  Expected ${expected}, but received: ${actual}",
+                      ("expected", blog.first_block_num())("actual", s->block_num));
+            append_to_blog = true;
+         } else {
+            EOS_ASSERT(s->block_num == blog.first_block_num() - 1, block_log_exception, "block log has no blocks and is not properly set up to start after the snapshot");
+         }
+      } else {
+         auto lh_block_num = log_head->block_num();
+         if (s->block_num > lh_block_num) {
+            EOS_ASSERT(s->block_num - 1 == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num", s->block_num)("lh_block_num", lh_block_num));
+            EOS_ASSERT(s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head");
+            append_to_blog = true;
+         }
+      }
+
 
       db.commit( s->block_num );
 
-      if( s->block_num <= lh_block_num ) {
-//         edump((s->block_num)("double call to on_irr"));
-//         edump((s->block_num)(s->block->previous)(log_head->id()));
-         return;
+      if( append_to_blog ) {
+         blog.append(s->block);
       }
-
-      EOS_ASSERT( s->block_num - 1  == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num",s->block_num)("lh_block_num", lh_block_num) );
-      EOS_ASSERT( s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head" );
-      blog.append(s->block);
 
       const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
       auto objitr = ubi.begin();
@@ -235,63 +273,91 @@ struct controller_impl {
          objitr = ubi.begin();
       }
 
-      if ( read_mode == db_read_mode::IRREVERSIBLE ) {
-         apply_block( s->block, controller::block_status::complete );
-         fork_db.mark_in_current_chain( s, true );
-         fork_db.set_validity( s, true );
-         head = s;
+      // the "head" block when a snapshot is loaded is virtual and has no block data, all of its effects
+      // should already have been loaded from the snapshot so, it cannot be applied
+      if (s->block) {
+         if (read_mode == db_read_mode::IRREVERSIBLE) {
+            // when applying a snapshot, head may not be present
+            // when not applying a snapshot, make sure this is the next block
+            if (!head || s->block_num == head->block_num + 1) {
+               apply_block(s->block, controller::block_status::complete);
+               head = s;
+            } else {
+               // otherwise, assert the one odd case where initializing a chain
+               // from genesis creates and applies the first block automatically.
+               // when syncing from another chain, this is pushed in again
+               EOS_ASSERT(!head || head->block_num == 1, block_validate_exception, "Attempting to re-apply an irreversible block that was not the implied genesis block");
+            }
+
+            fork_db.mark_in_current_chain(head, true);
+            fork_db.set_validity(head, true);
+         }
+         emit(self.irreversible_block, s);
       }
-      emit( self.irreversible_block, s );
    }
 
-   void init() {
+   void replay() {
+      auto blog_head = blog.read_head();
+      auto blog_head_time = blog_head->timestamp.to_time_point();
+      replaying = true;
+      replay_head_time = blog_head_time;
+      ilog( "existing block log, attempting to replay ${n} blocks", ("n",blog_head->block_num()) );
 
-      /**
-      *  The fork database needs an initial block_state to be set before
-      *  it can accept any new blocks. This initial block state can be found
-      *  in the database (whose head block state should be irreversible) or
-      *  it would be the genesis state.
-      */
-      if( !head ) {
+      auto start = fc::time_point::now();
+      while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
+         self.push_block( next, controller::block_status::irreversible );
+         if( next->block_num() % 100 == 0 ) {
+            std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
+         }
+      }
+      std::cerr<< "\n";
+      ilog( "${n} blocks replayed", ("n", head->block_num) );
+
+      // if the irreverible log is played without undo sessions enabled, we need to sync the
+      // revision ordinal to the appropriate expected value here.
+      if( self.skip_db_sessions( controller::block_status::irreversible ) )
+         db.set_revision(head->block_num);
+
+      int rev = 0;
+      while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
+         ++rev;
+         self.push_block( obj->get_block(), controller::block_status::validated );
+      }
+
+      ilog( "${n} reversible blocks replayed", ("n",rev) );
+      auto end = fc::time_point::now();
+      ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
+            ("n", head->block_num)("duration", (end-start).count()/1000000)
+            ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
+      replaying = false;
+      replay_head_time.reset();
+   }
+
+   void init(const snapshot_reader_ptr& snapshot) {
+
+      if (snapshot) {
+         EOS_ASSERT(!head, fork_database_exception, "");
+         snapshot->validate();
+
+         read_from_snapshot(snapshot);
+
+         auto end = blog.read_head();
+         if( !end ) {
+            blog.reset(conf.genesis, signed_block_ptr(), head->block_num + 1);
+         } else if ( end->block_num() > head->block_num) {
+            replay();
+         } else {
+            EOS_ASSERT(end->block_num() == head->block_num, fork_database_exception,
+                       "Block log is provided with snapshot but does not contain the head block from the snapshot");
+         }
+      } else if( !head ) {
          initialize_fork_db(); // set head to genesis state
 
          auto end = blog.read_head();
          if( end && end->block_num() > 1 ) {
-            auto end_time = end->timestamp.to_time_point();
-            replaying = true;
-            replay_head_time = end_time;
-            ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
-
-            auto start = fc::time_point::now();
-            while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-               self.push_block( next, controller::block_status::irreversible );
-               if( next->block_num() % 100 == 0 ) {
-                  std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
-               }
-            }
-            std::cerr<< "\n";
-            ilog( "${n} blocks replayed", ("n", head->block_num) );
-
-            // the irreverible log is played without undo sessions enabled, so we need to sync the
-            // revision ordinal to the appropriate expected value here.
-            db.set_revision(head->block_num);
-
-            int rev = 0;
-            while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
-               ++rev;
-               self.push_block( obj->get_block(), controller::block_status::validated );
-            }
-
-            ilog( "${n} reversible blocks replayed", ("n",rev) );
-            auto end = fc::time_point::now();
-            ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
-                  ("n", head->block_num)("duration", (end-start).count()/1000000)
-                  ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
-            replaying = false;
-            replay_head_time.reset();
-
+            replay();
          } else if( !end ) {
-            blog.reset_to_genesis( conf.genesis, head->block );
+            blog.reset( conf.genesis, head->block );
          }
       }
 
@@ -303,7 +369,7 @@ struct controller_impl {
                     ("head",head->block_num)("unconfimed", objitr->blocknum)         );
       } else {
          auto end = blog.read_head();
-         EOS_ASSERT( end && end->block_num() == head->block_num, fork_database_exception,
+         EOS_ASSERT( !end || end->block_num() == head->block_num, fork_database_exception,
                     "fork database exists but reversible block database does not, replay blockchain",
                     ("blog_head",end->block_num())("head",head->block_num)  );
       }
@@ -320,6 +386,11 @@ struct controller_impl {
          db.undo();
       }
 
+      if( snapshot ) {
+         const auto hash = calculate_integrity_hash();
+         ilog( "database initialized with hash: ${hash}", ("hash", hash) );
+      }
+
    }
 
    ~controller_impl() {
@@ -332,22 +403,8 @@ struct controller_impl {
    void add_indices() {
       reversible_blocks.add_index<reversible_block_index>();
 
-      db.add_index<account_index>();
-      db.add_index<account_sequence_index>();
-
-      db.add_index<table_id_multi_index>();
-      db.add_index<key_value_index>();
-      db.add_index<index64_index>();
-      db.add_index<index128_index>();
-      db.add_index<index256_index>();
-      db.add_index<index_double_index>();
-      db.add_index<index_long_double_index>();
-
-      db.add_index<global_property_multi_index>();
-      db.add_index<dynamic_global_property_multi_index>();
-      db.add_index<block_summary_multi_index>();
-      db.add_index<transaction_multi_index>();
-      db.add_index<generated_transaction_multi_index>();
+      controller_index_set::add_indices(db);
+      contract_database_index_set::add_indices(db);
 
       authorization.add_indices();
       resource_limits.add_indices();
@@ -364,6 +421,151 @@ struct controller_impl {
                    */
       });
    }
+
+   void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
+      snapshot->write_section("contract_tables", [this]( auto& section ) {
+         index_utils<table_id_multi_index>::walk(db, [this, &section]( const table_id_object& table_row ){
+            // add a row for the table
+            section.add_row(table_row, db);
+
+            // followed by a size row and then N data rows for each type of table
+            contract_database_index_set::walk_indices([this, &section, &table_row]( auto utils ) {
+               using utils_t = decltype(utils);
+               using value_t = typename decltype(utils)::index_t::value_type;
+               using by_table_id = object_to_table_id_tag_t<value_t>;
+
+               auto tid_key = boost::make_tuple(table_row.id);
+               auto next_tid_key = boost::make_tuple(table_id_object::id_type(table_row.id._id + 1));
+
+               unsigned_int size = utils_t::template size_range<by_table_id>(db, tid_key, next_tid_key);
+               section.add_row(size, db);
+
+               utils_t::template walk_range<by_table_id>(db, tid_key, next_tid_key, [this, &section]( const auto &row ) {
+                  section.add_row(row, db);
+               });
+            });
+         });
+      });
+   }
+
+   void read_contract_tables_from_snapshot( const snapshot_reader_ptr& snapshot ) {
+      snapshot->read_section("contract_tables", [this]( auto& section ) {
+         bool more = !section.empty();
+         while (more) {
+            // read the row for the table
+            table_id_object::id_type t_id;
+            index_utils<table_id_multi_index>::create(db, [this, &section, &t_id](auto& row) {
+               section.read_row(row, db);
+               t_id = row.id;
+            });
+
+            // read the size and data rows for each type of table
+            contract_database_index_set::walk_indices([this, &section, &t_id, &more](auto utils) {
+               using utils_t = decltype(utils);
+
+               unsigned_int size;
+               more = section.read_row(size, db);
+
+               for (size_t idx = 0; idx < size.value; idx++) {
+                  utils_t::create(db, [this, &section, &more, &t_id](auto& row) {
+                     row.t_id = t_id;
+                     more = section.read_row(row, db);
+                  });
+               }
+            });
+         }
+      });
+   }
+
+   void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
+      snapshot->write_section<chain_snapshot_header>([this]( auto &section ){
+         section.add_row(chain_snapshot_header(), db);
+      });
+
+      snapshot->write_section<genesis_state>([this]( auto &section ){
+         section.add_row(conf.genesis, db);
+      });
+
+      snapshot->write_section<block_state>([this]( auto &section ){
+         section.template add_row<block_header_state>(*fork_db.head(), db);
+      });
+
+      controller_index_set::walk_indices([this, &snapshot]( auto utils ){
+         using value_t = typename decltype(utils)::index_t::value_type;
+
+         // skip the table_id_object as its inlined with contract tables section
+         if (std::is_same<value_t, table_id_object>::value) {
+            return;
+         }
+
+         snapshot->write_section<value_t>([this]( auto& section ){
+            decltype(utils)::walk(db, [this, &section]( const auto &row ) {
+               section.add_row(row, db);
+            });
+         });
+      });
+
+      add_contract_tables_to_snapshot(snapshot);
+
+      authorization.add_to_snapshot(snapshot);
+      resource_limits.add_to_snapshot(snapshot);
+   }
+
+   void read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
+      snapshot->read_section<chain_snapshot_header>([this]( auto &section ){
+         chain_snapshot_header header;
+         section.read_row(header, db);
+         header.validate();
+      });
+
+
+      snapshot->read_section<block_state>([this]( auto &section ){
+         block_header_state head_header_state;
+         section.read_row(head_header_state, db);
+
+         auto head_state = std::make_shared<block_state>(head_header_state);
+         fork_db.set(head_state);
+         fork_db.set_validity(head_state, true);
+         fork_db.mark_in_current_chain(head_state, true);
+         head = head_state;
+         snapshot_head_block = head->block_num;
+      });
+
+      controller_index_set::walk_indices([this, &snapshot]( auto utils ){
+         using value_t = typename decltype(utils)::index_t::value_type;
+
+         // skip the table_id_object as its inlined with contract tables section
+         if (std::is_same<value_t, table_id_object>::value) {
+            return;
+         }
+
+         snapshot->read_section<value_t>([this]( auto& section ) {
+            bool more = !section.empty();
+            while(more) {
+               decltype(utils)::create(db, [this, &section, &more]( auto &row ) {
+                  more = section.read_row(row, db);
+               });
+            }
+         });
+      });
+
+      read_contract_tables_from_snapshot(snapshot);
+
+      authorization.read_from_snapshot(snapshot);
+      resource_limits.read_from_snapshot(snapshot);
+
+      db.set_revision( head->block_num );
+   }
+
+   sha256 calculate_integrity_hash() const {
+      sha256::encoder enc;
+      auto hash_writer = std::make_shared<integrity_hash_snapshot_writer>(enc);
+      add_to_snapshot(hash_writer);
+      hash_writer->finalize();
+
+      return enc.result();
+   }
+
 
    /**
     *  Sets fork database head to the genesis state.
@@ -574,6 +776,7 @@ struct controller_impl {
              || (code == block_net_usage_exceeded::code_value)
              || (code == greylist_net_usage_exceeded::code_value)
              || (code == block_cpu_usage_exceeded::code_value)
+             || (code == greylist_cpu_usage_exceeded::code_value)
              || (code == deadline_exception::code_value)
              || (code == leeway_deadline_exception::code_value)
              || (code == actor_whitelist_exception::code_value)
@@ -628,6 +831,9 @@ struct controller_impl {
       if( gtrx.expiration < self.pending_block_time() ) {
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
+         trace->block_num = self.pending_block_state()->block_num;
+         trace->block_time = self.pending_block_time();
+         trace->producer_block_id = self.pending_producer_block_id();
          trace->scheduled = true;
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
          emit( self.accepted_transaction, trx );
@@ -714,7 +920,7 @@ struct controller_impl {
             auto& rl = self.get_mutable_resource_limits_manager();
             rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
             int64_t account_cpu_limit = 0;
-            std::tie( std::ignore, account_cpu_limit, std::ignore ) = trx_context.max_bandwidth_billed_accounts_can_pay( true );
+            std::tie( std::ignore, account_cpu_limit, std::ignore, std::ignore ) = trx_context.max_bandwidth_billed_accounts_can_pay( true );
 
             cpu_time_to_bill_us = static_cast<uint32_t>( std::min( std::min( static_cast<int64_t>(cpu_time_to_bill_us),
                                                                              account_cpu_limit                          ),
@@ -867,7 +1073,9 @@ struct controller_impl {
    } /// push_transaction
 
 
-   void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s ) {
+   void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s,
+                     const optional<block_id_type>& producer_block_id )
+   {
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
 
       auto guard_pending = fc::make_scoped_exit([this](){
@@ -884,6 +1092,7 @@ struct controller_impl {
       }
 
       pending->_block_status = s;
+      pending->_producer_block_id = producer_block_id;
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
 
@@ -952,7 +1161,8 @@ struct controller_impl {
    void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
       try {
          EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
-         start_block( b->timestamp, b->confirmed, s );
+         auto producer_block_id = b->id();
+         start_block( b->timestamp, b->confirmed, s , producer_block_id);
 
          transaction_trace_ptr trace;
 
@@ -992,9 +1202,9 @@ struct controller_impl {
          finalize_block();
 
          // this implicitly asserts that all header fields (less the signature) are identical
-         EOS_ASSERT(b->id() == pending->_pending_block_state->header.id(),
+         EOS_ASSERT(producer_block_id == pending->_pending_block_state->header.id(),
                    block_validate_exception, "Block ID does not match",
-                   ("producer_block_id",b->id())("validator_block_id",pending->_pending_block_state->header.id()));
+                   ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id()));
 
          // We need to fill out the pending block state's block because that gets serialized in the reversible block log
          // in the future we can optimize this by serializing the original and not the copy
@@ -1017,22 +1227,30 @@ struct controller_impl {
 
 
    void push_block( const signed_block_ptr& b, controller::block_status s ) {
-    //  idump((fc::json::to_pretty_string(*b)));
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
+
+      auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
+         trusted_producer_light_validation = old_value;
+      });
       try {
          EOS_ASSERT( b, block_validate_exception, "trying to push empty block" );
          EOS_ASSERT( s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block" );
          emit( self.pre_accepted_block, b );
          bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
          auto new_header_state = fork_db.add( b, trust );
+         if (conf.trusted_producers.count(b->producer)) {
+            trusted_producer_light_validation = true;
+         };
          emit( self.accepted_block_header, new_header_state );
-         // on replay irreversible is not emitted by fork database, so emit it explicitly here
-         if( s == controller::block_status::irreversible )
-            emit( self.irreversible_block, new_header_state );
 
          if ( read_mode != db_read_mode::IRREVERSIBLE ) {
             maybe_switch_forks( s );
          }
+
+         // on replay irreversible is not emitted by fork database, so emit it explicitly here
+         if( s == controller::block_status::irreversible )
+            emit( self.irreversible_block, new_header_state );
+
       } FC_LOG_AND_RETHROW( )
    }
 
@@ -1368,27 +1586,28 @@ controller::~controller() {
    my->fork_db.close();
 }
 
-
-void controller::startup() {
-
-   // ilog( "${c}", ("c",fc::json::to_pretty_string(cfg)) );
+void controller::add_indices() {
    my->add_indices();
+}
 
+void controller::startup( const snapshot_reader_ptr& snapshot ) {
    my->head = my->fork_db.head();
    if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
    }
-   my->init();
+   my->init(snapshot);
 }
 
-chainbase::database& controller::db()const { return my->db; }
+const chainbase::database& controller::db()const { return my->db; }
 
-fork_database& controller::fork_db()const { return my->fork_db; }
+chainbase::database& controller::mutable_db()const { return my->db; }
+
+const fork_database& controller::fork_db()const { return my->fork_db; }
 
 
 void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count) {
    validate_db_available_size();
-   my->start_block(when, confirm_block_count, block_status::incomplete );
+   my->start_block(when, confirm_block_count, block_status::incomplete, optional<block_id_type>() );
 }
 
 void controller::finalize_block() {
@@ -1520,8 +1739,13 @@ time_point controller::pending_block_time()const {
    return my->pending->_pending_block_state->header.timestamp;
 }
 
+optional<block_id_type> controller::pending_producer_block_id()const {
+   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+   return my->pending->_producer_block_id;
+}
+
 uint32_t controller::last_irreversible_block_num() const {
-   return std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum);
+   return std::max(std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum), my->snapshot_head_block);
 }
 
 block_id_type controller::last_irreversible_block_id() const {
@@ -1544,7 +1768,7 @@ const global_property_object& controller::get_global_properties()const {
 
 signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
    auto state = my->fork_db.get_block(id);
-   if( state ) return state->block;
+   if( state && state->block ) return state->block;
    auto bptr = fetch_block_by_number( block_header::num_from_id(id) );
    if( bptr && bptr->id() == id ) return bptr;
    return signed_block_ptr();
@@ -1552,7 +1776,7 @@ signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
 
 signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  { try {
    auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
-   if( blk_state ) {
+   if( blk_state && blk_state->block ) {
       return blk_state->block;
    }
 
@@ -1582,6 +1806,15 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
 
    return signed_blk->id();
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
+
+sha256 controller::calculate_integrity_hash()const { try {
+   return my->calculate_integrity_hash();
+} FC_LOG_AND_RETHROW() }
+
+void controller::write_snapshot( const snapshot_writer_ptr& snapshot ) const {
+   EOS_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent snapshot with a pending block" );
+   return my->add_to_snapshot(snapshot);
+}
 
 void controller::pop_block() {
    my->pop_block();
@@ -1651,16 +1884,26 @@ optional<producer_schedule_type> controller::proposed_producers()const {
    return gpo.proposed_schedule;
 }
 
+bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) const {
+   if (!my->pending || my->in_trx_requiring_checks) {
+      return false;
+   }
+
+   const auto pb_status = my->pending->_block_status;
+
+   // in a pending irreversible or previously validated block and we have forcing all checks
+   const bool consider_skipping_on_replay = (pb_status == block_status::irreversible || pb_status == block_status::validated) && !replay_opts_disabled_by_policy;
+
+   // OR in a signed block and in light validation mode
+   const bool consider_skipping_on_validate = (pb_status == block_status::complete &&
+         (my->conf.block_validation_mode == validation_mode::LIGHT || my->trusted_producer_light_validation));
+
+   return consider_skipping_on_replay || consider_skipping_on_validate;
+}
+
+
 bool controller::skip_auth_check() const {
-   // replaying
-   bool consider_skipping = my->replaying;
-
-   // OR in light validation mode
-   consider_skipping = consider_skipping || my->conf.block_validation_mode == validation_mode::LIGHT;
-
-   return consider_skipping
-      && !my->conf.force_all_checks
-      && !my->in_trx_requiring_checks;
+   return light_validation_allowed(my->conf.force_all_checks);
 }
 
 bool controller::skip_db_sessions( block_status bs ) const {
@@ -1679,15 +1922,7 @@ bool controller::skip_db_sessions( ) const {
 }
 
 bool controller::skip_trx_checks() const {
-   // in a pending irreversible or previously validated block
-   bool consider_skipping = my->pending && ( my->pending->_block_status == block_status::irreversible || my->pending->_block_status == block_status::validated );
-
-   // OR in light validation mode
-   consider_skipping = consider_skipping || my->conf.block_validation_mode == validation_mode::LIGHT;
-
-   return consider_skipping
-      && !my->conf.disable_replay_opts
-      && !my->in_trx_requiring_checks;
+   return light_validation_allowed(my->conf.disable_replay_opts);
 }
 
 bool controller::contracts_console()const {
@@ -1742,6 +1977,10 @@ void controller::drop_unapplied_transaction(const transaction_metadata_ptr& trx)
    my->unapplied_transactions.erase(trx->signed_id);
 }
 
+void controller::drop_all_unapplied_transactions() {
+   my->unapplied_transactions.clear();
+}
+
 vector<transaction_id_type> controller::get_scheduled_transactions() const {
    const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
 
@@ -1774,6 +2013,10 @@ bool controller::is_producing_block()const {
    if( !my->pending ) return false;
 
    return (my->pending->_block_status == block_status::incomplete);
+}
+
+bool controller::is_ram_billing_in_notify_allowed()const {
+   return !is_producing_block() || my->conf.allow_ram_billing_in_notify;
 }
 
 void controller::validate_referenced_accounts( const transaction& trx )const {

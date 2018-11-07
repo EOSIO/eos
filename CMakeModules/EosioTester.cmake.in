@@ -1,4 +1,5 @@
 cmake_minimum_required( VERSION 3.5 )
+message(STATUS "Setting up Eosio Tester @VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@ at @EOS_ROOT_DIR@")
 
 set(CMAKE_CXX_COMPILER @CMAKE_CXX_COMPILER@)
 set(CMAKE_C_COMPILER   @CMAKE_C_COMPILER@)
@@ -41,15 +42,17 @@ find_package(Boost 1.67 REQUIRED COMPONENTS
 
 find_library(libtester eosio_testing @CMAKE_INSTALL_FULL_LIBDIR@)
 find_library(libchain eosio_chain @CMAKE_INSTALL_FULL_LIBDIR@)
-if ( "${CMAKE_BUILD_TYPE}" EQUAL "Debug" )
+if ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
    find_library(libfc fc_debug @CMAKE_INSTALL_FULL_LIBDIR@)
+   find_library(libsecp256k1 secp256k1_debug @CMAKE_INSTALL_FULL_LIBDIR@)
 else()
    find_library(libfc fc @CMAKE_INSTALL_FULL_LIBDIR@)
+   find_library(libsecp256k1 secp256k1 @CMAKE_INSTALL_FULL_LIBDIR@)  
 endif()
 
-find_library(libbinaryen binaryen @CMAKE_INSTALL_FULL_LIBDIR@)
 find_library(libwasm WASM @CMAKE_INSTALL_FULL_LIBDIR@)
 find_library(libwast WAST @CMAKE_INSTALL_FULL_LIBDIR@)
+find_library(libwabt wabt @CMAKE_INSTALL_FULL_LIBDIR@)
 find_library(libir IR     @CMAKE_INSTALL_FULL_LIBDIR@)
 find_library(libplatform Platform @CMAKE_INSTALL_FULL_LIBDIR@)
 find_library(liblogging Logging @CMAKE_INSTALL_FULL_LIBDIR@)
@@ -59,7 +62,12 @@ find_library(liboscrypto crypto @OPENSSL_ROOT_DIR@/lib)
 find_library(libosssl ssl @OPENSSL_ROOT_DIR@/lib)
 find_library(libchainbase chainbase @CMAKE_INSTALL_FULL_LIBDIR@)
 find_library(libbuiltins builtins @CMAKE_INSTALL_FULL_LIBDIR@)
-find_library(libsecp256k1 secp256k1 @Secp256k1_ROOT_DIR@/lib)
+find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
+    HINTS ENV GMP_LIB_DIR
+          ENV GMP_DIR
+    PATH_SUFFIXES lib
+    DOC "Path to the GMP library"
+)
 
 macro(add_eosio_test test_name)
    add_executable( ${test_name} ${ARGN} )
@@ -68,9 +76,9 @@ macro(add_eosio_test test_name)
        ${libtester}
        ${libchain}
        ${libfc}
-       ${libbinaryen}
        ${libwast}
        ${libwasm}
+       ${libwabt}
        ${libruntime}
        ${libplatform}
        ${libir}
@@ -80,6 +88,7 @@ macro(add_eosio_test test_name)
        ${liblogging}
        ${libchainbase}
        ${libbuiltins}
+       ${GMP_LIBRARIES}
        ${libsecp256k1}
 
        LLVMX86Disassembler

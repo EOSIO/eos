@@ -13,6 +13,9 @@ import decimal
 import math
 import re
 
+Print=Utils.Print
+errorExit=Utils.errorExit
+
 class NamedAccounts:
 
     def __init__(self, cluster, numAccounts):
@@ -45,15 +48,14 @@ class NamedAccounts:
         Print("NamedAccounts Name for %d is %s" % (temp, retStr))
         return retStr
 
+
 ###############################################################
 # nodeos_voting_test
 # --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
 # --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
-Print=Utils.Print
-errorExit=Utils.errorExit
 
-args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"})
+args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run","--wallet-port"})
 Utils.Debug=args.v
 totalNodes=4
 cluster=Cluster(walletd=True)
@@ -61,17 +63,19 @@ dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontKill=args.leave_running
 killAll=args.clean_run
+walletPort=args.wallet_port
 
-walletMgr=WalletMgr(True)
+walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
 
-WalletdName="keosd"
+WalletdName=Utils.EosWalletName
 ClientName="cleos"
 
 try:
     TestHelper.printSystemInfo("BEGIN")
+    cluster.setWalletMgr(walletMgr)
 
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
@@ -81,7 +85,7 @@ try:
     maxRAMFlag="--chain-state-db-size-mb"
     maxRAMValue=1010
     extraNodeosArgs=" %s %d %s %d " % (minRAMFlag, minRAMValue, maxRAMFlag, maxRAMValue)
-    if cluster.launch(onlyBios=False, dontKill=dontKill, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes, extraNodeosArgs=extraNodeosArgs) is False:
+    if cluster.launch(onlyBios=False, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes, extraNodeosArgs=extraNodeosArgs, useBiosBootFile=False) is False:
         Utils.cmdError("launcher")
         errorExit("Failed to stand up eos cluster.")
 
@@ -95,12 +99,6 @@ try:
     testWalletName="test"
 
     Print("Creating wallet \"%s\"." % (testWalletName))
-    walletMgr.killall(allInstances=killAll)
-    walletMgr.cleanup()
-    if walletMgr.launch() is False:
-        Utils.cmdError("%s" % (WalletdName))
-        errorExit("Failed to stand up eos walletd.")
-
     testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount])
 
     for _, account in cluster.defProducerAccounts.items():
@@ -125,7 +123,7 @@ try:
         transferAmount="70000000.0000 {0}".format(CORE_SYMBOL)
         Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
         nodes[0].transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer")
-        trans=nodes[0].delegatebw(account, 1000000.0000, 68000000.0000, exitOnError=True)
+        trans=nodes[0].delegatebw(account, 1000000.0000, 68000000.0000, waitForTransBlock=True, exitOnError=True)
 
     contractAccount=cluster.createAccountKeys(1)[0]
     contractAccount.name="contracttest"
@@ -135,7 +133,7 @@ try:
     transferAmount="90000000.0000 {0}".format(CORE_SYMBOL)
     Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, contractAccount.name))
     nodes[0].transferFunds(cluster.eosioAccount, contractAccount, transferAmount, "test transfer")
-    trans=nodes[0].delegatebw(contractAccount, 1000000.0000, 88000000.0000, exitOnError=True)
+    trans=nodes[0].delegatebw(contractAccount, 1000000.0000, 88000000.0000, waitForTransBlock=True, exitOnError=True)
 
     contractDir="contracts/integration_test"
     wasmFile="integration_test.wasm"
@@ -143,7 +141,7 @@ try:
     Print("Publish contract")
     trans=nodes[0].publishContract(contractAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:
-        cmdError("%s set contract %s" % (ClientName, contractAccount.name))
+        Utils.cmdError("%s set contract %s" % (ClientName, contractAccount.name))
         errorExit("Failed to publish contract.")
 
     contract=contractAccount.name
@@ -154,6 +152,7 @@ try:
     count=0
     while keepProcessing:
         numAmount+=1
+        timeOutCount=0
         for fromIndex in range(namedAccounts.numAccounts):
             count+=1
             toIndex=fromIndex+1
@@ -166,8 +165,15 @@ try:
             try:
                 trans=nodes[0].pushMessage(contract, action, data, opts)
                 if trans is None or not trans[0]:
+                    timeOutCount+=1
+                    if timeOutCount>=3:
+                       Print("Failed to push create action to eosio contract for %d consecutive times, looks like nodeos already exited." % (timeOutCount))
+                       keepProcessing=False
+                       break
                     Print("Failed to push create action to eosio contract. sleep for 60 seconds")
                     time.sleep(60)
+                else:
+                    timeOutCount=0
                 time.sleep(1)
             except TypeError as ex:
                 keepProcessing=False

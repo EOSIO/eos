@@ -99,11 +99,18 @@ int main(int argc, char** argv)
       auto root = fc::app_path();
       app().set_default_data_dir(root / "eosio/nodeos/data" );
       app().set_default_config_dir(root / "eosio/nodeos/config" );
+      http_plugin::set_defaults({
+         .address_config_prefix = "",
+         .default_unix_socket_path = "",
+         .default_http_port = 8888
+      });
       if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv))
          return INITIALIZE_FAIL;
       initialize_logging();
       ilog("nodeos version ${ver}", ("ver", app().version_string()));
       ilog("eosio root is ${root}", ("root", root.string()));
+      ilog("nodeos using configuration file ${c}", ("c", app().full_config_file_path().string()));
+      ilog("nodeos data directory is ${d}", ("d", app().data_dir().string()));
       app().startup();
       app().exec();
    } catch( const extract_genesis_state_exception& e ) {

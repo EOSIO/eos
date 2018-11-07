@@ -29,7 +29,11 @@
 #
 # https://github.com/EOSIO/eos/blob/master/LICENSE.txt
 ##########################################################################
-   
+
+if [ "$(id -u)" -ne 0 ]; then
+        printf "\n\tThis requires sudo. Please run with sudo.\n\n"
+        exit -1
+fi   
 
    CWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
    if [ "${CWD}" != "${PWD}" ]; then
@@ -50,6 +54,13 @@
    create_symlink() {
       pushd /usr/local/bin &> /dev/null
       ln -sf ../eosio/bin/$1 $1
+      popd &> /dev/null
+   }
+
+   create_cmake_symlink() {
+      mkdir -p /usr/local/lib/cmake/eosio
+      pushd /usr/local/lib/cmake/eosio &> /dev/null
+      ln -sf ../../../eosio/lib/cmake/eosio/$1 $1
       popd &> /dev/null
    }
 
@@ -90,6 +101,7 @@
    popd &> /dev/null 
 
    install_symlinks   
+   create_cmake_symlink "eosio-config.cmake"
 
    printf "\n\n${bldred}\t _______  _______  _______ _________ _______\n"
    printf '\t(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'

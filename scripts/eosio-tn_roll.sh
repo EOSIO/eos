@@ -82,10 +82,10 @@ cp $SDIR/$RD/$prog $RD/$prog
 
 if [ $DD = "all" ]; then
     for EOSIO_RESTART_DATA_DIR in `ls -d var/lib/node_??`; do
-        bash $EOSIO_HOME/scripts/eosio-tn_up.sh $*
+        bash $EOSIO_HOME/scripts/eosio-tn_up.sh "$*"
     done
 else
-    bash $EOSIO_HOME/scripts/eosio-tn_up.sh $*
+    bash $EOSIO_HOME/scripts/eosio-tn_up.sh "$*"
 fi
 unset EOSIO_RESTART_DATA_DIR
 

@@ -1,4 +1,5 @@
 cmake_minimum_required( VERSION 3.5 )
+message(STATUS "Setting up Eosio Tester @VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@ at @EOS_ROOT_DIR@")
 
 set(CMAKE_CXX_COMPILER @CMAKE_CXX_COMPILER@)
 set(CMAKE_C_COMPILER   @CMAKE_C_COMPILER@)
@@ -41,16 +42,19 @@ find_package(Boost 1.67 REQUIRED COMPONENTS
 
 find_library(libtester eosio_testing @CMAKE_BINARY_DIR@/libraries/testing)
 find_library(libchain eosio_chain @CMAKE_BINARY_DIR@/libraries/chain)
-if ( "${CMAKE_BUILD_TYPE}" EQUAL "Debug" )
+if ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
    find_library(libfc fc_debug @CMAKE_BINARY_DIR@/libraries/fc)
+   find_library(libsecp256k1 secp256k1_debug @CMAKE_BINARY_DIR@/libraries/fc/secp256k1)
+   
 else()
    find_library(libfc fc @CMAKE_BINARY_DIR@/libraries/fc)
+   find_library(libsecp256k1 secp256k1 @CMAKE_BINARY_DIR@/libraries/fc/secp256k1)
 endif()
 
-find_library(libbinaryen binaryen @CMAKE_BINARY_DIR@/externals/binaryen/lib)
 find_library(libwasm WASM @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WASM)
 find_library(libwast WAST @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/WAST)
 find_library(libir IR     @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/IR)
+find_library(libwabt wabt @CMAKE_BINARY_DIR@/libraries/wabt)
 find_library(libplatform Platform @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Platform)
 find_library(liblogging Logging @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Logging)
 find_library(libruntime Runtime @CMAKE_BINARY_DIR@/libraries/wasm-jit/Source/Runtime)
@@ -59,7 +63,12 @@ find_library(liboscrypto crypto @OPENSSL_ROOT_DIR@/lib)
 find_library(libosssl ssl @OPENSSL_ROOT_DIR@/lib)
 find_library(libchainbase chainbase @CMAKE_BINARY_DIR@/libraries/chainbase)
 find_library(libbuiltins builtins @CMAKE_BINARY_DIR@/libraries/builtins)
-find_library(libsecp256k1 secp256k1 @Secp256k1_ROOT_DIR@/lib)
+find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
+    HINTS ENV GMP_LIB_DIR
+          ENV GMP_DIR
+    PATH_SUFFIXES lib
+    DOC "Path to the GMP library"
+)
 
 macro(add_eosio_test test_name)
    add_executable( ${test_name} ${ARGN} )
@@ -68,9 +77,9 @@ macro(add_eosio_test test_name)
        ${libtester}
        ${libchain}
        ${libfc}
-       ${libbinaryen}
        ${libwast}
        ${libwasm}
+       ${libwabt}
        ${libruntime}
        ${libplatform}
        ${libir}
@@ -80,6 +89,7 @@ macro(add_eosio_test test_name)
        ${liblogging}
        ${libchainbase}
        ${libbuiltins}
+       ${GMP_LIBRARIES}
        ${libsecp256k1}
 
        LLVMX86Disassembler
@@ -164,7 +174,7 @@ if(ENABLE_COVERAGE_TESTING)
     # Run tests
     COMMAND ./tools/ctestwrapper.sh -R ${ctest_tests} -E ${ctest_exclude_tests}
 
-    COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ./tools/llvm-gcov.sh --output-file ${Coverage_NAME}.info
+    COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ${CMAKE_SOURCE_DIR}/tools/llvm-gcov.sh --output-file ${Coverage_NAME}.info
 
     COMMAND ${LCOV_PATH} -remove ${Coverage_NAME}.info '*/boost/*' '/usr/lib/*' '/usr/include/*' '*/externals/*' '*/fc/*' '*/wasm-jit/*' --output-file ${Coverage_NAME}_filtered.info
 

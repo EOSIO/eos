@@ -6,9 +6,6 @@
 #include <eosio.msig/eosio.msig.wast.hpp>
 #include <eosio.msig/eosio.msig.abi.hpp>
 
-#include <exchange/exchange.wast.hpp>
-#include <exchange/exchange.abi.hpp>
-
 #include <test_api/test_api.wast.hpp>
 
 #include <eosio.system/eosio.system.wast.hpp>
@@ -322,7 +319,7 @@ BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) 
 
 BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name } };
-   auto wasm = wast_to_wasm( exchange_wast );
+   auto wasm = wast_to_wasm( eosio_token_wast );
 
    variant pretty_trx = fc::mutable_variant_object()
       ("expiration", "2020-01-01T00:30")
@@ -396,7 +393,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
 
    set_authority(config::system_account_name, "active", authority(1,
       vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}},
-      vector<permission_level_weight>{{{N(eosio.prods), config::active_name}, 1}}), "owner",
+      vector<permission_level_weight>{{{config::producers_account_name, config::active_name}, 1}}), "owner",
       { { config::system_account_name, "active" } }, { get_private_key( config::system_account_name, "active" ) });
 
    set_producers( {N(alice),N(bob),N(carol)} );
@@ -507,7 +504,7 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
    // set up the link between (eosio active) and (eosio.prods active)
    set_authority(config::system_account_name, "active", authority(1,
       vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}},
-      vector<permission_level_weight>{{{N(eosio.prods), config::active_name}, 1}}), "owner",
+      vector<permission_level_weight>{{{config::producers_account_name, config::active_name}, 1}}), "owner",
       { { config::system_account_name, "active" } }, { get_private_key( config::system_account_name, "active" ) });
 
    create_accounts( { N(apple) } );

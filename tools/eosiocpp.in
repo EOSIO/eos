@@ -112,6 +112,7 @@ function generate_abi {
     ${ABIGEN} -extra-arg=-c -extra-arg=--std=c++14 -extra-arg=--target=wasm32 \
         -extra-arg=-nostdinc -extra-arg=-nostdinc++ -extra-arg=-DABIGEN \
         -extra-arg=-I@CMAKE_SOURCE_DIR@/contracts \
+        -extra-arg=-I@CMAKE_BINARY_DIR@/contracts \
         -extra-arg=-I@CMAKE_SOURCE_DIR@/contracts/libc++/upstream/include \
         -extra-arg=-I@CMAKE_SOURCE_DIR@/contracts/musl/upstream/include \
         -extra-arg=-I@CMAKE_SOURCE_DIR@/externals/magic_get/include \
@@ -149,6 +150,11 @@ function print_help {
     echo "      Generate the ABI specification file [EXPERIMENTAL]"
 }
 
+function print_deprecation_notice {
+    echo -e "\033[0;33mWARNING: this tool is deprecated and will be removed in a future release\033[0m" 1>&2
+    echo -e "\033[0;33mPlease consider using the EOSIO.CDT (https://github.com/EOSIO/eosio.cdt/)\033[0m" 1>&2
+}
+
 command=""
 
 while [[ $# -gt 1 ]]
@@ -183,6 +189,8 @@ case $key in
         ;;
 esac
 done
+
+print_deprecation_notice
 
 if [[ "outname" == "$command" ]]; then
     build_contract $@

@@ -27,6 +27,9 @@
 [submodule "libraries/fc"]
 	path = libraries/fc
 	url = https://github.com/EOSIO/fc
+[submodule "libraries/wabt"]
+	path = libraries/wabt
+	url = http://github.com/EOSIO/wabt
 [submodule "plugins/uos_plugins"]
 	path = plugins/uos_plugins
 	url = https://github.com/UOSnetwork/uos.plugins
@@ -36,3 +39,4 @@
 [submodule "libraries/singularity"]
 	path = libraries/singularity
 	url = https://github.com/UOSnetwork/singularity
+

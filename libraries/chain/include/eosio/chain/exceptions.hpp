@@ -230,7 +230,7 @@ namespace eosio { namespace chain {
                                     3060004, "Contract Query Exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
-                                 3060100, "Database exception" )
+                                 3060100, "Guard Exception" )
 
       FC_DECLARE_DERIVED_EXCEPTION( database_guard_exception, guard_exception,
                                     3060101, "Database usage is at unsafe levels" )
@@ -268,6 +268,8 @@ namespace eosio { namespace chain {
                                     3080006, "Transaction took too long" )
       FC_DECLARE_DERIVED_EXCEPTION( greylist_net_usage_exceeded, resource_exhausted_exception,
                                     3080007, "Transaction exceeded the current greylisted account network usage limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( greylist_cpu_usage_exceeded, resource_exhausted_exception,
+                                    3080008, "Transaction exceeded the current greylisted account CPU usage limit" )
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
 
@@ -414,6 +416,10 @@ namespace eosio { namespace chain {
                                     3015013, "Unpack data exception" )
       FC_DECLARE_DERIVED_EXCEPTION( pack_exception,                     abi_exception,
                                     3015014, "Pack data exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_variant_def_exception,  abi_exception,
+                                    3015015, "Duplicate variant definition in the ABI" )
+      FC_DECLARE_DERIVED_EXCEPTION( unsupported_abi_version_exception,  abi_exception,
+                                    3015016, "ABI has an unsupported version" )
 
    FC_DECLARE_DERIVED_EXCEPTION( contract_exception,           chain_exception,
                                  3160000, "Contract exception" )
@@ -450,6 +456,10 @@ namespace eosio { namespace chain {
                                     3170004, "Producer schedule exception" )
       FC_DECLARE_DERIVED_EXCEPTION( producer_not_in_schedule,      producer_exception,
                                     3170006, "The producer is not part of current schedule" )
+      FC_DECLARE_DERIVED_EXCEPTION( snapshot_directory_not_found_exception,  producer_exception,
+                                    3170007, "The configured snapshot directory does not exist" )
+      FC_DECLARE_DERIVED_EXCEPTION( snapshot_exists_exception,  producer_exception,
+                                    3170008, "The requested snapshot already exists" )
 
    FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_exception,           chain_exception,
                                  3180000, "Reversible Blocks exception" )
@@ -504,4 +514,9 @@ namespace eosio { namespace chain {
                                     3230002, "Database API Exception" )
       FC_DECLARE_DERIVED_EXCEPTION( arithmetic_exception,   contract_api_exception,
                                     3230003, "Arithmetic Exception" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( snapshot_exception,    chain_exception,
+                                 3240000, "Snapshot exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( snapshot_validation_exception,   snapshot_exception,
+                                    3240001, "Snapshot Validation Exception" )
 } } // eosio::chain
