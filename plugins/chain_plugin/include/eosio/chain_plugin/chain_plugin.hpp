@@ -405,24 +405,37 @@ public:
          auto lower = secidx.lower_bound(boost::make_tuple(low_tid));
          auto upper = secidx.lower_bound(boost::make_tuple(next_tid));
 
-         if (p.lower_bound.size()) {
+         auto lower_bound = p.lower_bound;
+         auto upper_bound = p.upper_bound;
+         if (p.table_key.size()) {
+            lower_bound = p.table_key;
+            upper_bound = p.table_key;
+         }
+
+         if (lower_bound.size()) {
             if (p.key_type == "name") {
-               name s(p.lower_bound);
+               name s(lower_bound);
                SecKeyType lv = convert_to_type<SecKeyType>( s.to_string(), "lower_bound name" ); // avoids compiler error
                lower = secidx.lower_bound( boost::make_tuple( low_tid, conv( lv )));
             } else {
-               SecKeyType lv = convert_to_type<SecKeyType>( p.lower_bound, "lower_bound" );
+               SecKeyType lv = convert_to_type<SecKeyType>( lower_bound, "lower_bound" );
                lower = secidx.lower_bound( boost::make_tuple( low_tid, conv( lv )));
             }
          }
-         if (p.upper_bound.size()) {
+         if (upper_bound.size()) {
             if (p.key_type == "name") {
-               name s(p.upper_bound);
+               name s(upper_bound);
                SecKeyType uv = convert_to_type<SecKeyType>( s.to_string(), "upper_bound name" );
-               upper = secidx.lower_bound( boost::make_tuple( low_tid, conv( uv )));
+               if (p.table_key.size())
+                  upper = secidx.upper_bound( boost::make_tuple( low_tid, conv( uv )));
+               else
+                  upper = secidx.lower_bound( boost::make_tuple( low_tid, conv( uv )));
             } else {
-               SecKeyType uv = convert_to_type<SecKeyType>( p.upper_bound, "upper_bound" );
-               upper = secidx.lower_bound( boost::make_tuple( low_tid, conv( uv )));
+               SecKeyType uv = convert_to_type<SecKeyType>( upper_bound, "upper_bound" );
+               if (p.table_key.size())
+                  upper = secidx.upper_bound( boost::make_tuple( low_tid, conv( uv )));
+               else
+                  upper = secidx.lower_bound( boost::make_tuple( low_tid, conv( uv )));
             }
          }
 
@@ -470,23 +483,36 @@ public:
          decltype(t_id->id) next_tid(t_id->id._id + 1);
          auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
          auto upper = idx.lower_bound(boost::make_tuple(next_tid));
+         
+         auto lower_bound = p.lower_bound;
+         auto upper_bound = p.upper_bound;
+         if (p.table_key.size()) {
+            lower_bound = p.table_key;
+            upper_bound = p.table_key;
+         }
 
-         if (p.lower_bound.size()) {
+         if (lower_bound.size()) {
             if (p.key_type == "name") {
-               name s(p.lower_bound);
+               name s(lower_bound);
                lower = idx.lower_bound( boost::make_tuple( t_id->id, s.value ));
             } else {
-               auto lv = convert_to_type<typename IndexType::value_type::key_type>( p.lower_bound, "lower_bound" );
+               auto lv = convert_to_type<typename IndexType::value_type::key_type>( lower_bound, "lower_bound" );
                lower = idx.lower_bound( boost::make_tuple( t_id->id, lv ));
             }
          }
-         if (p.upper_bound.size()) {
+         if (upper_bound.size()) {
             if (p.key_type == "name") {
-               name s(p.upper_bound);
-               upper = idx.lower_bound( boost::make_tuple( t_id->id, s.value ));
+               name s(upper_bound);
+               if (p.table_key.size())
+                  upper = idx.upper_bound( boost::make_tuple( t_id->id, s.value ));
+               else
+                  upper = idx.lower_bound( boost::make_tuple( t_id->id, s.value ));
             } else {
-               auto uv = convert_to_type<typename IndexType::value_type::key_type>( p.upper_bound, "upper_bound" );
-               upper = idx.lower_bound( boost::make_tuple( t_id->id, uv ));
+               auto uv = convert_to_type<typename IndexType::value_type::key_type>( upper_bound, "upper_bound" );
+               if (p.table_key.size())
+                  upper = idx.upper_bound( boost::make_tuple( t_id->id, uv ));
+               else
+                  upper = idx.lower_bound( boost::make_tuple( t_id->id, uv ));
             }
          }
 
