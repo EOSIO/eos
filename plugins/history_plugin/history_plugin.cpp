@@ -282,6 +282,9 @@ namespace eosio {
          }
 
          void on_applied_transaction( const transaction_trace_ptr& trace ) {
+            if( !trace->receipt || (trace->receipt->status != transaction_receipt_header::executed &&
+                  trace->receipt->status != transaction_receipt_header::soft_fail) )
+               return;
             for( const auto& atrace : trace->action_traces ) {
                on_action_trace( atrace );
             }
