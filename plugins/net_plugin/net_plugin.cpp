@@ -2022,16 +2022,16 @@ namespace eosio {
                      }
                      else
                      {
-                           bool ct = true;
-                           for (auto iter = p2p_peer_records.begin(); iter != p2p_peer_records.end(); iter++)
+                           bool stop_flag = true;
+                           for (auto record : p2p_peer_records)
                            {
-                                 if (iter->second.is_config && !( iter->second.connected||iter->second.time_point_sec < time_point::now()))
+                                 if (record.second.is_config && !( record.second.connected||record.second.time_point_sec < time_point::now()))
                                  {
-                                       ct = false;
+                                       stop_flag = false;
                                        break;
                                  }
                            }
-                           if (ct)
+                           if (stop_flag)
                            {
                                  request_p2p_flag = false;
                            }
