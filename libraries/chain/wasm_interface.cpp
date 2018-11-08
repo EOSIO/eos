@@ -1329,11 +1329,9 @@ class transaction_api : public context_aware_api {
       }
 
       void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len, uint32_t replace_existing) {
-         try {
-            transaction trx;
-            fc::raw::unpack<transaction>(data, data_len, trx);
-            context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);
-         } FC_RETHROW_EXCEPTIONS(warn, "data as hex: ${data}", ("data", fc::to_hex(data, data_len)))
+         transaction trx;
+         fc::raw::unpack<transaction>(data, data_len, trx);
+         context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);
       }
 
       bool cancel_deferred( const unsigned __int128& val ) {
