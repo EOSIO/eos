@@ -269,7 +269,8 @@ public:
       string      key_type;  // type of key specified by index_position
       string      index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
       string      encode_type{"dec"}; //dec, hex , default=dec
-      bool        reverse = false; // from upper to lower
+      optional<bool>  reverse; // from upper to lower
+      optional<bool>  show_payer; // show RAM pyer
     };
 
    struct get_table_rows_result {
@@ -432,31 +433,37 @@ public:
          auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
 
          unsigned int count = 0;
-         auto itr = (!p.reverse ? lower : upper);
-         while ((!p.reverse && itr != upper) || (p.reverse && itr != lower)) {
+         bool reverse = (p.reverse ? *p.reverse : false);
+         auto itr = (!reverse ? lower : upper);
+         while ((!reverse && itr != upper) || (reverse && itr != lower)) {
 
-            if (p.reverse) --itr;
+            if (reverse) --itr;
 
             const auto* itr2 = d.find<chain::key_value_object, chain::by_scope_primary>(boost::make_tuple(t_id->id, itr->primary_key));
             if (itr2 == nullptr) { // should not happen
-               if (!p.reverse) ++itr;
+               if (!reverse) ++itr;
                if (fc::time_point::now() > end) 
                   break;
                continue;
             }
             copy_inline_row(*itr2, data);
-
+            fc::variant data_var;
             if (p.json) {
-               result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors ) );
+               data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors );
             } else {
-               result.rows.emplace_back(fc::variant(data));
+               data_var = fc::variant(data);
             }
-            if (!p.reverse) ++itr;
+            if (p.show_payer && *p.show_payer) {
+               result.rows.emplace_back(fc::mutable_variant_object("data", std::move(data_var))("payer", itr2->payer));
+            } else {
+               result.rows.emplace_back(std::move(data_var));
+            }
+            if (!reverse) ++itr;
             if (++count == p.limit || fc::time_point::now() > end) {
                break;
             }
          }
-         if ((!p.reverse && itr != upper) || (p.reverse && itr != lower)) {
+         if ((!reverse && itr != upper) || (reverse && itr != lower)) {
             result.more = true;
          }
       }
@@ -503,25 +510,32 @@ public:
          auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
 
          unsigned int count = 0;
-         auto itr = (!p.reverse ? lower : upper);
-         while ((!p.reverse && itr != upper) || (p.reverse && itr != lower)) {
+         bool reverse = (p.reverse ? *p.reverse : false);
+         auto itr = (!reverse ? lower : upper);
+         while ((!reverse && itr != upper) || (reverse && itr != lower)) {
 
-            if (p.reverse) --itr;
+            if (reverse) --itr;
 
             copy_inline_row(*itr, data);
 
+            fc::variant data_var;
             if (p.json) {
-               result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors ) );
+               data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors );
             } else {
-               result.rows.emplace_back(fc::variant(data));
+               data_var = fc::variant(data);
+            }
+            if (p.show_payer && *p.show_payer) {
+               result.rows.emplace_back(fc::mutable_variant_object("data", std::move(data_var))("payer", itr->payer));
+            } else {
+               result.rows.emplace_back(std::move(data_var));
             }
 
-            if (!p.reverse) ++itr;
+            if (!reverse) ++itr;
             if (++count == p.limit || fc::time_point::now() > end) {
                break;
             }
          }
-         if ((!p.reverse && itr != upper) || (p.reverse && itr != lower)) {
+         if ((!reverse && itr != upper) || (reverse && itr != lower)) {
             result.more = true;
          }
       }
@@ -683,7 +697,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_n
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit) )
