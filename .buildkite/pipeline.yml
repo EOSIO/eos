@@ -332,3 +332,22 @@ steps:
         image: "eosio/ci:amazonlinux"
         workdir: /data/job
     timeout: 60
+
+  - wait
+
+  - command: |
+        echo "--- :arrow_down: Downloading build directory" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Build" && \
+        tar -zxf build.tar.gz && \
+        echo "+++ :microscope: Starting package build" && \
+        cd /data/job/build/packages && bash generate_package.sh deb
+    label: ":ubuntu: Package builder"
+    agents:
+      - "role=linux-builder"
+    artifact_paths:
+      - "build/packages/*.deb"
+    plugins:
+      docker#v1.4.0:
+        image: "eosio/ci:ubuntu"
+        workdir: /data/job
+    timeout: 60
