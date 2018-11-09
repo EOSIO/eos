@@ -16,7 +16,7 @@ include_directories("${CMAKE_SOURCE_DIR}/plugins/wallet_plugin/include")
 file(GLOB UNIT_TESTS "*.cpp")
 
 add_executable( plugin_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} )
-target_link_libraries( plugin_test eosio_testing eosio_chain chainbase chain_plugin wallet_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( plugin_test eosio_testing eosio_chain chainbase chain_plugin wallet_plugin fc ${PLATFORM_SPECIFIC_LIBS} )
 
 target_include_directories( plugin_test PUBLIC
                             ${CMAKE_SOURCE_DIR}/plugins/net_plugin/include

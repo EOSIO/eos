@@ -409,8 +409,10 @@ struct controller_impl {
    ~controller_impl() {
       pending.reset();
 
-      thread_pool->join();
-      thread_pool->stop();
+      if( thread_pool ) {
+         thread_pool->join();
+         thread_pool->stop();
+      }
 
       db.flush();
       reversible_blocks.flush();
