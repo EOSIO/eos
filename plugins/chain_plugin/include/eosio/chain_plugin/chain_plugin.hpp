@@ -403,7 +403,7 @@ public:
       const auto* index_t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, table_with_index));
       if( t_id != nullptr && index_t_id != nullptr ) {
          using secondary_key_type = std::result_of_t<decltype(conv)(SecKeyType)>;
-         static_assert( std::is_same<decltype(IndexType::value_type::secondary_key), secondary_key_type>::value, "Return type of conv does not match type of secondary key for IndexType" );
+         static_assert( std::is_same<typename IndexType::value_type::secondary_key_type, secondary_key_type>::value, "Return type of conv does not match type of secondary key for IndexType" );
 
          const auto& secidx = d.get_index<IndexType, chain::by_secondary>();
          auto lower_bound_lookup_tuple = std::make_tuple( index_t_id->id._id,
