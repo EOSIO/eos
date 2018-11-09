@@ -8,14 +8,6 @@
 #include <fc/io/raw.hpp>
 #include <softfloat.hpp>
 
-inline bool operator< (const float64_t& lhs, const float64_t& rhs) {
-   return f64_lt(lhs, rhs);
-}
-
-inline bool operator< (const float128_t& lhs, const float128_t& rhs) {
-   return f128_lt(lhs, rhs);
-}
-
 namespace eosio { namespace chain {
 
    template<typename ...Indices>

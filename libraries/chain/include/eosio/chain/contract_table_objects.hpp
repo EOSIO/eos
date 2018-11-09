@@ -146,6 +146,65 @@ namespace eosio { namespace chain {
    typedef secondary_index<float128_t,index_long_double_object_type>::index_object  index_long_double_object;
    typedef secondary_index<float128_t,index_long_double_object_type>::index_index   index_long_double_index;
 
+   template<typename T>
+   struct secondary_key_traits {
+      using value_type = std::enable_if_t<std::is_integral<T>::value, T>;
+
+      static_assert( std::numeric_limits<uint128_t>::is_specialized, "value_type does not have specialized numeric_limits" );
+
+      static constexpr value_type true_lowest() { return std::numeric_limits<value_type>::lowest(); }
+      static constexpr value_type true_highest() { return std::numeric_limits<value_type>::max(); }
+   };
+
+   template<size_t N>
+   struct secondary_key_traits<std::array<uint128_t, N>> {
+   private:
+      static constexpr uint128_t max_uint128 = uint128_t(std::numeric_limits<uint64_t>::max()) << 64 | std::numeric_limits<uint64_t>::max();
+      static_assert( std::numeric_limits<uint128_t>::max() == max_uint128, "numeric_limits for uint128_t is not properly defined" );
+
+   public:
+      using value_type = std::array<uint128_t, N>;
+
+      static value_type true_lowest() {
+         value_type arr;
+         return arr;
+      }
+
+      static value_type true_highest() {
+         value_type arr;
+         for( auto& v : arr ) {
+            v = std::numeric_limits<uint128_t>::max();
+         }
+         return arr;
+      }
+   };
+
+   template<>
+   struct secondary_key_traits<float64_t> {
+      using value_type = float64_t;
+
+      static value_type true_lowest() {
+         return f64_negative_infinity();
+      }
+
+      static value_type true_highest() {
+         return f64_positive_infinity();
+      }
+   };
+
+   template<>
+   struct secondary_key_traits<float128_t> {
+      using value_type = float128_t;
+
+      static value_type true_lowest() {
+         return f128_negative_infinity();
+      }
+
+      static value_type true_highest() {
+         return f128_positive_infinity();
+      }
+   };
+
    /**
     * helper template to map from an index type to the best tag
     * to use when traversing by table_id

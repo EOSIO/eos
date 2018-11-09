@@ -43,75 +43,6 @@ namespace eosio {
    using chain::abi_def;
    using chain::abi_serializer;
 
-   template<typename T>
-   struct secondary_key_traits {
-      using value_type = std::enable_if_t<std::is_integral<T>::value, T>;
-
-      static_assert( std::numeric_limits<uint128_t>::is_specialized, "value_type does not have specialized numeric_limits" );
-
-      static constexpr value_type true_lowest() { return std::numeric_limits<value_type>::lowest(); }
-      static constexpr value_type true_highest() { return std::numeric_limits<value_type>::max(); }
-   };
-
-   template<size_t N>
-   struct secondary_key_traits<std::array<uint128_t, N>> {
-   private:
-      static constexpr uint128_t max_uint128 = uint128_t(std::numeric_limits<uint64_t>::max()) << 64 | std::numeric_limits<uint64_t>::max();
-      static_assert( std::numeric_limits<uint128_t>::max() == max_uint128, "numeric_limits for uint128_t is not properly defined" );
-
-   public:
-      using value_type = std::array<uint128_t, N>;
-
-      static value_type true_lowest() {
-         value_type arr;
-         return arr;
-      }
-
-      static value_type true_highest() {
-         value_type arr;
-         for( auto& v : arr ) {
-            v = std::numeric_limits<uint128_t>::max();
-         }
-         return arr;
-      }
-   };
-
-   template<>
-   struct secondary_key_traits<float64_t> {
-      using value_type = float64_t;
-
-      static value_type true_lowest() {
-         float64_t f;
-         f.v = 0xff00000000000000ull;
-         return f; // -infinity
-      }
-
-      static value_type true_highest() {
-         float64_t f;
-         f.v = 0x7f00000000000000ull;
-         return f; // +infinity
-      }
-   };
-
-   template<>
-   struct secondary_key_traits<float128_t> {
-      using value_type = float128_t;
-
-      static value_type true_lowest() {
-         float128_t f;
-         f.v[0] = 0x0ull;
-         f.v[1] = 0xffff000000000000ull;
-         return f; // -infinity
-      }
-
-      static value_type true_highest() {
-         float128_t f;
-         f.v[0] = 0x0ull;
-         f.v[1] = 0x7fff000000000000ull;
-         return f; // +infinity
-      }
-   };
-
 namespace chain_apis {
 struct empty{};
 
@@ -472,8 +403,12 @@ public:
          static_assert( std::is_same<decltype(IndexType::value_type::secondary_key), secondary_key_type>::value, "Return type of conv does not match type of secondary key for IndexType" );
 
          const auto& secidx = d.get_index<IndexType, chain::by_secondary>();
-         auto lower_bound_lookup_tuple = std::make_tuple( index_t_id->id._id, secondary_key_traits<secondary_key_type>::true_lowest(), std::numeric_limits<uint64_t>::lowest() );
-         auto upper_bound_lookup_tuple = std::make_tuple( index_t_id->id._id, secondary_key_traits<secondary_key_type>::true_highest(), std::numeric_limits<uint64_t>::max() );
+         auto lower_bound_lookup_tuple = std::make_tuple( index_t_id->id._id,
+                                                          eosio::chain::secondary_key_traits<secondary_key_type>::true_lowest(),
+                                                          std::numeric_limits<uint64_t>::lowest() );
+         auto upper_bound_lookup_tuple = std::make_tuple( index_t_id->id._id,
+                                                          eosio::chain::secondary_key_traits<secondary_key_type>::true_highest(), 
+                                                          std::numeric_limits<uint64_t>::max() );
 
          if( p.lower_bound.size() ) {
             if( p.key_type == "name" ) {
