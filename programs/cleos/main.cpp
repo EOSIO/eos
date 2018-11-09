@@ -1119,10 +1119,15 @@ struct approve_producer_subcommand {
                                ("table_key", "owner")
                                ("lower_bound", voter.value)
                                ("upper_bound", voter.value + 1)
+                               // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
+                               // Change to voter.value when cleos no longer needs to support nodeos versions older than 1.5.0
                                ("limit", 1)
             );
             auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
-            if ( res.rows.empty() ) {
+            // Condition in if statement below can simply be res.rows.empty() when cleos no longer needs to support nodeos versions older than 1.5.0
+            // Although since this subcommand will actually change the voter's vote, it is probably better to just keep this check to protect 
+            //  against future potential chain_plugin bugs.
+            if( res.rows.empty() || res.rows[0].get_object()["owner"].as_string() != name(voter).to_string() ) {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
@@ -1167,10 +1172,15 @@ struct unapprove_producer_subcommand {
                                ("table_key", "owner")
                                ("lower_bound", voter.value)
                                ("upper_bound", voter.value + 1)
+                               // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
+                               // Change to voter.value when cleos no longer needs to support nodeos versions older than 1.5.0
                                ("limit", 1)
             );
             auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
-            if ( res.rows.empty() ) {
+            // Condition in if statement below can simply be res.rows.empty() when cleos no longer needs to support nodeos versions older than 1.5.0
+            // Although since this subcommand will actually change the voter's vote, it is probably better to just keep this check to protect
+            //  against future potential chain_plugin bugs.
+            if( res.rows.empty() || res.rows[0].get_object()["owner"].as_string() != name(voter).to_string() ) {
                std::cerr << "Voter info not found for account " << voter << std::endl;
                return;
             }
@@ -1383,29 +1393,32 @@ struct bidname_info_subcommand {
          auto rawResult = call(get_table_func, fc::mutable_variant_object("json", true)
                                ("code", "eosio")("scope", "eosio")("table", "namebids")
                                ("lower_bound", newname.value)
-                               ("upper_bound", newname.value + 1)("limit", 1));
+                               ("upper_bound", newname.value + 1)
+                               // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
+                               // Change to newname.value when cleos no longer needs to support nodeos versions older than 1.5.0
+                               ("limit", 1));
          if ( print_json ) {
             std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
             return;
          }
          auto result = rawResult.as<eosio::chain_apis::read_only::get_table_rows_result>();
-         if ( result.rows.empty() ) {
+         // Condition in if statement below can simply be res.rows.empty() when cleos no longer needs to support nodeos versions older than 1.5.0
+         if( result.rows.empty() || result.rows[0].get_object()["newname"].as_string() != newname.to_string() ) {
             std::cout << "No bidname record found" << std::endl;
             return;
          }
-         for ( auto& row : result.rows ) {
-            string time = row["last_bid_time"].as_string();
-            try {
-                time = (string)fc::time_point(fc::microseconds(to_uint64(time)));
-            } catch (fc::parse_error_exception&) {
-            }
-            int64_t bid = row["high_bid"].as_int64();
-            std::cout << std::left << std::setw(18) << "bidname:" << std::right << std::setw(24) << row["newname"].as_string() << "\n"
-                      << std::left << std::setw(18) << "highest bidder:" << std::right << std::setw(24) << row["high_bidder"].as_string() << "\n"
-                      << std::left << std::setw(18) << "highest bid:" << std::right << std::setw(24) << (bid > 0 ? bid : -bid) << "\n"
-                      << std::left << std::setw(18) << "last bid time:" << std::right << std::setw(24) << time << std::endl;
-            if (bid < 0) std::cout << "This auction has already closed" << std::endl;
+         const auto& row = result.rows[0];
+         string time = row["last_bid_time"].as_string();
+         try {
+             time = (string)fc::time_point(fc::microseconds(to_uint64(time)));
+         } catch (fc::parse_error_exception&) {
          }
+         int64_t bid = row["high_bid"].as_int64();
+         std::cout << std::left << std::setw(18) << "bidname:" << std::right << std::setw(24) << row["newname"].as_string() << "\n"
+                   << std::left << std::setw(18) << "highest bidder:" << std::right << std::setw(24) << row["high_bidder"].as_string() << "\n"
+                   << std::left << std::setw(18) << "highest bid:" << std::right << std::setw(24) << (bid > 0 ? bid : -bid) << "\n"
+                   << std::left << std::setw(18) << "last bid time:" << std::right << std::setw(24) << time << std::endl;
+         if (bid < 0) std::cout << "This auction has already closed" << std::endl;
       });
    }
 };
@@ -3060,12 +3073,15 @@ int main( int argc, char** argv ) {
                          ("table_key", "")
                          ("lower_bound", name(proposal_name).value)
                          ("upper_bound", name(proposal_name).value + 1)
+                         // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
+                         // Change to name(proposal_name).value when cleos no longer needs to support nodeos versions older than 1.5.0
                          ("limit", 1)
                          );
       //std::cout << fc::json::to_pretty_string(result) << std::endl;
 
       fc::variants rows = result.get_object()["rows"].get_array();
-      if (rows.empty()) {
+      // Condition in if statement below can simply be rows.empty() when cleos no longer needs to support nodeos versions older than 1.5.0
+      if( rows.empty() || rows[0].get_object()["proposal_name"] != proposal_name ) {
          std::cerr << "Proposal not found" << std::endl;
          return;
       }
