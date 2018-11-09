@@ -130,33 +130,21 @@ namespace eosio { namespace chain {
    typedef secondary_index<key256_t,index256_object_type>::index_object index256_object;
    typedef secondary_index<key256_t,index256_object_type>::index_index  index256_index;
 
-   struct soft_double_less {
-      bool operator()( const float64_t& lhs, const float64_t& rhs )const {
-         return f64_lt(lhs, rhs);
-      }
-   };
-
-   struct soft_long_double_less {
-      bool operator()( const float128_t lhs, const float128_t& rhs )const {
-         return f128_lt(lhs, rhs);
-      }
-   };
-
    /**
     *  This index supports a deterministic software implementation of double as the secondary key.
     *
     *  The software double implementation is using the Berkeley softfloat library (release 3).
     */
-   typedef secondary_index<float64_t,index_double_object_type,soft_double_less>::index_object  index_double_object;
-   typedef secondary_index<float64_t,index_double_object_type,soft_double_less>::index_index   index_double_index;
+   typedef secondary_index<float64_t,index_double_object_type>::index_object  index_double_object;
+   typedef secondary_index<float64_t,index_double_object_type>::index_index   index_double_index;
 
    /**
     *  This index supports a deterministic software implementation of long double as the secondary key.
     *
     *  The software long double implementation is using the Berkeley softfloat library (release 3).
     */
-   typedef secondary_index<float128_t,index_long_double_object_type,soft_long_double_less>::index_object  index_long_double_object;
-   typedef secondary_index<float128_t,index_long_double_object_type,soft_long_double_less>::index_index   index_long_double_index;
+   typedef secondary_index<float128_t,index_long_double_object_type>::index_object  index_long_double_object;
+   typedef secondary_index<float128_t,index_long_double_object_type>::index_index   index_long_double_index;
 
    /**
     * helper template to map from an index type to the best tag

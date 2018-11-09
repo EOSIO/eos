@@ -43,6 +43,75 @@ namespace eosio {
    using chain::abi_def;
    using chain::abi_serializer;
 
+   template<typename T>
+   struct secondary_key_traits {
+      using value_type = std::enable_if_t<std::is_integral<T>::value, T>;
+
+      static_assert( std::numeric_limits<uint128_t>::is_specialized, "value_type does not have specialized numeric_limits" );
+
+      static constexpr value_type true_lowest() { return std::numeric_limits<value_type>::lowest(); }
+      static constexpr value_type true_highest() { return std::numeric_limits<value_type>::max(); }
+   };
+
+   template<size_t N>
+   struct secondary_key_traits<std::array<uint128_t, N>> {
+   private:
+      static constexpr uint128_t max_uint128 = uint128_t(std::numeric_limits<uint64_t>::max()) << 64 | std::numeric_limits<uint64_t>::max();
+      static_assert( std::numeric_limits<uint128_t>::max() == max_uint128, "numeric_limits for uint128_t is not properly defined" );
+
+   public:
+      using value_type = std::array<uint128_t, N>;
+
+      static value_type true_lowest() {
+         value_type arr;
+         return arr;
+      }
+
+      static value_type true_highest() {
+         value_type arr;
+         for( auto& v : arr ) {
+            v = std::numeric_limits<uint128_t>::max();
+         }
+         return arr;
+      }
+   };
+
+   template<>
+   struct secondary_key_traits<float64_t> {
+      using value_type = float64_t;
+
+      static value_type true_lowest() {
+         float64_t f;
+         f.v = 0xff00000000000000ull;
+         return f; // -infinity?
+      }
+
+      static value_type true_highest() {
+         float64_t f;
+         f.v = 0x7f00000000000000ull;
+         return f; // +infinity?
+      }
+   };
+
+   template<>
+   struct secondary_key_traits<float128_t> {
+      using value_type = float128_t;
+
+      static value_type true_lowest() {
+         float128_t f;
+         f.v[0] = 0x0ull;
+         f.v[1] = 0xffff000000000000ull;
+         return f; // -infinity?
+      }
+
+      static value_type true_highest() {
+         float128_t f;
+         f.v[0] = 0x0ull;
+         f.v[1] = 0x7fff000000000000ull;
+         return f; // +infinity?
+      }
+   };
+
 namespace chain_apis {
 struct empty{};
 
@@ -398,33 +467,41 @@ public:
       const uint64_t table_with_index = get_table_index_name(p, primary);
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
       const auto* index_t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, table_with_index));
-      if (t_id != nullptr && index_t_id != nullptr) {
-         const auto& secidx = d.get_index<IndexType, chain::by_secondary>();
-         decltype(index_t_id->id) low_tid(index_t_id->id._id);
-         decltype(index_t_id->id) next_tid(index_t_id->id._id + 1);
-         auto lower = secidx.lower_bound(boost::make_tuple(low_tid));
-         auto upper = secidx.lower_bound(boost::make_tuple(next_tid));
+      if( t_id != nullptr && index_t_id != nullptr ) {
+         using secondary_key_type = std::result_of_t<decltype(conv)(SecKeyType)>;
+         static_assert( std::is_same<decltype(IndexType::value_type::secondary_key), secondary_key_type>::value, "Return type of conv does not match type of secondary key for IndexType" );
 
-         if (p.lower_bound.size()) {
-            if (p.key_type == "name") {
+         const auto& secidx = d.get_index<IndexType, chain::by_secondary>();
+         auto lower_bound_lookup_tuple = std::make_tuple( index_t_id->id._id, secondary_key_traits<secondary_key_type>::true_lowest(), std::numeric_limits<uint64_t>::lowest() );
+         auto upper_bound_lookup_tuple = std::make_tuple( index_t_id->id._id, secondary_key_traits<secondary_key_type>::true_highest(), std::numeric_limits<uint64_t>::max() );
+
+         if( p.lower_bound.size() ) {
+            if( p.key_type == "name" ) {
                name s(p.lower_bound);
                SecKeyType lv = convert_to_type<SecKeyType>( s.to_string(), "lower_bound name" ); // avoids compiler error
-               lower = secidx.lower_bound( boost::make_tuple( low_tid, conv( lv )));
+               std::get<1>(lower_bound_lookup_tuple) = conv( lv );
             } else {
                SecKeyType lv = convert_to_type<SecKeyType>( p.lower_bound, "lower_bound" );
-               lower = secidx.lower_bound( boost::make_tuple( low_tid, conv( lv )));
+               std::get<1>(lower_bound_lookup_tuple) = conv( lv );
             }
          }
-         if (p.upper_bound.size()) {
-            if (p.key_type == "name") {
+
+         if( p.upper_bound.size() ) {
+            if( p.key_type == "name" ) {
                name s(p.upper_bound);
                SecKeyType uv = convert_to_type<SecKeyType>( s.to_string(), "upper_bound name" );
-               upper = secidx.lower_bound( boost::make_tuple( low_tid, conv( uv )));
+               std::get<1>(upper_bound_lookup_tuple) = conv( uv );
             } else {
                SecKeyType uv = convert_to_type<SecKeyType>( p.upper_bound, "upper_bound" );
-               upper = secidx.lower_bound( boost::make_tuple( low_tid, conv( uv )));
+               std::get<1>(upper_bound_lookup_tuple) = conv( uv );
             }
          }
+
+         if( upper_bound_lookup_tuple < lower_bound_lookup_tuple )
+            return result;
+
+         auto lower = secidx.lower_bound( lower_bound_lookup_tuple );
+         auto upper = secidx.upper_bound( upper_bound_lookup_tuple );
 
          vector<char> data;
 
@@ -465,30 +542,36 @@ public:
       abi_serializer abis;
       abis.set_abi(abi, abi_serializer_max_time);
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
-      if (t_id != nullptr) {
+      if( t_id != nullptr ) {
          const auto& idx = d.get_index<IndexType, chain::by_scope_primary>();
-         decltype(t_id->id) next_tid(t_id->id._id + 1);
-         auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
-         auto upper = idx.lower_bound(boost::make_tuple(next_tid));
+         auto lower_bound_lookup_tuple = std::make_tuple( t_id->id, std::numeric_limits<uint64_t>::lowest() );
+         auto upper_bound_lookup_tuple = std::make_tuple( t_id->id, std::numeric_limits<uint64_t>::max() );
 
-         if (p.lower_bound.size()) {
-            if (p.key_type == "name") {
+         if( p.lower_bound.size() ) {
+            if( p.key_type == "name" ) {
                name s(p.lower_bound);
-               lower = idx.lower_bound( boost::make_tuple( t_id->id, s.value ));
+               std::get<1>(lower_bound_lookup_tuple) = s.value;
             } else {
                auto lv = convert_to_type<typename IndexType::value_type::key_type>( p.lower_bound, "lower_bound" );
-               lower = idx.lower_bound( boost::make_tuple( t_id->id, lv ));
+               std::get<1>(lower_bound_lookup_tuple) = lv;
             }
          }
-         if (p.upper_bound.size()) {
-            if (p.key_type == "name") {
+
+         if( p.upper_bound.size() ) {
+            if( p.key_type == "name" ) {
                name s(p.upper_bound);
-               upper = idx.lower_bound( boost::make_tuple( t_id->id, s.value ));
+               std::get<1>(upper_bound_lookup_tuple) = s.value;
             } else {
                auto uv = convert_to_type<typename IndexType::value_type::key_type>( p.upper_bound, "upper_bound" );
-               upper = idx.lower_bound( boost::make_tuple( t_id->id, uv ));
+               std::get<1>(upper_bound_lookup_tuple) = uv;
             }
          }
+
+         if( upper_bound_lookup_tuple < lower_bound_lookup_tuple  )
+            return result;
+
+         auto lower = idx.lower_bound( lower_bound_lookup_tuple );
+         auto upper = idx.upper_bound( upper_bound_lookup_tuple );
 
          vector<char> data;
 
