@@ -83,13 +83,13 @@ namespace eosio {
       static value_type true_lowest() {
          float64_t f;
          f.v = 0xff00000000000000ull;
-         return f; // -infinity?
+         return f; // -infinity
       }
 
       static value_type true_highest() {
          float64_t f;
          f.v = 0x7f00000000000000ull;
-         return f; // +infinity?
+         return f; // +infinity
       }
    };
 
@@ -101,14 +101,14 @@ namespace eosio {
          float128_t f;
          f.v[0] = 0x0ull;
          f.v[1] = 0xffff000000000000ull;
-         return f; // -infinity?
+         return f; // -infinity
       }
 
       static value_type true_highest() {
          float128_t f;
          f.v[0] = 0x0ull;
          f.v[1] = 0x7fff000000000000ull;
-         return f; // +infinity?
+         return f; // +infinity
       }
    };
 
