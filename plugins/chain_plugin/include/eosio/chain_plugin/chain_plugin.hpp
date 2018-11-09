@@ -55,7 +55,7 @@ struct permission {
 template<typename>
 struct resolver_factory;
 
-// see specialization for uint64_t in source file
+// see specializations for uint64_t and double in source file
 template<typename Type>
 Type convert_to_type(const string& str, const string& desc) {
    try {
@@ -65,6 +65,9 @@ Type convert_to_type(const string& str, const string& desc) {
 
 template<>
 uint64_t convert_to_type(const string& str, const string& desc);
+
+template<>
+double convert_to_type(const string& str, const string& desc);
 
 class read_only {
    const controller& db;
@@ -407,7 +410,7 @@ public:
                                                           eosio::chain::secondary_key_traits<secondary_key_type>::true_lowest(),
                                                           std::numeric_limits<uint64_t>::lowest() );
          auto upper_bound_lookup_tuple = std::make_tuple( index_t_id->id._id,
-                                                          eosio::chain::secondary_key_traits<secondary_key_type>::true_highest(), 
+                                                          eosio::chain::secondary_key_traits<secondary_key_type>::true_highest(),
                                                           std::numeric_limits<uint64_t>::max() );
 
          if( p.lower_bound.size() ) {

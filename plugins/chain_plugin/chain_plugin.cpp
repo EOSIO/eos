@@ -1111,6 +1111,19 @@ uint64_t convert_to_type(const string& str, const string& desc) {
    return value;
 }
 
+template<>
+double convert_to_type(const string& str, const string& desc) {
+   double val{};
+   try {
+      val = fc::variant(str).as<double>();
+   } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} string '${str}' to key type.", ("desc", desc)("str",str) )
+
+   EOS_ASSERT( !std::isnan(val), chain::contract_table_query_exception,
+               "Converted ${desc} string '${str}' to NaN which is not a permitted value for the key type", ("desc", desc)("str",str) );
+
+   return val;
+}
+
 abi_def get_abi( const controller& db, const name& account ) {
    const auto &d = db.db();
    const account_object *code_accnt = d.find<account_object, by_name>(account);
