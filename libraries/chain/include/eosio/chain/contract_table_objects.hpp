@@ -150,7 +150,7 @@ namespace eosio { namespace chain {
    struct secondary_key_traits {
       using value_type = std::enable_if_t<std::is_integral<T>::value, T>;
 
-      static_assert( std::numeric_limits<uint128_t>::is_specialized, "value_type does not have specialized numeric_limits" );
+      static_assert( std::numeric_limits<value_type>::is_specialized, "value_type does not have specialized numeric_limits" );
 
       static constexpr value_type true_lowest() { return std::numeric_limits<value_type>::lowest(); }
       static constexpr value_type true_highest() { return std::numeric_limits<value_type>::max(); }
@@ -159,7 +159,7 @@ namespace eosio { namespace chain {
    template<size_t N>
    struct secondary_key_traits<std::array<uint128_t, N>> {
    private:
-      static constexpr uint128_t max_uint128 = uint128_t(std::numeric_limits<uint64_t>::max()) << 64 | std::numeric_limits<uint64_t>::max();
+      static constexpr uint128_t max_uint128 = (static_cast<uint128_t>(std::numeric_limits<uint64_t>::max()) << 64) | std::numeric_limits<uint64_t>::max();
       static_assert( std::numeric_limits<uint128_t>::max() == max_uint128, "numeric_limits for uint128_t is not properly defined" );
 
    public:
