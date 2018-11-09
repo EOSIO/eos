@@ -71,6 +71,8 @@ if(BUILD_MONGO_DB_PLUGIN)
 endif()
 # kafka_plugin
 target_link_libraries( ${NODE_EXECUTABLE_NAME} PRIVATE -Wl,${whole_archive_flag} kafka_plugin -Wl,${no_whole_archive_flag} )
+# notify_plugin
+target_link_libraries( ${NODE_EXECUTABLE_NAME} PRIVATE -Wl,${whole_archive_flag} notify_plugin -Wl,${no_whole_archive_flag} )
 
 include(additionalPlugins)
 
