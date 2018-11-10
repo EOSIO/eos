@@ -131,7 +131,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
    set_abi( N(eosio.token), eosio_token_abi );
    produce_blocks(1);
 
-   // create currency 
+   // create currency
    auto act = mutable_variant_object()
          ("issuer",       "eosio")
          ("maximum_supply", eosio::chain::asset::from_string("1000000000.0000 SYS"));
@@ -147,7 +147,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
    }
    produce_blocks(1);
 
-   // create currency 2 
+   // create currency 2
    act = mutable_variant_object()
          ("issuer",       "eosio")
          ("maximum_supply", eosio::chain::asset::from_string("1000000000.0000 AAA"));
@@ -162,7 +162,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
    }
    produce_blocks(1);
 
-   // create currency 3 
+   // create currency 3
    act = mutable_variant_object()
          ("issuer",       "eosio")
          ("maximum_supply", eosio::chain::asset::from_string("1000000000.0000 CCC"));
@@ -177,7 +177,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
    }
    produce_blocks(1);
 
-   // create currency 3 
+   // create currency 3
    act = mutable_variant_object()
          ("issuer",       "eosio")
          ("maximum_supply", eosio::chain::asset::from_string("1000000000.0000 BBB"));
@@ -242,7 +242,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
 
    // get table: normal case, with bound
    p.lower_bound = "BBB";
-   p.upper_bound = "SYS"; // exclusive
+   p.upper_bound = "CCC";
    p.reverse = false;
    result = plugin.read_only::get_table_rows(p);
    BOOST_REQUIRE_EQUAL(2, result.rows.size());
@@ -254,7 +254,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
 
    // get table: reverse case, with bound
    p.lower_bound = "BBB";
-   p.upper_bound = "SYS"; // exclusive
+   p.upper_bound = "CCC";
    p.reverse = true;
    result = plugin.read_only::get_table_rows(p);
    BOOST_REQUIRE_EQUAL(2, result.rows.size());
@@ -288,7 +288,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
 
    // get table: normal case, with bound & limit
    p.lower_bound = "BBB";
-   p.upper_bound = "SYS"; // exclusive
+   p.upper_bound = "CCC";
    p.limit = 1;
    p.reverse = false;
    result = plugin.read_only::get_table_rows(p);
@@ -300,7 +300,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
 
    // get table: reverse case, with bound & limit
    p.lower_bound = "BBB";
-   p.upper_bound = "SYS"; // exclusive
+   p.upper_bound = "CCC";
    p.limit = 1;
    p.reverse = true;
    result = plugin.read_only::get_table_rows(p);
@@ -309,7 +309,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
    if (result.rows.size() >= 1) {
       BOOST_REQUIRE_EQUAL("7777.0000 CCC", result.rows[0]["balance"].as_string());
    }
-   
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
@@ -317,7 +317,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
 
    create_accounts({ N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake),
       N(eosio.bpay), N(eosio.vpay), N(eosio.saving), N(eosio.names) });
- 
+
    std::vector<account_name> accs{N(inita), N(initb), N(initc), N(initd)};
    create_accounts(accs);
    produce_block();
@@ -326,7 +326,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
    set_abi( N(eosio.token), eosio_token_abi );
    produce_blocks(1);
 
-   // create currency 
+   // create currency
    auto act = mutable_variant_object()
          ("issuer",       "eosio")
          ("maximum_supply", eosio::chain::asset::from_string("1000000000.0000 SYS"));
@@ -443,7 +443,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
       BOOST_REQUIRE_EQUAL("inita", result.rows[0]["high_bidder"].as_string());
       BOOST_REQUIRE_EQUAL("100000", result.rows[0]["high_bid"].as_string());
    }
-   
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
