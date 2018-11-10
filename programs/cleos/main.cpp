@@ -1125,7 +1125,7 @@ struct approve_producer_subcommand {
             );
             auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
             // Condition in if statement below can simply be res.rows.empty() when cleos no longer needs to support nodeos versions older than 1.5.0
-            // Although since this subcommand will actually change the voter's vote, it is probably better to just keep this check to protect 
+            // Although since this subcommand will actually change the voter's vote, it is probably better to just keep this check to protect
             //  against future potential chain_plugin bugs.
             if( res.rows.empty() || res.rows[0].get_object()["owner"].as_string() != name(voter).to_string() ) {
                std::cerr << "Voter info not found for account " << voter << std::endl;
@@ -2153,7 +2153,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "--encode-type", encode_type,
                          localized("The encoding type of key_type (i64 , i128 , float64, float128) only support decimal encoding e.g. 'dec'"
                                     "i256 - supports both 'dec' and 'hex', ripemd160 and sha256 is 'hex' only"));
-   getTable->add_flag("-r,--reverse", reverse, localized("Iterate reversely from upper bound to lower bound"));
+   getTable->add_flag("-r,--reverse", reverse, localized("Iterate in reverse order"));
    getTable->add_flag("--show-payer", show_payer, localized("show RAM payer"));
 
 
@@ -2183,12 +2183,14 @@ int main( int argc, char** argv ) {
    getScope->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
    getScope->add_option( "-L,--lower", lower, localized("lower bound of scope") );
    getScope->add_option( "-U,--upper", upper, localized("upper bound of scope") );
+   getScope->add_flag("-r,--reverse", reverse, localized("Iterate in reverse order"));
    getScope->set_callback([&] {
       auto result = call(get_table_by_scope_func, fc::mutable_variant_object("code",code)
                          ("table",table)
                          ("lower_bound",lower)
                          ("upper_bound",upper)
                          ("limit",limit)
+                         ("reverse", reverse)
                          );
       std::cout << fc::json::to_pretty_string(result)
                 << std::endl;
