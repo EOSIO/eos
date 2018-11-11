@@ -2859,9 +2859,11 @@ int main( int argc, char** argv ) {
       }
    });
 
+   string msg_to_sign;
+   
    auto signMessage = sign->add_subcommand("message", localized("Sign a message"));
    signMessage->fallthrough(false);
-   signMessage->add_option("message", trx_json_to_sign,
+   signMessage->add_option("message", msg_to_sign,
                                  localized("A string to sign"), true)->required();
    signMessage->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
 
@@ -2873,7 +2875,7 @@ int main( int argc, char** argv ) {
          fc::set_console_echo(true);
       }
       auto priv_key = private_key_type(str_private_key);
-      fc::sha256 digest = fc::sha256::hash(trx_json_to_sign.c_str(), trx_json_to_sign.length());
+      fc::sha256 digest = fc::sha256::hash(msg_to_sign.c_str(), msg_to_sign.length());
       fc::crypto::signature sig = priv_key.sign( digest );
       std::cout << std::string( sig ) << std::endl;
    });
