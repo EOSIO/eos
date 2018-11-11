@@ -2872,7 +2872,7 @@ int main( int argc, char** argv ) {
          std::getline( std::cin, str_private_key, '\n' );
          fc::set_console_echo(true);
       }
-      auto priv_key = fc::crypto::private_key::regenerate(*utilities::wif_to_key(str_private_key));
+      auto priv_key = private_key_type(str_private_key);
       fc::sha256 digest = fc::sha256::hash(trx_json_to_sign.c_str(), trx_json_to_sign.length());
       fc::crypto::signature sig = priv_key.sign( digest );
       std::cout << std::string( sig ) << std::endl;
