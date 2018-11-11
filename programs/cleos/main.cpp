@@ -92,6 +92,8 @@ Options:
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/contract_types.hpp>
 
+#include <fc/crypto/sha256.hpp>
+
 #pragma push_macro("N")
 #undef N
 
@@ -2816,14 +2818,17 @@ int main( int argc, char** argv ) {
    string str_chain_id;
    bool push_trx = false;
 
-   auto sign = app.add_subcommand("sign", localized("Sign a transaction"), false);
-   sign->add_option("transaction", trx_json_to_sign,
+   auto sign = app.add_subcommand("sign", localized("Sign a transaction or message"), false);
+   sign->require_subcommand();
+   
+   auto signTransaction = sign->add_subcommand("transaction", localized("Sign a transaction"));
+   signTransaction->add_option("transaction", trx_json_to_sign,
                                  localized("The JSON string or filename defining the transaction to sign"), true)->required();
-   sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
-   sign->add_option("-c,--chain-id", str_chain_id, localized("The chain id that will be used to sign the transaction"));
-   sign->add_flag( "-p,--push-transaction", push_trx, localized("Push transaction after signing"));
+   signTransaction->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
+   signTransaction->add_option("-c,--chain-id", str_chain_id, localized("The chain id that will be used to sign the transaction"));
+   signTransaction->add_flag( "-p,--push-transaction", push_trx, localized("Push transaction after signing"));
 
-   sign->set_callback([&] {
+   signTransaction->set_callback([&] {
       signed_transaction trx = json_from_file_or_string(trx_json_to_sign).as<signed_transaction>();
 
       fc::optional<chain_id_type> chain_id;
@@ -2852,6 +2857,25 @@ int main( int argc, char** argv ) {
       } else {
          std::cout << fc::json::to_pretty_string(trx) << std::endl;
       }
+   });
+
+   auto signMessage = sign->add_subcommand("message", localized("Sign a message"));
+   signMessage->fallthrough(false);
+   signMessage->add_option("message", trx_json_to_sign,
+                                 localized("A string to sign"), true)->required();
+   signMessage->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
+
+   signMessage->set_callback([&] {
+      if( str_private_key.size() == 0 ) {
+         std::cerr << localized("private key: ");
+         fc::set_console_echo(false);
+         std::getline( std::cin, str_private_key, '\n' );
+         fc::set_console_echo(true);
+      }
+      auto priv_key = fc::crypto::private_key::regenerate(*utilities::wif_to_key(str_private_key));
+      fc::sha256 digest = fc::sha256::hash(trx_json_to_sign.c_str(), trx_json_to_sign.length());
+      fc::crypto::signature sig = priv_key.sign( digest );
+      std::cout << std::string( sig ) << std::endl;
    });
 
    // Push subcommand
