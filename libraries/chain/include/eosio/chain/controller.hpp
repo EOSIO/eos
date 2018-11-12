@@ -27,6 +27,7 @@ namespace eosio { namespace chain {
 
    class dynamic_global_property_object;
    class global_property_object;
+   class global_property2_object;     // *bos*
    class permission_object;
    class account_object;
    using resource_limits::resource_limits_manager;
@@ -45,6 +46,8 @@ namespace eosio { namespace chain {
       FULL,
       LIGHT
    };
+   // *bos*
+   const int actor_blacklist{1}, contract_blacklist{2}, resource_greylist{3};
 
    class controller {
       public:
@@ -153,6 +156,7 @@ namespace eosio { namespace chain {
 
          const account_object&                 get_account( account_name n )const;
          const global_property_object&         get_global_properties()const;
+         const global_property2_object&        get_global_properties2()const;  // *bos*
          const dynamic_global_property_object& get_dynamic_global_properties()const;
          const resource_limits_manager&        get_resource_limits_manager()const;
          resource_limits_manager&              get_mutable_resource_limits_manager();
@@ -216,6 +220,8 @@ namespace eosio { namespace chain {
 
          void add_resource_greylist(const account_name &name);
          void remove_resource_greylist(const account_name &name);
+         void list_add_name(const int list, const account_name &name);  // *bos*
+         void list_remove_name(const int list, const account_name &name);  // *bos*
          bool is_resource_greylisted(const account_name &name) const;
          const flat_set<account_name> &get_resource_greylist() const;
 

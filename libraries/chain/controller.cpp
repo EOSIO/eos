@@ -33,6 +33,7 @@ using controller_index_set = index_set<
    account_index,
    account_sequence_index,
    global_property_multi_index,
+   global_property2_multi_index,
    dynamic_global_property_multi_index,
    block_summary_multi_index,
    transaction_multi_index,
@@ -388,6 +389,11 @@ struct controller_impl {
 
       ilog( "database initialized with hash: ${hash}", ("hash", calculate_integrity_hash()));
 
+  // *bos*
+      auto& gp2 = db.get<global_property2_object>();
+      for (auto &a : gp2.cfg.actor_blacklist)    { conf.actor_blacklist.insert(a); }
+      for (auto &a : gp2.cfg.contract_blacklist) { conf.contract_blacklist.insert(a); }
+      for (auto &a : gp2.cfg.resource_greylist)  { conf.resource_greylist.insert(a); }
    }
 
    ~controller_impl() {
@@ -633,6 +639,11 @@ struct controller_impl {
         gpo.configuration = conf.genesis.initial_configuration;
       });
       db.create<dynamic_global_property_object>([](auto&){});
+      db.create<global_property2_object>([&](auto&gpo){
+gpo.rmg.cpu_us = config::default_free_cpu_limit;
+gpo.rmg.net_byte = config::default_free_net_limit;
+gpo.rmg.ram_byte = config::default_free_ram_limit;
+      });     // *bos*
 
       authorization.initialize_database();
       resource_limits.initialize_database();
@@ -1674,12 +1685,22 @@ void controller::set_actor_whitelist( const flat_set<account_name>& new_actor_wh
 }
 void controller::set_actor_blacklist( const flat_set<account_name>& new_actor_blacklist ) {
    my->conf.actor_blacklist = new_actor_blacklist;
+   // *bos*
+   const auto& namelist = my->db.get<global_property2_object>().cfg.actor_blacklist;
+   for(auto &a : namelist) {
+      my->conf.resource_greylist.insert(a);
+   }
 }
 void controller::set_contract_whitelist( const flat_set<account_name>& new_contract_whitelist ) {
    my->conf.contract_whitelist = new_contract_whitelist;
 }
 void controller::set_contract_blacklist( const flat_set<account_name>& new_contract_blacklist ) {
    my->conf.contract_blacklist = new_contract_blacklist;
+   // *bos*
+   const auto& namelist = my->db.get<global_property2_object>().cfg.contract_blacklist;
+   for(auto &a : namelist) {
+      my->conf.contract_blacklist.insert(a);
+   }
 }
 void controller::set_action_blacklist( const flat_set< pair<account_name, action_name> >& new_action_blacklist ) {
    for (auto& act: new_action_blacklist) {
@@ -1763,6 +1784,10 @@ const global_property_object& controller::get_global_properties()const {
   return my->db.get<global_property_object>();
 }
 
+// *bos*
+const global_property2_object& controller::get_global_properties2()const {
+   return my->db.get<global_property2_object>();
+}
 signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
    auto state = my->fork_db.get_block(id);
    if( state && state->block ) return state->block;
@@ -2092,6 +2117,13 @@ void controller::add_resource_greylist(const account_name &name) {
 }
 
 void controller::remove_resource_greylist(const account_name &name) {
+   // *bos*
+   const auto& namelist = my->db.get<global_property2_object>().cfg.resource_greylist;
+   for(auto &a : namelist) {
+      if (name == a) {
+         return;
+      }
+   }
    my->conf.resource_greylist.erase(name);
 }
 
@@ -2103,4 +2135,25 @@ const flat_set<account_name> &controller::get_resource_greylist() const {
    return  my->conf.resource_greylist;
 }
 
+
+// *bos*
+void controller::list_add_name(const int list, const account_name &name) {
+   if(list == actor_blacklist){
+      my->conf.actor_blacklist.insert(name);
+   } else if(list == contract_blacklist){
+      my->conf.contract_blacklist.insert(name);
+   }else if(list == resource_greylist){
+      my->conf.resource_greylist.insert(name);
+   }
+}
+
+void controller::list_remove_name(const int list, const account_name &name) {
+   if(list == actor_blacklist){
+      my->conf.actor_blacklist.erase(name);
+   } else if(list == contract_blacklist){
+      my->conf.contract_blacklist.erase(name);
+   }else if(list == resource_greylist){
+      my->conf.resource_greylist.erase(name);
+   }
+}
 } } /// eosio::chain
