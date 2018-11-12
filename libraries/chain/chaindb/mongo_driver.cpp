@@ -697,7 +697,7 @@ namespace cyberway { namespace chaindb {
     using cursor_map = std::map<cursor_t, mongodb_cursor>;
 
     struct code_info {
-        cursor_map cursor_map;
+        cursor_map cursor_map_;
 
         code_info() = default;
         code_info(code_info&&) = default;
@@ -707,7 +707,7 @@ namespace cyberway { namespace chaindb {
         ~code_info() = default;
 
         bool empty() const {
-            return cursor_map.empty() && tables_bulk_write_.empty();
+            return cursor_map_.empty() && tables_bulk_write_.empty();
         }
 
         bool has_changes() const {
@@ -758,11 +758,11 @@ namespace cyberway { namespace chaindb {
     using code_map = std::map<account_name, code_info>;
 
     struct cursor_location {
-        mongodb_cursor& cursor;
-        code_map::iterator code_itr;
-        cursor_map::iterator cursor_itr;
-        code_map& code_map;
-        code_info& code_info;
+        mongodb_cursor& cursor_;
+        code_map::iterator code_itr_;
+        cursor_map::iterator cursor_itr_;
+        code_map& code_map_;
+        code_info& code_info_;
     }; // struct cursor_location
 
     struct mongodb_driver::mongodb_impl_ {
@@ -788,10 +788,10 @@ namespace cyberway { namespace chaindb {
                 code_map_.end() != code_itr, driver_invalid_cursor_exception,
                 "Cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
 
-            auto& cursor_map = code_itr->second.cursor_map;
-            auto cursor_itr = cursor_map.find(request.id);
+            auto& cursor_map_ = code_itr->second.cursor_map_;
+            auto cursor_itr = cursor_map_.find(request.id);
             CYBERWAY_ASSERT(
-                cursor_map.end() != cursor_itr, driver_invalid_cursor_exception,
+                cursor_map_.end() != cursor_itr, driver_invalid_cursor_exception,
                 "Cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
 
             return cursor_location{cursor_itr->second, code_itr, cursor_itr, code_map_, code_itr->second};
@@ -799,8 +799,8 @@ namespace cyberway { namespace chaindb {
 
         cursor_location get_applied_cursor(const cursor_request& request) {
             auto loc = get_cursor(request);
-            if (loc.cursor.pk == unset_primary_key) {
-                apply_changes(loc.cursor.index);
+            if (loc.cursor_.pk == unset_primary_key) {
+                apply_changes(loc.cursor_.index);
             }
             return loc;
         }
@@ -846,8 +846,8 @@ namespace cyberway { namespace chaindb {
         }
 
         cursor_t get_next_cursor_id(code_map::iterator itr) {
-            if (itr != code_map_.end() && !itr->second.cursor_map.empty()) {
-                return itr->second.cursor_map.rbegin()->second.id + 1;
+            if (itr != code_map_.end() && !itr->second.cursor_map_.empty()) {
+                return itr->second.cursor_map_.rbegin()->second.id + 1;
             }
             return 1;
         }
@@ -856,14 +856,14 @@ namespace cyberway { namespace chaindb {
             if (code_map_.end() == itr) {
                 itr = code_map_.emplace(code, code_info()).first;
             }
-            return itr->second.cursor_map.emplace(cursor.id, std::move(cursor)).first->second;
+            return itr->second.cursor_map_.emplace(cursor.id, std::move(cursor)).first->second;
         }
 
         void close_cursor(const cursor_request& request) {
             auto loc = get_cursor(request);
-            loc.code_info.cursor_map.erase(loc.cursor_itr);
-            if (loc.code_info.empty()) {
-                loc.code_map.erase(loc.code_itr);
+            loc.code_info_.cursor_map_.erase(loc.cursor_itr_);
+            if (loc.code_info_.empty()) {
+                loc.code_map_.erase(loc.code_itr_);
             }
         }
 
@@ -878,10 +878,10 @@ namespace cyberway { namespace chaindb {
 
         mongodb_cursor& clone_cursor(const cursor_request& request) {
             auto loc = get_cursor(request);
-            auto next_id = get_next_cursor_id(loc.code_itr);
+            auto next_id = get_next_cursor_id(loc.code_itr_);
 
-            auto cloned_cursor = loc.cursor.clone(next_id);
-            return add_cursor(loc.code_itr, request.code, std::move(cloned_cursor));
+            auto cloned_cursor = loc.cursor_.clone(next_id);
+            return add_cursor(loc.code_itr_, request.code, std::move(cloned_cursor));
         }
 
         void verify_table_structure(const table_info& table, const microseconds& max_time) {
@@ -1011,20 +1011,20 @@ namespace cyberway { namespace chaindb {
 
     const cursor_info& mongodb_driver::current(const cursor_request& request) {
         auto loc = impl_->get_applied_cursor(request);
-        loc.cursor.current();
-        return loc.cursor;
+        loc.cursor_.current();
+        return loc.cursor_;
     }
 
     const cursor_info& mongodb_driver::next(const cursor_request& request) {
         auto loc = impl_->get_applied_cursor(request);
-        loc.cursor.next();
-        return loc.cursor;
+        loc.cursor_.next();
+        return loc.cursor_;
     }
 
     const cursor_info& mongodb_driver::prev(const cursor_request& request) {
         auto loc = impl_->get_applied_cursor(request);
-        loc.cursor.prev();
-        return loc.cursor;
+        loc.cursor_.prev();
+        return loc.cursor_;
     }
 
     variant mongodb_driver::value(const table_info& table, const primary_key_t pk) {
