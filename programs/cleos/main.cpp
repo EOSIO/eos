@@ -3089,11 +3089,17 @@ int main( int argc, char** argv ) {
       abi_serializer abi;
       abi.to_variant(trx, trx_var, abi_serializer_resolver, abi_serializer_max_time);
       obj["transaction"] = trx_var;
+
+      digest_type::encoder enc;
+      fc::raw::pack(enc, trx);
+      obj["trx_id"] = enc.result();
+
       std::cout << fc::json::to_pretty_string(obj)
                 << std::endl;
    });
 
    string perm;
+   string proposal_hash;
    auto approve_or_unapprove = [&](const string& action) {
       fc::variant perm_var;
       try {
@@ -3103,6 +3109,9 @@ int main( int argc, char** argv ) {
          ("proposer", proposer)
          ("proposal_name", proposal_name)
          ("level", perm_var);
+      if ( !proposal_hash.empty() ) {
+         args = args("proposal_hash", proposal_hash);
+      }
 
       auto accountPermissions = get_account_permissions(tx_permission, {proposer,config::active_name});
       send_actions({chain::action{accountPermissions, "eosio.msig", action, variant_to_bin( N(eosio.msig), action, args ) }});
@@ -3114,6 +3123,7 @@ int main( int argc, char** argv ) {
    approve->add_option("proposer", proposer, localized("proposer name (string)"))->required();
    approve->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    approve->add_option("permissions", perm, localized("The JSON string of filename defining approving permissions"))->required();
+   approve->add_option("proposal_hash", proposal_hash, localized("The hash of proposed transaction"));
    approve->set_callback([&] { approve_or_unapprove("approve"); });
 
    // multisig unapprove
