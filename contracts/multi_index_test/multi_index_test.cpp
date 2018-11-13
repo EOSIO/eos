@@ -6,12 +6,12 @@ using namespace eosio;
 
 namespace multi_index_test {
 
-struct limit_order {
-   uint64_t     id;
-   uint64_t     padding = 0;
-   uint128_t    price;
-   uint64_t     expiration;
-   account_name owner;
+   struct limit_order {
+      uint64_t  id;
+      uint64_t  padding = 0;
+      uint128_t price;
+      uint64_t  expiration;
+      name      owner;
 
       auto primary_key()const { return id; }
       uint64_t get_expiration()const { return expiration; }
@@ -21,8 +21,8 @@ struct limit_order {
    };
 
    struct test_k256 {
-      uint64_t     id;
-      key256      val;
+      uint64_t  id;
+      key256   val;
 
       auto primary_key()const { return id; }
       key256 get_val()const { return val; }
@@ -30,137 +30,138 @@ struct limit_order {
       EOSLIB_SERIALIZE( test_k256, (id)(val) )
    };
 
-   class snapshot_test {
-      public:
+   CONTRACT snapshot_test : public contract {
+   public:
+      using contract::contract;
 
-         ACTION(N(multitest), trigger) {
-            trigger(): what(0) {}
-            trigger(uint32_t w): what(w) {}
+      struct trigger {
+         trigger( name user, uint32_t w = 0 )
+            : account(user), what(w)
+         {}
 
-            uint32_t what;
+         name     account;
+         uint32_t what;
+      };
 
-            EOSLIB_SERIALIZE(trigger, (what))
-         };
+      ACTION multitest( name user, uint32_t w ) {
+         trigger t(user, w);
 
-         static void on(const trigger& act)
+         on(t);
+      }
+
+      static void on(const trigger& act)
+      {
+         name payer = act.account;
+         print("Acting on trigger action.\n");
+         switch(act.what)
          {
-            auto payer = act.get_account();
-            print("Acting on trigger action.\n");
-            switch(act.what)
-            {
-               case 0:
-               {
-                  print("Testing uint128_t secondary index.\n");
-                  eosio::multi_index<N(orders), limit_order,
-                     indexed_by< N(byexp),   const_mem_fun<limit_order, uint64_t, &limit_order::get_expiration> >,
-                     indexed_by< N(byprice), const_mem_fun<limit_order, uint128_t, &limit_order::get_price> >
-                     > orders( N(multitest), N(multitest) );
+             case 0:
+             {
+                print("Testing uint128_t secondary index.\n");
+                eosio::multi_index<"orders"_n, limit_order,
+                   indexed_by< "byexp"_n,   const_mem_fun<limit_order, uint64_t,  &limit_order::get_expiration> >,
+                   indexed_by< "byprice"_n, const_mem_fun<limit_order, uint128_t, &limit_order::get_price> >
+                   > orders( name{"multitest"}, name{"multitest"}.value );
 
-                  orders.emplace( payer, [&]( auto& o ) {
-                    o.id = 1;
-                    o.expiration = 300;
-                    o.owner = N(dan);
-                  });
+                orders.emplace( payer, [&]( auto& o ) {
+                   o.id = 1;
+                   o.expiration = 300;
+                   o.owner = "dan"_n; });
 
-                  auto order2 = orders.emplace( payer, [&]( auto& o ) {
-                     o.id = 2;
-                     o.expiration = 200;
-                     o.owner = N(alice);
-                  });
+                auto order2 = orders.emplace( payer, [&]( auto& o ) {
+                   o.id = 2;
+                   o.expiration = 200;
+                   o.owner = "alice"_n; });
 
-                  print("Items sorted by primary key:\n");
-                  for( const auto& item : orders ) {
-                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name{item.owner}, "\n");
-                  }
+                print("Items sorted by primary key:\n");
+                for( const auto& item : orders ) {
+                   print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name{item.owner}, "\n");
+                }
 
-                  auto expidx = orders.get_index<N(byexp)>();
+                auto expidx = orders.get_index<"byexp"_n>();
 
-                  print("Items sorted by expiration:\n");
-                  for( const auto& item : expidx ) {
-                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name{item.owner}, "\n");
-                  }
+                print("Items sorted by expiration:\n");
+                for( const auto& item : expidx ) {
+                   print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name{item.owner}, "\n");
+                }
 
-                  print("Modifying expiration of order with ID=2 to 400.\n");
-                  orders.modify( order2, payer, [&]( auto& o ) {
-                     o.expiration = 400;
-                  });
+                print("Modifying expiration of order with ID=2 to 400.\n");
+                orders.modify( order2, payer, [&]( auto& o ) {
+                   o.expiration = 400; });
 
-                  print("Items sorted by expiration:\n");
-                  for( const auto& item : expidx ) {
-                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name{item.owner}, "\n");
-                  }
+                print("Items sorted by expiration:\n");
+                for( const auto& item : expidx ) {
+                   print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name{item.owner}, "\n");
+                }
 
-                  auto lower = expidx.lower_bound(100);
+                auto lower = expidx.lower_bound(100);
 
-                  print("First order with an expiration of at least 100 has ID=", lower->id, " and expiration=", lower->get_expiration(), "\n");
+                print("First order with an expiration of at least 100 has ID=", lower->id, " and expiration=", lower->get_expiration(), "\n");
 
-               }
-               break;
-               case 1: // Test key265 secondary index
-               {
-                  print("Testing key256 secondary index.\n");
-                  eosio::multi_index<N(test1), test_k256,
-                     indexed_by< N(byval), const_mem_fun<test_k256, key256, &test_k256::get_val> >
-                  > testtable( N(multitest), N(exchange) ); // Code must be same as the receiver? Scope doesn't have to be.
+             }
+             break;
+             case 1: // Test key265 secondary index
+             {
+                print("Testing key256 secondary index.\n");
+                eosio::multi_index<"test1"_n, test_k256,
+                   indexed_by< "byval"_n, const_mem_fun<test_k256, key256, &test_k256::get_val> >
+                   > testtable( "multitest"_n, "exchange"_n.value ); // Code must be same as the receiver? Scope doesn't have to be.
 
-                  testtable.emplace( payer, [&]( auto& o ) {
-                     o.id = 1;
-                     o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
-                  });
+                testtable.emplace( payer, [&]( auto& o ) {
+                   o.id = 1;
+                   o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL); });
 
-                  testtable.emplace( payer, [&]( auto& o ) {
-                     o.id = 2;
-                     o.val = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
-                  });
+                testtable.emplace( payer, [&]( auto& o ) {
+                   o.id = 2;
+                   o.val = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL); });
 
-                  testtable.emplace( payer, [&]( auto& o ) {
-                     o.id = 3;
-                     o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
-                  });
+                testtable.emplace( payer, [&]( auto& o ) {
+                   o.id = 3;
+                   o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL); });
 
-                  auto itr = testtable.find( 2 );
+                auto itr = testtable.find( 2 );
 
-                  print("Items sorted by primary key:\n");
-                  for( const auto& item : testtable ) {
-                     print(" ID=", item.primary_key(), ", val=", item.val, "\n");
-                  }
+                print("Items sorted by primary key:\n");
+                for( const auto& item : testtable ) {
+                   print(" ID=", item.primary_key(), ", val=", item.val, "\n");
+                }
 
-                  auto validx = testtable.get_index<N(byval)>();
+                auto validx = testtable.get_index<"byval"_n>();
 
-                  auto lower1 = validx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 40ULL));
-                  print("First entry with a val of at least 40 has ID=", lower1->id, ".\n");
+                auto lower1 = validx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 40ULL));
+                print("First entry with a val of at least 40 has ID=", lower1->id, ".\n");
 
-                  auto lower2 = validx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 50ULL));
-                  print("First entry with a val of at least 50 has ID=", lower2->id, ".\n");
+                auto lower2 = validx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 50ULL));
+                print("First entry with a val of at least 50 has ID=", lower2->id, ".\n");
 
-                  if( testtable.iterator_to(*lower2) == itr ) {
-                     print("Previously found entry is the same as the one found earlier with a primary key value of 2.\n");
-                  }
+                if( testtable.iterator_to(*lower2) == itr ) {
+                   print("Previously found entry is the same as the one found earlier with a primary key value of 2.\n");
+                }
 
-                  print("Items sorted by val (secondary key):\n");
-                  for( const auto& item : validx ) {
-                     print(" ID=", item.primary_key(), ", val=", item.val, "\n");
-                  }
+                print("Items sorted by val (secondary key):\n");
+                for( const auto& item : validx ) {
+                   print(" ID=", item.primary_key(), ", val=", item.val, "\n");
+                }
 
-                  auto upper = validx.upper_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL));
+                auto upper = validx.upper_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL));
 
-                  print("First entry with a val greater than 42 has ID=", upper->id, ".\n");
+                print("First entry with a val greater than 42 has ID=", upper->id, ".\n");
 
-                  print("Removed entry with ID=", lower1->id, ".\n");
-                  validx.erase( lower1 );
+                print("Removed entry with ID=", lower1->id, ".\n");
+                validx.erase( lower1 );
 
-                  print("Items sorted by primary key:\n");
-                  for( const auto& item : testtable ) {
-                     print(" ID=", item.primary_key(), ", val=", item.val, "\n");
-                  }
+                print("Items sorted by primary key:\n");
+                for( const auto& item : testtable ) {
+                   print(" ID=", item.primary_key(), ", val=", item.val, "\n");
+                }
 
-               }
-               break;
-               default:
-                  eosio_assert(0, "Given what code is not supported.");
-               break;
-            }
+             }
+             break;
+             default:
+                eosio_assert(0, "Given what code is not supported.");
+                break;
          }
+      }
    };
 
 } /// multi_index_test
@@ -168,10 +169,27 @@ struct limit_order {
 namespace multi_index_test {
    extern "C" {
       /// The apply method implements the dispatch of events to this contract
-      void apply( uint64_t /* receiver */, uint64_t code, uint64_t action ) {
-         require_auth(code);
-         eosio_assert(eosio::dispatch<snapshot_test, snapshot_test::trigger>(code, action),
-                      "Could not dispatch");
+      void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
+         require_auth( code );
+         if( code == receiver ) {
+            if( action == "multitest"_n.value ) {
+               size_t size = action_data_size();
+               void* buffer = nullptr;
+               buffer = alloca( 512 );
+               read_action_data( buffer, size );
+               datastream<const char*> ds( (char*)buffer, size );
+                    
+               name user;
+               uint32_t w;
+               ds >> user >> w;
+                    
+               snapshot_test test( name{receiver}, name{code}, ds );
+               test.multitest( user, w );
+            }
+            else {
+               eosio_assert(false, "Could not dispatch");
+            }
+         }
       }
    }
 }

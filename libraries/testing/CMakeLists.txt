@@ -14,8 +14,6 @@ target_include_directories( eosio_testing
                                    "${CMAKE_BINARY_DIR}/contracts"
                             )
 
-add_dependencies( eosio_testing eosio.bios )
-
 if(MSVC)
   set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 endif(MSVC)

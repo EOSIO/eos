@@ -1,14 +1,19 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+
 #include <eosiolib/eosio.hpp>
-#include <eosiolib/print.hpp>
+
 using namespace eosio;
 
-class payloadless : public eosio::contract {
-  public:
-      using contract::contract;
+CONTRACT payloadless : public contract {
+public:
+   using contract::contract;
 
-      void doit() {
-         print( "Im a payloadless action" );
-      }
+   ACTION doit() {
+      print( "Im a payloadless action" );
+   }
 };
 
-EOSIO_ABI( payloadless, (doit) )
+EOSIO_DISPATCH( payloadless, (doit) )

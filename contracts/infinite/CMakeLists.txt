@@ -1,5 +1,3 @@
-add_wast_executable(TARGET infinite
-  INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
-  LIBRARIES libc++ libc eosiolib
-  DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
-)
+set( CMAKE_CXX_STANDARD 17 )
+
+add_contract( infinite infinite infinite.cpp )

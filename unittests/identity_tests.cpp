@@ -6,10 +6,12 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <chainbase/chainbase.hpp>
 
-#include <identity/identity.wast.hpp>
-#include <identity/identity.abi.hpp>
-#include <identity/test/identity_test.wast.hpp>
-#include <identity/test/identity_test.abi.hpp>
+// #include <identity/identity.wast.hpp>
+// #include <identity/identity.abi.hpp>
+// #include <identity/test/identity_test.wast.hpp>
+// #include <identity/test/identity_test.abi.hpp>
+
+#include <contracts.hpp>
 
 #include <Runtime/Runtime.h>
 

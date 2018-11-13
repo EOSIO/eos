@@ -6,7 +6,7 @@
 #include <eosiolib/eosio.hpp>
 
 namespace asserter {
-   struct assertdef {
+   TABLE assertdef {
       int8_t      condition;
       std::string message;
 

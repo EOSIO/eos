@@ -1,49 +1,61 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+
 #include <eosiolib/eosio.hpp>
 
-class simpletoken : public eosio::contract {
-   public:
-      simpletoken( account_name self )
-      :contract(self),_accounts( _self, _self){}
+using namespace eosio;
 
-      void transfer( account_name from, account_name to, uint64_t quantity ) {
-         require_auth( from );
+CONTRACT simpletoken : public contract {
+public:
+   using contract::contract;
 
-         const auto& fromacnt = _accounts.get( from );
-         eosio_assert( fromacnt.balance >= quantity, "overdrawn balance" );
-         _accounts.modify( fromacnt, from, [&]( auto& a ){ a.balance -= quantity; } );
+   simpletoken(name self, name code, datastream<const char*> ds)
+      : contract(self, code, ds), _accounts(self, self.value)
+   {}
 
-         add_balance( from, to, quantity );
+   ACTION transfer( name from, name to, uint64_t quantity ) {
+      require_auth( from );
+
+      const auto& fromaccnt = _accounts.get( from.value );
+      eosio_assert( fromaccnt.balance >= quantity, "overdrawn balance" );
+      _accounts.modify( fromaccnt, from, [&]( auto& a ){ a.balance -= quantity; } );
+
+      add_balance( from, to, quantity );
+   }
+
+   ACTION issue( name to, uint64_t quantity ) {
+      require_auth( _self );
+      add_balance( _self, to, quantity );
+   }
+
+private:
+   TABLE account {
+      name     owner;
+      uint64_t balance;
+
+      uint64_t primary_key()const { return owner.value; }
+
+      EOSLIB_SERIALIZE( account, (owner)(balance) )
+         };
+
+   eosio::multi_index<"accounts"_n, account> _accounts;
+
+   void add_balance( name payer, name to, uint64_t quantity ) {
+      auto toitr = _accounts.find( to.value );
+      if( toitr == _accounts.end() ) {
+         _accounts.emplace( payer, [&]( auto& a ) {
+            a.owner = to;
+            a.balance = quantity;
+         });
+      } else {
+         _accounts.modify( toitr, "0"_n, [&]( auto& a ) {
+            a.balance += quantity;
+            eosio_assert( a.balance >= quantity, "overflow detected" );
+         });
       }
-
-      void issue( account_name to, uint64_t quantity ) {
-         require_auth( _self );
-         add_balance( _self, to, quantity );
-      }
-
-   private:
-      struct account {
-         account_name owner;
-         uint64_t     balance;
-
-         uint64_t primary_key()const { return owner; }
-      };
-
-      eosio::multi_index<N(accounts), account> _accounts;
-
-      void add_balance( account_name payer, account_name to, uint64_t q ) {
-         auto toitr = _accounts.find( to );
-         if( toitr == _accounts.end() ) {
-           _accounts.emplace( payer, [&]( auto& a ) {
-              a.owner = to;
-              a.balance = q;
-           });
-         } else {
-           _accounts.modify( toitr, 0, [&]( auto& a ) {
-              a.balance += q;
-              eosio_assert( a.balance >= q, "overflow detected" );
-           });
-         }
-      }
+   }
 };
 
-EOSIO_ABI( simpletoken, (transfer)(issue) )
+EOSIO_DISPATCH( simpletoken, (transfer)(issue) )

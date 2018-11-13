@@ -1,8 +1,7 @@
-file(GLOB ABI_FILES "*.abi")
-configure_file("${ABI_FILES}" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
+set( CMAKE_CXX_STANDARD 17 )
 
-add_wast_executable(TARGET asserter
-  INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
-  LIBRARIES libc libc++ eosiolib
-  DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
-)
+include_directories( ${MYPROJECT_DIR}../ )
+
+add_contract_no_abi( asserter asserter asserter.cpp )
+
+configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/asserter.abi ${CMAKE_CURRENT_BINARY_DIR}/asserter.abi COPYONLY )
