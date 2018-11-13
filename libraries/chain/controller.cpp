@@ -1688,7 +1688,7 @@ void controller::set_actor_blacklist( const flat_set<account_name>& new_actor_bl
    // *bos*
    const auto& namelist = my->db.get<global_property2_object>().cfg.actor_blacklist;
    for(auto &a : namelist) {
-      my->conf.resource_greylist.insert(a);
+      my->conf.actor_blacklist.insert(a);
    }
 }
 void controller::set_contract_whitelist( const flat_set<account_name>& new_contract_whitelist ) {
