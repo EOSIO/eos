@@ -389,15 +389,20 @@ namespace cyberway { namespace chaindb {
         ~controller_impl_() = default;
 
         void drop_db() {
+            const auto system_abi_itr = abi_map_.find(0);
+
+            assert(system_abi_itr != abi_map_.end());
+
+            auto system_abi = std::move(system_abi_itr->second);
             driver->drop_db();
+            abi_map_.clear();
+            set_abi(0, std::move(system_abi), time_point::now() + max_abi_time);
         }
 
         void set_abi(const account_name& code, abi_def abi) {
             time_point deadline = time_point::now() + max_abi_time;
             abi_info info(code, std::move(abi), deadline, max_abi_time);
-            info.verify_tables_structure(*driver.get(), deadline, max_abi_time);
-            abi_map_.erase(code);
-            abi_map_.emplace(code, std::move(info));
+            set_abi(code, std::move(info), deadline);
         }
 
         void remove_abi(const account_name& code) {
@@ -766,6 +771,12 @@ namespace cyberway { namespace chaindb {
             object(get_size_field_name(), size);
 
             return variant(std::move(object));
+        }
+
+        void set_abi(const account_name& code, abi_info&& info, time_point deadline) {
+            info.verify_tables_structure(*driver.get(), deadline, max_abi_time);
+            abi_map_.erase(code);
+            abi_map_.emplace(code, std::forward<abi_info>(info));
         }
     }; // class chaindb_controller::controller_impl_
 
