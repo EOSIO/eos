@@ -52,7 +52,7 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
    set_abi( N(eosio.token), eosio_token_abi );
    produce_blocks(1);
 
-   // create currency 
+   // create currency
    auto act = mutable_variant_object()
          ("issuer",       "eosio")
          ("maximum_supply", eosio::chain::asset::from_string("1000000000.0000 SYS"));
@@ -88,13 +88,13 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
    }
 
    param.lower_bound = "initb";
-   param.upper_bound = "initd";
+   param.upper_bound = "initc";
    result = plugin.read_only::get_table_by_scope(param);
    BOOST_REQUIRE_EQUAL(2, result.rows.size());
    BOOST_REQUIRE_EQUAL("", result.more);
    if (result.rows.size() >= 2) {
       BOOST_REQUIRE_EQUAL(name(N(initb)), result.rows[0].scope);
-      BOOST_REQUIRE_EQUAL(name(N(initc)), result.rows[1].scope);      
+      BOOST_REQUIRE_EQUAL(name(N(initc)), result.rows[1].scope);
    }
 
    param.limit = 1;
@@ -110,9 +110,8 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
    param.table = N(invalid);
    result = plugin.read_only::get_table_by_scope(param);
    BOOST_REQUIRE_EQUAL(0, result.rows.size());
-   BOOST_REQUIRE_EQUAL("", result.more); 
+   BOOST_REQUIRE_EQUAL("", result.more);
 
 } FC_LOG_AND_RETHROW() /// get_scope_test
 
 BOOST_AUTO_TEST_SUITE_END()
-

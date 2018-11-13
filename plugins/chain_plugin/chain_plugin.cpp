@@ -749,10 +749,6 @@ void chain_apis::read_write::validate() const {
    EOS_ASSERT( db.get_read_mode() != chain::db_read_mode::READ_ONLY, missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
 }
 
-chain_apis::read_write chain_plugin::get_read_write_api() {
-   return chain_apis::read_write(chain(), get_abi_serializer_max_time());
-}
-
 void chain_plugin::accept_block(const signed_block_ptr& block ) {
    my->incoming_block_sync_method(block);
 }
@@ -1111,6 +1107,19 @@ uint64_t convert_to_type(const string& str, const string& desc) {
    return value;
 }
 
+template<>
+double convert_to_type(const string& str, const string& desc) {
+   double val{};
+   try {
+      val = fc::variant(str).as<double>();
+   } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} string '${str}' to key type.", ("desc", desc)("str",str) )
+
+   EOS_ASSERT( !std::isnan(val), chain::contract_table_query_exception,
+               "Converted ${desc} string '${str}' to NaN which is not a permitted value for the key type", ("desc", desc)("str",str) );
+
+   return val;
+}
+
 abi_def get_abi( const controller& db, const name& account ) {
    const auto &d = db.db();
    const account_object *code_accnt = d.find<account_object, by_name>(account);
@@ -1189,28 +1198,34 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
 }
 
 read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_only::get_table_by_scope_params& p )const {
+   read_only::get_table_by_scope_result result;
    const auto& d = db.db();
-   const auto& idx = d.get_index<chain::table_id_multi_index, chain::by_code_scope_table>();
-   decltype(idx.lower_bound(boost::make_tuple(0, 0, 0))) lower;
-   decltype(idx.upper_bound(boost::make_tuple(0, 0, 0))) upper;
 
-   if (p.lower_bound.size()) {
+   const auto& idx = d.get_index<chain::table_id_multi_index, chain::by_code_scope_table>();
+   auto lower_bound_lookup_tuple = std::make_tuple( p.code.value, std::numeric_limits<uint64_t>::lowest(), p.table.value );
+   auto upper_bound_lookup_tuple = std::make_tuple( p.code.value, std::numeric_limits<uint64_t>::max(),
+                                                    (p.table.empty() ? std::numeric_limits<uint64_t>::max() : p.table.value) );
+
+   if( p.lower_bound.size() ) {
       uint64_t scope = convert_to_type<uint64_t>(p.lower_bound, "lower_bound scope");
-      lower = idx.lower_bound( boost::make_tuple(p.code, scope, p.table));
-   } else {
-      lower = idx.lower_bound(boost::make_tuple(p.code, 0, p.table));
+      std::get<1>(lower_bound_lookup_tuple) = scope;
    }
-   if (p.upper_bound.size()) {
+
+   if( p.upper_bound.size() ) {
       uint64_t scope = convert_to_type<uint64_t>(p.upper_bound, "upper_bound scope");
-      upper = idx.lower_bound( boost::make_tuple(p.code, scope, 0));
-   } else {
-      upper = idx.lower_bound(boost::make_tuple((uint64_t)p.code + 1, 0, 0));
+      std::get<1>(upper_bound_lookup_tuple) = scope;
    }
+
+   if( upper_bound_lookup_tuple < lower_bound_lookup_tuple )
+      return result;
+
+   auto lower = idx.lower_bound( lower_bound_lookup_tuple );
+   auto upper = idx.upper_bound( upper_bound_lookup_tuple );
 
    auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
+
    unsigned int count = 0;
    auto itr = lower;
-   read_only::get_table_by_scope_result result;
    for (; itr != upper; ++itr) {
       if (p.table && itr->table != p.table) {
          if (fc::time_point::now() > end) {
