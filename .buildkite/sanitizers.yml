@@ -21,13 +21,12 @@ steps:
         echo "--- :beers: Done"
     label: ":_: Undefined Sanitizer"
     agents:
-      role: 'automation-builder-fleet'
-      aws:instance-type: 'm5d.2xlarge'
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "build.tar.gz"
       - "ninja.log"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:ubuntu18"
         command: ["--privileged"]
         workdir: /data/job
@@ -65,13 +64,12 @@ steps:
         echo "--- :beers: Done"
     label: ":_: Address Sanitizer"
     agents:
-      role: 'automation-builder-fleet'
-      aws:instance-type: 'm5d.2xlarge'
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "build.tar.gz"
       - "ninja.log"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:ubuntu18"
         command: ["--privileged"]
         workdir: /data/job
@@ -98,13 +96,12 @@ steps:
         ctest -j8 -LE _tests -V -O sanitizer.log || true
     label: ":_: Undefined Sanitizer Tests"
     agents:
-      role: 'automation-builder-fleet'
-      aws:instance-type: 'm5d.2xlarge'
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "sanitizer.log"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
         mounts:
@@ -121,13 +118,12 @@ steps:
         ctest -j8 -LE _tests -V -O sanitizer.log || true
     label: ":_: Address Sanitizer Tests"
     agents:
-      role: 'automation-builder-fleet'
-      aws:instance-type: 'm5d.2xlarge'
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "sanitizer.log"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
         mounts:

@@ -19,7 +19,7 @@ steps:
         tar -pczf build.tar.gz build/
     label: ":ubuntu: Build"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.4.0:
@@ -34,7 +34,7 @@ steps:
         tar -pczf build.tar.gz build/
     label: ":ubuntu: 18.04 Build"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.4.0:
@@ -49,7 +49,7 @@ steps:
         tar -pczf build.tar.gz build/
     label: ":fedora: Build"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.4.0:
@@ -64,7 +64,7 @@ steps:
         tar -pczf build.tar.gz build/
     label: ":centos: Build"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.4.0:
@@ -79,7 +79,7 @@ steps:
         tar -pczf build.tar.gz build/
     label: ":aws: Build"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
       docker#v1.4.0:
@@ -99,7 +99,7 @@ steps:
         ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":darwin: Tests"
     agents:
-      - "role=macos-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -133,7 +133,7 @@ steps:
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":ubuntu: Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -154,7 +154,7 @@ steps:
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
     label: ":ubuntu: NP Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -175,7 +175,7 @@ steps:
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":ubuntu: 18.04 Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -196,7 +196,7 @@ steps:
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
     label: ":ubuntu: 18.04 NP Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -217,7 +217,7 @@ steps:
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":fedora: Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -238,7 +238,7 @@ steps:
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
     label: ":fedora: NP Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -259,7 +259,7 @@ steps:
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":centos: Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -280,7 +280,7 @@ steps:
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
     label: ":centos: NP Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -301,7 +301,7 @@ steps:
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":aws: Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -322,7 +322,7 @@ steps:
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
     label: ":aws: NP Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -343,7 +343,7 @@ steps:
         cd /data/job/build/packages && bash generate_package.sh deb
     label: ":ubuntu: Package builder"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "build/packages/*.deb"
     plugins:

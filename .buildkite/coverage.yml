@@ -13,9 +13,9 @@ steps:
         printf "\033]1339;url=https://eosio-coverage.s3-us-west-2.amazonaws.com/$BUILDKITE_JOB_ID/EOSIO_ut_coverage/index.html;content=View Full Coverage Report\a\n"
     label: ":spiral_note_pad: Generate Report"
     agents:
-      - "role=linux-coverage"
+      queue: "automation-large-builder-fleet"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
         mounts:
