@@ -109,6 +109,8 @@ int main(int argc, char** argv)
       initialize_logging();
       ilog("nodeos version ${ver}", ("ver", app().version_string()));
       ilog("eosio root is ${root}", ("root", root.string()));
+      ilog("nodeos using configuration file ${c}", ("c", app().full_config_file_path().string()));
+      ilog("nodeos data directory is ${d}", ("d", app().data_dir().string()));
       app().startup();
       app().exec();
    } catch( const extract_genesis_state_exception& e ) {
