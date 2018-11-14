@@ -530,10 +530,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          EOS_THROW( node_management_success, "imported reversible blocks" );
       }
 
-      if( options.count("import-reversible-blocks") ) {
-         wlog("The --import-reversible-blocks option should be used by itself.");
-      }
-
       if (options.count( "snapshot" )) {
          my->snapshot_path = options.at( "snapshot" ).as<bfs::path>();
          EOS_ASSERT( fc::exists(*my->snapshot_path), plugin_config_exception,
