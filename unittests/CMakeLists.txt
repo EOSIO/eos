@@ -17,7 +17,7 @@ add_subdirectory(contracts)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/config.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/include/config.hpp ESCAPE_QUOTES)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/contracts.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/include/contracts.hpp ESCAPE_QUOTES)
 
-file(GLOB UNIT_TESTS "main.cpp" "payloadless_tests.cpp") # "*.cpp")
+file(GLOB UNIT_TESTS "main.cpp" "whitelist_blacklist_tests.cpp") # "*.cpp")
 
 add_executable( unit_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} )
 target_link_libraries( unit_test eosio_chain chainbase eosio_testing eos_utilities abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )

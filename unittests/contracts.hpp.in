@@ -6,8 +6,17 @@ namespace eosio { namespace testing {
 struct contracts {
    static std::vector<uint8_t> eosio_bios_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.bios.wasm"); }
    static std::vector<char>    eosio_bios_abi() { return read_abi("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.bios.abi"); }
-   
+
+   // For the payloadless contract
    static std::vector<uint8_t> payloadless_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/contracts/payloadless/payloadless.wasm"); }
    static std::vector<char> payloadless_abi() { return read_abi("${CMAKE_BINARY_DIR}/contracts/payloadless/payloadless.abi"); }
+
+   // For the deferred_test contract
+   static std::vector<uint8_t> eosio_token_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/contracts/eosio.token/eosio.token.wasm"); }
+   static std::vector<char> eosio_token_abi() { return read_abi("${CMAKE_BINARY_DIR}/contracts/eosio.token/eosio.token.abi"); }
+
+   // For the deferred_test contract
+   static std::vector<uint8_t> deferred_test_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/contracts/deferred_test/deferred_test.wasm"); }
+   static std::vector<char> deferred_test_abi() { return read_abi("${CMAKE_BINARY_DIR}/unittests/contracts/deferred_test/deferred_test.abi"); }
 };
 }} //ns eosio::testing

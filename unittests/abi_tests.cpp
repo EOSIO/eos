@@ -28,6 +28,8 @@
 #include <deep_nested.abi.hpp>
 #include <large_nested.abi.hpp>
 
+//#include <contracts.hpp>
+
 using namespace eosio;
 using namespace chain;
 
@@ -602,7 +604,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_unknown_type, abi_gen_helper)
 { try {
 
    const char* unknown_type = R"=====(
-   #include <eosiolib/types.h>
+   //#include <eosiolib/types.h>
    //@abi action
    struct transfer {
       uint64_t param1;

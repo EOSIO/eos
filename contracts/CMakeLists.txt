@@ -5,6 +5,7 @@ endmacro()
 find_package(eosio.cdt)
 
 add_subdirectory( asserter )
+add_subdirectory( eosio.token )
 add_subdirectory( hello )
 add_subdirectory( infinite )
 add_subdirectory( integration_test )

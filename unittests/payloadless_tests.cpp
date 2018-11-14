@@ -6,12 +6,12 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 
-#include <contracts.hpp>
-
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
+
+#include <contracts.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
