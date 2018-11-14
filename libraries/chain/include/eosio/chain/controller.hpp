@@ -46,8 +46,21 @@ namespace eosio { namespace chain {
       FULL,
       LIGHT
    };
-   // *bos*
-   const int actor_blacklist{1}, contract_blacklist{2}, resource_greylist{3};
+   // *bos begin*
+    enum  class list_type:int64_t {
+      actor_blacklist_type=1,
+      contract_blacklist_type,
+      resource_greylist_type,
+      list_type_count
+   };
+   enum  class list_action_type:int64_t
+   {
+      insert_type = 1,
+      remove_type,
+      list_action_type_count
+   };
+
+   // *bos end*
 
    class controller {
       public:
@@ -156,7 +169,6 @@ namespace eosio { namespace chain {
 
          const account_object&                 get_account( account_name n )const;
          const global_property_object&         get_global_properties()const;
-         const global_property2_object&        get_global_properties2()const;  // *bos*
          const dynamic_global_property_object& get_dynamic_global_properties()const;
          const resource_limits_manager&        get_resource_limits_manager()const;
          resource_limits_manager&              get_mutable_resource_limits_manager();
@@ -220,8 +232,15 @@ namespace eosio { namespace chain {
 
          void add_resource_greylist(const account_name &name);
          void remove_resource_greylist(const account_name &name);
-         void list_add_name(const int list, const account_name &name);  // *bos*
-         void list_remove_name(const int list, const account_name &name);  // *bos*
+
+         // *bos begin*
+         const global_property2_object&        get_global_properties2()const;  // *bos*
+         void set_name_list(int64_t list, int64_t action, std::vector<account_name> name_list);
+         
+         // void list_add_name(const int list, const account_name &name);
+         // void list_remove_name(const int list, const account_name &name);
+         // *bos end*
+
          bool is_resource_greylisted(const account_name &name) const;
          const flat_set<account_name> &get_resource_greylist() const;
 
