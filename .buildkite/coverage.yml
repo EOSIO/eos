@@ -1,6 +1,7 @@
 steps:
   - command: |
         echo "--- :hammer: Building" && \
+        pwd && ls -la && \
         /usr/bin/cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT="${BOOST_ROOT}" -DWASM_ROOT="${WASM_ROOT}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true -DENABLE_COVERAGE_TESTING=true -DBUILD_DOXYGEN=false && \
         /usr/bin/ninja
         echo "--- :spiral_note_pad: Generating Code Coverage Report" && \
