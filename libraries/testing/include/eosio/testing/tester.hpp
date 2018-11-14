@@ -91,6 +91,7 @@ namespace eosio { namespace testing {
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
          virtual signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
+         virtual signed_block_ptr finish_block() = 0;
          void                 produce_blocks( uint32_t n = 1, bool empty = false );
          void                 produce_blocks_until_end_of_round();
          void                 produce_blocks_for_n_rounds(const uint32_t num_of_rounds = 1);
@@ -271,6 +272,7 @@ namespace eosio { namespace testing {
       protected:
          signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false, uint32_t skip_flag = 0 );
          void             _start_block(fc::time_point block_time);
+         signed_block_ptr _finish_block();
 
       // Fields:
       protected:
@@ -302,6 +304,10 @@ namespace eosio { namespace testing {
       signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ )override {
          control->abort_block();
          return _produce_block(skip_time, true, skip_flag);
+      }
+
+      signed_block_ptr finish_block()override {
+         return _finish_block();
       }
 
       bool validate() { return true; }
@@ -394,6 +400,10 @@ namespace eosio { namespace testing {
 
 
          return sb;
+      }
+
+      signed_block_ptr finish_block()override {
+         return _finish_block();
       }
 
       bool validate() {
