@@ -88,106 +88,22 @@ void statetrack_plugin::plugin_initialize(const variables_map &options)
 
         ilog("Binding database events");
 
-        auto undo_lambda = [&](const int64_t revision) {
-            my->on_applied_rev(revision, op_type_enum::REV_UNDO);
-        };
-
         // account_object events
-
-        auto &co_inde = db.get_index<co_index_type>();
-
-        my->connections.emplace_back(
-            fc::optional<connection>(co_inde.applied_emplace.connect([&](const account_object &co) {
-                my->on_applied_op(db, co, op_type_enum::ROW_CREATE);
-            })));
-
-        my->connections.emplace_back(
-            fc::optional<connection>(co_inde.applied_modify.connect([&](const account_object &co) {
-                my->on_applied_op(db, co, op_type_enum::ROW_MODIFY);
-            })));
-
-        my->connections.emplace_back(
-            fc::optional<connection>(co_inde.applied_remove.connect([&](const account_object &co) {
-                my->on_applied_op(db, co, op_type_enum::ROW_REMOVE);
-            })));
-
-        my->connections.emplace_back(
-            co_inde.applied_undo.connect(undo_lambda));
-
+        my->create_index_events<co_index_type>(db);
         // permisson_object events
-
-        auto &po_inde = db.get_index<po_index_type>();
-
-        my->connections.emplace_back(
-            fc::optional<connection>(po_inde.applied_emplace.connect([&](const permission_object &po) {
-                my->on_applied_op(db, po, op_type_enum::ROW_CREATE);
-            })));
-
-        my->connections.emplace_back(
-            fc::optional<connection>(po_inde.applied_modify.connect([&](const permission_object &po) {
-                my->on_applied_op(db, po, op_type_enum::ROW_MODIFY);
-            })));
-
-        my->connections.emplace_back(
-            fc::optional<connection>(po_inde.applied_remove.connect([&](const permission_object &po) {
-                my->on_applied_op(db, po, op_type_enum::ROW_REMOVE);
-            })));
-
-        my->connections.emplace_back(
-            fc::optional<connection>(po_inde.applied_undo.connect(undo_lambda)));
-
+        my->create_index_events<po_index_type>(db);
         // permisson_link_object events
-
-        auto &plo_inde = db.get_index<plo_index_type>();
-
-        my->connections.emplace_back(
-            fc::optional<connection>(plo_inde.applied_emplace.connect([&](const permission_link_object &plo) {
-                my->on_applied_op(db, plo, op_type_enum::ROW_CREATE);
-            })));
-
-        my->connections.emplace_back(
-            fc::optional<connection>(plo_inde.applied_modify.connect([&](const permission_link_object &plo) {
-                my->on_applied_op(db, plo, op_type_enum::ROW_MODIFY);
-            })));
-
-        my->connections.emplace_back(
-            fc::optional<connection>(plo_inde.applied_remove.connect([&](const permission_link_object &plo) {
-                my->on_applied_op(db, plo, op_type_enum::ROW_REMOVE);
-            })));
-
-        my->connections.emplace_back(
-            fc::optional<connection>(plo_inde.applied_undo.connect(undo_lambda)));
+        my->create_index_events<plo_index_type>(db);
+        // key_value_object events
+        my->create_index_events<kv_index_type>(db);
 
         // table_id_object events
-
         auto &ti_index = db.get_index<ti_index_type>();
 
         my->connections.emplace_back(
             fc::optional<connection>(ti_index.applied_remove.connect([&](const table_id_object &tio) {
                 my->on_applied_table(db, tio, op_type_enum::TABLE_REMOVE);
             })));
-
-        // key_value_object events
-
-        auto &kv_index = db.get_index<kv_index_type>();
-
-        my->connections.emplace_back(
-            fc::optional<connection>(kv_index.applied_emplace.connect([&](const key_value_object &kvo) {
-                my->on_applied_op(db, kvo, op_type_enum::ROW_CREATE);
-            })));
-
-        my->connections.emplace_back(
-            fc::optional<connection>(kv_index.applied_modify.connect([&](const key_value_object &kvo) {
-                my->on_applied_op(db, kvo, op_type_enum::ROW_MODIFY);
-            })));
-
-        my->connections.emplace_back(
-            fc::optional<connection>(kv_index.applied_remove.connect([&](const key_value_object &kvo) {
-                my->on_applied_op(db, kvo, op_type_enum::ROW_REMOVE);
-            })));
-
-        my->connections.emplace_back(
-            fc::optional<connection>(kv_index.applied_undo.connect(undo_lambda)));
 
         // transaction and block events
 

@@ -147,6 +147,31 @@ class statetrack_plugin_impl
     void on_action_trace(const action_trace &at, const block_state_ptr &bsp);
     void on_irreversible_block(const block_state_ptr &bsp);
 
+    template<typename MultiIndexType> 
+    void create_index_events(const database &db) {
+        auto &index = db.get_index<MultiIndexType>();
+
+        connections.emplace_back(
+        fc::optional<connection>(index.applied_emplace.connect([&](const typename MultiIndexType::value_type &v) {
+            on_applied_op(db, v, op_type_enum::ROW_CREATE);
+        })));
+
+        connections.emplace_back(
+            fc::optional<connection>(index.applied_modify.connect([&](const typename MultiIndexType::value_type &v) {
+                on_applied_op(db, v, op_type_enum::ROW_MODIFY);
+            })));
+
+        connections.emplace_back(
+            fc::optional<connection>(index.applied_remove.connect([&](const typename MultiIndexType::value_type &v) {
+                on_applied_op(db, v, op_type_enum::ROW_REMOVE);
+            })));
+
+        connections.emplace_back(
+            fc::optional<connection>(index.applied_undo.connect([&](const int64_t revision) {
+                on_applied_rev(revision, op_type_enum::REV_UNDO);
+            })));
+    }
+
     static void copy_inline_row(const key_value_object &obj, vector<char> &data)
     {
         data.resize(obj.value.size());
