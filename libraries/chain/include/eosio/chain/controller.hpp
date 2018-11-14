@@ -141,7 +141,8 @@ namespace eosio { namespace chain {
          void commit_block();
          void pop_block();
 
-         void push_block( const signed_block_ptr& b, block_status s = block_status::complete );
+         std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b );
+         void push_block( std::future<block_state_ptr>& block_state_future );
 
          const chainbase::database& db()const;
 

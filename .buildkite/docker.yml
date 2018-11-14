@@ -18,8 +18,7 @@ steps:
         docker rmi gcr.io/b1-automation-dev/eosio/builder:latest
     label: "Docker build builder"
     agents:
-      role: "automation-docker-builder-fleet"
-      aws:instance-type: "m5d.2xlarge"
+      queue: "automation-docker-builder-fleet"
     timeout: 300
 
   - wait
@@ -45,8 +44,7 @@ steps:
         docker rmi gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT
     label: "Docker build eos"
     agents:
-      role: "automation-docker-builder-fleet"
-      aws:instance-type: "m5d.2xlarge"
+      queue: "automation-docker-builder-fleet"
     timeout: 300
 
   - command: |
@@ -70,8 +68,7 @@ steps:
         docker rmi gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT
     label: "Docker build eos-dev"
     agents:
-      role: "automation-docker-builder-fleet"
-      aws:instance-type: "m5d.2xlarge"
+      queue: "automation-docker-builder-fleet"
     timeout: 300
 
   - wait

@@ -316,7 +316,7 @@ struct controller_impl {
 
       auto start = fc::time_point::now();
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-         self.push_block( next, controller::block_status::irreversible );
+         replay_push_block( next, controller::block_status::irreversible );
          if( next->block_num() % 100 == 0 ) {
             std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
          }
@@ -332,7 +332,7 @@ struct controller_impl {
       int rev = 0;
       while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
          ++rev;
-         self.push_block( obj->get_block(), controller::block_status::validated );
+         replay_push_block( obj->get_block(), controller::block_status::validated );
       }
 
       ilog( "${n} reversible blocks replayed", ("n",rev) );
@@ -693,7 +693,7 @@ struct controller_impl {
       try {
          if (add_to_fork_db) {
             pending->_pending_block_state->validated = true;
-            auto new_bsp = fork_db.add(pending->_pending_block_state);
+            auto new_bsp = fork_db.add(pending->_pending_block_state, true);
             emit(self.accepted_block_header, pending->_pending_block_state);
             head = fork_db.head();
             EOS_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
@@ -918,7 +918,7 @@ struct controller_impl {
 
       if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
-         dlog("${detail}", ("detail", trace->except->to_detail_string()));
+
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start,
                                            cpu_time_to_bill_us, billed_cpu_time_us, explicit_billed_cpu_time,
                                            trx_context.enforce_whiteblacklist );
@@ -1190,13 +1190,18 @@ struct controller_impl {
          start_block( b->timestamp, b->confirmed, s , producer_block_id);
 
          std::vector<transaction_metadata_ptr> packed_transactions;
+         packed_transactions.reserve( b->transactions.size() );
          for( const auto& receipt : b->transactions ) {
             if( receipt.trx.contains<packed_transaction>()) {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>( pt );
                if( !self.skip_auth_check() ) {
-                  mtrx->signing_keys_future = async_thread_pool( [this, mtrx]() {
-                     return std::make_pair( this->chain_id, mtrx->trx.get_signature_keys( this->chain_id ) );
+                  std::weak_ptr<transaction_metadata> mtrx_wp = mtrx;
+                  mtrx->signing_keys_future = async_thread_pool( [chain_id = this->chain_id, mtrx_wp]() {
+                     auto mtrx = mtrx_wp.lock();
+                     return mtrx ?
+                            std::make_pair( chain_id, mtrx->trx.get_signature_keys( chain_id ) ) :
+                            std::make_pair( chain_id, decltype( mtrx->trx.get_signature_keys( chain_id ) ){} );
                   } );
                }
                packed_transactions.emplace_back( std::move( mtrx ) );
@@ -1263,22 +1268,64 @@ struct controller_impl {
       }
    } FC_CAPTURE_AND_RETHROW() } /// apply_block
 
+   std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b ) {
+      EOS_ASSERT( b, block_validate_exception, "null block" );
 
-   void push_block( const signed_block_ptr& b, controller::block_status s ) {
+      auto id = b->id();
+
+      // no reason for a block_state if fork_db already knows about block
+      auto existing = fork_db.get_block( id );
+      EOS_ASSERT( !existing, fork_database_exception, "we already know about this block: ${id}", ("id", id) );
+
+      auto prev = fork_db.get_block( b->previous );
+      EOS_ASSERT( prev, unlinkable_block_exception, "unlinkable block ${id}", ("id", id)("previous", b->previous) );
+
+      return async_thread_pool( [b, prev]() {
+         const bool skip_validate_signee = false;
+         return std::make_shared<block_state>( *prev, move( b ), skip_validate_signee );
+      } );
+   }
+
+   void push_block( std::future<block_state_ptr>& block_state_future ) {
+      controller::block_status s = controller::block_status::complete;
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
 
       auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
          trusted_producer_light_validation = old_value;
       });
       try {
-         EOS_ASSERT( b, block_validate_exception, "trying to push empty block" );
-         EOS_ASSERT( s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block" );
+         block_state_ptr new_header_state = block_state_future.get();
+         auto& b = new_header_state->block;
          emit( self.pre_accepted_block, b );
-         bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
-         auto new_header_state = fork_db.add( b, trust );
+
+         fork_db.add( new_header_state, false );
+
          if (conf.trusted_producers.count(b->producer)) {
             trusted_producer_light_validation = true;
          };
+         emit( self.accepted_block_header, new_header_state );
+
+         if ( read_mode != db_read_mode::IRREVERSIBLE ) {
+            maybe_switch_forks( s );
+         }
+
+      } FC_LOG_AND_RETHROW( )
+   }
+
+   void replay_push_block( const signed_block_ptr& b, controller::block_status s ) {
+      self.validate_db_available_size();
+      self.validate_reversible_available_size();
+
+      EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
+
+      try {
+         EOS_ASSERT( b, block_validate_exception, "trying to push empty block" );
+         EOS_ASSERT( (s == controller::block_status::irreversible || s == controller::block_status::validated),
+                     block_validate_exception, "invalid block status for replay" );
+         emit( self.pre_accepted_block, b );
+         const bool skip_validate_signee = !conf.force_all_checks;
+         auto new_header_state = fork_db.add( b, skip_validate_signee );
+
          emit( self.accepted_block_header, new_header_state );
 
          if ( read_mode != db_read_mode::IRREVERSIBLE ) {
@@ -1311,13 +1358,13 @@ struct controller_impl {
          auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
 
          for( auto itr = branches.second.begin(); itr != branches.second.end(); ++itr ) {
-            fork_db.mark_in_current_chain( *itr , false );
+            fork_db.mark_in_current_chain( *itr, false );
             pop_block();
          }
          EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
-                    "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
+                     "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
 
-         for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
+         for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr ) {
             optional<fc::exception> except;
             try {
                apply_block( (*ritr)->block, (*ritr)->validated ? controller::block_status::validated : controller::block_status::complete );
@@ -1327,7 +1374,7 @@ struct controller_impl {
             }
             catch (const fc::exception& e) { except = e; }
             if (except) {
-               elog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
+               elog("exception thrown while switching forks ${e}", ("e", except->to_detail_string()));
 
                // ritr currently points to the block that threw
                // if we mark it invalid it will automatically remove all forks built off it.
@@ -1337,11 +1384,11 @@ struct controller_impl {
                // ritr base is a forward itr to the last block successfully applied
                auto applied_itr = ritr.base();
                for( auto itr = applied_itr; itr != branches.first.end(); ++itr ) {
-                  fork_db.mark_in_current_chain( *itr , false );
+                  fork_db.mark_in_current_chain( *itr, false );
                   pop_block();
                }
                EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
-                          "loss of sync between fork_db and chainbase during fork switch reversal" ); // _should_ never fail
+                           "loss of sync between fork_db and chainbase during fork switch reversal" ); // _should_ never fail
 
                // re-apply good blocks
                for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
@@ -1352,7 +1399,7 @@ struct controller_impl {
                throw *except;
             } // end if exception
          } /// end for each block in branch
-         ilog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
+         ilog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id) );
       }
    } /// push_block
 
@@ -1667,10 +1714,14 @@ void controller::abort_block() {
    my->abort_block();
 }
 
-void controller::push_block( const signed_block_ptr& b, block_status s ) {
+std::future<block_state_ptr> controller::create_block_state_future( const signed_block_ptr& b ) {
+   return my->create_block_state_future( b );
+}
+
+void controller::push_block( std::future<block_state_ptr>& block_state_future ) {
    validate_db_available_size();
    validate_reversible_available_size();
-   my->push_block( b, s );
+   my->push_block( block_state_future );
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {

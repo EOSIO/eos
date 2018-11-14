@@ -26,7 +26,6 @@ struct block_header_state {
     public_key_type                   block_signing_key;
     vector<uint8_t>                   confirm_count;
     vector<header_confirmation>       confirmations;
-    std::shared_future<public_key_type> block_signing_key_future;
 
     block_header_state   next( const signed_block_header& h, bool trust = false )const;
     block_header_state   generate_next( block_timestamp_type when )const;
@@ -53,6 +52,7 @@ struct block_header_state {
     digest_type          sig_digest()const;
     void                 sign( const std::function<signature_type(const digest_type&)>& signer );
     public_key_type      signee()const;
+    void                 verify_signee(const public_key_type& signee)const;
 };
 
 

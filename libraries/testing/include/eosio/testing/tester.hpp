@@ -379,7 +379,8 @@ namespace eosio { namespace testing {
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
          auto sb = _produce_block(skip_time, false, skip_flag | 2);
-         validating_node->push_block( sb );
+         auto bs = validating_node->create_block_state_future( sb );
+         validating_node->push_block( bs );
 
          return sb;
       }
@@ -389,15 +390,15 @@ namespace eosio { namespace testing {
       }
 
       void validate_push_block(const signed_block_ptr& sb) {
-         validating_node->push_block( sb );
+         auto bs = validating_node->create_block_state_future( sb );
+         validating_node->push_block( bs );
       }
 
       signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
          control->abort_block();
          auto sb = _produce_block(skip_time, true, skip_flag | 2);
-         validating_node->push_block( sb );
-
-
+         auto bs = validating_node->create_block_state_future( sb );
+         validating_node->push_block( bs );
 
          return sb;
       }

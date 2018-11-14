@@ -752,10 +752,6 @@ void chain_apis::read_write::validate() const {
    EOS_ASSERT( db.get_read_mode() != chain::db_read_mode::READ_ONLY, missing_chain_api_plugin_exception, "Not allowed, node in read-only mode" );
 }
 
-chain_apis::read_write chain_plugin::get_read_write_api() {
-   return chain_apis::read_write(chain(), get_abi_serializer_max_time());
-}
-
 void chain_plugin::accept_block(const signed_block_ptr& block ) {
    my->incoming_block_sync_method(block);
 }
@@ -1255,7 +1251,7 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
 
    const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
-   auto table_type = get_table_type( abi, "accounts" );
+   (void)get_table_type( abi, "accounts" );
 
    vector<asset> results;
    walk_key_value_table(p.code, p.account, N(accounts), [&](const key_value_object& obj){
