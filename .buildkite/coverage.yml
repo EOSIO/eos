@@ -16,7 +16,7 @@ steps:
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
-      docker#v2.0.0:
+      docker#v1.4.0:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
         mounts:
