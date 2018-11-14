@@ -50,7 +50,7 @@ private:
             a.balance = quantity;
          });
       } else {
-         _accounts.modify( toitr, "0"_n, [&]( auto& a ) {
+         _accounts.modify( toitr, name{0}, [&]( auto& a ) {
             a.balance += quantity;
             eosio_assert( a.balance >= quantity, "overflow detected" );
          });

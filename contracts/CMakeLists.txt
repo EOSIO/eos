@@ -2,14 +2,13 @@ macro(add_contract_no_abi CONTRACT_NAME TARGET)
    add_executable( ${TARGET}.wasm ${ARGN} )
 endmacro()
 
-# ???
 find_package(eosio.cdt)
 
 add_subdirectory( asserter )
 add_subdirectory( hello )
 add_subdirectory( infinite )
 add_subdirectory( integration_test )
-#add_subdirectory( multi_index_test )
+add_subdirectory( multi_index_test )
 add_subdirectory( noop )
 add_subdirectory( payloadless )
 add_subdirectory( proxy )
