@@ -5,200 +5,230 @@
 #include <eosio/statetrack_plugin/statetrack_plugin.hpp>
 #include <eosio/statetrack_plugin/statetrack_plugin_impl.hpp>
 
-namespace {
-  const char* SENDER_BIND = "st-zmq-sender-bind";
-  const char* SENDER_BIND_DEFAULT = "tcp://127.0.0.1:3000";
-}
+namespace
+{
+const char *SENDER_BIND = "st-zmq-sender-bind";
+const char *SENDER_BIND_DEFAULT = "tcp://127.0.0.1:3000";
+} // namespace
 
-namespace eosio {
+namespace eosio
+{
 
 using namespace chain;
 using namespace chainbase;
 
-static appbase::abstract_plugin& _statetrack_plugin = app().register_plugin<statetrack_plugin>();
+static appbase::abstract_plugin &_statetrack_plugin = app().register_plugin<statetrack_plugin>();
 
 // Plugin implementation
 
-statetrack_plugin::statetrack_plugin():my(new statetrack_plugin_impl()){}
+statetrack_plugin::statetrack_plugin() : my(new statetrack_plugin_impl()) {}
 
-void statetrack_plugin::set_program_options(options_description&, options_description& cfg) {
-   cfg.add_options()
-      (SENDER_BIND, bpo::value<string>()->default_value(SENDER_BIND_DEFAULT),
-       "ZMQ Sender Socket binding")
-      ;
-   cfg.add_options()
-      ("st-filter-on,f", bpo::value<vector<string>>()->composing(),
-       "Track tables which match code:scope:table.")
-      ;
-   cfg.add_options()
-      ("st-filter-out,F", bpo::value<vector<string>>()->composing(),
-       "Do not track tables which match code:scope:table.")
-      ;
+void statetrack_plugin::set_program_options(options_description &, options_description &cfg)
+{
+    cfg.add_options()(SENDER_BIND, bpo::value<string>()->default_value(SENDER_BIND_DEFAULT),
+                      "ZMQ Sender Socket binding");
+    cfg.add_options()("st-filter-on,f", bpo::value<vector<string>>()->composing(),
+                      "Track tables which match code:scope:table.");
+    cfg.add_options()("st-filter-out,F", bpo::value<vector<string>>()->composing(),
+                      "Do not track tables which match code:scope:table.");
 }
 
-void statetrack_plugin::plugin_initialize(const variables_map& options) {
-   ilog("initializing statetrack plugin");
+void statetrack_plugin::plugin_initialize(const variables_map &options)
+{
+    ilog("initializing statetrack plugin");
 
-   try {
-     if( options.count( "st-filter-on" )) {
-        auto fo = options.at( "st-filter-on" ).as<vector<string>>();
-        for( auto& s : fo ) {
-           std::vector<std::string> v;
-           boost::split( v, s, boost::is_any_of( ":" ));
-           EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s", s));
-           filter_entry fe{v[0], v[1], v[2]};
-           my->filter_on.insert( fe );
+    try
+    {
+        if (options.count("st-filter-on"))
+        {
+            auto fo = options.at("st-filter-on").as<vector<string>>();
+            for (auto &s : fo)
+            {
+                std::vector<std::string> v;
+                boost::split(v, s, boost::is_any_of(":"));
+                EOS_ASSERT(v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s", s));
+                filter_entry fe{v[0], v[1], v[2]};
+                my->filter_on.insert(fe);
+            }
         }
-     }
-     
-     if( options.count( "st-filter-out" )) {
-        auto fo = options.at( "st-filter-out" ).as<vector<string>>();
-        for( auto& s : fo ) {
-           std::vector<std::string> v;
-           boost::split( v, s, boost::is_any_of( ":" ));
-           EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-out", ("s", s));
-           filter_entry fe{v[0], v[1], v[2]};
-           my->filter_out.insert( fe );
+
+        if (options.count("st-filter-out"))
+        {
+            auto fo = options.at("st-filter-out").as<vector<string>>();
+            for (auto &s : fo)
+            {
+                std::vector<std::string> v;
+                boost::split(v, s, boost::is_any_of(":"));
+                EOS_ASSERT(v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-out", ("s", s));
+                filter_entry fe{v[0], v[1], v[2]};
+                my->filter_out.insert(fe);
+            }
         }
-     }
 
-      my->socket_bind_str = options.at(SENDER_BIND).as<string>();
-      if (my->socket_bind_str.empty()) {
-         wlog("zmq-sender-bind not specified => eosio::statetrack_plugin disabled.");
-         return;
-      }
-     
-      my->context = new zmq::context_t(1);
-      my->sender_socket = new zmq::socket_t(*my->context, ZMQ_PUSH);
-      my->chain_plug = app().find_plugin<chain_plugin>();
-      
-      ilog("Bind to ZMQ PUSH socket ${u}", ("u", my->socket_bind_str));
-      my->sender_socket->bind(my->socket_bind_str);
+        my->socket_bind_str = options.at(SENDER_BIND).as<string>();
+        if (my->socket_bind_str.empty())
+        {
+            wlog("zmq-sender-bind not specified => eosio::statetrack_plugin disabled.");
+            return;
+        }
 
-      ilog("Bind to ZMQ PUSH socket successful");
+        my->context = new zmq::context_t(1);
+        my->sender_socket = new zmq::socket_t(*my->context, ZMQ_PUSH);
+        my->chain_plug = app().find_plugin<chain_plugin>();
 
-      auto& chain = my->chain_plug->chain();
-      const database& db = chain.db();
+        ilog("Bind to ZMQ PUSH socket ${u}", ("u", my->socket_bind_str));
+        my->sender_socket->bind(my->socket_bind_str);
 
-      my->abi_serializer_max_time = my->chain_plug->get_abi_serializer_max_time();
-      
-      ilog("Binding database events");
+        ilog("Bind to ZMQ PUSH socket successful");
 
-      auto undo_lambda = [&](const int64_t revision) {
-          my->on_applied_rev(revision, op_type_enum::REV_UNDO);
-      };
+        auto &chain = my->chain_plug->chain();
+        const database &db = chain.db();
 
-      // account_object events
+        my->abi_serializer_max_time = my->chain_plug->get_abi_serializer_max_time();
 
-      auto& co_inde = db.get_index<co_index_type>();
+        ilog("Binding database events");
 
-      co_inde.applied_emplace = [&](const account_object& co) {
-          my->on_applied_op(db, co, op_type_enum::ROW_CREATE);
-      };
-  
-      co_inde.applied_modify = [&](const account_object& co) {
-          my->on_applied_op(db, co, op_type_enum::ROW_MODIFY);
-      };
-  
-      co_inde.applied_remove = [&](const account_object& co) {
-          my->on_applied_op(db, co, op_type_enum::ROW_REMOVE);
-      };
+        auto undo_lambda = [&](const int64_t revision) {
+            my->on_applied_rev(revision, op_type_enum::REV_UNDO);
+        };
 
-      co_inde.applied_undo = undo_lambda;
+        // account_object events
 
-      // permisson_object events
+        auto &co_inde = db.get_index<co_index_type>();
 
-      auto& po_inde = db.get_index<po_index_type>();
+        my->connections.emplace_back(
+            fc::optional<connection>(co_inde.applied_emplace.connect([&](const account_object &co) {
+                my->on_applied_op(db, co, op_type_enum::ROW_CREATE);
+            })));
 
-      po_inde.applied_emplace = [&](const permission_object& po) {
-          my->on_applied_op(db, po, op_type_enum::ROW_CREATE);
-      };
-  
-      po_inde.applied_modify = [&](const permission_object& po) {
-          my->on_applied_op(db, po, op_type_enum::ROW_MODIFY);
-      };
-  
-      po_inde.applied_remove = [&](const permission_object& po) {
-          my->on_applied_op(db, po, op_type_enum::ROW_REMOVE);
-      };
-      
-      po_inde.applied_undo = undo_lambda;
-      
-      // permisson_link_object events
+        my->connections.emplace_back(
+            fc::optional<connection>(co_inde.applied_modify.connect([&](const account_object &co) {
+                my->on_applied_op(db, co, op_type_enum::ROW_MODIFY);
+            })));
 
-      auto& plo_inde = db.get_index<plo_index_type>();
+        my->connections.emplace_back(
+            fc::optional<connection>(co_inde.applied_remove.connect([&](const account_object &co) {
+                my->on_applied_op(db, co, op_type_enum::ROW_REMOVE);
+            })));
 
-      plo_inde.applied_emplace = [&](const permission_link_object& plo) {
-          my->on_applied_op(db, plo, op_type_enum::ROW_CREATE);
-      };
-  
-      plo_inde.applied_modify = [&](const permission_link_object& plo) {
-          my->on_applied_op(db, plo, op_type_enum::ROW_MODIFY);
-      };
-  
-      plo_inde.applied_remove = [&](const permission_link_object& plo) {
-          my->on_applied_op(db, plo, op_type_enum::ROW_REMOVE);
-      };
+        my->connections.emplace_back(
+            co_inde.applied_undo.connect(undo_lambda));
 
-      plo_inde.applied_undo = undo_lambda;
+        // permisson_object events
 
-      // table_id_object events
+        auto &po_inde = db.get_index<po_index_type>();
 
-      auto& ti_index = db.get_index<ti_index_type>();
+        my->connections.emplace_back(
+            fc::optional<connection>(po_inde.applied_emplace.connect([&](const permission_object &po) {
+                my->on_applied_op(db, po, op_type_enum::ROW_CREATE);
+            })));
 
-      ti_index.applied_remove = [&](const table_id_object& tio) {
-          my->on_applied_table(db, tio, op_type_enum::TABLE_REMOVE);
-      };
+        my->connections.emplace_back(
+            fc::optional<connection>(po_inde.applied_modify.connect([&](const permission_object &po) {
+                my->on_applied_op(db, po, op_type_enum::ROW_MODIFY);
+            })));
 
-      // key_value_object events
-      
-      auto& kv_index = db.get_index<kv_index_type>();
-      
-      kv_index.applied_emplace = [&](const key_value_object& kvo) {
-          my->on_applied_op(db, kvo, op_type_enum::ROW_CREATE);
-      };
-  
-      kv_index.applied_modify = [&](const key_value_object& kvo) {
-          my->on_applied_op(db, kvo, op_type_enum::ROW_MODIFY);
-      };
-  
-      kv_index.applied_remove = [&](const key_value_object& kvo) {
-          my->on_applied_op(db, kvo, op_type_enum::ROW_REMOVE);
-      };
-     
-      kv_index.applied_undo = undo_lambda;
-     
-      my->applied_transaction_connection.emplace( 
-        chain.applied_transaction.connect([&]( const transaction_trace_ptr& ttp ) {
-          my->on_applied_transaction(ttp);  
-      }));
+        my->connections.emplace_back(
+            fc::optional<connection>(po_inde.applied_remove.connect([&](const permission_object &po) {
+                my->on_applied_op(db, po, op_type_enum::ROW_REMOVE);
+            })));
 
-      my->accepted_block_connection.emplace(
-        chain.accepted_block.connect([&](const block_state_ptr& bsp) {
-            my->on_accepted_block(bsp); 
-      }));
+        my->connections.emplace_back(
+            fc::optional<connection>(po_inde.applied_undo.connect(undo_lambda)));
 
-      my->irreversible_block_connection.emplace( 
-        chain.irreversible_block.connect([&]( const block_state_ptr& bsp ) {
-            my->on_irreversible_block( bsp ); 
-      }));
-   }
-   FC_LOG_AND_RETHROW()
+        // permisson_link_object events
+
+        auto &plo_inde = db.get_index<plo_index_type>();
+
+        my->connections.emplace_back(
+            fc::optional<connection>(plo_inde.applied_emplace.connect([&](const permission_link_object &plo) {
+                my->on_applied_op(db, plo, op_type_enum::ROW_CREATE);
+            })));
+
+        my->connections.emplace_back(
+            fc::optional<connection>(plo_inde.applied_modify.connect([&](const permission_link_object &plo) {
+                my->on_applied_op(db, plo, op_type_enum::ROW_MODIFY);
+            })));
+
+        my->connections.emplace_back(
+            fc::optional<connection>(plo_inde.applied_remove.connect([&](const permission_link_object &plo) {
+                my->on_applied_op(db, plo, op_type_enum::ROW_REMOVE);
+            })));
+
+        my->connections.emplace_back(
+            fc::optional<connection>(plo_inde.applied_undo.connect(undo_lambda)));
+
+        // table_id_object events
+
+        auto &ti_index = db.get_index<ti_index_type>();
+
+        my->connections.emplace_back(
+            fc::optional<connection>(ti_index.applied_remove.connect([&](const table_id_object &tio) {
+                my->on_applied_table(db, tio, op_type_enum::TABLE_REMOVE);
+            })));
+
+        // key_value_object events
+
+        auto &kv_index = db.get_index<kv_index_type>();
+
+        my->connections.emplace_back(
+            fc::optional<connection>(kv_index.applied_emplace.connect([&](const key_value_object &kvo) {
+                my->on_applied_op(db, kvo, op_type_enum::ROW_CREATE);
+            })));
+
+        my->connections.emplace_back(
+            fc::optional<connection>(kv_index.applied_modify.connect([&](const key_value_object &kvo) {
+                my->on_applied_op(db, kvo, op_type_enum::ROW_MODIFY);
+            })));
+
+        my->connections.emplace_back(
+            fc::optional<connection>(kv_index.applied_remove.connect([&](const key_value_object &kvo) {
+                my->on_applied_op(db, kvo, op_type_enum::ROW_REMOVE);
+            })));
+
+        my->connections.emplace_back(
+            fc::optional<connection>(kv_index.applied_undo.connect(undo_lambda)));
+
+        // transaction and block events
+
+        my->connections.emplace_back(
+            fc::optional<connection>(chain.applied_transaction.connect([&](const transaction_trace_ptr &ttp) {
+                my->on_applied_transaction(ttp);
+            })));
+
+        my->connections.emplace_back(
+            fc::optional<connection>(chain.accepted_block.connect([&](const block_state_ptr &bsp) {
+                my->on_accepted_block(bsp);
+            })));
+
+        my->connections.emplace_back(
+            fc::optional<connection>(chain.irreversible_block.connect([&](const block_state_ptr &bsp) {
+                my->on_irreversible_block(bsp);
+            })));
+    }
+    FC_LOG_AND_RETHROW()
 }
 
-void statetrack_plugin::plugin_startup() {
-
+void statetrack_plugin::plugin_startup()
+{
 }
 
-void statetrack_plugin::plugin_shutdown() {
-   ilog("statetrack plugin shutdown");
-   if( ! my->socket_bind_str.empty() ) {
-      my->sender_socket->disconnect(my->socket_bind_str);
-      my->sender_socket->close();
-      delete my->sender_socket;
-      delete my->context;
-      my->sender_socket = nullptr;
-   }
+void statetrack_plugin::plugin_shutdown()
+{
+    ilog("statetrack plugin shutdown");
+    if (!my->socket_bind_str.empty())
+    {
+        my->sender_socket->disconnect(my->socket_bind_str);
+        my->sender_socket->close();
+        delete my->sender_socket;
+        delete my->context;
+        my->sender_socket = nullptr;
+
+        for(auto conn : my->connections) {
+            conn->disconnect();
+            conn.reset();
+        }
+    }
 }
 
-}
+} // namespace eosio

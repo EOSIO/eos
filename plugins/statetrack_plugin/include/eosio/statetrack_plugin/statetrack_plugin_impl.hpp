@@ -22,7 +22,7 @@ namespace eosio
 
 using namespace chain;
 using namespace chainbase;
-using boost::signals2::scoped_connection;
+using boost::signals2::connection;
 
 typedef typename get_index_type<account_object>::type co_index_type;
 typedef typename get_index_type<permission_object>::type po_index_type;
@@ -185,9 +185,7 @@ class statetrack_plugin_impl
     std::set<filter_entry> filter_out;
     fc::microseconds abi_serializer_max_time;
 
-    fc::optional<scoped_connection> applied_transaction_connection;
-    fc::optional<scoped_connection> accepted_block_connection;
-    fc::optional<scoped_connection> irreversible_block_connection;
+    std::vector<fc::optional<connection>> connections;
 
   private:
     bool shorten_abi_errors = true;
