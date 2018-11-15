@@ -2,8 +2,24 @@
 
 This plugin adds hooks on chainbase operations emplace, modify, remove, and undo,
 and routes the objects and revision numbers to a ZMQ socket.
+This approach has different purposes:
 
-It can hook to the operations that happen on the state DBs of all contracts
+- Allowing developers to get fine-grained access to the state DB operations.
+  - To mirror the state DB into a traditional database system such as MongoDB
+    or Postgres without them having to implement any further logic or duplicate
+    the DB write logic of their smart contracts.
+  - To execute side-effects associated to specific database operations rather than
+    specific contract actions.
+  - To propagate database operations to the dapp frontends through WebSockets
+    for enabling real-time updates to user interfaces.
+- Seamlessly handling any forks and transaction failures by leveraging nodeos' own
+  behavior in maintaining the consistency of its own databases through
+  undo and commit operations.
+- Minimizing the work that happens inside nodeos and letting receivers such as
+  [statemirror](https://github.com/andresberrios/statemirror) or a demux-js reader
+  handle the more complex logic and more performance intensive work.
+
+The plugin can hook to the operations that happen on the state DBs of all contracts
 deployed to the chain, and it can use filters to limit the operations
 that should be sent to only the ones happening on the contracts, scopes, and tables
 that the user is interested in tracking, thus limiting the performance impact to a minimum.
@@ -53,6 +69,33 @@ The following configuration statements in `config.ini` are recognized:
     would not be an expected scenario for them to fail unless there was a bug
     or a database inconsistency (maybe caused by bad locking mechanisms when
     using multiple threads?).
+- Performance
+  - Serialization options
+    - JSON serializing on the plugin
+    - Sending binary and decoding to JSON in the receiver
+      - Would need to fetch ABIs, which would make it slower overall but put less load on nodeos
+    - Place operations in a queue during transaction processing
+      - Process queue, serialize each message to JSON and send to receiver
+        - After transaction is processed (prevents failed transactions from sending do and undo operations)
+        - During transaction processing but in a separate thread
+  - Risk of making transaction processing take longer and hit CPU time limit
+    - Only for transactions sent directly to this node?
+    - Does it affect validated transactions/blocks received from the network?
+- Consensus
+  - Forks
+    - How to induce and test recovery
+  - Exceptions
+  - Other potential disruptions
+- Socket communications
+  - In the current implementation, sending a message blocks until it is received (ZMQ PUSH socket)
+  - This is useful in case receiver goes down, since nodeos will wait for it to come back up
+    - Instead of maintaining a local in-memory queue of messages that can build up too much if it carries on
+    - However, it will make nodeos unavailable for API calls, and maybe other side-effects
+  - Lost messages
+    - When receiver pulls a message from the socket but then crashes
+      - Implement message acknowledgement signal?
+      - Implement an intermediate receiver that only manages the queue?
+      - Implement a very safe persistent received-messages queue in receiver from which to recover if it crashes?
 
 ## Building
 
