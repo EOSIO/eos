@@ -1275,7 +1275,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    fc::mutable_variant_object results;
 
    const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
-   auto table_type = get_table_type( abi, "stat" );
+   (void)get_table_type( abi, "stat" );
 
    uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
 
