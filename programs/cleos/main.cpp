@@ -2149,6 +2149,15 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
+   // get block detail
+   string block_detail_arg;
+   auto getBlockDetail = get->add_subcommand("block_detail", localized("Retrieve a full block from the blockchain"), false);
+   getBlockDetail->add_option("block", block_detail_arg, localized("The number or ID of the block to retrieve"))->required();
+   getBlockDetail->set_callback([&block_detail_arg] {
+      auto arg = fc::mutable_variant_object("block_num_or_id", block_detail_arg);
+      std::cout << fc::json::to_pretty_string(call(get_block_detail_func, arg)) << std::endl;
+   });
+
    // get actions
    string account_name;
    string skip_seq_str;
