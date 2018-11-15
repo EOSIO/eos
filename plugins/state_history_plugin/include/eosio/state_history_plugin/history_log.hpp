@@ -182,6 +182,7 @@ class history_log {
 
    void open_log() {
       log.open(log_filename, std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app);
+      log.seekg(0, std::ios_base::end);
       uint64_t size = log.tellg();
       if (size >= sizeof(history_log_header)) {
          history_log_header header;
@@ -202,6 +203,7 @@ class history_log {
 
    void open_index() {
       index.open(index_filename, std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app);
+      index.seekg(0, std::ios_base::end);
       if (index.tellg() == (_end_block - _begin_block) * sizeof(history_summary))
          return;
       ilog("Regenerate ${name}.index", ("name", name));
