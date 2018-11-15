@@ -2,12 +2,11 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
-
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
+
+#include <contracts.hpp>
 
 using namespace eosio::testing;
 using namespace eosio;
@@ -27,8 +26,8 @@ public:
       create_accounts( { N(alice), N(bob), N(carol), N(eosio.token) } );
       produce_blocks( 2 );
 
-      set_code( N(eosio.token), eosio_token_wast );
-      set_abi( N(eosio.token), eosio_token_abi );
+      set_code( N(eosio.token), contracts::eosio_token_wasm() );
+      set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
 
       produce_blocks();
 

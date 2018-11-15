@@ -1,13 +1,12 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 
-#include <multi_index_test/multi_index_test.wast.hpp>
-#include <multi_index_test/multi_index_test.abi.hpp>
-
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
+
+#include <contracts.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -25,12 +24,12 @@ BOOST_FIXTURE_TEST_CASE( multi_index_load, TESTER ) try {
    create_accounts( {N(multitest)} );
    produce_blocks(2);
 
-   set_code( N(multitest), multi_index_test_wast );
-   set_abi( N(multitest), multi_index_test_abi );
+   set_code( N(multitest), contracts::multi_index_test_wasm() );
+   set_abi( N(multitest), contracts::multi_index_test_abi().data() );
 
    produce_blocks(1);
 
-   abi_serializer abi_ser(json::from_string(multi_index_test_abi).as<abi_def>(), abi_serializer_max_time);
+   abi_serializer abi_ser(json::from_string(contracts::multi_index_test_abi().data()).as<abi_def>(), abi_serializer_max_time);
 
    signed_transaction trx1;
    {
