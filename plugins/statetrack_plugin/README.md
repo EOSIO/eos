@@ -44,7 +44,7 @@ The following configuration statements in `config.ini` are recognized:
 
 - In Chainbase, we are emitting the operations inside an undo just before the
   operation is actually executed and checked for success
-  ([See here](https://github.com/EOSIO/chainbase/compare/master...mmcs85:master#diff-298563b6c76ef92100c2ea27c06cb08bR355)).
+  ([See here](https://github.com/EOSIO/chainbase/compare/master...mmcs85:master#diff-298563b6c76ef92100c2ea27c06cb08bR390)).
   - We would like advice on the best way (without degrading performance) to get
     the item after it is given to the `modify` and `emplace` functions using `std::move`.
   - We don't like this inconsistency since it is emitting the event before being
