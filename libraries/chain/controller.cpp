@@ -33,7 +33,7 @@ using controller_index_set = index_set<
    account_index,
    account_sequence_index,
    global_property_multi_index,
-   global_property2_multi_index,
+   global_propertyex_multi_index,
    dynamic_global_property_multi_index,
    block_summary_multi_index,
    transaction_multi_index,
@@ -638,15 +638,15 @@ struct controller_impl {
 
       // *bos begin*
 
-      sync_name_list(list_type::actor_blacklist_type,true);
-      sync_name_list(list_type::contract_blacklist_type,true);
-      sync_name_list(list_type::resource_greylist_type,true);
-
-      db.create<global_property2_object>([&](auto &gpo) {
+       db.create<global_propertyex_object>([&](auto &gpo) {
          gpo.rmg.cpu_us = config::default_free_cpu_limit;
          gpo.rmg.net_byte = config::default_free_net_limit;
          gpo.rmg.ram_byte = config::default_free_ram_limit;
       });
+
+      sync_name_list(list_type::actor_blacklist_type,true);
+      sync_name_list(list_type::contract_blacklist_type,true);
+      sync_name_list(list_type::resource_greylist_type,true);
       // *bos end*
 
       authorization.initialize_database();
@@ -705,7 +705,7 @@ struct controller_impl {
       sync_name_list(list);
    }
 
-   void sync_list_and_db(list_type list, global_property2_object &gprops2,bool isMerge=false)
+   void sync_list_and_db(list_type list, global_propertyex_object &gprops2,bool isMerge=false)
    {
       int64_t lst = static_cast<int64_t>(list);
       EOS_ASSERT( list >= list_type::actor_blacklist_type && list < list_type::list_type_count, transaction_exception, "unknown list type : ${l}, ismerge: ${n}", ("l", static_cast<int64_t>(list))("n", isMerge));
@@ -734,7 +734,7 @@ struct controller_impl {
 
    void sync_name_list(list_type list,bool isMerge=false)
    {
-      const auto &gpo2 = db.get<global_property2_object>();
+      const auto &gpo2 = db.get<global_propertyex_object>();
       db.modify(gpo2, [&](auto &gprops2) {
          sync_list_and_db(list, gprops2,isMerge);
       });
@@ -2203,14 +2203,19 @@ const flat_set<account_name> &controller::get_resource_greylist() const {
 }
 
 // *bos begin*
-const global_property2_object& controller::get_global_properties2()const {
-   return my->db.get<global_property2_object>();
+const global_propertyex_object& controller::get_global_properties2()const {
+   return my->db.get<global_propertyex_object>();
 }
 
- void controller::set_name_list(int64_t list, int64_t action, std::vector<account_name> name_list)
- {
-    my->set_name_list( static_cast<list_type>(list),  static_cast<list_action_type>(action),  name_list);
- }
+void controller::set_name_list(int64_t list, int64_t action, std::vector<account_name> name_list)
+{
+   //redundant sync
+   my->sync_name_list(list_type::actor_blacklist_type, true);
+   my->sync_name_list(list_type::contract_blacklist_type, true);
+   my->sync_name_list(list_type::resource_greylist_type, true);
+
+   my->set_name_list(static_cast<list_type>(list), static_cast<list_action_type>(action), name_list);
+}
 // *bos end*
 
 

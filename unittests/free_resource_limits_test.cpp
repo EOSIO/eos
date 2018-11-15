@@ -84,10 +84,10 @@ try
    chainbase::database &db = const_cast<chainbase::database &>(test.control->db());
    auto ses = db.start_undo_session(true);
 
-   const global_property2_object &ptr = db.get<global_property2_object>();
+   const global_propertyex_object &ptr = db.get<global_propertyex_object>();
 
    //          // Create an account
-   db.modify(ptr, [&](global_property2_object &a) {
+   db.modify(ptr, [&](global_propertyex_object &a) {
       a.rmg.cpu_us = 2000 * 1000;
       a.rmg.net_byte = 1024;
       a.rmg.ram_byte = 1;
@@ -122,10 +122,10 @@ try
    chainbase::database &db = const_cast<chainbase::database &>(test.control->db());
    auto ses = db.start_undo_session(true);
 
-   const global_property2_object &ptr = db.get<global_property2_object>();
+   const global_propertyex_object &ptr = db.get<global_propertyex_object>();
 
    //          // Create an account
-   db.modify(ptr, [&](global_property2_object &a) {
+   db.modify(ptr, [&](global_propertyex_object &a) {
       a.rmg.cpu_us = 2000 * 1000;
       a.rmg.net_byte = 1024;
       a.rmg.ram_byte = 1;

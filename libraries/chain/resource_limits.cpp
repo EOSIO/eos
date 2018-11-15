@@ -123,7 +123,7 @@ void resource_limits_manager::update_account_usage(const flat_set<account_name>&
 void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot ) {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& config = _db.get<resource_limits_config_object>();
-  const auto& rmg = _db.get<global_property2_object>().rmg;       // *bos*
+  const auto& rmg = _db.get<global_propertyex_object>().rmg;       // *bos*
 
    for( const auto& a : accounts ) {
 
@@ -273,7 +273,7 @@ bool resource_limits_manager::set_account_limits( const account_name& account, i
 
 void resource_limits_manager::get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight, bool raw ) const {
    const auto* pending_buo = _db.find<resource_limits_object,by_owner>( boost::make_tuple(true, account) );
-   const auto& rmg = _db.get<global_property2_object>().rmg;       // *bos*
+   const auto& rmg = _db.get<global_propertyex_object>().rmg;       // *bos*
    if (pending_buo) {
       ram_bytes  = pending_buo->ram_bytes;
       if(!raw && ram_bytes >= 1024){      // *bos*
@@ -382,7 +382,7 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
    const auto& config = _db.get<resource_limits_config_object>();
-   const auto& rmg = _db.get<global_property2_object>().rmg;       // *bos*
+   const auto& rmg = _db.get<global_propertyex_object>().rmg;       // *bos*
 
    int64_t cpu_weight, x, y;
    get_account_limits( name, x, y, cpu_weight );
@@ -421,7 +421,7 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
    const auto& config = _db.get<resource_limits_config_object>();
    const auto& state  = _db.get<resource_limits_state_object>();
    const auto& usage  = _db.get<resource_usage_object, by_owner>(name);
-   const auto& rmg = _db.get<global_property2_object>().rmg;       // *bos*
+   const auto& rmg = _db.get<global_propertyex_object>().rmg;       // *bos*
 
    int64_t net_weight, x, y;
    get_account_limits( name, x, net_weight, y );

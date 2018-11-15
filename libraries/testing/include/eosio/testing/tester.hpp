@@ -140,7 +140,7 @@ namespace eosio { namespace testing {
             return traces;
          }
 
-         void                  push_genesis_block();
+         void push_genesis_block();
          vector<producer_key>  get_producer_keys( const vector<account_name>& producer_names )const;
          transaction_trace_ptr set_producers(const vector<account_name>& producer_names);
 
