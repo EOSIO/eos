@@ -1551,7 +1551,7 @@ struct controller_impl {
          bool is_subset = true;
 
          // quick extents check, then brute force the check actors
-         if (*actors.cbegin() >= *whitelist.cbegin() && actors.crbegin() <= *whitelist.crbegin() ) {
+         if (*actors.cbegin() >= *whitelist.cbegin() && *actors.crbegin() <= *whitelist.crbegin() ) {
             auto lower_bound = whitelist.cbegin();
             for (const auto& actor: actors) {
                auto itr = std::find(lower_bound, whitelist.cend(), actor);
@@ -1570,9 +1570,19 @@ struct controller_impl {
             is_subset = false;
          }
 
+         // helper lambda to lazily calculate the actors for error messaging
+         static auto generate_missing_actors = [](const flat_set<account_name>& actors, const flat_set<account_name>& whitelist) -> vector<account_name> {
+            vector<account_name> excluded;
+            excluded.reserve( actors.size() );
+            set_difference( actors.begin(), actors.end(),
+                            whitelist.begin(), whitelist.end(),
+                            std::back_inserter(excluded) );
+            return excluded;
+         };
+
          EOS_ASSERT( is_subset,  actor_whitelist_exception,
-                     "at least one authorizing actor in transaction is not in the actor whitelist: ${actors}",
-                     ("actors", actors)
+                     "authorizing actor(s) in transaction are not on the actor whitelist: ${actors}",
+                     ("actors", generate_missing_actors(actors, whitelist))
                    );
       } else if( conf.actor_blacklist.size() > 0 ) {
          // throw if actors intersects blacklist
@@ -1599,9 +1609,20 @@ struct controller_impl {
             }
          }
 
+         // helper lambda to lazily calculate the actors for error messaging
+         static auto generate_blacklisted_actors = [](const flat_set<account_name>& actors, const flat_set<account_name>& blacklist) -> vector<account_name> {
+            vector<account_name> blacklisted;
+            blacklisted.reserve( actors.size() );
+            set_intersection( actors.begin(), actors.end(),
+                              blacklist.begin(), blacklist.end(),
+                              std::back_inserter(blacklisted)
+                            );
+            return blacklisted;
+         };
+
          EOS_ASSERT( !intersects, actor_blacklist_exception,
-                     "at least one authorizing actor in transaction is on the actor blacklist: ${actors}",
-                     ("actors", actors)
+                     "authorizing actor(s) in transaction are on the actor blacklist: ${actors}",
+                     ("actors", generate_blacklisted_actors(actors, blacklist))
                    );
       }
    }
