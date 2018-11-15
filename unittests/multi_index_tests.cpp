@@ -29,7 +29,7 @@ BOOST_FIXTURE_TEST_CASE( multi_index_load, TESTER ) try {
 
    produce_blocks(1);
 
-   abi_serializer abi_ser(json::from_string(contracts::multi_index_test_abi().data()).as<abi_def>(), abi_serializer_max_time);
+   abi_serializer abi_ser(json::from_string(contracts::multi_index_test_abi().data(), ).as<abi_def>(), abi_serializer_max_time);
 
    signed_transaction trx1;
    {

@@ -5,9 +5,6 @@
 #include <eosio/chain/eosio_contract.hpp>
 #include <fstream>
 
-#include <eosio.bios/eosio.bios.wast.hpp>
-#include <eosio.bios/eosio.bios.abi.hpp>
-
 #include <contracts.hpp>
 
 eosio::chain::asset core_from_string(const std::string& s) {
@@ -808,12 +805,8 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::push_genesis_block() {
-      //set_code(config::system_account_name, contracts::eosio_bios_wasm());
-      set_code(config::system_account_name, eosio_bios_wast);
-
-      //set_abi(config::system_account_name, contracts::eosio_bios_abi().data());
-      set_abi(config::system_account_name, eosio_bios_abi);
-      produce_block();
+      set_code(config::system_account_name, contracts::eosio_bios_wasm());
+      set_abi(config::system_account_name, contracts::eosio_bios_abi().data());
    }
 
    vector<producer_key> base_tester::get_producer_keys( const vector<account_name>& producer_names )const {

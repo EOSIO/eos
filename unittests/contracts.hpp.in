@@ -21,5 +21,8 @@ struct contracts {
    // For multi_index contract
    static std::vector<uint8_t> multi_index_test_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/contracts/multi_index_test/multi_index_test.wasm"); }
    static std::vector<char>    multi_index_test_abi()  { return read_abi("${CMAKE_BINARY_DIR}/contracts/multi_index_test/multi_index_test.abi"); }
+
+   static std::vector<uint8_t> proxy_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/contracts/proxy/proxy.wasm"); }
+   static std::vector<char>    proxy_abi()  { return read_abi("${CMAKE_BINARY_DIR}/contracts/proxy/proxy.abi"); }
 };
 }} //ns eosio::testing
