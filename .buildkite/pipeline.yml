@@ -113,7 +113,8 @@ steps:
         ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":darwin: High Sierra Tests"
     agents:
-      queue: "automation-large-builder-fleet"
+      - "role=macos-tester"
+      - "os=high-sierra"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
