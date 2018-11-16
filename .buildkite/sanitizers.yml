@@ -21,8 +21,7 @@ steps:
         echo "--- :beers: Done"
     label: ":_: Undefined Sanitizer"
     agents:
-      role: 'automation-builder-fleet'
-      aws:instance-type: 'm5d.2xlarge'
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "build.tar.gz"
       - "ninja.log"
@@ -65,8 +64,7 @@ steps:
         echo "--- :beers: Done"
     label: ":_: Address Sanitizer"
     agents:
-      role: 'automation-builder-fleet'
-      aws:instance-type: 'm5d.2xlarge'
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "build.tar.gz"
       - "ninja.log"
@@ -98,8 +96,7 @@ steps:
         ctest -j8 -LE _tests -V -O sanitizer.log || true
     label: ":_: Undefined Sanitizer Tests"
     agents:
-      role: 'automation-builder-fleet'
-      aws:instance-type: 'm5d.2xlarge'
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "sanitizer.log"
@@ -121,8 +118,7 @@ steps:
         ctest -j8 -LE _tests -V -O sanitizer.log || true
     label: ":_: Address Sanitizer Tests"
     agents:
-      role: 'automation-builder-fleet'
-      aws:instance-type: 'm5d.2xlarge'
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "sanitizer.log"

@@ -6,14 +6,14 @@ steps:
         echo "--- :spiral_note_pad: Generating Code Coverage Report" && \
         /usr/bin/ninja EOSIO_ut_coverage && \
         echo "--- :arrow_up: Publishing Code Coverage Report" && \
-        buildkite-agent artifact upload "EOSIO_ut_coverage/**/*" s3://eosio-coverage/$BUILDKITE_JOB_ID && \
+        buildkite-agent artifact upload "EOSIO_ut_coverage/**/*" s3://eos-coverage/$BUILDKITE_JOB_ID && \
         cp /config/.coveralls.yml . && \
         /usr/local/bin/coveralls-lcov EOSIO_ut_coverage_filtered.info && \
         echo "+++ View Report" && \
-        printf "\033]1339;url=https://eosio-coverage.s3-us-west-2.amazonaws.com/$BUILDKITE_JOB_ID/EOSIO_ut_coverage/index.html;content=View Full Coverage Report\a\n"
+        printf "\033]1339;url=https://eos-coverage.s3-us-west-2.amazonaws.com/$BUILDKITE_JOB_ID/EOSIO_ut_coverage/index.html;content=View Full Coverage Report\a\n"
     label: ":spiral_note_pad: Generate Report"
     agents:
-      - "role=linux-coverage"
+      queue: "automation-large-builder-fleet"
     plugins:
       docker#v1.4.0:
         image: "eosio/ci:ubuntu18"
