@@ -191,7 +191,7 @@ namespace eosiosystem {
       INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.ram),N(active)},
                                                        { N(eosio.ram), account, asset(tokens_out), std::string("sell ram") } );
 
-      auto fee = ( tokens_out.amount + 199 ) / 200; /// .5% fee (round up)
+      auto fee = ( tokens_out.amount + 199 ) / 200; /// .5% fee (round up)-
       // since tokens_out.amount was asserted to be at least 2 earlier, fee.amount < tokens_out.amount
       
       if( fee > 0 ) {
@@ -205,7 +205,7 @@ namespace eosiosystem {
       const int64_t max_claimable = 100'000'000'0000ll;
       const int64_t claimable = int64_t(max_claimable * double(now()-base_time) / (10*seconds_per_year) );
 
-      eosio_assert( max_claimable - claimable <= stake, "b1 can only claim their tokens over 10 years" );
+      eosio_assert( max_claimable - claimable <= stake, "bosbosbosbos can only claim their tokens over 10 years" );
    }
 
    void system_contract::changebw( account_name from, account_name receiver,

@@ -46,10 +46,10 @@ try
    process_account_limit_updates();
 
    uint16_t free_resource_limit_per_day = 100;
-   TESTER test;
+  
    // Bypass read-only restriction on state DB access for this unit test which really needs to mutate the DB to properly conduct its test.
 
-   test.control->startup();
+   // test.control->startup();
 
    //  // Make sure we can no longer find
 
@@ -59,12 +59,9 @@ try
    {
       add_transaction_usage({account}, increment, 0, 0);
    }
-   int64_t r = 0;
-   int64_t n = 0;
-   int64_t c = 0;
 
-   account_name testname;
-   auto arl = get_account_cpu_limit_ex(testname, true);
+
+   auto arl = get_account_cpu_limit_ex(account, true);
 
    BOOST_REQUIRE_EQUAL(arl.available, 0);
    BOOST_REQUIRE_THROW(add_transaction_usage({account}, increment, 0, 0), block_resource_exhausted);
@@ -80,18 +77,6 @@ try
    set_account_limits(account, increment, increment, increment);
    process_account_limit_updates();
 
-   TESTER test;
-   chainbase::database &db = const_cast<chainbase::database &>(test.control->db());
-   auto ses = db.start_undo_session(true);
-
-   const global_propertyex_object &ptr = db.get<global_propertyex_object>();
-
-   //          // Create an account
-   db.modify(ptr, [&](global_propertyex_object &a) {
-      a.rmg.cpu_us = 2000 * 1000;
-      a.rmg.net_byte = 1024;
-      a.rmg.ram_byte = 1;
-   });
 
    const uint64_t expected_iterations = config::default_max_block_cpu_usage / increment;
 
@@ -100,12 +85,12 @@ try
       add_transaction_usage({account}, increment, 0, 0);
    }
 
-   account_name testname;
-   auto arl = get_account_cpu_limit_ex(testname, true);
+ 
+   auto arl = get_account_cpu_limit_ex(account, true);
    BOOST_TEST(arl.available > 0);
 
    BOOST_REQUIRE_THROW(add_transaction_usage({account}, increment, 0, 0), block_resource_exhausted);
-   ses.undo();
+   
 }
 FC_LOG_AND_RETHROW();
 
@@ -117,19 +102,7 @@ try
    initialize_account(account);
    set_account_limits(account, increment, increment, increment);
    process_account_limit_updates();
-
-   TESTER test;
-   chainbase::database &db = const_cast<chainbase::database &>(test.control->db());
-   auto ses = db.start_undo_session(true);
-
-   const global_propertyex_object &ptr = db.get<global_propertyex_object>();
-
-   //          // Create an account
-   db.modify(ptr, [&](global_propertyex_object &a) {
-      a.rmg.cpu_us = 2000 * 1000;
-      a.rmg.net_byte = 1024;
-      a.rmg.ram_byte = 1;
-   });
+   
 
    //   const uint64_t expected_iterations = config::default_max_block_cpu_usage / increment;
 
@@ -137,12 +110,12 @@ try
    add_transaction_usage({account}, increment, 0, 0);
    //   }
 
-   account_name testname;
-   auto arl = get_account_net_limit_ex(testname, true);
+  
+   auto arl = get_account_net_limit_ex(account, true);
    BOOST_TEST(arl.available > 0);
 
    BOOST_REQUIRE_THROW(add_transaction_usage({account}, increment, 0, 0), block_resource_exhausted);
-   ses.undo();
+  
 }
 FC_LOG_AND_RETHROW();
 

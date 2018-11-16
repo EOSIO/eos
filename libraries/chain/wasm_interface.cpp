@@ -211,7 +211,7 @@ class privileged_api : public context_aware_api {
        
       }
 
-      void set_resouces_minimum_guarantee(int64_t ram_byte, int64_t cpu_us, int64_t net_byte)
+      void set_guaranteed_minmum_resources(int64_t ram_byte, int64_t cpu_us, int64_t net_byte)
       {
          EOS_ASSERT(ram_byte >= 0 && ram_byte <= 100 * 1024, wasm_execution_error, "resouces minimum guarantee for ram limit expected [0, 102400]");
          EOS_ASSERT(cpu_us >= 0 && cpu_us <= 100 * 1000, wasm_execution_error, "resouces minimum guarantee for cpu limit expected [0, 100000]");
@@ -219,9 +219,9 @@ class privileged_api : public context_aware_api {
 
          context.db.modify(context.control.get_global_properties2(),
                            [&](auto &gprops2) {
-                              gprops2.rmg.ram_byte = ram_byte;
-                              gprops2.rmg.cpu_us = cpu_us;
-                              gprops2.rmg.net_byte = net_byte;
+                              gprops2.gmr.ram_byte = ram_byte;
+                              gprops2.gmr.cpu_us = cpu_us;
+                              gprops2.gmr.net_byte = net_byte;
                            });
       }
 
@@ -1740,7 +1740,7 @@ REGISTER_INTRINSICS(privileged_api,
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
    (set_name_list_packed,             void(int64_t,int64_t,int,int)         )
-   (set_resouces_minimum_guarantee,   void(int64_t,int64_t,int64_t)         )
+   (set_guaranteed_minmum_resources,   void(int64_t,int64_t,int64_t)         )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
 );

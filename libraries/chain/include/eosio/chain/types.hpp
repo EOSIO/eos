@@ -169,6 +169,7 @@ namespace eosio { namespace chain {
       resource_usage_object_type,
       resource_limits_state_object_type,
       resource_limits_config_object_type,
+      gmr_config_object_type,      ///< Defined by bos
       account_history_object_type,              ///< Defined by history_plugin
       action_history_object_type,               ///< Defined by history_plugin
       reversible_block_object_type,

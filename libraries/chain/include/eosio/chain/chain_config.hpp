@@ -78,7 +78,7 @@ struct chain_config2 {
 };
 
 // *bos*
-struct resouces_minimum_guarantee {
+struct guaranteed_minimum_resources {
    uint64_t ram_byte;
    uint64_t cpu_us;
    uint64_t net_byte;
@@ -99,4 +99,4 @@ FC_REFLECT(eosio::chain::chain_config,
 )
 // *bos*
 FC_REFLECT( eosio::chain::chain_config2, (actor_blacklist)(contract_blacklist)(resource_greylist) )
-FC_REFLECT( eosio::chain::resouces_minimum_guarantee, (ram_byte)(cpu_us)(net_byte) )
+FC_REFLECT( eosio::chain::guaranteed_minimum_resources, (ram_byte)(cpu_us)(net_byte) )

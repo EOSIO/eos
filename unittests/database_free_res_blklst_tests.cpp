@@ -58,7 +58,6 @@ BOOST_AUTO_TEST_CASE(list_config_parse_test)
    FC_LOG_AND_RETHROW()
 }
 
-
 // Simple tests of undo infrastructure
 BOOST_AUTO_TEST_CASE(set_name_list_test)
 {
@@ -70,12 +69,12 @@ BOOST_AUTO_TEST_CASE(set_name_list_test)
 
       auto ses = db.start_undo_session(true);
 
-        string str= "alice,bob,tom";
-        vector<name> list = parse_list_string(str);
+      string str = "alice,bob,tom";
+      vector<name> list = parse_list_string(str);
 
-flat_set<account_name>  nameset(list.begin(),list.end());
+      flat_set<account_name> nameset(list.begin(), list.end());
 
-test.control->set_actor_blacklist(nameset);
+      test.control->set_actor_blacklist(nameset);
 
       // Make sure we can retrieve that account by name
       const global_propertyex_object &ptr = db.get<global_propertyex_object>();
@@ -83,32 +82,65 @@ test.control->set_actor_blacklist(nameset);
       // Create an account
       db.modify(ptr, [&](global_propertyex_object &a) {
          a.cfg.actor_blacklist = {N(a)};
+         a.cfg.contract_blacklist = {N(a)};
+         a.cfg.resource_greylist = {N(a)};
       });
 
-int64_t lt = static_cast<int64_t>(list_type::actor_blacklist_type);
-int64_t lat = static_cast<int64_t>(list_action_type::insert_type);
-test.control->set_name_list(lt,lat,list);
+      int64_t lt = static_cast<int64_t>(list_type::actor_blacklist_type);
+      int64_t lat = static_cast<int64_t>(list_action_type::insert_type);
+      test.control->set_name_list(lt, lat, list);
 
-const global_propertyex_object &ptr1 = db.get<global_propertyex_object>();
-      chain_config2 a = ptr1.cfg;
+     
 
-      uint64_t v = 0;
-      if (a.actor_blacklist.size() ==4)
+
+       const flat_set<account_name>&  ab =  test.control->get_actor_blacklist();
+       const flat_set<account_name>&  cb =  test.control->get_contract_blacklist();
+       const flat_set<account_name>&  rg =  test.control->get_resource_greylist();
+
+     
+
+
+      auto convert_names = [&](const shared_vector<name>& namevec, flat_set<account_name>& nameset) -> void {
+        for(const auto& a :namevec)
+        {
+           nameset.insert(uint64_t(a));
+        }
+      };
+
+      flat_set<account_name> aab;
+      flat_set<account_name> acb;
+      flat_set<account_name> arg;
+
+      const global_propertyex_object &ptr1 = db.get<global_propertyex_object>();
+      chain_config2 c = ptr1.cfg;
+
+      BOOST_TEST(c.actor_blacklist.size() == 4);
+      BOOST_TEST(ab.size() == 4);
+
+      convert_names(c.actor_blacklist, aab);
+      convert_names(c.contract_blacklist, acb);
+      convert_names(c.resource_greylist, arg);
+
+     
+      if (c.actor_blacklist.size() == 4)
       {
-         v = *(a.actor_blacklist.begin());
+
+         bool b = (aab.find(N(a)) != aab.end());
+         BOOST_TEST(b);
       }
-      BOOST_TEST(v > 0);
+
+      bool d = ab.find(N(a)) != ab.end();
+      BOOST_TEST(d);
+      bool m = aab.find(N(alice)) != aab.end();
+      BOOST_TEST(m);
 
       // Undo creation of the account
       ses.undo();
 
-      //  // Make sure we can no longer find the account
-      //  ptr = db.find<global_property_list_object, by_name, std::string>("billy");
-      //  BOOST_TEST(ptr == nullptr);
+    
    }
    FC_LOG_AND_RETHROW()
 }
-
 
 // Simple tests of undo infrastructure
 BOOST_AUTO_TEST_CASE(actor_blacklist_config_test)
@@ -144,9 +176,7 @@ BOOST_AUTO_TEST_CASE(actor_blacklist_config_test)
       // Undo creation of the account
       ses.undo();
 
-      //  // Make sure we can no longer find the account
-      //  ptr = db.find<global_property_list_object, by_name, std::string>("billy");
-      //  BOOST_TEST(ptr == nullptr);
+
    }
    FC_LOG_AND_RETHROW()
 }
@@ -185,9 +215,7 @@ BOOST_AUTO_TEST_CASE(contract_blacklist_config_test)
       // Undo creation of the account
       ses.undo();
 
-      //  // Make sure we can no longer find the account
-      //  ptr = db.find<global_property_list_object, by_name, std::string>("billy");
-      //  BOOST_TEST(ptr == nullptr);
+
    }
    FC_LOG_AND_RETHROW()
 }
@@ -226,9 +254,6 @@ BOOST_AUTO_TEST_CASE(resource_greylist_config_test)
       // Undo creation of the account
       ses.undo();
 
-      //  // Make sure we can no longer find the account
-      //  ptr = db.find<global_property_list_object, by_name, std::string>("billy");
-      //  BOOST_TEST(ptr == nullptr);
    }
    FC_LOG_AND_RETHROW()
 }
@@ -249,21 +274,19 @@ BOOST_AUTO_TEST_CASE(free_resource_limit_config_test)
 
       // Create an account
       db.modify(ptr, [&](global_propertyex_object &a) {
-         a.rmg.cpu_us = 100;
-         a.rmg.net_byte = 1024;
-         a.rmg.ram_byte = 1;
+         a.gmr.cpu_us = 100;
+         a.gmr.net_byte = 1024;
+         a.gmr.ram_byte = 1;
       });
 
-      BOOST_TEST(ptr.rmg.cpu_us == 100);
-      BOOST_TEST(ptr.rmg.net_byte == 1024);
-      BOOST_TEST(ptr.rmg.ram_byte == 1);
+      BOOST_TEST(ptr.gmr.cpu_us == 100);
+      BOOST_TEST(ptr.gmr.net_byte == 1024);
+      BOOST_TEST(ptr.gmr.ram_byte == 1);
 
       // Undo creation of the account
       ses.undo();
 
-      //  // Make sure we can no longer find the account
-      //  ptr = db.find<global_property_list_object, by_name, std::string>("billy");
-      //  BOOST_TEST(ptr == nullptr);
+
    }
    FC_LOG_AND_RETHROW()
 }

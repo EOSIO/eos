@@ -41,7 +41,7 @@ namespace eosio { namespace chain {
 
       id_type                       id;
       chain_config2                 cfg;
-      resouces_minimum_guarantee    rmg;
+      guaranteed_minimum_resources    gmr;//guaranteed_minimum_resources
    };
 
 
@@ -106,5 +106,5 @@ FC_REFLECT(eosio::chain::global_property_object,
           )
 // *bos*
 FC_REFLECT(eosio::chain::global_propertyex_object,
-           (cfg)(rmg)
+           (cfg)(gmr)
           )
