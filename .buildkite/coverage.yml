@@ -13,7 +13,7 @@ steps:
         printf "\033]1339;url=https://eos-coverage.s3-us-west-2.amazonaws.com/$BUILDKITE_JOB_ID/EOSIO_ut_coverage/index.html;content=View Full Coverage Report\a\n"
     label: ":spiral_note_pad: Generate Report"
     agents:
-      queue: "automation-large-builder-fleet"
+      #queue: "automation-large-builder-fleet"
       - "aws:instance-id=i-0f219c172ecead56d"
     plugins:
       docker#v1.4.0:
