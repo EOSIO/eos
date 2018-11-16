@@ -7,16 +7,21 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
+// Check
+// #include <eosio.system/eosio.system.wast.hpp>
+// #include <eosio.system/eosio.system.abi.hpp>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
+// Check
+// #include <eosio.token/eosio.token.wast.hpp>
+// #include <eosio.token/eosio.token.abi.hpp>
 
-#include <eosio.msig/eosio.msig.wast.hpp>
-#include <eosio.msig/eosio.msig.abi.hpp>
+// Check
+// #include <eosio.msig/eosio.msig.wast.hpp>
+// #include <eosio.msig/eosio.msig.abi.hpp>
 
 #include <fc/variant_object.hpp>
+
+#include <contracts.hpp>
 
 using namespace eosio::chain;
 using namespace eosio::testing;
@@ -52,8 +57,8 @@ public:
 
       produce_blocks( 100 );
 
-      set_code( N(eosio.token), eosio_token_wast );
-      set_abi( N(eosio.token), eosio_token_abi );
+      set_code( N(eosio.token), contracts::eosio_token_wasm() );
+      set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
 
       {
          const auto& accnt = control->db().get<account_object,by_name>( N(eosio.token) );
@@ -66,8 +71,8 @@ public:
       issue(config::system_account_name,      core_from_string("1000000000.0000"));
       BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
 
-      set_code( config::system_account_name, eosio_system_wast );
-      set_abi( config::system_account_name, eosio_system_abi );
+      set_code( config::system_account_name, contracts::eosio_system_wasm() );
+      set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
 
       {
          const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
@@ -417,8 +422,8 @@ public:
                                                ("is_priv", 1)
          );
 
-         set_code( N(eosio.msig), eosio_msig_wast );
-         set_abi( N(eosio.msig), eosio_msig_abi );
+         set_code( N(eosio.msig), contracts::eosio_msig_wasm() );
+         set_abi( N(eosio.msig), contracts::eosio_msig_abi().data() );
 
          produce_blocks();
          const auto& accnt = control->db().get<account_object,by_name>( N(eosio.msig) );

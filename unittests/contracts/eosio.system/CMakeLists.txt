@@ -1,10 +1,6 @@
-add_contract(eosio.system eosio.system ${CMAKE_CURRENT_SOURCE_DIR}/src/eosio.system.cpp)
-#add_executable(eosio.system.wasm ${CMAKE_CURRENT_SOURCE_DIR}/src/eosio.system.cpp)
-target_include_directories(eosio.system.wasm
-   PUBLIC
-   ${CMAKE_CURRENT_SOURCE_DIR}/include
-   ${CMAKE_CURRENT_SOURCE_DIR}/../eosio.token/include)
+set( CMAKE_CXX_STANDARD 17 )
 
-set_target_properties(eosio.system.wasm
-   PROPERTIES
-   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+include_directories( ${MYPROJECT_DIR}./eosio.system/ )
+include_directories( ${MYPROJECT_DIR}../eosio.token/ )
+
+add_contract( eosio.system eosio.system delegate_bandwidth.cpp eosio.system.cpp exchange_state.cpp producer_pay.cpp voting.cpp )

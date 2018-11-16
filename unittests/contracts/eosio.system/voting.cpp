@@ -82,7 +82,7 @@ namespace eosiosystem {
       require_auth( producer );
 
       const auto& prod = _producers.get( producer.value, "producer not found" );
-      _producers.modify( prod, same_payer, [&]( producer_info& info ){
+      _producers.modify( prod, eosio::same_payer, [&]( producer_info& info ){
          info.deactivate();
       });
    }
@@ -164,7 +164,7 @@ namespace eosiosystem {
       }
 
       double new_votepay_share = prod_itr->votepay_share + delta_votepay_share;
-      _producers2.modify( prod_itr, same_payer, [&](auto& p) {
+      _producers2.modify( prod_itr, eosio::same_payer, [&](auto& p) {
          if( reset_to_zero )
             p.votepay_share = 0.0;
          else
@@ -221,9 +221,9 @@ namespace eosiosystem {
        */
       if( voter->last_vote_weight <= 0.0 ) {
          _gstate.total_activated_stake += voter->staked;
-         if( _gstate.total_activated_stake >= min_activated_stake && _gstate.thresh_activated_stake_time == time_point() ) {
-            _gstate.thresh_activated_stake_time = current_time_point();
-         }
+         // if( _gstate.total_activated_stake >= min_activated_stake && _gstate.thresh_activated_stake_time == time_point() ) {
+         //    _gstate.thresh_activated_stake_time = current_time_point();
+         // }
       }
 
       auto new_vote_weight = stake2vote( voter->staked );
@@ -231,12 +231,12 @@ namespace eosiosystem {
          new_vote_weight += voter->proxied_vote_weight;
       }
 
-      boost::container::flat_map<name, pair<double, bool /*new*/> > producer_deltas;
+      boost::container::flat_map<name, std::pair<double, bool /*new*/> > producer_deltas;
       if ( voter->last_vote_weight > 0 ) {
          if( voter->proxy ) {
             auto old_proxy = _voters.find( voter->proxy.value );
             eosio_assert( old_proxy != _voters.end(), "old proxy not found" ); //data corruption
-            _voters.modify( old_proxy, same_payer, [&]( auto& vp ) {
+            _voters.modify( old_proxy, eosio::same_payer, [&]( auto& vp ) {
                   vp.proxied_vote_weight -= voter->last_vote_weight;
                });
             propagate_weight_change( *old_proxy );
@@ -254,7 +254,7 @@ namespace eosiosystem {
          eosio_assert( new_proxy != _voters.end(), "invalid proxy specified" ); //if ( !voting ) { data corruption } else { wrong vote }
          eosio_assert( !voting || new_proxy->is_proxy, "proxy not found" );
          if ( new_vote_weight >= 0 ) {
-            _voters.modify( new_proxy, same_payer, [&]( auto& vp ) {
+            _voters.modify( new_proxy, eosio::same_payer, [&]( auto& vp ) {
                   vp.proxied_vote_weight += new_vote_weight;
                });
             propagate_weight_change( *new_proxy );
@@ -277,7 +277,7 @@ namespace eosiosystem {
          if( pitr != _producers.end() ) {
             eosio_assert( !voting || pitr->active() || !pd.second.second /* not from new set */, "producer is not currently registered" );
             double init_total_votes = pitr->total_votes;
-            _producers.modify( pitr, same_payer, [&]( auto& p ) {
+            _producers.modify( pitr, eosio::same_payer, [&]( auto& p ) {
                p.total_votes += pd.second.first;
                if ( p.total_votes < 0 ) { // floating point arithmetics can give small negative numbers
                   p.total_votes = 0;
@@ -287,7 +287,7 @@ namespace eosiosystem {
             });
             auto prod2 = _producers2.find( pd.first.value );
             if( prod2 != _producers2.end() ) {
-               const auto last_claim_plus_3days = pitr->last_claim_time + microseconds(3 * useconds_per_day);
+               const auto last_claim_plus_3days = pitr->last_claim_time + microseconds( 3 * (seconds_per_day * 1000000) );
                bool crossed_threshold       = (last_claim_plus_3days <= ct);
                bool updated_after_threshold = (last_claim_plus_3days <= prod2->last_votepay_share_update);
                // Note: updated_after_threshold implies cross_threshold
@@ -312,7 +312,7 @@ namespace eosiosystem {
 
       update_total_votepay_share( ct, -total_inactive_vpay_share, delta_change_rate );
 
-      _voters.modify( voter, same_payer, [&]( auto& av ) {
+      _voters.modify( voter, eosio::same_payer, [&]( auto& av ) {
          av.last_vote_weight = new_vote_weight;
          av.producers = producers;
          av.proxy     = proxy;
@@ -335,7 +335,7 @@ namespace eosiosystem {
       if ( pitr != _voters.end() ) {
          eosio_assert( isproxy != pitr->is_proxy, "action has no effect" );
          eosio_assert( !isproxy || !pitr->proxy, "account that uses a proxy is not allowed to become a proxy" );
-         _voters.modify( pitr, same_payer, [&]( auto& p ) {
+         _voters.modify( pitr, eosio::same_payer, [&]( auto& p ) {
                p.is_proxy = isproxy;
             });
          propagate_weight_change( *pitr );
@@ -358,7 +358,7 @@ namespace eosiosystem {
       if ( fabs( new_weight - voter.last_vote_weight ) > 1 )  {
          if ( voter.proxy ) {
             auto& proxy = _voters.get( voter.proxy.value, "proxy not found" ); //data corruption
-            _voters.modify( proxy, same_payer, [&]( auto& p ) {
+            _voters.modify( proxy, eosio::same_payer, [&]( auto& p ) {
                   p.proxied_vote_weight += new_weight - voter.last_vote_weight;
                }
             );
@@ -371,13 +371,13 @@ namespace eosiosystem {
             for ( auto acnt : voter.producers ) {
                auto& prod = _producers.get( acnt.value, "producer not found" ); //data corruption
                const double init_total_votes = prod.total_votes;
-               _producers.modify( prod, same_payer, [&]( auto& p ) {
+               _producers.modify( prod, eosio::same_payer, [&]( auto& p ) {
                   p.total_votes += delta;
                   _gstate.total_producer_vote_weight += delta;
                });
                auto prod2 = _producers2.find( acnt.value );
                if ( prod2 != _producers2.end() ) {
-                  const auto last_claim_plus_3days = prod.last_claim_time + microseconds(3 * useconds_per_day);
+                  const auto last_claim_plus_3days = prod.last_claim_time + microseconds(3 * (seconds_per_day * 1000000) );
                   bool crossed_threshold       = (last_claim_plus_3days <= ct);
                   bool updated_after_threshold = (last_claim_plus_3days <= prod2->last_votepay_share_update);
                   // Note: updated_after_threshold implies cross_threshold
@@ -400,7 +400,7 @@ namespace eosiosystem {
             update_total_votepay_share( ct, -total_inactive_vpay_share, delta_change_rate );
          }
       }
-      _voters.modify( voter, same_payer, [&]( auto& v ) {
+      _voters.modify( voter, eosio::same_payer, [&]( auto& v ) {
             v.last_vote_weight = new_weight;
          }
       );

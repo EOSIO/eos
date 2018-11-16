@@ -44,8 +44,7 @@
 #include <test_api_db/test_api_db.wast.hpp>
 #include <test_api_multi_index/test_api_multi_index.wast.hpp>
 
-#include <eosio.bios/eosio.bios.wast.hpp>
-#include <eosio.bios/eosio.bios.abi.hpp>
+#include <contracts.hpp>
 
 #define DISABLE_EOSLIB_SERIALIZE
 #include <test_api/test_api_common.hpp>
@@ -273,9 +272,9 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
       BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 2);
       BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 1);
    }
-   set_code( config::system_account_name, eosio_bios_wast );
+   set_code( config::system_account_name, contracts::eosio_bios_wasm() );
 
-	set_code( N(testapi), eosio_bios_wast );
+   set_code( N(testapi), contracts::eosio_bios_wasm() );
    set_abi(N(testapi), eosio_bios_abi);
 	set_code( N(testapi), test_api_wast );
 	res = CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});

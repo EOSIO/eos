@@ -3,20 +3,22 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
-#include <eosio.msig/eosio.msig.wast.hpp>
-#include <eosio.msig/eosio.msig.abi.hpp>
+// #include <eosio.msig/eosio.msig.wast.hpp>
+// #include <eosio.msig/eosio.msig.abi.hpp>
 
-#include <test_api/test_api.wast.hpp>
+// #include <test_api/test_api.wast.hpp>
 
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
+// #include <eosio.system/eosio.system.wast.hpp>
+// #include <eosio.system/eosio.system.abi.hpp>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
+// #include <eosio.token/eosio.token.wast.hpp>
+// #include <eosio.token/eosio.token.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
+
+#include <contracts.hpp>
 
 using namespace eosio::testing;
 using namespace eosio;
@@ -39,8 +41,8 @@ public:
                                             ("is_priv", 1)
       );
 
-      set_code( N(eosio.msig), eosio_msig_wast );
-      set_abi( N(eosio.msig), eosio_msig_abi );
+      set_code( N(eosio.msig), contracts::eosio_msig_wasm() );
+      set_abi( N(eosio.msig), contracts::eosio_msig_abi().data() );
 
       produce_blocks();
       const auto& accnt = control->db().get<account_object,by_name>( N(eosio.msig) );
@@ -319,7 +321,7 @@ BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) 
 
 BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name } };
-   auto wasm = wast_to_wasm( eosio_token_wast );
+   auto wasm = wast_to_wasm( contracts::eosio_token_wasm() );
 
    variant pretty_trx = fc::mutable_variant_object()
       ("expiration", "2020-01-01T00:30")
@@ -400,16 +402,16 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester )
    produce_blocks(50);
 
    create_accounts( { N(eosio.token) } );
-   set_code( N(eosio.token), eosio_token_wast );
-   set_abi( N(eosio.token), eosio_token_abi );
+   set_code( N(eosio.token), contracts::eosio_token_wasm() );
+   set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
 
    create_currency( N(eosio.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
                         get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
 
-   set_code( config::system_account_name, eosio_system_wast );
-   set_abi( config::system_account_name, eosio_system_abi );
+   set_code( config::system_account_name, contracts::eosio_system_wasm() );
+   set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
 
    produce_blocks();
 
@@ -512,15 +514,15 @@ BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester
    produce_blocks(50);
 
    create_accounts( { N(eosio.token) } );
-   set_code( N(eosio.token), eosio_token_wast );
-   set_abi( N(eosio.token), eosio_token_abi );
+   set_code( N(eosio.token), contracts::eosio_token_wasm() );
+   set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
 
    create_currency( N(eosio.token), config::system_account_name, core_from_string("10000000000.0000") );
    issue(config::system_account_name, core_from_string("1000000000.0000"));
    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
 
-   set_code( config::system_account_name, eosio_system_wast );
-   set_abi( config::system_account_name, eosio_system_abi );
+   set_code( config::system_account_name, contracts::eosio_system_wasm() );
+   set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
 
    produce_blocks();
 

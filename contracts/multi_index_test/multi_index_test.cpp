@@ -6,52 +6,51 @@ using namespace eosio;
 
 namespace multi_index_test {
 
-   struct limit_order {
-      uint64_t  id;
-      uint64_t  padding = 0;
-      uint128_t price;
-      uint64_t  expiration;
-      name      owner;
-
-      auto primary_key()const { return id; }
-      uint64_t get_expiration()const { return expiration; }
-      uint128_t get_price()const { return price; }
-
-      EOSLIB_SERIALIZE( limit_order, (id)(price)(expiration)(owner) )
-   };
-
-   struct test_k256 {
-      uint64_t  id;
-      key256   val;
-
-      auto primary_key()const { return id; }
-      key256 get_val()const { return val; }
-
-      EOSLIB_SERIALIZE( test_k256, (id)(val) )
-   };
-
    CONTRACT snapshot_test : public contract {
    public:
       using contract::contract;
 
-      struct trigger {
-         trigger( name user, uint32_t w = 0 )
-            : account(user), what(w)
-         {}
+      struct limit_order {
+         uint64_t  id;
+         uint64_t  padding = 0;
+         uint128_t price;
+         uint64_t  expiration;
+         name      owner;
 
-         name     account;
+         auto primary_key()const { return id; }
+         uint64_t get_expiration()const { return expiration; }
+         uint128_t get_price()const { return price; }
+
+         EOSLIB_SERIALIZE( limit_order, (id)(price)(expiration)(owner) )
+      };
+
+      struct test_k256 {
+         uint64_t  id;
+         key256   val;
+
+         auto primary_key()const { return id; }
+         key256 get_val()const { return val; }
+
+         EOSLIB_SERIALIZE( test_k256, (id)(val) )
+      };
+
+      struct trigger {
+         trigger( uint32_t w = 0 )
+            : what(w)
+         {}
+         
          uint32_t what;
       };
 
-      ACTION multitest( name user, uint32_t w ) {
-         trigger t(user, w);
+      ACTION multitest( uint32_t what ) {
+         trigger t(what);
 
-         on(t);
+         on(t, _self);
       }
 
-      static void on(const trigger& act)
+      static void on(const trigger& act, name _payer)
       {
-         name payer = act.account;
+         name payer = _payer;
          print("Acting on trigger action.\n");
          switch(act.what)
          {
@@ -59,19 +58,19 @@ namespace multi_index_test {
              {
                 print("Testing uint128_t secondary index.\n");
                 eosio::multi_index<"orders"_n, limit_order,
-                   indexed_by< "byexp"_n,   const_mem_fun<limit_order, uint64_t,  &limit_order::get_expiration> >,
-                   indexed_by< "byprice"_n, const_mem_fun<limit_order, uint128_t, &limit_order::get_price> >
-                   > orders( name{"multitest"}, name{"multitest"}.value );
+                                   indexed_by< "byexp"_n,   const_mem_fun<limit_order, uint64_t,  &limit_order::get_expiration> >,
+                                   indexed_by< "byprice"_n, const_mem_fun<limit_order, uint128_t, &limit_order::get_price> >
+                                   > orders( name{"multitest"}, name{"multitest"}.value );
 
                 orders.emplace( payer, [&]( auto& o ) {
-                   o.id = 1;
-                   o.expiration = 300;
-                   o.owner = "dan"_n; });
+                                          o.id = 1;
+                                          o.expiration = 300;
+                                          o.owner = "dan"_n; });
 
                 auto order2 = orders.emplace( payer, [&]( auto& o ) {
-                   o.id = 2;
-                   o.expiration = 200;
-                   o.owner = "alice"_n; });
+                                                        o.id = 2;
+                                                        o.expiration = 200;
+                                                        o.owner = "alice"_n; });
 
                 print("Items sorted by primary key:\n");
                 for( const auto& item : orders ) {
@@ -87,7 +86,7 @@ namespace multi_index_test {
 
                 print("Modifying expiration of order with ID=2 to 400.\n");
                 orders.modify( order2, payer, [&]( auto& o ) {
-                   o.expiration = 400; });
+                                                 o.expiration = 400; });
 
                 print("Items sorted by expiration:\n");
                 for( const auto& item : expidx ) {
@@ -104,20 +103,20 @@ namespace multi_index_test {
              {
                 print("Testing key256 secondary index.\n");
                 eosio::multi_index<"test1"_n, test_k256,
-                   indexed_by< "byval"_n, const_mem_fun<test_k256, key256, &test_k256::get_val> >
-                   > testtable( "multitest"_n, "exchange"_n.value ); // Code must be same as the receiver? Scope doesn't have to be.
+                                   indexed_by< "byval"_n, const_mem_fun<test_k256, key256, &test_k256::get_val> >
+                                   > testtable( "multitest"_n, "exchange"_n.value ); // Code must be same as the receiver? Scope doesn't have to be.
 
                 testtable.emplace( payer, [&]( auto& o ) {
-                   o.id = 1;
-                   o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL); });
+                                             o.id = 1;
+                                             o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL); });
 
                 testtable.emplace( payer, [&]( auto& o ) {
-                   o.id = 2;
-                   o.val = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL); });
+                                             o.id = 2;
+                                             o.val = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL); });
 
                 testtable.emplace( payer, [&]( auto& o ) {
-                   o.id = 3;
-                   o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL); });
+                                             o.id = 3;
+                                             o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL); });
 
                 auto itr = testtable.find( 2 );
 
@@ -178,13 +177,12 @@ namespace multi_index_test {
                buffer = alloca( 512 );
                read_action_data( buffer, size );
                datastream<const char*> ds( (char*)buffer, size );
-                    
-               name user;
+               
                uint32_t w;
-               ds >> user >> w;
+               ds >> w;
                     
                snapshot_test test( name{receiver}, name{code}, ds );
-               test.multitest( user, w );
+               test.multitest( w );
             }
             else {
                eosio_assert(false, "Could not dispatch");

@@ -29,34 +29,37 @@ BOOST_FIXTURE_TEST_CASE( multi_index_load, TESTER ) try {
 
    produce_blocks(1);
 
-   abi_serializer abi_ser(json::from_string(contracts::multi_index_test_abi().data(), ).as<abi_def>(), abi_serializer_max_time);
+   auto abi_string = std::string(contracts::multi_index_test_abi().data());
+
+   abi_serializer abi_ser(json::from_string(abi_string).as<abi_def>(), abi_serializer_max_time);
 
    signed_transaction trx1;
    {
       auto& trx = trx1;
       action trigger_act;
       trigger_act.account = N(multitest);
-      trigger_act.name = N(trigger);
+      trigger_act.name = N(multitest);
       trigger_act.authorization = vector<permission_level>{{N(multitest), config::active_name}};
-      trigger_act.data = abi_ser.variant_to_binary("trigger", mutable_variant_object()
+      trigger_act.data = abi_ser.variant_to_binary("multitest", mutable_variant_object()
                                                    ("what", 0),
                                                    abi_serializer_max_time
       );
+   
       trx.actions.emplace_back(std::move(trigger_act));
       set_transaction_headers(trx);
       trx.sign(get_private_key(N(multitest), "active"), control->get_chain_id());
       push_transaction(trx);
    }
-
+    
    signed_transaction trx2;
    {
       auto& trx = trx2;
 
       action trigger_act;
       trigger_act.account = N(multitest);
-      trigger_act.name = N(trigger);
+      trigger_act.name = N(multitest);
       trigger_act.authorization = vector<permission_level>{{N(multitest), config::active_name}};
-      trigger_act.data = abi_ser.variant_to_binary("trigger", mutable_variant_object()
+      trigger_act.data = abi_ser.variant_to_binary("multitest", mutable_variant_object()
                                                    ("what", 1),
                                                    abi_serializer_max_time
       );

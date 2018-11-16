@@ -7,17 +7,17 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
-#include <asserter/asserter.wast.hpp>
-#include <asserter/asserter.abi.hpp>
+// #include <asserter/asserter.wast.hpp>
+// #include <asserter/asserter.abi.hpp>
 
-#include <stltest/stltest.wast.hpp>
-#include <stltest/stltest.abi.hpp>
+// #include <stltest/stltest.wast.hpp>
+// #include <stltest/stltest.abi.hpp>
 
-#include <noop/noop.wast.hpp>
-#include <noop/noop.abi.hpp>
+// #include <noop/noop.wast.hpp>
+// #include <noop/noop.abi.hpp>
 
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
+// #include <eosio.system/eosio.system.wast.hpp>
+// #include <eosio.system/eosio.system.abi.hpp>
 
 #include <fc/io/fstream.hpp>
 
@@ -33,6 +33,8 @@
 #include <utility>
 
 #include "incbin.h"
+
+#include <contracts.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -84,7 +86,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
    create_accounts( {N(asserter)} );
    produce_block();
 
-   set_code(N(asserter), asserter_wast);
+   set_code(N(asserter), contracts::asserter_wasm());
    produce_blocks(1);
 
    transaction_id_type no_assert_id;
@@ -143,7 +145,7 @@ BOOST_FIXTURE_TEST_CASE( prove_mem_reset, TESTER ) try {
    create_accounts( {N(asserter)} );
    produce_block();
 
-   set_code(N(asserter), asserter_wast);
+   set_code(N(asserter), contracts::asserter_wasm());
    produce_blocks(1);
 
    // repeat the action multiple times, each time the action handler checks for the expected
@@ -173,8 +175,8 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, TESTER ) try {
    create_accounts( {N(asserter)} );
    produce_block();
 
-   set_code(N(asserter), asserter_wast);
-   set_abi(N(asserter), asserter_abi);
+   set_code(N(asserter), contracts::asserter_wasm());
+   set_abi(N(asserter), contracts::asserter_abi().data());
    produce_blocks(1);
 
    auto resolver = [&,this]( const account_name& name ) -> optional<abi_serializer> {

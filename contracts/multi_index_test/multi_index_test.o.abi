@@ -1,0 +1,32 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri Nov 16 14:21:32 2018",
+    "version": "eosio::abi/1.1",
+    "structs": [
+        {
+            "name": "multitest",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "w",
+                    "type": "uint32"
+                }
+            ]
+        }
+    ],
+    "types": [],
+    "actions": [
+        {
+            "name": "multitest",
+            "type": "multitest",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": [],
+    "abi_extensions": []
+}

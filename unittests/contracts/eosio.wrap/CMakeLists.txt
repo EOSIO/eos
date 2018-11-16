@@ -1,8 +1,5 @@
-add_contract(eosio.wrap eosio.wrap ${CMAKE_CURRENT_SOURCE_DIR}/src/eosio.wrap.cpp)
-target_include_directories(eosio.wrap.wasm
-   PUBLIC
-   ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set( CMAKE_CXX_STANDARD 17 )
 
-set_target_properties(eosio.wrap.wasm
-   PROPERTIES
-   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+include_directories( ${MYPROJECT_DIR}./eosio.wrap/ )
+
+add_contract( eosio.wrap eosio.wrap eosio.wrap.cpp )

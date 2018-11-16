@@ -136,7 +136,7 @@ namespace eosiosystem {
       int64_t bytes_out;
 
       const auto& market = _rammarket.get(ramcore_symbol.raw(), "ram market does not exist");
-      _rammarket.modify( market, same_payer, [&]( auto& es ) {
+      _rammarket.modify( market, eosio::same_payer, [&]( auto& es ) {
           bytes_out = es.convert( quant_after_fee,  ram_symbol ).amount;
       });
 
@@ -181,7 +181,7 @@ namespace eosiosystem {
 
       asset tokens_out;
       auto itr = _rammarket.find(ramcore_symbol.raw());
-      _rammarket.modify( itr, same_payer, [&]( auto& es ) {
+      _rammarket.modify( itr, eosio::same_payer, [&]( auto& es ) {
           /// the cast to int64_t of bytes is safe because we certify bytes is <= quota which is limited by prior purchases
           tokens_out = es.convert( asset(bytes, ram_symbol), core_symbol());
       });
@@ -217,7 +217,7 @@ namespace eosiosystem {
    void validate_b1_vesting( int64_t stake ) {
       const int64_t base_time = 1527811200; /// 2018-06-01
       const int64_t max_claimable = 100'000'000'0000ll;
-      const int64_t claimable = int64_t(max_claimable * double(now()-base_time) / (10*seconds_per_year) );
+      const int64_t claimable = int64_t(max_claimable * double(now()-base_time) / (10 * (seconds_per_day * 365) ) );
 
       eosio_assert( max_claimable - claimable <= stake, "b1 can only claim their tokens over 10 years" );
    }
@@ -249,7 +249,7 @@ namespace eosiosystem {
                });
          }
          else {
-            del_tbl.modify( itr, same_payer, [&]( auto& dbo ){
+            del_tbl.modify( itr, eosio::same_payer, [&]( auto& dbo ){
                   dbo.net_weight    += stake_net_delta;
                   dbo.cpu_weight    += stake_cpu_delta;
                });
@@ -272,7 +272,7 @@ namespace eosiosystem {
                   tot.cpu_weight    = stake_cpu_delta;
                });
          } else {
-            totals_tbl.modify( tot_itr, from == receiver ? from : same_payer, [&]( auto& tot ) {
+            totals_tbl.modify( tot_itr, from == receiver ? from : eosio::same_payer, [&]( auto& tot ) {
                   tot.net_weight    += stake_net_delta;
                   tot.cpu_weight    += stake_cpu_delta;
                });
@@ -308,7 +308,7 @@ namespace eosiosystem {
 
          if( is_delegating_to_self || is_undelegating ) {
             if ( req != refunds_tbl.end() ) { //need to update refund
-               refunds_tbl.modify( req, same_payer, [&]( refund_request& r ) {
+               refunds_tbl.modify( req, eosio::same_payer, [&]( refund_request& r ) {
                   if ( net_balance.amount < 0 || cpu_balance.amount < 0 ) {
                      r.request_time = current_time_point();
                   }
@@ -390,7 +390,7 @@ namespace eosiosystem {
                   v.staked = total_update.amount;
                });
          } else {
-            _voters.modify( from_voter, same_payer, [&]( auto& v ) {
+            _voters.modify( from_voter, eosio::same_payer, [&]( auto& v ) {
                   v.staked += total_update.amount;
                });
          }
@@ -425,8 +425,8 @@ namespace eosiosystem {
       eosio_assert( unstake_cpu_quantity >= zero_asset, "must unstake a positive amount" );
       eosio_assert( unstake_net_quantity >= zero_asset, "must unstake a positive amount" );
       eosio_assert( unstake_cpu_quantity.amount + unstake_net_quantity.amount > 0, "must unstake a positive amount" );
-      eosio_assert( _gstate.total_activated_stake >= min_activated_stake,
-                    "cannot undelegate bandwidth until the chain is activated (at least 15% of all tokens participate in voting)" );
+      // eosio_assert( _gstate.total_activated_stake >= min_activated_stake,
+      //"cannot undelegate bandwidth until the chain is activated (at least 15% of all tokens participate in voting)" );
 
       changebw( from, receiver, -unstake_net_quantity, -unstake_cpu_quantity, false);
    } // undelegatebw
@@ -438,7 +438,7 @@ namespace eosiosystem {
       refunds_table refunds_tbl( _self, owner.value );
       auto req = refunds_tbl.find( owner.value );
       eosio_assert( req != refunds_tbl.end(), "refund request not found" );
-      eosio_assert( req->request_time + seconds(refund_delay_sec) <= current_time_point(),
+      eosio_assert( req->request_time + eosio::seconds(refund_delay_sec) <= current_time_point(),
                     "refund is not available yet" );
 
       INLINE_ACTION_SENDER(eosio::token, transfer)(
