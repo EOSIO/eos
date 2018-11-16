@@ -4,6 +4,13 @@
 namespace eosio { namespace testing {
 
 struct contracts {
+
+   // Function for converting wasm `std::vector' uint8_t or char types to `std::string'
+   template<typename VectorType>
+   static string to_string(std::vector<VectorType> v) {
+      return std::string(v.cbegin(), v.cend());
+   }
+   
    // Contracts in `eos/unittests/contracts' directory
    static std::vector<uint8_t> deferred_test_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/contracts/deferred_test/deferred_test.wasm"); }
    static std::vector<char>    deferred_test_abi()  { return read_abi("${CMAKE_BINARY_DIR}/unittests/contracts/deferred_test/deferred_test.abi"); }
@@ -22,9 +29,6 @@ struct contracts {
 
    static std::vector<uint8_t> eosio_wrap_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.wrap/eosio.wrap.wasm"); }
    static std::vector<char>    eosio_wrap_abi()  { return read_abi("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.wrap/eosio.wrap.abi"); }
-
-   // static std::vector<uint8_t> eosio_token_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/contracts/eosio.token/eosio.token.wasm"); }
-   // static std::vector<char>    eosio_token_abi()  { return read_abi("${CMAKE_BINARY_DIR}/contracts/eosio.token/eosio.token.abi"); }
 
    // Contracts in `eos/contracts' directory
    static std::vector<uint8_t> asserter_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/contracts/asserter/asserter.wasm"); }
