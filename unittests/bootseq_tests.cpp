@@ -76,12 +76,26 @@ std::vector<genesis_account> test_genesis( {
 
 class bootseq_tester : public TESTER {
 public:
+   void deploy_contract( bool call_init = true ) {
+      set_code( config::system_account_name, contracts::eosio_system_wasm() );
+      set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
+      if( call_init ) {
+         base_tester::push_action(config::system_account_name, N(init),
+                                  config::system_account_name,  mutable_variant_object()
+                                  ("version", 0)
+                                  ("core", CORE_SYM_STR)
+            );
+      }
+      const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
+      abi_def abi;
+      BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+      abi_ser.set_abi(abi, abi_serializer_max_time);
+   }
 
    fc::variant get_global_state() {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(global), N(global) );
       if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data, abi_serializer_max_time );
-
    }
 
     auto buyram( name payer, name receiver, asset ram ) {
@@ -187,7 +201,6 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // Create eosio.msig and eosio.token
         create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
-
         // Set code for the following accounts:
         //  - eosio (code: eosio.bios) (already set by tester constructor)
         //  - eosio.msig (code: eosio.msig)
@@ -228,10 +241,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            create_account( a.aname, config::system_account_name );
         }
 
-        // Set eosio.system to eosio
-        set_code_abi(config::system_account_name,
-                     contracts::eosio_system_wasm(),
-                     contracts::eosio_system_abi().data());
+        deploy_contract();
 
         // Buy ram and stake cpu and net for each genesis accounts
         for( const auto& a : test_genesis ) {
@@ -275,6 +285,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         votepro( N(whale3), {N(proda), N(prodb), N(prodc), N(prodd), N(prode)} );
 
         // Total Stakes = b1 + whale2 + whale3 stake = (100,000,000 - 1,000) + (20,000,000 - 1,000) + (30,000,000 - 1,000)
+        vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(global), N(global) );
+        
         BOOST_TEST(get_global_state()["total_activated_stake"].as<int64_t>() == 1499999997000);
 
         // No producers will be set, since the total activated stake is less than 150,000,000
