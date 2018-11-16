@@ -14,6 +14,7 @@ steps:
     label: ":spiral_note_pad: Generate Report"
     agents:
       queue: "automation-large-builder-fleet"
+      - "aws:instance-id=i-0f219c172ecead56d"
     plugins:
       docker#v1.4.0:
         image: "eosio/ci:ubuntu18"
