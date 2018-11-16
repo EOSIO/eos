@@ -1545,6 +1545,8 @@ struct controller_impl {
    }
 
    void check_actor_list( const flat_set<account_name>& actors )const {
+      if( actors.size() == 0 ) return;
+
       if( conf.actor_whitelist.size() > 0 ) {
          // throw if actors is not a subset of whitelist
          const auto& whitelist = conf.actor_whitelist;
@@ -1554,17 +1556,17 @@ struct controller_impl {
          if (*actors.cbegin() >= *whitelist.cbegin() && *actors.crbegin() <= *whitelist.crbegin() ) {
             auto lower_bound = whitelist.cbegin();
             for (const auto& actor: actors) {
-               auto itr = std::find(lower_bound, whitelist.cend(), actor);
+               lower_bound = std::lower_bound(lower_bound, whitelist.cend(), actor);
 
                // if the actor is not found, this is not a subset
-               if (itr == whitelist.cend()) {
+               if (lower_bound == whitelist.cend() || *lower_bound != actor ) {
                   is_subset = false;
                   break;
                }
 
                // if the actor was found, we are guaranteed that other actors are either not present in the whitelist
                // or will be present in the range defined as [next actor,end)
-               lower_bound = std::next(itr);
+               lower_bound = std::next(lower_bound);
             }
          } else {
             is_subset = false;
