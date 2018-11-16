@@ -14,7 +14,8 @@ using resource_index_set = index_set<
    resource_limits_index,
    resource_usage_index,
    resource_limits_state_index,
-   resource_limits_config_index
+   resource_limits_config_index,
+   gmr_config_index
 >;
 
 static_assert( config::rate_limiting_precision > 0, "config::rate_limiting_precision must be positive" );
