@@ -95,7 +95,7 @@ namespace eosio { namespace chain {
           * Starts a new pending block session upon which new transactions can
           * be pushed.
           */
-         void start_block( block_timestamp_type time = block_timestamp_type(), uint16_t confirm_block_count = 0 );
+         void start_block( block_timestamp_type time = block_timestamp_type(), uint16_t confirm_block_count = 0, std::function<signature_type(digest_type)> signer = nullptr );
 
          void abort_block();
 
@@ -190,6 +190,7 @@ namespace eosio { namespace chain {
          optional<block_id_type> pending_producer_block_id()const;
 
          const producer_schedule_type&    active_producers()const;
+         std::function<signature_type(digest_type)> pending_producer_signer()const;
          const producer_schedule_type&    pending_producers()const;
          optional<producer_schedule_type> proposed_producers()const;
 
