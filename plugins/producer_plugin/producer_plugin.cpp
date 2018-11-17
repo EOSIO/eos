@@ -1071,8 +1071,13 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
          }
       }
 
+      signature_provider_type signature_provider;
+      if (signature_provider_itr != _signature_providers.end()) {
+         signature_provider = signature_provider_itr->second;
+      }
+
       chain.abort_block();
-      chain.start_block(block_time, blocks_to_confirm);
+      chain.start_block(block_time, blocks_to_confirm, signature_provider);
    } FC_LOG_AND_DROP();
 
    const auto& pbs = chain.pending_block_state();

@@ -142,7 +142,6 @@ namespace eosio { namespace chain {
    block_state_ptr fork_database::add( signed_block_ptr b, bool trust ) {
       EOS_ASSERT( b, fork_database_exception, "attempt to add null block" );
       EOS_ASSERT( my->head, fork_db_block_not_found, "no head block set" );
-
       const auto& by_id_idx = my->index.get<by_block_id>();
       auto existing = by_id_idx.find( b->id() );
       EOS_ASSERT( existing == by_id_idx.end(), fork_database_exception, "we already know about this block" );
@@ -203,7 +202,6 @@ namespace eosio { namespace chain {
    /// remove all of the invalid forks built of this id including this id
    void fork_database::remove( const block_id_type& id ) {
       vector<block_id_type> remove_queue{id};
-
       for( uint32_t i = 0; i < remove_queue.size(); ++i ) {
          auto itr = my->index.find( remove_queue[i] );
          if( itr != my->index.end() )
