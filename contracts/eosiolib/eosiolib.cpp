@@ -2,8 +2,6 @@
 #include "memory.hpp"
 #include "privileged.hpp"
 
-#include "random.cpp"
-
 void* sbrk(size_t num_bytes) {
       constexpr uint32_t NBPPL2  = 16U;
       constexpr uint32_t NBBP    = 65536U;
