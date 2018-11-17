@@ -148,7 +148,7 @@ class privileged_api : public context_aware_api {
       }
 
       void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) {
-         context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
+         context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight, true); // *bos* add raw=true
       }
 
       int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
@@ -191,6 +191,41 @@ class privileged_api : public context_aware_api {
                  gprops.configuration = cfg;
          });
       }
+
+      // *bos  begin*
+      void set_name_list_packed(int64_t list, int64_t action, array_ptr<char> packed_name_list, size_t datalen)
+      {
+          int64_t lstbegin = static_cast<int64_t>(list_type::actor_blacklist_type );
+          int64_t lstend = static_cast<int64_t>(list_type::list_type_count);
+          int64_t actbegin = static_cast<int64_t>(list_action_type::insert_type);
+         int64_t actend = static_cast<int64_t>(list_action_type::list_action_type_count);
+         EOS_ASSERT(list >= lstbegin && list < lstend, wasm_execution_error, "unkown name list!");
+         EOS_ASSERT(action >= actbegin && action < actend, wasm_execution_error, "unkown action");
+
+         datastream<const char *> ds(packed_name_list, datalen);
+         std::vector<name> name_list; // TODO std::set<name> dosen't work, bug.
+         fc::raw::unpack(ds, name_list);
+
+         context.control.set_name_list(list, action, name_list);
+
+       
+      }
+
+      void set_guaranteed_minmum_resources(int64_t ram_byte, int64_t cpu_us, int64_t net_byte)
+      {
+         EOS_ASSERT(ram_byte >= 0 && ram_byte <= 100 * 1024, wasm_execution_error, "resouces minimum guarantee for ram limit expected [0, 102400]");
+         EOS_ASSERT(cpu_us >= 0 && cpu_us <= 100 * 1000, wasm_execution_error, "resouces minimum guarantee for cpu limit expected [0, 100000]");
+         EOS_ASSERT(net_byte >= 0 && net_byte <= 100 * 1024, wasm_execution_error, "resouces minimum guarantee for net limit expected [0, 102400]");
+
+         context.db.modify(context.control.get_global_properties2(),
+                           [&](auto &gprops2) {
+                              gprops2.gmr.ram_byte = ram_byte;
+                              gprops2.gmr.cpu_us = cpu_us;
+                              gprops2.gmr.net_byte = net_byte;
+                           });
+      }
+
+      // *bos  end*
 
       bool is_privileged( account_name n )const {
          return context.db.get<account_object, by_name>( n ).privileged;
@@ -1793,6 +1828,8 @@ REGISTER_INTRINSICS(privileged_api,
    (set_proposed_producers,           int64_t(int,int)                      )
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
+   (set_name_list_packed,             void(int64_t,int64_t,int,int)         )
+   (set_guaranteed_minmum_resources,   void(int64_t,int64_t,int64_t)         )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
 );
