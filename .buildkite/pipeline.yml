@@ -477,7 +477,7 @@ steps:
         image: "eosio/ci:fedora"
         workdir: /data/job
     env:
-      OS: "fedora"
+      OS: "fc27"
       PKGTYPE: "rpm"
     timeout: 60
 
@@ -504,6 +504,6 @@ steps:
         image: "eosio/ci:centos"
         workdir: /data/job
     env:
-      OS: "centos"
+      OS: "el7"
       PKGTYPE: "rpm"
     timeout: 60
