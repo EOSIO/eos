@@ -50,12 +50,12 @@ fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<Indi
 
 namespace cyberway { namespace chaindb {
 
-inline const uint64_t hash_64_fnv1a(const void* key, const uint64_t len) {
-    const char* data = (char*)key;
+inline uint64_t hash_64_fnv1a(const void* key, const uint64_t len) {
+    const uint8_t* data = reinterpret_cast<const uint8_t*>(key);
     uint64_t hash = 0xcbf29ce484222325;
     uint64_t prime = 0x100000001b3;
 
-    for(int i = 0; i < len; ++i) {
+    for(uint64_t i = 0; i < len; ++i) {
         uint8_t value = data[i];
         hash = hash ^ value;
         hash *= prime;
@@ -64,7 +64,7 @@ inline const uint64_t hash_64_fnv1a(const void* key, const uint64_t len) {
     return hash;
 
 } //hash_64_fnv1a
-inline const uint64_t hash_64_fnv1a(const std::string& value) {
+inline uint64_t hash_64_fnv1a(const std::string& value) {
     return hash_64_fnv1a(value.c_str(), value.length());
 } // hash_64_fnv1a
 

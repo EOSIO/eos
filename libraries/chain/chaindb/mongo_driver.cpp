@@ -1,6 +1,6 @@
+#include <limits>
 #include <cyberway/chaindb/mongo_driver.hpp>
 #include <cyberway/chaindb/exception.hpp>
-#include <cyberway/chaindb/names.hpp>
 
 #include <eosio/chain/symbol.hpp>
 
@@ -16,6 +16,10 @@
 #include <mongocxx/exception/logic_error.hpp>
 #include <mongocxx/exception/query_exception.hpp>
 
+#include <cyberway/chaindb/names.hpp>
+#include <cyberway/chaindb/mongo_driver_utils.h>
+#include <cyberway/chaindb/mongo_big_int_converter.h>
+
 namespace cyberway { namespace chaindb {
 
     using eosio::chain::name;
@@ -24,6 +28,8 @@ namespace cyberway { namespace chaindb {
     using fc::optional;
     using fc::blob;
     using fc::variants;
+    using fc::__uint128;
+
     using fc::variant_object;
     using fc::mutable_variant_object;
 
@@ -42,10 +48,12 @@ namespace cyberway { namespace chaindb {
     using bsoncxx::types::b_bool;
     using bsoncxx::types::b_double;
     using bsoncxx::types::b_int64;
+    using bsoncxx::types::b_decimal128;
     using bsoncxx::types::b_binary;
     using bsoncxx::types::b_array;
     using bsoncxx::types::b_document;
 
+    using bsoncxx::decimal128;
     using bsoncxx::type;
     using bsoncxx::binary_sub_type;
     using bsoncxx::oid;
@@ -95,13 +103,6 @@ namespace cyberway { namespace chaindb {
 
         variant build_variant(const document_view&);
 
-        blob build_blob(const b_binary& src) {
-            blob dst;
-            if (src.sub_type != binary_sub_type::k_binary) return dst;
-            dst.data.assign(src.bytes, src.bytes + src.size);
-            return dst;
-        }
-
         variants build_variant(const array_view& src) {
             variants dst;
             for (auto& item: src) {
@@ -116,7 +117,7 @@ namespace cyberway { namespace chaindb {
                         dst.emplace_back(item.get_int64().value);
                         break;
                     case type::k_decimal128:
-                        // TODO
+                        dst.emplace_back(from_decimal128(item.get_decimal128()));
                         break;
                     case type::k_double:
                         dst.emplace_back(item.get_double().value);
@@ -125,10 +126,10 @@ namespace cyberway { namespace chaindb {
                         dst.emplace_back(item.get_utf8().value.to_string());
                         break;
                     case type::k_date:
-                        // TODO
+                        dst.emplace_back(from_date(item.get_date()));
                         break;
                     case type::k_timestamp:
-                        // TODO
+                        dst.emplace_back(from_timestamp(item.get_timestamp()));
                         break;
                     case type::k_document:
                         dst.emplace_back(build_variant(item.get_document().value));
@@ -137,7 +138,7 @@ namespace cyberway { namespace chaindb {
                         dst.emplace_back(build_variant(item.get_array().value));
                         break;
                     case type::k_binary:
-                        dst.emplace_back(build_blob(item.get_binary()));
+                        dst.emplace_back(blob{build_blob_content(item.get_binary())});
                         break;
                     case type::k_bool:
                         dst.emplace_back(item.get_bool().value);
@@ -171,7 +172,7 @@ namespace cyberway { namespace chaindb {
                     dst.set(std::move(key), src.get_int64().value);
                     break;
                 case type::k_decimal128:
-                    // TODO
+                    dst.set(std::move(key), from_decimal128(src.get_decimal128()));
                     break;
                 case type::k_double:
                     dst.set(std::move(key), src.get_double().value);
@@ -180,10 +181,10 @@ namespace cyberway { namespace chaindb {
                     dst.set(std::move(key), src.get_utf8().value.to_string());
                     break;
                 case type::k_date:
-                    // TODO
+                    dst.set(std::move(key), from_date(src.get_date()));
                     break;
                 case type::k_timestamp:
-                    // TODO
+                    dst.set(std::move(key), from_timestamp(src.get_timestamp()));
                     break;
                 case type::k_document:
                     dst.set(std::move(key), build_variant(src.get_document().value));
@@ -192,7 +193,7 @@ namespace cyberway { namespace chaindb {
                     dst.set(std::move(key), build_variant(src.get_array().value));
                     break;
                 case type::k_binary:
-                    dst.set(std::move(key), build_blob(src.get_binary()));
+                    dst.set(std::move(key), blob{build_blob_content(src.get_binary())});
                     break;
                 case type::k_bool:
                     dst.set(std::move(key), src.get_bool().value);
@@ -213,6 +214,11 @@ namespace cyberway { namespace chaindb {
         }
 
         variant build_variant(const document_view& src) {
+            const mongo_big_int_converter converter(src);
+            if (converter.is_valid_value()) {
+                return converter.get_raw_value();
+            }
+
             mutable_variant_object dst;
             for (auto& item: src) {
                 build_variant(dst, item.key().to_string(), item);
@@ -224,7 +230,7 @@ namespace cyberway { namespace chaindb {
 
         b_binary build_binary(const blob& src) {
             auto size = uint32_t(src.data.size());
-            auto data = (uint8_t*) src.data.data();
+            auto data = reinterpret_cast<const uint8_t*>(src.data.data());
             return b_binary{binary_sub_type::k_binary, size, data};
         }
 
@@ -238,13 +244,14 @@ namespace cyberway { namespace chaindb {
                         dst.append(b_int64{item.as_int64()});
                         break;
                     case variant::uint64_type:
-                        dst.append(b_int64{int64_t(item.as_uint64())});
+                        dst.append(to_decimal128(item.as_uint64()));
                         break;
-                        // TODO
-                        // case variant::int128_type:
-                        //     break;
-                        // case variant::uint128_type:
-                        //     break;
+                    case variant::int128_type:
+                        dst.append([&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(item.as_int128()).as_object_encoded()); });
+                        break;
+                    case variant::uint128_type:
+                        dst.append([&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(item.as_uint128()).as_object_encoded()); });
+                        break;
                     case variant::double_type:
                         dst.append(b_double{item.as_double()});
                         break;
@@ -254,11 +261,9 @@ namespace cyberway { namespace chaindb {
                     case variant::string_type:
                         dst.append(item.as_string());
                         break;
-                        // TODO
-                        // case variant::time_point_type:
-                        //     break;
-                        // case variant::time_point_sec_type:
-                        //     break;
+                    case variant::time_type:
+                        dst.append(item.as_time_point());
+                         break;
                     case variant::array_type:
                         dst.append([&](sub_array array){ build_document(array, item.get_array()); });
                         break;
@@ -282,13 +287,14 @@ namespace cyberway { namespace chaindb {
                     dst.append(kvp(key, b_int64{src.as_int64()}));
                     break;
                 case variant::uint64_type:
-                    dst.append(kvp(key, b_int64{int64_t(src.as_uint64())}));
+                     dst.append(kvp(key, to_decimal128(src.as_uint64())));
                     break;
-                    // TODO
-                    // case variant::int128_type:
-                    //     break;
-                    // case variant::uint128_type:
-                    //     break;
+                 case variant::int128_type:
+                    dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(src.as_int128()).as_object_encoded());} ));
+                    break;
+                 case variant::uint128_type:
+                    dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(src.as_uint128()).as_object_encoded());} ));
+                    break;
                 case variant::double_type:
                     dst.append(kvp(key, b_double{src.as_double()}));
                     break;
@@ -298,11 +304,9 @@ namespace cyberway { namespace chaindb {
                 case variant::string_type:
                     dst.append(kvp(key, src.as_string()));
                     break;
-                    // TODO
-                    // case variant::time_point_type:
-                    //     break;
-                    // case variant::time_point_sec_type:
-                    //     break;
+                case variant::time_type:
+                    dst.append(kvp(key, src.as_time_point()));
+                    break;
                 case variant::array_type:
                     dst.append(kvp(key, [&](sub_array array){ build_document(array, src.get_array()); }));
                     break;
@@ -382,8 +386,11 @@ namespace cyberway { namespace chaindb {
                 if (0 == pos) {
                     switch (pk_order.type.front()) {
                         case 'i': // int64
-                        case 'u': // uint64
-                            return itr->get_int64().value;
+                            return static_cast<primary_key_t>(itr->get_int64().value);
+                        case 'u': { // uint64
+                            const std::string as_string = itr->get_decimal128().value.to_string();
+                            return static_cast<primary_key_t>(std::stoull(as_string));
+                        }
                         case 'n': // name
                             return name(itr->get_utf8().value.data()).value;
                         case 's': // symbol_code
@@ -409,8 +416,10 @@ namespace cyberway { namespace chaindb {
             auto& pk_order = *table.pk_order;
             switch (pk_order.type.front()) {
                 case 'i': // int64
-                case 'u': // uint64
                     doc.append(kvp(pk_order.field, static_cast<int64_t>(pk)));
+                    break;
+                case 'u': // uint64
+                    doc.append(kvp(pk_order.field, to_decimal128(pk)));
                     break;
                 case 'n': // name
                     doc.append(kvp(pk_order.field, name(pk).to_string()));
@@ -895,10 +904,14 @@ namespace cyberway { namespace chaindb {
                 document doc;
                 doc.append(kvp(get_scope_field_name(), 1));
                 for (auto& o: index.orders) {
+                    auto field = o.field;
+                    if (o.type == "i128" || o.type == "ui128") {
+                        field += "." + mongo_big_int_converter::BINARY_FIELD;
+                    }
                     if (_detail::is_asc_order(o.order)) {
-                        doc.append(kvp(o.field, 1));
+                        doc.append(kvp(field, 1));
                     } else {
-                        doc.append(kvp(o.field, -1));
+                        doc.append(kvp(field, -1));
                     }
                     was_pk |= (&o == table.pk_order);
                 }

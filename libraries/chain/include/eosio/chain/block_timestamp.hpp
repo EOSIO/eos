@@ -84,12 +84,12 @@ FC_REFLECT(eosio::chain::block_timestamp_type, (slot))
 namespace fc {
   template<uint16_t IntervalMs, uint64_t EpochMs>
   void to_variant(const eosio::chain::block_timestamp<IntervalMs,EpochMs>& t, fc::variant& v) {
-     to_variant( (fc::time_point)t, v);
+      v = static_cast<fc::time_point>(t);
   }
 
   template<uint16_t IntervalMs, uint64_t EpochMs>
   void from_variant(const fc::variant& v, eosio::chain::block_timestamp<IntervalMs,EpochMs>& t) {
-     t = v.as<fc::time_point>();
+     t = v.as_time_point();
   }
 }
 

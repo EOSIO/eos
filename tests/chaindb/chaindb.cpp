@@ -13,6 +13,9 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 
+#include <cyberway/chaindb/mongo_driver_utils.h>
+#include <cyberway/chaindb/mongo_big_int_converter.h>
+
 #include "chaindb.h"
 
 #define _chaindb_internal_assert(_EXPR, ...) EOS_ASSERT(_EXPR, fc::assert_exception, __VA_ARGS__)
@@ -71,14 +74,7 @@ namespace _detail {
     using std::string;
     using std::tuple;
 
-    variant_object build_variant(const document_view&);
-
-    blob build_blob(const b_binary& src) {
-        blob dst;
-        if (src.sub_type != binary_sub_type::k_binary) return dst;
-        dst.data.assign(src.bytes, src.bytes + src.size);
-        return dst;
-    }
+    fc::variant build_variant(const document_view&);
 
     variants build_variant(const array_view& src) {
         variants dst;
@@ -94,7 +90,7 @@ namespace _detail {
                     dst.emplace_back(item.get_int64().value);
                     break;
                 case type::k_decimal128:
-                    // TODO
+                    dst.emplace_back(cyberway::chaindb::from_decimal128(item.get_decimal128()));
                     break;
                 case type::k_double:
                     dst.emplace_back(item.get_double().value);
@@ -103,10 +99,10 @@ namespace _detail {
                     dst.emplace_back(item.get_utf8().value.to_string());
                     break;
                 case type::k_date:
-                    // TODO
+                    dst.emplace_back(cyberway::chaindb::from_date(item.get_date()));
                     break;
                 case type::k_timestamp:
-                    // TODO
+                    dst.emplace_back(cyberway::chaindb::from_timestamp(item.get_timestamp()));
                     break;
                 case type::k_document:
                     dst.emplace_back(build_variant(item.get_document().value));
@@ -115,7 +111,7 @@ namespace _detail {
                     dst.emplace_back(build_variant(item.get_array().value));
                     break;
                 case type::k_binary:
-                    dst.emplace_back(build_blob(item.get_binary()));
+                    dst.emplace_back(blob{cyberway::chaindb::build_blob_content(item.get_binary())});
                     break;
                 case type::k_bool:
                     dst.emplace_back(item.get_bool().value);
@@ -149,7 +145,7 @@ namespace _detail {
                 dst.set(std::move(key), src.get_int64().value);
                 break;
             case type::k_decimal128:
-                // TODO
+                dst.set(std::move(key), cyberway::chaindb::from_decimal128(src.get_decimal128()));
                 break;
             case type::k_double:
                 dst.set(std::move(key), src.get_double().value);
@@ -158,10 +154,10 @@ namespace _detail {
                 dst.set(std::move(key), src.get_utf8().value.to_string());
                 break;
             case type::k_date:
-                // TODO
+                dst.set(std::move(key), cyberway::chaindb::from_date(src.get_date()));
                 break;
             case type::k_timestamp:
-                // TODO
+                dst.set(std::move(key), cyberway::chaindb::from_timestamp(src.get_timestamp()));
                 break;
             case type::k_document:
                 dst.set(std::move(key), build_variant(src.get_document().value));
@@ -170,7 +166,7 @@ namespace _detail {
                 dst.set(std::move(key), build_variant(src.get_array().value));
                 break;
             case type::k_binary:
-                dst.set(std::move(key), build_blob(src.get_binary()));
+                dst.set(std::move(key), blob{cyberway::chaindb::build_blob_content(src.get_binary())});
                 break;
             case type::k_bool:
                 dst.set(std::move(key), src.get_bool().value);
@@ -190,7 +186,12 @@ namespace _detail {
         }
     }
 
-    variant_object build_variant(const document_view& src) {
+    variant build_variant(const document_view& src) {
+        const cyberway::chaindb::mongo_big_int_converter converter(src);
+        if (converter.is_valid_value()) {
+            return converter.get_raw_value();
+        }
+
         mutable_variant_object dst;
         for (auto& item: src) {
             build_variant(dst, item.key().to_string(), item);
@@ -202,7 +203,7 @@ namespace _detail {
 
     b_binary build_binary(const blob& src) {
         auto size = uint32_t(src.data.size());
-        auto data = (uint8_t*) src.data.data();
+        auto data = reinterpret_cast<const uint8_t*>(src.data.data());
         return b_binary{binary_sub_type::k_binary, size, data};
     }
 
@@ -216,13 +217,14 @@ namespace _detail {
                     dst.append(b_int64{item.as_int64()});
                     break;
                 case variant::uint64_type:
-                    dst.append(b_int64{int64_t(item.as_uint64())});
+                     dst.append(cyberway::chaindb::to_decimal128(item.as_uint64()));
                     break;
-                // TODO
-                // case variant::int128_type:
-                //     break;
-                // case variant::uint128_type:
-                //     break;
+                case variant::int128_type:
+                    dst.append([&](sub_document sub_doc){ build_document(sub_doc, cyberway::chaindb::mongo_big_int_converter(item.as_int128()).as_object_encoded()); });
+                    break;
+                case variant::uint128_type:
+                    dst.append([&](sub_document sub_doc){ build_document(sub_doc, cyberway::chaindb::mongo_big_int_converter(item.as_uint128()).as_object_encoded()); });
+                    break;
                 case variant::double_type:
                     dst.append(b_double{item.as_double()});
                     break;
@@ -232,11 +234,9 @@ namespace _detail {
                 case variant::string_type:
                     dst.append(item.as_string());
                     break;
-                // TODO
-                // case variant::time_point_type:
-                //     break;
-                // case variant::time_point_sec_type:
-                //     break;
+                case variant::time_type:
+                    dst.append(item.as_time_point());
+                    break;
                 case variant::array_type:
                     dst.append([&](sub_array array){ build_document(array, item.get_array()); });
                     break;
@@ -260,13 +260,14 @@ namespace _detail {
                 dst.append(kvp(key, b_int64{src.as_int64()}));
                 break;
             case variant::uint64_type:
-                dst.append(kvp(key, b_int64{int64_t(src.as_uint64())}));
+                dst.append(kvp(key, cyberway::chaindb::to_decimal128(src.as_uint64())));
                 break;
-            // TODO
-            // case variant::int128_type:
-            //     break;
-            // case variant::uint128_type:
-            //     break;
+            case variant::int128_type:
+                dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, cyberway::chaindb::mongo_big_int_converter(src.as_int128()).as_object_encoded());} ));
+                break;
+            case variant::uint128_type:
+                dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, cyberway::chaindb::mongo_big_int_converter(src.as_uint128()).as_object_encoded());} ));
+                break;
             case variant::double_type:
                 dst.append(kvp(key, b_double{src.as_double()}));
                 break;
@@ -276,11 +277,9 @@ namespace _detail {
             case variant::string_type:
                 dst.append(kvp(key, src.as_string()));
                 break;
-            // TODO
-            // case variant::time_point_type:
-            //     break;
-            // case variant::time_point_sec_type:
-            //     break;
+            case variant::time_type:
+                dst.append(kvp(key, src.as_time_point()));
+                break;
             case variant::array_type:
                 dst.append(kvp(key, [&](sub_array array){ build_document(array, src.get_array()); }));
                 break;
