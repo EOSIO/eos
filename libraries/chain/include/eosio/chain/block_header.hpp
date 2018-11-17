@@ -4,12 +4,6 @@
 
 namespace eosio { namespace chain {
 
-     /* Extended spatial data category
-    */
-     enum block_header_extensions_type : uint16_t {
-         block_extensions_mroot = 0 // mroot of block extensions
-     };
-
    struct block_header
    {
       block_timestamp_type             timestamp;
@@ -38,14 +32,13 @@ namespace eosio { namespace chain {
        */
       uint32_t                          schedule_version = 0;
       optional<producer_schedule_type>  new_producers;
-      extensions_type                   header_extensions; // [0] : mroot of block extensions
+      extensions_type                   header_extensions;
 
 
       digest_type       digest()const;
       block_id_type     id() const;
       uint32_t          block_num() const { return num_from_id(previous) + 1; }
       static uint32_t   num_from_id(const block_id_type& id);
-      void              set_block_extensions_mroot(digest_type& mroot);
    };
 
 
