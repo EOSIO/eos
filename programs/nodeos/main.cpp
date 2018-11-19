@@ -95,7 +95,6 @@ int main(int argc, char** argv)
    try {
       app().set_version(eosio::nodeos::config::version);
       app().register_plugin<history_plugin>();
-      app().register_plugin<state_history_plugin>();
 
       auto root = fc::app_path();
       app().set_default_data_dir(root / "eosio/nodeos/data" );
