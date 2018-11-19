@@ -1,6 +1,6 @@
 #! /bin/bash
 
-NAME="${PROJECT}-${VERSION}-0.el7"
+NAME="${PROJECT}-${VERSION}-1"
 PREFIX="usr"
 SPREFIX=${PREFIX}
 SUBPREFIX="opt/${PROJECT}/${VERSION}"
@@ -34,7 +34,7 @@ Requires: openssl-devel.x86_64, gmp-devel.x86_64, libstdc++-devel.x86_64, bzip2.
 URL: ${URL} 
 Packager: ${VENDOR} <${EMAIL}>
 Summary: ${DESC}
-Release: 0.el7
+Release: 1
 %description
 ${DESC}
 %files -f filenames.txt" &> ${PROJECT}.spec
