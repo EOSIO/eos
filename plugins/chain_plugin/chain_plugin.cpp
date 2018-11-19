@@ -18,8 +18,6 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 
-#include <eosio/chain/wast_to_wasm.hpp>
-
 #include <boost/signals2/connection.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
@@ -1623,17 +1621,12 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    EOS_ASSERT( params.code_as_wasm, unsupported_feature, "Returning WAST from get_code is no longer supported" );
 
    if( accnt.code.size() ) {
-      if (params.code_as_wasm) {
-         result.wasm = string(accnt.code.begin(), accnt.code.end());
-      } else {
-         result.wast = wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size(), true );
-      }
+      result.wasm = string(accnt.code.begin(), accnt.code.end());
       result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
    }
 
    abi_def abi;
    if( abi_serializer::to_abi(accnt.abi, abi) ) {
-
       result.abi = std::move(abi);
    }
 
