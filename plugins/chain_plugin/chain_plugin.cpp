@@ -1219,29 +1219,29 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
    if( upper_bound_lookup_tuple < lower_bound_lookup_tuple )
       return result;
 
+   auto walk_table_range = [&]( auto itr, auto end_itr ) {
+      auto cur_time = fc::time_point::now();
+      auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
+      for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::time_point::now() ) {
+         if( p.table && itr->table != p.table ) continue;
+
+         result.rows.push_back( {itr->code, itr->scope, itr->table, itr->payer, itr->count} );
+
+         ++count;
+      }
+      if( itr != end_itr ) {
+         result.more = string(itr->scope);
+      }
+   };
+
    auto lower = idx.lower_bound( lower_bound_lookup_tuple );
    auto upper = idx.upper_bound( upper_bound_lookup_tuple );
-
-   auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
-
-   unsigned int count = 0;
-   auto itr = lower;
-   for (; itr != upper; ++itr) {
-      if (p.table && itr->table != p.table) {
-         if (fc::time_point::now() > end) {
-            break;
-         }
-         continue;
-      }
-      result.rows.push_back({itr->code, itr->scope, itr->table, itr->payer, itr->count});
-      if (++count == p.limit || fc::time_point::now() > end) {
-         ++itr;
-         break;
-      }
+   if( p.reverse && *p.reverse ) {
+      walk_table_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
+   } else {
+      walk_table_range( lower, upper );
    }
-   if (itr != upper) {
-      result.more = (string)itr->scope;
-   }
+
    return result;
 }
 
