@@ -15,6 +15,7 @@
 #include <eosio/chain/resource_limits_private.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/state_history_plugin/state_history_plugin.hpp>
 
 template <typename T>
 struct history_serial_wrapper {
@@ -72,6 +73,21 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_big_vector_w
    for (auto& x : obj.obj)
       fc::raw::pack(ds, x);
    return ds;
+}
+
+template <typename ST>
+void history_pack_big_bytes(datastream<ST>& ds, const eosio::chain::bytes& v) {
+   FC_ASSERT(v.size() <= 1024 * 1024 * 1024);
+   fc::raw::pack(ds, unsigned_int((uint32_t)v.size()));
+   if (v.size())
+      ds.write(&v.front(), (uint32_t)v.size());
+}
+
+template <typename ST>
+void history_pack_big_bytes(datastream<ST>& ds, const fc::optional<eosio::chain::bytes>& v) {
+   fc::raw::pack(ds, v.valid());
+   if (v)
+      history_pack_big_bytes(ds, *v);
 }
 
 template <typename ST, typename T>
@@ -513,6 +529,18 @@ template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::transaction_trace>& obj) {
    uint8_t stat = eosio::chain::transaction_receipt_header::hard_fail;
    ds << make_history_context_wrapper(obj.db, stat, obj.obj);
+   return ds;
+}
+
+template <typename ST>
+datastream<ST>& operator<<(datastream<ST>& ds, const eosio::get_blocks_result_v0& obj) {
+   fc::raw::pack(ds, obj.head);
+   fc::raw::pack(ds, obj.last_irreversible);
+   fc::raw::pack(ds, obj.this_block);
+   fc::raw::pack(ds, obj.prev_block);
+   history_pack_big_bytes(ds, obj.block);
+   history_pack_big_bytes(ds, obj.traces);
+   history_pack_big_bytes(ds, obj.deltas);
    return ds;
 }
 

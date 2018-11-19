@@ -5,7 +5,6 @@
 
 #include <eosio/chain/config.hpp>
 #include <eosio/state_history_plugin/state_history_log.hpp>
-#include <eosio/state_history_plugin/state_history_plugin.hpp>
 #include <eosio/state_history_plugin/state_history_serialization.hpp>
 
 #include <boost/asio/bind_executor.hpp>
