@@ -272,6 +272,8 @@ public:
       string      key_type;  // type of key specified by index_position
       string      index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
       string      encode_type{"dec"}; //dec, hex , default=dec
+      optional<bool>  reverse;
+      optional<bool>  show_payer; // show RAM pyer
     };
 
    struct get_table_rows_result {
@@ -287,6 +289,7 @@ public:
       string      lower_bound; // lower bound of scope, optional
       string      upper_bound; // upper bound of scope, optional
       uint32_t    limit = 10;
+      optional<bool>  reverse;
    };
    struct get_table_by_scope_result_row {
       name        code;
@@ -438,33 +441,41 @@ public:
          if( upper_bound_lookup_tuple < lower_bound_lookup_tuple )
             return result;
 
+         auto walk_table_row_range = [&]( auto itr, auto end_itr ) {
+            auto cur_time = fc::time_point::now();
+            auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
+            vector<char> data;
+            for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::time_point::now() ) {
+               const auto* itr2 = d.find<chain::key_value_object, chain::by_scope_primary>( boost::make_tuple(t_id->id, itr->primary_key) );
+               if( itr2 == nullptr ) continue;
+               copy_inline_row(*itr2, data);
+
+               fc::variant data_var;
+               if( p.json ) {
+                  data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors );
+               } else {
+                  data_var = fc::variant( data );
+               }
+
+               if( p.show_payer && *p.show_payer ) {
+                  result.rows.emplace_back( fc::mutable_variant_object("data", std::move(data_var))("payer", itr->payer) );
+               } else {
+                  result.rows.emplace_back( std::move(data_var) );
+               }
+
+               ++count;
+            }
+            if( itr != end_itr ) {
+               result.more = true;
+            }
+         };
+
          auto lower = secidx.lower_bound( lower_bound_lookup_tuple );
          auto upper = secidx.upper_bound( upper_bound_lookup_tuple );
-
-         vector<char> data;
-
-         auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
-
-         unsigned int count = 0;
-         auto itr = lower;
-         for (; itr != upper; ++itr) {
-
-            const auto* itr2 = d.find<chain::key_value_object, chain::by_scope_primary>(boost::make_tuple(t_id->id, itr->primary_key));
-            if (itr2 == nullptr) continue;
-            copy_inline_row(*itr2, data);
-
-            if (p.json) {
-               result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors ) );
-            } else {
-               result.rows.emplace_back(fc::variant(data));
-            }
-
-            if (++count == p.limit || fc::time_point::now() > end) {
-               break;
-            }
-         }
-         if (itr != upper) {
-            result.more = true;
+         if( p.reverse && *p.reverse ) {
+            walk_table_row_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
+         } else {
+            walk_table_row_range( lower, upper );
          }
       }
       return result;
@@ -508,31 +519,37 @@ public:
          if( upper_bound_lookup_tuple < lower_bound_lookup_tuple  )
             return result;
 
+         auto walk_table_row_range = [&]( auto itr, auto end_itr ) {
+            auto cur_time = fc::time_point::now();
+            auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
+            vector<char> data;
+            for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++count, ++itr, cur_time = fc::time_point::now() ) {
+               copy_inline_row(*itr, data);
+
+               fc::variant data_var;
+               if( p.json ) {
+                  data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors );
+               } else {
+                  data_var = fc::variant( data );
+               }
+
+               if( p.show_payer && *p.show_payer ) {
+                  result.rows.emplace_back( fc::mutable_variant_object("data", std::move(data_var))("payer", itr->payer) );
+               } else {
+                  result.rows.emplace_back( std::move(data_var) );
+               }
+            }
+            if( itr != end_itr ) {
+               result.more = true;
+            }
+         };
+
          auto lower = idx.lower_bound( lower_bound_lookup_tuple );
          auto upper = idx.upper_bound( upper_bound_lookup_tuple );
-
-         vector<char> data;
-
-         auto end = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
-
-         unsigned int count = 0;
-         auto itr = lower;
-         for (; itr != upper; ++itr) {
-            copy_inline_row(*itr, data);
-
-            if (p.json) {
-               result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors ) );
-            } else {
-               result.rows.emplace_back(fc::variant(data));
-            }
-
-            if (++count == p.limit || fc::time_point::now() > end) {
-               ++itr;
-               break;
-            }
-         }
-         if (itr != upper) {
-            result.more = true;
+         if( p.reverse && *p.reverse ) {
+            walk_table_row_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
+         } else {
+            walk_table_row_range( lower, upper );
          }
       }
       return result;
@@ -693,10 +710,10 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_n
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
-FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit)(reverse) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_result_row, (code)(scope)(table)(payer)(count));
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_result, (rows)(more) );
 
