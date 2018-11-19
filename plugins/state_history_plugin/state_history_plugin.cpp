@@ -4,7 +4,7 @@
  */
 
 #include <eosio/chain/config.hpp>
-#include <eosio/state_history_plugin/history_log.hpp>
+#include <eosio/state_history_plugin/state_history_log.hpp>
 #include <eosio/state_history_plugin/state_history_plugin.hpp>
 #include <eosio/state_history_plugin/state_history_serialization.hpp>
 
@@ -56,8 +56,8 @@ static bytes zlib_compress_bytes(bytes in) {
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                        chain_plug = nullptr;
-   fc::optional<history_log>                            trace_log;
-   fc::optional<history_log>                            chain_state_log;
+   fc::optional<state_history_log>                      trace_log;
+   fc::optional<state_history_log>                      chain_state_log;
    bool                                                 stopping = false;
    fc::optional<scoped_connection>                      applied_transaction_connection;
    fc::optional<scoped_connection>                      accepted_block_connection;
@@ -67,12 +67,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    std::map<transaction_id_type, transaction_trace_ptr> cached_traces;
    transaction_trace_ptr                                onblock_trace;
 
-   void get_log_entry(history_log& log, uint32_t block_num, fc::optional<bytes>& result) {
+   void get_log_entry(state_history_log& log, uint32_t block_num, fc::optional<bytes>& result) {
       if (block_num < log.begin_block() || block_num >= log.end_block())
          return;
-      history_log_header header;
-      auto&              stream = log.get_entry(block_num, header);
-      uint32_t           s;
+      state_history_log_header header;
+      auto&                    stream = log.get_entry(block_num, header);
+      uint32_t                 s;
       stream.read((char*)&s, sizeof(s));
       result.emplace();
       result->resize(s);
@@ -393,9 +393,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       auto  traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_serial_wrapper(db, traces)));
       EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
 
-      history_log_header header{.block_num    = block_state->block->block_num(),
-                                .block_id     = block_state->block->id(),
-                                .payload_size = sizeof(uint32_t) + traces_bin.size()};
+      state_history_log_header header{.block_num    = block_state->block->block_num(),
+                                      .block_id     = block_state->block->id(),
+                                      .payload_size = sizeof(uint32_t) + traces_bin.size()};
       trace_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
          uint32_t s = (uint32_t)traces_bin.size();
          stream.write((char*)&s, sizeof(s));
@@ -488,9 +488,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       auto deltas_bin = zlib_compress_bytes(fc::raw::pack(deltas));
       EOS_ASSERT(deltas_bin.size() == (uint32_t)deltas_bin.size(), plugin_exception, "deltas is too big");
-      history_log_header header{.block_num    = block_state->block->block_num(),
-                                .block_id     = block_state->block->id(),
-                                .payload_size = sizeof(uint32_t) + deltas_bin.size()};
+      state_history_log_header header{.block_num    = block_state->block->block_num(),
+                                      .block_id     = block_state->block->id(),
+                                      .payload_size = sizeof(uint32_t) + deltas_bin.size()};
       chain_state_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
          uint32_t s = (uint32_t)deltas_bin.size();
          stream.write((char*)&s, sizeof(s));
