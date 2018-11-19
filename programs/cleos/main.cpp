@@ -2468,7 +2468,7 @@ int main( int argc, char** argv ) {
       bytes code_bytes;
       if(!contract_clear){
         std::string wasm;
-        fc::path cpath(contractPath);
+        fc::path cpath = fc::canonical(fc::path(contractPath));
 
         if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
 
@@ -2523,7 +2523,7 @@ int main( int argc, char** argv ) {
 
       bytes abi_bytes;
       if(!contract_clear){
-        fc::path cpath(contractPath);
+        fc::path cpath = fc::canonical(fc::path(contractPath));
         if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
 
         if( abiPath.empty() ) {
