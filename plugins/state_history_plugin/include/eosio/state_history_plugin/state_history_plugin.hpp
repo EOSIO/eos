@@ -7,6 +7,11 @@
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
+template <typename T>
+struct history_serial_big_vector_wrapper {
+   T obj;
+};
+
 namespace fc {
 class variant;
 }
@@ -18,9 +23,9 @@ using std::shared_ptr;
 typedef shared_ptr<struct state_history_plugin_impl> state_history_ptr;
 
 struct table_delta {
-   fc::unsigned_int                    struct_version = 0;
-   std::string                         name{};
-   std::vector<std::pair<bool, bytes>> rows{};
+   fc::unsigned_int                                                       struct_version = 0;
+   std::string                                                            name{};
+   history_serial_big_vector_wrapper<std::vector<std::pair<bool, bytes>>> rows{};
 };
 
 struct block_position {

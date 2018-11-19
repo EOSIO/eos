@@ -66,6 +66,15 @@ datastream<ST>& history_serialize_container(datastream<ST>& ds, const chainbase:
 }
 
 template <typename ST, typename T>
+datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_big_vector_wrapper<T>& obj) {
+   FC_ASSERT(obj.obj.size() <= 1024 * 1024 * 1024);
+   fc::raw::pack(ds, unsigned_int((uint32_t)obj.obj.size()));
+   for (auto& x : obj.obj)
+      fc::raw::pack(ds, x);
+   return ds;
+}
+
+template <typename ST, typename T>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<std::vector<T>>& obj) {
    return history_serialize_container(ds, obj.db, obj.obj);
 }
