@@ -6,7 +6,7 @@
 namespace eosio { namespace chain {
    using std::string;
 
-   static constexpr uint64_t char_to_symbol( char c ) {
+   static constexpr uint64_t char_to_symbol( char c ) {''
       if( c >= 'a' && c <= 'z' )
          return (c - 'a') + 6;
       if( c >= '1' && c <= '5' )

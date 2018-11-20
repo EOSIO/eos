@@ -158,16 +158,16 @@ namespace stltest {
     
     class contract {
     public:
-        static const uint64_t sent_table_name = N(sent);
-        static const uint64_t received_table_name = N(received);
+        static const uint64_t sent_table_name = "sent"_n.value;
+        static const uint64_t received_table_name = "received"_n.value;
 
         struct message {
-            account_name from;
-            account_name to;
+            name from;
+            name to;
            //string msg;
 
-            static uint64_t get_account() { return N(stltest); }
-            static uint64_t get_name()  { return N(message); }
+            static uint64_t get_account() { return "stltest"_n.value; }
+            static uint64_t get_name()  { return "message"_n.value; }
 
             template<typename DataStream>
             friend DataStream& operator << ( DataStream& ds, const message& m ){
@@ -252,8 +252,8 @@ namespace stltest {
            //std::cout << "STL test done." << std::endl;
         }
 
-        static void apply( account_name c, action_name act) {
-            eosio::dispatch<stltest::contract, message>(c,act);
+        static void apply( name c, name act ) {
+            eosio::dispatch<stltest::contract, message>(c.value,act.value);
         }
     };
 
@@ -264,6 +264,6 @@ extern "C" {
 /// The apply method implements the dispatch of events to this contract
 void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
     (void)receiver;
-    stltest::contract::apply( code, action );
+    stltest::contract::apply( name{code}, name{action} );
 }
 }

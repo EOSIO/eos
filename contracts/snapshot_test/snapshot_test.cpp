@@ -5,13 +5,13 @@ using namespace eosio;
 
 namespace snapshot_test {
 
-   struct main_record {
+   struct [[eosio::contract("snapshot_test"), eosio::table]] main_record {
       uint64_t    id;
       double      index_f64  = 0.0;
       long double index_f128 = 0.0L;
       uint64_t    index_i64  = 0ULL;
       uint128_t   index_i128 = 0ULL;
-      key256      index_i256 = key256();
+      checksum256 index_i256 = checksum256();
 
       auto primary_key() const { return id; }
 
@@ -19,12 +19,12 @@ namespace snapshot_test {
       auto get_index_f128 () const { return index_f128; }
       auto get_index_i64  () const { return index_i64 ; }
       auto get_index_i128 () const { return index_i128; }
-      const key256& get_index_i256 () const { return index_i256; }
+      const checksum256& get_index_i256 () const { return index_i256; }
 
       EOSLIB_SERIALIZE( main_record, (id)(index_f64)(index_f128)(index_i64)(index_i128)(index_i256) )
    };
 
-   struct increment {
+   struct [[eosio::contract("snapshot_test"), eosio::action]] increment {
       increment(): value(0) {}
       increment(uint32_t v): value(v) {}
 
@@ -34,11 +34,11 @@ namespace snapshot_test {
    };
 
    using multi_index_type = eosio::multi_index<"data"_n, main_record,
-      indexed_by< "byf"_n,    const_mem_fun<main_record, double        ,&main_record::get_index_f64 >>,
-      indexed_by< "byff"_n,    const_mem_fun<main_record, long double   ,&main_record::get_index_f128>>,
-      indexed_by< "byi"_n,    const_mem_fun<main_record, uint64_t      ,&main_record::get_index_i64 >>,
-      indexed_by< "byii"_n,    const_mem_fun<main_record, uint128_t     ,&main_record::get_index_i128>>,
-      indexed_by< "byiiii"_n,  const_mem_fun<main_record, const key256& ,&main_record::get_index_i256>>
+      indexed_by< "byf"_n,    const_mem_fun<main_record, double             ,&main_record::get_index_f64 >>,
+      indexed_by< "byff"_n,   const_mem_fun<main_record, long double        ,&main_record::get_index_f128>>,
+      indexed_by< "byi"_n,    const_mem_fun<main_record, uint64_t           ,&main_record::get_index_i64 >>,
+      indexed_by< "byii"_n,   const_mem_fun<main_record, uint128_t          ,&main_record::get_index_i128>>,
+      indexed_by< "byiiii"_n, const_mem_fun<main_record, const checksum256& ,&main_record::get_index_i256>>
       >;
 
    static void exec( uint64_t self, uint32_t value ) {

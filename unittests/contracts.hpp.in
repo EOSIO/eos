@@ -68,5 +68,8 @@ struct contracts {
 
    static std::vector<uint8_t> snapshot_test_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/contracts/snapshot_test/snapshot_test.wasm"); }
    static std::vector<char>    snapshot_test_abi()  { return read_abi("${CMAKE_BINARY_DIR}/contracts/snapshot_test/snapshot_test.abi"); }
+
+   static std::vector<uint8_t> test_ram_limit_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/contracts/test_ram_limit/test_ram_limit.wasm"); }
+   static std::vector<char>    test_ram_limit_abi()  { return read_abi("${CMAKE_BINARY_DIR}/contracts/test_ram_limit/test_ram_limit.abi"); }
 };
 }} //ns eosio::testing

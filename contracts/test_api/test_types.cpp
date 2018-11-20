@@ -16,10 +16,10 @@ void test_types::types_size() {
    eosio_assert( sizeof(int128_t) == 16, "int128_t size != 16");
    eosio_assert( sizeof(uint8_t) ==  1, "uint8_t size != 1");
 
-   eosio_assert( sizeof(account_name) ==  8, "account_name size !=  8");
-   eosio_assert( sizeof(table_name) ==  8, "table_name size !=  8");
-   eosio_assert( sizeof(time) ==  4, "time size !=  4");
-   eosio_assert( sizeof(eosio::key256) == 32, "key256 size != 32" );
+   eosio_assert( sizeof(eosio::name) ==  8, "name size !=  8");
+   eosio_assert( sizeof(eosio::name) ==  8, "name size !=  8");
+   // eosio_assert( sizeof(time) ==  4, "time size !=  4");
+   eosio_assert( sizeof(eosio::checksum256) == 32, "key256 size != 32" );
 }
 
 void test_types::char_to_symbol() {
@@ -95,5 +95,5 @@ void test_types::name_class() {
    eosio_assert( eosio::name{eosio::string_to_name("AAAbbcccdd")} == eosio::name{eosio::string_to_name("AAAbbcccdd")}, "eosio::name == eosio::name" );
 
    uint64_t tmp = eosio::name{eosio::string_to_name("11bbcccdd")};
-   eosio_assert(N(11bbcccdd) == tmp, "N(11bbcccdd) == tmp");
+   eosio_assert("11bbcccdd"_n == tmp, "N(11bbcccdd) == tmp");
 }

@@ -1,8 +1,3 @@
-#set the MAX_MEMORY to 1MB for these tests; there were lots of memory unit tests that assume such
+set( CMAKE_CXX_STANDARD 17 )
 
-add_wast_executable( TARGET test_api_mem
-   INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
-   LIBRARIES eosiolib
-   DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
-   MAX_MEMORY 1048576
-)
+add_contract_no_abi( test_api_mem test_api_mem test_api_mem.cpp )

@@ -259,7 +259,7 @@ BOOST_AUTO_TEST_CASE(delete_auth_test) { try {
       expect_assert_message(e, "permission_query_exception: Permission Query Exception\nFailed to retrieve permission");
       return true;
    });
-
+   
    // update auth
    chain.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")

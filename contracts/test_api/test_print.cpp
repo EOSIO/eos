@@ -66,16 +66,16 @@ void test_print::test_printui128() {
 }
 
 void test_print::test_printn() {
-   printn(N(abcde));
-   printn(N(abBde));
-   printn(N(1q1q1qAA));
-   printn(N());
-   printn(N(AAAAAA));
-   printn(N(abcdefghijk));
-   printn(N(abcdefghijkl));
-   printn(N(abcdefghijkl1));
-   printn(N(abcdefghijkl12));
-   printn(N(abcdefghijkl123));
+   printn(eosio::name{"abcde"});
+   printn("abBde"_n);
+   printn("1q1q1qAA"_n);
+   printn(""_n);
+   printn("AAAAAA"_n);
+   printn("abcdefghijk"_n);
+   printn("abcdefghijkl"_n);
+   printn("abcdefghijkl1"_n);
+   printn("abcdefghijkl12"_n);
+   printn("abcdefghijkl123"_n);
 }
 
 void test_print::test_printsf() {

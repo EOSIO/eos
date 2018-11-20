@@ -77,7 +77,7 @@ class currency_tester : public TESTER {
       }
 
       currency_tester()
-         :TESTER(),abi_ser(json::from_string(contracts::eosio_token_abi).as<abi_def>(), abi_serializer_max_time)
+         :TESTER(),abi_ser(json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer_max_time)
       {
          create_account( N(eosio.token));
          set_code( N(eosio.token), contracts::eosio_token_wasm() );
@@ -411,7 +411,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    set_code(N(proxy), contracts::proxy_wasm());
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi).as<abi_def>(), abi_serializer_max_time);
+   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer_max_time);
 
    // set up proxy owner
    {
@@ -426,10 +426,10 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
          abi_serializer_max_time
       );
       trx.actions.emplace_back(std::move(setowner_act));
-
+      
       set_transaction_headers(trx);
       trx.sign(get_private_key(N(alice), "active"), control->get_chain_id());
-      push_transaction(trx);
+      push_transaction(trx); // This is where the error is generated
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    }
@@ -467,7 +467,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    set_code(N(bob), contracts::proxy_wasm());
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi).as<abi_def>(), abi_serializer_max_time);
+   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer_max_time);
 
    // set up proxy owner
    {

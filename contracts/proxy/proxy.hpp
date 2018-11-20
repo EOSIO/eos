@@ -21,7 +21,7 @@ namespace proxy {
 
    TABLE config {
       name     key;
-      name     owner;
+      name     owner{};
       uint32_t delay = 0;
       uint32_t next_id = 0;
 

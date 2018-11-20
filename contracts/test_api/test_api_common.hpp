@@ -26,10 +26,10 @@ static constexpr unsigned long long WASM_TEST_ACTION(const char* cls, const char
 #pragma pack(push, 1)
 struct dummy_action {
    static uint64_t get_name() {
-      return N(dummy_action);
+      return eosio::name{"dummy_action"}.value;
    }
    static uint64_t get_account() {
-      return N(testapi);
+      return eosio::name{"testapi"}.value;
    }
 
   char a; //1
@@ -47,10 +47,10 @@ struct u128_action {
 
 struct cf_action {
    static uint64_t get_name() {
-      return N(cf_action);
+      return eosio::name{"cf_action"}.value;
    }
    static uint64_t get_account() {
-      return N(testapi);
+      return eosio::name{"testapi"}.value;
    }
 
    uint32_t       payload = 100;
@@ -65,13 +65,13 @@ struct dtt_action {
       return WASM_TEST_ACTION("test_transaction", "send_deferred_tx_with_dtt_action");
    }
    static uint64_t get_account() {
-      return N(testapi);
+      return "testapi"_n.value;
    }
 
-   uint64_t       payer = N(testapi);
-   uint64_t       deferred_account = N(testapi);
+   uint64_t       payer = "testapi"_n.value;
+   uint64_t       deferred_account = "testapi"_n.value;
    uint64_t       deferred_action = WASM_TEST_ACTION("test_transaction", "deferred_print");
-   uint64_t       permission_name = N(active);
+   uint64_t       permission_name = "active"_n.value;
    uint32_t       delay_sec = 2;
 
    EOSLIB_SERIALIZE( dtt_action, (payer)(deferred_account)(deferred_action)(permission_name)(delay_sec) )
