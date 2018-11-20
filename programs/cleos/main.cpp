@@ -3021,7 +3021,7 @@ int main( int argc, char** argv ) {
       send_actions({chain::action{accountPermissions, "eosio.msig", "propose", variant_to_bin( N(eosio.msig), N(propose), args ) }});
    });
 
-   //multisige propose transaction
+   //multisig propose transaction
    auto propose_trx = msig->add_subcommand("propose_trx", localized("Propose transaction"));
    add_standard_transaction_options(propose_trx, "proposer@active");
    propose_trx->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
@@ -3063,54 +3063,219 @@ int main( int argc, char** argv ) {
 
 
    // multisig review
+   bool show_approvals_in_multisig_review = false;
    auto review = msig->add_subcommand("review", localized("Review transaction"));
    review->add_option("proposer", proposer, localized("proposer name (string)"))->required();
    review->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
+   review->add_flag( "--show-approvals", show_approvals_in_multisig_review, localized("Show the status of the approvals requested within the proposal") );
 
    review->set_callback([&] {
-      auto result = call(get_table_func, fc::mutable_variant_object("json", true)
-                         ("code", "eosio.msig")
-                         ("scope", proposer)
-                         ("table", "proposal")
-                         ("table_key", "")
-                         ("lower_bound", name(proposal_name).value)
-                         ("upper_bound", name(proposal_name).value + 1)
-                         // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
-                         // Change to name(proposal_name).value when cleos no longer needs to support nodeos versions older than 1.5.0
-                         ("limit", 1)
-                         );
+      const auto result1 = call(get_table_func, fc::mutable_variant_object("json", true)
+                                 ("code", "eosio.msig")
+                                 ("scope", proposer)
+                                 ("table", "proposal")
+                                 ("table_key", "")
+                                 ("lower_bound", name(proposal_name).value)
+                                 ("upper_bound", name(proposal_name).value + 1)
+                                 // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
+                                 // Change to name(proposal_name).value when cleos no longer needs to support nodeos versions older than 1.5.0
+                                 ("limit", 1)
+                           );
       //std::cout << fc::json::to_pretty_string(result) << std::endl;
 
-      fc::variants rows = result.get_object()["rows"].get_array();
+      const auto& rows1 = result1.get_object()["rows"].get_array();
       // Condition in if statement below can simply be rows.empty() when cleos no longer needs to support nodeos versions older than 1.5.0
-      if( rows.empty() || rows[0].get_object()["proposal_name"] != proposal_name ) {
+      if( rows1.empty() || rows1[0].get_object()["proposal_name"] != proposal_name ) {
          std::cerr << "Proposal not found" << std::endl;
          return;
       }
-      fc::mutable_variant_object obj = rows[0].get_object();
-      auto trx_hex = obj["packed_transaction"].as_string();
+
+      const auto& proposal_object = rows1[0].get_object();
+
+      enum class approval_status {
+         unapproved,
+         approved,
+         invalidated
+      };
+
+      std::map<permission_level, std::pair<fc::time_point, approval_status>>                               all_approvals;
+      std::map<eosio::account_name, std::pair<fc::time_point, vector<decltype(all_approvals)::iterator>>>  provided_approvers;
+
+      bool new_multisig = true;
+      if( show_approvals_in_multisig_review ) {
+         fc::variants rows2;
+
+         try {
+            const auto& result2 = call(get_table_func, fc::mutable_variant_object("json", true)
+                                       ("code", "eosio.msig")
+                                       ("scope", proposer)
+                                       ("table", "approvals2")
+                                       ("table_key", "")
+                                       ("lower_bound", name(proposal_name).value)
+                                       ("upper_bound", name(proposal_name).value + 1)
+                                       // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
+                                       // Change to name(proposal_name).value when cleos no longer needs to support nodeos versions older than 1.5.0
+                                       ("limit", 1)
+                                 );
+            rows2 = result2.get_object()["rows"].get_array();
+         } catch( ... ) {
+            new_multisig = false;
+         }
+
+         if( !rows2.empty() && rows2[0].get_object()["proposal_name"] == proposal_name ) {
+            const auto& approvals_object = rows2[0].get_object();
+
+            for( const auto& ra : approvals_object["requested_approvals"].get_array() ) {
+               const auto& ra_obj = ra.get_object();
+               auto pl = ra["level"].as<permission_level>();
+               auto res = all_approvals.emplace( pl, std::make_pair(ra["time"].as<fc::time_point>(), approval_status::unapproved) );
+            }
+
+            for( const auto& pa : approvals_object["provided_approvals"].get_array() ) {
+               const auto& pa_obj = pa.get_object();
+               auto pl = pa["level"].as<permission_level>();
+               auto res = all_approvals.emplace( pl, std::make_pair(pa["time"].as<fc::time_point>(), approval_status::approved) );
+               provided_approvers[pl.actor].second.push_back( res.first );
+            }
+         } else {
+            const auto result3 = call(get_table_func, fc::mutable_variant_object("json", true)
+                                       ("code", "eosio.msig")
+                                       ("scope", proposer)
+                                       ("table", "approvals")
+                                       ("table_key", "")
+                                       ("lower_bound", name(proposal_name).value)
+                                       ("upper_bound", name(proposal_name).value + 1)
+                                       // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
+                                       // Change to name(proposal_name).value when cleos no longer needs to support nodeos versions older than 1.5.0
+                                       ("limit", 1)
+                                 );
+            const auto& rows3 = result3.get_object()["rows"].get_array();
+            if( rows3.empty() || rows3[0].get_object()["proposal_name"] != proposal_name ) {
+               std::cerr << "Proposal not found" << std::endl;
+               return;
+            }
+
+            const auto& approvals_object = rows3[0].get_object();
+
+            for( const auto& ra : approvals_object["requested_approvals"].get_array() ) {
+               auto pl = ra.as<permission_level>();
+               auto res = all_approvals.emplace( pl, std::make_pair(fc::time_point{}, approval_status::unapproved) );
+            }
+
+            for( const auto& pa : approvals_object["provided_approvals"].get_array() ) {
+               auto pl = pa.as<permission_level>();
+               auto res = all_approvals.emplace( pl, std::make_pair(fc::time_point{}, approval_status::approved) );
+               provided_approvers[pl.actor].second.push_back( res.first );
+            }
+         }
+
+         if( new_multisig ) {
+            for( auto& a : provided_approvers ) {
+               const auto result4 = call(get_table_func, fc::mutable_variant_object("json", true)
+                                          ("code", "eosio.msig")
+                                          ("scope", "eosio.msig")
+                                          ("table", "invals")
+                                          ("table_key", "")
+                                          ("lower_bound", a.first.value)
+                                          ("upper_bound", a.first.value + 1)
+                                          // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
+                                          // Change to name(proposal_name).value when cleos no longer needs to support nodeos versions older than 1.5.0
+                                          ("limit", 1)
+                                    );
+               const auto& rows4 = result4.get_object()["rows"].get_array();
+               if( rows4.empty() || rows4[0].get_object()["account"].as<eosio::name>() != a.first ) {
+                  continue;
+               }
+
+               auto invalidation_time = rows4[0].get_object()["last_invalidation_time"].as<fc::time_point>();
+               a.second.first = invalidation_time;
+
+               for( auto& itr : a.second.second ) {
+                  if( invalidation_time >= itr->second.first ) {
+                     itr->second.second = approval_status::invalidated;
+                  }
+               }
+            }
+         }
+      }
+
+      auto trx_hex = proposal_object["packed_transaction"].as_string();
       vector<char> trx_blob(trx_hex.size()/2);
       fc::from_hex(trx_hex, trx_blob.data(), trx_blob.size());
       transaction trx = fc::raw::unpack<transaction>(trx_blob);
+
+      fc::mutable_variant_object obj;
+      obj["proposer"] = proposer;
+      obj["proposal_name"] = proposal_object["proposal_name"];
+      obj["transaction_id"] = trx.id();
+
+      for( const auto& entry : proposal_object ) {
+         if( entry.key() == "proposal_name" ) continue;
+         obj.set( entry.key(), entry.value() );
+      }
 
       fc::variant trx_var;
       abi_serializer abi;
       abi.to_variant(trx, trx_var, abi_serializer_resolver, abi_serializer_max_time);
       obj["transaction"] = trx_var;
-      std::cout << fc::json::to_pretty_string(obj)
-                << std::endl;
+
+      if( show_approvals_in_multisig_review ) {
+         fc::variants approvals;
+
+         for( const auto& approval : all_approvals ) {
+            fc::mutable_variant_object approval_obj;
+            approval_obj["level"] = approval.first;
+            switch( approval.second.second ) {
+               case approval_status::unapproved:
+               {
+                  approval_obj["status"] = "unapproved";
+                  if( approval.second.first != fc::time_point{} ) {
+                     approval_obj["last_unapproval_time"] = approval.second.first;
+                  }
+               }
+               break;
+               case approval_status::approved:
+               {
+                  approval_obj["status"] = "approved";
+                  if( new_multisig ) {
+                     approval_obj["last_approval_time"] = approval.second.first;
+                  }
+               }
+               break;
+               case approval_status::invalidated:
+               {
+                  approval_obj["status"] = "invalidated";
+                  approval_obj["last_approval_time"] = approval.second.first;
+                  approval_obj["invalidation_time"] = provided_approvers[approval.first.actor].first;
+               }
+               break;
+            }
+
+            approvals.push_back( std::move(approval_obj) );
+         }
+
+         obj["approvals"] = std::move(approvals);
+      }
+
+      std::cout << fc::json::to_pretty_string(obj) << std::endl;
    });
 
    string perm;
+   string proposal_hash;
    auto approve_or_unapprove = [&](const string& action) {
       fc::variant perm_var;
       try {
          perm_var = json_from_file_or_string(perm);
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",perm))
+
       auto args = fc::mutable_variant_object()
          ("proposer", proposer)
          ("proposal_name", proposal_name)
          ("level", perm_var);
+
+      if( proposal_hash.size() ) {
+         args("proposal_hash", proposal_hash);
+      }
 
       auto accountPermissions = get_account_permissions(tx_permission, {proposer,config::active_name});
       send_actions({chain::action{accountPermissions, "eosio.msig", action, variant_to_bin( N(eosio.msig), action, args ) }});
@@ -3122,6 +3287,7 @@ int main( int argc, char** argv ) {
    approve->add_option("proposer", proposer, localized("proposer name (string)"))->required();
    approve->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
    approve->add_option("permissions", perm, localized("The JSON string of filename defining approving permissions"))->required();
+   approve->add_option("proposal_hash", proposal_hash, localized("Hash of proposed transaction (i.e. transaction ID) to optionally enforce as a condition of the approval"));
    approve->set_callback([&] { approve_or_unapprove("approve"); });
 
    // multisig unapprove
