@@ -162,17 +162,6 @@ namespace eosio { namespace testing {
          _start_block( next_time );
       }
 
-      auto producer = control->head_block_state()->get_scheduled_producer(next_time);
-      private_key_type priv_key;
-      // Check if signing private key exist in the list
-      auto private_key_itr = block_signing_private_keys.find( producer.block_signing_key );
-      if( private_key_itr == block_signing_private_keys.end() ) {
-         // If it's not found, default to active k1 key
-         priv_key = get_private_key( producer.producer_name, "active" );
-      } else {
-         priv_key = private_key_itr->second;
-      }
-
       if( !skip_pending_trxs ) {
          auto unapplied_trxs = control->get_unapplied_transactions();
          for (const auto& trx : unapplied_trxs ) {
@@ -193,18 +182,10 @@ namespace eosio { namespace testing {
          }
       }
 
-
-
-      control->finalize_block();
-      control->sign_block( [&]( digest_type d ) {
-                    return priv_key.sign(d);
-                    });
-
-      control->commit_block();
-      last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;
+      auto head_block = _finish_block();
 
       _start_block( next_time + fc::microseconds(config::block_interval_us));
-      return control->head_block_state()->block;
+      return head_block;
    }
 
    void base_tester::_start_block(fc::time_point block_time) {
@@ -221,6 +202,30 @@ namespace eosio { namespace testing {
       control->start_block( block_time, head_block_number - last_produced_block_num );
    }
 
+   signed_block_ptr base_tester::_finish_block() {
+      FC_ASSERT( control->pending_block_state(), "must first start a block before it can be finished" );
+
+      auto producer = control->head_block_state()->get_scheduled_producer( control->pending_block_time() );
+      private_key_type priv_key;
+      // Check if signing private key exist in the list
+      auto private_key_itr = block_signing_private_keys.find( producer.block_signing_key );
+      if( private_key_itr == block_signing_private_keys.end() ) {
+         // If it's not found, default to active k1 key
+         priv_key = get_private_key( producer.producer_name, "active" );
+      } else {
+         priv_key = private_key_itr->second;
+      }
+
+      control->finalize_block();
+      control->sign_block( [&]( digest_type d ) {
+                    return priv_key.sign(d);
+                    });
+
+      control->commit_block();
+      last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;
+
+      return control->head_block_state()->block;
+   }
 
    void base_tester::produce_blocks( uint32_t n, bool empty ) {
       if( empty ) {
