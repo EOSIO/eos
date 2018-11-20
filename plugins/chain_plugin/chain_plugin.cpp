@@ -704,13 +704,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 void chain_plugin::plugin_startup()
 { try {
    try {
+      auto shutdown = [](){ return app().is_quiting(); };
       if (my->snapshot_path) {
          auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
          auto reader = std::make_shared<istream_snapshot_reader>(infile);
-         my->chain->startup(reader);
+         my->chain->startup(shutdown, reader);
          infile.close();
       } else {
-         my->chain->startup();
+         my->chain->startup(shutdown);
       }
    } catch (const database_guard_exception& e) {
       log_guard_exception(e);

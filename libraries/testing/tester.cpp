@@ -124,7 +124,7 @@ namespace eosio { namespace testing {
    void base_tester::open( const snapshot_reader_ptr& snapshot) {
       control.reset( new controller(cfg) );
       control->add_indices();
-      control->startup(snapshot);
+      control->startup( []() { return false; }, snapshot);
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
         FC_ASSERT( block_state->block );

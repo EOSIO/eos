@@ -307,22 +307,25 @@ struct controller_impl {
       }
    }
 
-   void replay() {
+   void replay(std::function<bool()> shutdown) {
       auto blog_head = blog.read_head();
       auto blog_head_time = blog_head->timestamp.to_time_point();
       replaying = true;
       replay_head_time = blog_head_time;
-      ilog( "existing block log, attempting to replay ${n} blocks", ("n",blog_head->block_num()) );
+      auto start_block_num = head->block_num + 1;
+      ilog( "existing block log, attempting to replay from ${s} to ${n} blocks",
+            ("s", start_block_num)("n", blog_head->block_num()) );
 
       auto start = fc::time_point::now();
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
          replay_push_block( next, controller::block_status::irreversible );
          if( next->block_num() % 100 == 0 ) {
             std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
+            if( shutdown() ) break;
          }
       }
       std::cerr<< "\n";
-      ilog( "${n} blocks replayed", ("n", head->block_num) );
+      ilog( "${n} blocks replayed", ("n", head->block_num - start_block_num) );
 
       // if the irreverible log is played without undo sessions enabled, we need to sync the
       // revision ordinal to the appropriate expected value here.
@@ -338,41 +341,47 @@ struct controller_impl {
       ilog( "${n} reversible blocks replayed", ("n",rev) );
       auto end = fc::time_point::now();
       ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
-            ("n", head->block_num)("duration", (end-start).count()/1000000)
-            ("mspb", ((end-start).count()/1000.0)/head->block_num)        );
+            ("n", head->block_num - start_block_num)("duration", (end-start).count()/1000000)
+            ("mspb", ((end-start).count()/1000.0)/(head->block_num-start_block_num)) );
       replaying = false;
       replay_head_time.reset();
    }
 
-   void init(const snapshot_reader_ptr& snapshot) {
+   void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
 
       thread_pool.emplace( conf.thread_pool_size );
 
+      bool report_integrity_hash = !!snapshot;
       if (snapshot) {
-         EOS_ASSERT(!head, fork_database_exception, "");
+         EOS_ASSERT( !head, fork_database_exception, "" );
          snapshot->validate();
 
-         read_from_snapshot(snapshot);
+         read_from_snapshot( snapshot );
 
          auto end = blog.read_head();
          if( !end ) {
-            blog.reset(conf.genesis, signed_block_ptr(), head->block_num + 1);
-         } else if ( end->block_num() > head->block_num) {
-            replay();
+            blog.reset( conf.genesis, signed_block_ptr(), head->block_num + 1 );
+         } else if( end->block_num() > head->block_num ) {
+            replay( shutdown );
          } else {
-            EOS_ASSERT(end->block_num() == head->block_num, fork_database_exception,
-                       "Block log is provided with snapshot but does not contain the head block from the snapshot");
+            EOS_ASSERT( end->block_num() == head->block_num, fork_database_exception,
+                        "Block log is provided with snapshot but does not contain the head block from the snapshot" );
          }
-      } else if( !head ) {
-         initialize_fork_db(); // set head to genesis state
+      } else {
+         if( !head ) {
+            initialize_fork_db(); // set head to genesis state
+         }
 
          auto end = blog.read_head();
-         if( end && end->block_num() > 1 ) {
-            replay();
-         } else if( !end ) {
+         if( !end ) {
             blog.reset( conf.genesis, head->block );
+         } else if( end->block_num() > head->block_num ) {
+            replay( shutdown );
+            report_integrity_hash = true;
          }
       }
+
+      if( shutdown() ) return;
 
       const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
       auto objitr = ubi.rbegin();
@@ -399,7 +408,7 @@ struct controller_impl {
          db.undo();
       }
 
-      if( snapshot ) {
+      if( report_integrity_hash ) {
          const auto hash = calculate_integrity_hash();
          ilog( "database initialized with hash: ${hash}", ("hash", hash) );
       }
@@ -1735,12 +1744,12 @@ void controller::add_indices() {
    my->add_indices();
 }
 
-void controller::startup( const snapshot_reader_ptr& snapshot ) {
+void controller::startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot ) {
    my->head = my->fork_db.head();
    if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
    }
-   my->init(snapshot);
+   my->init(shutdown, snapshot);
 }
 
 const chainbase::database& controller::db()const { return my->db; }

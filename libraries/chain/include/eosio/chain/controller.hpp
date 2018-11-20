@@ -91,7 +91,7 @@ namespace eosio { namespace chain {
          ~controller();
 
          void add_indices();
-         void startup( const snapshot_reader_ptr& snapshot = nullptr );
+         void startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot = nullptr );
 
          /**
           * Starts a new pending block session upon which new transactions can

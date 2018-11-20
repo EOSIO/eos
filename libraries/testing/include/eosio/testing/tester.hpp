@@ -357,7 +357,7 @@ namespace eosio { namespace testing {
 
          validating_node = std::make_unique<controller>(vcfg);
          validating_node->add_indices();
-         validating_node->startup();
+         validating_node->startup( []() { return false; } );
 
          init(true);
       }
@@ -372,7 +372,7 @@ namespace eosio { namespace testing {
 
          validating_node = std::make_unique<controller>(vcfg);
          validating_node->add_indices();
-         validating_node->startup();
+         validating_node->startup( []() { return false; } );
 
          init(config);
       }
@@ -422,7 +422,7 @@ namespace eosio { namespace testing {
         validating_node.reset();
         validating_node = std::make_unique<controller>(vcfg);
         validating_node->add_indices();
-        validating_node->startup();
+        validating_node->startup( []() { return false; } );
 
         return ok;
       }
