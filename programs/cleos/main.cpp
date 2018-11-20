@@ -3089,10 +3089,7 @@ int main( int argc, char** argv ) {
       abi_serializer abi;
       abi.to_variant(trx, trx_var, abi_serializer_resolver, abi_serializer_max_time);
       obj["transaction"] = trx_var;
-
-      digest_type::encoder enc;
-      fc::raw::pack(enc, trx);
-      obj["trx_id"] = enc.result();
+      obj["trx_id"] = trx.id();
 
       std::cout << fc::json::to_pretty_string(obj)
                 << std::endl;
