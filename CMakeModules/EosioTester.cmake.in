@@ -8,6 +8,15 @@ set(EOSIO_VERSION "@VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@")
 
 enable_testing()
 
+if (UNIX)
+   if (APPLE)
+      if (LLVM_DIR STREQUAL "" OR NOT LLVM_DIR)
+         set(LLVM_DIR "/usr/local/opt/llvm@4/lib/cmake/llvm")
+      endif()
+   endif()
+endif()
+
+
 find_package( Gperftools QUIET )
 if( GPERFTOOLS_FOUND )
     message( STATUS "Found gperftools; compiling tests with TCMalloc")
