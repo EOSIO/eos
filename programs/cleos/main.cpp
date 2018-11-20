@@ -2470,8 +2470,6 @@ int main( int argc, char** argv ) {
         std::string wasm;
         fc::path cpath = fc::canonical(fc::path(contractPath));
 
-        if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
-
         if( wasmPath.empty() )
            wasmPath = (cpath / (cpath.filename().generic_string()+".wasm")).generic_string();
         else
@@ -2524,7 +2522,6 @@ int main( int argc, char** argv ) {
       bytes abi_bytes;
       if(!contract_clear){
         fc::path cpath = fc::canonical(fc::path(contractPath));
-        if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
 
         if( abiPath.empty() ) {
            abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
