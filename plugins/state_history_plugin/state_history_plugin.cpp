@@ -199,7 +199,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                continue;
             auto id = plugin->get_block_id(cp.block_num);
             if (!id || *id != cp.block_id)
-               req.start_block_num = cp.block_num;
+               req.start_block_num = std::min(req.start_block_num, cp.block_num);
          }
          req.have_positions.clear();
          current_request = req;
@@ -508,7 +508,7 @@ void state_history_plugin::set_program_options(options_description& cli, options
    auto options = cfg.add_options();
    options("state-history-dir", bpo::value<bfs::path>()->default_value("state-history"),
            "the location of the state-history directory (absolute path or relative to application data dir)");
-   options("delete-state-history", bpo::bool_switch()->default_value(false), "clear state history files");
+   cli.add_options()("delete-state-history", bpo::bool_switch()->default_value(false), "clear state history files");
    options("trace-history", bpo::bool_switch()->default_value(false), "enable trace history");
    options("chain-state-history", bpo::bool_switch()->default_value(false), "enable chain state history");
    options("state-history-endpoint", bpo::value<string>()->default_value("0.0.0.0:8080"),

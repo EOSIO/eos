@@ -40,6 +40,9 @@ namespace eosio {
  *    char[]      deltas
  */
 
+// todo: look into switching this to serialization instead of memcpy
+// todo: consider reworking versioning
+// todo: consider dropping block_num since it's included in block_id
 struct state_history_log_header {
    uint32_t             block_num = 0;
    chain::block_id_type block_id;
