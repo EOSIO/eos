@@ -97,8 +97,8 @@ macro(add_eosio_test test_name)
        ${liblogging}
        ${libchainbase}
        ${libbuiltins}
-       ${GMP_LIBRARIES}
        ${libsecp256k1}
+       ${GMP_LIBRARIES}
 
        LLVMX86Disassembler
        LLVMX86AsmParser

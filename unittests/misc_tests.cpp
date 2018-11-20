@@ -9,9 +9,6 @@
 #include <eosio/chain/asset.hpp>
 #include <eosio/testing/tester.hpp>
 
-#include <eosio/utilities/key_conversion.hpp>
-#include <eosio/utilities/rand.hpp>
-
 #include <fc/io/json.hpp>
 
 #include <boost/test/unit_test.hpp>
@@ -195,40 +192,6 @@ BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
       return expect_assert_message(e, "precision 20 should be <= 18");
    });
 }
-
-/// Test that our deterministic random shuffle algorithm gives the same results in all environments
-BOOST_AUTO_TEST_CASE(deterministic_randomness)
-{ try {
-   utilities::rand::random rng(123454321);
-   vector<string> words = {"infamy", "invests", "estimated", "potters", "memorizes", "hal9000"};
-   rng.shuffle(words);
-   BOOST_TEST(fc::json::to_string(words) ==
-                     fc::json::to_string(vector<string>{"hal9000","infamy","invests","estimated","memorizes","potters"}));
-   rng.shuffle(words);
-   BOOST_TEST(fc::json::to_string(words) ==
-                     fc::json::to_string(vector<string>{"memorizes","infamy","hal9000","potters","estimated","invests"}));
-} FC_LOG_AND_RETHROW() }
-
-BOOST_AUTO_TEST_CASE(deterministic_distributions)
-{ try {
-   utilities::rand::random rng(123454321);
-
-   BOOST_TEST(rng.next() == UINT64_C(13636622732572118961));
-   BOOST_TEST(rng.next() == UINT64_C(8049736256506128729));
-   BOOST_TEST(rng.next() ==  UINT64_C(1224405983932261174));
-
-   std::vector<int> nums = {0, 1, 2};
-
-   rng.shuffle(nums);
-   std::vector<int> a{2, 0, 1};
-   BOOST_TEST(std::equal(nums.begin(), nums.end(), a.begin()));
-   rng.shuffle(nums);
-   std::vector<int> b{0, 2, 1};
-   BOOST_TEST(std::equal(nums.begin(), nums.end(), b.begin()));
-   rng.shuffle(nums);
-   std::vector<int> c{1, 0, 2};
-   BOOST_TEST(std::equal(nums.begin(), nums.end(), c.begin()));
-} FC_LOG_AND_RETHROW() }
 
 struct permission_visitor {
    std::vector<permission_level> permissions;
