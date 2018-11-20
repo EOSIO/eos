@@ -1,6 +1,6 @@
 #! /bin/bash
 
-NAME="${PROJECT}-${VERSION}.x86_64"
+NAME="${PROJECT}_${VERSION}-1_amd64"
 PREFIX="usr"
 SPREFIX=${PREFIX}
 SUBPREFIX="opt/${PROJECT}/${VERSION}"

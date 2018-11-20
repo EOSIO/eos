@@ -39,24 +39,33 @@ $ brew remove eosio
 ```
 #### Ubuntu 18.04 Debian Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.3/eosio-1.4.3.ubuntu-18.04-x86_64.deb
-$ sudo apt install ./eosio-1.4.3.ubuntu-18.04-x86_64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio_1.4.4-1-ubuntu-18.04_amd64.deb
+$ sudo apt install ./eosio_1.4.4-1-ubuntu-18.04_amd64.deb
 ```
 #### Ubuntu 16.04 Debian Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.3/eosio-1.4.3.ubuntu-16.04-x86_64.deb
-$ sudo apt install ./eosio-1.4.3.ubuntu-16.04-x86_64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio_1.4.4-1-ubuntu-16.04_amd64.deb
+$ sudo apt install ./eosio_1.4.4-1-ubuntu-16.04_amd64.deb
 ```
 #### Debian Package Uninstall
 ```sh
 $ sudo apt remove eosio
 ```
-#### RPM Package Install
+#### Centos RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.3/eosio-1.4.3.x86_64-0.x86_64.rpm
-$ sudo yum install ./eosio-1.4.3.x86_64-0.x86_64.rpm
+$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio-1.4.4-1.el7.x86_64.rpm
+$ sudo yum install ./eosio-1.4.4-1.el7.x86_64.rpm
 ```
-#### RPM Package Uninstall
+#### Centos RPM Package Uninstall
+```sh
+$ sudo yum remove eosio.cdt
+```
+#### Fedora RPM Package Install
+```sh
+$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio-1.4.4-1.fc27.x86_64.rpm
+$ sudo yum install ./eosio-1.4.4-1.fc27.x86_64.rpm
+```
+#### Fedora RPM Package Uninstall
 ```sh
 $ sudo yum remove eosio.cdt
 ```
