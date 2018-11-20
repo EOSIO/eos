@@ -19,10 +19,10 @@ steps:
         tar -pczf build.tar.gz build/
     label: ":ubuntu: Build"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:ubuntu"
         workdir: /data/job
     timeout: 60
@@ -34,10 +34,10 @@ steps:
         tar -pczf build.tar.gz build/
     label: ":ubuntu: 18.04 Build"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
     timeout: 60
@@ -49,10 +49,10 @@ steps:
         tar -pczf build.tar.gz build/
     label: ":fedora: Build"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:fedora"
         workdir: /data/job
     timeout: 60
@@ -64,10 +64,10 @@ steps:
         tar -pczf build.tar.gz build/
     label: ":centos: Build"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:centos"
         workdir: /data/job
     timeout: 60
@@ -79,10 +79,10 @@ steps:
         tar -pczf build.tar.gz build/
     label: ":aws: Build"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:amazonlinux"
         workdir: /data/job
     timeout: 60
@@ -122,13 +122,13 @@ steps:
         limit: 1
     label: ":ubuntu: Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:ubuntu"
         workdir: /data/job
     timeout: 60
@@ -146,13 +146,13 @@ steps:
         limit: 1
     label: ":ubuntu: 18.04 Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:ubuntu18"
         workdir: /data/job
     timeout: 60
@@ -170,13 +170,13 @@ steps:
         limit: 1
     label: ":fedora: Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:fedora"
         workdir: /data/job
     timeout: 60
@@ -194,13 +194,13 @@ steps:
         limit: 1
     label: ":centos: Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:centos"
         workdir: /data/job
     timeout: 60
@@ -218,13 +218,13 @@ steps:
         limit: 1
     label: ":aws: Tests"
     agents:
-      - "role=linux-tester"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v1.4.0:
+      docker#v2.0.0:
         image: "eosio/ci:amazonlinux"
         workdir: /data/job
     timeout: 60
