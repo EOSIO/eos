@@ -44,13 +44,13 @@ void test_checktime::checktime_assert_sha1_failure() {
 
 void test_checktime::checktime_sha256_failure() {
    char* ptr = new char[size];
-   checksum256 res;
+   eosio::checksum256 res;
    sha256( ptr, size, &res );
 }
 
 void test_checktime::checktime_assert_sha256_failure() {
    char* ptr = new char[size];
-   checksum256 res;
+   eosio::checksum256 res;
    assert_sha256( ptr, size, &res );
 }
 
@@ -62,7 +62,7 @@ void test_checktime::checktime_sha512_failure() {
 
 void test_checktime::checktime_assert_sha512_failure() {
    char* ptr = new char[size];
-   checksum512 res;
+   eosio::checksum512 res;
    assert_sha512( ptr, size, &res );
 }
 
@@ -74,6 +74,6 @@ void test_checktime::checktime_ripemd160_failure() {
 
 void test_checktime::checktime_assert_ripemd160_failure() {
    char* ptr = new char[size];
-   checksum160 res;
+   eosio::checksum160 res;
    assert_ripemd160( ptr, size, &res );
 }

@@ -2,6 +2,7 @@
  * @file action_test.cpp
  * @copyright defined in eos/LICENSE.txt
  */
+
 #include <eosiolib/permission.h>
 #include <eosiolib/db.h>
 
@@ -16,9 +17,9 @@
 #include <limits>
 
 struct check_auth_msg {
-   account_name         account;
-   permission_name      permission;
-   std::vector<public_key>   pubkeys;
+   eosio::name                    account;
+   eosio::name                    permission;
+   std::vector<eosio::public_key> pubkeys;
 
    EOSLIB_SERIALIZE( check_auth_msg, (account)(permission)(pubkeys)  )
 };
@@ -31,8 +32,8 @@ void test_permission::check_authorization(uint64_t receiver, uint64_t code, uint
    auto self = receiver;
    auto params = unpack_action_data<check_auth_msg>();
    auto packed_pubkeys = pack(params.pubkeys);
-   int64_t res64 = ::check_permission_authorization( params.account,
-                                                     params.permission,
+   int64_t res64 = ::check_permission_authorization( params.account.value,
+                                                     params.permission.value,
                                                      packed_pubkeys.data(), packed_pubkeys.size(),
                                                      (const char*)0,        0,
                                                      static_cast<uint64_t>(std::numeric_limits<int64_t>::max())
@@ -51,9 +52,9 @@ void test_permission::check_authorization(uint64_t receiver, uint64_t code, uint
 }
 
 struct test_permission_last_used_msg {
-   account_name     account;
-   permission_name  permission;
-   int64_t          last_used_time;
+   eosio::name account;
+   eosio::name permission;
+   int64_t     last_used_time;
 
    EOSLIB_SERIALIZE( test_permission_last_used_msg, (account)(permission)(last_used_time) )
 };
@@ -65,7 +66,7 @@ void test_permission::test_permission_last_used(uint64_t /* receiver */, uint64_
 
    auto params = unpack_action_data<test_permission_last_used_msg>();
 
-   eosio_assert( get_permission_last_used(params.account, params.permission) == params.last_used_time, "unexpected last used permission time" );
+   eosio_assert( get_permission_last_used(params.account.value, params.permission.value) == params.last_used_time, "unexpected last used permission time" );
 }
 
 void test_permission::test_account_creation_time(uint64_t /* receiver */, uint64_t code, uint64_t action) {
@@ -75,5 +76,5 @@ void test_permission::test_account_creation_time(uint64_t /* receiver */, uint64
 
    auto params = unpack_action_data<test_permission_last_used_msg>();
 
-   eosio_assert( get_account_creation_time(params.account) == params.last_used_time, "unexpected account creation time" );
+   eosio_assert( get_account_creation_time(params.account.value) == params.last_used_time, "unexpected account creation time" );
 }

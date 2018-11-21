@@ -66,7 +66,7 @@ void test_print::test_printui128() {
 }
 
 void test_print::test_printn() {
-   printn(eosio::name{"abcde"});
+   printn("john"_n);
    printn("abBde"_n);
    printn("1q1q1qAA"_n);
    printn(""_n);
