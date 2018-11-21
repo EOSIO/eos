@@ -1617,17 +1617,17 @@ namespace eosio {
       net_message msg(bsum);
       uint32_t packsiz = fc::raw::pack_size(msg);
       uint32_t msgsiz = packsiz + sizeof(packsiz);
-      notice_message pending_notify;
       block_id_type bid = bsum.id();
       uint32_t bnum = bsum.block_num();
-      pending_notify.known_blocks.mode = normal;
-      pending_notify.known_blocks.ids.push_back( bid );
-      pending_notify.known_trx.mode = none;
 
       peer_block_state pbstate = {bid, bnum, false,true,time_point()};
       // skip will be empty if our producer emitted this block so just send it
       if (( large_msg_notify && msgsiz > just_send_it_max) && !skips.empty()) {
          fc_ilog(logger, "block size is ${ms}, sending notify",("ms", msgsiz));
+         notice_message pending_notify;
+         pending_notify.known_blocks.mode = normal;
+         pending_notify.known_blocks.ids.push_back( bid );
+         pending_notify.known_trx.mode = none;
          my_impl->send_all(pending_notify, [&skips, pbstate](connection_ptr c) -> bool {
             if (skips.find(c) != skips.end() || !c->current())
                return false;
@@ -1646,7 +1646,7 @@ namespace eosio {
                continue;
             }
             cp->add_peer_block(pbstate);
-            cp->enqueue( bsum );
+            cp->enqueue( msg );
          }
       }
    }
