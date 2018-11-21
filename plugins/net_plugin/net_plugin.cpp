@@ -665,8 +665,6 @@ namespace eosio {
    public:
       uint32_t just_send_it_max = 0;
 
-      vector<transaction_id_type> req_trx;
-
       std::multimap<block_id_type, connection_ptr> received_blocks;
       std::multimap<transaction_id_type, connection_ptr> received_transactions;
 
@@ -1684,13 +1682,6 @@ namespace eosio {
       }
       received_transactions.erase(range.first, range.second);
 
-      for (auto ref = req_trx.begin(); ref != req_trx.end(); ++ref) {
-         if (*ref == id) {
-            req_trx.erase(ref);
-            break;
-         }
-      }
-
       if( my_impl->local_txns.get<by_id>().find( id ) != my_impl->local_txns.end( ) ) { //found
          fc_dlog(logger, "found trxid in local_trxs" );
          return;
@@ -1797,7 +1788,6 @@ namespace eosio {
                         time_point()} );
 
                req.req_trx.ids.push_back( t );
-               req_trx.push_back( t );
             }
             else {
                fc_dlog(logger,"big msg manager found txn id in table, ${id}",("id", t));
