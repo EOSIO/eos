@@ -467,7 +467,6 @@ namespace eosio {
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
       fc::optional<std::size_t>        outstanding_read_bytes;
-      vector<char>            blk_buffer;
 
       struct queued_write {
          std::shared_ptr<vector<char>> buff;
@@ -1195,22 +1194,6 @@ namespace eosio {
 
    bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
       try {
-         // If it is a signed_block, then save the raw message for the cache
-         // This must be done before we unpack the message.
-         // This code is copied from fc::io::unpack(..., unsigned_int)
-         auto index = pending_message_buffer.read_index();
-         uint64_t which = 0; char b = 0; uint8_t by = 0;
-         do {
-            pending_message_buffer.peek(&b, 1, index);
-            which |= uint32_t(uint8_t(b) & 0x7f) << by;
-            by += 7;
-         } while( uint8_t(b) & 0x80 && by < 32);
-
-         if (which == uint64_t(net_message::tag<signed_block>::value)) {
-            blk_buffer.resize(message_length);
-            auto index = pending_message_buffer.read_index();
-            pending_message_buffer.peek(blk_buffer.data(), message_length, index);
-         }
          auto ds = pending_message_buffer.create_datastream();
          net_message msg;
          fc::raw::unpack(ds, msg);
