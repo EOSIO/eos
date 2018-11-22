@@ -2,6 +2,8 @@ FROM cyberway/builder:latest as builder
 ARG branch=master
 ARG symbol=CYBER
 
+ADD https://api.github.com/repos/GolosChain/cyberway/git/refs/heads/$branch /etc/version.json
+
 RUN git clone -b $branch https://github.com/GolosChain/cyberway.git --recursive \
     && cd cyberway \
     && echo "$branch:$(git rev-parse HEAD)" > /etc/cyberway-version \
