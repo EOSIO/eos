@@ -885,6 +885,9 @@ class authorization_api : public context_aware_api {
       return context.is_account( account );
    }
 
+   bool is_contract( const account_name& account )const {
+      return context.is_contract( account );
+   }
 };
 
 class system_api : public context_aware_api {
@@ -1785,6 +1788,7 @@ REGISTER_INTRINSICS(authorization_api,
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
    (has_authorization,     int(int64_t), "has_auth", bool(authorization_api::*)(const account_name&)const )
    (is_account,            int(int64_t)           )
+   (is_contract,           int(int64_t)           )
 );
 
 REGISTER_INTRINSICS(console_api,

@@ -141,6 +141,11 @@ bool apply_context::is_account( const account_name& account )const {
    return nullptr != db.find<account_object,by_name>( account );
 }
 
+bool apply_context::is_contract( const account_name& account )const {
+   auto *code_accnt = db.find<account_object, by_name>(account);
+   return code_accnt != nullptr && code_accnt->code.size() > 0;
+}
+
 void apply_context::require_authorization( const account_name& account ) {
    for( uint32_t i=0; i < act.authorization.size(); i++ ) {
      if( act.authorization[i].actor == account ) {

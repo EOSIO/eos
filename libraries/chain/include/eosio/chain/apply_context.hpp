@@ -503,6 +503,11 @@ class apply_context {
       bool is_account(const account_name& account)const;
 
       /**
+       * @return true if contract exists, false if it does not
+       */
+      bool is_contract(const account_name& account)const;
+
+      /**
        * Requires that the current action be delivered to account
        */
       void require_recipient(account_name account);
