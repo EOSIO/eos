@@ -1,87 +1,44 @@
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/composite_key.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/indexed_by.hpp>
-
 #include <cyberway/chaindb/cache_map.hpp>
 #include <cyberway/chaindb/controller.hpp>
-
-#include <cyberway/chaindb/names.hpp>
+#include <cyberway/chaindb/table_object.hpp>
 
 namespace cyberway { namespace chaindb {
 
-    class cache_table_object final {
-        const table_def table_def_;  // <- copy to replace pointer in info_
-        const order_def pk_order_;   // <- copy to replace pointer in info_
-        table_info      info_;       // <- for const reference
-
-    public:
-        const account_name code;
-        const account_name scope;
-        const table_name   table;
-        const field_name   pk_field; // <- for case when contract change its primary key
-
-        cache_table_object(const table_info& src)
-        : table_def_(*src.table),
-          pk_order_(*src.pk_order),
-          info_(src),
-          code(src.code),
-          scope(src.scope),
-          table(src.table->name),
-          pk_field(src.pk_order->field) {
-            info_.table = &table_def_;
-            info_.pk_order = &pk_order_;
-        }
-
-        const table_info& info() const {
-            return info_;
-        }
+    struct table_cache_object final: public table_object::object {
+        using table_object::object::object;
 
         using map_type = std::map<primary_key_t, cache_item_ptr>;
 
         map_type map;
         primary_key_t next_pk = unset_primary_key;
-    }; // struct cache_table
+    }; // struct table_cache_object
 
-    namespace bmi = boost::multi_index;
-
-    using cache_table_index = bmi::multi_index_container<
-        cache_table_object,
-        bmi::indexed_by<
-            bmi::ordered_unique<
-                bmi::composite_key<
-                    cache_table_object,
-                    bmi::member<cache_table_object, const account_name, &cache_table_object::code>,
-                    bmi::member<cache_table_object, const account_name, &cache_table_object::scope>,
-                    bmi::member<cache_table_object, const table_name,   &cache_table_object::table>,
-                    bmi::member<cache_table_object, const field_name,   &cache_table_object::pk_field>>>>>;
+    using table_cache_object_index = table_object::index<table_cache_object>;
 
     struct cache_map::cache_map_impl_ final {
         cache_map_impl_() = default;
         ~cache_map_impl_() = default;
 
-        cache_table_object* find(const table_info& table) {
-            auto itr = tables.find(std::make_tuple(table.code, table.scope, table.table->name, table.pk_order->field));
-            if (tables.end() != itr) return &const_cast<cache_table_object&>(*itr);
+        table_cache_object* find(const table_info& table) {
+            auto itr = table_object::find(tables, table);
+            if (tables.end() != itr) return &const_cast<table_cache_object&>(*itr);
 
             return nullptr;
         }
 
-        cache_table_object& get(const table_info& table) {
+        table_cache_object& get(const table_info& table) {
             auto cache = find(table);
             if (cache) return *cache;
 
-            auto result = tables.emplace(table);
-            return const_cast<cache_table_object&>(*result.first);
+            return table_object::emplace(tables, table);
         }
 
-        cache_table_index tables;
+        table_cache_object_index tables;
     }; // struct cache_map::cache_map_impl_
 
     cache_map::cache_map()
-    : impl_(new cache_map_impl_())
-    { }
+    : impl_(new cache_map_impl_()) {
+    }
 
     cache_map::~cache_map() = default;
 
