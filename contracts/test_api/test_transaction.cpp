@@ -75,7 +75,20 @@ void copy_data(char* data, size_t data_len, std::vector<char>& data_out) {
 void test_transaction::send_action() {
    using namespace eosio;
    test_dummy_action<"testapi"_n.value, WASM_TEST_ACTION("test_action", "read_action_normal")> test_action = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
-   // action act(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action);
+
+   // Action contructor:
+   // Param1: vector of permission levels
+   // Param2: name a
+   // Param3: name b
+   // Param4: T&& value
+   
+   // action act(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action); ---------------------
+
+   // trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}}, ------------------------
+   //                          "testapi"_n, WASM_TEST_ACTION("test_action", ---------------------
+   //                                                        "test_current_sender"), ---------------------
+   //                          cur_send); ---------------------
+   
    // act.send();
 }
 
@@ -83,9 +96,9 @@ void test_transaction::send_action_empty() {
    using namespace eosio;
    test_action_action<"testapi"_n.value, WASM_TEST_ACTION("test_action", "assert_true")> test_action;
 
-   // action act(eosio::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action);
+   // action act(eosio::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action); -------------------
 
-   // act.send();
+   // act.send(); ------------------
 }
 
 /**
@@ -96,8 +109,8 @@ void test_transaction::send_action_large() {
    static char large_message[8 * 1024];
    test_action_action<"testapi"_n.value, WASM_TEST_ACTION("test_action", "read_action_normal")> test_action;
    copy_data(large_message, 8*1024, test_action.data);
-   // action act(vector<permission_level>{{"testapi"_n, "active"_n}}, test_action);
-   // act.send();
+   // action act(vector<permission_level>{{"testapi"_n, "active"_n}}, test_action); ----------------------
+   // act.send(); ----------------------------
    eosio_assert(false, "send_message_large() should've thrown an error");
 }
 
@@ -111,9 +124,9 @@ void test_transaction::send_action_recurse() {
 
    test_action_action<"testapi"_n.value, WASM_TEST_ACTION("test_transaction", "send_action_recurse")> test_action;
    copy_data(buffer, 1024, test_action.data);
-   // action act(vector<permission_level>{{"testapi"_n, "active"_n}}, test_action);
+   // action act(vector<permission_level>{{"testapi"_n, "active"_n}}, test_action); ----------------------
 
-   // act.send();
+   // act.send(); ------------------------
 }
 
 /**
@@ -123,9 +136,9 @@ void test_transaction::send_action_inline_fail() {
    using namespace eosio;
    test_action_action<"testapi"_n.value, WASM_TEST_ACTION("test_action", "assert_false")> test_action;
 
-   // action act(vector<permission_level>{{"testapi"_n, "active"_n}}, test_action);
+   // action act(vector<permission_level>{{"testapi"_n, "active"_n}}, test_action); ----------------------------
 
-   // act.send();
+   // act.send(); --------------------------
 }
 
 void test_transaction::test_tapos_block_prefix() {
@@ -150,7 +163,7 @@ void test_transaction::test_read_transaction() {
    char buf[size];
    uint32_t read = read_transaction( buf, size );
    eosio_assert( size == read, "read_transaction failed");
-   sha256(buf, read, &h);
+   h = eosio::sha256(buf, read);
    printhex( &h, sizeof(h) );
 }
 
@@ -170,7 +183,7 @@ void test_transaction::send_transaction(uint64_t receiver, uint64_t, uint64_t) {
    copy_data((char*)&payload, sizeof(dummy_action), test_action.data);
 
    auto trx = transaction();
-   trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action);
+   // trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action); --------------------------------
    trx.send(0, name{receiver});
 }
 
@@ -178,11 +191,13 @@ void test_transaction::send_action_sender(uint64_t receiver, uint64_t, uint64_t)
    using namespace eosio;
    name cur_send;
    read_action_data( &cur_send, sizeof(name) );
-   test_action_action<"testapi"_n.value, WASM_TEST_ACTION("test_action", "test_current_sender")> test_action;
-   copy_data((char*)&cur_send, sizeof(name), test_action.data);
 
    auto trx = transaction();
-   trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action);
+   // trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}}, ------------------------
+   //                          "testapi"_n, WASM_TEST_ACTION("test_action", ---------------------
+   //                                                        "test_current_sender"), ---------------------
+   //                          cur_send); ---------------------
+   
    trx.send(0, name{receiver});
 }
 
@@ -198,14 +213,14 @@ void test_transaction::send_transaction_trigger_error_handler(uint64_t receiver,
    using namespace eosio;
    auto trx = transaction();
    test_action_action<"testapi"_n.value, WASM_TEST_ACTION("test_action", "assert_false")> test_action;
-   trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action);
+   // trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action); --------------------------
    trx.send(0, name{receiver});
 }
 
 void test_transaction::assert_false_error_handler(const eosio::transaction& dtrx) {
    eosio_assert(dtrx.actions.size() == 1, "transaction should only have one action");
    eosio_assert(dtrx.actions[0].account == "testapi"_n, "transaction has wrong code");
-   eosio_assert(dtrx.actions[0].name == WASM_TEST_ACTION("test_action", "assert_false"), "transaction has wrong name");
+   eosio_assert(dtrx.actions[0].name.value == WASM_TEST_ACTION("test_action", "assert_false"), "transaction has wrong name");
    eosio_assert(dtrx.actions[0].authorization.size() == 1, "action should only have one authorization");
    eosio_assert(dtrx.actions[0].authorization[0].actor == "testapi"_n, "action's authorization has wrong actor");
    eosio_assert(dtrx.actions[0].authorization[0].permission == "active"_n, "action's authorization has wrong permission");
@@ -219,9 +234,9 @@ void test_transaction::send_transaction_large(uint64_t receiver, uint64_t, uint6
    auto trx = transaction();
    for (int i = 0; i < 32; i ++) {
       char large_message[1024];
-      test_action_action<"testapi"_n, WASM_TEST_ACTION("test_action", "read_action_normal")> test_action;
+      test_action_action<"testapi"_n.value, WASM_TEST_ACTION("test_action", "read_action_normal")> test_action;
       copy_data(large_message, 1024, test_action.data);
-      trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action);
+      // trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action); -------------------------
    }
 
    trx.send(0, name{receiver});
@@ -240,7 +255,7 @@ void test_transaction::send_deferred_transaction(uint64_t receiver, uint64_t, ui
    using namespace eosio;
    auto trx = transaction();
    test_action_action<"testapi"_n.value, WASM_TEST_ACTION("test_transaction", "deferred_print")> test_action;
-   trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action);
+   // trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action); --------------------------
    trx.delay_sec = 2;
    trx.send( 0xffffffffffffffff, name{receiver} );
 }
@@ -249,7 +264,7 @@ void test_transaction::send_deferred_transaction_replace(uint64_t receiver, uint
    using namespace eosio;
    auto trx = transaction();
    test_action_action<"testapi"_n.value, WASM_TEST_ACTION("test_transaction", "deferred_print")> test_action;
-   trx.actions.emplace_back(vector<permission_level>{{"testapi"_n, "active"_n}}, test_action);
+   // trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action); -------------------------
    trx.delay_sec = 2;
    trx.send( 0xffffffffffffffff, name{receiver}, true );
 }
@@ -260,15 +275,15 @@ void test_transaction::send_deferred_tx_with_dtt_action() {
    read_action_data(&dtt_act, action_data_size());
 
    action deferred_act;
-   deferred_act.account = dtt_act.deferred_account;
-   deferred_act.name = dtt_act.deferred_action;
-   deferred_act.authorization = std::vector<permission_level>{{"testapi"_n, dtt_act.permission_name}};
+   deferred_act.account = name{dtt_act.deferred_account};
+   deferred_act.name = name{dtt_act.deferred_action};
+   deferred_act.authorization = std::vector<permission_level>{ {"testapi"_n, name{dtt_act.permission_name}} };
 
    auto trx = transaction();
    trx.actions.emplace_back(deferred_act);
    trx.delay_sec = dtt_act.delay_sec;
    cancel_deferred( 0xffffffffffffffff ); // TODO: Remove this line after fixing deferred trx replacement RAM bug
-   trx.send( 0xffffffffffffffff, dtt_act.payer, true );
+   trx.send( 0xffffffffffffffff, name{dtt_act.payer}, true );
 }
 
 
@@ -286,22 +301,21 @@ void test_transaction::cancel_deferred_transaction_not_found() {
 
 void test_transaction::send_cf_action() {
    using namespace eosio;
-   test_action_action<N(dummy), N(event1)> cfa;
-   action act(cfa);
+   action act(std::vector<permission_level>{}, "dummy"_n, "event1"_n, std::vector<char>{});
    act.send_context_free();
 }
 
 void test_transaction::send_cf_action_fail() {
    using namespace eosio;
-   test_action_action<N(dummy), N(event1)> cfa;
-   action act(vector<permission_level>{{N(dummy), N(active)}}, cfa);
+   action act(std::vector<permission_level>{{"dummy"_n, "active"_n}}, "dummy"_n, "event1"_n, std::vector<char>{});
    act.send_context_free();
    eosio_assert(false, "send_cfa_action_fail() should've thrown an error");
 }
 
 void test_transaction::stateful_api() {
    char buf[4] = {1};
-   db_store_i64(N(test_transaction), N(table), N(test_transaction), 0, buf, 4);
+   db_store_i64(eosio::name{"testtrans"}.value, eosio::name{"table"}.value, eosio::name{"testtrans"}.value, 0, buf, 4);
+   // db_store_i64(uint64_t scope, capi_name table, capi_name payer, uint64_t id,  const void* data, uint32_t len); ------------------
 }
 
 void test_transaction::context_free_api() {
@@ -311,12 +325,12 @@ void test_transaction::context_free_api() {
 
 extern "C" { int is_feature_active(int64_t); }
 void test_transaction::new_feature() {
-   eosio_assert(false == is_feature_active((int64_t)N(newfeature)), "we should not have new features unless hardfork");
+   eosio_assert(false == is_feature_active("newfeature"_n.value), "we should not have new features unless hardfork");
 }
 
-void test_transaction::active_new_feature() {
-   activate_feature((int64_t)N(newfeature));
-}
+// void test_transaction::active_new_feature() { ??????????????????????????????????/
+//    activate_feature("newfeature"_n.value); ??????????????????????????
+// } ????????????????????????????/
 
 void test_transaction::repeat_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action) {
    using namespace eosio;
@@ -334,6 +348,6 @@ void test_transaction::repeat_deferred_transaction(uint64_t receiver, uint64_t c
 
    --payload;
    transaction trx;
-   trx.actions.emplace_back( permission_level{receiver, N(active)}, code, action, payload );
-   trx.send( sender_id, receiver );
+   // trx.actions.emplace_back( permission_level{eosio::name{receiver}, "active"_n}, code, action, payload ); -------------------
+   trx.send( sender_id, eosio::name{receiver} );
 }

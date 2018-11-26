@@ -157,8 +157,7 @@ void test_action::test_cf_action() {
       send_inline( (char*)"hello", 6 );
       eosio_assert( false, "transaction_api should not be allowed" );
    } else if ( cfa.payload == 211 ) {
-      // void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len, uint32_t replace_existing)
-      //      send_deferred(                "testapi"_n,        "testapi"_n,              "hello",               6,  );
+      send_deferred( "testapi"_n.value, "testapi"_n.value, "hello", 6, 0 );
       eosio_assert( false, "transaction_api should not be allowed" );
    }
 
@@ -260,7 +259,7 @@ void test_action::test_ram_billing_in_notify(uint64_t receiver, uint64_t code, u
 
       // Create the main table row simply for the purpose of charging code more RAM.
       if( payer != 0 )
-         db_store_i64("notifytest"_n.value, "notifytest"_n, payer, "notifytest"_n.value, &to_notify, sizeof(to_notify) );
+         db_store_i64("notifytest"_n.value, "notifytest"_n.value, payer, "notifytest"_n.value, &to_notify, sizeof(to_notify) );
    }
 
 }

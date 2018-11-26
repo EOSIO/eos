@@ -5,12 +5,13 @@
 #include <eosiolib/action.h>
 #include <eosiolib/chain.h>
 #include <eosiolib/eosio.hpp>
+
 #include "test_api.hpp"
 
 #pragma pack(push, 1)
 struct producers {
    char len;
-   eosio::name producers[21];
+   capi_name producers[21];
 };
 #pragma pack(pop)
 

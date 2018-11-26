@@ -66,16 +66,16 @@ void test_print::test_printui128() {
 }
 
 void test_print::test_printn() {
-   printn("john"_n);
-   printn("abBde"_n);
-   printn("1q1q1qAA"_n);
-   printn(""_n);
-   printn("AAAAAA"_n);
-   printn("abcdefghijk"_n);
-   printn("abcdefghijkl"_n);
-   printn("abcdefghijkl1"_n);
-   printn("abcdefghijkl12"_n);
-   printn("abcdefghijkl123"_n);
+   printn(eosio::name{"john"}.value);
+   printn(eosio::name{"abBde"}.value);
+   printn(eosio::name{"1q1q1qAA"}.value);
+   printn(eosio::name{""}.value);
+   printn(eosio::name{"AAAAAA"}.value);
+   printn(eosio::name{"abcdefghijk"}.value);
+   printn(eosio::name{"abcdefghijkl"}.value);
+   printn(eosio::name{"abcdefghijkl1"}.value);
+   printn(eosio::name{"abcdefghijkl12"}.value);
+   printn(eosio::name{"abcdefghijkl123"}.value);
 }
 
 void test_print::test_printsf() {
@@ -115,8 +115,8 @@ void test_print::test_printqf() {
 }
 
 void test_print::test_print_simple() {
-    std::string const cvalue = "cvalue";
+    const std::string cvalue = "cvalue";
     eosio::print(cvalue);
     std::string value = "value";
-    eosio::print(value);
+    eosio::print(std::move(value));
 }
