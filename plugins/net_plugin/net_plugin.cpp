@@ -467,7 +467,6 @@ namespace eosio {
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
       fc::optional<std::size_t>        outstanding_read_bytes;
-      vector<char>            blk_buffer;
 
       struct queued_write {
          std::shared_ptr<vector<char>> buff;
@@ -664,8 +663,6 @@ namespace eosio {
    class dispatch_manager {
    public:
       uint32_t just_send_it_max = 0;
-
-      vector<transaction_id_type> req_trx;
 
       std::multimap<block_id_type, connection_ptr> received_blocks;
       std::multimap<transaction_id_type, connection_ptr> received_transactions;
@@ -1197,22 +1194,6 @@ namespace eosio {
 
    bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
       try {
-         // If it is a signed_block, then save the raw message for the cache
-         // This must be done before we unpack the message.
-         // This code is copied from fc::io::unpack(..., unsigned_int)
-         auto index = pending_message_buffer.read_index();
-         uint64_t which = 0; char b = 0; uint8_t by = 0;
-         do {
-            pending_message_buffer.peek(&b, 1, index);
-            which |= uint32_t(uint8_t(b) & 0x7f) << by;
-            by += 7;
-         } while( uint8_t(b) & 0x80 && by < 32);
-
-         if (which == uint64_t(net_message::tag<signed_block>::value)) {
-            blk_buffer.resize(message_length);
-            auto index = pending_message_buffer.read_index();
-            pending_message_buffer.peek(blk_buffer.data(), message_length, index);
-         }
          auto ds = pending_message_buffer.create_datastream();
          net_message msg;
          fc::raw::unpack(ds, msg);
@@ -1619,17 +1600,17 @@ namespace eosio {
       net_message msg(bsum);
       uint32_t packsiz = fc::raw::pack_size(msg);
       uint32_t msgsiz = packsiz + sizeof(packsiz);
-      notice_message pending_notify;
       block_id_type bid = bsum.id();
       uint32_t bnum = bsum.block_num();
-      pending_notify.known_blocks.mode = normal;
-      pending_notify.known_blocks.ids.push_back( bid );
-      pending_notify.known_trx.mode = none;
 
       peer_block_state pbstate = {bid, bnum, false,true,time_point()};
       // skip will be empty if our producer emitted this block so just send it
       if (( large_msg_notify && msgsiz > just_send_it_max) && !skips.empty()) {
          fc_ilog(logger, "block size is ${ms}, sending notify",("ms", msgsiz));
+         notice_message pending_notify;
+         pending_notify.known_blocks.mode = normal;
+         pending_notify.known_blocks.ids.push_back( bid );
+         pending_notify.known_trx.mode = none;
          my_impl->send_all(pending_notify, [&skips, pbstate](connection_ptr c) -> bool {
             if (skips.find(c) != skips.end() || !c->current())
                return false;
@@ -1648,7 +1629,7 @@ namespace eosio {
                continue;
             }
             cp->add_peer_block(pbstate);
-            cp->enqueue( bsum );
+            cp->enqueue( msg );
          }
       }
    }
@@ -1683,13 +1664,6 @@ namespace eosio {
          skips.insert(org->second);
       }
       received_transactions.erase(range.first, range.second);
-
-      for (auto ref = req_trx.begin(); ref != req_trx.end(); ++ref) {
-         if (*ref == id) {
-            req_trx.erase(ref);
-            break;
-         }
-      }
 
       if( my_impl->local_txns.get<by_id>().find( id ) != my_impl->local_txns.end( ) ) { //found
          fc_dlog(logger, "found trxid in local_trxs" );
@@ -1797,7 +1771,6 @@ namespace eosio {
                         time_point()} );
 
                req.req_trx.ids.push_back( t );
-               req_trx.push_back( t );
             }
             else {
                fc_dlog(logger,"big msg manager found txn id in table, ${id}",("id", t));
