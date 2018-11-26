@@ -36,7 +36,7 @@ extern "C" {
          return;
       }
 
-      if ( action == N(cf_action) ) {
+      if ( action == name{"cf_action"}.value ) {
          test_action::test_cf_action();
          return;
       }
@@ -84,7 +84,7 @@ extern "C" {
 
       // test named actions
       // We enforce action name matches action data type name, so name mangling will not work for these tests.
-      if ( action == N(dummy_action) ) {
+      if ( action == name{"dummy_action"}.value ) {
          test_action::test_dummy_action();
          return;
       }
