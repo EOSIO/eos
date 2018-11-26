@@ -61,11 +61,14 @@ struct db_account
 
 struct db_table
 {
-    op_type_enum op_type;
-    account_name code;
-    fc::string scope;
-    table_name table;
-    account_name payer;
+    op_type_enum        op_type;
+    transaction_id_type trx_id;
+    size_t              act_index;
+    bool                inline_action;
+    account_name        code;
+    fc::string          scope;
+    table_name          table;
+    account_name        payer;
 };
 
 struct db_op : db_table
@@ -87,6 +90,13 @@ struct db_action
     block_timestamp_type block_time;
     fc::variant action_trace;
     uint32_t last_irreversible_block;
+};
+
+struct db_action_trac 
+{
+    transaction_id_type trx_id;
+    bool                inline_action;
+    int64_t             op_size;
 };
 
 struct filter_entry
@@ -139,13 +149,15 @@ class statetrack_plugin_impl
     void on_applied_op(const database &db, const permission_object &po, op_type_enum op_type);
     void on_applied_op(const database &db, const permission_link_object &plo, op_type_enum op_type);
     void on_applied_op(const database &db, const key_value_object &kvo, op_type_enum op_type);
-    //generic_index undo
     void on_applied_rev(const int64_t revision, op_type_enum op_type);
+    //generic_index undo
+    void on_applied_undo(const int64_t revision);
     //blocks and transactions
     void on_applied_transaction(const transaction_trace_ptr &ttp);
     void on_accepted_block(const block_state_ptr &bsp);
     void on_action_trace(const action_trace &at, const block_state_ptr &bsp);
     void on_irreversible_block(const block_state_ptr &bsp);
+    void on_pre_apply_action(std::pair<action_trace&, bool>& trace);
 
     template<typename MultiIndexType> 
     void create_index_events(const database &db) {
@@ -168,7 +180,7 @@ class statetrack_plugin_impl
 
         connections.emplace_back(
             fc::optional<connection>(index.applied_undo.connect([&](const int64_t revision) {
-                on_applied_rev(revision, op_type_enum::REV_UNDO);
+                on_applied_undo(revision);
             })));
     }
 
@@ -203,6 +215,9 @@ class statetrack_plugin_impl
     zmq::context_t *context;
     zmq::socket_t *sender_socket;
 
+    bool is_undo_state;
+    std::vector<db_action_trac> current_trx_actions;
+
     std::map<transaction_id_type, transaction_trace_ptr> cached_traces;
     std::map<name, std::set<name>> blacklist_actions;
 
@@ -220,7 +235,7 @@ class statetrack_plugin_impl
 
 FC_REFLECT_ENUM(eosio::op_type_enum, (TABLE_REMOVE)(ROW_CREATE)(ROW_MODIFY)(ROW_REMOVE)(TRX_ACTION)(REV_UNDO)(REV_COMMIT))
 FC_REFLECT(eosio::db_account, (name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date))
-FC_REFLECT(eosio::db_table, (op_type)(code)(scope)(table)(payer))
+FC_REFLECT(eosio::db_table, (op_type)(trx_id)(act_index)(inline_action)(code)(scope)(table)(payer))
 FC_REFLECT_DERIVED(eosio::db_op, (eosio::db_table), (id)(value))
 FC_REFLECT(eosio::db_rev, (op_type)(revision))
 FC_REFLECT(eosio::db_action, (block_num)(block_time)(action_trace)(last_irreversible_block))

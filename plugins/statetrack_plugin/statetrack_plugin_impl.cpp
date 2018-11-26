@@ -168,6 +168,23 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const table_id_objec
 
   op.id = kvo.primary_key;
   op.op_type = op_type;
+
+  db_action_trac& dat = current_trx_actions.back();
+  op.trx_id = dat.trx_id;
+  op.act_index = current_trx_actions.size();
+  op.inline_action = dat.inline_action;
+
+  if(is_undo_state) {
+    dat.op_size--;
+
+    if(dat.op_size <= 0)
+      current_trx_actions.pop_back();
+  }
+  else {
+    
+    dat.op_size++;
+  }
+
   op.code = tio.code;
   op.scope = scope_sym_to_string(tio.scope);
   op.table = tio.table;
@@ -299,12 +316,26 @@ void statetrack_plugin_impl::on_applied_rev(const int64_t revision, op_type_enum
   send_zmq_msg(data);
 }
 
+void statetrack_plugin_impl::on_applied_undo(const int64_t revision)
+{
+  if (sender_socket == nullptr)
+    return;
+
+  is_undo_state = true;
+
+  fc::string data = fc::json::to_string(get_db_rev(revision, op_type_enum::REV_UNDO));
+  ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type_enum::REV_UNDO)("data", data));
+  send_zmq_msg(data);
+}
+
 void statetrack_plugin_impl::on_applied_transaction(const transaction_trace_ptr &ttp)
 {
   if (ttp->receipt)
   {
     cached_traces[ttp->id] = ttp;
   }
+
+  current_trx_actions.clear();
 }
 
 void statetrack_plugin_impl::on_accepted_block(const block_state_ptr &bsp)
@@ -391,6 +422,17 @@ void statetrack_plugin_impl::on_irreversible_block(const block_state_ptr &bsp)
   fc::string data = fc::json::to_string(get_db_rev(bsp->block_num, op_type_enum::REV_COMMIT));
   ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type_enum::REV_COMMIT)("data", data));
   send_zmq_msg(data);
+}
+
+void statetrack_plugin_impl::on_pre_apply_action(std::pair<action_trace&, bool>& trace) 
+{
+  db_action_trac dat;
+  dat.trx_id = trace.first.trx_id;
+  dat.inline_action = trace.second;
+  dat.op_size = 0;
+
+  current_trx_actions.emplace_back(dat);
+  is_undo_state = false;
 }
 
 } // namespace eosio

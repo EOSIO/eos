@@ -253,6 +253,8 @@ namespace eosio { namespace chain {
          signal<void(const header_confirmation&)>      accepted_confirmation;
          signal<void(const int&)>                      bad_alloc;
 
+         signal<void(std::pair<action_trace&, bool>)>  pre_apply_action; 
+
          /*
          signal<void()>                                  pre_apply_block;
          signal<void()>                                  post_apply_block;

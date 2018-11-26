@@ -472,7 +472,7 @@ class apply_context {
    /// Execution methods:
    public:
 
-      void exec_one( action_trace& trace );
+      void exec_one( action_trace& trace, bool inline_action );
       void exec( action_trace& trace );
       void execute_inline( action&& a );
       void execute_context_free_inline( action&& a );

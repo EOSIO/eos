@@ -29,7 +29,33 @@ static inline void print_debug(account_name receiver, const action_trace& ar) {
    }
 }
 
-void apply_context::exec_one( action_trace& trace )
+/**
+ *  Plugins / observers listening to signals emited (such as accepted_transaction) might trigger
+ *  errors and throw exceptions. Unless those exceptions are caught it could impact consensus and/or
+ *  cause a node to fork.
+ *
+ *  If it is ever desirable to let a signal handler bubble an exception out of this method
+ *  a full audit of its uses needs to be undertaken.
+ *
+ */
+template<typename Signal, typename Arg>
+void emit( const Signal& s, Arg&& a ) {
+   try {
+      s(std::forward<Arg>(a));
+   } catch (boost::interprocess::bad_alloc& e) {
+      wlog( "bad alloc" );
+      throw e;
+   } catch ( controller_emit_signal_exception& e ) {
+      wlog( "${details}", ("details", e.to_detail_string()) );
+      throw e;
+   } catch ( fc::exception& e ) {
+      wlog( "${details}", ("details", e.to_detail_string()) );
+   } catch ( ... ) {
+      wlog( "signal handler threw exception" );
+   }
+}
+
+void apply_context::exec_one( action_trace& trace, bool inline_action )
 {
    auto start = fc::time_point::now();
 
@@ -43,6 +69,8 @@ void apply_context::exec_one( action_trace& trace )
    trace.producer_block_id = control.pending_producer_block_id();
    trace.act = act;
    trace.context_free = context_free;
+
+   emit(control.pre_apply_action, std::pair<action_trace&, bool>(trace, inline_action));
 
    const auto& cfg = control.get_global_properties().configuration;
    try {
@@ -113,11 +141,11 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
 void apply_context::exec( action_trace& trace )
 {
    _notified.push_back(receiver);
-   exec_one( trace );
+   exec_one( trace, false );
    for( uint32_t i = 1; i < _notified.size(); ++i ) {
       receiver = _notified[i];
       trace.inline_traces.emplace_back( );
-      exec_one( trace.inline_traces.back() );
+      exec_one( trace.inline_traces.back(), true );
    }
 
    if( _cfa_inline_actions.size() > 0 || _inline_actions.size() > 0 ) {

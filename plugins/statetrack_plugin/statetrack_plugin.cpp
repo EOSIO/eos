@@ -121,6 +121,11 @@ void statetrack_plugin::plugin_initialize(const variables_map &options)
             fc::optional<connection>(chain.irreversible_block.connect([&](const block_state_ptr &bsp) {
                 my->on_irreversible_block(bsp);
             })));
+
+        my->connections.emplace_back(
+            fc::optional<connection>(chain.pre_apply_action.connect([&](std::pair<action_trace&, bool> trace){
+                my->on_pre_apply_action(trace);
+            })));
     }
     FC_LOG_AND_RETHROW()
 }
