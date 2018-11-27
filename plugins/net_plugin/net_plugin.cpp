@@ -1132,7 +1132,7 @@ namespace eosio {
       fc::raw::pack( ds, unsigned_int( which ));
       fc::raw::pack( ds, *sb );
 
-      enqueue_buffer( send_buffer, true, no_reason );
+      enqueue_buffer( send_buffer, trigger_send, no_reason );
    }
 
    void connection::enqueue_buffer( const std::shared_ptr<std::vector<char>>& send_buffer, bool trigger_send, go_away_reason close_after_send ) {
