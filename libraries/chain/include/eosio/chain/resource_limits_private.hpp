@@ -265,16 +265,9 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_usage_object,  
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_config_object, eosio::chain::resource_limits::resource_limits_config_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_state_object,  eosio::chain::resource_limits::resource_limits_state_index)
 
-FC_REFLECT(eosio::chain::resource_limits::impl::exponential_moving_average_accumulator<>, (last_ordinal)(value_ex)(consumed));
+FC_REFLECT(eosio::chain::resource_limits::usage_accumulator, (last_ordinal)(value_ex)(consumed))
 
-//FC_REFLECT(chainbase::oid<eosio::chain::resource_limits::resource_limits_object>, (_id));
-FC_REFLECT(eosio::chain::resource_limits::resource_limits_object, (id)(owner)(pending)(net_weight)(cpu_weight)(ram_bytes));
-
-//FC_REFLECT(chainbase::oid<eosio::chain::resource_limits::resource_usage_object>, (_id));
-FC_REFLECT(eosio::chain::resource_limits::resource_usage_object, (id)(owner)(net_usage)(cpu_usage)(ram_usage));
-
-//FC_REFLECT(chainbase::oid<eosio::chain::resource_limits::resource_limits_config_object>, (_id));
-FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (id)(cpu_limit_parameters)(net_limit_parameters)(account_cpu_usage_average_window)(account_net_usage_average_window));
-
-//FC_REFLECT(chainbase::oid<eosio::chain::resource_limits::resource_limits_state_object>, (_id));
-FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)(average_block_net_usage)(average_block_cpu_usage)(pending_net_usage)(pending_cpu_usage)(total_net_weight)(total_cpu_weight)(total_ram_bytes)(virtual_net_limit)(virtual_cpu_limit)); 
+FC_REFLECT(eosio::chain::resource_limits::resource_limits_object, (id)(owner)(pending)(net_weight)(cpu_weight)(ram_bytes))
+FC_REFLECT(eosio::chain::resource_limits::resource_usage_object, (id)(owner)(net_usage)(cpu_usage)(ram_usage))
+FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (id)(cpu_limit_parameters)(net_limit_parameters)(account_cpu_usage_average_window)(account_net_usage_average_window))
+FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)(average_block_net_usage)(average_block_cpu_usage)(pending_net_usage)(pending_cpu_usage)(total_net_weight)(total_cpu_weight)(total_ram_bytes)(virtual_net_limit)(virtual_cpu_limit))

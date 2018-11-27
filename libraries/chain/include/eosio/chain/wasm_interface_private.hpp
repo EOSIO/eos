@@ -2,7 +2,6 @@
 
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/webassembly/wavm.hpp>
-#include <eosio/chain/webassembly/binaryen.hpp>
 #include <eosio/chain/webassembly/wabt.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
@@ -27,8 +26,6 @@ namespace eosio { namespace chain {
       wasm_interface_impl(wasm_interface::vm_type vm) {
          if(vm == wasm_interface::vm_type::wavm)
             runtime_interface = std::make_unique<webassembly::wavm::wavm_runtime>();
-         else if(vm == wasm_interface::vm_type::binaryen)
-            runtime_interface = std::make_unique<webassembly::binaryen::binaryen_runtime>();
          else if(vm == wasm_interface::vm_type::wabt)
             runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
          else
@@ -98,7 +95,6 @@ namespace eosio { namespace chain {
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
-   _REGISTER_BINARYEN_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_WABT_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
 
 #define _REGISTER_INTRINSIC4(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\

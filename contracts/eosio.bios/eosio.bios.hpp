@@ -34,6 +34,11 @@ namespace eosio {
             set_proposed_producers(buffer, size);
          }
 
+         void setparams( const eosio::blockchain_parameters& params ) {
+            require_auth( _self );
+            set_blockchain_parameters( params );
+         }
+
          void reqauth( action_name from ) {
             require_auth( from );
          }

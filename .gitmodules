@@ -1,6 +1,6 @@
 [submodule "libraries/appbase"]
 	path = libraries/appbase
-	url = https://github.com/eosio/appbase
+	url = https://github.com/GolosChain/cyberway.appbase.git
         ignore = dirty
 [submodule "contracts/musl/upstream"]
 	path = contracts/musl/upstream

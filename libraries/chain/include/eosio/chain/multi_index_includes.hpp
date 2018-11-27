@@ -181,6 +181,8 @@ namespace cyberway { namespace chaindb {
        }
 
        size_type size() const { return 0; } // TODO: ?
+       iterator begin() {return impl.begin(); }
+       const_iterator begin() const { return impl.begin(); }
        iterator end()  {return impl.end(); }
        const_iterator end() const { return impl.end(); }
 

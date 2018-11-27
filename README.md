@@ -1,3 +1,4 @@
+
 # EOSIO - The Most Powerful Infrastructure for Decentralized Applications
 
 [![Build status](https://badge.buildkite.com/370fe5c79410f7d695e4e34c500b4e86e3ac021c6b1f739e20.svg?branch=master)](https://buildkite.com/EOSIO/eosio)
@@ -24,6 +25,50 @@ EOSIO is released under the open source MIT license and is offered “AS IS” w
 Block.one is neither launching nor operating any initial public blockchains based upon the EOSIO software. This release refers only to version 1.0 of our open source software. We caution those who wish to use blockchains built on EOSIO to carefully vet the companies and organizations launching blockchains based on EOSIO before disclosing any private keys to their derivative software. 
 
 There is no public testnet running currently.
+
+**If you have previously installed EOSIO, please run the `eosio_uninstall` script (it is in the directory where you cloned EOSIO) before downloading and using the binary releases.**
+
+#### Mac OS X Brew Install
+```sh
+$ brew tap eosio/eosio
+$ brew install eosio
+```
+#### Mac OS X Brew Uninstall
+```sh
+$ brew remove eosio
+```
+#### Ubuntu 18.04 Debian Package Install
+```sh
+$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio_1.4.4-1-ubuntu-18.04_amd64.deb
+$ sudo apt install ./eosio_1.4.4-1-ubuntu-18.04_amd64.deb
+```
+#### Ubuntu 16.04 Debian Package Install
+```sh
+$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio_1.4.4-1-ubuntu-16.04_amd64.deb
+$ sudo apt install ./eosio_1.4.4-1-ubuntu-16.04_amd64.deb
+```
+#### Debian Package Uninstall
+```sh
+$ sudo apt remove eosio
+```
+#### Centos RPM Package Install
+```sh
+$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio-1.4.4-1.el7.x86_64.rpm
+$ sudo yum install ./eosio-1.4.4-1.el7.x86_64.rpm
+```
+#### Centos RPM Package Uninstall
+```sh
+$ sudo yum remove eosio.cdt
+```
+#### Fedora RPM Package Install
+```sh
+$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio-1.4.4-1.fc27.x86_64.rpm
+$ sudo yum install ./eosio-1.4.4-1.fc27.x86_64.rpm
+```
+#### Fedora RPM Package Uninstall
+```sh
+$ sudo yum remove eosio.cdt
+```
 
 ## Supported Operating Systems
 EOSIO currently supports the following operating systems:  

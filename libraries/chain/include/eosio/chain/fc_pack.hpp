@@ -28,15 +28,6 @@ namespace fc {
 #include <fc/io/raw.hpp>
 
 namespace fc {
-    template<typename T>
-    inline void to_variant(const chainbase::oid<T>& var, variant& vo) {
-        vo = var._id;
-    }
-
-    template<typename T>
-    inline void from_variant(const variant& var, chainbase::oid<T>& vo) {
-        vo._id = var.as_int64();
-    }
 
     inline void to_variant(const std::vector<bool>& vect, variant& v) {
         std::vector<variant> vars(vect.size());

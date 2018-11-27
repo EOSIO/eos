@@ -6,7 +6,7 @@
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
-#include <eosio/history_plugin/history_plugin.hpp>
+//#include <eosio/history_plugin/history_plugin.hpp> # TODO: CyberWay
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/utilities/common.hpp>
@@ -94,7 +94,7 @@ int main(int argc, char** argv)
 {
    try {
       app().set_version(eosio::nodeos::config::version);
-      app().register_plugin<history_plugin>();
+      // app().register_plugin<history_plugin>(); TODO: CyberWay
 
       auto root = fc::app_path();
       app().set_default_data_dir(root / "eosio/nodeos/data" );
@@ -109,6 +109,8 @@ int main(int argc, char** argv)
       initialize_logging();
       ilog("nodeos version ${ver}", ("ver", app().version_string()));
       ilog("eosio root is ${root}", ("root", root.string()));
+      ilog("nodeos using configuration file ${c}", ("c", app().full_config_file_path().string()));
+      ilog("nodeos data directory is ${d}", ("d", app().data_dir().string()));
       app().startup();
       app().exec();
    } catch( const extract_genesis_state_exception& e ) {

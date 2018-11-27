@@ -14,6 +14,7 @@
 #include <eosio/chain/reversible_block_object.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
+#include <eosio/chain/snapshot.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
 
@@ -28,6 +29,7 @@
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 #include <signal.h>
+#include <cstdlib>
 
 namespace eosio {
 
@@ -166,6 +168,7 @@ public:
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
    fc::microseconds                 abi_serializer_max_time_ms;
+   fc::optional<bfs::path>          snapshot_path;
 
 
    // retained references to channels for easy publication
@@ -212,7 +215,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to application data dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen/wabt"), "Override default WASM runtime")
+         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/wabt"), "Override default WASM runtime")
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
@@ -250,7 +253,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Type of chaindb connection")
          ("chaindb_address", bpo::value<string>()->default_value("mongodb://127.0.0.1:27017"),
           "Connection address to chaindb")
-          ;
+         ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
+         ;
 
 // TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
@@ -287,7 +291,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "replace reversible block database with blocks imported from specified file and then exit")
          ("export-reversible-blocks", bpo::value<bfs::path>(),
            "export reversible block database in portable format into specified file and then exit")
-         ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
+         ("snapshot", bpo::value<bfs::path>(), "File to read Snapshot State from")
          ;
 
 }
@@ -542,44 +546,76 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          wlog("The --import-reversible-blocks option should be used by itself.");
       }
 
-      if( options.count( "genesis-json" )) {
-         EOS_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
-                     plugin_config_exception,
-                    "Genesis state can only be set on a fresh blockchain." );
+      if (options.count( "snapshot" )) {
+         my->snapshot_path = options.at( "snapshot" ).as<bfs::path>();
+         EOS_ASSERT( fc::exists(*my->snapshot_path), plugin_config_exception,
+                     "Cannot load snapshot, ${name} does not exist", ("name", my->snapshot_path->generic_string()) );
 
-         auto genesis_file = options.at( "genesis-json" ).as<bfs::path>();
-         if( genesis_file.is_relative()) {
-            genesis_file = bfs::current_path() / genesis_file;
+         // recover genesis information from the snapshot
+         auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
+         auto reader = std::make_shared<istream_snapshot_reader>(infile);
+         reader->validate();
+         reader->read_section<genesis_state>([this]( auto &section ){
+            section.read_row(my->chain_config->genesis);
+         });
+         infile.close();
+
+         EOS_ASSERT( options.count( "genesis-json" ) == 0 &&  options.count( "genesis-timestamp" ) == 0,
+                 plugin_config_exception,
+                 "--snapshot is incompatible with --genesis-json and --genesis-timestamp as the snapshot contains genesis information");
+
+         auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
+         EOS_ASSERT( !fc::exists(shared_mem_path),
+                 plugin_config_exception,
+                 "Snapshot can only be used to initialize an empty database." );
+
+         if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
+            auto log_genesis = block_log::extract_genesis_state(my->blocks_dir);
+            EOS_ASSERT( log_genesis.compute_chain_id() == my->chain_config->genesis.compute_chain_id(),
+                    plugin_config_exception,
+                    "Genesis information in blocks.log does not match genesis information in the snapshot");
          }
 
-         EOS_ASSERT( fc::is_regular_file( genesis_file ),
-                     plugin_config_exception,
-                    "Specified genesis file '${genesis}' does not exist.",
-                    ("genesis", genesis_file.generic_string()));
+      } else {
+         if( options.count( "genesis-json" )) {
+            EOS_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+                        plugin_config_exception,
+                       "Genesis state can only be set on a fresh blockchain." );
 
-         my->chain_config->genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
+            auto genesis_file = options.at( "genesis-json" ).as<bfs::path>();
+            if( genesis_file.is_relative()) {
+               genesis_file = bfs::current_path() / genesis_file;
+            }
 
-         ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
+            EOS_ASSERT( fc::is_regular_file( genesis_file ),
+                        plugin_config_exception,
+                       "Specified genesis file '${genesis}' does not exist.",
+                       ("genesis", genesis_file.generic_string()));
 
-         if( options.count( "genesis-timestamp" )) {
+            my->chain_config->genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
+
+            ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
+
+            if( options.count( "genesis-timestamp" )) {
+               my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
+                     options.at( "genesis-timestamp" ).as<string>());
+            }
+
+            wlog( "Starting up fresh blockchain with provided genesis state." );
+         } else if( options.count( "genesis-timestamp" )) {
+            EOS_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
+                        plugin_config_exception,
+                       "Genesis state can only be set on a fresh blockchain." );
+
             my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
                   options.at( "genesis-timestamp" ).as<string>());
+
+            wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
+         } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
+            my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
+         } else {
+            wlog( "Starting up fresh blockchain with default genesis state." );
          }
-
-         wlog( "Starting up fresh blockchain with provided genesis state." );
-      } else if( options.count( "genesis-timestamp" )) {
-         EOS_ASSERT( !fc::exists( my->blocks_dir / "blocks.log" ),
-                     plugin_config_exception,
-                    "Genesis state can only be set on a fresh blockchain." );
-
-         my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
-               options.at( "genesis-timestamp" ).as<string>());
-
-         wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
-      } else if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
-         my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
-      } else {
-         wlog( "Starting up fresh blockchain with default genesis state." );
       }
 
       if ( options.count("read-mode") ) {
@@ -655,6 +691,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             [this]( const header_confirmation& conf ) {
                my->accepted_confirmation_channel.publish( conf );
             } );
+
+      my->chain->add_indices();
    } FC_LOG_AND_RETHROW()
 
 }
@@ -662,7 +700,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 void chain_plugin::plugin_startup()
 { try {
    try {
-      my->chain->startup();
+      if (my->snapshot_path) {
+         auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
+         auto reader = std::make_shared<istream_snapshot_reader>(infile);
+         my->chain->startup(reader);
+         infile.close();
+      } else {
+         my->chain->startup();
+      }
    } catch (const database_guard_exception& e) {
       log_guard_exception(e);
       // make sure to properly close the db
@@ -918,11 +963,6 @@ bool chain_plugin::export_reversible_blocks( const fc::path& reversible_dir,
    return (end >= start) && ((end - start + 1) == num);
 }
 
-controller::config& chain_plugin::chain_config() {
-   // will trigger optional assert if called before/after plugin_initialize()
-   return *my->chain_config;
-}
-
 controller& chain_plugin::chain() { return *my->chain; }
 const controller& chain_plugin::chain() const { return *my->chain; }
 
@@ -952,6 +992,12 @@ void chain_plugin::handle_guard_exception(const chain::guard_exception& e) const
 
    // quit the app
    app().quit();
+}
+
+void chain_plugin::handle_db_exhaustion() {
+   elog("database memory exhausted: increase chain-state-db-size-mb and/or reversible-blocks-db-size-mb");
+   //return 1 -- it's what programs/nodeos/main.cpp considers "BAD_ALLOC"
+   std::_Exit(1);
 }
 
 namespace chain_apis {
@@ -1026,31 +1072,32 @@ uint64_t read_only::get_table_index_name(const read_only::get_table_rows_params&
 
 template<>
 uint64_t convert_to_type(const string& str, const string& desc) {
-   uint64_t value = 0;
+
    try {
-      value = boost::lexical_cast<uint64_t>(str.c_str(), str.size());
-   } catch( ... ) {
+      return boost::lexical_cast<uint64_t>(str.c_str(), str.size());
+   } catch( ... ) { }
+   
+   try {
+      auto trimmed_str = str;
+      boost::trim(trimmed_str);
+      name s(trimmed_str);
+      return s.value;
+   } catch( ... ) { }
+
+   if (str.find(',') != string::npos) { // fix #6274 only match formats like 4,EOS
       try {
-         auto trimmed_str = str;
-         boost::trim(trimmed_str);
-         name s(trimmed_str);
-         value = s.value;
-      } catch( ... ) {
-         try {
-            auto symb = eosio::chain::symbol::from_string(str);
-            value = symb.value();
-         } catch( ... ) {
-            try {
-               value = ( eosio::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
-            } catch( ... ) {
-               EOS_ASSERT( false, chain_type_exception, "Could not convert ${desc} string '${str}' to any of the following: "
-                                 "uint64_t, valid name, or valid symbol (with or without the precision)",
-                          ("desc", desc)("str", str));
-            }
-         }
-      }
+         auto symb = eosio::chain::symbol::from_string(str);
+         return symb.value();
+      } catch( ... ) { }
    }
-   return value;
+   
+   try {
+      return ( eosio::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
+   } catch( ... ) {
+      EOS_ASSERT( false, chain_type_exception, "Could not convert ${desc} string '${str}' to any of the following: "
+                        "uint64_t, valid name, or valid symbol (with or without the precision)",
+                  ("desc", desc)("str", str));
+   }
 }
 
 abi_def get_abi( const controller& db, const name& account ) {
@@ -1230,7 +1277,7 @@ static float64_t to_softfloat64( double d ) {
    return *reinterpret_cast<float64_t*>(&d);
 }
 
-static fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms ) {
+fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms, bool shorten_abi_errors ) {
    const auto table_type = get_table_type(abi, N(global));
    EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
 
@@ -1243,7 +1290,7 @@ static fc::variant get_global_row( const database& db, const abi_def& abi, const
 
    vector<char> data;
    read_only::copy_inline_row(*it, data);
-   return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_ms);
+   return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_ms, shorten_abi_errors );
 }
 
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
@@ -1288,12 +1335,12 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
       }
       copy_inline_row(*kv_index.find(boost::make_tuple(table_id->id, it->primary_key)), data);
       if (p.json)
-         result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(N(producers)), data, abi_serializer_max_time));
+         result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type(N(producers)), data, abi_serializer_max_time, shorten_abi_errors ) );
       else
          result.rows.emplace_back(fc::variant(data));
    }
 
-   result.total_producer_vote_weight = get_global_row(d, abi, abis, abi_serializer_max_time)["total_producer_vote_weight"].as_double();
+   result.total_producer_vote_weight = get_global_row(d, abi, abis, abi_serializer_max_time, shorten_abi_errors)["total_producer_vote_weight"].as_double();
    return result;
 }
 
@@ -1456,7 +1503,7 @@ void read_write::push_block(const read_write::push_block_params& params, next_fu
       app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(params));
       next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
-      raise(SIGUSR1);
+      chain_plugin::handle_db_exhaustion();
    } CATCH_AND_CALL(next);
 }
 
@@ -1491,7 +1538,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
 
 
    } catch ( boost::interprocess::bad_alloc& ) {
-      raise(SIGUSR1);
+      chain_plugin::handle_db_exhaustion();
    } CATCH_AND_CALL(next);
 }
 
@@ -1659,6 +1706,9 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 
       auto core_symbol = extract_core_symbol();
 
+      if (params.expected_core_symbol.valid()) 
+         core_symbol = *(params.expected_core_symbol);
+
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));
       if( t_id != nullptr ) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
@@ -1681,7 +1731,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.total_resources = abis.binary_to_variant( "user_resources", data, abi_serializer_max_time );
+            result.total_resources = abis.binary_to_variant( "user_resources", data, abi_serializer_max_time, shorten_abi_errors );
          }
       }
 
@@ -1692,7 +1742,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data, abi_serializer_max_time );
+            result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data, abi_serializer_max_time, shorten_abi_errors );
          }
       }
 
@@ -1703,7 +1753,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.refund_request = abis.binary_to_variant( "refund_request", data, abi_serializer_max_time );
+            result.refund_request = abis.binary_to_variant( "refund_request", data, abi_serializer_max_time, shorten_abi_errors );
          }
       }
 
@@ -1714,7 +1764,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
-            result.voter_info = abis.binary_to_variant( "voter_info", data, abi_serializer_max_time );
+            result.voter_info = abis.binary_to_variant( "voter_info", data, abi_serializer_max_time, shorten_abi_errors );
          }
       }
    }
@@ -1740,7 +1790,7 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
       auto action_type = abis.get_action_type(params.action);
       EOS_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action} in contract ${contract}", ("action", params.action)("contract", params.code));
       try {
-         result.binargs = abis.variant_to_binary(action_type, params.args, abi_serializer_max_time);
+         result.binargs = abis.variant_to_binary( action_type, params.args, abi_serializer_max_time, shorten_abi_errors );
       } EOS_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
                                 "'${args}' is invalid args for action '${action}' code '${code}'. expected '${proto}'",
                                 ("args", params.args)("action", params.action)("code", params.code)("proto", action_abi_to_variant(abi, action_type)))
@@ -1757,7 +1807,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
    abi_def abi;
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi, abi_serializer_max_time );
-      result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs, abi_serializer_max_time );
+      result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs, abi_serializer_max_time, shorten_abi_errors );
    } else {
       EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
    }
@@ -1792,7 +1842,7 @@ namespace detail {
 }
 
 chain::symbol read_only::extract_core_symbol()const {
-   symbol core_symbol; // Default to CORE_SYMBOL if the appropriate data structure cannot be found in the system contract table data
+   symbol core_symbol(0);
 
    // The following code makes assumptions about the contract deployed on eosio account (i.e. the system contract) and how it stores its data.
    const auto& d = db.db();

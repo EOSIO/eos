@@ -4,9 +4,17 @@
 #include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <boost/tuple/tuple_io.hpp>
+#include <eosio/chain/database_utils.hpp>
 #include <algorithm>
 
 namespace eosio { namespace chain { namespace resource_limits {
+
+using resource_index_set = index_set<
+   resource_limits_index,
+   resource_usage_index,
+   resource_limits_state_index,
+   resource_limits_config_index
+>;
 
 static_assert( config::rate_limiting_precision > 0, "config::rate_limiting_precision must be positive" );
 
@@ -40,14 +48,10 @@ void resource_limits_state_object::update_virtual_net_limit( const resource_limi
 }
 
 void resource_limits_manager::add_indices() {
-   _db.add_chaindb_index<resource_limits_index>(_chaindb);
-   _db.add_chaindb_index<resource_usage_index>(_chaindb);
-   _db.add_chaindb_index<resource_limits_state_index>(_chaindb);
-   _db.add_chaindb_index<resource_limits_config_index>(_chaindb);
+   resource_index_set::add_indices(_db, _chaindb);
 }
 
 void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
-
    abi.structs.emplace_back( eosio::chain::struct_def{
      "resource_limit", "",
      {{"id", "uint64"},
@@ -142,7 +146,6 @@ void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
      "resource_limits_state",
      {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
    });
-
 }
 
 void resource_limits_manager::initialize_database() {
@@ -156,6 +159,29 @@ void resource_limits_manager::initialize_database() {
       // start the chain off in a way that it is "congested" aka slow-start
       state.virtual_cpu_limit = config.cpu_limit_parameters.max;
       state.virtual_net_limit = config.net_limit_parameters.max;
+   });
+}
+
+void resource_limits_manager::add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
+   resource_index_set::walk_indices([this, &snapshot]( auto utils ){
+      snapshot->write_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ){
+         decltype(utils)::walk(_db, [this, &section]( const auto &row ) {
+            section.add_row(row, _db);
+         });
+      });
+   });
+}
+
+void resource_limits_manager::read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
+   resource_index_set::walk_indices([this, &snapshot]( auto utils ){
+      snapshot->read_section<typename decltype(utils)::index_t::value_type>([this]( auto& section ) {
+         bool more = !section.empty();
+         while(more) {
+            decltype(utils)::create(_db, [this, &section, &more]( auto &row ) {
+               more = section.read_row(row, _db);
+            });
+         }
+      });
    });
 }
 

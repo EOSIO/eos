@@ -457,7 +457,7 @@ class apply_context {
    public:
       apply_context(controller& con, transaction_context& trx_ctx, const action& a, uint32_t depth=0)
       :control(con)
-      ,db(con.db())
+      ,db(con.mutable_db())
       ,chaindb(con.chaindb())
       ,trx_context(trx_ctx)
       ,act(a)
@@ -477,8 +477,8 @@ class apply_context {
    /// Execution methods:
    public:
 
-      action_trace exec_one();
-      void exec();
+      void exec_one( action_trace& trace );
+      void exec( action_trace& trace );
       void execute_inline( action&& a );
       void execute_context_free_inline( action&& a );
       void schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing );
@@ -578,6 +578,7 @@ class apply_context {
       uint64_t next_auth_sequence( account_name actor );
 
       void add_ram_usage( account_name account, int64_t ram_delta );
+      void finalize_trace( action_trace& trace, const fc::time_point& start );
 
    private:
 
@@ -605,8 +606,6 @@ class apply_context {
       generic_index<index256_object, uint128_t*, const uint128_t*>   idx256;
       generic_index<index_double_object>                             idx_double;
       generic_index<index_long_double_object>                        idx_long_double;
-
-      action_trace                                trace;
 
    private:
 

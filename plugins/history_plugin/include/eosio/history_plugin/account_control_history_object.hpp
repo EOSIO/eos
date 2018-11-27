@@ -26,17 +26,17 @@ class account_control_history_object : public chainbase::object<chain::account_c
 struct by_id;
 struct by_controlling;
 struct by_controlled_authority;
-using account_control_history_multi_index = chainbase::shared_multi_index_container<
+using account_control_history_multi_index = cyberway::chaindb::shared_multi_index_container<
    account_control_history_object,
-   indexed_by<
-      ordered_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(account_control_history_object, account_control_history_object::id_type, id)>,
-      ordered_unique<tag<by_controlling>,
+   cyberway::chaindb::indexed_by<
+      cyberway::chaindb::ordered_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(account_control_history_object, account_control_history_object::id_type, id)>,
+      cyberway::chaindb::ordered_unique<tag<by_controlling>,
          composite_key< account_control_history_object,
             member<account_control_history_object, account_name,                            &account_control_history_object::controlling_account>,
             member<account_control_history_object, account_control_history_object::id_type, &account_control_history_object::id>
          >
       >,
-      ordered_unique<tag<by_controlled_authority>,
+      cyberway::chaindb::ordered_unique<tag<by_controlled_authority>,
          composite_key< account_control_history_object,
             member<account_control_history_object, account_name, &account_control_history_object::controlled_account>,
             member<account_control_history_object, permission_name, &account_control_history_object::controlled_permission>,
