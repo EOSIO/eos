@@ -6,11 +6,7 @@
 #include <bsoncxx/config/prelude.hpp>
 #include <bsoncxx/document/view.hpp>
 
-
-namespace fc {
-    struct variant_object;
-    struct variant;
-}
+#include <fc/variant.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -25,6 +21,10 @@ namespace cyberway { namespace chaindb {
             uint128,
             invalid
         };
+
+    public:
+        static const std::string BINARY_FIELD;
+        static const std::string STRING_FIELD;
 
     public:
         mongo_big_int_converter(const bsoncxx::document::view& document);
@@ -42,10 +42,6 @@ namespace cyberway { namespace chaindb {
         void fill_blob(std::vector<char>::iterator& it, const unsigned __int128& val) const;
 
         void parse_binary(const std::vector<char>& bytes);
-
-    public:
-        static const std::string BINARY_FIELD;
-        static const std::string STRING_FIELD;
 
     private:
         type type_;

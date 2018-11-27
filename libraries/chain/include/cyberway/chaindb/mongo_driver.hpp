@@ -42,8 +42,8 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t available_pk(const table_info&) override;
 
-        primary_key_t insert(const table_info&, primary_key_t, const variant&) override;
-        primary_key_t update(const table_info&, primary_key_t, const variant&) override;
+        primary_key_t insert(const table_info&, primary_key_t, variant) override;
+        primary_key_t update(const table_info&, primary_key_t, variant) override;
         primary_key_t remove(const table_info&, primary_key_t) override;
 
     private:

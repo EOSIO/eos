@@ -67,6 +67,9 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(driver_open_exception, chaindb_internal_exception,
                                      3710016, "ChainDB driver fail to open database")
 
+        FC_DECLARE_DERIVED_EXCEPTION(driver_opened_cursors_exception, chaindb_internal_exception,
+                                     3710017, "ChainDB driver has opened cursors")
+
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_abi_exception, chaindb_exception,
                                  3720000, "ChainDB ABI exception")
 

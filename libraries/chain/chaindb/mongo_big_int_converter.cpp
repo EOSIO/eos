@@ -5,8 +5,8 @@
 #include <fc/variant_object.hpp>
 #include <fc/crypto/hex.hpp>
 
-#include <cyberway/chaindb/mongo_driver_utils.h>
-#include <cyberway/chaindb/mongo_big_int_converter.h>
+#include <cyberway/chaindb/mongo_driver_utils.hpp>
+#include <cyberway/chaindb/mongo_big_int_converter.hpp>
 
 namespace cyberway { namespace chaindb {
 
