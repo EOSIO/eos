@@ -1,6 +1,5 @@
 #! /bin/bash
 
-NAME="${PROJECT}-${VERSION}"
 PREFIX="usr"
 SPREFIX=${PREFIX}
 SUBPREFIX="opt/${PROJECT}/${VERSION}"
@@ -10,8 +9,9 @@ RELEASE="${VERSION_SUFFIX}"
 # default release to "1" if there is no suffix
 if [[ -z $RELEASE ]]; then
   RELEASE="1"
-  NAME="${NAME}-1"
 fi
+
+NAME="${PROJECT}-${VERSION_NO_SUFFIX}-${RELEASE}"
 
 export PREFIX
 export SUBPREFIX
