@@ -30,7 +30,7 @@ Version: ${VERSION}
 License: MIT
 Vendor: ${VENDOR} 
 Source: ${URL} 
-Requires: openssl-devel.x86_64, gmp-devel.x86_64, libstdc++-devel.x86_64, bzip2.x86_64, bzip2-devel.x86_64, mongodb.x86_64, mongodb-server.x86_64
+Requires: openssl-devel, gmp-devel, libstdc++-devel, bzip2, bzip2-devel, mongodb, mongodb-server
 URL: ${URL} 
 Packager: ${VENDOR} <${EMAIL}>
 Summary: ${DESC}
