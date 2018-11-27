@@ -74,7 +74,7 @@ void copy_data(char* data, size_t data_len, std::vector<char>& data_out) {
 
 void test_transaction::send_action() {
    using namespace eosio;
-   test_dummy_action<"testapi"_n.value, WASM_TEST_ACTION("test_action", "read_action_normal")> test_action = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
+   // test_dummy_action<"testapi"_n.value, WASM_TEST_ACTION("test_action", "read_action_normal")> test_action = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
 
    // Action contructor:
    // Param1: vector of permission levels
@@ -82,12 +82,12 @@ void test_transaction::send_action() {
    // Param3: name b
    // Param4: T&& value
    
-   // action act(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action); ---------------------
+   // action act(std::vector<permission_level>{{"testapi"_n, "active"_n}}, test_action);
 
-   // trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}}, ------------------------
-   //                          "testapi"_n, WASM_TEST_ACTION("test_action", ---------------------
-   //                                                        "test_current_sender"), ---------------------
-   //                          cur_send); ---------------------
+   // trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}},
+   //                          "testapi"_n, WASM_TEST_ACTION("test_action",
+   //                                                        "test_current_sender"),
+   //                          cur_send);
    
    // act.send();
 }
