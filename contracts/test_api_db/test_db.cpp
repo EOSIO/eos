@@ -86,28 +86,28 @@ extern "C" {
 void test_db::primary_i64_general(uint64_t receiver, uint64_t code, uint64_t action)
 {
    (void)code; (void)action;
-   auto table1 = "table1"_n;
+   auto table1 = "table1"_n.value;
 
-   int alice_itr = db_store_i64(receiver, table1, receiver, "alice"_n, "alice's info", strlen("alice's info"));
-   db_store_i64(receiver, table1, receiver, "bob"_n, "bob's info", strlen("bob's info"));
-   db_store_i64(receiver, table1, receiver, "charlie"_n, "charlie's info", strlen("charlies's info"));
-   db_store_i64(receiver, table1, receiver, "allyson"_n, "allyson's info", strlen("allyson's info"));
+   int alice_itr = db_store_i64(receiver, table1, receiver, "alice"_n.value, "alice's info", strlen("alice's info"));
+   db_store_i64(receiver, table1, receiver, "bob"_n.value, "bob's info", strlen("bob's info"));
+   db_store_i64(receiver, table1, receiver, "charlie"_n.value, "charlie's info", strlen("charlies's info"));
+   db_store_i64(receiver, table1, receiver, "allyson"_n.value, "allyson's info", strlen("allyson's info"));
 
 
    // find
    {
       uint64_t prim = 0;
       int itr_next = db_next_i64(alice_itr, &prim);
-      int itr_next_expected = db_find_i64(receiver, receiver, table1, "allyson"_n);
-      eosio_assert(itr_next == itr_next_expected && prim == "allyson"_n, "primary_i64_general - db_find_i64" );
+      int itr_next_expected = db_find_i64(receiver, receiver, table1, "allyson"_n.value);
+      eosio_assert(itr_next == itr_next_expected && prim == "allyson"_n.value, "primary_i64_general - db_find_i64" );
       itr_next = db_next_i64(itr_next, &prim);
-      itr_next_expected = db_find_i64(receiver, receiver, table1, "bob"_n);
-      eosio_assert(itr_next == itr_next_expected && prim == "bob"_n, "primary_i64_general - db_next_i64");
+      itr_next_expected = db_find_i64(receiver, receiver, table1, "bob"_n.value);
+      eosio_assert(itr_next == itr_next_expected && prim == "bob"_n.value, "primary_i64_general - db_next_i64");
    }
 
    // next
    {
-      int charlie_itr = db_find_i64(receiver, receiver, table1, "charlie"_n);
+      int charlie_itr = db_find_i64(receiver, receiver, table1, "charlie"_n.value);
       // nothing after charlie
       uint64_t prim = 0;
       int end_itr = db_next_i64(charlie_itr, &prim);
@@ -118,36 +118,36 @@ void test_db::primary_i64_general(uint64_t receiver, uint64_t code, uint64_t act
 
    // previous
    {
-      int charlie_itr = db_find_i64(receiver, receiver, table1, "charlie"_n);
+      int charlie_itr = db_find_i64(receiver, receiver, table1, "charlie"_n.value);
       uint64_t prim = 0;
       int itr_prev = db_previous_i64(charlie_itr, &prim);
-      int itr_prev_expected = db_find_i64(receiver, receiver, table1, "bob"_n);
-      eosio_assert(itr_prev == itr_prev_expected && prim == "bob"_n, "primary_i64_general - db_previous_i64");
+      int itr_prev_expected = db_find_i64(receiver, receiver, table1, "bob"_n.value);
+      eosio_assert(itr_prev == itr_prev_expected && prim == "bob"_n.value, "primary_i64_general - db_previous_i64");
 
       itr_prev = db_previous_i64(itr_prev, &prim);
-      itr_prev_expected = db_find_i64(receiver, receiver, table1, "allyson"_n);
-      eosio_assert(itr_prev == itr_prev_expected && prim == "allyson"_n, "primary_i64_general - db_previous_i64");
+      itr_prev_expected = db_find_i64(receiver, receiver, table1, "allyson"_n.value);
+      eosio_assert(itr_prev == itr_prev_expected && prim == "allyson"_n.value, "primary_i64_general - db_previous_i64");
 
       itr_prev = db_previous_i64(itr_prev, &prim);
-      itr_prev_expected = db_find_i64(receiver, receiver, table1, "alice"_n);
-      eosio_assert(itr_prev == itr_prev_expected && prim == "alice"_n, "primary_i64_general - db_previous_i64");
+      itr_prev_expected = db_find_i64(receiver, receiver, table1, "alice"_n.value);
+      eosio_assert(itr_prev == itr_prev_expected && prim == "alice"_n.value, "primary_i64_general - db_previous_i64");
 
       itr_prev = db_previous_i64(itr_prev, &prim);
-      eosio_assert(itr_prev < 0 && prim == "alice"_n, "primary_i64_general - db_previous_i64");
+      eosio_assert(itr_prev < 0 && prim == "alice"_n.value, "primary_i64_general - db_previous_i64");
    }
 
    // remove
    {
-      int itr = db_find_i64(receiver, receiver, table1, "alice"_n);
+      int itr = db_find_i64(receiver, receiver, table1, "alice"_n.value);
       eosio_assert(itr >= 0, "primary_i64_general - db_find_i64");
       db_remove_i64(itr);
-      itr = db_find_i64(receiver, receiver, table1, "alice"_n);
+      itr = db_find_i64(receiver, receiver, table1, "alice"_n.value);
       eosio_assert(itr < 0, "primary_i64_general - db_find_i64");
    }
 
    // get
    {
-      int itr = db_find_i64(receiver, receiver, table1, "bob"_n);
+      int itr = db_find_i64(receiver, receiver, table1, "bob"_n.value);
       eosio_assert(itr >= 0, "");
       uint32_t buffer_len = 5;
       char value[50];
@@ -167,7 +167,7 @@ void test_db::primary_i64_general(uint64_t receiver, uint64_t code, uint64_t act
 
    // update
    {
-      int itr = db_find_i64(receiver, receiver, table1, "bob"_n);
+      int itr = db_find_i64(receiver, receiver, table1, "bob"_n.value);
       eosio_assert(itr >= 0, "");
       const char* new_value = "bob's new info";
       uint32_t new_value_len = strlen(new_value);
@@ -183,34 +183,34 @@ void test_db::primary_i64_general(uint64_t receiver, uint64_t code, uint64_t act
 void test_db::primary_i64_lowerbound(uint64_t receiver, uint64_t code, uint64_t action)
 {
    (void)code;(void)action;
-   auto table = N(mytable);
-   db_store_i64(receiver, table, receiver, "alice"_n, "alice's info", strlen("alice's info"));
-   db_store_i64(receiver, table, receiver, "bob"_n, "bob's info", strlen("bob's info"));
-   db_store_i64(receiver, table, receiver, "charlie"_n, "charlie's info", strlen("charlies's info"));
-   db_store_i64(receiver, table, receiver, "emily"_n, "emily's info", strlen("emily's info"));
-   db_store_i64(receiver, table, receiver, "allyson"_n, "allyson's info", strlen("allyson's info"));
-   db_store_i64(receiver, table, receiver, "joe"_n, "nothing here", strlen("nothing here"));
+   auto table = "mytable"_n.value;
+   db_store_i64(receiver, table, receiver, "alice"_n.value, "alice's info", strlen("alice's info"));
+   db_store_i64(receiver, table, receiver, "bob"_n.value, "bob's info", strlen("bob's info"));
+   db_store_i64(receiver, table, receiver, "charlie"_n.value, "charlie's info", strlen("charlies's info"));
+   db_store_i64(receiver, table, receiver, "emily"_n.value, "emily's info", strlen("emily's info"));
+   db_store_i64(receiver, table, receiver, "allyson"_n.value, "allyson's info", strlen("allyson's info"));
+   db_store_i64(receiver, table, receiver, "joe"_n.value, "nothing here", strlen("nothing here"));
 
    const std::string err = "primary_i64_lowerbound";
 
    {
-      int lb = db_lowerbound_i64(receiver, receiver, table, "alice"_n);
-      eosio_assert(lb == db_find_i64(receiver, receiver, table, "alice"_n), err.c_str());
+      int lb = db_lowerbound_i64(receiver, receiver, table, "alice"_n.value);
+      eosio_assert(lb == db_find_i64(receiver, receiver, table, "alice"_n.value), err.c_str());
    }
    {
-      int lb = db_lowerbound_i64(receiver, receiver, table, "billy"_n);
-      eosio_assert(lb == db_find_i64(receiver, receiver, table, "bob"_n), err.c_str());
+      int lb = db_lowerbound_i64(receiver, receiver, table, "billy"_n.value);
+      eosio_assert(lb == db_find_i64(receiver, receiver, table, "bob"_n.value), err.c_str());
    }
    {
-      int lb = db_lowerbound_i64(receiver, receiver, table, "frank"_n);
-      eosio_assert(lb == db_find_i64(receiver, receiver, table, "joe"_n), err.c_str());
+      int lb = db_lowerbound_i64(receiver, receiver, table, "frank"_n.value);
+      eosio_assert(lb == db_find_i64(receiver, receiver, table, "joe"_n.value), err.c_str());
    }
    {
-      int lb = db_lowerbound_i64(receiver, receiver, table, "joe"_n);
-      eosio_assert(lb == db_find_i64(receiver, receiver, table, "joe"_n), err.c_str());
+      int lb = db_lowerbound_i64(receiver, receiver, table, "joe"_n.value);
+      eosio_assert(lb == db_find_i64(receiver, receiver, table, "joe"_n.value), err.c_str());
    }
    {
-      int lb = db_lowerbound_i64(receiver, receiver, table, "kevin"_n);
+      int lb = db_lowerbound_i64(receiver, receiver, table, "kevin"_n.value);
       eosio_assert(lb < 0, err.c_str());
    }
 }
@@ -218,26 +218,26 @@ void test_db::primary_i64_lowerbound(uint64_t receiver, uint64_t code, uint64_t 
 void test_db::primary_i64_upperbound(uint64_t receiver, uint64_t code, uint64_t action)
 {
    (void)code;(void)action;
-   auto table = "mytable"_n;
+   auto table = "mytable"_n.value;
    const std::string err = "primary_i64_upperbound";
    {
-      int ub = db_upperbound_i64(receiver, receiver, table, "alice"_n);
-      eosio_assert(ub == db_find_i64(receiver, receiver, table, "allyson"_n), err.c_str());
+      int ub = db_upperbound_i64(receiver, receiver, table, "alice"_n.value);
+      eosio_assert(ub == db_find_i64(receiver, receiver, table, "allyson"_n.value), err.c_str());
    }
    {
-      int ub = db_upperbound_i64(receiver, receiver, table, "billy"_n);
-      eosio_assert(ub == db_find_i64(receiver, receiver, table, "bob"_n), err.c_str());
+      int ub = db_upperbound_i64(receiver, receiver, table, "billy"_n.value);
+      eosio_assert(ub == db_find_i64(receiver, receiver, table, "bob"_n.value), err.c_str());
    }
    {
-      int ub = db_upperbound_i64(receiver, receiver, table, "frank"_n);
-      eosio_assert(ub == db_find_i64(receiver, receiver, table, N(joe)), err.c_str());
+      int ub = db_upperbound_i64(receiver, receiver, table, "frank"_n.value);
+      eosio_assert(ub == db_find_i64(receiver, receiver, table, "joe"_n.value), err.c_str());
    }
    {
-      int ub = db_upperbound_i64(receiver, receiver, table, "joe"_n);
+      int ub = db_upperbound_i64(receiver, receiver, table, "joe"_n.value);
       eosio_assert(ub < 0, err.c_str());
    }
    {
-      int ub = db_upperbound_i64(receiver, receiver, table, "kevin"_n);
+      int ub = db_upperbound_i64(receiver, receiver, table, "kevin"_n.value);
       eosio_assert(ub < 0, err.c_str());
    }
 }
@@ -245,7 +245,7 @@ void test_db::primary_i64_upperbound(uint64_t receiver, uint64_t code, uint64_t 
 void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
 {
    (void)code;(void)action;
-   const auto table = "myindextable"_n;
+   const auto table = "myindextable"_n.value;
 
    typedef uint64_t secondary_type;
 
@@ -254,13 +254,13 @@ void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
       secondary_type name;
    };
 
-   record records[] = {{265, "alice"_n},
-                       {781, "bob"_n},
-                       {234, "charlie"_n},
-                       {650, "allyson"_n},
-                       {540, "bob"_n},
-                       {976, "emily"_n},
-                       {110, "joe"_n}
+   record records[] = {{265, "alice"_n.value},
+                       {781, "bob"_n.value},
+                       {234, "charlie"_n.value},
+                       {650, "allyson"_n.value},
+                       {540, "bob"_n.value},
+                       {976, "emily"_n.value},
+                       {110, "joe"_n.value}
    };
 
    for (uint32_t i = 0; i < sizeof(records)/sizeof(records[0]); ++i) {
@@ -273,7 +273,7 @@ void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
       int itr = db_idx64_find_primary(receiver, receiver, table, &sec, 999);
       eosio_assert(itr < 0 && sec == 0, "idx64_general - db_idx64_find_primary");
       itr = db_idx64_find_primary(receiver, receiver, table, &sec, 110);
-      eosio_assert(itr >= 0 && sec == N(joe), "idx64_general - db_idx64_find_primary");
+      eosio_assert(itr >= 0 && sec == "joe"_n.value, "idx64_general - db_idx64_find_primary");
       uint64_t prim_next = 0;
       int itr_next = db_idx64_next(itr, &prim_next);
       eosio_assert(itr_next < 0 && prim_next == 0, "idx64_general - db_idx64_find_primary");
@@ -283,19 +283,19 @@ void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
    {
       secondary_type sec = 0;
       int itr = db_idx64_find_primary(receiver, receiver, table, &sec, 234);
-      eosio_assert(itr >= 0 && sec == "charlie"_n, "idx64_general - db_idx64_find_primary");
+      eosio_assert(itr >= 0 && sec == "charlie"_n.value, "idx64_general - db_idx64_find_primary");
 
       uint64_t prim_next = 0;
       int itr_next = db_idx64_next(itr, &prim_next);
       eosio_assert(itr_next >= 0 && prim_next == 976, "idx64_general - db_idx64_next");
       secondary_type sec_next = 0;
       int itr_next_expected = db_idx64_find_primary(receiver, receiver, table, &sec_next, prim_next);
-      eosio_assert(itr_next == itr_next_expected && sec_next == "emily"_n, "idx64_general - db_idx64_next");
+      eosio_assert(itr_next == itr_next_expected && sec_next == "emily"_n.value, "idx64_general - db_idx64_next");
 
       itr_next = db_idx64_next(itr_next, &prim_next);
       eosio_assert(itr_next >= 0 && prim_next == 110, "idx64_general - db_idx64_next");
       itr_next_expected = db_idx64_find_primary(receiver, receiver, table, &sec_next, prim_next);
-      eosio_assert(itr_next == itr_next_expected && sec_next == "joe"_n, "idx64_general - db_idx64_next");
+      eosio_assert(itr_next == itr_next_expected && sec_next == "joe"_n.value, "idx64_general - db_idx64_next");
 
       itr_next = db_idx64_next(itr_next, &prim_next);
       eosio_assert(itr_next < 0 && prim_next == 110, "idx64_general - db_idx64_next");
@@ -305,7 +305,7 @@ void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
    {
       secondary_type sec = 0;
       int itr = db_idx64_find_primary(receiver, receiver, table, &sec, 781);
-      eosio_assert(itr >= 0 && sec == N(bob), "idx64_general - db_idx64_find_primary");
+      eosio_assert(itr >= 0 && sec == "bob"_n.value, "idx64_general - db_idx64_find_primary");
 
       uint64_t prim_prev = 0;
       int itr_prev = db_idx64_previous(itr, &prim_prev);
@@ -313,17 +313,17 @@ void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
 
       secondary_type sec_prev = 0;
       int itr_prev_expected = db_idx64_find_primary(receiver, receiver, table, &sec_prev, prim_prev);
-      eosio_assert(itr_prev == itr_prev_expected && sec_prev == "bob"_n, "idx64_general - db_idx64_previous");
+      eosio_assert(itr_prev == itr_prev_expected && sec_prev == "bob"_n.value, "idx64_general - db_idx64_previous");
 
       itr_prev = db_idx64_previous(itr_prev, &prim_prev);
       eosio_assert(itr_prev >= 0 && prim_prev == 650, "idx64_general - db_idx64_previous");
       itr_prev_expected = db_idx64_find_primary(receiver, receiver, table, &sec_prev, prim_prev);
-      eosio_assert(itr_prev == itr_prev_expected && sec_prev == "allyson"_n, "idx64_general - db_idx64_previous");
+      eosio_assert(itr_prev == itr_prev_expected && sec_prev == "allyson"_n.value, "idx64_general - db_idx64_previous");
 
       itr_prev = db_idx64_previous(itr_prev, &prim_prev);
       eosio_assert(itr_prev >= 0 && prim_prev == 265, "idx64_general - db_idx64_previous");
       itr_prev_expected = db_idx64_find_primary(receiver, receiver, table, &sec_prev, prim_prev);
-      eosio_assert(itr_prev == itr_prev_expected && sec_prev == "alice"_n, "idx64_general - db_idx64_previous");
+      eosio_assert(itr_prev == itr_prev_expected && sec_prev == "alice"_n.value, "idx64_general - db_idx64_previous");
 
       itr_prev = db_idx64_previous(itr_prev, &prim_prev);
       eosio_assert(itr_prev < 0 && prim_prev == 265, "idx64_general - db_idx64_previous");
@@ -332,25 +332,25 @@ void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
    // find_secondary
    {
       uint64_t prim = 0;
-      auto sec = "bob"_n;
+      auto sec = "bob"_n.value;
       int itr = db_idx64_find_secondary(receiver, receiver, table, &sec, &prim);
       eosio_assert(itr >= 0 && prim == 540, "idx64_general - db_idx64_find_secondary");
 
-      sec = "emily"_n;
+      sec = "emily"_n.value;
       itr = db_idx64_find_secondary(receiver, receiver, table, &sec, &prim);
       eosio_assert(itr >= 0 && prim == 976, "idx64_general - db_idx64_find_secondary");
 
-      sec = "frank"_n;
+      sec = "frank"_n.value;
       itr = db_idx64_find_secondary(receiver, receiver, table, &sec, &prim);
       eosio_assert(itr < 0 && prim == 976, "idx64_general - db_idx64_find_secondary");
    }
 
    // update and remove
    {
-      auto one_more_bob = "bob"_n;
+      uint64_t one_more_bob = "bob"_n.value;
       const uint64_t ssn = 421;
       int itr = db_idx64_store(receiver, table, receiver, ssn, &one_more_bob);
-      auto new_name = "billy"_n;
+      uint64_t new_name = "billy"_n.value;
       db_idx64_update(itr, receiver, &new_name);
       secondary_type sec = 0;
       int sec_itr = db_idx64_find_primary(receiver, receiver, table, &sec, ssn);
@@ -364,38 +364,38 @@ void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
 void test_db::idx64_lowerbound(uint64_t receiver, uint64_t code, uint64_t action)
 {
    (void)code;(void)action;
-   const auto table = "myindextable"_n;
+   const auto table = "myindextable"_n.value;
    typedef uint64_t secondary_type;
    const std::string err = "idx64_lowerbound";
    {
-      secondary_type lb_sec = "alice"_n;
+      secondary_type lb_sec = "alice"_n.value;
       uint64_t lb_prim = 0;
       const uint64_t ssn = 265;
       int lb = db_idx64_lowerbound(receiver, receiver, table, &lb_sec, &lb_prim);
-      eosio_assert(lb_prim == ssn && lb_sec == "alice"_n, err.c_str());
+      eosio_assert(lb_prim == ssn && lb_sec == "alice"_n.value, err.c_str());
       eosio_assert(lb == db_idx64_find_primary(receiver, receiver, table, &lb_sec, ssn), err.c_str());
    }
    {
-      secondary_type lb_sec = "billy"_n;
+      secondary_type lb_sec = "billy"_n.value;
       uint64_t lb_prim = 0;
       const uint64_t ssn = 540;
       int lb = db_idx64_lowerbound(receiver, receiver, table, &lb_sec, &lb_prim);
-      eosio_assert(lb_prim == ssn && lb_sec == "bob"_n, err.c_str());
+      eosio_assert(lb_prim == ssn && lb_sec == "bob"_n.value, err.c_str());
       eosio_assert(lb == db_idx64_find_primary(receiver, receiver, table, &lb_sec, ssn), err.c_str());
    }
    {
-      secondary_type lb_sec = "joe"_n;
+      secondary_type lb_sec = "joe"_n.value;
       uint64_t lb_prim = 0;
       const uint64_t ssn = 110;
       int lb = db_idx64_lowerbound(receiver, receiver, table, &lb_sec, &lb_prim);
-      eosio_assert(lb_prim == ssn && lb_sec == "joe"_n, err.c_str());
+      eosio_assert(lb_prim == ssn && lb_sec == "joe"_n.value, err.c_str());
       eosio_assert(lb == db_idx64_find_primary(receiver, receiver, table, &lb_sec, ssn), err.c_str());
    }
    {
-      secondary_type lb_sec = "kevin"_n;
+      secondary_type lb_sec = "kevin"_n.value;
       uint64_t lb_prim = 0;
       int lb = db_idx64_lowerbound(receiver, receiver, table, &lb_sec, &lb_prim);
-      eosio_assert(lb_prim == 0 && lb_sec == "kevin"_n, err.c_str());
+      eosio_assert(lb_prim == 0 && lb_sec == "kevin"_n.value, err.c_str());
       eosio_assert(lb < 0, "");
    }
 }
@@ -403,37 +403,37 @@ void test_db::idx64_lowerbound(uint64_t receiver, uint64_t code, uint64_t action
 void test_db::idx64_upperbound(uint64_t receiver, uint64_t code, uint64_t action)
 {
    (void)code;(void)action;
-   const auto table = "myindextable"_n;
+   const auto table = "myindextable"_n.value;
    typedef uint64_t secondary_type;
    const std::string err = "idx64_upperbound";
    {
-      secondary_type ub_sec = "alice"_n;
+      secondary_type ub_sec = "alice"_n.value;
       uint64_t ub_prim = 0;
       const uint64_t allyson_ssn = 650;
       int ub = db_idx64_upperbound(receiver, receiver, table, &ub_sec, &ub_prim);
-      eosio_assert(ub_prim == allyson_ssn && ub_sec == "allyson"_n, "");
+      eosio_assert(ub_prim == allyson_ssn && ub_sec == "allyson"_n.value, "");
       eosio_assert(ub == db_idx64_find_primary(receiver, receiver, table, &ub_sec, allyson_ssn), err.c_str());
    }
    {
-      secondary_type ub_sec = "billy"_n;
+      secondary_type ub_sec = "billy"_n.value;
       uint64_t ub_prim = 0;
       const uint64_t bob_ssn = 540;
       int ub = db_idx64_upperbound(receiver, receiver, table, &ub_sec, &ub_prim);
-      eosio_assert(ub_prim == bob_ssn && ub_sec == "bob"_n, "");
+      eosio_assert(ub_prim == bob_ssn && ub_sec == "bob"_n.value, "");
       eosio_assert(ub == db_idx64_find_primary(receiver, receiver, table, &ub_sec, bob_ssn), err.c_str());
    }
    {
-      secondary_type ub_sec = "joe"_n;
+      secondary_type ub_sec = "joe"_n.value;
       uint64_t ub_prim = 0;
       int ub = db_idx64_upperbound(receiver, receiver, table, &ub_sec, &ub_prim);
-      eosio_assert(ub_prim == 0 && ub_sec == "joe"_n, err.c_str());
+      eosio_assert(ub_prim == 0 && ub_sec == "joe"_n.value, err.c_str());
       eosio_assert(ub < 0, err.c_str());
    }
    {
-      secondary_type ub_sec = "kevin"_n;
+      secondary_type ub_sec = "kevin"_n.value;
       uint64_t ub_prim = 0;
       int ub = db_idx64_upperbound(receiver, receiver, table, &ub_sec, &ub_prim);
-      eosio_assert(ub_prim == 0 && ub_sec == "kevin"_n, err.c_str());
+      eosio_assert(ub_prim == 0 && ub_sec == "kevin"_n.value, err.c_str());
       eosio_assert(ub < 0, err.c_str());
    }
 }
@@ -443,7 +443,7 @@ void test_db::test_invalid_access(uint64_t receiver, uint64_t code, uint64_t act
    (void)code;(void)action;
    auto act = eosio::get_action(1, 0);
    auto ia = eosio::unpack<invalid_access_action>(act.data);
-   uint64_t scope = N(access);
+   uint64_t scope = "access"_n.value;
    uint64_t table = scope;
    uint64_t pk    = scope;
 
@@ -501,13 +501,13 @@ void test_db::test_invalid_access(uint64_t receiver, uint64_t code, uint64_t act
 void test_db::idx_double_nan_create_fail(uint64_t receiver, uint64_t, uint64_t) {
    double x = 0.0;
    x = x / x; // create a NaN
-   db_idx_double_store( N(nan), N(nan), receiver, 0, &x); // should fail
+   db_idx_double_store( "nan"_n.value, "nan"_n.value, receiver, 0, &x); // should fail
 }
 
 void test_db::idx_double_nan_modify_fail(uint64_t receiver, uint64_t, uint64_t) {
    double x = 0.0;
-   db_idx_double_store( N(nan), N(nan), receiver, 0, &x);
-   auto itr = db_idx_double_find_primary(receiver, N(nan), N(nan), &x, 0);
+   db_idx_double_store( "nan"_n.value, "nan"_n.value, receiver, 0, &x);
+   auto itr = db_idx_double_find_primary(receiver, "nan"_n.value, "nan"_n.value, &x, 0);
    x = 0.0;
    x = x / x; // create a NaN
    db_idx_double_update(itr, 0, &x); // should fail
@@ -519,17 +519,17 @@ void test_db::idx_double_nan_lookup_fail(uint64_t receiver, uint64_t, uint64_t) 
 
    uint64_t pk;
    double x = 0.0;
-   db_idx_double_store( "nan"_n, "nan"_n, receiver, 0, &x);
+   db_idx_double_store( "nan"_n.value, "nan"_n.value, receiver, 0, &x);
    x = x / x; // create a NaN
    switch( lookup_type ) {
       case 0: // find
-         db_idx_double_find_secondary(receiver, N(nan), N(nan), &x, &pk);
+         db_idx_double_find_secondary(receiver, "nan"_n.value, "nan"_n.value, &x, &pk);
       break;
       case 1: // lower bound
-         db_idx_double_lowerbound(receiver, N(nan), N(nan), &x, &pk);
+         db_idx_double_lowerbound(receiver, "nan"_n.value, "nan"_n.value, &x, &pk);
       break;
       case 2: // upper bound
-         db_idx_double_upperbound(receiver, N(nan), N(nan), &x, &pk);
+         db_idx_double_upperbound(receiver, "nan"_n.value, "nan"_n.value, &x, &pk);
       break;
       default:
          eosio_assert( false, "idx_double_nan_lookup_fail: unexpected lookup_type" );
@@ -540,13 +540,13 @@ void test_db::idx_double_nan_lookup_fail(uint64_t receiver, uint64_t, uint64_t) 
 #pragma clang diagnostic ignored "-Wcast-align"
 
 void test_db::misaligned_secondary_key256_tests(uint64_t /* receiver */, uint64_t, uint64_t) {
-   auto key = eosio::key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
+   auto key = eosio::checksum256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
    char* ptr = (char*)(&key);
    ptr += 1;
    // test that store doesn't crash on unaligned data
-   db_idx256_store( N(testapi), "testtable"_n, "testapi"_n, 1, (uint128_t*)(ptr), 2 );
+   db_idx256_store( "testapi"_n.value, "testtable"_n.value, "testapi"_n.value, 1, (uint128_t*)(ptr), 2 );
    // test that find_primary doesn't crash on unaligned data
-   db_idx256_find_primary( "testapi"_n, "testtable"_n, "testapi"_n, (uint128_t*)(ptr), 2, 0);
+   db_idx256_find_primary( "testapi"_n.value, "testtable"_n.value, "testapi"_n.value, (uint128_t*)(ptr), 2, 0);
 }
 
 #pragma clang diagnostic pop

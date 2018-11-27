@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-
 #include <eosiolib/memory.hpp>
 
+#include "../test_api/test_api.hpp"
 
 void verify_mem(const void* const ptr, const uint32_t val, const uint32_t size)
 {

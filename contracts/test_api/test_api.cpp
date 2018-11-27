@@ -30,7 +30,7 @@ extern "C" {
 
          // Error handlers for deferred transactions in these tests currently only support the first action
 
-         WASM_TEST_ERROR_HANDLER( "test_action", "assert_false", test_transaction, assert_false_error_handler );
+         //WASM_TEST_ERROR_HANDLER( "test_action", "assert_false", test_transaction, assert_false_error_handler );
 
 
          return;

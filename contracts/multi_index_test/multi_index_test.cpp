@@ -26,10 +26,10 @@ namespace multi_index_test {
 
       struct test_k256 {
          uint64_t  id;
-         key256   val;
+         checksum256   val;
 
          auto primary_key()const { return id; }
-         key256 get_val()const { return val; }
+         checksum256 get_val()const { return val; }
 
          EOSLIB_SERIALIZE( test_k256, (id)(val) )
       };
@@ -103,20 +103,20 @@ namespace multi_index_test {
              {
                 print("Testing key256 secondary index.\n");
                 eosio::multi_index<"test1"_n, test_k256,
-                                   indexed_by< "byval"_n, const_mem_fun<test_k256, key256, &test_k256::get_val> >
+                                   indexed_by< "byval"_n, const_mem_fun<test_k256, checksum256, &test_k256::get_val> >
                                    > testtable( "multitest"_n, "exchange"_n.value ); // Code must be same as the receiver? Scope doesn't have to be.
 
                 testtable.emplace( payer, [&]( auto& o ) {
                                              o.id = 1;
-                                             o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL); });
+                                             o.val = checksum256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL); });
 
                 testtable.emplace( payer, [&]( auto& o ) {
                                              o.id = 2;
-                                             o.val = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL); });
+                                             o.val = checksum256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL); });
 
                 testtable.emplace( payer, [&]( auto& o ) {
                                              o.id = 3;
-                                             o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL); });
+                                             o.val = checksum256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL); });
 
                 auto itr = testtable.find( 2 );
 
@@ -127,10 +127,10 @@ namespace multi_index_test {
 
                 auto validx = testtable.get_index<"byval"_n>();
 
-                auto lower1 = validx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 40ULL));
+                auto lower1 = validx.lower_bound(checksum256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 40ULL));
                 print("First entry with a val of at least 40 has ID=", lower1->id, ".\n");
 
-                auto lower2 = validx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 50ULL));
+                auto lower2 = validx.lower_bound(checksum256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 50ULL));
                 print("First entry with a val of at least 50 has ID=", lower2->id, ".\n");
 
                 if( testtable.iterator_to(*lower2) == itr ) {
@@ -142,7 +142,7 @@ namespace multi_index_test {
                    print(" ID=", item.primary_key(), ", val=", item.val, "\n");
                 }
 
-                auto upper = validx.upper_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL));
+                auto upper = validx.upper_bound(checksum256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL));
 
                 print("First entry with a val greater than 42 has ID=", upper->id, ".\n");
 

@@ -22,10 +22,6 @@ CONTRACT test_ram_limit : public contract {
    
       const uint32_t FIVE_MINUTES = 5*60;
 
-      // test_ram_limit(name self)
-      // :eosio::contract(self)
-      // {}
-
       ACTION setentry(name payer, uint64_t from, uint64_t to, uint64_t size) {
          const auto self = get_self();
          eosio::print("test_ram_limit::setentry ", eosio::name{self}, "\n");
