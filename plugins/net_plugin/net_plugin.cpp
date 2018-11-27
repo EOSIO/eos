@@ -618,15 +618,20 @@ namespace eosio {
       connection_ptr c;
       msg_handler( net_plugin_impl &imp, connection_ptr conn) : impl(imp), c(conn) {}
 
-      void operator()( signed_block& msg ) const
-      {
-         impl.handle_message( c, std::make_shared<signed_block>( std::move( msg )));
+      void operator()( const signed_block& msg ) const {
+         EOS_ASSERT( false, plugin_config_exception, "visit(signed_block&&) should be called" );
+      }
+      void operator()( signed_block& msg ) const {
+         EOS_ASSERT( false, plugin_config_exception, "visit(signed_block&&) should be called" );
+      }
+      void operator()( signed_block&& msg ) const {
+         impl.handle_message( c, std::make_shared<signed_block>( std::forward<signed_block>( msg )));
       }
 
       template <typename T>
-      void operator()( const T& msg ) const
+      void operator()( T&& msg ) const
       {
-         impl.handle_message( c, msg);
+         impl.handle_message( c, std::forward<T>(msg) );
       }
    };
 
@@ -1229,7 +1234,11 @@ namespace eosio {
          net_message msg;
          fc::raw::unpack(ds, msg);
          msg_handler m(impl, shared_from_this() );
-         msg.visit(m);
+         if( msg.contains<signed_block>() ) {
+            m( std::move( msg.get<signed_block>() ) );
+         } else {
+            msg.visit( m );
+         }
       } catch(  const fc::exception& e ) {
          edump((e.to_detail_string() ));
          impl.close( shared_from_this() );
