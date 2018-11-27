@@ -192,7 +192,6 @@ struct se_wallet_impl {
          return optional<signature_type>{};
 
       fc::ecdsa_sig sig = ECDSA_SIG_new();
-      BIGNUM *r = BN_new(), *s = BN_new();
       CFErrorRef error = nullptr;
 
       CFDataRef digestData = CFDataCreateWithBytesNoCopy(nullptr, (UInt8*)d.data(), d.data_size(), kCFAllocatorNull);
@@ -205,10 +204,8 @@ struct se_wallet_impl {
       }
 
       const UInt8* der_bytes = CFDataGetBytePtr(signature);
-
-      BN_bin2bn(der_bytes+4, der_bytes[3], r);
-      BN_bin2bn(der_bytes+6+der_bytes[3], der_bytes[4+der_bytes[3]+1], s);
-      ECDSA_SIG_set0(sig, r, s);
+      long derSize = CFDataGetLength(signature);
+      d2i_ECDSA_SIG(&sig.obj, &der_bytes, derSize);
 
       public_key_data kd;
       compact_signature compact_sig;
@@ -303,7 +300,7 @@ se_wallet::se_wallet() : my(new detail::se_wallet_impl()) {
       }
       unsigned int major, minor;
       if(sscanf(model, "MacBookPro%u,%u", &major, &minor) == 2) {
-         if(major >= 13 && minor >= 2) {
+         if((major >= 15) || (major >= 13 && minor >= 2)) {
             my->populate_existing_keys();
             return;
          }

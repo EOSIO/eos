@@ -127,4 +127,12 @@ std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_mo
    return std::make_unique<wavm_instantiated_module>(instance, std::move(module), initial_memory);
 }
 
+void wavm_runtime::immediately_exit_currently_running_module() {
+#ifdef _WIN32
+   throw wasm_exit();
+#else
+   Platform::immediately_exit();
+#endif
+}
+
 }}}}

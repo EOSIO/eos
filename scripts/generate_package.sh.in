@@ -1,0 +1,35 @@
+#! /bin/bash
+
+VARIANT=$1
+
+VERSION="@VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@"
+
+BUILD_DIR="@CMAKE_BINARY_DIR@"
+
+VENDOR="@VENDOR@"
+PROJECT="@PROJECT_NAME@"
+DESC="@DESC@"
+URL="@URL@"
+EMAIL="@EMAIL@"
+
+export BUILD_DIR
+export VERSION
+export VENDOR
+export PROJECT
+export DESC
+export URL
+export EMAIL
+
+mkdir tmp
+
+if [[ ${VARIANT} == "brew" ]]; then
+   bash generate_bottle.sh
+elif [[ ${VARIANT} == "deb" ]]; then
+   bash generate_deb.sh
+elif [[ ${VARIANT} == "rpm" ]]; then
+   bash generate_rpm.sh
+else
+   echo "Error, unknown package type. Use either ['brew', 'deb', 'rpm']."
+   exit -1
+fi
+rm -r tmp

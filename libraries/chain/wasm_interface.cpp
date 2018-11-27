@@ -57,6 +57,10 @@ namespace eosio { namespace chain {
       my->get_instantiated_module(code_id, code, context.trx_context)->apply(context);
    }
 
+   void wasm_interface::exit() {
+      my->runtime_interface->immediately_exit_currently_running_module();
+   }
+
    wasm_instantiated_module_interface::~wasm_instantiated_module_interface() {}
    wasm_runtime_interface::~wasm_runtime_interface() {}
 
@@ -948,7 +952,7 @@ public:
    }
 
    void eosio_exit(int32_t code) {
-      throw wasm_exit{code};
+      context.control.get_wasm_interface().exit();
    }
 
 };
@@ -1325,11 +1329,9 @@ class transaction_api : public context_aware_api {
       }
 
       void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len, uint32_t replace_existing) {
-         try {
-            transaction trx;
-            fc::raw::unpack<transaction>(data, data_len, trx);
-            context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);
-         } FC_RETHROW_EXCEPTIONS(warn, "data as hex: ${data}", ("data", fc::to_hex(data, data_len)))
+         transaction trx;
+         fc::raw::unpack<transaction>(data, data_len, trx);
+         context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);
       }
 
       bool cancel_deferred( const unsigned __int128& val ) {
@@ -1911,8 +1913,6 @@ std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
    in >> s;
    if (s == "wavm")
       runtime = eosio::chain::wasm_interface::vm_type::wavm;
-   else if (s == "binaryen")
-      runtime = eosio::chain::wasm_interface::vm_type::binaryen;
    else if (s == "wabt")
       runtime = eosio::chain::wasm_interface::vm_type::wabt;
    else

@@ -13,20 +13,124 @@
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <boost/tuple/tuple_io.hpp>
+#include <eosio/chain/database_utils.hpp>
+
 
 namespace eosio { namespace chain {
+
+   using authorization_index_set = index_set<
+      permission_index,
+      permission_usage_index,
+      permission_link_index
+   >;
 
    authorization_manager::authorization_manager(controller& c, database& d)
    :_control(c),_db(d){}
 
    void authorization_manager::add_indices() {
-      _db.add_index<permission_index>();
-      _db.add_index<permission_usage_index>();
-      _db.add_index<permission_link_index>();
+      authorization_index_set::add_indices(_db);
    }
 
    void authorization_manager::initialize_database() {
       _db.create<permission_object>([](auto&){}); /// reserve perm 0 (used else where)
+   }
+
+   namespace detail {
+      template<>
+      struct snapshot_row_traits<permission_object> {
+         using value_type = permission_object;
+         using snapshot_type = snapshot_permission_object;
+
+         static snapshot_permission_object to_snapshot_row(const permission_object& value, const chainbase::database& db) {
+            snapshot_permission_object res;
+            res.name = value.name;
+            res.owner = value.owner;
+            res.last_updated = value.last_updated;
+            res.auth = value.auth.to_authority();
+
+            // lookup parent name
+            const auto& parent = db.get(value.parent);
+            res.parent = parent.name;
+
+            // lookup the usage object
+            const auto& usage = db.get<permission_usage_object>(value.usage_id);
+            res.last_used = usage.last_used;
+
+            return res;
+         };
+
+         static void from_snapshot_row(snapshot_permission_object&& row, permission_object& value, chainbase::database& db) {
+            value.name = row.name;
+            value.owner = row.owner;
+            value.last_updated = row.last_updated;
+            value.auth = row.auth;
+
+            value.parent = 0;
+            if (value.id == 0) {
+               EOS_ASSERT(row.parent == permission_name(), snapshot_exception, "Unexpected parent name on reserved permission 0");
+               EOS_ASSERT(row.name == permission_name(), snapshot_exception, "Unexpected permission name on reserved permission 0");
+               EOS_ASSERT(row.owner == name(), snapshot_exception, "Unexpected owner name on reserved permission 0");
+               EOS_ASSERT(row.auth.accounts.size() == 0,  snapshot_exception, "Unexpected auth accounts on reserved permission 0");
+               EOS_ASSERT(row.auth.keys.size() == 0,  snapshot_exception, "Unexpected auth keys on reserved permission 0");
+               EOS_ASSERT(row.auth.waits.size() == 0,  snapshot_exception, "Unexpected auth waits on reserved permission 0");
+               EOS_ASSERT(row.auth.threshold == 0,  snapshot_exception, "Unexpected auth threshold on reserved permission 0");
+               EOS_ASSERT(row.last_updated == time_point(),  snapshot_exception, "Unexpected auth last updated on reserved permission 0");
+               value.parent = 0;
+            } else if ( row.parent != permission_name()){
+               const auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(row.owner, row.parent));
+
+               EOS_ASSERT(parent.id != 0, snapshot_exception, "Unexpected mapping to reserved permission 0");
+               value.parent = parent.id;
+            }
+
+            if (value.id != 0) {
+               // create the usage object
+               const auto& usage = db.create<permission_usage_object>([&](auto& p) {
+                  p.last_used = row.last_used;
+               });
+               value.usage_id = usage.id;
+            } else {
+               value.usage_id = 0;
+            }
+         }
+      };
+   }
+
+   void authorization_manager::add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
+      authorization_index_set::walk_indices([this, &snapshot]( auto utils ){
+         using section_t = typename decltype(utils)::index_t::value_type;
+
+         // skip the permission_usage_index as its inlined with permission_index
+         if (std::is_same<section_t, permission_usage_object>::value) {
+            return;
+         }
+
+         snapshot->write_section<section_t>([this]( auto& section ){
+            decltype(utils)::walk(_db, [this, &section]( const auto &row ) {
+               section.add_row(row, _db);
+            });
+         });
+      });
+   }
+
+   void authorization_manager::read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
+      authorization_index_set::walk_indices([this, &snapshot]( auto utils ){
+         using section_t = typename decltype(utils)::index_t::value_type;
+
+         // skip the permission_usage_index as its inlined with permission_index
+         if (std::is_same<section_t, permission_usage_object>::value) {
+            return;
+         }
+
+         snapshot->read_section<section_t>([this]( auto& section ) {
+            bool more = !section.empty();
+            while(more) {
+               decltype(utils)::create(_db, [this, &section, &more]( auto &row ) {
+                  more = section.read_row(row, _db);
+               });
+            }
+         });
+      });
    }
 
    const permission_object& authorization_manager::create_permission( account_name account,
