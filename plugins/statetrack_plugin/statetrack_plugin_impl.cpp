@@ -64,6 +64,30 @@ bool statetrack_plugin_impl::filter(const account_name &code, const fc::string &
   return true;
 }
 
+void statetrack_plugin_impl::build_db_op_trx(db_op& op)
+{
+  if(current_trx_actions.size() == 0) {    
+    op.act_index = 0;
+    return;
+  }
+
+  db_action_trac& dat = current_trx_actions.back();
+  op.trx_id = dat.trx_id;
+  op.act_index = current_trx_actions.size() - 1;
+
+  if(is_undo_state) {
+    dat.op_size--;
+
+    if(dat.op_size <= 0)
+      current_trx_actions.pop_back();
+  }
+  else {
+    dat.op_size++;
+  }
+
+  ilog("STATETRACK db_action_trac: ${trxid} ${opsize}", ("trxid", op.trx_id) ("opsize", dat.op_size));
+}
+
 const table_id_object *statetrack_plugin_impl::get_kvo_tio(const database &db, const key_value_object &kvo)
 {
   return db.find<table_id_object>(kvo.t_id);
@@ -112,6 +136,9 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const account_object
 
   op.id = co.id._id;
   op.op_type = op_type;
+
+  build_db_op_trx(op);
+
   op.code = system;
   op.scope = system.to_string();
   op.table = N(accounts);
@@ -138,6 +165,9 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const permission_obj
 
   op.id = po.id._id;
   op.op_type = op_type;
+
+  build_db_op_trx(op);
+
   op.code = system;
   op.scope = system.to_string();
   op.table = N(permissions);
@@ -154,6 +184,9 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const permission_lin
 
   op.id = plo.id._id;
   op.op_type = op_type;
+
+  build_db_op_trx(op);
+
   op.code = system;
   op.scope = system.to_string();
   op.table = N(permission_links);
@@ -169,21 +202,7 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const table_id_objec
   op.id = kvo.primary_key;
   op.op_type = op_type;
 
-  db_action_trac& dat = current_trx_actions.back();
-  op.trx_id = dat.trx_id;
-  op.act_index = current_trx_actions.size();
-  op.inline_action = dat.inline_action;
-
-  if(is_undo_state) {
-    dat.op_size--;
-
-    if(dat.op_size <= 0)
-      current_trx_actions.pop_back();
-  }
-  else {
-    
-    dat.op_size++;
-  }
+  build_db_op_trx(op);
 
   op.code = tio.code;
   op.scope = scope_sym_to_string(tio.scope);
@@ -215,7 +234,9 @@ void statetrack_plugin_impl::on_applied_table(const database &db, const table_id
 
   if (filter(code, scope, table))
   {
-    db_table table;
+    db_op table;
+
+    build_db_op_trx(table);
 
     table.op_type = op_type;
     table.code = tio.code;
@@ -333,9 +354,11 @@ void statetrack_plugin_impl::on_applied_transaction(const transaction_trace_ptr 
   if (ttp->receipt)
   {
     cached_traces[ttp->id] = ttp;
-  }
 
-  current_trx_actions.clear();
+    ilog("STATETRACK applied trx");
+
+    current_trx_actions.clear();
+  }
 }
 
 void statetrack_plugin_impl::on_accepted_block(const block_state_ptr &bsp)
@@ -410,7 +433,7 @@ void statetrack_plugin_impl::on_action_trace(const action_trace &at, const block
   op.value = fc::variant(da);
 
   fc::string data = fc::json::to_string(op);
-  ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type_enum::TRX_ACTION)("data", data));
+  //ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type_enum::TRX_ACTION)("data", data));
   send_zmq_msg(data);
 }
 
@@ -420,19 +443,27 @@ void statetrack_plugin_impl::on_irreversible_block(const block_state_ptr &bsp)
     return;
 
   fc::string data = fc::json::to_string(get_db_rev(bsp->block_num, op_type_enum::REV_COMMIT));
-  ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type_enum::REV_COMMIT)("data", data));
+  //ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type_enum::REV_COMMIT)("data", data));
   send_zmq_msg(data);
 }
 
-void statetrack_plugin_impl::on_pre_apply_action(std::pair<action_trace&, bool>& trace) 
+void statetrack_plugin_impl::on_pre_apply_action(transaction_id_type trx_id) 
 {
+  auto it = find_if(current_trx_actions.begin(), current_trx_actions.end(), [&] (const auto& dat) { 
+    return dat.trx_id == trx_id; 
+  });
+
+  if(it != current_trx_actions.end())
+    return;
+
   db_action_trac dat;
-  dat.trx_id = trace.first.trx_id;
-  dat.inline_action = trace.second;
+  dat.trx_id = trx_id;
   dat.op_size = 0;
 
   current_trx_actions.emplace_back(dat);
   is_undo_state = false;
+
+  ilog("on_pre_apply_action trx: ${trxid}", ("trxid", trx_id));
 }
 
 } // namespace eosio

@@ -70,8 +70,6 @@ void apply_context::exec_one( action_trace& trace, bool inline_action )
    trace.act = act;
    trace.context_free = context_free;
 
-   emit(control.pre_apply_action, std::pair<action_trace&, bool>(trace, inline_action));
-
    const auto& cfg = control.get_global_properties().configuration;
    try {
       try {
@@ -141,6 +139,9 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
 void apply_context::exec( action_trace& trace )
 {
    _notified.push_back(receiver);
+
+   emit(control.pre_apply_action, trx_context.id);
+
    exec_one( trace, false );
    for( uint32_t i = 1; i < _notified.size(); ++i ) {
       receiver = _notified[i];

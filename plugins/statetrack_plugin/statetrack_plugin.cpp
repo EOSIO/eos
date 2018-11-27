@@ -123,8 +123,8 @@ void statetrack_plugin::plugin_initialize(const variables_map &options)
             })));
 
         my->connections.emplace_back(
-            fc::optional<connection>(chain.pre_apply_action.connect([&](std::pair<action_trace&, bool> trace){
-                my->on_pre_apply_action(trace);
+            fc::optional<connection>(chain.pre_apply_action.connect([&](transaction_id_type trx_id){
+                my->on_pre_apply_action(trx_id);
             })));
     }
     FC_LOG_AND_RETHROW()

@@ -47,6 +47,23 @@ enum op_type_enum
     REV_COMMIT = 6
 };
 
+struct db_table
+{
+    op_type_enum        op_type;
+    account_name        code;
+    fc::string          scope;
+    table_name          table;
+    account_name        payer;
+};
+
+struct db_op : db_table
+{
+    uint64_t            id;
+    transaction_id_type trx_id;
+    size_t              act_index;
+    fc::variant         value;
+};
+
 struct db_account
 {
     account_name name;
@@ -57,24 +74,6 @@ struct db_account
     time_point last_code_update;
     digest_type code_version;
     block_timestamp_type creation_date;
-};
-
-struct db_table
-{
-    op_type_enum        op_type;
-    transaction_id_type trx_id;
-    size_t              act_index;
-    bool                inline_action;
-    account_name        code;
-    fc::string          scope;
-    table_name          table;
-    account_name        payer;
-};
-
-struct db_op : db_table
-{
-    uint64_t id;
-    fc::variant value;
 };
 
 struct db_rev
@@ -95,7 +94,6 @@ struct db_action
 struct db_action_trac 
 {
     transaction_id_type trx_id;
-    bool                inline_action;
     int64_t             op_size;
 };
 
@@ -129,6 +127,7 @@ class statetrack_plugin_impl
 
     void send_zmq_msg(const fc::string content);
     bool filter(const account_name &code, const fc::string &scope, const table_name &table);
+    void build_db_op_trx(db_op& op);
 
     const table_id_object *get_kvo_tio(const database &db, const key_value_object &kvo);
     const account_object &get_tio_co(const database &db, const table_id_object &tio);
@@ -157,7 +156,7 @@ class statetrack_plugin_impl
     void on_accepted_block(const block_state_ptr &bsp);
     void on_action_trace(const action_trace &at, const block_state_ptr &bsp);
     void on_irreversible_block(const block_state_ptr &bsp);
-    void on_pre_apply_action(std::pair<action_trace&, bool>& trace);
+    void on_pre_apply_action(transaction_id_type trx_id);
 
     template<typename MultiIndexType> 
     void create_index_events(const database &db) {
@@ -235,7 +234,7 @@ class statetrack_plugin_impl
 
 FC_REFLECT_ENUM(eosio::op_type_enum, (TABLE_REMOVE)(ROW_CREATE)(ROW_MODIFY)(ROW_REMOVE)(TRX_ACTION)(REV_UNDO)(REV_COMMIT))
 FC_REFLECT(eosio::db_account, (name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date))
-FC_REFLECT(eosio::db_table, (op_type)(trx_id)(act_index)(inline_action)(code)(scope)(table)(payer))
-FC_REFLECT_DERIVED(eosio::db_op, (eosio::db_table), (id)(value))
+FC_REFLECT(eosio::db_table, (op_type)(code)(scope)(table)(payer))
+FC_REFLECT_DERIVED(eosio::db_op, (eosio::db_table), (id)(trx_id)(act_index)(value))
 FC_REFLECT(eosio::db_rev, (op_type)(revision))
 FC_REFLECT(eosio::db_action, (block_num)(block_time)(action_trace)(last_irreversible_block))
