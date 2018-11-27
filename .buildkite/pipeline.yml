@@ -442,7 +442,7 @@ steps:
         cd /data/job/build/packages && bash generate_package.sh deb
     label: ":ubuntu: 18.04 Package builder"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "build/packages/*.deb"
     plugins:
@@ -469,7 +469,7 @@ steps:
         cd /data/job/build/packages && bash generate_package.sh rpm
     label: ":fedora: Package builder"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "build/packages/x86_64/*.rpm"
     plugins:
@@ -496,7 +496,7 @@ steps:
         cd /data/job/build/packages && bash generate_package.sh rpm
     label: ":centos: Package builder"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "build/packages/x86_64/*.rpm"
     plugins:
