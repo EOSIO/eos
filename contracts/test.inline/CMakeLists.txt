@@ -1,8 +1,5 @@
-file(GLOB ABI_FILES "*.abi")
-configure_file("${ABI_FILES}" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
+set( CMAKE_CXX_STANDARD 17 )
 
-add_wast_executable(TARGET test.inline
-  INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
-  LIBRARIES libc++ libc eosiolib
-  DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
-)
+include_directories( ${MYPROJECT_DIR}../ )
+
+add_contract( test.inline test.inline test.inline.cpp )

@@ -108,7 +108,7 @@ void test_transaction::send_action_large() {
    copy_data(large_message, 8*1024, test_action.data);
 
    std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
-   action act( permissions, name{"testapi"}, name{"test_action"}, test_action );
+   action act( permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_action", "read_action_normal")}, test_action );
    
    act.send();
    eosio_assert(false, "send_message_large() should've thrown an error");
@@ -342,9 +342,10 @@ void test_transaction::new_feature() {
    eosio_assert(false == is_feature_active("newfeature"_n.value), "we should not have new features unless hardfork");
 }
 
-// void test_transaction::active_new_feature() { ??????????????????????????????????/
-//    activate_feature("newfeature"_n.value); ??????????????????????????
-// } ????????????????????????????/
+extern "C" { void activate_feature(int64_t);}
+void test_transaction::active_new_feature() {
+   activate_feature("newfeature"_n.value);
+}
 
 void test_transaction::repeat_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action) {
    using namespace eosio;

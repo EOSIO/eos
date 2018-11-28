@@ -250,16 +250,16 @@ namespace _test_multi_index {
       typedef record_idx64 record;
 
       // Load table using multi_index
-      multi_index<name{TableName}, record, indexed_by< "bysecondary"_n, const_mem_fun<record, uint64_t, &record::get_secondary>>> table( receiver, receiver );
+      multi_index<name{TableName}, record, indexed_by< "bysecondary"_n, const_mem_fun<record, uint64_t, &record::get_secondary>>> table( eosio::name{receiver}, receiver );
       auto sec_index = table.template get_index<"bysecondary"_n>();
       
       // make sure we're looking at the right table
-      auto itr = sec_index.require_find("charlie"_n, "table not loaded");
+      auto itr = sec_index.require_find("charlie"_n.value, "table not loaded");
       eosio_assert(itr != sec_index.end(), "table not loaded");
 
       // require_find by secondary key
       // should fail
-      itr = sec_index.require_find("bill"_n);
+      itr = sec_index.require_find("bill"_n.value);
    }
 
    template<uint64_t TableName>
@@ -269,16 +269,16 @@ namespace _test_multi_index {
       typedef record_idx64 record;
 
       // Load table using multi_index
-      multi_index<name{TableName}, record, indexed_by< "bysecondary"_n, const_mem_fun<record, uint64_t, &record::get_secondary>>> table( receiver, receiver );
+      multi_index<name{TableName}, record, indexed_by< "bysecondary"_n, const_mem_fun<record, uint64_t, &record::get_secondary>>> table( eosio::name{receiver}, receiver );
       auto sec_index = table.template get_index<"bysecondary"_n>();
       
       // make sure we're looking at the right table
-      auto itr = sec_index.require_find("emily"_n, "table not loaded");
+      auto itr = sec_index.require_find("emily"_n.value, "table not loaded");
       eosio_assert(itr != sec_index.end(), "table not loaded");
 
       // require_find by secondary key
       // should fail
-      itr = sec_index.require_find("frank"_n, "unable to find sec key");
+      itr = sec_index.require_find("frank"_n.value, "unable to find sec key");
    }
 
    template<uint64_t TableName>
@@ -397,20 +397,20 @@ void test_multi_index::idx64_require_find_fail(uint64_t receiver, uint64_t code,
 
 void test_multi_index::idx64_require_find_fail_with_msg(uint64_t receiver, uint64_t code, uint64_t action)
 {
-   // _test_multi_index::idx64_store_only<"indextable6"_n.value>(receiver); // Making the name smaller fixes this?
-   // _test_multi_index::idx64_require_find_fail_with_msg<"indextable6"_n.value>(receiver); // Making the name smaller fixes this?
+   _test_multi_index::idx64_store_only<"indextablea"_n.value>(receiver); // Making the name smaller fixes this?
+   _test_multi_index::idx64_require_find_fail_with_msg<"indextablea"_n.value>(receiver); // Making the name smaller fixes this?
 }
 
 void test_multi_index::idx64_require_find_sk_fail(uint64_t receiver, uint64_t code, uint64_t action)
 {
-   // _test_multi_index::idx64_store_only<"indextable7"_n.value>(receiver);
-   // _test_multi_index::idx64_require_find_sk_fail<"indextable7"_n.value>(receiver);
+   _test_multi_index::idx64_store_only<"indextableb"_n.value>(receiver);
+   _test_multi_index::idx64_require_find_sk_fail<"indextableb"_n.value>(receiver);
 }
 
 void test_multi_index::idx64_require_find_sk_fail_with_msg(uint64_t receiver, uint64_t code, uint64_t action)
 {
-   // _test_multi_index::idx64_store_only<"indextable8"_n.value>(receiver);
-   // _test_multi_index::idx64_require_find_sk_fail_with_msg<"indextable8"_n.value>(receiver);
+   _test_multi_index::idx64_store_only<"indextablec"_n.value>(receiver);
+   _test_multi_index::idx64_require_find_sk_fail_with_msg<"indextablec"_n.value>(receiver);
 }
 
 void test_multi_index::idx128_autoincrement_test(uint64_t receiver, uint64_t code, uint64_t action)

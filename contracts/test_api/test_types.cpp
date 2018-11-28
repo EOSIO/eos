@@ -74,19 +74,10 @@ void test_types::string_to_name() {
    eosio_assert( eosio::name("kjihgfedcba") == "kjihgfedcba"_n, "eosio::string_to_name(kjihgfedcba)" );
    eosio_assert( eosio::name("lkjihgfedcba") == "lkjihgfedcba"_n, "eosio::string_to_name(lkjihgfedcba)" );
    eosio_assert( eosio::name("mlkjihgfedcba") == "mlkjihgfedcba"_n, "eosio::string_to_name(mlkjihgfedcba)" );
-   // eosio_assert( eosio::name("mlkjihgfedcba1") == "mlkjihgfedcba2"_n , "eosio::string_to_name(mlkjihgfedcba2)" );
-   // eosio_assert( eosio::name("mlkjihgfedcba55") == "mlkjihgfedcba14"_n , "eosio::string_to_name(mlkjihgfedcba14)" );
-
-   // eosio_assert( eosio::name("azAA34") == "azBB34"_n, "eosio::string_to_name \"azBB34\"_n" );
-   // eosio_assert( eosio::name("AZaz12Bc34") == "AZaz12Bc34"_n, "eosio::string_to_name AZaz12Bc34" );
    eosio_assert( eosio::name("AAAAAAAAAAAAAAA") == eosio::name("BBBBBBBBBBBBBDDDDDFFFGG"), "eosio::string_to_name BBBBBBBBBBBBBDDDDDFFFGG" );
 }
 
 void test_types::name_class() {
-
-   // eosio_assert( eosio::name("azAA34").value == "azAA34"_n.value, "eosio::name != \"azAA34\"_n" );
-   // eosio_assert( eosio::name("AABBCC").value == "0"_n.value, "eosio::name != \"0\"" );
-   // eosio_assert( eosio::name("AA11").value == "AA11"_n.value, "eosio::name != \"AA11\"_n" );
    eosio_assert( eosio::name("11AA").value == "11"_n.value, "eosio::name != \"11\"_n" );
    eosio_assert( eosio::name("22BBCCXXAA").value == "22"_n.value, "eosio::name != \"22\"_n" );
    eosio_assert( eosio::name("AAAbbcccdd") == eosio::name("AAAbbcccdd"), "eosio::name == eosio::name" );

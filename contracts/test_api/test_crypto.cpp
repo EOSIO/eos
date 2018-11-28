@@ -318,7 +318,6 @@ void test_crypto::assert_sha256_false() {
 
   tmp = eosio::sha256( test1, my_strlen(test1) );
   tmp.data()[0] ^= (uint64_t)(-1);
-  // tmp.hash[0] ^= (uint64_t)(-1);
   assert_sha256( test1, my_strlen(test1), tmp );
    
   eosio_assert(false, "should have failed");
@@ -345,7 +344,6 @@ void test_crypto::assert_sha1_false() {
 
   tmp = eosio::sha1( test1, my_strlen(test1) );
   tmp.data()[0] ^= (uint64_t)(-1);
-  // tmp.hash[0] ^= (uint64_t)(-1);
   assert_sha1( test1, my_strlen(test1), tmp );
    
   eosio_assert(false, "should have failed");
@@ -373,7 +371,6 @@ void test_crypto::assert_sha512_false() {
 
   tmp = eosio::sha512( test1, my_strlen(test1) );
   tmp.data()[0] ^= (uint64_t)(-1);
-  // tmp.hash[0] ^= (uint64_t)(-1);
   assert_sha512( test1, my_strlen(test1), tmp );
    
   eosio_assert(false, "should have failed");
@@ -401,7 +398,6 @@ void test_crypto::assert_ripemd160_false() {
 
   tmp = eosio::ripemd160( test1, my_strlen(test1) );
   tmp.data()[0] ^= (uint64_t)(-1);
-  // tmp.hash[0] ^= (uint64_t)(-1);
   assert_ripemd160( test1, my_strlen(test1), tmp );
    
   eosio_assert(false, "should have failed");
