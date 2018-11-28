@@ -13,6 +13,7 @@ Third parties are encouraged to make pull requests to this file (`develop` branc
 | SQL | https://github.com/asiniscalchi/eosio_sql_plugin |
 | Watch for specific actions and send them to an HTTP URL | https://github.com/eosauthority/eosio-watcher-plugin |
 | ZMQ / history | https://github.com/cc32d9/eos_zmq_plugin |
+| Mongo History API | https://github.com/CryptoLions/EOS-mongo-history-API |
 
 ## DISCLAIMER:
 
