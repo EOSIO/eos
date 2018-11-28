@@ -1532,7 +1532,7 @@ namespace eosio {
    void sync_manager::verify_catchup(connection_ptr c, uint32_t num, block_id_type id) {
       request_message req;
       req.req_blocks.mode = catch_up;
-      for (auto cc : my_impl->connections) {
+      for (const auto& cc : my_impl->connections) {
          if (cc->fork_head == id ||
              cc->fork_head_num > num) {
             req.req_blocks.mode = none;
@@ -1598,7 +1598,7 @@ namespace eosio {
          source.reset();
 
          block_id_type null_id;
-         for (auto cp : my_impl->connections) {
+         for (const auto& cp : my_impl->connections) {
             if (cp->fork_head == null_id) {
                continue;
             }
@@ -1670,12 +1670,16 @@ namespace eosio {
       }
 
       pbstate.is_known = true;
-      for( auto cp : my_impl->connections ) {
+      for( auto& cp : my_impl->connections ) {
          if( skips.find( cp ) != skips.end() || !cp->current() ) {
             continue;
          }
-         cp->add_peer_block( pbstate );
-         cp->enqueue_block( bs->block );
+         bool has_block = cp->last_handshake_recv.last_irreversible_block_num >= bnum;
+         if( !has_block ) {
+            fc_dlog(logger, "bcast block ${b} to ${p}", ("b", bnum)("p", cp->peer_name()));
+            cp->add_peer_block( pbstate );
+            cp->enqueue_block( bs->block );
+         }
       }
 
    }
@@ -1884,7 +1888,7 @@ namespace eosio {
                   ("b",modes_str(c->last_req->req_blocks.mode))("t",modes_str(c->last_req->req_trx.mode)));
          return;
       }
-      for (auto conn : my_impl->connections) {
+      for (auto& conn : my_impl->connections) {
          if (conn == c || conn->last_req) {
             continue;
          }
