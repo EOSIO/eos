@@ -16,6 +16,7 @@ Third parties are encouraged to make pull requests to this file (`develop` branc
 | ZMQ Light History API | https://github.com/cc32d9/eos_zmq_light_api |
 | Chintai ZMQ Watcher | https://github.com/acoutts/chintai-zeromq-watcher-plugin |
 | Mongo History API | https://github.com/CryptoLions/EOS-mongo-history-API |
+| State History API | https://github.com/acoutts/EOS-state-history-API |
 
 ## DISCLAIMER:
 
