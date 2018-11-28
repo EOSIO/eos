@@ -22,6 +22,8 @@ file(GLOB UNIT_TESTS "main.cpp" "api_tests.cpp") # "*.cpp")
 add_executable( unit_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} )
 target_link_libraries( unit_test eosio_chain chainbase eosio_testing eos_utilities abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
 
+target_compile_options(unit_test PUBLIC -DDISABLE_EOSLIB_SERIALIZE)
+
 target_include_directories( unit_test PUBLIC
                             ${CMAKE_SOURCE_DIR}/libraries/testing/include
                             ${CMAKE_SOURCE_DIR}/contracts

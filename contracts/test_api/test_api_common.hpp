@@ -4,11 +4,8 @@
  */
 #pragma once
 
-#ifdef DISABLE_EOSLIB_SERIALIZE
 #include <eosiolib/serialize.hpp>
-#undef EOSLIB_SERIALIZE
-#define EOSLIB_SERIALIZE(...)
-#endif
+
 
 static constexpr unsigned int DJBH(const char* cp)
 {

@@ -46,8 +46,76 @@
 
 #include <contracts.hpp>
 
-#define DISABLE_EOSLIB_SERIALIZE
-#include <test_api/test_api_common.hpp>
+//#include <test_api/test_api_common.hpp>
+
+#define DUMMY_ACTION_DEFAULT_A 0x45
+#define DUMMY_ACTION_DEFAULT_B 0xab11cd1244556677
+#define DUMMY_ACTION_DEFAULT_C 0x7451ae12
+
+static constexpr unsigned int DJBH(const char* cp)
+{
+  unsigned int hash = 5381;
+  while (*cp)
+      hash = 33 * hash ^ (unsigned char) *cp++;
+  return hash;
+}
+
+static constexpr unsigned long long WASM_TEST_ACTION(const char* cls, const char* method)
+{
+  return static_cast<unsigned long long>(DJBH(cls)) << 32 | static_cast<unsigned long long>(DJBH(method));
+}
+
+struct dummy_action {
+   static uint64_t get_name() {
+      return N("dummyaction");
+   }
+   static uint64_t get_account() {
+      return N("testapi");
+   }
+
+  char a; //1
+  uint64_t b; //8
+  int32_t  c; //4
+};
+
+struct u128_action {
+  unsigned __int128  values[3]; //16*3
+};
+
+struct cf_action {
+   static uint64_t get_name() {
+      return N("cfaction");
+   }
+   static uint64_t get_account() {
+      return N("testapi");
+   }
+
+   uint32_t       payload = 100;
+   uint32_t       cfd_idx = 0; // context free data index
+};
+
+// Deferred Transaction Trigger Action
+struct dtt_action {
+   static uint64_t get_name() {
+      return WASM_TEST_ACTION("test_transaction", "send_deferred_tx_with_dtt_action");
+   }
+   static uint64_t get_account() {
+      return N("testapi");
+   }
+
+   uint64_t       payer = N("testapi");
+   uint64_t       deferred_account = N("testapi");
+   uint64_t       deferred_action = WASM_TEST_ACTION("test_transaction", "deferred_print");
+   uint64_t       permission_name = N("active");
+   uint32_t       delay_sec = 2;
+};
+
+struct invalid_access_action {
+   uint64_t code;
+   uint64_t val;
+   uint32_t index;
+   bool store;
+};
 
 FC_REFLECT( dummy_action, (a)(b)(c) )
 FC_REFLECT( u128_action, (values) )
@@ -251,7 +319,7 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
    BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 1);
    BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 0);
 
-   set_code( N(testapi), contracts::test_api_wasm() );
+   set_code( N(testapi), contracts::test_api_db_wasm() );
    set_code( config::system_account_name, contracts::test_api_db_wasm() );
    res = CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_general", {});
    BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 2);
@@ -275,7 +343,7 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
    set_code( config::system_account_name, contracts::eosio_bios_wasm() );
 
    set_code( N(testapi), contracts::eosio_bios_wasm() );
-   set_abi(N(testapi), eosio_bios_abi);
+   set_abi(N(testapi), contracts::eosio_bios_abi().data() );
 	set_code( N(testapi), contracts::test_api_wasm() );
 	res = CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
    BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 4);
@@ -348,6 +416,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
       auto res = test.push_transaction(trx);
       BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    };
+   
    BOOST_CHECK_EXCEPTION(test_require_notice(*this, raw_bytes, scope), unsatisfied_authorization,
          [](const unsatisfied_authorization& e) {
             return expect_assert_message(e, "transaction declares authority");
@@ -416,6 +485,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_action", "test_current_receiver", fc::raw::pack(N(testapi)));
 
    // test send_action_sender
+   return;
    CALL_TEST_FUNCTION( *this, "test_transaction", "send_action_sender", fc::raw::pack(N(testapi)));
    produce_block();
 
