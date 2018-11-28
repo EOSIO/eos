@@ -901,7 +901,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
 
          new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
             ubo.blocknum = num;
-            ubo.set_block( std::make_shared<signed_block>(tmp) );
+            ubo.set_block( std::make_shared<signed_block>(std::move(tmp)) );
          });
          end = num;
       }
@@ -1526,9 +1526,9 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
    return vo;
 }
 
-void read_write::push_block(const read_write::push_block_params& params, next_function<read_write::push_block_results> next) {
+void read_write::push_block(read_write::push_block_params&& params, next_function<read_write::push_block_results> next) {
    try {
-      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(params));
+      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(std::move(params)));
       next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
