@@ -40,12 +40,12 @@ $ brew remove eosio
 #### Ubuntu 18.04 Debian Package Install
 ```sh
 $ wget https://github.com/eosio/eos/releases/download/v1.5.0-rc2/eosio_1.5.0-rc2-1-ubuntu-18.04_amd64.deb
-$ sudo apt install ./eosio_1.5.0-rc2-1-ubuntu-18.04_amd64.deb
+$ sudo apt install ./eosio_1.5.0-rc2-ubuntu-18.04_amd64.deb
 ```
 #### Ubuntu 16.04 Debian Package Install
 ```sh
 $ wget https://github.com/eosio/eos/releases/download/v1.5.0-rc2/eosio_1.5.0-rc2-1-ubuntu-16.04_amd64.deb
-$ sudo apt install ./eosio_1.5.0-rc2-1-ubuntu-16.04_amd64.deb
+$ sudo apt install ./eosio_1.5.0-rc2-ubuntu-16.04_amd64.deb
 ```
 #### Debian Package Uninstall
 ```sh
