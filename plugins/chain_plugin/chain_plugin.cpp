@@ -1698,76 +1698,77 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 
    const auto& code_account = db.db().get<account_object,by_name>( config::system_account_name );
 
-   abi_def abi;
-   if( abi_serializer::to_abi(code_account.abi, abi) ) {
-      abi_serializer abis( abi, abi_serializer_max_time );
-
-      const auto token_code = N(eosio.token);
-
-      auto core_symbol = extract_core_symbol();
-
-      if (params.expected_core_symbol.valid()) 
-         core_symbol = *(params.expected_core_symbol);
-
-      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));
-      if( t_id != nullptr ) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, core_symbol.to_symbol_code() ));
-         if( it != idx.end() && it->value.size() >= sizeof(asset) ) {
-            asset bal;
-            fc::datastream<const char *> ds(it->value.data(), it->value.size());
-            fc::raw::unpack(ds, bal);
-
-            if( bal.get_symbol().valid() && bal.get_symbol() == core_symbol ) {
-               result.core_liquid_balance = bal;
-            }
-         }
-      }
-
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
-         if ( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.total_resources = abis.binary_to_variant( "user_resources", data, abi_serializer_max_time, shorten_abi_errors );
-         }
-      }
-
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(delband) ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
-         if ( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data, abi_serializer_max_time, shorten_abi_errors );
-         }
-      }
-
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(refunds) ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
-         if ( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.refund_request = abis.binary_to_variant( "refund_request", data, abi_serializer_max_time, shorten_abi_errors );
-         }
-      }
-
-      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
-      if (t_id != nullptr) {
-         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
-         if ( it != idx.end() ) {
-            vector<char> data;
-            copy_inline_row(*it, data);
-            result.voter_info = abis.binary_to_variant( "voter_info", data, abi_serializer_max_time, shorten_abi_errors );
-         }
-      }
-   }
+//   TODO: Move out this logic in correct place
+//   abi_def abi;
+//   if( abi_serializer::to_abi(code_account.abi, abi) ) {
+//      abi_serializer abis( abi, abi_serializer_max_time );
+//
+//      const auto token_code = N(eosio.token);
+//
+//      auto core_symbol = extract_core_symbol();
+//
+//      if (params.expected_core_symbol.valid()) 
+//         core_symbol = *(params.expected_core_symbol);
+//
+//      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));
+//      if( t_id != nullptr ) {
+//         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+//         auto it = idx.find(boost::make_tuple( t_id->id, core_symbol.to_symbol_code() ));
+//         if( it != idx.end() && it->value.size() >= sizeof(asset) ) {
+//            asset bal;
+//            fc::datastream<const char *> ds(it->value.data(), it->value.size());
+//            fc::raw::unpack(ds, bal);
+//
+//            if( bal.get_symbol().valid() && bal.get_symbol() == core_symbol ) {
+//               result.core_liquid_balance = bal;
+//            }
+//         }
+//      }
+//
+//      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
+//      if (t_id != nullptr) {
+//         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+//         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+//         if ( it != idx.end() ) {
+//            vector<char> data;
+//            copy_inline_row(*it, data);
+//            result.total_resources = abis.binary_to_variant( "user_resources", data, abi_serializer_max_time, shorten_abi_errors );
+//         }
+//      }
+//
+//      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(delband) ));
+//      if (t_id != nullptr) {
+//         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+//         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+//         if ( it != idx.end() ) {
+//            vector<char> data;
+//            copy_inline_row(*it, data);
+//            result.self_delegated_bandwidth = abis.binary_to_variant( "delegated_bandwidth", data, abi_serializer_max_time, shorten_abi_errors );
+//         }
+//      }
+//
+//      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(refunds) ));
+//      if (t_id != nullptr) {
+//         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+//         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+//         if ( it != idx.end() ) {
+//            vector<char> data;
+//            copy_inline_row(*it, data);
+//            result.refund_request = abis.binary_to_variant( "refund_request", data, abi_serializer_max_time, shorten_abi_errors );
+//         }
+//      }
+//
+//      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
+//      if (t_id != nullptr) {
+//         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+//         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+//         if ( it != idx.end() ) {
+//            vector<char> data;
+//            copy_inline_row(*it, data);
+//            result.voter_info = abis.binary_to_variant( "voter_info", data, abi_serializer_max_time, shorten_abi_errors );
+//         }
+//      }
+//   }
    return result;
 }
 
