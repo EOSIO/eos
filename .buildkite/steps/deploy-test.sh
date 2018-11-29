@@ -27,6 +27,7 @@ if [[ "$IMAGETAG" != "master" ]]; then
     echo "----------------------------------------------"
 fi
 
+cp ./config.ini /etc/cyberway/config.ini || true
 docker-compose up -d || true
 sleep 15s
 
