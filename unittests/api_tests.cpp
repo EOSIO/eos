@@ -46,7 +46,7 @@
 
 #include <contracts.hpp>
 
-//#include <test_api/test_api_common.hpp>
+// #include <test_api/test_api_common.hpp>
 
 #define DUMMY_ACTION_DEFAULT_A 0x45
 #define DUMMY_ACTION_DEFAULT_B 0xab11cd1244556677
@@ -67,10 +67,10 @@ static constexpr unsigned long long WASM_TEST_ACTION(const char* cls, const char
 
 struct dummy_action {
    static uint64_t get_name() {
-      return N("dummyaction");
+      return N(dummyaction);
    }
    static uint64_t get_account() {
-      return N("testapi");
+      return N(testapi);
    }
 
   char a; //1
@@ -84,10 +84,10 @@ struct u128_action {
 
 struct cf_action {
    static uint64_t get_name() {
-      return N("cfaction");
+      return N(cfaction);
    }
    static uint64_t get_account() {
-      return N("testapi");
+      return N(testapi);
    }
 
    uint32_t       payload = 100;
@@ -100,13 +100,13 @@ struct dtt_action {
       return WASM_TEST_ACTION("test_transaction", "send_deferred_tx_with_dtt_action");
    }
    static uint64_t get_account() {
-      return N("testapi");
+      return N(testapi);
    }
 
-   uint64_t       payer = N("testapi");
-   uint64_t       deferred_account = N("testapi");
+   uint64_t       payer = N(testapi);
+   uint64_t       deferred_account = N(testapi);
    uint64_t       deferred_action = WASM_TEST_ACTION("test_transaction", "deferred_print");
-   uint64_t       permission_name = N("active");
+   uint64_t       permission_name = N(active);
    uint32_t       delay_sec = 2;
 };
 
@@ -241,6 +241,7 @@ transaction_trace_ptr CallFunction(TESTER& test, T ac, const vector<char>& data,
       test.set_transaction_headers(trx, test.DEFAULT_EXPIRATION_DELTA);
       auto sigs = trx.sign(test.get_private_key(scope[0], "active"), test.control->get_chain_id());
       trx.get_signature_keys(test.control->get_chain_id() );
+      //__asm__("int3");
       auto res = test.push_transaction(trx);
       BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
       test.produce_block();
@@ -480,15 +481,15 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
    produce_block();
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_current_time", fc::raw::pack(now) ),
                           eosio_assert_message_exception, eosio_assert_message_is("tmp == current_time()")     );
-
+   
    // test test_current_receiver
    CALL_TEST_FUNCTION( *this, "test_action", "test_current_receiver", fc::raw::pack(N(testapi)));
-
+   
    // test send_action_sender
-   return;
    CALL_TEST_FUNCTION( *this, "test_transaction", "send_action_sender", fc::raw::pack(N(testapi)));
+   
    produce_block();
-
+  
    // test_publication_time
    uint64_t pub_time = static_cast<uint64_t>( control->head_block_time().time_since_epoch().count() );
    pub_time += config::block_interval_us;
@@ -570,7 +571,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
                                return expect_assert_message(e, "transaction must have at least one authorization");
                             }
       );
-
+      
       action act({}, cfa);
       trx.context_free_actions.push_back(act);
       trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
@@ -580,13 +581,16 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       // signing a transaction with only context_free_actions should not be allowed
       //      auto sigs = trx.sign(get_private_key(N(testapi), "active"), control->get_chain_id());
 
+      // return; --- ../unittests/api_tests.cpp:845: [1;31;49merror: in "api_tests/checktime_fail_tests": exception...
       BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_no_auths,
                             [](const fc::exception& e) {
                                return expect_assert_message(e, "transaction must have at least one authorization");
                             }
       );
 
+      // return; --- ../unittests/main.cpp:15: [4;31;49mfatal error: in "api_tests/cf_action_tests": Caught Unexpected...
       trx.signatures.clear();
+      // return; --- ../unittests/main.cpp:15: [4;31;49mfatal error: in "api_tests/cf_action_tests": Caught Unexpected...
 
       // add a normal action along with cfa
       dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };

@@ -78,14 +78,9 @@ void test_transaction::send_action() {
       { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
 
    std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
-   action act( permissions, name{"testapi"}, name{"test_action"}, test_action );
+   action act( permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_action", "read_action_normal")}, test_action );
 
    act.send();
-
-   // trx.actions.emplace_back(std::vector<permission_level>{{"testapi"_n, "active"_n}},
-   //                          "testapi"_n, WASM_TEST_ACTION("test_action",
-   //                                                        "test_current_sender"),
-   //                          cur_send);
 }
 
 void test_transaction::send_action_empty() {
@@ -93,7 +88,7 @@ void test_transaction::send_action_empty() {
    test_action_action<"testapi"_n.value, WASM_TEST_ACTION("test_action", "assert_true")> test_action;
 
    std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
-   action act( permissions, name{"testapi"}, name{"test_action"}, test_action );
+   action act( permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_action", "assert_true")}, test_action );
 
    act.send();
 }
@@ -126,7 +121,7 @@ void test_transaction::send_action_recurse() {
    copy_data(buffer, 1024, test_action.data);
 
    std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
-   action act( permissions, name{"testapi"}, name{"test_action"}, test_action );
+   action act( permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_transaction", "send_action_recurse")}, test_action );
 
    act.send();
 }
@@ -139,7 +134,7 @@ void test_transaction::send_action_inline_fail() {
    test_action_action<"testapi"_n.value, WASM_TEST_ACTION("test_action", "assert_false")> test_action;
 
    std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
-   action act( permissions, name{"testapi"}, name{"test_action"}, test_action );
+   action act( permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_action", "assert_false")}, test_action );
 
    act.send();
 }
@@ -188,7 +183,7 @@ void test_transaction::send_transaction(uint64_t receiver, uint64_t, uint64_t) {
    auto trx = transaction();
    std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
    
-   trx.actions.emplace_back(permissions, name{"testapi"}, name{"test_action"}, test_action);
+   trx.actions.emplace_back(permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_action", "read_action_normal")}, test_action);
    trx.send(0, name{receiver});
 }
 
@@ -199,10 +194,9 @@ void test_transaction::send_action_sender(uint64_t receiver, uint64_t, uint64_t)
 
    auto trx = transaction();
    std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
-
-   printf("***************************************  %", name{cur_send});
-   // trx.actions.emplace_back(permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_action", "test_current_sender")}, &cur_send);
-   // trx.send(0, name{receiver});
+   
+   trx.actions.emplace_back(permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_action", "test_current_sender")}, &cur_send);
+   trx.send(0, name{receiver});
 }
 
 void test_transaction::send_transaction_empty(uint64_t receiver, uint64_t, uint64_t) {
@@ -220,7 +214,7 @@ void test_transaction::send_transaction_trigger_error_handler(uint64_t receiver,
    auto trx = transaction();
    std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
    
-   trx.actions.emplace_back(permissions, name{"testapi"}, name{"test_action"}, test_action);
+   trx.actions.emplace_back(permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_action", "assert_false")}, test_action);
    trx.send(0, name{receiver});
 }
 
@@ -244,7 +238,7 @@ void test_transaction::send_transaction_large(uint64_t receiver, uint64_t, uint6
       char large_message[1024];
       test_action_action<"testapi"_n.value, WASM_TEST_ACTION("test_action", "read_action_normal")> test_action;
       copy_data(large_message, 1024, test_action.data);
-      trx.actions.emplace_back(permissions, name{"testapi"}, name{"test_action"}, test_action);
+      trx.actions.emplace_back(permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_action", "read_action_normal")}, test_action);
    }
 
    trx.send(0, name{receiver});
@@ -266,7 +260,7 @@ void test_transaction::send_deferred_transaction(uint64_t receiver, uint64_t, ui
    auto trx = transaction();
    std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
    
-   trx.actions.emplace_back(permissions, name{"testapi"}, name{"test_action"}, test_action);
+   trx.actions.emplace_back(permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_transaction", "deferred_print")}, test_action);
    trx.delay_sec = 2;
    trx.send( 0xffffffffffffffff, name{receiver} );
 }
@@ -278,7 +272,7 @@ void test_transaction::send_deferred_transaction_replace(uint64_t receiver, uint
    auto trx = transaction();
    std::vector<permission_level> permissions = { {"testapi"_n, "active"_n} };
    
-   trx.actions.emplace_back(permissions, name{"testapi"}, name{"test_action"}, test_action);
+   trx.actions.emplace_back(permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_transaction", "deferred_print")}, test_action);
    trx.delay_sec = 2;
    trx.send( 0xffffffffffffffff, name{receiver}, true );
 }
