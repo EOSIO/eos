@@ -552,12 +552,15 @@ chain::action create_delegate(const name& from, const name& receiver, const asse
                         config::system_account_name, N(delegatebw), act_payload);
 }
 
-fc::variant regproducer_variant(const account_name& producer, const public_key_type& key, const string& url, uint16_t location) {
+fc::variant regproducer_variant(const account_name& producer, const public_key_type& key, const string& url, const string& location) {
+auto _location=atoi(location.c_str());
+   FC_ASSERT(_location>-12&&_location<=12,"time zone setting is not legal");
+   _location=_location>=0?_location:24+_location;
    return fc::mutable_variant_object()
             ("producer", producer)
             ("producer_key", key)
             ("url", url)
-            ("location", location)
+            ("location", _location)
             ;
 }
 
@@ -861,14 +864,14 @@ struct register_producer_subcommand {
    string producer_str;
    string producer_key_str;
    string url;
-   uint16_t loc = 0;
+   string loc;
 
    register_producer_subcommand(CLI::App* actionRoot) {
       auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
       register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
       register_producer->add_option("url", url, localized("url where info about producer can be found"), true);
-      register_producer->add_option("location", loc, localized("relative location for purpose of nearest neighbor scheduling"), true);
+      register_producer->add_option("location", loc, localized("time zone from -11 to 12 "))->required();
       add_standard_transaction_options(register_producer);
 
 
@@ -2144,6 +2147,15 @@ int main( int argc, char** argv ) {
          arg = arg("block_num_hint", block_num_hint);
       }
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
+   });
+
+   // get block detail
+   string block_detail_arg;
+   auto getBlockDetail = get->add_subcommand("block_detail", localized("Retrieve a full block from the blockchain"), false);
+   getBlockDetail->add_option("block", block_detail_arg, localized("The number or ID of the block to retrieve"))->required();
+   getBlockDetail->set_callback([&block_detail_arg] {
+      auto arg = fc::mutable_variant_object("block_num_or_id", block_detail_arg);
+      std::cout << fc::json::to_pretty_string(call(get_block_detail_func, arg)) << std::endl;
    });
 
    // get actions

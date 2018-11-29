@@ -50,7 +50,6 @@ class read_only {
          optional<bool>                time_limit_exceeded_error;
       };
 
-
       get_actions_result get_actions( const get_actions_params& )const;
 
 
@@ -71,8 +70,6 @@ class read_only {
       get_transaction_result get_transaction( const get_transaction_params& )const;
 
 
-
-
       /*
       struct ordered_transaction_results {
          uint32_t                    seq_num;
@@ -82,6 +79,12 @@ class read_only {
 
       get_transactions_results get_transactions(const get_transactions_params& params) const;
       */
+
+      struct get_block_detail_params {
+         string block_num_or_id;
+      };
+
+      fc::variant get_block_detail(const get_block_detail_params& params) const;
 
 
       struct get_key_accounts_params {
@@ -150,7 +153,10 @@ FC_REFLECT(eosio::history_apis::read_only::get_transactions_params, (account_nam
 FC_REFLECT(eosio::history_apis::read_only::ordered_transaction_results, (seq_num)(transaction_id)(transaction) )
 FC_REFLECT(eosio::history_apis::read_only::get_transactions_results, (transactions)(time_limit_exceeded_error) )
 */
-FC_REFLECT(eosio::history_apis::read_only::get_key_accounts_params, (public_key) )
-FC_REFLECT(eosio::history_apis::read_only::get_key_accounts_results, (account_names) )
-FC_REFLECT(eosio::history_apis::read_only::get_controlled_accounts_params, (controlling_account) )
-FC_REFLECT(eosio::history_apis::read_only::get_controlled_accounts_results, (controlled_accounts) )
+
+FC_REFLECT( eosio::history_apis::read_only::get_block_detail_params, (block_num_or_id) )
+
+FC_REFLECT( eosio::history_apis::read_only::get_key_accounts_params, (public_key) )
+FC_REFLECT( eosio::history_apis::read_only::get_key_accounts_results, (account_names) )
+FC_REFLECT( eosio::history_apis::read_only::get_controlled_accounts_params, (controlling_account) )
+FC_REFLECT( eosio::history_apis::read_only::get_controlled_accounts_results, (controlled_accounts) )

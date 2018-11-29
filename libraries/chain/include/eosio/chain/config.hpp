@@ -5,6 +5,7 @@
 #pragma once
 #include <eosio/chain/wasm_interface.hpp>
 #include <fc/time.hpp>
+#include "config_xos.hpp"
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
 

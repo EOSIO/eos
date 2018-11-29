@@ -120,8 +120,8 @@
 
    if [ ! -d "${SOURCE_DIR}/.git" ]; then
       printf "\\n\\tThis build script only works with sources cloned from git\\n"
-      printf "\\tPlease clone a new eos directory with 'git clone https://github.com/EOSIO/eos --recursive'\\n"
-      printf "\\tSee the wiki for instructions: https://github.com/EOSIO/eos/wiki\\n"
+      printf "\\tPlease clone a new bos directory with 'git clone https://github.com/boscore/bos --recursive'\\n"
+      printf "\\tSee the wiki for instructions: https://github.com/boscore/bos/wiki\\n"
       exit 1
    fi
 
@@ -238,7 +238,7 @@
 
    . "$FILE"
 
-   printf "\\n\\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOSIO\\n\\n"
+   printf "\\n\\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing BOSCore\\n\\n"
    printf ">>>>>>>> CMAKE_BUILD_TYPE=%s\\n" "${CMAKE_BUILD_TYPE}"
    printf ">>>>>>>> ENABLE_COVERAGE_TESTING=%s\\n" "${ENABLE_COVERAGE_TESTING}"
    printf ">>>>>>>> DOXYGEN=%s\\n\\n" "${DOXYGEN}"
@@ -267,41 +267,42 @@
       -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
       -DCMAKE_INSTALL_PREFIX="/usr/local/eosio" ${LOCAL_CMAKE_FLAGS} "${SOURCE_DIR}"
    then
-      printf "\\n\\t>>>>>>>>>>>>>>>>>>>> CMAKE building EOSIO has exited with the above error.\\n\\n"
+      printf "\\n\\t>>>>>>>>>>>>>>>>>>>> CMAKE building BOSCore has exited with the above error.\\n\\n"
       exit -1
    fi
 
    if [ "${START_MAKE}" == "false" ]; then
-      printf "\\n\\t>>>>>>>>>>>>>>>>>>>> EOSIO has been successfully configured but not yet built.\\n\\n"
+      printf "\\n\\t>>>>>>>>>>>>>>>>>>>> BOSCore has been successfully configured but not yet built.\\n\\n"
       exit 0
    fi
 
    if [ -z ${JOBS} ]; then JOBS=$CPU_CORE; fi # Future proofing: Ensure $JOBS is set (usually set in scripts/eosio_build_*.sh scripts)
    if ! make -j"${JOBS}"
    then
-      printf "\\n\\t>>>>>>>>>>>>>>>>>>>> MAKE building EOSIO has exited with the above error.\\n\\n"
+      printf "\\n\\t>>>>>>>>>>>>>>>>>>>> MAKE building BOSCore has exited with the above error.\\n\\n"
       exit -1
    fi
 
    TIME_END=$(( $(date -u +%s) - ${TIME_BEGIN} ))
 
-   printf "\n\n${bldred}\t _______  _______  _______ _________ _______\n"
-   printf '\t(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
-   printf "\t| (    \/| (   ) || (    \/   ) (   | (   ) |\n"
-   printf "\t| (__    | |   | || (_____    | |   | |   | |\n"
-   printf "\t|  __)   | |   | |(_____  )   | |   | |   | |\n"
-   printf "\t| (      | |   | |      ) |   | |   | |   | |\n"
-   printf "\t| (____/\| (___) |/\____) |___) (___| (___) |\n"
-   printf "\t(_______/(_______)\_______)\_______/(_______)\n${txtrst}"
+   printf "\n\n${bldred}\t ______   _______  _______  _______  _______  _______  _______ \n"
+   printf "\t(  ___ \ (  ___  )(  ____ \(  ____ \(  ___  )(  ____ )(  ____ \ \n"
+   printf "\t| (   ) )| (   ) || (    \/| (    \/| (   ) || (    )|| (    \/\n"
+   printf "\t| (__/ / | |   | || (_____ | |      | |   | || (____)|| (__    \n"
+   printf "\t|  __ (  | |   | |(_____  )| |      | |   | ||     __)|  __)   \n"
+   printf "\t| (  \ \ | |   | |      ) || |      | |   | || (\ (   | (      \n"
+   printf "\t| )___) )| (___) |/\____) || (____/\| (___) || ) \ \__| (____/\ \n"
+   printf "\t|/ \___/ (_______)\_______)(_______/(_______)|/   \__/(_______/\n\n${txtrst}"
 
-   printf "\\n\\tEOSIO has been successfully built. %02d:%02d:%02d\\n\\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
+   printf "\\n\\tBOSCore has been successfully built. %02d:%02d:%02d\\n\\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
    printf "\\tTo verify your installation run the following commands:\\n"
 
    print_instructions
 
    printf "\\tFor more information:\\n"
-   printf "\\tEOSIO website: https://eos.io\\n"
-   printf "\\tEOSIO Telegram channel @ https://t.me/EOSProject\\n"
+   printf "\\tBOSCore website: https://boscore.io\\n"
+   printf "\\tBOSCore Telegram channel @ https://t.me/BOSCoreProject\\n"
+   printf "\\tBOSCore wiki: https://github.com/boscore/bos/wiki\\n"
    printf "\\tEOSIO resources: https://eos.io/resources/\\n"
    printf "\\tEOSIO Stack Exchange: https://eosio.stackexchange.com\\n"
    printf "\\tEOSIO wiki: https://github.com/EOSIO/eos/wiki\\n\\n\\n"

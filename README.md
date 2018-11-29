@@ -1,95 +1,29 @@
+# BOSCore - 更可用的链，为DApp而生。Born for DApp, be more useable.
 
-# EOSIO - The Most Powerful Infrastructure for Decentralized Applications
+## BOSCore Version: v1.0.1
+### Basic EOSIO Version: v1.4.4
 
-[![Build status](https://badge.buildkite.com/370fe5c79410f7d695e4e34c500b4e86e3ac021c6b1f739e20.svg?branch=master)](https://buildkite.com/EOSIO/eosio)
+# 背景
+EOS的出现给区块链带来了新的想象力，主网启动短短几个月以来，版本经历了几十次升级，不仅稳定性得到了很大提高，并且新功能也逐步实现，各个节点团队也积极参与建设EOSIO生态。让人更加兴奋的是，EOS已经吸引了越来越多的开发团队，当前已经有数百个DApp在EOS主网上面运行，其交易量和流通市值远超以太坊，可发展的空间愈来愈广阔。
+在EOS主网逐渐发展的过程中，我们发现了一些偏离期望的地方。作为最有竞争力的第三代公链，大家希望看到的是能够有更多、更丰富的应用能够在EOS上面运行，开发者会将EOS作为自己应用开发的首选平台，但是由于目前EOS的资源模型的限制，导致了很高的使用成本，包括为用户创建更多的账户，以及部署运营DApp需要的较高成本。针对白皮书中要实现的上百万TPS需要的关键技术IBC，一直没有进行推进，主网多次出现CPU计算资源不足的情况，更是加剧了对跨链通讯需求的迫切性。此外，由于EOSIO采用的Pipeline-DPOS共识机制，一个交易需要近三分钟才能保证不可更改，虽然相较比特币、以太坊是有很大的进步，但是这也给EOS的应用场景带来很大限制，快速支付只能聚焦于小额转账，大额转账必须要等待足够长的时间才能保证不可更改，这就限制了链上、链下用户支付体验。
+除了上面提到的情况，还有很多其他改进想法一直在我们社区进行活跃的讨论，由此，我们觉得应该基于EOS进行更多的尝试，让更多的开发者或者团队来参与到EOSIO生态的建设中来，一起为区块链在不同行业不同场景中的落地做出一份努力。BOS作为一条完全由社区维护的EOS侧链，在继承其良好功能的基础上，会进行更多的尝试，并且会将经过验证的新特性、新功能反哺给EOSIO生态。
 
-Welcome to the EOSIO source code repository! This software enables businesses to rapidly build and deploy high-performance and high-security blockchain-based applications.
+# 概述
+BOS致力于为用户提供方便进入并易于使用的区块链服务，为DApp运营提供更友好的基础设施，为支持更丰富的应用场景努力，为DApp大繁荣进行积极尝试。除了技术改进以外，BOS也会进行其他方面的尝试。比如，为了提高用户投票参与度，可以通过预言机技术来针对符合明确规则的账户进行激励；BOS上面的BP的奖励会根据链上DApp的数量、TPS、市值、流通量等指标进行调整，鼓励每个BP为生态提供更多资源；一项社区公投达成的决议将会尽量被代码化，减少人为的因素在里面，流程上链，保持公正透明。
+BOS链的代码完全由社区贡献并维护，每个生态参与者都可以提交代码或者建议，相关的流程会参考已有开源软件来进行，比如PEP(Python Enhancement Proposals)。
+为鼓励DApp在BOS的发展，BOS基金会将会为其上的DApp提供Token置换的低成本的资源抵押服务，降低DApp前期的运营成本；此外还会定期对做出贡献的开发者或者功能验证者提供BOS激励，以便建立起一个相互促进的社区发展趋势。
 
-Some of the groundbreaking features of EOSIO include:
+## 资源
+1. [Website](https://boscore.io)
+2. [Developer Telegram Group](https://t.me/BOSCoreProject)
 
-1. Free Rate Limited Transactions 
-1. Low Latency Block confirmation (0.5 seconds)
-1. Low-overhead Byzantine Fault Tolerant Finality
-1. Designed for optional high-overhead, low-latency BFT finality 
-1. Smart contract platform powered by Web Assembly
-1. Designed for Sparse Header Light Client Validation
-1. Scheduled Recurring Transactions 
-1. Time Delay Security
-1. Hierarchical Role Based Permissions
-1. Support for Biometric Hardware Secured Keys (e.g. Apple Secure Enclave)
-1. Designed for Parallel Execution of Context Free Validation Logic
-1. Designed for Inter Blockchain Communication 
+## 开始
+1. 源码直接编译: `bash ./eosio_build.sh`
+2. Docker方式部署，参看 [Docker](./Docker/README.md)
 
-EOSIO is released under the open source MIT license and is offered “AS IS” without warranty of any kind, express or implied. Any security provided by the EOSIO software depends in part on how it is used, configured, and deployed. EOSIO is built upon many third-party libraries such as Binaryen (Apache License) and WAVM  (BSD 3-clause) which are also provided “AS IS” without warranty of any kind. Without limiting the generality of the foregoing, Block.one makes no representation or guarantee that EOSIO or any third-party libraries will perform as intended or will be free of errors, bugs or faulty code. Both may fail in large or small ways that could completely or partially limit functionality or compromise computer systems. If you use or implement EOSIO, you do so at your own risk. In no event will Block.one be liable to any party for any damages whatsoever, even if it had been advised of the possibility of damage.  
+BOSCore是基于EOSIO技术的扩展，所以EOSIO的相关资料也可以参考： 
 
-Block.one is neither launching nor operating any initial public blockchains based upon the EOSIO software. This release refers only to version 1.0 of our open source software. We caution those who wish to use blockchains built on EOSIO to carefully vet the companies and organizations launching blockchains based on EOSIO before disclosing any private keys to their derivative software. 
+[Getting Started](https://developers.eos.io/eosio-nodeos/docs/overview-1)  
 
-There is no public testnet running currently.
+[EOSIO Developer Portal](https://developers.eos.io).
 
-**If you have previously installed EOSIO, please run the `eosio_uninstall` script (it is in the directory where you cloned EOSIO) before downloading and using the binary releases.**
-
-#### Mac OS X Brew Install
-```sh
-$ brew tap eosio/eosio
-$ brew install eosio
-```
-#### Mac OS X Brew Uninstall
-```sh
-$ brew remove eosio
-```
-#### Ubuntu 18.04 Debian Package Install
-```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio_1.4.4-1-ubuntu-18.04_amd64.deb
-$ sudo apt install ./eosio_1.4.4-1-ubuntu-18.04_amd64.deb
-```
-#### Ubuntu 16.04 Debian Package Install
-```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio_1.4.4-1-ubuntu-16.04_amd64.deb
-$ sudo apt install ./eosio_1.4.4-1-ubuntu-16.04_amd64.deb
-```
-#### Debian Package Uninstall
-```sh
-$ sudo apt remove eosio
-```
-#### Centos RPM Package Install
-```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio-1.4.4-1.el7.x86_64.rpm
-$ sudo yum install ./eosio-1.4.4-1.el7.x86_64.rpm
-```
-#### Centos RPM Package Uninstall
-```sh
-$ sudo yum remove eosio.cdt
-```
-#### Fedora RPM Package Install
-```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio-1.4.4-1.fc27.x86_64.rpm
-$ sudo yum install ./eosio-1.4.4-1.fc27.x86_64.rpm
-```
-#### Fedora RPM Package Uninstall
-```sh
-$ sudo yum remove eosio.cdt
-```
-
-## Supported Operating Systems
-EOSIO currently supports the following operating systems:  
-1. Amazon 2017.09 and higher
-2. Centos 7
-3. Fedora 25 and higher (Fedora 27 recommended)
-4. Mint 18
-5. Ubuntu 16.04 (Ubuntu 16.10 recommended)
-6. Ubuntu 18.04
-7. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended)
-
-## Resources
-1. [Website](https://eos.io)
-1. [Blog](https://medium.com/eosio)
-1. [Developer Portal](https://developers.eos.io)
-1. [StackExchange for Q&A](https://eosio.stackexchange.com/)
-1. [Community Telegram Group](https://t.me/EOSProject)
-1. [Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
-1. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
-1. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
-
-<a name="gettingstarted"></a>
-## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in [Getting Started](https://developers.eos.io/eosio-nodeos/docs/overview-1) on the [EOSIO Developer Portal](https://developers.eos.io).

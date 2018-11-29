@@ -27,6 +27,7 @@ namespace eosio { namespace chain {
 
    class dynamic_global_property_object;
    class global_property_object;
+   class global_property2_object;     // *bos*
    class permission_object;
    class account_object;
    using resource_limits::resource_limits_manager;
@@ -45,6 +46,21 @@ namespace eosio { namespace chain {
       FULL,
       LIGHT
    };
+   // *bos begin*
+    enum  class list_type:int64_t {
+      actor_blacklist_type=1,
+      contract_blacklist_type,
+      resource_greylist_type,
+      list_type_count
+   };
+   enum  class list_action_type:int64_t
+   {
+      insert_type = 1,
+      remove_type,
+      list_action_type_count
+   };
+
+   // *bos end*
 
    class controller {
       public:
@@ -95,7 +111,7 @@ namespace eosio { namespace chain {
           * Starts a new pending block session upon which new transactions can
           * be pushed.
           */
-         void start_block( block_timestamp_type time = block_timestamp_type(), uint16_t confirm_block_count = 0 );
+         void start_block( block_timestamp_type time = block_timestamp_type(), uint16_t confirm_block_count = 0, std::function<signature_type(digest_type)> signer = nullptr );
 
          void abort_block();
 
@@ -190,6 +206,7 @@ namespace eosio { namespace chain {
          optional<block_id_type> pending_producer_block_id()const;
 
          const producer_schedule_type&    active_producers()const;
+         std::function<signature_type(digest_type)> pending_producer_signer()const;
          const producer_schedule_type&    pending_producers()const;
          optional<producer_schedule_type> proposed_producers()const;
 
@@ -216,6 +233,15 @@ namespace eosio { namespace chain {
 
          void add_resource_greylist(const account_name &name);
          void remove_resource_greylist(const account_name &name);
+
+         // *bos begin*
+         const global_property2_object&        get_global_properties2()const;  // *bos*
+         void set_name_list(int64_t list, int64_t action, std::vector<account_name> name_list);
+         
+         // void list_add_name(const int list, const account_name &name);
+         // void list_remove_name(const int list, const account_name &name);
+         // *bos end*
+
          bool is_resource_greylisted(const account_name &name) const;
          const flat_set<account_name> &get_resource_greylist() const;
 

@@ -492,6 +492,126 @@
 		printf "\\n\\tWASM found @ %s/opt/wasm\\n\\n" "${HOME}"
 	fi
 
+	printf "\\n\\tChecking for librdkafka with  support.\\n"
+	RDKAFKA_DIR=/usr/local/include/librdkafka
+	if [ ! -d "${RDKAFKA_DIR}" ]; then
+		# Build librdkafka support:
+		printf "\\tInstalling librdkafka\\n"
+		if ! cd "${TEMP_DIR}"
+		then
+			printf "\\n\\tUnable to cd into directory %s.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if [ -d "${TEMP_DIR}/librdkafka" ]; then
+			if ! rm -rf "${TEMP_DIR}/librdkafka"
+			then
+			printf "\\tUnable to remove directory %s. Please remove this directory and run this script %s again. 0\\n" "${TEMP_DIR}/librdkafka/" "${BASH_SOURCE[0]}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+			fi
+		fi
+		if ! git clone --depth 1 -b v0.11.6 https://github.com/boscore/librdkafka.git
+		then
+			printf "\\tUnable to clone librdkafka repo.\\n"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! cd "${TEMP_DIR}/librdkafka/"
+		then
+			printf "\\tUnable to enter directory %s/librdkafka/.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! cmake -H. -B_cmake_build
+		then
+			printf "\\tError cmake_build librdkafka.\\n"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! cmake -DRDKAFKA_BUILD_STATIC=1 --build _cmake_build
+		then
+			printf "\\tError compiling cmake -DRDKAFKA_BUILD_STATIC=1 --build _cmake_build , librdkafka.1\\n"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! cd "${TEMP_DIR}/librdkafka/_cmake_build"
+		then
+			printf "\\tUnable to enter directory %s/librdkafka/_cmake_build.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! sudo make install
+		then
+			printf "\\tUnable to make install librdkafka.\\n"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		printf "\\n\\tlibrdkafka successffully installed @ %s.\\n\\n" "${RDKAFKA_DIR}"
+	else
+		printf "\\t librdkafka found at %s.\\n" "${RDKAFKA_DIR}"
+	fi
+
+	printf "\\n\\tChecking for cppkafka with  support.\\n"
+	CPPKAFKA_DIR=/usr/local/include/cppkafka
+	if [ ! -d "${CPPKAFKA_DIR}" ]; then
+		# Build cppkafka support:
+		printf "\\tInstalling cppkafka\\n"
+		if ! cd "${TEMP_DIR}"
+		then
+			printf "\\n\\tUnable to cd into directory %s.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if [ -d "${TEMP_DIR}/cppkafka" ]; then
+			if ! rm -rf "${TEMP_DIR}/cppkafka"
+			then
+			printf "\\tUnable to remove directory %s. Please remove this directory and run this script %s again. 0\\n" "${TEMP_DIR}/cppkafka/" "${BASH_SOURCE[0]}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+			fi
+		fi
+		if ! git clone --depth 1 -b 0.2 https://github.com/boscore/cppkafka.git
+		then
+			printf "\\tUnable to clone cppkafka repo.\\n"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! cd "${TEMP_DIR}/cppkafka/"
+		then
+			printf "\\tUnable to enter directory %s/cppkafka/.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! mkdir build
+		then
+			printf "\\tUnable to remove directory build.\\n"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! cd "${TEMP_DIR}/cppkafka/build"
+		then
+			printf "\\tUnable to enter directory  %s/cppkafka/build.\\n" "${TEMP_DIR}"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! cmake -DCPPKAFKA_RDKAFKA_STATIC_LIB=1 -DCPPKAFKA_BUILD_SHARED=0 ..
+		then
+			printf "\\tError compiling cmake -DCPPKAFKA_RDKAFKA_STATIC_LIB=1 -DCPPKAFKA_BUILD_SHARED=0 ..  , cppkafka.1\\n"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		if ! sudo make install
+		then
+			printf "\\tUnable to make install cppkafka.\\n"
+			printf "\\n\\tExiting now.\\n"
+			exit 1;
+		fi
+		printf "\\n\\tcppkafka successffully installed @ %s.\\n\\n" "${CPPKAFKA_DIR}"
+	else
+		printf "\\t cppkafka found at %s.\\n" "${CPPKAFKA_DIR}"
+	fi
+
 	function print_instructions()
 	{
 		printf "\\n\\t%s -f %s &\\n" "$( command -v mongod )" "${MONGOD_CONF}"

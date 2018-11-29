@@ -69,6 +69,10 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}
 if(BUILD_MONGO_DB_PLUGIN)
   target_link_libraries( ${NODE_EXECUTABLE_NAME} PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
 endif()
+# kafka_plugin
+target_link_libraries( ${NODE_EXECUTABLE_NAME} PRIVATE -Wl,${whole_archive_flag} kafka_plugin -Wl,${no_whole_archive_flag} )
+# notify_plugin
+target_link_libraries( ${NODE_EXECUTABLE_NAME} PRIVATE -Wl,${whole_archive_flag} notify_plugin -Wl,${no_whole_archive_flag} )
 
 include(additionalPlugins)
 

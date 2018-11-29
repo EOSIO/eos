@@ -95,6 +95,28 @@ extern "C" {
    size_t transaction_size();
 
    /**
+    * Get transaction id
+    *
+    * @param id : return id
+    */
+   void get_transaction_id( transaction_id_type* id );
+
+   /**
+    * Get the action globally unique sequence
+    *
+    * @param seq : return sequence
+    */
+   void get_action_sequence(uint64_t* seq);
+
+   /**
+    * Get the producer's signature for the action
+    * @param sig : Memory buffer
+    * @param siglen :Memory buffer size
+    * @return : Return valid data size
+    */
+   int bpsig_action_time_seed( const char* sig, size_t siglen );
+
+   /**
     * Gets the block number used for TAPOS on the currently executing transaction.
     *
     * @brief Gets the block number used for TAPOS on the currently executing transaction.
