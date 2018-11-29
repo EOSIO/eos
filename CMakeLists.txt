@@ -253,7 +253,7 @@ configure_file(${CMAKE_SOURCE_DIR}/CMakeModules/EosioTester.cmake.in ${CMAKE_BIN
 install(FILES ${CMAKE_BINARY_DIR}/modules/EosioTester.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/eosio)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/ChaindbMongo.cmake ${CMAKE_CURRENT_BINARY_DIR}/ChaindbMongo.cmake COPYONLY)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ChaindbMongo.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ChaindbMongo.cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/eosio)
 
 configure_file(${CMAKE_SOURCE_DIR}/LICENSE 
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE COPYONLY)
