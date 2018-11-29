@@ -92,6 +92,14 @@ namespace eosio {
    struct by_expiry;
    struct by_block_num;
 
+   struct sha256_less {
+      bool operator()( const sha256& lhs, const sha256& rhs ) const {
+       return
+             std::tie(lhs._hash[0], lhs._hash[1], lhs._hash[2], lhs._hash[3]) <
+             std::tie(rhs._hash[0], rhs._hash[1], rhs._hash[2], rhs._hash[3]);
+      }
+   };
+
    typedef multi_index_container<
       node_transaction_state,
       indexed_by<
@@ -99,7 +107,8 @@ namespace eosio {
             tag< by_id >,
             member < node_transaction_state,
                      transaction_id_type,
-                     &node_transaction_state::id > >,
+                     &node_transaction_state::id >,
+            sha256_less >,
          ordered_non_unique<
             tag< by_expiry >,
             member< node_transaction_state,
@@ -364,7 +373,7 @@ namespace eosio {
    typedef multi_index_container<
       transaction_state,
       indexed_by<
-         ordered_unique< tag<by_id>, member<transaction_state, transaction_id_type, &transaction_state::id > >,
+         ordered_unique< tag<by_id>, member<transaction_state, transaction_id_type, &transaction_state::id >, sha256_less >,
          ordered_non_unique< tag< by_expiry >, member< transaction_state,fc::time_point_sec,&transaction_state::expires >>,
          ordered_non_unique<
             tag<by_block_num>,
@@ -398,7 +407,7 @@ namespace eosio {
    typedef multi_index_container<
       eosio::peer_block_state,
       indexed_by<
-         ordered_unique< tag<by_id>, member<eosio::peer_block_state, block_id_type, &eosio::peer_block_state::id > >,
+         ordered_unique< tag<by_id>, member<eosio::peer_block_state, block_id_type, &eosio::peer_block_state::id >, sha256_less >,
          ordered_unique< tag<by_block_num>, member<eosio::peer_block_state, uint32_t, &eosio::peer_block_state::block_num > >
          >
       > peer_block_state_index;
