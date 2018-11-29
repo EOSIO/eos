@@ -82,3 +82,4 @@ struct contracts {
    static std::vector<uint8_t> test_api_mem_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/contracts/test_api_mem/test_api_mem.wasm"); }
 };
 }} //ns eosio::testing
+
