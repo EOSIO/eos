@@ -548,6 +548,8 @@ namespace eosio {
          my->server.stop_listening();
       if(my->https_server.is_listening())
          my->https_server.stop_listening();
+      if(my->unix_server.is_listening())
+         my->unix_server.stop_listening();
    }
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {
