@@ -65,7 +65,6 @@ namespace eosio {
       time_point_sec  expires;  /// time after which this may be purged.
                                 /// Expires increased while the txn is
                                 /// "in flight" to anoher peer
-      packed_transaction packed_txn;
       vector<char>    serialized_txn; /// the received raw bundle
       uint32_t        block_num = 0; /// block transaction was included in
       uint32_t        true_block = 0; /// used to reset block_uum when request is 0
@@ -1687,7 +1686,6 @@ namespace eosio {
       fc::raw::pack( ds, msg );
       node_transaction_state nts = {id,
                                     trx_expiration,
-                                    trx,
                                     std::move(buff),
                                     0, 0, 0};
       my_impl->local_txns.insert(std::move(nts));
