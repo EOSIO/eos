@@ -65,7 +65,7 @@ namespace eosio {
       time_point_sec  expires;  /// time after which this may be purged.
                                 /// Expires increased while the txn is
                                 /// "in flight" to anoher peer
-      vector<char>    serialized_txn; /// the received raw bundle
+      std::shared_ptr<vector<char>>   serialized_txn; /// the received raw bundle
       uint32_t        block_num = 0; /// block transaction was included in
       uint32_t        true_block = 0; /// used to reset block_uum when request is 0
       uint16_t        requests = 0; /// the number of "in flight" requests for this txn
@@ -189,7 +189,7 @@ namespace eosio {
       size_t count_open_sockets() const;
 
       template<typename VerifierFunc>
-      void send_all( const net_message &msg, VerifierFunc verify );
+      void send_all( const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify );
 
       void accepted_block_header(const block_state_ptr&);
       void accepted_block(const block_state_ptr&);
@@ -774,7 +774,7 @@ namespace eosio {
 
    void connection::txn_send_pending(const vector<transaction_id_type> &ids) {
       for(auto tx = my_impl->local_txns.begin(); tx != my_impl->local_txns.end(); ++tx ){
-         if(tx->serialized_txn.size() && tx->block_num == 0) {
+         if(tx->serialized_txn->size() && tx->block_num == 0) {
             bool found = false;
             for(auto known : ids) {
                if( known == tx->id) {
@@ -784,7 +784,7 @@ namespace eosio {
             }
             if(!found) {
                my_impl->local_txns.modify(tx,incr_in_flight);
-               queue_write(std::make_shared<vector<char>>(tx->serialized_txn),
+               queue_write(tx->serialized_txn,
                            true,
                            [tx_id=tx->id](boost::system::error_code ec, std::size_t ) {
                               auto& local_txns = my_impl->local_txns;
@@ -803,9 +803,9 @@ namespace eosio {
    void connection::txn_send(const vector<transaction_id_type> &ids) {
       for(const auto& t : ids) {
          auto tx = my_impl->local_txns.get<by_id>().find(t);
-         if( tx != my_impl->local_txns.end() && tx->serialized_txn.size()) {
+         if( tx != my_impl->local_txns.end() && tx->serialized_txn->size()) {
             my_impl->local_txns.modify( tx,incr_in_flight);
-            queue_write(std::make_shared<vector<char>>(tx->serialized_txn),
+            queue_write(tx->serialized_txn,
                         true,
                         [t](boost::system::error_code ec, std::size_t ) {
                            auto& local_txns = my_impl->local_txns;
@@ -1680,17 +1680,18 @@ namespace eosio {
       net_message msg(trx);
       uint32_t packsiz = fc::raw::pack_size(msg);
       uint32_t bufsiz = packsiz + sizeof(packsiz);
-      vector<char> buff(bufsiz);
-      fc::datastream<char*> ds( buff.data(), bufsiz);
+      auto buff = std::make_shared<vector<char>>(bufsiz);
+
+      fc::datastream<char*> ds( buff->data(), bufsiz);
       ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
       fc::raw::pack( ds, msg );
       node_transaction_state nts = {id,
                                     trx_expiration,
-                                    std::move(buff),
+                                    buff,
                                     0, 0, 0};
       my_impl->local_txns.insert(std::move(nts));
 
-      my_impl->send_all( msg, [&id, &skips, trx_expiration](connection_ptr c) -> bool {
+      my_impl->send_all( buff, [&id, &skips, trx_expiration](connection_ptr c) -> bool {
          if( skips.find(c) != skips.end() || c->syncing ) {
             return false;
           }
@@ -2109,10 +2110,10 @@ namespace eosio {
 
 
    template<typename VerifierFunc>
-   void net_plugin_impl::send_all( const net_message &msg, VerifierFunc verify) {
+   void net_plugin_impl::send_all( const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify) {
       for( auto &c : connections) {
-         if( c->current() && verify( c)) {
-            c->enqueue( msg );
+         if( c->current() && verify( c )) {
+            c->enqueue_buffer( send_buffer, true, no_reason );
          }
       }
    }
