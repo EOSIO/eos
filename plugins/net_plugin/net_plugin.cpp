@@ -774,7 +774,7 @@ namespace eosio {
 
    void connection::txn_send_pending(const vector<transaction_id_type> &ids) {
       for(auto tx = my_impl->local_txns.begin(); tx != my_impl->local_txns.end(); ++tx ){
-         if(tx->serialized_txn->size() && tx->block_num == 0) {
+         if( tx->block_num == 0 ) {
             bool found = false;
             for(auto known : ids) {
                if( known == tx->id) {
@@ -803,7 +803,7 @@ namespace eosio {
    void connection::txn_send(const vector<transaction_id_type> &ids) {
       for(const auto& t : ids) {
          auto tx = my_impl->local_txns.get<by_id>().find(t);
-         if( tx != my_impl->local_txns.end() && tx->serialized_txn->size()) {
+         if( tx != my_impl->local_txns.end() ) {
             my_impl->local_txns.modify( tx,incr_in_flight);
             queue_write(tx->serialized_txn,
                         true,
