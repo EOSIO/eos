@@ -169,6 +169,7 @@ namespace eosio {
 
       string                        user_agent_name;
       chain_plugin*                 chain_plug = nullptr;
+      producer_plugin*              producer_plug = nullptr;
       int                           started_sessions = 0;
 
       node_transaction_index        local_txns;
@@ -1058,7 +1059,6 @@ namespace eosio {
    }
 
    bool connection::enqueue_sync_block() {
-      controller& cc = app().find_plugin<chain_plugin>()->chain();
       if (!peer_requested)
          return false;
       uint32_t num = ++peer_requested->last;
@@ -1067,6 +1067,7 @@ namespace eosio {
          peer_requested.reset();
       }
       try {
+         controller& cc = my_impl->chain_plug->chain();
          signed_block_ptr sb = cc.fetch_block_by_number(num);
          if(sb) {
             enqueue_block( sb, trigger_send);
@@ -2661,9 +2662,8 @@ namespace eosio {
          auto allowed_it = std::find(allowed_peers.begin(), allowed_peers.end(), msg.key);
          auto private_it = private_keys.find(msg.key);
          bool found_producer_key = false;
-         producer_plugin* pp = app().find_plugin<producer_plugin>();
-         if(pp != nullptr)
-            found_producer_key = pp->is_producer_key(msg.key);
+         if(producer_plug != nullptr)
+            found_producer_key = producer_plug->is_producer_key(msg.key);
          if( allowed_it == allowed_peers.end() && private_it == private_keys.end() && !found_producer_key) {
             elog( "Peer ${peer} sent a handshake with an unauthorized key: ${key}.",
                   ("peer", msg.p2p_address)("key", msg.key));
@@ -2723,9 +2723,8 @@ namespace eosio {
       auto private_key_itr = private_keys.find(signer);
       if(private_key_itr != private_keys.end())
          return private_key_itr->second.sign(digest);
-      producer_plugin* pp = app().find_plugin<producer_plugin>();
-      if(pp != nullptr && pp->get_state() == abstract_plugin::started)
-         return pp->sign_compact(signer, digest);
+      if(producer_plug != nullptr && producer_plug->get_state() == abstract_plugin::started)
+         return producer_plug->sign_compact(signer, digest);
       return chain::signature_type();
    }
 
@@ -2930,6 +2929,7 @@ namespace eosio {
    }
 
    void net_plugin::plugin_startup() {
+      my->producer_plug = app().find_plugin<producer_plugin>();
       if( my->acceptor ) {
          my->acceptor->open(my->listen_endpoint.protocol());
          my->acceptor->set_option(tcp::acceptor::reuse_address(true));
