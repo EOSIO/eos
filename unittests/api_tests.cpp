@@ -808,11 +808,12 @@ BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, TESTER) { try {
 } FC_LOG_AND_RETHROW() }
 
 template<class T>
-void call_test(TESTER& test, T ac, uint32_t billed_cpu_time_us , uint32_t max_cpu_usage_ms = 200 ) {
+void call_test(TESTER& test, T ac, uint32_t billed_cpu_time_us , uint32_t max_cpu_usage_ms = 200, std::vector<char> payload = {} ) {
    signed_transaction trx;
 
    auto pl = vector<permission_level>{{N(testapi), config::active_name}};
    action act(pl, ac);
+   act.data = payload;
 
    trx.actions.push_back(act);
    test.set_transaction_headers(trx);
@@ -842,11 +843,11 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 #warning TODO call the contract before testing to cache it, and validate that it was cached
 
    BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
-                                     5000 ),
+                                     5000, 200, fc::raw::pack(10000000000000000000ULL) ),
                           deadline_exception, is_deadline_exception );
 
    BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
-                                     0 ),
+                                     0, 200, fc::raw::pack(10000000000000000000ULL) ),
                           tx_cpu_usage_exceeded, is_tx_cpu_usage_exceeded );
 
    uint32_t time_left_in_block_us = config::default_max_block_cpu_usage - config::default_min_transaction_cpu_usage;
@@ -857,7 +858,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
       time_left_in_block_us -= increment;
    }
    BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
-                                    0 ),
+                                    0, 200, fc::raw::pack(10000000000000000000ULL) ),
                           block_cpu_usage_exceeded, is_block_cpu_usage_exceeded );
 
    BOOST_REQUIRE_EQUAL( t.validate(), true );
@@ -1049,7 +1050,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
       action act({}, tm);
       trx.actions.push_back(act);
 
-		set_transaction_headers(trx);
+      set_transaction_headers(trx);
       BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
          [](const fc::exception& e) {
             return expect_assert_message(e, "transaction must have at least one authorization");

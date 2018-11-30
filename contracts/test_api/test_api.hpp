@@ -257,6 +257,8 @@ struct test_checktime {
    static void checktime_assert_sha512_failure();
    static void checktime_ripemd160_failure();
    static void checktime_assert_ripemd160_failure();
+
+   static int i;
 };
 /*
 struct test_softfloat {

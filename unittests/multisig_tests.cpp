@@ -384,123 +384,123 @@ BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) 
 
 
 
-// BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester ) try {
+BOOST_FIXTURE_TEST_CASE( update_system_contract_all_approve, eosio_msig_tester ) try {
 
-//    // required to set up the link between (eosio active) and (eosio.prods active)
-//    //
-//    //                  eosio active
-//    //                       |
-//    //             eosio.prods active (2/3 threshold)
-//    //             /         |        \             <--- implicitly updated in onblock action
-//    // alice active     bob active   carol active
+   // required to set up the link between (eosio active) and (eosio.prods active)
+   //
+   //                  eosio active
+   //                       |
+   //             eosio.prods active (2/3 threshold)
+   //             /         |        \             <--- implicitly updated in onblock action
+   // alice active     bob active   carol active
 
-//    set_authority(config::system_account_name, "active", authority(1,
-//       vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}},
-//       vector<permission_level_weight>{{{config::producers_account_name, config::active_name}, 1}}), "owner",
-//       { { config::system_account_name, "active" } }, { get_private_key( config::system_account_name, "active" ) });
+   set_authority(config::system_account_name, "active", authority(1,
+      vector<key_weight>{{get_private_key("eosio", "active").get_public_key(), 1}},
+      vector<permission_level_weight>{{{config::producers_account_name, config::active_name}, 1}}), "owner",
+      { { config::system_account_name, "active" } }, { get_private_key( config::system_account_name, "active" ) });
 
-//    set_producers( {N(alice),N(bob),N(carol)} );
-//    produce_blocks(50);
+   set_producers( {N(alice),N(bob),N(carol)} );
+   produce_blocks(50);
 
-//    create_accounts( { N(eosio.token) } );
-//    set_code( N(eosio.token), contracts::eosio_token_wasm() );
-//    set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
+   create_accounts( { N(eosio.token) } );
+   set_code( N(eosio.token), contracts::eosio_token_wasm() );
+   set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
 
-//    create_currency( N(eosio.token), config::system_account_name, core_from_string("10000000000.0000") );
-//    issue(config::system_account_name, core_from_string("1000000000.0000"));
-//    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-//                         get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
+   create_currency( N(eosio.token), config::system_account_name, core_from_string("10000000000.0000") );
+   issue(config::system_account_name, core_from_string("1000000000.0000"));
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
+                        get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
 
-//    set_code( config::system_account_name, contracts::eosio_system_wasm() );
-//    set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
+   set_code( config::system_account_name, contracts::eosio_system_wasm() );
+   set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
 
-//    produce_blocks();
+   produce_blocks();
 
-//    create_account_with_resources( N(alice1111111), config::system_account_name, core_from_string("1.0000"), false );
-//    create_account_with_resources( N(bob111111111), config::system_account_name, core_from_string("0.4500"), false );
-//    create_account_with_resources( N(carol1111111), config::system_account_name, core_from_string("1.0000"), false );
+   create_account_with_resources( N(alice1111111), config::system_account_name, core_from_string("1.0000"), false );
+   create_account_with_resources( N(bob111111111), config::system_account_name, core_from_string("0.4500"), false );
+   create_account_with_resources( N(carol1111111), config::system_account_name, core_from_string("1.0000"), false );
 
-//    BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
-//                         get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
+   BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"),
+                        get_balance("eosio") + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
 
-//    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
-//       {N(carol), config::active_name} };
+   vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name },
+      {N(carol), config::active_name} };
 
-//    vector<permission_level> action_perm = {{config::system_account_name, config::active_name}};
+   vector<permission_level> action_perm = {{config::system_account_name, config::active_name}};
 
-//    auto wasm = contracts::test_api_wasm();
+   auto wasm = contracts::test_api_wasm();
 
-//    variant pretty_trx = fc::mutable_variant_object()
-//       ("expiration", "2020-01-01T00:30")
-//       ("ref_block_num", 2)
-//       ("ref_block_prefix", 3)
-//       ("max_net_usage_words", 0)
-//       ("max_cpu_usage_ms", 0)
-//       ("delay_sec", 0)
-//       ("actions", fc::variants({
-//             fc::mutable_variant_object()
-//                ("account", name(config::system_account_name))
-//                ("name", "setcode")
-//                ("authorization", action_perm)
-//                ("data", fc::mutable_variant_object()
-//                 ("account", name(config::system_account_name))
-//                 ("vmtype", 0)
-//                 ("vmversion", 0)
-//                 ("code", bytes( wasm.begin(), wasm.end() ))
-//                )
-//                })
-//       );
+   variant pretty_trx = fc::mutable_variant_object()
+      ("expiration", "2020-01-01T00:30")
+      ("ref_block_num", 2)
+      ("ref_block_prefix", 3)
+      ("max_net_usage_words", 0)
+      ("max_cpu_usage_ms", 0)
+      ("delay_sec", 0)
+      ("actions", fc::variants({
+            fc::mutable_variant_object()
+               ("account", name(config::system_account_name))
+               ("name", "setcode")
+               ("authorization", action_perm)
+               ("data", fc::mutable_variant_object()
+                ("account", name(config::system_account_name))
+                ("vmtype", 0)
+                ("vmversion", 0)
+                ("code", bytes( wasm.begin(), wasm.end() ))
+               )
+               })
+      );
 
-//    transaction trx;
-//    abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
+   transaction trx;
+   abi_serializer::from_variant(pretty_trx, trx, get_resolver(), abi_serializer_max_time);
 
-//    // propose action
-//    push_action( N(alice), N(propose), mvo()
-//                   ("proposer",      "alice")
-//                   ("proposal_name", "first")
-//                   ("trx",           trx)
-//                   ("requested", perm)
-//    );
+   // propose action
+   push_action( N(alice), N(propose), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("trx",           trx)
+                  ("requested", perm)
+   );
 
-//    //approve by alice
-//    push_action( N(alice), N(approve), mvo()
-//                   ("proposer",      "alice")
-//                   ("proposal_name", "first")
-//                   ("level",         permission_level{ N(alice), config::active_name })
-//    );
-//    //approve by bob
-//    push_action( N(bob), N(approve), mvo()
-//                   ("proposer",      "alice")
-//                   ("proposal_name", "first")
-//                   ("level",         permission_level{ N(bob), config::active_name })
-//    );
-//    //approve by carol
-//    push_action( N(carol), N(approve), mvo()
-//                   ("proposer",      "alice")
-//                   ("proposal_name", "first")
-//                   ("level",         permission_level{ N(carol), config::active_name })
-//    );
-//    // execute by alice to replace the eosio system contract
-//    transaction_trace_ptr trace;
-//    control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
+   //approve by alice
+   push_action( N(alice), N(approve), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("level",         permission_level{ N(alice), config::active_name })
+   );
+   //approve by bob
+   push_action( N(bob), N(approve), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("level",         permission_level{ N(bob), config::active_name })
+   );
+   //approve by carol
+   push_action( N(carol), N(approve), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("level",         permission_level{ N(carol), config::active_name })
+   );
+    // execute by alice to replace the eosio system contract
+   transaction_trace_ptr trace;
+   control->applied_transaction.connect([&]( const transaction_trace_ptr& t) { if (t->scheduled) { trace = t; } } );
 
-//    push_action( N(alice), N(exec), mvo()
-//                   ("proposer",      "alice")
-//                   ("proposal_name", "first")
-//                   ("executer",      "alice")
-//    );
+   push_action( N(alice), N(exec), mvo()
+                  ("proposer",      "alice")
+                  ("proposal_name", "first")
+                  ("executer",      "alice")
+   );
 
-//    BOOST_REQUIRE( bool(trace) );
-//    BOOST_REQUIRE_EQUAL( 1, trace->action_traces.size() );
-//    BOOST_REQUIRE_EQUAL( transaction_receipt::executed, trace->receipt->status );
+   BOOST_REQUIRE( bool(trace) );
+   BOOST_REQUIRE_EQUAL( 1, trace->action_traces.size() );
+   BOOST_REQUIRE_EQUAL( transaction_receipt::executed, trace->receipt->status );
 
-//    // can't create account because system contract was replace by the test_api contract
+   // can't create account because system contract was replace by the test_api contract
 
-//    BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(alice1111112), config::system_account_name, core_from_string("1.0000"), false ),
-//                             eosio_assert_message_exception, eosio_assert_message_is("Unknown Test")
+   BOOST_REQUIRE_EXCEPTION( create_account_with_resources( N(alice1111112), config::system_account_name, core_from_string("1.0000"), false ),
+                            eosio_assert_message_exception, eosio_assert_message_is("Unknown Test")
 
-//    );
-// } FC_LOG_AND_RETHROW()
+   );
+} FC_LOG_AND_RETHROW()
 
 // BOOST_FIXTURE_TEST_CASE( update_system_contract_major_approve, eosio_msig_tester ) try {
 

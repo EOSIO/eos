@@ -18,12 +18,15 @@ void test_checktime::checktime_pass() {
    eosio::print(p);
 }
 
-void test_checktime::checktime_failure() {
-   int p = 0;
-   for ( unsigned long long i = 0; i < 10000000000000000000ULL; i++ )
-      for ( unsigned long long j = 0; i < 10000000000000000000ULL; i++ )
-         p += i+j;
 
+void test_checktime::checktime_failure() {
+   volatile unsigned long long bound{}; // `volatile' necessary to prevent loop optimization
+   read_action_data((char*)&bound, sizeof(bound));
+
+   int p = 0;
+   for ( unsigned long long i = 0; i < bound; i++ )
+      for ( unsigned long long j = 0; j < bound; j++ )
+         p += i+j+bound;
 
    eosio::print(p);
 }
