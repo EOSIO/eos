@@ -319,7 +319,6 @@ namespace eosio {
    constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
    constexpr auto     def_sync_fetch_span = 100;
    constexpr uint32_t  def_max_just_send = 1500; // roughly 1 "mtu"
-   constexpr bool     large_msg_notify = false;
 
    constexpr auto     message_header_size = 4;
 
@@ -346,28 +345,10 @@ namespace eosio {
 
    constexpr uint16_t net_version = proto_explicit_sync;
 
-   /**
-    *  Index by id
-    *  Index by is_known, block_num, validated_time, this is the order we will broadcast
-    *  to peer.
-    *  Index by is_noticed, validated_time
-    *
-    */
    struct transaction_state {
       transaction_id_type id;
-      bool                is_known_by_peer = false; ///< true if we sent or received this trx to this peer or received notice from peer
-      bool                is_noticed_to_peer = false; ///< have we sent peer notice we know it (true if we receive from this peer)
       uint32_t            block_num = 0; ///< the block number the transaction was included in
       time_point_sec      expires;
-      time_point          requested_time; /// in case we fetch large trx
-   };
-
-   struct update_txn_expiry {
-      time_point_sec new_expiry;
-      update_txn_expiry(time_point_sec e) : new_expiry(e) {}
-      void operator() (transaction_state& ts) {
-         ts.expires = new_expiry;
-      }
    };
 
    typedef multi_index_container<
@@ -396,9 +377,6 @@ namespace eosio {
    };
 
    struct update_request_time {
-      void operator() (struct transaction_state &ts) {
-         ts.requested_time = time_point::now();
-      }
       void operator () (struct eosio::peer_block_state &bs) {
          bs.requested_time = time_point::now();
       }
@@ -416,9 +394,6 @@ namespace eosio {
    struct update_known_by_peer {
       void operator() (eosio::peer_block_state& bs) {
          bs.is_known = true;
-      }
-      void operator() (transaction_state& ts) {
-         ts.is_known_by_peer = true;
       }
    } set_is_known;
 
@@ -827,7 +802,7 @@ namespace eosio {
    }
 
    void connection::txn_send(const vector<transaction_id_type> &ids) {
-      for(auto t : ids) {
+      for(const auto& t : ids) {
          auto tx = my_impl->local_txns.get<by_id>().find(t);
          if( tx != my_impl->local_txns.end() && tx->serialized_txn.size()) {
             my_impl->local_txns.modify( tx,incr_in_flight);
@@ -1650,34 +1625,6 @@ namespace eosio {
       uint32_t bnum = bs->block_num;
       peer_block_state pbstate = {bid, bnum, false, true, time_point()};
 
-      // skip will be empty if our producer emitted this block so just send it
-      if( large_msg_notify ) {
-         int which = 7;
-         uint32_t whichsiz = fc::raw::pack_size( unsigned_int( which ) );
-         uint32_t packsiz = whichsiz + fc::raw::pack_size( *bs->block );
-         uint32_t msgsiz = packsiz + sizeof(packsiz);
-
-         if( (msgsiz > just_send_it_max) && !skips.empty() ) {
-            fc_ilog( logger, "block size is ${ms}, sending notify", ("ms", msgsiz));
-            notice_message pending_notify;
-            pending_notify.known_blocks.mode = normal;
-            pending_notify.known_blocks.ids.push_back( bid );
-            pending_notify.known_trx.mode = none;
-            my_impl->send_all( pending_notify, [&skips, pbstate]( connection_ptr c ) -> bool {
-               if( skips.find( c ) != skips.end() || !c->current())
-                  return false;
-
-               bool unknown = c->add_peer_block( pbstate );
-               if( !unknown ) {
-                  elog( "${p} already has knowledge of block ${b}", ("p", c->peer_name())( "b", pbstate.block_num ));
-               }
-               return unknown;
-            } );
-
-            return;
-         }
-      }
-
       pbstate.is_known = true;
       for( auto& cp : my_impl->connections ) {
          if( skips.find( cp ) != skips.end() || !cp->current() ) {
@@ -1728,14 +1675,12 @@ namespace eosio {
          fc_dlog(logger, "found trxid in local_trxs" );
          return;
       }
-      uint32_t packsiz = 0;
-      uint32_t bufsiz = 0;
 
       time_point_sec trx_expiration = trx.expiration();
 
       net_message msg(trx);
-      packsiz = fc::raw::pack_size(msg);
-      bufsiz = packsiz + sizeof(packsiz);
+      uint32_t packsiz = fc::raw::pack_size(msg);
+      uint32_t bufsiz = packsiz + sizeof(packsiz);
       vector<char> buff(bufsiz);
       fc::datastream<char*> ds( buff.data(), bufsiz);
       ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
@@ -1747,44 +1692,18 @@ namespace eosio {
                                     0, 0, 0};
       my_impl->local_txns.insert(std::move(nts));
 
-      if( !large_msg_notify || bufsiz <= just_send_it_max) {
-         my_impl->send_all( msg, [id, &skips, trx_expiration](connection_ptr c) -> bool {
-               if( skips.find(c) != skips.end() || c->syncing ) {
-                  return false;
-               }
-               const auto& bs = c->trx_state.find(id);
-               bool unknown = bs == c->trx_state.end();
-               if( unknown) {
-                  c->trx_state.insert(transaction_state({id,true,true,0,trx_expiration,time_point() }));
-                  fc_dlog(logger, "sending whole trx to ${n}", ("n",c->peer_name() ) );
-               } else {
-                  update_txn_expiry ute(trx_expiration);
-                  c->trx_state.modify(bs, ute);
-               }
-               return unknown;
-            });
-      }
-      else {
-         notice_message pending_notify;
-         pending_notify.known_trx.mode = normal;
-         pending_notify.known_trx.ids.push_back( id );
-         pending_notify.known_blocks.mode = none;
-         my_impl->send_all(pending_notify, [id, &skips, trx_expiration](connection_ptr c) -> bool {
-               if (skips.find(c) != skips.end() || c->syncing) {
-                  return false;
-               }
-               const auto& bs = c->trx_state.find(id);
-               bool unknown = bs == c->trx_state.end();
-               if( unknown) {
-                  fc_dlog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
-                  c->trx_state.insert(transaction_state({id,false,true,0,trx_expiration,time_point() }));
-               } else {
-                  update_txn_expiry ute(trx_expiration);
-                  c->trx_state.modify(bs, ute);
-               }
-               return unknown;
-            });
-      }
+      my_impl->send_all( msg, [&id, &skips, trx_expiration](connection_ptr c) -> bool {
+         if( skips.find(c) != skips.end() || c->syncing ) {
+            return false;
+          }
+          const auto& bs = c->trx_state.find(id);
+          bool unknown = bs == c->trx_state.end();
+          if( unknown ) {
+             c->trx_state.insert(transaction_state({id,0,trx_expiration}));
+             fc_dlog(logger, "sending whole trx to ${n}", ("n",c->peer_name() ) );
+          }
+          return unknown;
+      });
 
    }
 
@@ -1813,30 +1732,10 @@ namespace eosio {
       req.req_trx.mode = none;
       req.req_blocks.mode = none;
       bool send_req = false;
-      controller &cc = my_impl->chain_plug->chain();
       if (msg.known_trx.mode == normal) {
          req.req_trx.mode = normal;
          req.req_trx.pending = 0;
-         for( const auto& t : msg.known_trx.ids ) {
-            const auto &tx = my_impl->local_txns.get<by_id>( ).find( t );
-
-            if( tx == my_impl->local_txns.end( ) ) {
-               fc_dlog(logger,"did not find ${id}",("id",t));
-
-               //At this point the details of the txn are not known, just its id. This
-               //effectively gives 120 seconds to learn of the details of the txn which
-               //will update the expiry in bcast_transaction
-               c->trx_state.insert( (transaction_state){t,true,true,0,time_point_sec(time_point::now()) + 120,
-                        time_point()} );
-
-               req.req_trx.ids.push_back( t );
-            }
-            else {
-               fc_dlog(logger,"big msg manager found txn id in table, ${id}",("id", t));
-            }
-         }
-         send_req = !req.req_trx.ids.empty();
-         fc_dlog(logger,"big msg manager send_req ids list has ${ids} entries", ("ids", req.req_trx.ids.size()));
+         send_req = false;
       }
       else if (msg.known_trx.mode != none) {
          elog ("passed a notice_message with something other than a normal on none known_trx");
@@ -1844,6 +1743,7 @@ namespace eosio {
       }
       if (msg.known_blocks.mode == normal) {
          req.req_blocks.mode = normal;
+         controller& cc = my_impl->chain_plug->chain();
          for( const auto& blkid : msg.known_blocks.ids) {
             signed_block_ptr b;
             peer_block_state entry = {blkid,0,true,true,fc::time_point()};
@@ -1904,7 +1804,7 @@ namespace eosio {
          bool sendit = false;
          if (is_txn) {
             auto trx = conn->trx_state.get<by_id>().find(tid);
-            sendit = trx != conn->trx_state.end() && trx->is_known_by_peer;
+            sendit = trx != conn->trx_state.end();
          }
          else {
             auto blk = conn->blk_state.get<by_id>().find(bid);
