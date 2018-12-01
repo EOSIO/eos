@@ -145,7 +145,7 @@ namespace eosio {
             };
       possible_connections             allowed_connections{None};
 
-      connection_ptr find_connection( string host )const;
+      connection_ptr find_connection(const string& host)const;
 
       std::set< connection_ptr >       connections;
       bool                             done = false;
@@ -180,13 +180,13 @@ namespace eosio {
 
       channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
-      void connect( connection_ptr c );
-      void connect( connection_ptr c, tcp::resolver::iterator endpoint_itr );
-      bool start_session( connection_ptr c );
+      void connect(const connection_ptr& c);
+      void connect(const connection_ptr& c, tcp::resolver::iterator endpoint_itr);
+      bool start_session(const connection_ptr& c);
       void start_listen_loop( );
-      void start_read_message( connection_ptr c);
+      void start_read_message(const connection_ptr& c);
 
-      void   close( connection_ptr c );
+      void close(const connection_ptr& c);
       size_t count_open_sockets() const;
 
       template<typename VerifierFunc>
@@ -203,9 +203,9 @@ namespace eosio {
 
       bool is_valid( const handshake_message &msg);
 
-      void handle_message( connection_ptr c, const handshake_message &msg);
-      void handle_message( connection_ptr c, const chain_size_message &msg);
-      void handle_message( connection_ptr c, const go_away_message &msg );
+      void handle_message(const connection_ptr& c, const handshake_message& msg);
+      void handle_message(const connection_ptr& c, const chain_size_message& msg);
+      void handle_message(const connection_ptr& c, const go_away_message& msg );
       /** \name Peer Timestamps
        *  Time message handling
        *  @{
@@ -219,14 +219,14 @@ namespace eosio {
        * floating-double arithmetic with rounding done by the hardware.
        * This is necessary in order to avoid overflow and preserve precision.
        */
-      void handle_message( connection_ptr c, const time_message &msg);
+      void handle_message(const connection_ptr& c, const time_message& msg);
       /** @} */
-      void handle_message( connection_ptr c, const notice_message &msg);
-      void handle_message( connection_ptr c, const request_message &msg);
-      void handle_message( connection_ptr c, const sync_request_message &msg);
-      void handle_message( connection_ptr c, const signed_block &msg) = delete; // signed_block_ptr overload used instead
-      void handle_message( connection_ptr c, const signed_block_ptr &msg);
-      void handle_message( connection_ptr c, const packed_transaction &msg);
+      void handle_message(const connection_ptr& c, const notice_message& msg);
+      void handle_message(const connection_ptr& c, const request_message& msg);
+      void handle_message(const connection_ptr& c, const sync_request_message& msg);
+      void handle_message(const connection_ptr& c, const signed_block& msg) = delete; // signed_block_ptr overload used instead
+      void handle_message(const connection_ptr& c, const signed_block_ptr& msg);
+      void handle_message(const connection_ptr& c, const packed_transaction& msg);
 
       void start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection);
       void start_txn_timer( );
@@ -507,10 +507,6 @@ namespace eosio {
       /** \name Peer Timestamps
        *  Time message handling
        */
-      /** @{ */
-      /** \brief Convert an std::chrono nanosecond rep to a human readable string
-       */
-      char* convert_tstamp(const tstamp& t);
       /**  \brief Populate and queue time_message
        */
       void send_time();
@@ -553,7 +549,7 @@ namespace eosio {
       void sync_timeout(boost::system::error_code ec);
       void fetch_timeout(boost::system::error_code ec);
 
-      void queue_write(std::shared_ptr<vector<char>> buff,
+      void queue_write(const std::shared_ptr<vector<char>>& buff,
                        bool trigger_send,
                        std::function<void(boost::system::error_code, std::size_t)> callback);
       void do_queue_write();
@@ -600,7 +596,7 @@ namespace eosio {
    struct msg_handler : public fc::visitor<void> {
       net_plugin_impl &impl;
       connection_ptr c;
-      msg_handler( net_plugin_impl &imp, connection_ptr conn) : impl(imp), c(conn) {}
+      msg_handler( net_plugin_impl &imp, const connection_ptr& conn) : impl(imp), c(conn) {}
 
       void operator()( const signed_block& msg ) const {
          EOS_ASSERT( false, plugin_config_exception, "visit(signed_block&&) should be called" );
@@ -643,16 +639,16 @@ namespace eosio {
       void set_state(stages s);
       bool sync_required();
       void send_handshakes();
-      bool is_active(connection_ptr conn);
-      void reset_lib_num(connection_ptr conn);
-      void request_next_chunk(connection_ptr conn = connection_ptr() );
-      void start_sync(connection_ptr c, uint32_t target);
-      void reassign_fetch(connection_ptr c, go_away_reason reason);
-      void verify_catchup(connection_ptr c, uint32_t num, block_id_type id);
-      void rejected_block(connection_ptr c, uint32_t blk_num);
-      void recv_block(connection_ptr c, const block_id_type &blk_id, uint32_t blk_num);
-      void recv_handshake(connection_ptr c, const handshake_message& msg);
-      void recv_notice(connection_ptr c, const notice_message& msg);
+      bool is_active(const connection_ptr& conn);
+      void reset_lib_num(const connection_ptr& conn);
+      void request_next_chunk(const connection_ptr& conn = connection_ptr());
+      void start_sync(const connection_ptr& c, uint32_t target);
+      void reassign_fetch(const connection_ptr& c, go_away_reason reason);
+      void verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id);
+      void rejected_block(const connection_ptr& c, uint32_t blk_num);
+      void recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num);
+      void recv_handshake(const connection_ptr& c, const handshake_message& msg);
+      void recv_notice(const connection_ptr& c, const notice_message& msg);
    };
 
    class dispatch_manager {
@@ -662,16 +658,16 @@ namespace eosio {
       std::multimap<block_id_type, connection_ptr> received_blocks;
       std::multimap<transaction_id_type, connection_ptr> received_transactions;
 
-      void bcast_transaction (const packed_transaction& msg);
-      void rejected_transaction (const transaction_id_type& msg);
-      void bcast_block (const block_state_ptr& bs);
-      void rejected_block (const block_id_type &id);
+      void bcast_transaction(const packed_transaction& msg);
+      void rejected_transaction(const transaction_id_type& msg);
+      void bcast_block(const block_state_ptr& bs);
+      void rejected_block(const block_id_type &id);
 
-      void recv_block (connection_ptr conn, const block_id_type& msg, uint32_t bnum);
-      void recv_transaction(connection_ptr conn, const transaction_id_type& id);
-      void recv_notice (connection_ptr conn, const notice_message& msg, bool generated);
+      void recv_block(const connection_ptr& conn, const block_id_type& msg, uint32_t bnum);
+      void recv_transaction(const connection_ptr& conn, const transaction_id_type& id);
+      void recv_notice(const connection_ptr& conn, const notice_message& msg, bool generated);
 
-      void retry_fetch (connection_ptr conn);
+      void retry_fetch(const connection_ptr& conn);
    };
 
    //---------------------------------------------------------------------------
@@ -945,15 +941,6 @@ namespace eosio {
       enqueue(last_handshake_sent);
    }
 
-   char* connection::convert_tstamp(const tstamp& t)
-   {
-      const long long NsecPerSec{1000000000};
-      time_t seconds = t / NsecPerSec;
-      strftime(ts, ts_buffer_size, "%F %T", localtime(&seconds));
-      snprintf(ts+19, ts_buffer_size-19, ".%lld", t % NsecPerSec);
-      return ts;
-   }
-
    void connection::send_time() {
       time_message xpkt;
       xpkt.org = rec;
@@ -971,7 +958,7 @@ namespace eosio {
       enqueue(xpkt);
    }
 
-   void connection::queue_write(std::shared_ptr<vector<char>> buff,
+   void connection::queue_write(const std::shared_ptr<vector<char>>& buff,
                                 bool trigger_send,
                                 std::function<void(boost::system::error_code, std::size_t)> callback) {
       write_queue.push_back({buff, callback});
@@ -1155,7 +1142,7 @@ namespace eosio {
          } );
    }
 
-   void connection::fetch_wait( ) {
+   void connection::fetch_wait() {
       response_expected->expires_from_now( my_impl->resp_expected_period);
       connection_wptr c(shared_from_this());
       response_expected->async_wait( [c]( boost::system::error_code ec){
@@ -1280,7 +1267,7 @@ namespace eosio {
       state = newstate;
    }
 
-   bool sync_manager::is_active(connection_ptr c) {
+   bool sync_manager::is_active(const connection_ptr& c) {
       if (state == head_catchup && c) {
          bool fhset = c->fork_head != block_id_type();
          fc_dlog(logger, "fork_head_num = ${fn} fork_head set = ${s}",
@@ -1290,7 +1277,7 @@ namespace eosio {
       return state != in_sync;
    }
 
-   void sync_manager::reset_lib_num(connection_ptr c) {
+   void sync_manager::reset_lib_num(const connection_ptr& c) {
       if(state == in_sync) {
          source.reset();
       }
@@ -1312,7 +1299,7 @@ namespace eosio {
               chain_plug->chain( ).fork_db_head_block_num( ) < sync_last_requested_num );
    }
 
-   void sync_manager::request_next_chunk( connection_ptr conn ) {
+   void sync_manager::request_next_chunk( const connection_ptr& conn ) {
       uint32_t head_block = chain_plug->chain().fork_db_head_block_num();
 
       if (head_block < sync_last_requested_num && source && source->current()) {
@@ -1395,7 +1382,7 @@ namespace eosio {
       }
    }
 
-   void sync_manager::send_handshakes ()
+   void sync_manager::send_handshakes()
    {
       for( auto &ci : my_impl->connections) {
          if( ci->current()) {
@@ -1404,7 +1391,7 @@ namespace eosio {
       }
    }
 
-   void sync_manager::start_sync( connection_ptr c, uint32_t target) {
+   void sync_manager::start_sync(const connection_ptr& c, uint32_t target) {
       if( target > sync_known_lib_num) {
          sync_known_lib_num = target;
       }
@@ -1428,7 +1415,7 @@ namespace eosio {
       request_next_chunk(c);
    }
 
-   void sync_manager::reassign_fetch(connection_ptr c, go_away_reason reason) {
+   void sync_manager::reassign_fetch(const connection_ptr& c, go_away_reason reason) {
       fc_ilog(logger, "reassign_fetch, our last req is ${cc}, next expected is ${ne} peer ${p}",
               ( "cc",sync_last_requested_num)("ne",sync_next_expected_num)("p",c->peer_name()));
 
@@ -1439,7 +1426,7 @@ namespace eosio {
       }
    }
 
-   void sync_manager::recv_handshake (connection_ptr c, const handshake_message &msg) {
+   void sync_manager::recv_handshake(const connection_ptr& c, const handshake_message& msg) {
       controller& cc = chain_plug->chain();
       uint32_t lib_num = cc.last_irreversible_block_num( );
       uint32_t peer_lib = msg.last_irreversible_block_num;
@@ -1494,7 +1481,7 @@ namespace eosio {
 
       if (head <= msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
-         verify_catchup (c, msg.head_num, msg.head_id);
+         verify_catchup(c, msg.head_num, msg.head_id);
          return;
       }
       else {
@@ -1513,7 +1500,7 @@ namespace eosio {
       elog ("sync check failed to resolve status");
    }
 
-   void sync_manager::verify_catchup(connection_ptr c, uint32_t num, block_id_type id) {
+   void sync_manager::verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id) {
       request_message req;
       req.req_blocks.mode = catch_up;
       for (const auto& cc : my_impl->connections) {
@@ -1539,14 +1526,14 @@ namespace eosio {
       c->enqueue( req );
    }
 
-   void sync_manager::recv_notice (connection_ptr c, const notice_message &msg) {
+   void sync_manager::recv_notice(const connection_ptr& c, const notice_message& msg) {
       fc_ilog (logger, "sync_manager got ${m} block notice",("m",modes_str(msg.known_blocks.mode)));
       if (msg.known_blocks.mode == catch_up) {
          if (msg.known_blocks.ids.size() == 0) {
             elog ("got a catch up with ids size = 0");
          }
          else {
-            verify_catchup(c,  msg.known_blocks.pending, msg.known_blocks.ids.back());
+            verify_catchup(c, msg.known_blocks.pending, msg.known_blocks.ids.back());
          }
       }
       else {
@@ -1556,7 +1543,7 @@ namespace eosio {
       }
    }
 
-   void sync_manager::rejected_block (connection_ptr c, uint32_t blk_num) {
+   void sync_manager::rejected_block(const connection_ptr& c, uint32_t blk_num) {
       if (state != in_sync ) {
          fc_ilog (logger, "block ${bn} not accepted from ${p}",("bn",blk_num)("p",c->peer_name()));
          sync_last_requested_num = 0;
@@ -1566,7 +1553,7 @@ namespace eosio {
          send_handshakes();
       }
    }
-   void sync_manager::recv_block (connection_ptr c, const block_id_type &blk_id, uint32_t blk_num) {
+   void sync_manager::recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num) {
       fc_dlog(logger," got block ${bn} from ${p}",("bn",blk_num)("p",c->peer_name()));
       if (state == lib_catchup) {
          if (blk_num != sync_next_expected_num) {
@@ -1613,7 +1600,7 @@ namespace eosio {
 
    //------------------------------------------------------------------------
 
-   void dispatch_manager::bcast_block (const block_state_ptr& bs) {
+   void dispatch_manager::bcast_block(const block_state_ptr& bs) {
       std::set<connection_ptr> skips;
       auto range = received_blocks.equal_range(bs->id);
       for (auto org = range.first; org != range.second; ++org) {
@@ -1640,7 +1627,7 @@ namespace eosio {
 
    }
 
-   void dispatch_manager::recv_block (connection_ptr c, const block_id_type& id, uint32_t bnum) {
+   void dispatch_manager::recv_block(const connection_ptr& c, const block_id_type& id, uint32_t bnum) {
       received_blocks.insert(std::make_pair(id, c));
       if (c &&
           c->last_req &&
@@ -1655,13 +1642,13 @@ namespace eosio {
       c->cancel_wait();
    }
 
-   void dispatch_manager::rejected_block (const block_id_type& id) {
+   void dispatch_manager::rejected_block(const block_id_type& id) {
       fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",id));
       auto range = received_blocks.equal_range(id);
       received_blocks.erase(range.first, range.second);
    }
 
-   void dispatch_manager::bcast_transaction (const packed_transaction& trx) {
+   void dispatch_manager::bcast_transaction(const packed_transaction& trx) {
       std::set<connection_ptr> skips;
       transaction_id_type id = trx.id();
 
@@ -1692,7 +1679,7 @@ namespace eosio {
                                     0, 0, 0};
       my_impl->local_txns.insert(std::move(nts));
 
-      my_impl->send_all( buff, [&id, &skips, trx_expiration](connection_ptr c) -> bool {
+      my_impl->send_all( buff, [&id, &skips, trx_expiration](const connection_ptr& c) -> bool {
          if( skips.find(c) != skips.end() || c->syncing ) {
             return false;
           }
@@ -1707,7 +1694,7 @@ namespace eosio {
 
    }
 
-   void dispatch_manager::recv_transaction (connection_ptr c, const transaction_id_type& id) {
+   void dispatch_manager::recv_transaction(const connection_ptr& c, const transaction_id_type& id) {
       received_transactions.insert(std::make_pair(id, c));
       if (c &&
           c->last_req &&
@@ -1721,13 +1708,13 @@ namespace eosio {
       c->cancel_wait();
    }
 
-   void dispatch_manager::rejected_transaction (const transaction_id_type& id) {
+   void dispatch_manager::rejected_transaction(const transaction_id_type& id) {
       fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",id));
       auto range = received_transactions.equal_range(id);
       received_transactions.erase(range.first, range.second);
    }
 
-   void dispatch_manager::recv_notice (connection_ptr c, const notice_message& msg, bool generated) {
+   void dispatch_manager::recv_notice(const connection_ptr& c, const notice_message& msg, bool generated) {
       request_message req;
       req.req_trx.mode = none;
       req.req_blocks.mode = none;
@@ -1777,7 +1764,7 @@ namespace eosio {
       }
    }
 
-   void dispatch_manager::retry_fetch( connection_ptr c ) {
+   void dispatch_manager::retry_fetch(const connection_ptr& c) {
       if (!c->last_req) {
          return;
       }
@@ -1827,7 +1814,7 @@ namespace eosio {
 
    //------------------------------------------------------------------------
 
-   void net_plugin_impl::connect( connection_ptr c ) {
+   void net_plugin_impl::connect(const connection_ptr& c) {
       if( c->no_retry != go_away_reason::no_reason) {
          fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
          return;
@@ -1869,7 +1856,7 @@ namespace eosio {
                                });
    }
 
-   void net_plugin_impl::connect( connection_ptr c, tcp::resolver::iterator endpoint_itr ) {
+   void net_plugin_impl::connect(const connection_ptr& c, tcp::resolver::iterator endpoint_itr) {
       if( c->no_retry != go_away_reason::no_reason) {
          string rsn = reason_str(c->no_retry);
          return;
@@ -1900,7 +1887,7 @@ namespace eosio {
          } );
    }
 
-   bool net_plugin_impl::start_session( connection_ptr con ) {
+   bool net_plugin_impl::start_session(const connection_ptr& con) {
       boost::asio::ip::tcp::no_delay nodelay( true );
       boost::system::error_code ec;
       con->socket->set_option( nodelay, ec );
@@ -1922,7 +1909,7 @@ namespace eosio {
    }
 
 
-   void net_plugin_impl::start_listen_loop( ) {
+   void net_plugin_impl::start_listen_loop() {
       auto socket = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
       acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
             if( !ec ) {
@@ -1986,7 +1973,7 @@ namespace eosio {
          });
    }
 
-   void net_plugin_impl::start_read_message( connection_ptr conn ) {
+   void net_plugin_impl::start_read_message(const connection_ptr& conn) {
 
       try {
          if(!conn->socket) {
@@ -2111,7 +2098,7 @@ namespace eosio {
 
 
    template<typename VerifierFunc>
-   void net_plugin_impl::send_all( const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify) {
+   void net_plugin_impl::send_all(const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify) {
       for( auto &c : connections) {
          if( c->current() && verify( c )) {
             c->enqueue_buffer( send_buffer, true, no_reason );
@@ -2119,7 +2106,7 @@ namespace eosio {
       }
    }
 
-   bool net_plugin_impl::is_valid( const handshake_message &msg) {
+   bool net_plugin_impl::is_valid(const handshake_message& msg) {
       // Do some basic validation of an incoming handshake_message, so things
       // that really aren't handshake messages can be quickly discarded without
       // affecting state.
@@ -2144,12 +2131,11 @@ namespace eosio {
       return valid;
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const chain_size_message &msg) {
+   void net_plugin_impl::handle_message(const connection_ptr& c, const chain_size_message& msg) {
       peer_ilog(c, "received chain_size_message");
-
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
+   void net_plugin_impl::handle_message(const connection_ptr& c, const handshake_message& msg) {
       peer_ilog(c, "received handshake_message");
       if (!is_valid(msg)) {
          peer_elog( c, "bad handshake message");
@@ -2256,7 +2242,7 @@ namespace eosio {
       sync_master->recv_handshake(c,msg);
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const go_away_message &msg ) {
+   void net_plugin_impl::handle_message(const connection_ptr& c, const go_away_message& msg) {
       string rsn = reason_str( msg.reason );
       peer_ilog(c, "received go_away_message");
       ilog( "received a go away message from ${p}, reason = ${r}",
@@ -2269,7 +2255,7 @@ namespace eosio {
       close (c);
    }
 
-   void net_plugin_impl::handle_message(connection_ptr c, const time_message &msg) {
+   void net_plugin_impl::handle_message(const connection_ptr& c, const time_message& msg) {
       peer_ilog(c, "received time_message");
       /* We've already lost however many microseconds it took to dispatch
        * the message, but it can't be helped.
@@ -2302,7 +2288,7 @@ namespace eosio {
       c->rec = 0;
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const notice_message &msg) {
+   void net_plugin_impl::handle_message(const connection_ptr& c, const notice_message& msg) {
       // peer tells us about one or more blocks or txns. When done syncing, forward on
       // notices of previously unknown blocks or txns,
       //
@@ -2366,7 +2352,7 @@ namespace eosio {
       }
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const request_message &msg) {
+   void net_plugin_impl::handle_message(const connection_ptr& c, const request_message& msg) {
       switch (msg.req_blocks.mode) {
       case catch_up :
          peer_ilog(c,  "received request_message:catch_up");
@@ -2396,7 +2382,7 @@ namespace eosio {
 
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const sync_request_message &msg) {
+   void net_plugin_impl::handle_message(const connection_ptr& c, const sync_request_message& msg) {
       if( msg.end_block == 0) {
          c->peer_requested.reset();
          c->flush_queues();
@@ -2406,7 +2392,7 @@ namespace eosio {
       }
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
+   void net_plugin_impl::handle_message(const connection_ptr& c, const packed_transaction& msg) {
       fc_dlog(logger, "got a packed transaction, cancel wait");
       peer_ilog(c, "received packed_transaction");
       controller& cc = my_impl->chain_plug->chain();
@@ -2443,7 +2429,7 @@ namespace eosio {
       });
    }
 
-   void net_plugin_impl::handle_message( connection_ptr c, const signed_block_ptr& msg) {
+   void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& msg) {
       controller &cc = chain_plug->chain();
       block_id_type blk_id = msg->id();
       uint32_t blk_num = msg->block_num();
@@ -2602,7 +2588,7 @@ namespace eosio {
       start_conn_timer(connector_period, std::weak_ptr<connection>());
    }
 
-   void net_plugin_impl::close( connection_ptr c ) {
+   void net_plugin_impl::close(const connection_ptr& c ) {
       if( c->peer_addr.empty( ) && c->socket->is_open() ) {
          if (num_clients == 0) {
             fc_wlog( logger, "num_clients already at 0");
@@ -3038,7 +3024,7 @@ namespace eosio {
       }
       return result;
    }
-   connection_ptr net_plugin_impl::find_connection( string host )const {
+   connection_ptr net_plugin_impl::find_connection(const string& host )const {
       for( const auto& c : connections )
          if( c->peer_addr == host ) return c;
       return connection_ptr();
