@@ -64,28 +64,15 @@ bool statetrack_plugin_impl::filter(const account_name &code, const fc::string &
   return true;
 }
 
-void statetrack_plugin_impl::build_db_op_trx(db_op& op)
-{
-  if(current_trx_actions.size() == 0) {    
-    op.act_index = 0;
-    return;
-  }
+void statetrack_plugin_impl::build_blacklist() {
+  blacklist_actions.emplace(std::make_pair(config::system_account_name,
+                                            std::set<name>{N(onblock)}));
+  blacklist_actions.emplace(std::make_pair(N(blocktwitter),
+                                              std::set<name>{N(tweet)}));
+}
 
-  db_action_trac& dat = current_trx_actions.back();
-  op.trx_id = dat.trx_id;
-  op.act_index = current_trx_actions.size() - 1;
-
-  if(is_undo_state) {
-    dat.op_size--;
-
-    if(dat.op_size <= 0)
-      current_trx_actions.pop_back();
-  }
-  else {
-    dat.op_size++;
-  }
-
-  ilog("STATETRACK db_action_trac: ${trxid} ${opsize}", ("trxid", op.trx_id) ("opsize", dat.op_size));
+void statetrack_plugin_impl::init_current_block() {
+  is_undo_state = false;
 }
 
 const table_id_object *statetrack_plugin_impl::get_kvo_tio(const database &db, const key_value_object &kvo)
@@ -134,10 +121,9 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const account_object
 
   name system = N(system);
 
-  op.id = co.id._id;
+  op.oid = co.id._id;
   op.op_type = op_type;
-
-  build_db_op_trx(op);
+  op.actionid = current_action_index;
 
   op.code = system;
   op.scope = system.to_string();
@@ -163,10 +149,9 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const permission_obj
 
   name system = N(system);
 
-  op.id = po.id._id;
+  op.oid = po.id._id;
   op.op_type = op_type;
-
-  build_db_op_trx(op);
+  op.actionid = current_action_index;
 
   op.code = system;
   op.scope = system.to_string();
@@ -182,10 +167,9 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const permission_lin
 
   name system = N(system);
 
-  op.id = plo.id._id;
+  op.oid = plo.id._id;
   op.op_type = op_type;
-
-  build_db_op_trx(op);
+  op.actionid = current_action_index;
 
   op.code = system;
   op.scope = system.to_string();
@@ -199,10 +183,10 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const table_id_objec
 {
   db_op op;
 
+  op.oid = kvo.id._id;
   op.id = kvo.primary_key;
   op.op_type = op_type;
-
-  build_db_op_trx(op);
+  op.actionid = current_action_index;
 
   op.code = tio.code;
   op.scope = scope_sym_to_string(tio.scope);
@@ -234,18 +218,22 @@ void statetrack_plugin_impl::on_applied_table(const database &db, const table_id
 
   if (filter(code, scope, table))
   {
-    db_op table;
+    db_op op;
 
-    build_db_op_trx(table);
+    op.oid = tio.id._id;
+    op.op_type = op_type;
+    op.actionid = current_action_index;
 
-    table.op_type = op_type;
-    table.code = tio.code;
-    table.scope = scope_sym_to_string(tio.scope);
-    table.table = tio.table;
+    op.code = tio.code;
+    op.scope = scope_sym_to_string(tio.scope);
+    op.table = tio.table;
 
-    fc::string data = fc::json::to_string(table);
-    ilog("STATETRACK table_id_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
-    send_zmq_msg(data);
+    //TODO op optimizations
+
+    current_action.ops.emplace_back(op);
+
+    fc::string data = fc::json::to_string(op);
+    //ilog("STATETRACK table_id_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
   }
 }
 
@@ -261,9 +249,34 @@ void statetrack_plugin_impl::on_applied_op(const database &db, const account_obj
 
   if (filter(code, scope, table))
   {
-    fc::string data = fc::json::to_string(get_db_op(db, co, op_type));
-    ilog("STATETRACK account_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
-    send_zmq_msg(data);
+    auto op = get_db_op(db, co, op_type);
+
+    //TODO op optimizations
+    // switch(op_type) {
+    //   case op_type_enum::ROW_REMOVE:
+    //     if(co_newids.get<IndexByOId>.count(co.id._id)) {
+    //       co_newids.get<IndexByOId>.erase(co.id._id);
+    //       return;
+    //     }
+    //     else if(co_old_values.get<IndexByOId>.count(co.id._id)) {
+    //       co_old_values.get<IndexByOId>.erase(co.id._id);
+    //     }
+    //     break;
+    //   case op_type_enum::ROW_MODIFY:
+    //     if(co_newids.get<IndexByOId>.count(co.id._id)) {
+    //       op.op_type = op_type_enum::ROW_CREATE;
+    //       co_newids.get<IndexByOId>.erase(co.id._id);
+    //     } 
+    //     else if(co_old_values.get<IndexByOId>.count(co.id._id)) {
+    //       co_old_values.get<IndexByOId>.erase(co.id._id);
+    //     }
+    //     break;
+    // }
+
+    current_action.ops.emplace_back(op);
+
+    fc::string data = fc::json::to_string(op);
+    //ilog("STATETRACK account_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
   }
 }
 
@@ -279,9 +292,14 @@ void statetrack_plugin_impl::on_applied_op(const database &db, const permission_
 
   if (filter(code, scope, table))
   {
-    fc::string data = fc::json::to_string(get_db_op(db, po, op_type));
-    ilog("STATETRACK permission_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
-    send_zmq_msg(data);
+    auto op = get_db_op(db, po, op_type);
+
+    //TODO op optimizations
+
+    current_action.ops.emplace_back(op);
+
+    fc::string data = fc::json::to_string(op);
+    //ilog("STATETRACK permission_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
   }
 }
 
@@ -297,9 +315,14 @@ void statetrack_plugin_impl::on_applied_op(const database &db, const permission_
 
   if (filter(code, scope, table))
   {
-    fc::string data = fc::json::to_string(get_db_op(db, plo, op_type));
-    ilog("STATETRACK permission_link_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
-    send_zmq_msg(data);
+    auto op = get_db_op(db, plo, op_type);
+
+    //TODO op optimizations
+
+    current_action.ops.emplace_back(op);
+
+    fc::string data = fc::json::to_string(op);
+    //ilog("STATETRACK permission_link_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
   }
 }
 
@@ -321,9 +344,14 @@ void statetrack_plugin_impl::on_applied_op(const database &db, const key_value_o
 
   if (filter(code, scope, table))
   {
-    fc::string data = fc::json::to_string(get_db_op(db, *tio_ptr, kvo, op_type));
-    ilog("STATETRACK key_value_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
-    send_zmq_msg(data);
+    auto op = get_db_op(db, *tio_ptr, kvo, op_type);
+
+    //TODO op optimizations
+
+    current_action.ops.emplace_back(op);
+
+    fc::string data = fc::json::to_string(op);
+    //ilog("STATETRACK key_value_object ${op_type}: ${data}", ("op_type", op_type)("data", data));
   }
 }
 
@@ -334,7 +362,7 @@ void statetrack_plugin_impl::on_applied_rev(const int64_t revision, op_type_enum
 
   fc::string data = fc::json::to_string(get_db_rev(revision, op_type));
   ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type)("data", data));
-  send_zmq_msg(data);
+  //send_zmq_msg(data);
 }
 
 void statetrack_plugin_impl::on_applied_undo(const int64_t revision)
@@ -346,95 +374,47 @@ void statetrack_plugin_impl::on_applied_undo(const int64_t revision)
 
   fc::string data = fc::json::to_string(get_db_rev(revision, op_type_enum::REV_UNDO));
   ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type_enum::REV_UNDO)("data", data));
-  send_zmq_msg(data);
+  //send_zmq_msg(data);
 }
 
 void statetrack_plugin_impl::on_applied_transaction(const transaction_trace_ptr &ttp)
 {
-  if (ttp->receipt)
-  {
-    cached_traces[ttp->id] = ttp;
+  if (ttp->receipt) {
 
-    ilog("STATETRACK applied trx");
+    db_transaction trx;
 
-    current_trx_actions.clear();
+    trx.trx_id = ttp->id;
+
+    auto trx_action_range = reversible_actions.get<IndexByTrxId>().equal_range(trx.trx_id);
+    for (auto& action : boost::make_iterator_range(trx_action_range)) {
+      
+      trx.actions.emplace_back(action);
+      auto newact = trx.actions.back();
+
+      auto action_op_range = reversible_ops.get<IndexByActionId>().equal_range(action.actionid);
+      for (auto& op : boost::make_iterator_range(action_op_range)) {
+        newact.ops.emplace_back(op);
+      }
+    }
+
+    //TODO send zmq transaction
+    //send_zmq_msg(data);
+
+    ilog("STATETRACK applied transaction: ${trx}", ("trx", trx));
+  }
+  else {
+    auto trx_action_range = reversible_actions.get<IndexByTrxId>().equal_range(ttp->id);
+    for (auto& action : boost::make_iterator_range(trx_action_range)) {
+      auto action_op_range = reversible_ops.get<IndexByActionId>().equal_range(action.actionid);
+      reversible_ops.get<IndexByActionId>().erase(action_op_range.first, action_op_range.second);
+    }
+    reversible_actions.get<IndexByTrxId>().erase(trx_action_range.first, trx_action_range.second);
   }
 }
 
 void statetrack_plugin_impl::on_accepted_block(const block_state_ptr &bsp)
 {
-  //TODO send accepted block information
 
-  for (auto &t : bsp->block->transactions)
-  {
-    transaction_id_type id;
-    if (t.trx.contains<transaction_id_type>())
-    {
-      id = t.trx.get<transaction_id_type>();
-    }
-    else
-    {
-      id = t.trx.get<packed_transaction>().id();
-    }
-
-    if (t.status == transaction_receipt_header::executed)
-    {
-      // Send traces only for executed transactions
-      auto it = cached_traces.find(id);
-      if (it == cached_traces.end() || !it->second->receipt)
-      {
-        ilog("missing trace for transaction {id}", ("id", id));
-        continue;
-      }
-
-      for (const auto &atrace : it->second->action_traces)
-      {
-        on_action_trace(atrace, bsp);
-      }
-    }
-  }
-
-  cached_traces.clear();
-}
-
-void statetrack_plugin_impl::on_action_trace(const action_trace &at, const block_state_ptr &bsp)
-{
-  if (sender_socket == nullptr)
-    return;
-
-  // check the action against the blacklist
-  auto search_acc = blacklist_actions.find(at.act.account);
-  if (search_acc != blacklist_actions.end())
-  {
-    auto search_act = search_acc->second.find(at.act.name);
-    if (search_act != search_acc->second.end())
-    {
-      return;
-    }
-  }
-
-  auto &chain = chain_plug->chain();
-
-  db_op op;
-
-  name system = N(system);
-  op.id = at.receipt.global_sequence;
-  op.op_type = op_type_enum::TRX_ACTION;
-  op.code = system;
-  op.scope = scope_sym_to_string(system);
-  op.table = N(actions);
-
-  db_action da;
-  da.block_num = bsp->block->block_num();
-  da.block_time = bsp->block->timestamp;
-  da.action_trace = chain.to_variant_with_abi(at, abi_serializer_max_time);
-  da.last_irreversible_block = chain.last_irreversible_block_num();
-
-  op.value = fc::variant(da);
-
-  fc::string data = fc::json::to_string(op);
-  //ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type_enum::TRX_ACTION)("data", data));
-  send_zmq_msg(data);
 }
 
 void statetrack_plugin_impl::on_irreversible_block(const block_state_ptr &bsp)
@@ -443,27 +423,28 @@ void statetrack_plugin_impl::on_irreversible_block(const block_state_ptr &bsp)
     return;
 
   fc::string data = fc::json::to_string(get_db_rev(bsp->block_num, op_type_enum::REV_COMMIT));
-  //ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type_enum::REV_COMMIT)("data", data));
-  send_zmq_msg(data);
+  ilog("STATETRACK irreversible block: ${data}", ("data", data));
+
+  //send_zmq_msg(data);
+  
+  auto block_action_range = reversible_actions.get<IndexByBlockNum>().equal_range(bsp->block_num);
+  for (auto& action : boost::make_iterator_range(block_action_range)) {
+    auto action_op_range = reversible_ops.get<IndexByActionId>().equal_range(action.actionid);
+    reversible_ops.get<IndexByActionId>().erase(action_op_range.first, action_op_range.second);
+  }
+  reversible_actions.get<IndexByBlockNum>().erase(block_action_range.first, block_action_range.second);
 }
 
-void statetrack_plugin_impl::on_pre_apply_action(transaction_id_type trx_id) 
+void statetrack_plugin_impl::on_applied_action(action_trace& trace)
 {
-  auto it = find_if(current_trx_actions.begin(), current_trx_actions.end(), [&] (const auto& dat) { 
-    return dat.trx_id == trx_id; 
-  });
+  current_action.trx_id = trace.trx_id;
+  current_action.block_num = trace.block_num;
+  current_action.trace = chain_plug->chain().to_variant_with_abi(trace, abi_serializer_max_time);
+  current_action_index++;
+  reversible_actions.emplace_back(current_action);
+  current_action.ops.clear();
 
-  if(it != current_trx_actions.end())
-    return;
-
-  db_action_trac dat;
-  dat.trx_id = trx_id;
-  dat.op_size = 0;
-
-  current_trx_actions.emplace_back(dat);
-  is_undo_state = false;
-
-  ilog("on_pre_apply_action trx: ${trxid}", ("trxid", trx_id));
+  //ilog("on_applied_action: ${da}", ("da", *current_action));
 }
 
 } // namespace eosio

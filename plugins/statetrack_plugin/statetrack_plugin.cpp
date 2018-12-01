@@ -86,6 +86,8 @@ void statetrack_plugin::plugin_initialize(const variables_map &options)
 
         my->abi_serializer_max_time = my->chain_plug->get_abi_serializer_max_time();
 
+        my->init_current_block();
+
         ilog("Binding database events");
 
         // account_object events
@@ -123,8 +125,8 @@ void statetrack_plugin::plugin_initialize(const variables_map &options)
             })));
 
         my->connections.emplace_back(
-            fc::optional<connection>(chain.pre_apply_action.connect([&](transaction_id_type trx_id){
-                my->on_pre_apply_action(trx_id);
+            fc::optional<connection>(chain.applied_action.connect([&](action_trace& trace){
+                my->on_applied_action(trace);
             })));
     }
     FC_LOG_AND_RETHROW()
@@ -132,6 +134,7 @@ void statetrack_plugin::plugin_initialize(const variables_map &options)
 
 void statetrack_plugin::plugin_startup()
 {
+    
 }
 
 void statetrack_plugin::plugin_shutdown()

@@ -17,24 +17,22 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
+#include <boost/multi_index/random_access_index.hpp>
+
 namespace eosio
 {
 
 using namespace chain;
 using namespace chainbase;
+using namespace bmi;
 using boost::signals2::connection;
+using bmi::random_access;
 
 typedef typename get_index_type<account_object>::type co_index_type;
 typedef typename get_index_type<permission_object>::type po_index_type;
 typedef typename get_index_type<permission_link_object>::type plo_index_type;
 typedef typename get_index_type<table_id_object>::type ti_index_type;
 typedef typename get_index_type<key_value_object>::type kv_index_type;
-
-typedef account_object::id_type co_id_type;
-typedef permission_usage_object::id_type puo_id_type;
-typedef permission_object::id_type po_id_type;
-typedef permission_link_object::id_type plo_id_type;
-typedef key_value_object::id_type kvo_id_type;
 
 enum op_type_enum
 {
@@ -45,23 +43,6 @@ enum op_type_enum
     TRX_ACTION = 4,
     REV_UNDO = 5,
     REV_COMMIT = 6
-};
-
-struct db_table
-{
-    op_type_enum        op_type;
-    account_name        code;
-    fc::string          scope;
-    table_name          table;
-    account_name        payer;
-};
-
-struct db_op : db_table
-{
-    uint64_t            id;
-    transaction_id_type trx_id;
-    size_t              act_index;
-    fc::variant         value;
 };
 
 struct db_account
@@ -82,19 +63,33 @@ struct db_rev
     int64_t revision;
 };
 
-struct db_action
+struct db_op
 {
-    uint64_t global_action_seq;
-    block_num_type block_num;
-    block_timestamp_type block_time;
-    fc::variant action_trace;
-    uint32_t last_irreversible_block;
+    int64_t       oid;
+    uint64_t      id;
+    uint64_t      actionid;
+
+    op_type_enum  op_type;
+    account_name  code;
+    fc::string    scope;
+    table_name    table;
+    account_name  payer;
+
+    fc::variant   value;
 };
 
-struct db_action_trac 
+struct db_action
 {
+    uint64_t            actionid;
     transaction_id_type trx_id;
-    int64_t             op_size;
+    block_num_type      block_num;
+    fc::variant         trace;
+    std::vector<db_op>  ops;
+};
+
+struct db_transaction {
+    transaction_id_type    trx_id;
+    std::vector<db_action> actions;
 };
 
 struct filter_entry
@@ -114,20 +109,42 @@ struct filter_entry
     }
 };
 
+struct IndexByOId {};
+struct IndexByActionId {};
+struct IndexByTrxId {};
+struct IndexByBlockNum {};
+
+typedef multi_index_container<
+    db_op,         
+    indexed_by<
+        random_access<>,
+        ordered_unique<boost::multi_index::tag<IndexByOId>, member<db_op, int64_t, 
+                             &db_op::oid> >,
+        ordered_non_unique<boost::multi_index::tag<IndexByActionId>, member<db_op, uint64_t, 
+                             &db_op::actionid> >
+    >
+> db_op_container;
+
+typedef multi_index_container<
+    db_action,         
+    indexed_by<
+        random_access<>,
+        ordered_non_unique<boost::multi_index::tag<IndexByTrxId>, member<db_action, transaction_id_type, 
+                           &db_action::trx_id> >,
+        ordered_non_unique<boost::multi_index::tag<IndexByBlockNum>, member<db_action, block_num_type, 
+                           &db_action::block_num> >
+    >
+> db_action_container;
+
 class statetrack_plugin_impl
 {
   public:
-    statetrack_plugin_impl()
-    {
-        blacklist_actions.emplace(std::make_pair(config::system_account_name,
-                                                 std::set<name>{N(onblock)}));
-        blacklist_actions.emplace(std::make_pair(N(blocktwitter),
-                                                 std::set<name>{N(tweet)}));
-    }
-
     void send_zmq_msg(const fc::string content);
     bool filter(const account_name &code, const fc::string &scope, const table_name &table);
-    void build_db_op_trx(db_op& op);
+
+    void build_blacklist();
+
+    void init_current_block();
 
     const table_id_object *get_kvo_tio(const database &db, const key_value_object &kvo);
     const account_object &get_tio_co(const database &db, const table_id_object &tio);
@@ -154,9 +171,8 @@ class statetrack_plugin_impl
     //blocks and transactions
     void on_applied_transaction(const transaction_trace_ptr &ttp);
     void on_accepted_block(const block_state_ptr &bsp);
-    void on_action_trace(const action_trace &at, const block_state_ptr &bsp);
     void on_irreversible_block(const block_state_ptr &bsp);
-    void on_pre_apply_action(transaction_id_type trx_id);
+    void on_applied_action(action_trace& trace);
 
     template<typename MultiIndexType> 
     void create_index_events(const database &db) {
@@ -215,7 +231,18 @@ class statetrack_plugin_impl
     zmq::socket_t *sender_socket;
 
     bool is_undo_state;
-    std::vector<db_action_trac> current_trx_actions;
+
+    uint64_t  current_action_index = 0;
+    db_action current_action;
+
+
+    db_action_container reversible_actions;
+    db_op_container     reversible_ops;
+
+    std::map<uint64_t, db_op>  po_ops;
+    std::map<uint64_t, db_op>  plo_ops;
+    std::map<uint64_t, db_op>  tio_ops;
+    std::map<uint64_t, db_op>  kvo_ops;
 
     std::map<transaction_id_type, transaction_trace_ptr> cached_traces;
     std::map<name, std::set<name>> blacklist_actions;
@@ -234,7 +261,8 @@ class statetrack_plugin_impl
 
 FC_REFLECT_ENUM(eosio::op_type_enum, (TABLE_REMOVE)(ROW_CREATE)(ROW_MODIFY)(ROW_REMOVE)(TRX_ACTION)(REV_UNDO)(REV_COMMIT))
 FC_REFLECT(eosio::db_account, (name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date))
-FC_REFLECT(eosio::db_table, (op_type)(code)(scope)(table)(payer))
-FC_REFLECT_DERIVED(eosio::db_op, (eosio::db_table), (id)(trx_id)(act_index)(value))
+FC_REFLECT(eosio::db_op, (oid)(id)(op_type)(code)(scope)(table)(payer)(actionid)(value))
 FC_REFLECT(eosio::db_rev, (op_type)(revision))
-FC_REFLECT(eosio::db_action, (block_num)(block_time)(action_trace)(last_irreversible_block))
+FC_REFLECT(eosio::db_action, (trx_id)(trace)(ops))
+FC_REFLECT(eosio::db_transaction, (trx_id)(actions))
+

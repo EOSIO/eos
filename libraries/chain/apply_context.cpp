@@ -140,9 +140,10 @@ void apply_context::exec( action_trace& trace )
 {
    _notified.push_back(receiver);
 
-   emit(control.pre_apply_action, trx_context.id);
-
    exec_one( trace, false );
+
+   emit(control.applied_action, trace);
+
    for( uint32_t i = 1; i < _notified.size(); ++i ) {
       receiver = _notified[i];
       trace.inline_traces.emplace_back( );
