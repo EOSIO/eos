@@ -65,17 +65,18 @@ struct db_rev
 
 struct db_op
 {
-    int64_t       oid;
-    uint64_t      id;
-    uint64_t      actionid;
+    int64_t        oid;
+    uint64_t       id;
+    block_num_type block_num;
+    uint64_t       actionid;
 
-    op_type_enum  op_type;
-    account_name  code;
-    fc::string    scope;
-    table_name    table;
-    account_name  payer;
+    op_type_enum   op_type;
+    account_name   code;
+    fc::string     scope;
+    table_name     table;
+    account_name   payer;
 
-    fc::variant   value;
+    fc::variant    value;
 };
 
 struct db_action
@@ -90,6 +91,11 @@ struct db_action
 struct db_transaction {
     transaction_id_type    trx_id;
     std::vector<db_action> actions;
+};
+
+struct db_undo_block {
+    block_num_type      block_num;
+    std::vector<db_op>  ops;
 };
 
 struct filter_entry
@@ -121,7 +127,9 @@ typedef multi_index_container<
         ordered_unique<boost::multi_index::tag<IndexByOId>, member<db_op, int64_t, 
                              &db_op::oid> >,
         ordered_non_unique<boost::multi_index::tag<IndexByActionId>, member<db_op, uint64_t, 
-                             &db_op::actionid> >
+                             &db_op::actionid> >,
+        ordered_non_unique<boost::multi_index::tag<IndexByBlockNum>, member<db_op, block_num_type, 
+                           &db_op::block_num> >
     >
 > db_op_container;
 
@@ -173,6 +181,8 @@ class statetrack_plugin_impl
     void on_accepted_block(const block_state_ptr &bsp);
     void on_irreversible_block(const block_state_ptr &bsp);
     void on_applied_action(action_trace& trace);
+    void on_pre_undo_block(block_num_type block_num);
+    void on_post_undo_block(block_num_type block_num);
 
     template<typename MultiIndexType> 
     void create_index_events(const database &db) {
@@ -235,16 +245,12 @@ class statetrack_plugin_impl
     uint64_t  current_action_index = 0;
     db_action current_action;
 
+    block_num_type current_undo_block_num = 0;
+    db_undo_block current_undo_block;
 
     db_action_container reversible_actions;
     db_op_container     reversible_ops;
 
-    std::map<uint64_t, db_op>  po_ops;
-    std::map<uint64_t, db_op>  plo_ops;
-    std::map<uint64_t, db_op>  tio_ops;
-    std::map<uint64_t, db_op>  kvo_ops;
-
-    std::map<transaction_id_type, transaction_trace_ptr> cached_traces;
     std::map<name, std::set<name>> blacklist_actions;
 
     std::set<filter_entry> filter_on;
@@ -261,8 +267,8 @@ class statetrack_plugin_impl
 
 FC_REFLECT_ENUM(eosio::op_type_enum, (TABLE_REMOVE)(ROW_CREATE)(ROW_MODIFY)(ROW_REMOVE)(TRX_ACTION)(REV_UNDO)(REV_COMMIT))
 FC_REFLECT(eosio::db_account, (name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date))
-FC_REFLECT(eosio::db_op, (oid)(id)(op_type)(code)(scope)(table)(payer)(actionid)(value))
+FC_REFLECT(eosio::db_op, (oid)(id)(op_type)(code)(scope)(table)(payer)(block_num)(actionid)(value))
 FC_REFLECT(eosio::db_rev, (op_type)(revision))
 FC_REFLECT(eosio::db_action, (trx_id)(trace)(ops))
 FC_REFLECT(eosio::db_transaction, (trx_id)(actions))
-
+FC_REFLECT(eosio::db_undo_block, (block_num)(ops))

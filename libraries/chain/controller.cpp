@@ -145,10 +145,11 @@ struct controller_impl {
    map<digest_type, transaction_metadata_ptr>     unapplied_transactions;
 
    void pop_block() {
+      auto head_block_num = head->block_num;
       auto prev = fork_db.get_block( head->header.previous );
       EOS_ASSERT( prev, block_validate_exception, "attempt to pop beyond last irreversible block" );
 
-      if( const auto* b = reversible_blocks.find<reversible_block_object,by_num>(head->block_num) )
+      if( const auto* b = reversible_blocks.find<reversible_block_object,by_num>(head_block_num) )
       {
          reversible_blocks.remove( *b );
       }
@@ -158,9 +159,13 @@ struct controller_impl {
          for( const auto& t : head->trxs )
             unapplied_transactions[t->signed_id] = t;
       }
+
+      emit( self.pre_undo_block, head_block_num );
+
       head = prev;
       db.undo();
 
+      emit( self.post_undo_block, head_block_num );
    }
 
 
@@ -383,7 +388,13 @@ struct controller_impl {
                ("db",db.revision())("head",head->block_num) );
       }
       while( db.revision() > head->block_num ) {
+         auto rev_block_num = db.revision();
+
+         emit( self.pre_undo_block, rev_block_num );
+
          db.undo();
+
+         emit( self.post_undo_block, rev_block_num );
       }
 
       ilog( "database initialized with hash: ${hash}", ("hash", calculate_integrity_hash()));

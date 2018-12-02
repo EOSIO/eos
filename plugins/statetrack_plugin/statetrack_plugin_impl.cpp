@@ -123,7 +123,13 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const account_object
 
   op.oid = co.id._id;
   op.op_type = op_type;
-  op.actionid = current_action_index;
+  
+  if(is_undo_state) {
+    op.block_num = current_undo_block_num;
+  }
+  else {
+    op.actionid = current_action_index;
+  }
 
   op.code = system;
   op.scope = system.to_string();
@@ -151,8 +157,14 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const permission_obj
 
   op.oid = po.id._id;
   op.op_type = op_type;
-  op.actionid = current_action_index;
-
+  
+  if(is_undo_state) {
+    op.block_num = current_undo_block_num;
+  }
+  else {
+    op.actionid = current_action_index;
+  }
+  
   op.code = system;
   op.scope = system.to_string();
   op.table = N(permissions);
@@ -169,8 +181,14 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const permission_lin
 
   op.oid = plo.id._id;
   op.op_type = op_type;
-  op.actionid = current_action_index;
-
+  
+  if(is_undo_state) {
+    op.block_num = current_undo_block_num;
+  }
+  else {
+    op.actionid = current_action_index;
+  }
+  
   op.code = system;
   op.scope = system.to_string();
   op.table = N(permission_links);
@@ -186,7 +204,13 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const table_id_objec
   op.oid = kvo.id._id;
   op.id = kvo.primary_key;
   op.op_type = op_type;
-  op.actionid = current_action_index;
+
+  if(is_undo_state) {
+    op.block_num = current_undo_block_num;
+  }
+  else {
+    op.actionid = current_action_index;
+  }
 
   op.code = tio.code;
   op.scope = scope_sym_to_string(tio.scope);
@@ -222,8 +246,14 @@ void statetrack_plugin_impl::on_applied_table(const database &db, const table_id
 
     op.oid = tio.id._id;
     op.op_type = op_type;
-    op.actionid = current_action_index;
 
+    if(is_undo_state) {
+      op.block_num = current_undo_block_num;
+    }
+    else {
+      op.actionid = current_action_index;
+    }
+    
     op.code = tio.code;
     op.scope = scope_sym_to_string(tio.scope);
     op.table = tio.table;
@@ -250,28 +280,6 @@ void statetrack_plugin_impl::on_applied_op(const database &db, const account_obj
   if (filter(code, scope, table))
   {
     auto op = get_db_op(db, co, op_type);
-
-    //TODO op optimizations
-    // switch(op_type) {
-    //   case op_type_enum::ROW_REMOVE:
-    //     if(co_newids.get<IndexByOId>.count(co.id._id)) {
-    //       co_newids.get<IndexByOId>.erase(co.id._id);
-    //       return;
-    //     }
-    //     else if(co_old_values.get<IndexByOId>.count(co.id._id)) {
-    //       co_old_values.get<IndexByOId>.erase(co.id._id);
-    //     }
-    //     break;
-    //   case op_type_enum::ROW_MODIFY:
-    //     if(co_newids.get<IndexByOId>.count(co.id._id)) {
-    //       op.op_type = op_type_enum::ROW_CREATE;
-    //       co_newids.get<IndexByOId>.erase(co.id._id);
-    //     } 
-    //     else if(co_old_values.get<IndexByOId>.count(co.id._id)) {
-    //       co_old_values.get<IndexByOId>.erase(co.id._id);
-    //     }
-    //     break;
-    // }
 
     current_action.ops.emplace_back(op);
 
@@ -445,6 +453,29 @@ void statetrack_plugin_impl::on_applied_action(action_trace& trace)
   current_action.ops.clear();
 
   //ilog("on_applied_action: ${da}", ("da", *current_action));
+}
+
+void statetrack_plugin_impl::on_pre_undo_block(block_num_type block_num)
+{
+  is_undo_state = true;
+  current_undo_block_num = block_num;
+
+  auto block_ops_range = reversible_ops.get<IndexByBlockNum>().equal_range(current_undo_block_num);
+  reversible_ops.get<IndexByBlockNum>().erase(block_ops_range.first, block_ops_range.second);
+}
+
+void statetrack_plugin_impl::on_post_undo_block(block_num_type block_num)
+{
+  is_undo_state = false;
+
+  auto block_ops_range = reversible_ops.get<IndexByBlockNum>().equal_range(current_undo_block_num);
+  for (auto& op : boost::make_iterator_range(block_ops_range)) {
+    current_undo_block.ops.emplace_back(op);
+  }
+
+  ilog("on_post_undo_block: ${block}", ("block", current_undo_block));
+
+  current_undo_block.ops.clear();
 }
 
 } // namespace eosio

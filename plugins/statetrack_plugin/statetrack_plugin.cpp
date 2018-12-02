@@ -128,6 +128,16 @@ void statetrack_plugin::plugin_initialize(const variables_map &options)
             fc::optional<connection>(chain.applied_action.connect([&](action_trace& trace){
                 my->on_applied_action(trace);
             })));
+
+        my->connections.emplace_back(
+            fc::optional<connection>(chain.pre_undo_block.connect([&](block_num_type block_num){
+                my->on_pre_undo_block(block_num);
+            })));
+
+        my->connections.emplace_back(
+            fc::optional<connection>(chain.post_undo_block.connect([&](block_num_type block_num){
+                my->on_post_undo_block(block_num);
+            })));
     }
     FC_LOG_AND_RETHROW()
 }
