@@ -13,7 +13,6 @@ namespace cyberway { namespace chaindb {
     namespace {
         constexpr size_t NUMBER_128_BITS        = sizeof(__int128) * CHAR_BIT;
         constexpr size_t NUMBER_128_BLOB_SIZE   = sizeof(__int128) + 1;
-        constexpr size_t INT128_MAX_DIGITS_SIZE = std::numeric_limits<__int128>::digits10 + 1;
     }
 
     const std::string mongo_big_int_converter::BINARY_FIELD = "binary";

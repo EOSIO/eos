@@ -4,9 +4,19 @@
 #include <vector>
 
 #include <bsoncxx/config/prelude.hpp>
-#include <bsoncxx/document/view.hpp>
 
-#include <fc/variant.hpp>
+namespace bsoncxx {
+BSONCXX_INLINE_NAMESPACE_BEGIN
+    namespace document {
+        class view;
+    } // namespace document
+BSONCXX_INLINE_NAMESPACE_END
+} // namespace bsoncxx
+
+namespace fc {
+    class variant;
+    class variant_object;
+} // namespace fc
 
 namespace cyberway { namespace chaindb {
 
@@ -48,5 +58,4 @@ namespace cyberway { namespace chaindb {
         raw_value value_;
     };
 
-
-}} // namespace cyberway::chaindb
+} } // namespace cyberway::chaindb

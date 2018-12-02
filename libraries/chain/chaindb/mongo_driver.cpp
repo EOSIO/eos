@@ -28,37 +28,12 @@ namespace cyberway { namespace chaindb {
     using eosio::chain::symbol;
 
     using fc::optional;
-    using fc::blob;
-    using fc::variants;
-    using fc::__uint128;
-
     using fc::variant_object;
-    using fc::mutable_variant_object;
 
     using bsoncxx::builder::basic::make_document;
     using bsoncxx::builder::basic::document;
     using bsoncxx::builder::basic::sub_document;
-    using bsoncxx::builder::basic::sub_array;
     using bsoncxx::builder::basic::kvp;
-
-    using bsoncxx::document::element;
-    using document_view = bsoncxx::document::view;
-    using array_view = bsoncxx::array::view;
-
-    using bsoncxx::types::b_null;
-    using bsoncxx::types::b_oid;
-    using bsoncxx::types::b_bool;
-    using bsoncxx::types::b_double;
-    using bsoncxx::types::b_int64;
-    using bsoncxx::types::b_decimal128;
-    using bsoncxx::types::b_binary;
-    using bsoncxx::types::b_array;
-    using bsoncxx::types::b_document;
-
-    using bsoncxx::decimal128;
-    using bsoncxx::type;
-    using bsoncxx::binary_sub_type;
-    using bsoncxx::oid;
 
     using mongocxx::bulk_write;
     using mongocxx::model::insert_one;
@@ -68,6 +43,8 @@ namespace cyberway { namespace chaindb {
     using mongocxx::collection;
     using mongocxx::query_exception;
     namespace options = mongocxx::options;
+
+    using document_view = bsoncxx::document::view;
 
     enum class direction: int {
         Forward = 1,
@@ -102,232 +79,6 @@ namespace cyberway { namespace chaindb {
                 default:
                     return mongo_code::Unknown;
             }
-        }
-
-        variant build_variant(const document_view&);
-
-        variants build_variant(const array_view& src) {
-            variants dst;
-            for (auto& item: src) {
-                switch (item.type()) {
-                    case type::k_null:
-                        dst.emplace_back(variant());
-                        break;
-                    case type::k_int32:
-                        dst.emplace_back(item.get_int32().value);
-                        break;
-                    case type::k_int64:
-                        dst.emplace_back(item.get_int64().value);
-                        break;
-                    case type::k_decimal128:
-                        dst.emplace_back(from_decimal128(item.get_decimal128()));
-                        break;
-                    case type::k_double:
-                        dst.emplace_back(item.get_double().value);
-                        break;
-                    case type::k_utf8:
-                        dst.emplace_back(item.get_utf8().value.to_string());
-                        break;
-                    case type::k_date:
-                        dst.emplace_back(from_date(item.get_date()));
-                        break;
-                    case type::k_timestamp:
-                        dst.emplace_back(from_timestamp(item.get_timestamp()));
-                        break;
-                    case type::k_document:
-                        dst.emplace_back(build_variant(item.get_document().value));
-                        break;
-                    case type::k_array:
-                        dst.emplace_back(build_variant(item.get_array().value));
-                        break;
-                    case type::k_binary:
-                        dst.emplace_back(blob{build_blob_content(item.get_binary())});
-                        break;
-                    case type::k_bool:
-                        dst.emplace_back(item.get_bool().value);
-                        break;
-
-                        // SKIP
-                    case type::k_code:
-                    case type::k_codewscope:
-                    case type::k_symbol:
-                    case type::k_dbpointer:
-                    case type::k_regex:
-                    case type::k_oid:
-                    case type::k_maxkey:
-                    case type::k_minkey:
-                    case type::k_undefined:
-                        break;
-                }
-            }
-            return dst;
-        }
-
-        void build_variant(mutable_variant_object& dst, string key, const element& src) {
-            switch (src.type()) {
-                case type::k_null:
-                    dst.set(std::move(key), variant());
-                    break;
-                case type::k_int32:
-                    dst.set(std::move(key), src.get_int32().value);
-                    break;
-                case type::k_int64:
-                    dst.set(std::move(key), src.get_int64().value);
-                    break;
-                case type::k_decimal128:
-                    dst.set(std::move(key), from_decimal128(src.get_decimal128()));
-                    break;
-                case type::k_double:
-                    dst.set(std::move(key), src.get_double().value);
-                    break;
-                case type::k_utf8:
-                    dst.set(std::move(key), src.get_utf8().value.to_string());
-                    break;
-                case type::k_date:
-                    dst.set(std::move(key), from_date(src.get_date()));
-                    break;
-                case type::k_timestamp:
-                    dst.set(std::move(key), from_timestamp(src.get_timestamp()));
-                    break;
-                case type::k_document:
-                    dst.set(std::move(key), build_variant(src.get_document().value));
-                    break;
-                case type::k_array:
-                    dst.set(std::move(key), build_variant(src.get_array().value));
-                    break;
-                case type::k_binary:
-                    dst.set(std::move(key), blob{build_blob_content(src.get_binary())});
-                    break;
-                case type::k_bool:
-                    dst.set(std::move(key), src.get_bool().value);
-                    break;
-
-                    // SKIP
-                case type::k_code:
-                case type::k_codewscope:
-                case type::k_symbol:
-                case type::k_dbpointer:
-                case type::k_regex:
-                case type::k_oid:
-                case type::k_maxkey:
-                case type::k_minkey:
-                case type::k_undefined:
-                    break;
-            }
-        }
-
-        variant build_variant(const document_view& src) {
-            const mongo_big_int_converter converter(src);
-            if (converter.is_valid_value()) {
-                return converter.get_raw_value();
-            }
-
-            mutable_variant_object dst;
-            for (auto& item: src) {
-                build_variant(dst, item.key().to_string(), item);
-            }
-            return variant(std::move(dst));
-        }
-
-        sub_document& build_document(sub_document&, const variant_object&);
-
-        b_binary build_binary(const blob& src) {
-            auto size = uint32_t(src.data.size());
-            auto data = reinterpret_cast<const uint8_t*>(src.data.data());
-            return b_binary{binary_sub_type::k_binary, size, data};
-        }
-
-        sub_array& build_document(sub_array& dst, const variants& src) {
-            for (auto& item: src) {
-                switch (item.get_type()) {
-                    case variant::type_id::null_type:
-                        dst.append(b_null());
-                        break;
-                    case variant::type_id::int64_type:
-                        dst.append(b_int64{item.as_int64()});
-                        break;
-                    case variant::type_id::uint64_type:
-                        dst.append(to_decimal128(item.as_uint64()));
-                        break;
-                    case variant::type_id::int128_type:
-                        dst.append([&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(item.as_int128()).as_object_encoded()); });
-                        break;
-                    case variant::type_id::uint128_type:
-                        dst.append([&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(item.as_uint128()).as_object_encoded()); });
-                        break;
-                    case variant::type_id::double_type:
-                        dst.append(b_double{item.as_double()});
-                        break;
-                    case variant::type_id::bool_type:
-                        dst.append(b_bool{item.as_bool()});
-                        break;
-                    case variant::type_id::string_type:
-                        dst.append(item.as_string());
-                        break;
-                    case variant::type_id::time_type:
-                        dst.append(to_date(item.as_time_point()));
-                        break;
-                    case variant::type_id::array_type:
-                        dst.append([&](sub_array array){ build_document(array, item.get_array()); });
-                        break;
-                    case variant::type_id::object_type:
-                        dst.append([&](sub_document sub_doc){ build_document(sub_doc, item.get_object()); });
-                        break;
-                    case variant::type_id::blob_type:
-                        dst.append(build_binary(item.as_blob()));
-                        break;
-                }
-            }
-            return dst;
-        }
-
-        sub_document& build_document(sub_document& dst, const string& key, const variant& src) {
-            switch (src.get_type()) {
-                case variant::type_id::null_type:
-                    dst.append(kvp(key, b_null()));
-                    break;
-                case variant::type_id::int64_type:
-                    dst.append(kvp(key, b_int64{src.as_int64()}));
-                    break;
-                case variant::type_id::uint64_type:
-                     dst.append(kvp(key, to_decimal128(src.as_uint64())));
-                    break;
-                 case variant::type_id::int128_type:
-                    dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(src.as_int128()).as_object_encoded());} ));
-                    break;
-                 case variant::type_id::uint128_type:
-                    dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(src.as_uint128()).as_object_encoded());} ));
-                    break;
-                case variant::type_id::double_type:
-                    dst.append(kvp(key, b_double{src.as_double()}));
-                    break;
-                case variant::type_id::bool_type:
-                    dst.append(kvp(key, b_bool{src.as_bool()}));
-                    break;
-                case variant::type_id::string_type:
-                    dst.append(kvp(key, src.as_string()));
-                    break;
-                case variant::type_id::time_type:
-                    dst.append(kvp(key, to_date(src.as_time_point())));
-                    break;
-                case variant::type_id::array_type:
-                    dst.append(kvp(key, [&](sub_array array){ build_document(array, src.get_array()); }));
-                    break;
-                case variant::type_id::object_type:
-                    dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, src.get_object()); }));
-                    break;
-                case variant::type_id::blob_type:
-                    dst.append(kvp(key, build_binary(src.as_blob())));
-                    break;
-            }
-            return dst;
-        }
-
-        sub_document& build_document(sub_document& dst, const variant_object& src) {
-            for (auto& item: src) {
-                build_document(dst, item.key(), item.value());
-            }
-            return dst;
         }
 
         const cmp_info& start_from() {
@@ -391,7 +142,7 @@ namespace cyberway { namespace chaindb {
                         case 'i': // int64
                             return static_cast<primary_key_t>(itr->get_int64().value);
                         case 'u': { // uint64
-                            const std::string as_string = itr->get_decimal128().value.to_string();
+                            auto as_string = itr->get_decimal128().value.to_string();
                             return static_cast<primary_key_t>(std::stoull(as_string));
                         }
                         case 'n': // name
@@ -556,7 +307,7 @@ namespace cyberway { namespace chaindb {
             if (is_end() || !object_.is_null()) return object_;
 
             auto& view = *source_->begin();
-            object_ = _detail::build_variant(view);
+            object_ = build_variant(view);
             pk = _detail::get_pk_value(index, view);
 
             return object_;
@@ -604,7 +355,7 @@ namespace cyberway { namespace chaindb {
             for (auto& o: orders) {
                 auto cmp = _detail::is_asc_order(o.order) ? forward : backward;
                 auto value = _detail::get_order_value(find_object, index, o);
-                find.append(kvp(o.field, [&](sub_document doc){_detail::build_document(doc, cmp, value);}));
+                find.append(kvp(o.field, [&](sub_document doc){build_document(doc, cmp, value);}));
             }
 
             return find;
@@ -708,28 +459,6 @@ namespace cyberway { namespace chaindb {
     using cursor_map = std::map<cursor_t, mongodb_cursor_info>;
     using code_cursor_map = std::map<account_name /* code */, cursor_map>;
 
-    enum class value_state {
-        Unknown,
-        Insert,
-        Update,
-        Delete
-    }; // enum class value_state
-
-    struct changed_value_info {
-        value_state state = value_state::Unknown;
-        variant value;
-    }; // struct value_info
-
-    struct table_changed_object final: public table_object::object {
-        using table_object::object::object;
-
-        using map_type = std::map<primary_key_t, changed_value_info>;
-
-        map_type map;
-    }; // struct table_changed_object
-
-    using table_changed_object_index = table_object::index<table_changed_object>;
-
     struct cursor_location {
         mongodb_cursor_info& cursor_;
         code_cursor_map::iterator code_itr_;
@@ -738,10 +467,49 @@ namespace cyberway { namespace chaindb {
         cursor_map& cursor_map_;
     }; // struct cursor_location
 
+    enum class changed_value_state {
+        Unknown,
+        Insert,
+        Update,
+        Delete
+    }; // enum class value_state
+
+    struct changed_value_info {
+        changed_value_state state = changed_value_state::Unknown;
+        variant value;
+    }; // struct value_info
+
+    using changed_value_map = std::map<primary_key_t, changed_value_info>;
+
+    struct table_changed_object final: public table_object::object {
+        using table_object::object::object;
+        changed_value_map map;
+    }; // struct table_changed_object
+
+    using table_changed_object_index = table_object::index<table_changed_object>;
+
+    struct changed_value_location {
+        table_changed_object_index::iterator table_itr_;
+        changed_value_map::iterator value_itr_;
+
+        table_changed_object& table() {
+            // not critical, because key parts are const
+            return const_cast<table_changed_object&>(*table_itr_);
+        }
+
+        primary_key_t pk() {
+            return value_itr_->first;
+        }
+
+        changed_value_info& info() {
+            return value_itr_->second;
+        }
+    }; // struct changed_value_location
+
     struct mongodb_driver::mongodb_impl_ {
         mongocxx::client mongo_conn_;
         code_cursor_map code_cursor_map_;
-        table_changed_object_index changed_value_map_;
+        table_changed_object_index table_changed_value_map_;
 
         mongodb_impl_(const std::string& p) {
             init_instance();
@@ -763,37 +531,29 @@ namespace cyberway { namespace chaindb {
             return mongo_conn_[get_code_name(table)][get_table_name(table)];
         }
 
-        changed_value_info& get_changed_value_info(const table_info& table, const primary_key_t pk) {
-            auto table_itr = table_object::find(changed_value_map_, table);
-            if (changed_value_map_.end() == table_itr) {
-                table_itr = changed_value_map_.emplace(table).first;
-            }
+        void remove_changed_value_info(const table_info& table, const primary_key_t pk) {
+            auto table_itr = table_object::find(table_changed_value_map_, table);
+            if (table_changed_value_map_.end() == table_itr) return;
 
-            // not critical, because map isn't part of key
-            auto& map = const_cast<table_changed_object&>(*table_itr).map;
-            auto value_itr = map.find(pk);
-            if (map.end() == value_itr) {
-                value_itr = map.emplace(pk, changed_value_info()).first;
-            }
-            return value_itr->second;
+            const_cast<table_changed_object&>(*table_itr).map.erase(pk);
         }
 
         void apply_table_changes(const table_info& table) {
-            auto begin_itr = changed_value_map_.lower_bound(std::make_tuple(table.code, table.table->name));
-            auto end_itr = changed_value_map_.upper_bound(std::make_tuple(table.code, table.table->name));
+            auto begin_itr = table_changed_value_map_.lower_bound(std::make_tuple(table.code, table.table->name));
+            auto end_itr = table_changed_value_map_.upper_bound(std::make_tuple(table.code, table.table->name));
 
             apply_range_changes(begin_itr, end_itr);
         }
 
         void apply_code_changes(const account_name& code) {
-            auto begin_itr = changed_value_map_.lower_bound(std::make_tuple(code));
-            auto end_itr = changed_value_map_.upper_bound(std::make_tuple(code));
+            auto begin_itr = table_changed_value_map_.lower_bound(std::make_tuple(code));
+            auto end_itr = table_changed_value_map_.upper_bound(std::make_tuple(code));
 
             apply_range_changes(begin_itr, end_itr);
         }
 
         void apply_all_changes() {
-            apply_range_changes(changed_value_map_.begin(), changed_value_map_.end());
+            apply_range_changes(table_changed_value_map_.begin(), table_changed_value_map_.end());
         }
 
         cursor_t get_next_cursor_id(code_cursor_map::iterator itr) {
@@ -849,8 +609,9 @@ namespace cyberway { namespace chaindb {
                 doc.append(kvp(get_scope_field_name(), 1));
                 for (auto& o: index.orders) {
                     auto field = o.field;
-                    if (o.type == "i128" || o.type == "ui128") {
-                        field += "." + mongo_big_int_converter::BINARY_FIELD;
+                    // ui128 || i128
+                    if (o.type.back() == '8' && (o.type.front() == 'i' || o.type.front() == 'u')) {
+                        field.append(".").append(mongo_big_int_converter::BINARY_FIELD);
                     }
                     if (_detail::is_asc_order(o.order)) {
                         doc.append(kvp(field, 1));
@@ -888,7 +649,7 @@ namespace cyberway { namespace chaindb {
             CYBERWAY_ASSERT(code_cursor_map_.empty(), driver_opened_cursors_exception, "ChainDB has opened cursors");
 
             code_cursor_map_.clear(); // close all opened cursors
-            changed_value_map_.clear(); // cancel all pending changes
+            table_changed_value_map_.clear(); // cancel all pending changes
 
             auto db_list = mongo_conn_.list_databases();
             for (auto& db: db_list) {
@@ -899,10 +660,81 @@ namespace cyberway { namespace chaindb {
             }
         }
 
+        void insert(const table_info& table, const primary_key_t pk, variant value) {
+            auto loc = get_changed_value(table, pk);
+            auto& info = loc.info();
+
+            switch (info.state) {
+                case changed_value_state::Unknown:
+                case changed_value_state::Delete: {
+                    info.state = changed_value_state::Insert;
+                    info.value = std::move(value);
+                    break;
+                }
+
+                case changed_value_state::Insert:
+                case changed_value_state::Update:
+                    CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on insert");
+            }
+        }
+
+        void update(const table_info& table, const primary_key_t pk, variant value) {
+            auto loc = get_changed_value(table, pk);
+            auto& info = loc.info();
+
+            switch (info.state) {
+                case changed_value_state::Unknown:
+                    info.state = changed_value_state::Update;
+
+                case changed_value_state::Insert:
+                case changed_value_state::Update:
+                    info.value = std::move(value);
+                    break;
+
+                case changed_value_state::Delete:
+                    CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on update");
+            }
+        }
+
+        void remove(const table_info& table, const primary_key_t pk) {
+            auto loc = get_changed_value(table, pk);
+            auto& info = loc.info();
+
+            switch (info.state) {
+                case changed_value_state::Update:
+                    info.value = {};
+
+                case changed_value_state::Unknown:
+                    info.state = changed_value_state::Delete;
+                    break;
+
+                case changed_value_state::Insert:
+                    loc.table().map.erase(loc.value_itr_);
+                    break;
+
+                case changed_value_state::Delete:
+                    CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on delete");
+            }
+        }
+
     private:
         static mongocxx::instance& init_instance() {
             static mongocxx::instance instance;
             return instance;
+        }
+
+        changed_value_location get_changed_value(const table_info& table, const primary_key_t pk) {
+            auto table_itr = table_object::find(table_changed_value_map_, table);
+            if (table_changed_value_map_.end() == table_itr) {
+                table_itr = table_changed_value_map_.emplace(table).first;
+            }
+
+            auto& map = const_cast<table_changed_object&>(*table_itr).map;
+            auto value_itr = map.find(pk);
+            if (map.end() == value_itr) {
+                value_itr = map.emplace(pk, changed_value_info()).first;
+            }
+            return {table_itr, value_itr};
         }
 
         cursor_location get_cursor(const cursor_request& request) {
@@ -954,21 +786,21 @@ namespace cyberway { namespace chaindb {
                 auto& bulk = *bulk_ptr.get();
                 auto& table = itr->info();
                 switch (info.state) {
-                    case value_state::Delete:
+                    case changed_value_state::Delete:
                         bulk.append(delete_one(_detail::make_pk_document(table, pk).view()));
                         break;
 
-                    case value_state::Insert: {
+                    case changed_value_state::Insert: {
                         document insert;
-                        _detail::build_document(insert, info.value.get_object());
+                        build_document(insert, info.value.get_object());
 
                         bulk.append(insert_one(insert.view()));
                         break;
                     }
 
-                    case value_state::Update: {
+                    case changed_value_state::Update: {
                         document update;
-                        _detail::build_document(update, info.value.get_object());
+                        build_document(update, info.value.get_object());
 
                         bulk.append(update_one(
                             _detail::make_pk_document(table, pk).view(),
@@ -976,13 +808,12 @@ namespace cyberway { namespace chaindb {
                         break;
                     }
 
-                    case value_state::Unknown:
-                    default:
-                        assert(false);
+                    case changed_value_state::Unknown:
+                        CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on apply change to ChainDB");
                 }
             };
 
-            for (; end != itr; changed_value_map_.erase(itr++)) {
+            for (; end != itr; table_changed_value_map_.erase(itr++)) {
                 auto map = std::move(itr->map);
                 if (map.empty()) continue;
 
@@ -1097,7 +928,7 @@ namespace cyberway { namespace chaindb {
             "External database doesn't contain object with the primary key ${pk} in the table ${table}",
             ("pk", pk)("table", get_full_table_name(table)));
 
-        return _detail::build_variant(*itr);
+        return build_variant(*itr);
     }
 
     const variant& mongodb_driver::value(const cursor_info& info) {
@@ -1128,36 +959,17 @@ namespace cyberway { namespace chaindb {
     }
 
     primary_key_t mongodb_driver::insert(const table_info& table, const primary_key_t pk, variant value) {
-        auto& value_info = impl_->get_changed_value_info(table, pk);
-
-        CYBERWAY_ASSERT(value_info.state != value_state::Update && value_info.state != value_state::Insert,
-            driver_write_exception, "Wrong state on insert");
-
-        value_info.state = value_state::Insert;
-        value_info.value = std::move(value);
-
+        impl_->insert(table, pk, std::move(value));
         return pk;
     }
 
     primary_key_t mongodb_driver::update(const table_info& table, const primary_key_t pk, variant value) {
-        auto& value_info = impl_->get_changed_value_info(table, pk);
-
-        CYBERWAY_ASSERT(value_info.state != value_state::Delete, driver_write_exception, "Wrong state on update");
-
-        value_info.state = value_state::Update;
-        value_info.value = std::move(value);
-
+        impl_->update(table, pk, std::move(value));
         return pk;
     }
 
     primary_key_t mongodb_driver::remove(const table_info& table, primary_key_t pk) {
-        auto& value_info = impl_->get_changed_value_info(table, pk);
-
-        CYBERWAY_ASSERT(value_info.state != value_state::Delete, driver_write_exception, "Wrong state on delete");
-
-        value_info.state = value_state::Delete;
-        value_info.value.clear();
-
+        impl_->remove(table, pk);
         return pk;
     }
 
