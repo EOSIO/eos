@@ -222,7 +222,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
 
    cmd->add_option("--delay-sec", delaysec, localized("set the delay_sec seconds, defaults to 0s"));
 
-   cmd->add_option("-b,--bandwidth-provider", bandwidth_provider, localized("set an account which provide own bandwidth for transaction"));
+   cmd->add_option("--bandwidth-provider", bandwidth_provider, localized("set an account which provide own bandwidth for transaction"));
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
