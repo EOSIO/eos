@@ -33,8 +33,8 @@ namespace eosio { namespace chain {
    struct transaction_receipt : public transaction_receipt_header {
 
       transaction_receipt():transaction_receipt_header(){}
-      explicit transaction_receipt( transaction_id_type tid ):transaction_receipt_header(executed),trx(tid){}
-      explicit transaction_receipt( packed_transaction ptrx ):transaction_receipt_header(executed),trx(ptrx){}
+      explicit transaction_receipt( const transaction_id_type& tid ):transaction_receipt_header(executed),trx(tid){}
+      explicit transaction_receipt( const packed_transaction& ptrx ):transaction_receipt_header(executed),trx(ptrx){}
 
       fc::static_variant<transaction_id_type, packed_transaction> trx;
 
