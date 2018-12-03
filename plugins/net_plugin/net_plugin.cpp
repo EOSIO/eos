@@ -223,7 +223,8 @@ namespace eosio {
       void handle_message(const connection_ptr& c, const sync_request_message& msg);
       void handle_message(const connection_ptr& c, const signed_block& msg) = delete; // signed_block_ptr overload used instead
       void handle_message(const connection_ptr& c, const signed_block_ptr& msg);
-      void handle_message(const connection_ptr& c, const packed_transaction& msg);
+      void handle_message(const connection_ptr& c, const packed_transaction& msg) = delete; // packed_transaction_ptr overload used instead
+      void handle_message(const connection_ptr& c, const packed_transaction_ptr& msg);
 
       void start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection);
       void start_txn_timer();
@@ -596,13 +597,23 @@ namespace eosio {
       msg_handler( net_plugin_impl &imp, const connection_ptr& conn) : impl(imp), c(conn) {}
 
       void operator()( const signed_block& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "visit(signed_block&&) should be called" );
+         EOS_ASSERT( false, plugin_config_exception, "operator()(signed_block&&) should be called" );
       }
       void operator()( signed_block& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "visit(signed_block&&) should be called" );
+         EOS_ASSERT( false, plugin_config_exception, "operator()(signed_block&&) should be called" );
       }
+      void operator()( const packed_transaction& msg ) const {
+         EOS_ASSERT( false, plugin_config_exception, "operator()(packed_transaction&&) should be called" );
+      }
+      void operator()( packed_transaction& msg ) const {
+         EOS_ASSERT( false, plugin_config_exception, "operator()(packed_transaction&&) should be called" );
+      }
+
       void operator()( signed_block&& msg ) const {
          impl.handle_message( c, std::make_shared<signed_block>( std::forward<signed_block>( msg )));
+      }
+      void operator()( packed_transaction&& msg ) const {
+         impl.handle_message( c, std::make_shared<packed_transaction>( std::forward<packed_transaction>( msg )));
       }
 
       template <typename T>
@@ -655,7 +666,7 @@ namespace eosio {
       std::multimap<block_id_type, connection_ptr, sha256_less> received_blocks;
       std::multimap<transaction_id_type, connection_ptr, sha256_less> received_transactions;
 
-      void bcast_transaction(const packed_transaction& msg);
+      void bcast_transaction(const packed_transaction_ptr& trx);
       void rejected_transaction(const transaction_id_type& msg);
       void bcast_block(const block_state_ptr& bs);
       void rejected_block(const block_id_type& id);
@@ -1199,6 +1210,8 @@ namespace eosio {
          msg_handler m(impl, shared_from_this() );
          if( msg.contains<signed_block>() ) {
             m( std::move( msg.get<signed_block>() ) );
+         } else if( msg.contains<packed_transaction>() ) {
+            m( std::move( msg.get<packed_transaction>() ) );
          } else {
             msg.visit( m );
          }
@@ -1641,9 +1654,9 @@ namespace eosio {
       received_blocks.erase(range.first, range.second);
    }
 
-   void dispatch_manager::bcast_transaction(const packed_transaction& trx) {
+   void dispatch_manager::bcast_transaction(const packed_transaction_ptr& trx) {
       std::set<connection_ptr> skips;
-      transaction_id_type id = trx.id();
+      transaction_id_type id = trx->id();
 
       auto range = received_transactions.equal_range(id);
       for (auto org = range.first; org != range.second; ++org) {
@@ -1656,9 +1669,9 @@ namespace eosio {
          return;
       }
 
-      time_point_sec trx_expiration = trx.expiration();
+      time_point_sec trx_expiration = trx->expiration();
 
-      net_message msg(trx);
+      net_message msg(*trx); // todo remove copy
       uint32_t packsiz = fc::raw::pack_size(msg);
       uint32_t bufsiz = packsiz + sizeof(packsiz);
       auto buff = std::make_shared<vector<char>>(bufsiz);
@@ -2386,7 +2399,7 @@ namespace eosio {
       }
    }
 
-   void net_plugin_impl::handle_message(const connection_ptr& c, const packed_transaction& msg) {
+   void net_plugin_impl::handle_message(const connection_ptr& c, const packed_transaction_ptr& trx) {
       fc_dlog(logger, "got a packed transaction, cancel wait");
       peer_ilog(c, "received packed_transaction");
       controller& cc = my_impl->chain_plug->chain();
@@ -2398,28 +2411,28 @@ namespace eosio {
          fc_dlog(logger, "got a txn during sync - dropping");
          return;
       }
-      transaction_id_type tid = msg.id();
+      transaction_id_type tid = trx->id();
       c->cancel_wait();
       if(local_txns.get<by_id>().find(tid) != local_txns.end()) {
          fc_dlog(logger, "got a duplicate transaction - dropping");
          return;
       }
       dispatcher->recv_transaction(c, tid);
-      chain_plug->accept_transaction(msg, [=](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+      chain_plug->accept_transaction(trx, [c, this, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          if (result.contains<fc::exception_ptr>()) {
             peer_dlog(c, "bad packed_transaction : ${m}", ("m",result.get<fc::exception_ptr>()->what()));
          } else {
             auto trace = result.get<transaction_trace_ptr>();
             if (!trace->except) {
                fc_dlog(logger, "chain accepted transaction");
-               dispatcher->bcast_transaction(msg);
+               this->dispatcher->bcast_transaction(trx);
                return;
             }
 
             peer_elog(c, "bad packed_transaction : ${m}", ("m",trace->except->what()));
          }
 
-         dispatcher->rejected_transaction(tid);
+         dispatcher->rejected_transaction(trx->id());
       });
    }
 
@@ -2627,7 +2640,7 @@ namespace eosio {
          dispatcher->rejected_transaction(id);
       } else {
          fc_ilog(logger,"signaled ACK, trx-id = ${id}",("id", id));
-         dispatcher->bcast_transaction(*results.second);
+         dispatcher->bcast_transaction(results.second);
       }
    }
 
@@ -2899,7 +2912,7 @@ namespace eosio {
 
          my->chain_plug = app().find_plugin<chain_plugin>();
          EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
-         my->chain_id = app().get_plugin<chain_plugin>().get_chain_id();
+         my->chain_id = my->chain_plug->get_chain_id();
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
          ilog( "my node_id is ${id}", ("id", my->node_id));
 

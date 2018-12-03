@@ -345,6 +345,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::deque<std::tuple<packed_transaction_ptr, bool, next_function<transaction_trace_ptr>>> _pending_incoming_transactions;
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
+         //todo remove chain_plugin lookup
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
          if (!chain.pending_block_state()) {
             _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
@@ -401,7 +402,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
 
          try {
-            auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(*trx), deadline);
+            auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(trx), deadline);
             if (trace->except) {
                if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
                   _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
@@ -1134,7 +1135,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                apply_trxs.reserve(unapplied_trxs.size());
 
                auto calculate_transaction_category = [&](const transaction_metadata_ptr& trx) {
-                  if (trx->packed_trx.expiration() < pbs->header.timestamp.to_time_point()) {
+                  if (trx->packed_trx->expiration() < pbs->header.timestamp.to_time_point()) {
                      return tx_category::EXPIRED;
                   } else if (persisted_by_id.find(trx->id) != persisted_by_id.end()) {
                      return tx_category::PERSISTED;

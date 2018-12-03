@@ -504,7 +504,7 @@ namespace eosio {
                 for (const auto &receipt: blk->transactions) {
                     if (receipt.trx.contains<packed_transaction>()) {
                         auto &pt = receipt.trx.get<packed_transaction>();
-                        auto mtrx = transaction_metadata(pt);
+                        auto mtrx = transaction_metadata(std::make_shared<packed_transaction>(pt));
                         if (mtrx.id == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
                             r("trx", chain.to_variant_with_abi(mtrx.trx, abi_serializer_max_time));
@@ -528,7 +528,7 @@ namespace eosio {
                for (const auto& receipt: blk->transactions) {
                   if (receipt.trx.contains<packed_transaction>()) {
                      auto& pt = receipt.trx.get<packed_transaction>();
-                     auto mtrx = transaction_metadata(pt);
+                     auto mtrx = transaction_metadata(std::make_shared<packed_transaction>(pt));
                      if( txn_id_matched(mtrx.id) ) {
                         result.id = mtrx.id;
                         result.last_irreversible_block = chain.last_irreversible_block_num();
