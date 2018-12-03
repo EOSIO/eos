@@ -102,6 +102,10 @@ namespace eosio { namespace chain {
       };
 
       packed_transaction() = default;
+      packed_transaction(packed_transaction&&) = default;
+      explicit packed_transaction(const packed_transaction&) = default;
+      packed_transaction& operator=(const packed_transaction&) = delete;
+      packed_transaction& operator=(packed_transaction&&) = default;
 
       explicit packed_transaction(const transaction& t, compression_type _compression = none)
       {
@@ -117,7 +121,7 @@ namespace eosio { namespace chain {
       explicit packed_transaction(signed_transaction&& t, compression_type _compression = none)
       :signatures(std::move(t.signatures))
       {
-         set_transaction(t, std::move(t.context_free_data), _compression);
+         set_transaction(t, t.context_free_data, _compression);
       }
 
       uint32_t get_unprunable_size()const;
