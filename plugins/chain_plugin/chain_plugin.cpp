@@ -759,6 +759,10 @@ void chain_plugin::accept_transaction(const chain::packed_transaction& trx, next
    my->incoming_transaction_async_method(std::make_shared<packed_transaction>(trx), false, std::forward<decltype(next)>(next));
 }
 
+void chain_plugin::accept_transaction(const chain::packed_transaction_ptr& trx, next_function<chain::transaction_trace_ptr> next) {
+   my->incoming_transaction_async_method(trx, false, std::forward<decltype(next)>(next));
+}
+
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
    auto b = chain().fetch_block_by_number( block_header::num_from_id(block_id) );
    return b && b->id() == block_id;
