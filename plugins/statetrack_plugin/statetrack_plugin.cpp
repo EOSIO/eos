@@ -130,13 +130,13 @@ void statetrack_plugin::plugin_initialize(const variables_map &options)
             })));
 
         my->connections.emplace_back(
-            fc::optional<connection>(chain.pre_undo_block.connect([&](block_num_type block_num){
-                my->on_pre_undo_block(block_num);
+            fc::optional<connection>(chain.pre_undo_block.connect([&](const block_state_ptr& bsp){
+                my->on_pre_undo_block(bsp);
             })));
 
         my->connections.emplace_back(
-            fc::optional<connection>(chain.post_undo_block.connect([&](block_num_type block_num){
-                my->on_post_undo_block(block_num);
+            fc::optional<connection>(chain.post_undo_block.connect([&](const block_state_ptr& bsp){
+                my->on_post_undo_block(bsp);
             })));
     }
     FC_LOG_AND_RETHROW()

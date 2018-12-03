@@ -254,8 +254,8 @@ namespace eosio { namespace chain {
          signal<void(const int&)>                      bad_alloc;
 
          signal<void(action_trace&)>                   applied_action;
-         signal<void(block_num_type)>                  pre_undo_block;
-         signal<void(block_num_type)>                  post_undo_block;
+         signal<void(const block_state_ptr&)>          pre_undo_block;
+         signal<void(const block_state_ptr&)>          post_undo_block;
 
          /*
          signal<void()>                                  pre_apply_block;

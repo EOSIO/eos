@@ -39,10 +39,7 @@ enum op_type_enum
     TABLE_REMOVE = 0,
     ROW_CREATE = 1,
     ROW_MODIFY = 2,
-    ROW_REMOVE = 3,
-    TRX_ACTION = 4,
-    REV_UNDO = 5,
-    REV_COMMIT = 6
+    ROW_REMOVE = 3
 };
 
 struct db_account
@@ -55,12 +52,6 @@ struct db_account
     time_point last_code_update;
     digest_type code_version;
     block_timestamp_type creation_date;
-};
-
-struct db_rev
-{
-    op_type_enum op_type;
-    int64_t revision;
 };
 
 struct db_op
@@ -93,8 +84,13 @@ struct db_transaction {
     std::vector<db_action> actions;
 };
 
-struct db_undo_block {
+struct db_block {
     block_num_type      block_num;
+    block_id_type       block_id;
+    bool                irreversible;
+};
+
+struct db_undo_block : db_block {
     std::vector<db_op>  ops;
 };
 
@@ -164,8 +160,6 @@ class statetrack_plugin_impl
     db_op get_db_op(const database &db, const permission_link_object &plo, op_type_enum op_type);
     db_op get_db_op(const database &db, const table_id_object &tio, const key_value_object &kvo, op_type_enum op_type, bool json = true);
 
-    db_rev get_db_rev(const int64_t revision, op_type_enum op_type);
-
     //generic_index state tables
     void on_applied_table(const database &db, const table_id_object &tio, op_type_enum op_type);
     //generic_index op
@@ -173,7 +167,6 @@ class statetrack_plugin_impl
     void on_applied_op(const database &db, const permission_object &po, op_type_enum op_type);
     void on_applied_op(const database &db, const permission_link_object &plo, op_type_enum op_type);
     void on_applied_op(const database &db, const key_value_object &kvo, op_type_enum op_type);
-    void on_applied_rev(const int64_t revision, op_type_enum op_type);
     //generic_index undo
     void on_applied_undo(const int64_t revision);
     //blocks and transactions
@@ -181,8 +174,8 @@ class statetrack_plugin_impl
     void on_accepted_block(const block_state_ptr &bsp);
     void on_irreversible_block(const block_state_ptr &bsp);
     void on_applied_action(action_trace& trace);
-    void on_pre_undo_block(block_num_type block_num);
-    void on_post_undo_block(block_num_type block_num);
+    void on_pre_undo_block(const block_state_ptr& bsp);
+    void on_post_undo_block(const block_state_ptr& bsp);
 
     template<typename MultiIndexType> 
     void create_index_events(const database &db) {
@@ -265,10 +258,10 @@ class statetrack_plugin_impl
 
 } // namespace eosio
 
-FC_REFLECT_ENUM(eosio::op_type_enum, (TABLE_REMOVE)(ROW_CREATE)(ROW_MODIFY)(ROW_REMOVE)(TRX_ACTION)(REV_UNDO)(REV_COMMIT))
+FC_REFLECT_ENUM(eosio::op_type_enum, (TABLE_REMOVE)(ROW_CREATE)(ROW_MODIFY)(ROW_REMOVE))
 FC_REFLECT(eosio::db_account, (name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date))
 FC_REFLECT(eosio::db_op, (oid)(id)(op_type)(code)(scope)(table)(payer)(block_num)(actionid)(value))
-FC_REFLECT(eosio::db_rev, (op_type)(revision))
 FC_REFLECT(eosio::db_action, (trx_id)(trace)(ops))
 FC_REFLECT(eosio::db_transaction, (trx_id)(actions))
-FC_REFLECT(eosio::db_undo_block, (block_num)(ops))
+FC_REFLECT(eosio::db_block, (block_num)(block_id)(irreversible))
+FC_REFLECT_DERIVED(eosio::db_undo_block, (eosio::db_block), (ops))

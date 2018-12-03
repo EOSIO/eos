@@ -225,12 +225,6 @@ db_op statetrack_plugin_impl::get_db_op(const database &db, const table_id_objec
   return op;
 }
 
-db_rev statetrack_plugin_impl::get_db_rev(const int64_t revision, op_type_enum op_type)
-{
-  db_rev rev = {op_type, revision};
-  return rev;
-}
-
 void statetrack_plugin_impl::on_applied_table(const database &db, const table_id_object &tio, op_type_enum op_type)
 {
   if (sender_socket == nullptr)
@@ -257,8 +251,6 @@ void statetrack_plugin_impl::on_applied_table(const database &db, const table_id
     op.code = tio.code;
     op.scope = scope_sym_to_string(tio.scope);
     op.table = tio.table;
-
-    //TODO op optimizations
 
     current_action.ops.emplace_back(op);
 
@@ -302,8 +294,6 @@ void statetrack_plugin_impl::on_applied_op(const database &db, const permission_
   {
     auto op = get_db_op(db, po, op_type);
 
-    //TODO op optimizations
-
     current_action.ops.emplace_back(op);
 
     fc::string data = fc::json::to_string(op);
@@ -324,8 +314,6 @@ void statetrack_plugin_impl::on_applied_op(const database &db, const permission_
   if (filter(code, scope, table))
   {
     auto op = get_db_op(db, plo, op_type);
-
-    //TODO op optimizations
 
     current_action.ops.emplace_back(op);
 
@@ -354,8 +342,6 @@ void statetrack_plugin_impl::on_applied_op(const database &db, const key_value_o
   {
     auto op = get_db_op(db, *tio_ptr, kvo, op_type);
 
-    //TODO op optimizations
-
     current_action.ops.emplace_back(op);
 
     fc::string data = fc::json::to_string(op);
@@ -363,66 +349,58 @@ void statetrack_plugin_impl::on_applied_op(const database &db, const key_value_o
   }
 }
 
-void statetrack_plugin_impl::on_applied_rev(const int64_t revision, op_type_enum op_type)
-{
-  if (sender_socket == nullptr)
-    return;
-
-  fc::string data = fc::json::to_string(get_db_rev(revision, op_type));
-  ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type)("data", data));
-  //send_zmq_msg(data);
-}
-
 void statetrack_plugin_impl::on_applied_undo(const int64_t revision)
 {
-  if (sender_socket == nullptr)
-    return;
-
   is_undo_state = true;
-
-  fc::string data = fc::json::to_string(get_db_rev(revision, op_type_enum::REV_UNDO));
-  ilog("STATETRACK ${op_type}: ${data}", ("op_type", op_type_enum::REV_UNDO)("data", data));
-  //send_zmq_msg(data);
 }
 
 void statetrack_plugin_impl::on_applied_transaction(const transaction_trace_ptr &ttp)
 {
-  if (ttp->receipt) {
+  if (sender_socket == nullptr || !ttp->receipt)
+    return;
 
-    db_transaction trx;
+  db_transaction trx;
 
-    trx.trx_id = ttp->id;
+  trx.trx_id = ttp->id;
 
-    auto trx_action_range = reversible_actions.get<IndexByTrxId>().equal_range(trx.trx_id);
-    for (auto& action : boost::make_iterator_range(trx_action_range)) {
-      
-      trx.actions.emplace_back(action);
-      auto newact = trx.actions.back();
+  auto trx_action_range = reversible_actions.get<IndexByTrxId>().equal_range(trx.trx_id);
+  for (auto& action : boost::make_iterator_range(trx_action_range)) {
+    
+    trx.actions.emplace_back(action);
+    auto newact = trx.actions.back();
 
-      auto action_op_range = reversible_ops.get<IndexByActionId>().equal_range(action.actionid);
-      for (auto& op : boost::make_iterator_range(action_op_range)) {
-        newact.ops.emplace_back(op);
-      }
+    auto action_op_range = reversible_ops.get<IndexByActionId>().equal_range(action.actionid);
+    for (auto& op : boost::make_iterator_range(action_op_range)) {
+      newact.ops.emplace_back(op);
     }
-
-    //TODO send zmq transaction
-    //send_zmq_msg(data);
-
-    ilog("STATETRACK applied transaction: ${trx}", ("trx", trx));
   }
-  else {
-    auto trx_action_range = reversible_actions.get<IndexByTrxId>().equal_range(ttp->id);
-    for (auto& action : boost::make_iterator_range(trx_action_range)) {
-      auto action_op_range = reversible_ops.get<IndexByActionId>().equal_range(action.actionid);
-      reversible_ops.get<IndexByActionId>().erase(action_op_range.first, action_op_range.second);
-    }
-    reversible_actions.get<IndexByTrxId>().erase(trx_action_range.first, trx_action_range.second);
-  }
+
+  fc::string data = fc::json::to_string(trx);
+  ilog("STATETRACK applied transaction: ${trx}", ("trx", data));
+
+  send_zmq_msg(data);
 }
 
 void statetrack_plugin_impl::on_accepted_block(const block_state_ptr &bsp)
 {
+  if (sender_socket == nullptr)
+    return;
 
+  db_block block;
+  block.block_num = bsp->block_num;
+  block.block_id = bsp->id;
+
+  fc::string data = fc::json::to_string(block);
+  ilog("STATETRACK accepted block: ${data}", ("data", data));
+
+  send_zmq_msg(data);
+
+  auto block_action_range = reversible_actions.get<IndexByBlockNum>().equal_range(bsp->block_num);
+  for (auto& action : boost::make_iterator_range(block_action_range)) {
+    auto action_op_range = reversible_ops.get<IndexByActionId>().equal_range(action.actionid);
+    reversible_ops.get<IndexByActionId>().erase(action_op_range.first, action_op_range.second);
+  }
+  reversible_actions.get<IndexByBlockNum>().erase(block_action_range.first, block_action_range.second);
 }
 
 void statetrack_plugin_impl::on_irreversible_block(const block_state_ptr &bsp)
@@ -430,10 +408,15 @@ void statetrack_plugin_impl::on_irreversible_block(const block_state_ptr &bsp)
   if (sender_socket == nullptr)
     return;
 
-  fc::string data = fc::json::to_string(get_db_rev(bsp->block_num, op_type_enum::REV_COMMIT));
+  db_block block;
+  block.block_num = bsp->block_num;
+  block.block_id = bsp->id;
+  block.irreversible = true;
+
+  fc::string data = fc::json::to_string(block);
   ilog("STATETRACK irreversible block: ${data}", ("data", data));
 
-  //send_zmq_msg(data);
+  send_zmq_msg(data);
   
   auto block_action_range = reversible_actions.get<IndexByBlockNum>().equal_range(bsp->block_num);
   for (auto& action : boost::make_iterator_range(block_action_range)) {
@@ -455,17 +438,21 @@ void statetrack_plugin_impl::on_applied_action(action_trace& trace)
   //ilog("on_applied_action: ${da}", ("da", *current_action));
 }
 
-void statetrack_plugin_impl::on_pre_undo_block(block_num_type block_num)
+void statetrack_plugin_impl::on_pre_undo_block(const block_state_ptr& bsp)
 {
   is_undo_state = true;
-  current_undo_block_num = block_num;
+  current_undo_block.block_num = bsp->block_num;
+  current_undo_block.block_id = bsp->id;
 
   auto block_ops_range = reversible_ops.get<IndexByBlockNum>().equal_range(current_undo_block_num);
   reversible_ops.get<IndexByBlockNum>().erase(block_ops_range.first, block_ops_range.second);
 }
 
-void statetrack_plugin_impl::on_post_undo_block(block_num_type block_num)
+void statetrack_plugin_impl::on_post_undo_block(const block_state_ptr&)
 {
+  if (sender_socket == nullptr)
+    return;
+
   is_undo_state = false;
 
   auto block_ops_range = reversible_ops.get<IndexByBlockNum>().equal_range(current_undo_block_num);
@@ -473,7 +460,10 @@ void statetrack_plugin_impl::on_post_undo_block(block_num_type block_num)
     current_undo_block.ops.emplace_back(op);
   }
 
-  ilog("on_post_undo_block: ${block}", ("block", current_undo_block));
+  fc::string data = fc::json::to_string(current_undo_block);
+  ilog("STATETRACK on_post_undo_block: ${block}", ("block", data));
+
+  send_zmq_msg(data);
 
   current_undo_block.ops.clear();
 }
