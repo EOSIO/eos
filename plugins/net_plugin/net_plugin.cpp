@@ -1671,14 +1671,22 @@ namespace eosio {
 
       time_point_sec trx_expiration = trx->expiration();
 
-      net_message msg(*trx); // todo remove copy
-      uint32_t packsiz = fc::raw::pack_size(msg);
-      uint32_t bufsiz = packsiz + sizeof(packsiz);
-      auto buff = std::make_shared<vector<char>>(bufsiz);
+      // this implementation is to avoid copy of packed_transaction to net_message
+      int which = 8; // matches which of net_message for packed_transaction
 
-      fc::datastream<char*> ds( buff->data(), bufsiz);
-      ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
-      fc::raw::pack( ds, msg );
+      uint32_t which_size = fc::raw::pack_size( unsigned_int( which ));
+      uint32_t payload_size = which_size + fc::raw::pack_size( *trx );
+
+      char* header = reinterpret_cast<char*>(&payload_size);
+      size_t header_size = sizeof(payload_size);
+      size_t buffer_size = header_size + payload_size;
+
+      auto buff = std::make_shared<vector<char>>(buffer_size);
+      fc::datastream<char*> ds( buff->data(), buffer_size);
+      ds.write( header, header_size );
+      fc::raw::pack( ds, unsigned_int( which ));
+      fc::raw::pack( ds, *trx );
+
       node_transaction_state nts = {id,
                                     trx_expiration,
                                     buff,
