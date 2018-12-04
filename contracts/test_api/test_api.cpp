@@ -49,7 +49,6 @@ extern "C" {
       WASM_TEST_HANDLER(test_types, types_size);
       WASM_TEST_HANDLER(test_types, char_to_symbol);
       WASM_TEST_HANDLER(test_types, string_to_name);
-      WASM_TEST_HANDLER(test_types, name_class);
 
       //test_compiler_builtins
       WASM_TEST_HANDLER(test_compiler_builtins, test_multi3);

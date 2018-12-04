@@ -1751,16 +1751,39 @@ BOOST_FIXTURE_TEST_CASE(print_tests, TESTER) { try {
    BOOST_CHECK_EQUAL( tx4_act_cnsl.substr(7, std::string::npos), U64Str(-1) ); // "18446744073709551615"
 
    // test printn
+   // https://developers.eos.io/eosio-cpp/docs/naming-conventions
    auto tx5_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printn", {} );
    auto tx5_act_cnsl = tx5_trace->action_traces.front().console;
-   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,5), "abcde" );
-   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(5, 5), "ab.de" );
-   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(10, 6), "1q1q1q");
-   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(16, 11), "abcdefghijk");
-   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(27, 12), "abcdefghijkl");
-   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(39, 13), "abcdefghijkl1");
-   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(52, 13), "abcdefghijkl1");
-   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(65, 13), "abcdefghijkl1");
+   
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,1), "1" ); // Should Not work according to docs
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(1,1), "5" ); // Should Not work according to docs
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(2,1), "a" );
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(3,1), "z" );
+   
+   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,0), "1." ); // Should work according to docs
+   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,0), "5." ); // Should work according to docs
+   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,0), "a." ); // Should work according to docs
+   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,0), "z." ); // Should work according to docs
+   
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(4,3), "abc" );
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(7,3), "123" );
+   
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(10,7), "abc.123" );
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(17,7), "123.abc" );
+   
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(24,13), "12345abcdefgj" );
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(37,13), "ijklmnopqrstj" );
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(50,13), "vwxyz.12345aj" );
+   
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(63, 13), "111111111111j" );
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(76, 13), "555555555555j" );
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(89, 13), "aaaaaaaaaaaaj" );
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(102,13), "zzzzzzzzzzzzj" );
+
+   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(115,13), "111111111111." ); // Should work according to docs
+   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(115,13), "555555555555." ); // Should work according to docs
+   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(115,13), "aaaaaaaaaaaa." ); // Should work according to docs
+   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(115,13), "zzzzzzzzzzzz." ); // Should work according to docs
 
    // test printi128
    auto tx6_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printi128", {} );

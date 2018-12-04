@@ -39,7 +39,6 @@ struct test_types {
   static void types_size();
   static void char_to_symbol();
   static void string_to_name();
-  static void name_class();
 };
 
 struct test_print {

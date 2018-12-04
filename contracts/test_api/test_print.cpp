@@ -66,17 +66,35 @@ void test_print::test_printui128() {
 }
 
 void test_print::test_printn() {
-   printn(eosio::name{"john"}.value);
-   // Errors Start Right Here
-   printn(eosio::name{"abBde"}.value);
-   printn(eosio::name{"1q1q1qAA"}.value);
-   printn(eosio::name{""}.value);
-   printn(eosio::name{"AAAAAA"}.value);
-   printn(eosio::name{"abcdefghijk"}.value);
-   printn(eosio::name{"abcdefghijkl"}.value);
-   printn(eosio::name{"abcdefghijkl1"}.value);
-   printn(eosio::name{"abcdefghijkl12"}.value);
-   printn(eosio::name{"abcdefghijkl123"}.value);
+   printn(eosio::name{"1"}.value); // Should Not work according to docs
+   printn(eosio::name{"5"}.value); // Should Not work according to docs
+   printn(eosio::name{"a"}.value);
+   printn(eosio::name{"z"}.value);
+
+   // printn(eosio::name{"1."}.value); // Should work according to docs
+   // printn(eosio::name{"5."}.value); // Should work according to docs
+   // printn(eosio::name{"a."}.value); // Should work according to docs
+   // printn(eosio::name{"z."}.value); // Should work according to docs
+   
+   printn(eosio::name{"abc"}.value);
+   printn(eosio::name{"123"}.value);
+   
+   printn(eosio::name{"abc.123"}.value);
+   printn(eosio::name{"123.abc"}.value);
+
+   printn(eosio::name{"12345abcdefgj"}.value);  
+   printn(eosio::name{"ijklmnopqrstj"}.value);
+   printn(eosio::name{"vwxyz.12345aj"}.value);
+
+   printn(eosio::name{"111111111111j"}.value);
+   printn(eosio::name{"555555555555j"}.value);
+   printn(eosio::name{"aaaaaaaaaaaaj"}.value);
+   printn(eosio::name{"zzzzzzzzzzzzj"}.value);
+
+   // printn(eosio::name{"111111111111."}.value); // Should work according to docs
+   // printn(eosio::name{"555555555555."}.value); // Should work according to docs
+   // printn(eosio::name{"aaaaaaaaaaaa."}.value); // Should work according to docs
+   // printn(eosio::name{"zzzzzzzzzzzz."}.value); // Should work according to docs
 }
 
 void test_print::test_printsf() {

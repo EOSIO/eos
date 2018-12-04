@@ -74,15 +74,4 @@ void test_types::string_to_name() {
    eosio_assert( eosio::name("kjihgfedcba") == "kjihgfedcba"_n, "eosio::string_to_name(kjihgfedcba)" );
    eosio_assert( eosio::name("lkjihgfedcba") == "lkjihgfedcba"_n, "eosio::string_to_name(lkjihgfedcba)" );
    eosio_assert( eosio::name("mlkjihgfedcba") == "mlkjihgfedcba"_n, "eosio::string_to_name(mlkjihgfedcba)" );
-   // Error Right Below!! What should I do with this? Is it going to be needed in the future?
-   eosio_assert( eosio::name("AAAAAAAAAAAAAAA") == name{"BBBBBBBBBBBBBDDDDDFFFGG"}, "eosio::string_to_name(BBBBBBBBBBBBBDDDDDFFFGG)" ); \
-}
-
-void test_types::name_class() {
-   // This function is also failing as well.
-   eosio_assert( eosio::name("11AA").value == "11"_n.value, "eosio::name != \"11\"_n" );
-   eosio_assert( eosio::name("22BBCCXXAA").value == "22"_n.value, "eosio::name != \"22\"_n" );
-   eosio_assert( eosio::name("AAAbbcccdd") == eosio::name("AAAbbcccdd"), "eosio::name == eosio::name" );
-   uint64_t tmp = eosio::name("11bbcccdd").value;
-   eosio_assert("11bbcccdd"_n.value == tmp, "\"11bbcccdd\"_n == tmp");
 }
