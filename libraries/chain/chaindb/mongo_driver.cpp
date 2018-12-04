@@ -219,8 +219,8 @@ namespace cyberway { namespace chaindb {
     public:
         mongodb_cursor_info(cursor_t id, index_info index, collection db_table)
         : cursor_info{id, std::move(index)},
-          db_table_(std::move(db_table))
-        { }
+          db_table_(std::move(db_table)) {
+        }
 
         mongodb_cursor_info() = default;
         mongodb_cursor_info(mongodb_cursor_info&&) = default;
@@ -460,11 +460,16 @@ namespace cyberway { namespace chaindb {
     using code_cursor_map = std::map<account_name /* code */, cursor_map>;
 
     struct cursor_location {
-        mongodb_cursor_info& cursor_;
         code_cursor_map::iterator code_itr_;
         cursor_map::iterator cursor_itr_;
-        code_cursor_map& code_cursor_map_;
-        cursor_map& cursor_map_;
+
+        mongodb_cursor_info& cursor() {
+            return cursor_itr_->second;
+        }
+
+        cursor_map& map() {
+            return code_itr_->second;
+        }
     }; // struct cursor_location
 
     enum class changed_value_state {
@@ -521,8 +526,10 @@ namespace cyberway { namespace chaindb {
 
         cursor_location get_applied_cursor(const cursor_request& request) {
             auto loc = get_cursor(request);
-            if (loc.cursor_.pk == unset_primary_key) {
-                apply_table_changes(loc.cursor_.index);
+            auto& cursor = loc.cursor();
+
+            if (cursor.pk == unset_primary_key) {
+                apply_table_changes(cursor.index);
             }
             return loc;
         }
@@ -540,9 +547,11 @@ namespace cyberway { namespace chaindb {
 
         void close_cursor(const cursor_request& request) {
             auto loc = get_cursor(request);
-            loc.cursor_map_.erase(loc.cursor_itr_);
-            if (loc.cursor_map_.empty()) {
-                loc.code_cursor_map_.erase(loc.code_itr_);
+            auto& map = loc.map();
+
+            map.erase(loc.cursor_itr_);
+            if (map.empty()) {
+                code_cursor_map_.erase(loc.code_itr_);
             }
         }
 
@@ -559,7 +568,7 @@ namespace cyberway { namespace chaindb {
             auto loc = get_cursor(request);
             auto next_id = get_next_cursor_id(loc.code_itr_);
 
-            auto cloned_cursor = loc.cursor_.clone(next_id);
+            auto cloned_cursor = loc.cursor().clone(next_id);
             return add_cursor(loc.code_itr_, request.code, std::move(cloned_cursor));
         }
 
@@ -796,7 +805,7 @@ namespace cyberway { namespace chaindb {
             CYBERWAY_ASSERT(map.end() != cursor_itr, driver_invalid_cursor_exception,
                 "Cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
 
-            return cursor_location{cursor_itr->second, code_itr, cursor_itr, code_cursor_map_, map};
+            return cursor_location{code_itr, cursor_itr};
         }
 
         void apply_range_changes(table_changed_object_index::iterator itr, table_changed_object_index::iterator end) {
@@ -948,21 +957,21 @@ namespace cyberway { namespace chaindb {
     }
 
     const cursor_info& mongodb_driver::current(const cursor_request& request) {
-        auto loc = impl_->get_applied_cursor(request);
-        loc.cursor_.current();
-        return loc.cursor_;
+        auto& cursor = impl_->get_applied_cursor(request).cursor();
+        cursor.current();
+        return cursor;
     }
 
     const cursor_info& mongodb_driver::next(const cursor_request& request) {
-        auto loc = impl_->get_applied_cursor(request);
-        loc.cursor_.next();
-        return loc.cursor_;
+        auto& cursor = impl_->get_applied_cursor(request).cursor();
+        cursor.next();
+        return cursor;
     }
 
     const cursor_info& mongodb_driver::prev(const cursor_request& request) {
-        auto loc = impl_->get_applied_cursor(request);
-        loc.cursor_.prev();
-        return loc.cursor_;
+        auto& cursor = impl_->get_applied_cursor(request).cursor();
+        cursor.prev();
+        return cursor;
     }
 
     primary_key_t mongodb_driver::available_pk(const table_info& table) {
