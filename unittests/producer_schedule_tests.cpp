@@ -260,4 +260,61 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
+   create_accounts( {N(alice),N(bob),N(carol)} );
+   produce_block();
+
+   auto compare_schedules = [&]( const vector<producer_key>& a, const producer_schedule_type& b ) {
+      return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
+   };
+
+   auto res = set_producers( {N(alice),N(bob),N(carol)} );
+   vector<producer_key> sch1 = {
+                                 {N(alice), get_public_key(N(alice), "active")},
+                                 {N(bob),   get_public_key(N(bob),   "active")},
+                                 {N(carol),   get_public_key(N(carol),   "active")}
+                               };
+   //wlog("set producer schedule to [alice,bob]");
+   BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, *control->proposed_producers() ) );
+   BOOST_CHECK_EQUAL( control->pending_producers().version, 0 );
+   produce_block(); // Starts new block which promotes the proposed schedule to pending
+   BOOST_CHECK_EQUAL( control->pending_producers().version, 1 );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->pending_producers() ) );
+   BOOST_CHECK_EQUAL( control->active_producers().version, 0 );
+   produce_block();
+   produce_block(); // Starts new block which promotes the pending schedule to active
+   BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
+   produce_blocks(7);
+
+   res = set_producers( {N(alice),N(bob)} );
+   vector<producer_key> sch2 = {
+                                 {N(alice), get_public_key(N(alice), "active")},
+                                 {N(bob),   get_public_key(N(bob),   "active")}
+                               };
+   wlog("set producer schedule to [alice,bob,carol]");
+   BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch2, *control->proposed_producers() ) );
+
+   produce_blocks(48);
+   BOOST_REQUIRE_EQUAL( control->head_block_producer(), N(bob) );
+   BOOST_REQUIRE_EQUAL( control->pending_block_state()->header.producer, N(carol) );
+   BOOST_CHECK_EQUAL( control->pending_producers().version, 2 );
+
+   produce_blocks(47);
+   BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
+   produce_blocks(1);
+
+   BOOST_REQUIRE_EQUAL( control->head_block_producer(), N(carol) );
+   BOOST_REQUIRE_EQUAL( control->pending_block_state()->header.producer, N(alice) );
+   BOOST_CHECK_EQUAL( control->active_producers().version, 2 );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
+
+   produce_blocks(2);
+   BOOST_CHECK_EQUAL( control->head_block_producer(), N(bob) );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()
