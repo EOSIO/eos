@@ -2,8 +2,6 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosio/utilities/key_conversion.hpp>
-#include <eosio/utilities/rand.hpp>
 #include <eosio/chain/genesis_state.hpp>
 #include <eosio/wallet_plugin/wallet.hpp>
 #include <eosio/wallet_plugin/wallet_manager.hpp>
@@ -20,7 +18,6 @@ BOOST_AUTO_TEST_SUITE(wallet_tests)
 BOOST_AUTO_TEST_CASE(wallet_test)
 { try {
    using namespace eosio::wallet;
-   using namespace eosio::utilities;
 
    wallet_data d;
    soft_wallet wallet(d);

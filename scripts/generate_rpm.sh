@@ -1,10 +1,17 @@
 #! /bin/bash
 
-NAME="${PROJECT}-${VERSION}-1"
 PREFIX="usr"
 SPREFIX=${PREFIX}
 SUBPREFIX="opt/${PROJECT}/${VERSION}"
 SSUBPREFIX="opt\/${PROJECT}\/${VERSION}"
+RELEASE="${VERSION_SUFFIX}"
+
+# default release to "1" if there is no suffix
+if [[ -z $RELEASE ]]; then
+  RELEASE="1"
+fi
+
+NAME="${PROJECT}-${VERSION_NO_SUFFIX}-${RELEASE}"
 
 export PREFIX
 export SUBPREFIX
@@ -26,15 +33,15 @@ echo -e ${PFILES} &> ~/rpmbuild/BUILD/filenames.txt
 
 mkdir -p ${PROJECT} 
 echo -e "Name: ${PROJECT} 
-Version: ${VERSION}
+Version: ${VERSION_NO_SUFFIX}
 License: MIT
 Vendor: ${VENDOR} 
 Source: ${URL} 
-Requires: openssl-devel.x86_64, gmp-devel.x86_64, libstdc++-devel.x86_64, bzip2.x86_64, bzip2-devel.x86_64, mongodb.x86_64, mongodb-server.x86_64
+Requires: openssl-devel, gmp-devel, libstdc++-devel, bzip2, bzip2-devel, mongodb, mongodb-server
 URL: ${URL} 
 Packager: ${VENDOR} <${EMAIL}>
 Summary: ${DESC}
-Release: 1
+Release: ${RELEASE}
 %description
 ${DESC}
 %files -f filenames.txt" &> ${PROJECT}.spec

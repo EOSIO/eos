@@ -306,7 +306,7 @@ namespace eosio {
 
 
         int next_session_id()const {
-           static int session_count = 0;
+           static std::atomic<int> session_count(0);
            return ++session_count;
         }
 
@@ -788,7 +788,7 @@ namespace eosio {
 
             /// if something changed, the next block doesn't link to the last
             /// block we sent, local chain must have switched forks
-            if( nextblock->previous != _last_sent_block_id ) {
+            if( nextblock->previous != _last_sent_block_id && _last_sent_block_id != block_id_type() ) {
                 if( !is_known_by_peer( nextblock->previous ) ) {
                   _last_sent_block_id  = _local_lib_id;
                   _last_sent_block_num = _local_lib;
@@ -1041,26 +1041,7 @@ namespace eosio {
            return false;
         }
 
-        void on( const packed_transaction_ptr& p ) {
-           peer_ilog(this, "received packed_transaction_ptr");
-           if (!p) {
-              peer_elog(this, "bad packed_transaction_ptr : null pointer");
-              EOS_THROW(transaction_exception, "bad transaction");
-           }
-           if( app().get_plugin<chain_plugin>().chain().get_read_mode() == chain::db_read_mode::READ_ONLY )
-              return;
-
-          // ilog( "recv trx ${n}", ("n", id) );
-           if( p->expiration() < fc::time_point::now() ) return;
-
-           // get id via get_uncached_id() as packed_transaction.id() mutates internal transaction state
-           const auto& id = p->get_uncached_id();
-
-           if( mark_transaction_known_by_peer( id ) )
-              return;
-
-           app().get_channel<incoming::channels::transaction>().publish(p);
-        }
+        void on( const packed_transaction_ptr& p );
 
         void on_write( boost::system::error_code ec, std::size_t bytes_transferred ) {
            boost::ignore_unused(bytes_transferred);
@@ -1402,8 +1383,10 @@ namespace eosio {
 
 
       if( app().get_plugin<chain_plugin>().chain().get_read_mode() == chain::db_read_mode::READ_ONLY ) {
-         my->_request_trx = false;
-         ilog( "setting bnet-no-trx to true since in read-only mode" );
+         if (my->_request_trx) {
+            my->_request_trx = false;
+            ilog( "forced bnet-no-trx to true since in read-only mode" );
+         }
       }
 
       const auto address = boost::asio::ip::make_address( my->_bnet_endpoint_address );
@@ -1557,4 +1540,24 @@ namespace eosio {
 
    }
 
+   void session::on( const packed_transaction_ptr& p ) {
+      peer_ilog(this, "received packed_transaction_ptr");
+      if (!p) {
+        peer_elog(this, "bad packed_transaction_ptr : null pointer");
+        EOS_THROW(transaction_exception, "bad transaction");
+      }
+      if( !_net_plugin->_request_trx )
+        return;
+
+      // ilog( "recv trx ${n}", ("n", id) );
+      if( p->expiration() < fc::time_point::now() ) return;
+
+      // get id via get_uncached_id() as packed_transaction.id() mutates internal transaction state
+      const auto& id = p->get_uncached_id();
+
+      if( mark_transaction_known_by_peer( id ) )
+        return;
+
+      app().get_channel<incoming::channels::transaction>().publish(p);
+   }
 } /// namespace eosio

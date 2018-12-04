@@ -60,6 +60,10 @@ public:
       return _produce_block(skip_time, true, skip_flag);
    }
 
+   signed_block_ptr finish_block()override {
+      return _finish_block();
+   }
+
    bool validate() { return true; }
 };
 
