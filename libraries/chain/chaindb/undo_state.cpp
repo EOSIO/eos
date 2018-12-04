@@ -422,9 +422,10 @@ namespace cyberway { namespace chaindb {
         }
 
         void undo_all(table_undo_stack& table) {
-            while (!table.empty()) {
-                undo(table, table.revision(), table.revision());
+            while (table.size() > 1) {
+                squash(table, table.revision(), table.revision());
             }
+            undo(table, table.revision(), table.revision());
         }
 
         void update(table_undo_stack& table, const primary_key_t pk, variant value) {
