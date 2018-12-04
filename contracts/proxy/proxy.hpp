@@ -2,11 +2,10 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-
 #pragma once
 
-#include <eosiolib/eosio.hpp>
 #include <eosiolib/asset.hpp>
+#include <eosiolib/eosio.hpp>
 
 using namespace eosio;
 
@@ -20,10 +19,11 @@ namespace proxy {
    };
 
    TABLE config {
-      name     key;
-      name     owner{};
-      uint32_t delay = 0;
-      uint32_t next_id = 0;
+      static constexpr name key = "config"_n;
+      
+      capi_name owner   = 0;
+      uint32_t  delay   = 0;
+      uint32_t  next_id = 0;
 
       uint64_t primary_key() const { return key.value; }
 
