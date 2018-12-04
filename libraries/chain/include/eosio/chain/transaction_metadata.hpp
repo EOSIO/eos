@@ -25,16 +25,20 @@ class transaction_metadata {
       bool                                                       implicit = false;
       bool                                                       scheduled = false;
 
+      transaction_metadata() = delete;
+      transaction_metadata(const transaction_metadata&) = delete;
+      transaction_metadata(transaction_metadata&&) = delete;
+      transaction_metadata operator=(transaction_metadata&) = delete;
+      transaction_metadata operator=(transaction_metadata&&) = delete;
+
       explicit transaction_metadata( const signed_transaction& t, packed_transaction::compression_type c = packed_transaction::none )
-      :trx(t),packed_trx(std::make_shared<packed_transaction>(t, c)) {
-         id = trx.id();
+      :id(t.id()), trx(t), packed_trx(std::make_shared<packed_transaction>(t, c)) {
          //raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
          signed_id = digest_type::hash(*packed_trx);
       }
 
       explicit transaction_metadata( const packed_transaction_ptr& ptrx )
-      :trx( ptrx->get_signed_transaction() ), packed_trx(ptrx) {
-         id = trx.id();
+      :id(ptrx->id()), trx( ptrx->get_signed_transaction() ), packed_trx(ptrx) {
          //raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
          signed_id = digest_type::hash(*packed_trx);
       }
