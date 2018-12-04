@@ -109,6 +109,8 @@ namespace cyberway { namespace chaindb {
             variant value;
             switch (pk_order.type.front()) {
                 case 'i': // int64
+                    value = variant(static_cast<int64_t>(pk));
+                    break;
                 case 'u': // uint64
                     value = variant(pk);
                     break;
@@ -707,9 +709,13 @@ namespace cyberway { namespace chaindb {
 
             auto type = value.get_type();
             switch(pk_order.type.front()) {
-                case 'i':   // int64
+                case 'i': { // int64
+                    CYBERWAY_ASSERT(variant::type_id::int64_type == type, Exception, "Wrong value type");
+                    CYBERWAY_ASSERT(pk == value.as_uint64(), Exception, "Wrong value");
+                    break;
+                }
                 case 'u': { // uint64
-                    CYBERWAY_ASSERT(variant::type_id::uint64_type == type || variant::type_id::int64_type == type, Exception, "Wrong value type");
+                    CYBERWAY_ASSERT(variant::type_id::uint64_type == type, Exception, "Wrong value type");
                     CYBERWAY_ASSERT(pk == value.as_uint64(), Exception, "Wrong value");
                     break;
                 }
