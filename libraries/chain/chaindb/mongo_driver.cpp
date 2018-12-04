@@ -538,22 +538,6 @@ namespace cyberway { namespace chaindb {
             apply_range_changes(table_changed_value_map_.begin(), table_changed_value_map_.end());
         }
 
-        cursor_t get_next_cursor_id(code_cursor_map::iterator itr) {
-            if (itr != code_cursor_map_.end() && !itr->second.empty()) {
-                return itr->second.rbegin()->second.id + 1;
-            }
-            return 1;
-        }
-
-        mongodb_cursor_info& add_cursor(
-            code_cursor_map::iterator itr, const account_name& code, mongodb_cursor_info cursor
-        ) {
-            if (code_cursor_map_.end() == itr) {
-                itr = code_cursor_map_.emplace(code, cursor_map()).first;
-            }
-            return itr->second.emplace(cursor.id, std::move(cursor)).first->second;
-        }
-
         void close_cursor(const cursor_request& request) {
             auto loc = get_cursor(request);
             loc.cursor_map_.erase(loc.cursor_itr_);
@@ -752,6 +736,22 @@ namespace cyberway { namespace chaindb {
 
         collection get_db_table(const table_info& table) {
             return mongo_conn_[get_code_name(table)][get_table_name(table)];
+        }
+
+        cursor_t get_next_cursor_id(code_cursor_map::iterator itr) {
+            if (itr != code_cursor_map_.end() && !itr->second.empty()) {
+                return itr->second.rbegin()->second.id + 1;
+            }
+            return 1;
+        }
+
+        mongodb_cursor_info& add_cursor(
+            code_cursor_map::iterator itr, const account_name& code, mongodb_cursor_info cursor
+        ) {
+            if (code_cursor_map_.end() == itr) {
+                itr = code_cursor_map_.emplace(code, cursor_map()).first;
+            }
+            return itr->second.emplace(cursor.id, std::move(cursor)).first->second;
         }
 
         void apply_table_changes(const table_info& table) {
