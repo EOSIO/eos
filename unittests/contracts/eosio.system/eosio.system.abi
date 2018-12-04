@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri Nov 16 11:29:35 2018",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Mon Dec  3 17:06:22 2018",
     "version": "eosio::abi/1.1",
     "structs": [
         {
@@ -529,7 +529,7 @@
                     "type": "name"
                 },
                 {
-                    "name": "newact",
+                    "name": "name",
                     "type": "name"
                 },
                 {

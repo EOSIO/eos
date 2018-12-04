@@ -86,7 +86,10 @@ void test_extended_memory::test_page_memory_exceeded() {
    prev = sbrk(0);
 	eosio_assert(reinterpret_cast<uint32_t>(prev) == (1024*1024), "Should have allocated 1M of memory");
 
-	eosio_assert(reinterpret_cast<int32_t>(sbrk(1)) == -1, "sbrk should have failed for trying to allocate too much memory");
+        // sbrk(2);
+        // Error Right Below Here!!!
+	eosio_assert(reinterpret_cast<int32_t>(sbrk(32*1024*1024+1)) == -1, "sbrk should have failed for trying to allocate too much memory");
+        // eosio::print_f("PTR %\n", (size_t)sbrk(0));
 }
 
 void test_extended_memory::test_page_memory_negative_bytes() {

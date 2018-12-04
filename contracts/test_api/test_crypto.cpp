@@ -186,29 +186,29 @@ extern "C" {
 }
 
 struct sig_hash_key {
-   eosio::checksum256 hash;
-   eosio::public_key pk;
-   eosio::signature sig;
+   capi_checksum256 hash;
+   capi_public_key pk;
+   capi_signature sig;
 };
 
 void test_crypto::test_recover_key_assert_true() {
    sig_hash_key sh;
    read_action_data( (char*)&sh, sizeof(sh) );
-   assert_recover_key( sh.hash, sh.sig, sh.pk );
+   assert_recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), (const char*)&sh.pk, sizeof(sh.pk) );
 }
 
 void test_crypto::test_recover_key_assert_false() {
    sig_hash_key sh;
    read_action_data( (char*)&sh, sizeof(sh) );
-   assert_recover_key( sh.hash, sh.sig, sh.pk );
+   assert_recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), (const char*)&sh.pk, sizeof(sh.pk) );
    eosio_assert( false, "should have thrown an error" );
 }
 
 void test_crypto::test_recover_key() {
    sig_hash_key sh;
-   read_action_data( (char*)&sh, sizeof(sh) );
-   eosio::public_key pk;
-   assert_recover_key( sh.hash, sh.sig, sh.pk );
+   read_action_data((char*)&sh, sizeof(sh));
+   capi_public_key pk;
+   recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), pk.data, sizeof(pk) );
    for ( uint32_t i=0; i < sizeof(pk); i++ )
       if ( pk.data[i] != sh.pk.data[i] )
          eosio_assert( false, "public key does not match" );

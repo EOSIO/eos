@@ -67,6 +67,7 @@ void test_print::test_printui128() {
 
 void test_print::test_printn() {
    printn(eosio::name{"john"}.value);
+   // Errors Start Right Here
    printn(eosio::name{"abBde"}.value);
    printn(eosio::name{"1q1q1qAA"}.value);
    printn(eosio::name{""}.value);

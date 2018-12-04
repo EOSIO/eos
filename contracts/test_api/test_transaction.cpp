@@ -153,7 +153,6 @@ void test_transaction::test_tapos_block_num() {
    eosio_assert( tbn == tapos_block_num(), "tapos_block_num does not match" );
 }
 
-
 void test_transaction::test_read_transaction() {
    using namespace eosio;
    checksum256 h;
@@ -162,7 +161,7 @@ void test_transaction::test_read_transaction() {
    uint32_t read = read_transaction( buf, size );
    eosio_assert( size == read, "read_transaction failed");
    h = eosio::sha256(buf, read);
-   printhex( &h, sizeof(h) );
+   print(h);
 }
 
 void test_transaction::test_transaction_size() {
@@ -356,7 +355,7 @@ void test_transaction::repeat_deferred_transaction(uint64_t receiver, uint64_t c
 
    --payload;
    transaction trx;
-   std::vector<permission_level> permissions = { {"receiver"_n, "active"_n} };
+   std::vector<permission_level> permissions = { {name{receiver}, "active"_n} };
    
    trx.actions.emplace_back(permissions, name{code}, name{action}, payload);
    trx.send( sender_id, eosio::name{receiver} );
