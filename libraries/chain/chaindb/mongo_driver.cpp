@@ -527,24 +527,6 @@ namespace cyberway { namespace chaindb {
             return loc;
         }
 
-        collection get_db_table(const table_info& table) {
-            return mongo_conn_[get_code_name(table)][get_table_name(table)];
-        }
-
-        void remove_changed_value_info(const table_info& table, const primary_key_t pk) {
-            auto table_itr = table_object::find(table_changed_value_map_, table);
-            if (table_changed_value_map_.end() == table_itr) return;
-
-            const_cast<table_changed_object&>(*table_itr).map.erase(pk);
-        }
-
-        void apply_table_changes(const table_info& table) {
-            auto begin_itr = table_changed_value_map_.lower_bound(std::make_tuple(table.code, table.table->name));
-            auto end_itr = table_changed_value_map_.upper_bound(std::make_tuple(table.code, table.table->name));
-
-            apply_range_changes(begin_itr, end_itr);
-        }
-
         void apply_code_changes(const account_name& code) {
             auto begin_itr = table_changed_value_map_.lower_bound(std::make_tuple(code));
             auto end_itr = table_changed_value_map_.upper_bound(std::make_tuple(code));
@@ -660,6 +642,51 @@ namespace cyberway { namespace chaindb {
             }
         }
 
+        primary_key_t available_pk(const table_info& table) {
+            apply_table_changes(table);
+
+            auto cursor = get_db_table(table).find(
+                make_document(kvp(get_scope_field_name(), get_scope_name(table))),
+                options::find()
+                    .sort(make_document(kvp(table.pk_order->field, -1)))
+                    .limit(1));
+
+            auto itr = cursor.begin();
+            if (cursor.end() != itr) {
+                return _detail::get_pk_value(table, *itr) + 1;
+            }
+
+            return 0;
+        }
+
+        variant value(const table_info& table, const primary_key_t pk) {
+            auto info = find_changed_value(table, pk);
+            if (nullptr != info) {
+                switch(info->state) {
+                    case changed_value_state::Insert:
+                    case changed_value_state::Update:
+                        return info->value;
+
+                    case changed_value_state::Delete:
+                    case changed_value_state::Unknown:
+                        break;
+                }
+            } else {
+                auto cursor = get_db_table(table).find(
+                    _detail::make_pk_document(table, pk).view(),
+                    options::find().limit(1));
+
+                auto itr = cursor.begin();
+                if (cursor.end() != itr) {
+                    return build_variant(*itr);
+                }
+            }
+
+            CYBERWAY_ASSERT(false, driver_absent_object_exception,
+                "External database doesn't contain object with the primary key ${scope}.${pk} in the table ${table}",
+                ("scope", get_scope_name(table))("pk", pk)("table", get_full_table_name(table)));
+        }
+
         void insert(const table_info& table, const primary_key_t pk, variant value) {
             auto loc = get_changed_value(table, pk);
             auto& info = loc.info();
@@ -721,6 +748,28 @@ namespace cyberway { namespace chaindb {
         static mongocxx::instance& init_instance() {
             static mongocxx::instance instance;
             return instance;
+        }
+
+        collection get_db_table(const table_info& table) {
+            return mongo_conn_[get_code_name(table)][get_table_name(table)];
+        }
+
+        void apply_table_changes(const table_info& table) {
+            auto begin_itr = table_changed_value_map_.lower_bound(std::make_tuple(table.code, table.table->name));
+            auto end_itr = table_changed_value_map_.upper_bound(std::make_tuple(table.code, table.table->name));
+
+            apply_range_changes(begin_itr, end_itr);
+        }
+
+        changed_value_info* find_changed_value(const table_info& table, const primary_key_t pk) {
+            auto table_itr = table_object::find(table_changed_value_map_, table);
+            if (table_changed_value_map_.end() == table_itr) return nullptr;
+
+            auto& map = const_cast<table_changed_object&>(*table_itr).map;
+            auto value_itr = map.find(pk);
+            if (map.end() == value_itr) return nullptr;
+
+            return &value_itr->second;
         }
 
         changed_value_location get_changed_value(const table_info& table, const primary_key_t pk) {
@@ -916,19 +965,12 @@ namespace cyberway { namespace chaindb {
         return loc.cursor_;
     }
 
+    primary_key_t mongodb_driver::available_pk(const table_info& table) {
+        return impl_->available_pk(table);
+    }
+
     variant mongodb_driver::value(const table_info& table, const primary_key_t pk) {
-        impl_->apply_table_changes(table);
-
-        auto cursor = impl_->get_db_table(table).find(
-            _detail::make_pk_document(table, pk).view(),
-            options::find().limit(1));
-
-        auto itr = cursor.begin();
-        CYBERWAY_ASSERT(cursor.end() != itr, driver_absent_object_exception,
-            "External database doesn't contain object with the primary key ${pk} in the table ${table}",
-            ("pk", pk)("table", get_full_table_name(table)));
-
-        return build_variant(*itr);
+        return impl_->value(table, pk);
     }
 
     const variant& mongodb_driver::value(const cursor_info& info) {
@@ -939,23 +981,6 @@ namespace cyberway { namespace chaindb {
     void mongodb_driver::set_blob(const cursor_info& info, bytes blob) {
         auto& cursor = const_cast<mongodb_cursor_info&>(static_cast<const mongodb_cursor_info&>(info));
         cursor.blob = std::move(blob);
-    }
-
-    primary_key_t mongodb_driver::available_pk(const table_info& table) {
-        impl_->apply_table_changes(table);
-
-        auto cursor = impl_->get_db_table(table).find(
-            make_document(kvp(get_scope_field_name(), get_scope_name(table))),
-            options::find()
-                .sort(make_document(kvp(table.pk_order->field, -1)))
-                .limit(1));
-
-        auto itr = cursor.begin();
-        if (cursor.end() != itr) {
-            return _detail::get_pk_value(table, *itr) + 1;
-        }
-
-        return 0;
     }
 
     primary_key_t mongodb_driver::insert(const table_info& table, const primary_key_t pk, variant value) {
