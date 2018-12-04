@@ -107,11 +107,6 @@ namespace eosio { namespace chain {
       packed_transaction& operator=(const packed_transaction&) = delete;
       packed_transaction& operator=(packed_transaction&&) = default;
 
-      explicit packed_transaction(const transaction& t, compression_type _compression = none)
-      {
-         set_transaction(t, _compression);
-      }
-
       explicit packed_transaction(const signed_transaction& t, compression_type _compression = none)
       :signatures(t.signatures)
       {
