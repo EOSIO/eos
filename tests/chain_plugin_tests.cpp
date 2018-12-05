@@ -12,15 +12,6 @@
 #include <asserter/asserter.wast.hpp>
 #include <asserter/asserter.abi.hpp>
 
-#include <stltest/stltest.wast.hpp>
-#include <stltest/stltest.abi.hpp>
-
-#include <noop/noop.wast.hpp>
-#include <noop/noop.abi.hpp>
-
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
-
 #include <fc/io/fstream.hpp>
 
 #include <Runtime/Runtime.h>

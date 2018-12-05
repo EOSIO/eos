@@ -36,12 +36,12 @@ namespace eosio { namespace chain {
           */
          void            set( block_state_ptr s );
 
-         /** this method will attempt to append the block to an exsting
+         /** this method will attempt to append the block to an existing
           * block_state and will return a pointer to the new block state or
           * throw on error.
           */
-         block_state_ptr add( signed_block_ptr b, bool trust = false );
-         block_state_ptr add( block_state_ptr next_block );
+         block_state_ptr add( signed_block_ptr b, bool skip_validate_signee );
+         block_state_ptr add( const block_state_ptr& next_block, bool skip_validate_previous );
          void            remove( const block_id_type& id );
 
          void            add( const header_confirmation& c );

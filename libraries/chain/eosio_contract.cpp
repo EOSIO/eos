@@ -57,7 +57,7 @@ void validate_authority_precondition( const apply_context& context, const author
       }
    }
 
-   if( context.control.is_producing_block() ) {
+   if( context.trx_context.enforce_whiteblacklist && context.control.is_producing_block() ) {
       for( const auto& p : auth.keys ) {
          context.control.check_key_list( p.key );
       }
@@ -282,7 +282,7 @@ void apply_eosio_deleteauth(apply_context& context) {
       const auto& index = db.get_index<permission_link_index, by_permission_name>();
       auto range = index.equal_range(boost::make_tuple(remove.account, remove.permission));
       EOS_ASSERT(range.first == range.second, action_validate_exception,
-                 "Cannot delete a linked authority. Unlink the authority first. This authority is linked to ${code}::${type}.", 
+                 "Cannot delete a linked authority. Unlink the authority first. This authority is linked to ${code}::${type}.",
                  ("code", string(range.first->code))("type", string(range.first->message_type)));
    }
 
