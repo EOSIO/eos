@@ -167,13 +167,7 @@ namespace eosio {
       template<typename VerifierFunc>
       void send_all( const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify );
 
-      void accepted_block_header(const block_state_ptr&);
       void accepted_block(const block_state_ptr&);
-      void irreversible_block(const block_state_ptr&);
-      void accepted_transaction(const transaction_metadata_ptr&);
-      void applied_transaction(const transaction_trace_ptr&);
-      void accepted_confirmation(const header_confirmation&);
-
       void transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>&);
 
       bool is_valid( const handshake_message &msg);
@@ -2576,30 +2570,9 @@ namespace eosio {
       c->close();
    }
 
-   void net_plugin_impl::accepted_block_header(const block_state_ptr& block) {
-      fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
-   }
-
    void net_plugin_impl::accepted_block(const block_state_ptr& block) {
       fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
       dispatcher->bcast_block(block);
-   }
-
-   void net_plugin_impl::irreversible_block(const block_state_ptr& block) {
-      fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
-   }
-
-   void net_plugin_impl::accepted_transaction(const transaction_metadata_ptr& md) {
-      fc_dlog(logger,"signaled, id = ${id}",("id", md->id));
-//      dispatcher->bcast_transaction(md->packed_trx);
-   }
-
-   void net_plugin_impl::applied_transaction(const transaction_trace_ptr& txn) {
-      fc_dlog(logger,"signaled, id = ${id}",("id", txn->id));
-   }
-
-   void net_plugin_impl::accepted_confirmation(const header_confirmation& head) {
-      fc_dlog(logger,"signaled, id = ${id}",("id", head.block_id));
    }
 
    void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>& results) {
@@ -2908,12 +2881,7 @@ namespace eosio {
       }
       chain::controller&cc = my->chain_plug->chain();
       {
-         cc.accepted_block_header.connect( boost::bind(&net_plugin_impl::accepted_block_header, my.get(), _1));
          cc.accepted_block.connect(  boost::bind(&net_plugin_impl::accepted_block, my.get(), _1));
-         cc.irreversible_block.connect( boost::bind(&net_plugin_impl::irreversible_block, my.get(), _1));
-         cc.accepted_transaction.connect( boost::bind(&net_plugin_impl::accepted_transaction, my.get(), _1));
-         cc.applied_transaction.connect( boost::bind(&net_plugin_impl::applied_transaction, my.get(), _1));
-         cc.accepted_confirmation.connect( boost::bind(&net_plugin_impl::accepted_confirmation, my.get(), _1));
       }
 
       my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
