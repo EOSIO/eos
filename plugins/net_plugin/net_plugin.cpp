@@ -45,7 +45,6 @@ namespace eosio {
    using fc::time_point;
    using fc::time_point_sec;
    using eosio::chain::transaction_id_type;
-   namespace bip = boost::interprocess;
 
    class connection;
 
@@ -60,30 +59,9 @@ namespace eosio {
    struct node_transaction_state {
       transaction_id_type id;
       time_point_sec  expires;  /// time after which this may be purged.
-                                /// Expires increased while the txn is
-                                /// "in flight" to anoher peer
-      std::shared_ptr<vector<char>>   serialized_txn; /// the received raw bundle
       uint32_t        block_num = 0; /// block transaction was included in
-      uint32_t        true_block = 0; /// used to reset block_uum when request is 0
-      uint16_t        requests = 0; /// the number of "in flight" requests for this txn
+      std::shared_ptr<vector<char>>   serialized_txn; /// the received raw bundle
    };
-
-   struct update_in_flight {
-      int32_t incr;
-      update_in_flight(int32_t delta) : incr(delta) {}
-      void operator() (node_transaction_state& nts) {
-         int32_t exp = nts.expires.sec_since_epoch();
-         nts.expires = fc::time_point_sec(exp + incr * 60);
-         if( nts.requests == 0 ) {
-            nts.true_block = nts.block_num;
-            nts.block_num = 0;
-         }
-         nts.requests += incr;
-         if( nts.requests == 0 ) {
-            nts.block_num = nts.true_block;
-         }
-      }
-   } incr_in_flight(1), decr_in_flight(-1);
 
    struct by_expiry;
    struct by_block_num;
@@ -231,6 +209,7 @@ namespace eosio {
       void start_monitors();
 
       void expire_txns();
+      void expire_local_txns();
       void connection_monitor(std::weak_ptr<connection> from_connection);
       /** \name Peer Timestamps
        *  Time message handling
@@ -400,12 +379,7 @@ namespace eosio {
       uint32_t new_bnum;
       update_block_num(uint32_t bnum) : new_bnum(bnum) {}
       void operator() (node_transaction_state& nts) {
-         if (nts.requests ) {
-            nts.true_block = new_bnum;
-         }
-         else {
-            nts.block_num = new_bnum;
-         }
+         nts.block_num = new_bnum;
       }
       void operator() (transaction_state& ts) {
          ts.block_num = new_bnum;
@@ -779,23 +753,11 @@ namespace eosio {
 
    void connection::txn_send_pending(const vector<transaction_id_type>& ids) {
       const std::set<transaction_id_type, sha256_less> known_ids(ids.cbegin(), ids.cend());
+      my_impl->expire_local_txns();
       for(auto tx = my_impl->local_txns.begin(); tx != my_impl->local_txns.end(); ++tx ){
-         if( tx->block_num == 0 ) {
-            const bool found = known_ids.find(tx->id) != known_ids.cend();
-            if(!found) {
-               my_impl->local_txns.modify(tx,incr_in_flight);
-               queue_write(tx->serialized_txn,
-                           true,
-                           [tx_id=tx->id](boost::system::error_code ec, std::size_t ) {
-                              auto& local_txns = my_impl->local_txns;
-                              auto tx = local_txns.get<by_id>().find(tx_id);
-                              if (tx != local_txns.end()) {
-                                 local_txns.modify(tx, decr_in_flight);
-                              } else {
-                                 fc_wlog(logger, "Local pending TX erased before queued_write called callback");
-                              }
-                           });
-            }
+         const bool found = known_ids.find( tx->id ) != known_ids.cend();
+         if( !found ) {
+            queue_write( tx->serialized_txn, true, []( boost::system::error_code ec, std::size_t ) {} );
          }
       }
    }
@@ -804,18 +766,7 @@ namespace eosio {
       for(const auto& t : ids) {
          auto tx = my_impl->local_txns.get<by_id>().find(t);
          if( tx != my_impl->local_txns.end() ) {
-            my_impl->local_txns.modify( tx,incr_in_flight);
-            queue_write(tx->serialized_txn,
-                        true,
-                        [t](boost::system::error_code ec, std::size_t ) {
-                           auto& local_txns = my_impl->local_txns;
-                           auto tx = local_txns.get<by_id>().find(t);
-                           if (tx != local_txns.end()) {
-                              local_txns.modify(tx, decr_in_flight);
-                           } else {
-                              fc_wlog(logger, "Local TX erased before queued_write called callback");
-                           }
-                        });
+            queue_write( tx->serialized_txn, true, []( boost::system::error_code ec, std::size_t ) {} );
          }
       }
    }
@@ -1687,10 +1638,7 @@ namespace eosio {
       fc::raw::pack( ds, unsigned_int( which ));
       fc::raw::pack( ds, *trx );
 
-      node_transaction_state nts = {id,
-                                    trx_expiration,
-                                    buff,
-                                    0, 0, 0};
+      node_transaction_state nts = {id, trx_expiration, 0, buff};
       my_impl->local_txns.insert(std::move(nts));
 
       my_impl->send_all( buff, [&id, &skips, trx_expiration](const connection_ptr& c) -> bool {
@@ -1701,7 +1649,7 @@ namespace eosio {
           bool unknown = bs == c->trx_state.end();
           if( unknown ) {
              c->trx_state.insert(transaction_state({id,0,trx_expiration}));
-             fc_dlog(logger, "sending whole trx to ${n}", ("n",c->peer_name() ) );
+             fc_dlog(logger, "sending trx to ${n}", ("n",c->peer_name() ) );
           }
           return unknown;
       });
@@ -2559,23 +2507,36 @@ namespace eosio {
 
    void net_plugin_impl::expire_txns() {
       start_txn_timer();
-      auto &old = local_txns.get<by_expiry>();
-      auto ex_up = old.upper_bound( time_point::now());
-      auto ex_lo = old.lower_bound( fc::time_point_sec( 0));
-      old.erase( ex_lo, ex_up);
 
-      auto &stale = local_txns.get<by_block_num>();
-      controller &cc = chain_plug->chain();
-      uint32_t bn = cc.last_irreversible_block_num();
-      stale.erase( stale.lower_bound(1), stale.upper_bound(bn) );
+      auto now = time_point::now();
+      auto start_size = local_txns.size();
+
+      expire_local_txns();
+
+      controller& cc = chain_plug->chain();
+      uint32_t lib = cc.last_irreversible_block_num();
       for ( auto &c : connections ) {
          auto &stale_txn = c->trx_state.get<by_block_num>();
-         stale_txn.erase( stale_txn.lower_bound(1), stale_txn.upper_bound(bn) );
+         stale_txn.erase( stale_txn.lower_bound(1), stale_txn.upper_bound(lib) );
          auto &stale_txn_e = c->trx_state.get<by_expiry>();
          stale_txn_e.erase(stale_txn_e.lower_bound(time_point_sec()), stale_txn_e.upper_bound(time_point::now()));
          auto &stale_blk = c->blk_state.get<by_block_num>();
-         stale_blk.erase( stale_blk.lower_bound(1), stale_blk.upper_bound(bn) );
+         stale_blk.erase( stale_blk.lower_bound(1), stale_blk.upper_bound(lib) );
       }
+      fc_dlog(logger, "expire_txns ${n}us size ${s} removed ${r}",
+            ("n", time_point::now() - now)("s", start_size)("r", start_size - local_txns.size()) );
+   }
+
+   void net_plugin_impl::expire_local_txns() {
+      auto& old = local_txns.get<by_expiry>();
+      auto ex_lo = old.lower_bound( fc::time_point_sec(0) );
+      auto ex_up = old.upper_bound( time_point::now() );
+      old.erase( ex_lo, ex_up );
+
+      auto& stale = local_txns.get<by_block_num>();
+      controller& cc = chain_plug->chain();
+      uint32_t lib = cc.last_irreversible_block_num();
+      stale.erase( stale.lower_bound(1), stale.upper_bound(lib) );
    }
 
    void net_plugin_impl::connection_monitor(std::weak_ptr<connection> from_connection) {
