@@ -1,8 +1,12 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #include <boost/test/unit_test.hpp>
 #pragma GCC diagnostic pop
-#include <boost/algorithm/string/predicate.hpp>
+
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 
@@ -10,6 +14,8 @@
 
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
+
+#include <boost/algorithm/string/predicate.hpp>
 
 #include <contracts.hpp>
 

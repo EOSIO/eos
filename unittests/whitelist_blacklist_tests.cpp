@@ -1,14 +1,13 @@
-#include <boost/test/unit_test.hpp>
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eosio/testing/tester.hpp>
 #include <eosio/testing/tester_network.hpp>
 
 #include <fc/variant_object.hpp>
 
-// #include <eosio.token/eosio.token.wast.hpp>
-// #include <eosio.token/eosio.token.abi.hpp>
-
-// #include <deferred_test/deferred_test.wast.hpp>
-// #include <deferred_test/deferred_test.abi.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include <contracts.hpp>
 

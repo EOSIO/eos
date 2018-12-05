@@ -1,18 +1,11 @@
-#include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
-
-// #include <eosio.msig/eosio.msig.wast.hpp>
-// #include <eosio.msig/eosio.msig.abi.hpp>
-
-// #include <test_api/test_api.wast.hpp>
-
-// #include <eosio.system/eosio.system.wast.hpp>
-// #include <eosio.system/eosio.system.abi.hpp>
-
-// #include <eosio.token/eosio.token.wast.hpp>
-// #include <eosio.token/eosio.token.abi.hpp>
+#include <boost/test/unit_test.hpp>
+#include <eosio/testing/tester.hpp>
 
 #include <Runtime/Runtime.h>
 

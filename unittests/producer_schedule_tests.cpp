@@ -1,7 +1,12 @@
-#include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/testing/tester.hpp>
+
 #include <boost/range/algorithm.hpp>
+#include <boost/test/unit_test.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester

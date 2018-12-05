@@ -1,10 +1,15 @@
-#include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eosio/chain/abi_serializer.hpp>
+#include <eosio/testing/tester.hpp>
 
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
+
+#include <boost/test/unit_test.hpp>
 
 #include <contracts.hpp>
 

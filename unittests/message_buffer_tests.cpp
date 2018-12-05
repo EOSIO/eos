@@ -2,11 +2,11 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-
-#include <fc/network/message_buffer.hpp>
-#include <boost/test/unit_test.hpp>
 #include <iostream>
 
+#include <boost/test/unit_test.hpp>
+
+#include <fc/network/message_buffer.hpp>
 
 namespace eosio {
 using namespace std;
@@ -321,4 +321,3 @@ BOOST_AUTO_TEST_CASE(message_buffer_read_peek_bounds_multi) {
 BOOST_AUTO_TEST_SUITE_END()
 
 } // namespace eosio
-

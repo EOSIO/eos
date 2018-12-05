@@ -1,22 +1,15 @@
-#include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eosio/chain/abi_serializer.hpp>
-
-// TODO: Remember to get a code review
-
-// #include <eosio.system/eosio.system.wast.hpp>
-// #include <eosio.system/eosio.system.abi.hpp>
-// // These contracts are still under dev
-// #include <eosio.bios/eosio.bios.wast.hpp>
-// #include <eosio.bios/eosio.bios.abi.hpp>
-// #include <eosio.token/eosio.token.wast.hpp>
-// #include <eosio.token/eosio.token.abi.hpp>
-// #include <eosio.msig/eosio.msig.wast.hpp>
-// #include <eosio.msig/eosio.msig.abi.hpp>
+#include <eosio/testing/tester.hpp>
 
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
+
+#include <boost/test/unit_test.hpp>
 
 #include <contracts.hpp>
 
@@ -40,10 +33,10 @@ struct genesis_account {
 };
 
 std::vector<genesis_account> test_genesis( {
-  {N(b1),    100'000'000'0000ll},
-  {N(whale4), 40'000'000'0000ll},
-  {N(whale3), 30'000'000'0000ll},
-  {N(whale2), 20'000'000'0000ll},
+  {N(b1),       100'000'000'0000ll},
+  {N(whale4),    40'000'000'0000ll},
+  {N(whale3),    30'000'000'0000ll},
+  {N(whale2),    20'000'000'0000ll},
   {N(proda),      1'000'000'0000ll},
   {N(prodb),      1'000'000'0000ll},
   {N(prodc),      1'000'000'0000ll},
@@ -65,13 +58,13 @@ std::vector<genesis_account> test_genesis( {
   {N(prods),      1'000'000'0000ll},
   {N(prodt),      1'000'000'0000ll},
   {N(produ),      1'000'000'0000ll},
-  {N(runnerup1),1'000'000'0000ll},
-  {N(runnerup2),1'000'000'0000ll},
-  {N(runnerup3),1'000'000'0000ll},
-  {N(minow1),        100'0000ll},
-  {N(minow2),          1'0000ll},
-  {N(minow3),          1'0000ll},
-  {N(masses),800'000'000'0000ll}
+  {N(runnerup1),  1'000'000'0000ll},
+  {N(runnerup2),  1'000'000'0000ll},
+  {N(runnerup3),  1'000'000'0000ll},
+  {N(minow1),           100'0000ll},
+  {N(minow2),             1'0000ll},
+  {N(minow3),             1'0000ll},
+  {N(masses),   800'000'000'0000ll}
 });
 
 class bootseq_tester : public TESTER {

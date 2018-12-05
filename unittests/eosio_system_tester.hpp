@@ -4,20 +4,8 @@
  */
 #pragma once
 
-#include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
-
-// Check
-// #include <eosio.system/eosio.system.wast.hpp>
-// #include <eosio.system/eosio.system.abi.hpp>
-
-// Check
-// #include <eosio.token/eosio.token.wast.hpp>
-// #include <eosio.token/eosio.token.abi.hpp>
-
-// Check
-// #include <eosio.msig/eosio.msig.wast.hpp>
-// #include <eosio.msig/eosio.msig.abi.hpp>
+#include <eosio/testing/tester.hpp>
 
 #include <fc/variant_object.hpp>
 
@@ -540,7 +528,6 @@ inline fc::mutable_variant_object voter( account_name acct ) {
       ("proxy", name(0).to_string())
       ("producers", variants() )
       ("staked", int64_t(0))
-      //("last_vote_weight", double(0))
       ("proxied_vote_weight", double(0))
       ("is_proxy", 0)
       ;

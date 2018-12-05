@@ -39,14 +39,7 @@
 #include <WASM/WASM.h>
 #include <Runtime/Runtime.h>
 
-// #include <test_api/test_api.wast.hpp>
-// #include <test_api_mem/test_api_mem.wast.hpp>
-// #include <test_api_db/test_api_db.wast.hpp>
-// #include <test_api_multi_index/test_api_multi_index.wast.hpp>
-
 #include <contracts.hpp>
-
-// #include <test_api/test_api_common.hpp>
 
 #define DUMMY_ACTION_DEFAULT_A 0x45
 #define DUMMY_ACTION_DEFAULT_B 0xab11cd1244556677
@@ -577,20 +570,14 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
       trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
       set_transaction_headers(trx);
-
-      // signing a transaction with only context_free_actions should not be allowed
-      //      auto sigs = trx.sign(get_private_key(N(testapi), "active"), control->get_chain_id());
-
-      // return; --- ../unittests/api_tests.cpp:845: [1;31;49merror: in "api_tests/checktime_fail_tests": exception...
+      
       BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_no_auths,
                             [](const fc::exception& e) {
                                return expect_assert_message(e, "transaction must have at least one authorization");
                             }
       );
 
-      // return; --- ../unittests/main.cpp:15: [4;31;49mfatal error: in "api_tests/cf_action_tests": Caught Unexpected...
       trx.signatures.clear();
-      // return; --- ../unittests/main.cpp:15: [4;31;49mfatal error: in "api_tests/cf_action_tests": Caught Unexpected...
 
       // add a normal action along with cfa
       dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
@@ -817,7 +804,6 @@ void call_test(TESTER& test, T ac, uint32_t billed_cpu_time_us , uint32_t max_cp
 
    trx.actions.push_back(act);
    test.set_transaction_headers(trx);
-   //trx.max_cpu_usage_ms = max_cpu_usage_ms;
    auto sigs = trx.sign(test.get_private_key(N(testapi), "active"), test.control->get_chain_id());
    trx.get_signature_keys(test.control->get_chain_id() );
    auto res = test.push_transaction( trx, fc::time_point::now() + fc::milliseconds(max_cpu_usage_ms), billed_cpu_time_us );
@@ -1614,9 +1600,7 @@ BOOST_FIXTURE_TEST_CASE(memory_tests, TESTER) { try {
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memory_hunk", {} );
    produce_blocks(1000);
-   // No Error Here
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memory_hunks", {} );
-   // Error Here
    produce_blocks(1000);
    //Disabling this for now as it fails due to malloc changes for variable wasm max memory sizes
 #if 0
@@ -1751,19 +1735,13 @@ BOOST_FIXTURE_TEST_CASE(print_tests, TESTER) { try {
    BOOST_CHECK_EQUAL( tx4_act_cnsl.substr(7, std::string::npos), U64Str(-1) ); // "18446744073709551615"
 
    // test printn
-   // https://developers.eos.io/eosio-cpp/docs/naming-conventions
    auto tx5_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printn", {} );
    auto tx5_act_cnsl = tx5_trace->action_traces.front().console;
    
-   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,1), "1" ); // Should Not work according to docs
-   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(1,1), "5" ); // Should Not work according to docs
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,1), "1" );
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(1,1), "5" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(2,1), "a" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(3,1), "z" );
-   
-   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,0), "1." ); // Should work according to docs
-   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,0), "5." ); // Should work according to docs
-   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,0), "a." ); // Should work according to docs
-   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,0), "z." ); // Should work according to docs
    
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(4,3), "abc" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(7,3), "123" );
@@ -1779,11 +1757,6 @@ BOOST_FIXTURE_TEST_CASE(print_tests, TESTER) { try {
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(76, 13), "555555555555j" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(89, 13), "aaaaaaaaaaaaj" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(102,13), "zzzzzzzzzzzzj" );
-
-   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(115,13), "111111111111." ); // Should work according to docs
-   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(115,13), "555555555555." ); // Should work according to docs
-   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(115,13), "aaaaaaaaaaaa." ); // Should work according to docs
-   // BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(115,13), "zzzzzzzzzzzz." ); // Should work according to docs
 
    // test printi128
    auto tx6_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printi128", {} );
@@ -1855,7 +1828,6 @@ BOOST_FIXTURE_TEST_CASE(types_tests, TESTER) { try {
 	CALL_TEST_FUNCTION( *this, "test_types", "types_size", {});
 	CALL_TEST_FUNCTION( *this, "test_types", "char_to_symbol", {});
 	CALL_TEST_FUNCTION( *this, "test_types", "string_to_name", {});
-	CALL_TEST_FUNCTION( *this, "test_types", "name_class", {});
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -1950,21 +1922,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
       })
    );
    BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
-
-   /*
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
-      fc::raw::pack( check_auth {
-         .account    = N(testapi),
-         .permission = N(noname),
-         .pubkeys    = {
-            get_public_key(N(testapi), "active")
-         }
-      })), fc::exception,
-       [](const fc::exception& e) {
-         return expect_assert_message(e, "unknown key");
-      }
-   );
-   */
+   
 } FC_LOG_AND_RETHROW() }
 
 #if 0

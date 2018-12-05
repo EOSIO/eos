@@ -50,11 +50,11 @@ namespace multi_index_test {
          on( t, _self );
       }
 
-      static void on(const trigger& act, name _payer)
+      static void on( const trigger& act, name _payer )
       {
          name payer = _payer;
          print("Acting on trigger action.\n");
-         switch( act.what )
+         switch(act.what)
          {
              case 0:
              {

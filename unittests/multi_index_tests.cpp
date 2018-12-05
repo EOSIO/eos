@@ -1,10 +1,14 @@
-#include <boost/test/unit_test.hpp>
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eosio/testing/tester.hpp>
-
 #include <Runtime/Runtime.h>
 
-#include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
+#include <fc/variant_object.hpp>
+
+#include <boost/test/unit_test.hpp>
 
 #include <contracts.hpp>
 

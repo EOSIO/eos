@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #include <boost/test/unit_test.hpp>
@@ -6,12 +10,6 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
-
-// #include <eosio.token/eosio.token.wast.hpp>
-// #include <eosio.token/eosio.token.abi.hpp>
-
-// #include <proxy/proxy.wast.hpp>
-// #include <proxy/proxy.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
