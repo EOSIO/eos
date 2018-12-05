@@ -1,6 +1,7 @@
 #pragma once
 #include <eosio/chain/block_header.hpp>
 #include <eosio/chain/incremental_merkle.hpp>
+#include <future>
 
 namespace eosio { namespace chain {
 
@@ -51,6 +52,7 @@ struct block_header_state {
     digest_type          sig_digest()const;
     void                 sign( const std::function<signature_type(const digest_type&)>& signer );
     public_key_type      signee()const;
+    void                 verify_signee(const public_key_type& signee)const;
 };
 
 

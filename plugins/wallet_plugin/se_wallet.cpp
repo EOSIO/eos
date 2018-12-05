@@ -305,6 +305,14 @@ se_wallet::se_wallet() : my(new detail::se_wallet_impl()) {
             return;
          }
       }
+      if(sscanf(model, "Macmini%u", &major) == 1 && major >= 8) {
+         my->populate_existing_keys();
+         return;
+      }
+      if(sscanf(model, "MacBookAir%u", &major) == 1 && major >= 8) {
+         my->populate_existing_keys();
+         return;
+      }
    }
 
    EOS_THROW(secure_enclave_exception, "Secure Enclave not supported on this hardware");
