@@ -1,10 +1,14 @@
 #pragma once
 
-#include <cyberway/chaindb/driver_interface.hpp>
+#include <cyberway/chaindb/common.hpp>
 
 namespace cyberway { namespace chaindb {
 
+    using fc::variant;
+
     class cache_map;
+    class driver_interface;
+    struct table_info;
 
     class undo_stack final {
     public:
@@ -17,20 +21,20 @@ namespace cyberway { namespace chaindb {
 
         chaindb_session start_undo_session(bool enabled);
 
-        void set_revision(int64_t revision);
-        int64_t revision() const;
+        void set_revision(revision_t revision);
+        revision_t revision() const;
         bool enabled() const;
 
-        void apply_changes(int64_t revision);
+        void apply_changes(revision_t revision);
 
         /** leaves the UNDO state on the stack when session goes out of scope */
-        void push(int64_t revision);
+        void push(revision_t revision);
 
         /**
          *  Restores the state to how it was prior to the current session discarding all changes
          *  made between the last revision and the current revision.
          */
-        void undo(int64_t revision);
+        void undo(revision_t revision);
 
         /**
          *  This method works similar to git squash, it merges the change set from the two most
@@ -38,12 +42,12 @@ namespace cyberway { namespace chaindb {
          *
          *  This method does not change the state of the index, only the state of the undo buffer.
          */
-        void squash(int64_t revision);
+        void squash(revision_t revision);
 
         /**
          * Discards all undo history prior to revision
          */
-        void commit(int64_t revision);
+        void commit(revision_t revision);
 
         /**
          * Unwinds all undo states
