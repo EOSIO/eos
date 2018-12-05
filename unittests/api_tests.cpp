@@ -1723,14 +1723,23 @@ BOOST_FIXTURE_TEST_CASE(print_tests, TESTER) { try {
    BOOST_CHECK_EQUAL( tx9_act_cnsl.substr(start, end-start), "6.666666666666666e-07" );
 
    // test printqf
+#ifdef __x86_64__
+   std::string expect1 = "5.000000000000000000e-01";
+   std::string expect2 = "-3.750000000000000000e+00";
+   std::string expect3 = "6.666666666666666667e-07";
+#else
+   std::string expect1 = "5.000000000000000e-01";
+   std::string expect2 = "-3.750000000000000e+00";
+   std::string expect3 = "6.666666666666667e-07";
+#endif
    auto tx10_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printqf", {} );
    auto tx10_act_cnsl = tx10_trace->action_traces.front().console;
    start = 0; end = tx10_act_cnsl.find('\n', start);
-   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "5.000000000000000000e-01" );
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), expect1 );
    start = end + 1; end = tx10_act_cnsl.find('\n', start);
-   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "-3.750000000000000000e+00" );
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), expect2 );
    start = end + 1; end = tx10_act_cnsl.find('\n', start);
-   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "6.666666666666666667e-07" );
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), expect3 );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
