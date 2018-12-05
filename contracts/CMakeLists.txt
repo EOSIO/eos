@@ -1,11 +1,10 @@
-macro(add_contract_no_abi CONTRACT_NAME TARGET)
+macro( add_contract_no_abi CONTRACT_NAME TARGET )
    add_executable( ${TARGET}.wasm ${ARGN} )
 endmacro()
 
-find_package(eosio.cdt)
+find_package( eosio.cdt )
 
 add_subdirectory( asserter )
-add_subdirectory( eosio.token )
 add_subdirectory( hello )
 add_subdirectory( infinite )
 add_subdirectory( integration_test )
@@ -15,15 +14,11 @@ add_subdirectory( payloadless )
 add_subdirectory( proxy )
 add_subdirectory( simple.token )
 add_subdirectory( snapshot_test )
-
-add_subdirectory(test_api)
-add_subdirectory(test_api_mem)
-add_subdirectory(test_api_db)
-add_subdirectory(test_api_multi_index)
-
-add_subdirectory(test_ram_limit)
-
-add_subdirectory(stltest)
-add_subdirectory(test.inline)
-
-# add_subdirectory(tic_tac_toe)
+add_subdirectory( stltest )
+add_subdirectory( test.inline )
+add_subdirectory( test_api )
+add_subdirectory( test_api_mem )
+add_subdirectory( test_api_db )
+add_subdirectory( test_api_multi_index )
+add_subdirectory( test_ram_limit )
+# add_subdirectory( tic_tac_toe )

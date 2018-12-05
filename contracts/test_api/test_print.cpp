@@ -6,8 +6,6 @@
 
 #include "test_api.hpp"
 
-//using namespace eosio;
-
 void test_print::test_prints_l() {
   char ab[] = { 'a', 'b' };
   const char test[] = "test";
@@ -66,15 +64,10 @@ void test_print::test_printui128() {
 }
 
 void test_print::test_printn() {
-   printn(eosio::name{"1"}.value); // Should Not work according to docs
-   printn(eosio::name{"5"}.value); // Should Not work according to docs
+   printn(eosio::name{"1"}.value);
+   printn(eosio::name{"5"}.value);
    printn(eosio::name{"a"}.value);
    printn(eosio::name{"z"}.value);
-
-   // printn(eosio::name{"1."}.value); // Should work according to docs
-   // printn(eosio::name{"5."}.value); // Should work according to docs
-   // printn(eosio::name{"a."}.value); // Should work according to docs
-   // printn(eosio::name{"z."}.value); // Should work according to docs
    
    printn(eosio::name{"abc"}.value);
    printn(eosio::name{"123"}.value);
@@ -90,12 +83,8 @@ void test_print::test_printn() {
    printn(eosio::name{"555555555555j"}.value);
    printn(eosio::name{"aaaaaaaaaaaaj"}.value);
    printn(eosio::name{"zzzzzzzzzzzzj"}.value);
-
-   // printn(eosio::name{"111111111111."}.value); // Should work according to docs
-   // printn(eosio::name{"555555555555."}.value); // Should work according to docs
-   // printn(eosio::name{"aaaaaaaaaaaa."}.value); // Should work according to docs
-   // printn(eosio::name{"zzzzzzzzzzzz."}.value); // Should work according to docs
 }
+
 
 void test_print::test_printsf() {
    float x = 1.0f / 2.0f;

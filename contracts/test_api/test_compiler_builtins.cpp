@@ -1,11 +1,10 @@
 /**
- *    @file test_compiler_builtins.cpp
- *    @copyright defined in eos/LICENSE.txt
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
-
+#include <eosiolib/compiler_builtins.h>
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/print.hpp>
-#include <eosiolib/compiler_builtins.h>
 
 #include "test_api.hpp"
 

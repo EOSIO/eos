@@ -2,19 +2,19 @@
  * @file action_test.cpp
  * @copyright defined in eos/LICENSE.txt
  */
+#include <limits>
 
-#include <eosiolib/permission.h>
-#include <eosiolib/db.h>
-
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/print.hpp>
-#include <eosiolib/compiler_builtins.h>
-#include <eosiolib/serialize.hpp>
 #include <eosiolib/action.hpp>
+#include <eosiolib/compiler_builtins.h>
+#include <eosiolib/db.h>
+#include <eosiolib/eosio.hpp>
+#include <eosiolib/permission.h>
+#include <eosiolib/print.hpp>
+#include <eosiolib/serialize.hpp>
 
 #include "test_api.hpp"
 
-#include <limits>
+
 
 struct check_auth_msg {
    eosio::name                    account;
@@ -24,7 +24,7 @@ struct check_auth_msg {
    EOSLIB_SERIALIZE( check_auth_msg, (account)(permission)(pubkeys)  )
 };
 
-void test_permission::check_authorization(uint64_t receiver, uint64_t code, uint64_t action) {
+void test_permission::check_authorization( uint64_t receiver, uint64_t code, uint64_t action ) {
    (void)code;
    (void)action;
    using namespace eosio;
@@ -36,18 +36,14 @@ void test_permission::check_authorization(uint64_t receiver, uint64_t code, uint
                                                      params.permission.value,
                                                      packed_pubkeys.data(), packed_pubkeys.size(),
                                                      (const char*)0,        0,
-                                                     static_cast<uint64_t>(std::numeric_limits<int64_t>::max())
+                                                     static_cast<uint64_t>( std::numeric_limits<int64_t>::max() )
                                                    );
-   /*
-   uint64_t res64 = (uint64_t)::check_authorization( params.account, params.permission,
-        (char*)params.pubkeys.data(), params.pubkeys.size()*sizeof(public_key) );
-   */
 
-   auto itr = db_lowerbound_i64(self, self, self, 1);
+   auto itr = db_lowerbound_i64( self, self, self, 1 );
    if(itr == -1) {
-      db_store_i64(self, self, self, 1, &res64, sizeof(int64_t));
+      db_store_i64( self, self, self, 1, &res64, sizeof(int64_t) );
    } else {
-      db_update_i64(itr, self, &res64, sizeof(int64_t));
+      db_update_i64( itr, self, &res64, sizeof(int64_t) );
    }
 }
 
@@ -59,7 +55,7 @@ struct test_permission_last_used_msg {
    EOSLIB_SERIALIZE( test_permission_last_used_msg, (account)(permission)(last_used_time) )
 };
 
-void test_permission::test_permission_last_used(uint64_t /* receiver */, uint64_t code, uint64_t action) {
+void test_permission::test_permission_last_used( uint64_t /* receiver */, uint64_t code, uint64_t action ) {
    (void)code;
    (void)action;
    using namespace eosio;
@@ -69,7 +65,7 @@ void test_permission::test_permission_last_used(uint64_t /* receiver */, uint64_
    eosio_assert( get_permission_last_used(params.account.value, params.permission.value) == params.last_used_time, "unexpected last used permission time" );
 }
 
-void test_permission::test_account_creation_time(uint64_t /* receiver */, uint64_t code, uint64_t action) {
+void test_permission::test_account_creation_time( uint64_t /* receiver */, uint64_t code, uint64_t action ) {
    (void)code;
    (void)action;
    using namespace eosio;

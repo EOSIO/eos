@@ -1,17 +1,18 @@
 /**
- * @file action_test.cpp
- * @copyright defined in eos/LICENSE.txt
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosiolib/action.hpp>
-#include <eosiolib/transaction.hpp>
 #include <eosiolib/chain.h>
-#include <eosiolib/db.h>
-#include <eosiolib/crypto.h>
-#include <eosiolib/privileged.h>
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/datastream.hpp>
-#include <eosiolib/print.hpp>
 #include <eosiolib/compiler_builtins.h>
+#include <eosiolib/crypto.h>
+#include <eosiolib/datastream.hpp>
+#include <eosiolib/db.h>
+#include <eosiolib/eosio.hpp>
+#include <eosiolib/print.hpp>
+#include <eosiolib/privileged.h>
+#include <eosiolib/transaction.hpp>
+
 #include "test_api.hpp"
 
 using namespace eosio;
@@ -21,25 +22,25 @@ void test_action::read_action_normal() {
    char buffer[100];
    uint32_t total = 0;
 
-   eosio_assert(action_data_size() == sizeof(dummy_action), "action_size() == sizeof(dummy_action)");
+   eosio_assert( action_data_size() == sizeof(dummy_action), "action_size() == sizeof(dummy_action)" );
 
-   total = read_action_data(buffer, 30);
-   eosio_assert(total == sizeof(dummy_action) , "read_action(30)" );
+   total = read_action_data( buffer, 30 );
+   eosio_assert( total == sizeof(dummy_action) , "read_action(30)" );
 
-   total = read_action_data(buffer, 100);
+   total = read_action_data( buffer, 100 );
    eosio_assert(total == sizeof(dummy_action) , "read_action(100)" );
 
    total = read_action_data(buffer, 5);
-   eosio_assert(total == 5 , "read_action(5)" );
+   eosio_assert( total == 5 , "read_action(5)" );
 
    total = read_action_data(buffer, sizeof(dummy_action) );
-   eosio_assert(total == sizeof(dummy_action), "read_action(sizeof(dummy_action))" );
+   eosio_assert( total == sizeof(dummy_action), "read_action(sizeof(dummy_action))" );
 
    dummy_action *dummy13 = reinterpret_cast<dummy_action *>(buffer);
 
-   eosio_assert(dummy13->a == DUMMY_ACTION_DEFAULT_A, "dummy13->a == DUMMY_ACTION_DEFAULT_A");
-   eosio_assert(dummy13->b == DUMMY_ACTION_DEFAULT_B, "dummy13->b == DUMMY_ACTION_DEFAULT_B");
-   eosio_assert(dummy13->c == DUMMY_ACTION_DEFAULT_C, "dummy13->c == DUMMY_ACTION_DEFAULT_C");
+   eosio_assert( dummy13->a == DUMMY_ACTION_DEFAULT_A, "dummy13->a == DUMMY_ACTION_DEFAULT_A" );
+   eosio_assert( dummy13->b == DUMMY_ACTION_DEFAULT_B, "dummy13->b == DUMMY_ACTION_DEFAULT_B" );
+   eosio_assert( dummy13->c == DUMMY_ACTION_DEFAULT_C, "dummy13->c == DUMMY_ACTION_DEFAULT_C" );
 }
 
 void test_action::test_dummy_action() {
@@ -61,16 +62,16 @@ void test_action::test_dummy_action() {
    if ( dum13.b == 200 ) {
       // attempt to access context free only api
       get_context_free_data( 0, nullptr, 0 );
-      eosio_assert(false, "get_context_free_data() not allowed in non-context free action");
+      eosio_assert( false, "get_context_free_data() not allowed in non-context free action" );
    } else {
-      eosio_assert(dum13.a == DUMMY_ACTION_DEFAULT_A, "dum13.a == DUMMY_ACTION_DEFAULT_A");
-      eosio_assert(dum13.b == DUMMY_ACTION_DEFAULT_B, "dum13.b == DUMMY_ACTION_DEFAULT_B");
-      eosio_assert(dum13.c == DUMMY_ACTION_DEFAULT_C, "dum13.c == DUMMY_ACTION_DEFAULT_C");
+      eosio_assert( dum13.a == DUMMY_ACTION_DEFAULT_A, "dum13.a == DUMMY_ACTION_DEFAULT_A" );
+      eosio_assert( dum13.b == DUMMY_ACTION_DEFAULT_B, "dum13.b == DUMMY_ACTION_DEFAULT_B" );
+      eosio_assert( dum13.c == DUMMY_ACTION_DEFAULT_C, "dum13.c == DUMMY_ACTION_DEFAULT_C" );
    }
 }
 
 void test_action::read_action_to_0() {
-   read_action_data((void *)0, action_data_size());
+   read_action_data( (void *)0, action_data_size() );
 }
 
 void test_action::read_action_to_64k() {
@@ -102,7 +103,7 @@ void test_action::test_cf_action() {
       eosio::print("test\n");
       // verify memory api access
       uint32_t i = 42;
-      memccpy(&v, &i, sizeof(i), sizeof(i));
+      memccpy( &v, &i, sizeof(i), sizeof(i) );
       // verify transaction api access
       eosio_assert(transaction_size() > 0, "transaction_size failed");
       // verify softfloat api access
@@ -111,7 +112,7 @@ void test_action::test_cf_action() {
       eosio_assert( f3 >  2.0f, "Unable to add float.");
       // verify compiler builtin api access
       __int128 ret;
-      __divti3(ret, 2, 2, 2, 2);
+      __divti3( ret, 2, 2, 2, 2 );
       // verify context_free_system_api
       eosio_assert( true, "verify eosio_assert can be called" );
 
@@ -134,7 +135,7 @@ void test_action::test_cf_action() {
       db_idx64_store( "testapi"_n.value, "testapi"_n.value, "testapi"_n.value, 0, &i );
       eosio_assert( false, "db_api should not be allowed" );
    } else if ( cfa.payload == 204 ) {
-      db_find_i64( "testapi"_n.value, "testapi"_n.value, "testapi"_n.value, 1);
+      db_find_i64( "testapi"_n.value, "testapi"_n.value, "testapi"_n.value, 1 );
       eosio_assert( false, "db_api should not be allowed" );
    } else if ( cfa.payload == 205 ) {
       // attempt to access non context free api, send action
@@ -163,46 +164,46 @@ void test_action::test_cf_action() {
 
 }
 
-void test_action::require_notice(uint64_t receiver, uint64_t code, uint64_t action) {
+void test_action::require_notice( uint64_t receiver, uint64_t code, uint64_t action ) {
    (void)code;(void)action;
    if( receiver == "testapi"_n.value ) {
       eosio::require_recipient( "acc1"_n );
       eosio::require_recipient( "acc2"_n );
       eosio::require_recipient( "acc1"_n, "acc2"_n );
-      eosio_assert(false, "Should've failed");
+      eosio_assert( false, "Should've failed" );
    } else if ( receiver == "acc1"_n.value || receiver == "acc2"_n.value ) {
       return;
    }
-   eosio_assert(false, "Should've failed");
+   eosio_assert( false, "Should've failed" );
 }
 
-void test_action::require_notice_tests(uint64_t receiver, uint64_t code, uint64_t action) {
+void test_action::require_notice_tests( uint64_t receiver, uint64_t code, uint64_t action ) {
    eosio::print( "require_notice_tests" );
    if( receiver == "testapi"_n.value ) {
-      eosio::print( "require_recipient( \"acc5\"_n )" );
-      eosio::require_recipient( "acc5"_n );
+      eosio::print("require_recipient( \"acc5\"_n )");
+      eosio::require_recipient("acc5"_n);
    } else if( receiver == "acc5"_n.value ) {
-      eosio::print( "require_recipient( \"testapi\"_n )" );
-      eosio::require_recipient( "testapi"_n );
+      eosio::print("require_recipient( \"testapi\"_n )");
+      eosio::require_recipient("testapi"_n);
    }
 }
 
 void test_action::require_auth() {
    prints("require_auth");
-   eosio::require_auth( "acc3"_n );
-   eosio::require_auth( "acc4"_n );
+   eosio::require_auth("acc3"_n);
+   eosio::require_auth("acc4"_n);
 }
 
 void test_action::assert_false() {
-   eosio_assert(false, "test_action::assert_false");
+   eosio_assert( false, "test_action::assert_false" );
 }
 
 void test_action::assert_true() {
-   eosio_assert(true, "test_action::assert_true");
+   eosio_assert( true, "test_action::assert_true" );
 }
 
 void test_action::assert_true_cf() {
-   eosio_assert(true, "test_action::assert_true");
+   eosio_assert( true, "test_action::assert_true" );
 }
 
 void test_action::test_abort() {
@@ -212,37 +213,37 @@ void test_action::test_abort() {
 
 void test_action::test_publication_time() {
    uint64_t pub_time = 0;
-   uint32_t total = read_action_data(&pub_time, sizeof(uint64_t));
-   eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
+   uint32_t total = read_action_data( &pub_time, sizeof(uint64_t) );
+   eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)" );
    eosio_assert( pub_time == publication_time(), "pub_time == publication_time()" );
 }
 
-void test_action::test_current_receiver(uint64_t receiver, uint64_t code, uint64_t action) {
+void test_action::test_current_receiver( uint64_t receiver, uint64_t code, uint64_t action ) {
    (void)code;(void)action;
    name cur_rec;
-   read_action_data(&cur_rec, sizeof(name));
+   read_action_data( &cur_rec, sizeof(name) );
 
    eosio_assert( receiver == cur_rec.value, "the current receiver does not match" );
 }
 
 void test_action::test_current_time() {
    uint64_t tmp = 0;
-   uint32_t total = read_action_data(&tmp, sizeof(uint64_t));
-   eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
+   uint32_t total = read_action_data( &tmp, sizeof(uint64_t) );
+   eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)" );
    eosio_assert( tmp == current_time(), "tmp == current_time()" );
 }
 
 void test_action::test_assert_code() {
    uint64_t code = 0;
    uint32_t total = read_action_data(&code, sizeof(uint64_t));
-   eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)");
+   eosio_assert( total == sizeof(uint64_t), "total == sizeof(uint64_t)" );
    eosio_assert_code( false, code );
 }
 
-void test_action::test_ram_billing_in_notify(uint64_t receiver, uint64_t code, uint64_t action) {
+void test_action::test_ram_billing_in_notify( uint64_t receiver, uint64_t code, uint64_t action ) {
    uint128_t tmp = 0;
-   uint32_t total = read_action_data(&tmp, sizeof(uint128_t));
-   eosio_assert( total == sizeof(uint128_t), "total == sizeof(uint128_t)");
+   uint32_t total = read_action_data( &tmp, sizeof(uint128_t) );
+   eosio_assert( total == sizeof(uint128_t), "total == sizeof(uint128_t)" );
 
    uint64_t to_notify = tmp >> 64;
    uint64_t payer = tmp & 0xFFFFFFFFFFFFFFFFULL;
@@ -259,7 +260,6 @@ void test_action::test_ram_billing_in_notify(uint64_t receiver, uint64_t code, u
 
       // Create the main table row simply for the purpose of charging code more RAM.
       if( payer != 0 )
-         db_store_i64("notifytest"_n.value, "notifytest"_n.value, payer, "notifytest"_n.value, &to_notify, sizeof(to_notify) );
+         db_store_i64( "notifytest"_n.value, "notifytest"_n.value, payer, "notifytest"_n.value, &to_notify, sizeof(to_notify) );
    }
-
 }

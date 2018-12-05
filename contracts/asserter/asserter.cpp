@@ -2,7 +2,6 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-
 #include <asserter/asserter.hpp> /// defines assert_def struct (abi)
 
 using namespace eosio;
@@ -19,9 +18,9 @@ extern "C" {
             assertdef def = eosio::unpack_action_data<assertdef>();
 
             // maybe assert?
-            eosio_assert((uint32_t)def.condition, def.message.c_str());
+            eosio_assert( (uint32_t)def.condition, def.message.c_str() );
          } else if( action == "provereset"_n.value ) {
-            eosio_assert(global_variable == 45, "Global Variable Initialized poorly");
+            eosio_assert( global_variable == 45, "Global Variable Initialized poorly" );
             global_variable = 100;
          }
       }

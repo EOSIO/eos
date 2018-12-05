@@ -1,5 +1,8 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eosiolib/eosio.hpp>
-#include <eosiolib/multi_index.hpp>
 
 using namespace eosio;
 
@@ -13,13 +16,13 @@ namespace snapshot_test {
       uint128_t   index_i128 = 0ULL;
       checksum256 index_i256 = checksum256();
 
-      auto primary_key() const { return id; }
+      auto primary_key()const { return id; }
 
-      auto get_index_f64  () const { return index_f64 ; }
-      auto get_index_f128 () const { return index_f128; }
-      auto get_index_i64  () const { return index_i64 ; }
-      auto get_index_i128 () const { return index_i128; }
-      const checksum256& get_index_i256 () const { return index_i256; }
+      auto get_index_f64()const  { return index_f64 ; }
+      auto get_index_f128()const { return index_f128; }
+      auto get_index_i64()const  { return index_i64 ; }
+      auto get_index_i128()const { return index_i128; }
+      const checksum256& get_index_i256 ()const { return index_i256; }
 
       EOSLIB_SERIALIZE( main_record, (id)(index_f64)(index_f128)(index_i64)(index_i128)(index_i256) )
    };
@@ -30,7 +33,7 @@ namespace snapshot_test {
 
       uint32_t value;
 
-      EOSLIB_SERIALIZE(increment, (value))
+      EOSLIB_SERIALIZE( increment, (value) )
    };
 
    using multi_index_type = eosio::multi_index<"data"_n, main_record,
@@ -42,8 +45,8 @@ namespace snapshot_test {
       >;
 
    static void exec( uint64_t self, uint32_t value ) {
-      multi_index_type data(name{self}, self);
-      auto current = data.begin( );
+      multi_index_type data( name{self}, self );
+      auto current = data.begin();
       if( current == data.end() ) {
          data.emplace( name{self}, [&]( auto& r ) {
             r.id         = value;
@@ -72,8 +75,8 @@ namespace multi_index_test {
       /// The apply method implements the dispatch of events to this contract
       void apply( uint64_t self, uint64_t code, uint64_t action ) {
          require_auth(code);
-         eosio_assert(action == "increment"_n.value, "unsupported action");
-         snapshot_test::exec(self, unpack_action_data<snapshot_test::increment>().value);
+         eosio_assert( action == "increment"_n.value, "unsupported action" );
+         snapshot_test::exec( self, unpack_action_data<snapshot_test::increment>().value );
       }
    }
 }

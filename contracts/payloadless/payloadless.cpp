@@ -12,7 +12,7 @@ public:
    using contract::contract;
 
    ACTION doit() {
-      print( "Im a payloadless action" );
+      print("Im a payloadless action");
    }
 };
 

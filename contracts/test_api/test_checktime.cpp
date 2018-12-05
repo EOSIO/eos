@@ -1,14 +1,14 @@
 /**
- * @file
- * @copyright defined in eos/LICENSE.txt
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
  */
-
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/crypto.h>
-#include <eosiolib/print.h>
-#include "test_api.hpp"
-
 #include <vector>
+
+#include <eosiolib/crypto.h>
+#include <eosiolib/eosio.hpp>
+#include <eosiolib/print.h>
+
+#include "test_api.hpp"
 
 void test_checktime::checktime_pass() {
    int p = 0;
@@ -21,7 +21,7 @@ void test_checktime::checktime_pass() {
 
 void test_checktime::checktime_failure() {
    volatile unsigned long long bound{}; // `volatile' necessary to prevent loop optimization
-   read_action_data((char*)&bound, sizeof(bound));
+   read_action_data( (char*)&bound, sizeof(bound) );
 
    int p = 0;
    for ( unsigned long long i = 0; i < bound; i++ )

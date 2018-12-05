@@ -2,11 +2,12 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosiolib/eosio.hpp>
 #include <eosiolib/crypto.h>
+#include <eosiolib/eosio.hpp>
 #include <eosiolib/print.hpp>
 
 #include "test_api.hpp"
+
 #define WASM_TEST_FAIL 1
 
 static const char test1[] = "abc";
@@ -165,18 +166,18 @@ static const unsigned char test5_ok_ripe[] = {
 };
 
 extern "C" {
-  uint32_t my_strlen(const char *str) {
+  uint32_t my_strlen( const char *str ) {
     uint32_t len = 0;
     while(str[len]) ++len;
     return len;
   }
 
-  bool my_memcmp(void *s1, void *s2, uint32_t n)
+  bool my_memcmp( void *s1, void *s2, uint32_t n )
   {
     unsigned char *c1 = (unsigned char *)s1;
     unsigned char *c2 = (unsigned char *)s2;
     for (uint32_t i = 0; i < n; ++i) {
-      if (c1[i] != c2[i]) {
+      if ( c1[i] != c2[i] ) {
         return false;
       }
     }
@@ -206,7 +207,7 @@ void test_crypto::test_recover_key_assert_false() {
 
 void test_crypto::test_recover_key() {
    sig_hash_key sh;
-   read_action_data((char*)&sh, sizeof(sh));
+   read_action_data( (char*)&sh, sizeof(sh) );
    capi_public_key pk;
    recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), pk.data, sizeof(pk) );
    for ( uint32_t i=0; i < sizeof(pk); i++ )
@@ -280,8 +281,8 @@ void test_crypto::test_ripemd160() {
 
 void test_crypto::sha256_null() {
   eosio::checksum256 tmp;
-  tmp = eosio::sha256(nullptr, 100);
-  eosio_assert(false, "should've thrown an error");
+  tmp = eosio::sha256( nullptr, 100);
+  eosio_assert( false, "should've thrown an error" );
 }
 
 void test_crypto::sha1_no_data() {
@@ -320,7 +321,7 @@ void test_crypto::assert_sha256_false() {
   tmp.data()[0] ^= (uint64_t)(-1);
   assert_sha256( test1, my_strlen(test1), tmp );
    
-  eosio_assert(false, "should have failed");
+  eosio_assert( false, "should have failed" );
 }
 
 void test_crypto::assert_sha256_true() {
@@ -346,7 +347,7 @@ void test_crypto::assert_sha1_false() {
   tmp.data()[0] ^= (uint64_t)(-1);
   assert_sha1( test1, my_strlen(test1), tmp );
    
-  eosio_assert(false, "should have failed");
+  eosio_assert( false, "should have failed" );
 }
 
 
@@ -400,7 +401,7 @@ void test_crypto::assert_ripemd160_false() {
   tmp.data()[0] ^= (uint64_t)(-1);
   assert_ripemd160( test1, my_strlen(test1), tmp );
    
-  eosio_assert(false, "should have failed");
+  eosio_assert( false, "should have failed" );
 }
 
 

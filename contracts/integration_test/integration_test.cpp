@@ -2,7 +2,6 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-
 #include <eosiolib/eosio.hpp>
 
 using namespace eosio;
@@ -14,13 +13,15 @@ CONTRACT integration_test : public contract {
       uint64_t              key;
       std::vector<uint64_t> data;
 
-      uint64_t primary_key() const { return key; }
+      uint64_t primary_key()const { return key; }
+
+      EOSLIB_SERIALIZE( payload, (key)(data) )
    };
    typedef eosio::multi_index<"payloads"_n, payload> payloads;
 
 public:
    ACTION store( name from, name to, uint64_t num ) {
-      require_auth( from );
+      require_auth(from);
         
       eosio_assert( is_account( to ), "to account does not exist" );
       eosio_assert( num < std::numeric_limits<size_t>::max(), "num to large" );

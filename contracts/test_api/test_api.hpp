@@ -3,16 +3,12 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include "test_api_common.hpp"
+
 #include <string>
 
+#include "test_api_common.hpp"
 
-namespace eosio {
-   class transaction;
-}
-
-
-//#include <eosiolib/transaction.hpp>
+namespace eosio { class transaction; }
 
 // NOTE: including eosiolib/transaction.hpp here causes !"unresolvable": env._ZNKSt3__120__vector_base_commonILb1EE20__throw_length_errorEv
 //       errors in api_tests/memory_tests
@@ -36,43 +32,43 @@ namespace eosio {
 }
 
 struct test_types {
-  static void types_size();
-  static void char_to_symbol();
-  static void string_to_name();
+   static void types_size();
+   static void char_to_symbol();
+   static void string_to_name();
 };
 
 struct test_print {
-  static void test_prints();
-  static void test_prints_l();
-  static void test_printi();
-  static void test_printui();
-  static void test_printi128();
-  static void test_printui128();
-  static void test_printn();
-  static void test_printsf();
-  static void test_printdf();
-  static void test_printqf();
-  static void test_print_simple();
+   static void test_prints();
+   static void test_prints_l();
+   static void test_printi();
+   static void test_printui();
+   static void test_printi128();
+   static void test_printui128();
+   static void test_printn();
+   static void test_printsf();
+   static void test_printdf();
+   static void test_printqf();
+   static void test_print_simple();
 };
 
 struct test_action {
-  static void read_action_normal();
-  static void read_action_to_0();
-  static void read_action_to_64k();
-  static void test_dummy_action();
-  static void test_cf_action();
-  static void require_notice(uint64_t receiver, uint64_t code, uint64_t action);
-  static void require_notice_tests(uint64_t receiver, uint64_t code, uint64_t action);
-  static void require_auth();
-  static void assert_false();
-  static void assert_true();
-  static void assert_true_cf();
-  static void test_current_time();
-  static void test_abort() __attribute__ ((noreturn)) ;
-  static void test_current_receiver(uint64_t receiver, uint64_t code, uint64_t action);
-  static void test_publication_time();
-  static void test_assert_code();
-  static void test_ram_billing_in_notify(uint64_t receiver, uint64_t code, uint64_t action);
+   static void read_action_normal();
+   static void read_action_to_0();
+   static void read_action_to_64k();
+   static void test_dummy_action();
+   static void test_cf_action();
+   static void require_notice(uint64_t receiver, uint64_t code, uint64_t action);
+   static void require_notice_tests(uint64_t receiver, uint64_t code, uint64_t action);
+   static void require_auth();
+   static void assert_false();
+   static void assert_true();
+   static void assert_true_cf();
+   static void test_current_time();
+   static void test_abort() __attribute__ ((noreturn)) ;
+   static void test_current_receiver(uint64_t receiver, uint64_t code, uint64_t action);
+   static void test_publication_time();
+   static void test_assert_code();
+   static void test_ram_billing_in_notify(uint64_t receiver, uint64_t code, uint64_t action);
 };
 
 struct test_db {
@@ -152,40 +148,40 @@ struct test_crypto {
 };
 
 struct test_transaction {
-  static void test_tapos_block_num();
-  static void test_tapos_block_prefix();
-  static void send_action();
-  static void send_action_empty();
-  static void send_action_max();
-  static void send_action_large();
-  static void send_action_recurse();
-  static void send_action_inline_fail();
-  static void test_read_transaction();
-  static void test_transaction_size();
-  static void send_transaction(uint64_t receiver, uint64_t code, uint64_t action);
-  static void send_transaction_empty(uint64_t receiver, uint64_t code, uint64_t action);
-  static void send_transaction_trigger_error_handler(uint64_t receiver, uint64_t code, uint64_t action);
-  static void assert_false_error_handler(const eosio::transaction&);
-  static void send_transaction_max();
-  static void send_transaction_large(uint64_t receiver, uint64_t code, uint64_t action);
-  static void send_action_sender(uint64_t receiver, uint64_t code, uint64_t action);
-  static void deferred_print();
-  static void send_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);
-  static void send_deferred_transaction_replace(uint64_t receiver, uint64_t code, uint64_t action);
-  static void send_deferred_tx_with_dtt_action();
-  static void cancel_deferred_transaction_success();
-  static void cancel_deferred_transaction_not_found();
-  static void send_cf_action();
-  static void send_cf_action_fail();
-  static void stateful_api();
-  static void context_free_api();
-  static void new_feature();
-  static void active_new_feature();
-  static void repeat_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);
+   static void test_tapos_block_num();
+   static void test_tapos_block_prefix();
+   static void send_action();
+   static void send_action_empty();
+   static void send_action_max();
+   static void send_action_large();
+   static void send_action_recurse();
+   static void send_action_inline_fail();
+   static void test_read_transaction();
+   static void test_transaction_size();
+   static void send_transaction(uint64_t receiver, uint64_t code, uint64_t action);
+   static void send_transaction_empty(uint64_t receiver, uint64_t code, uint64_t action);
+   static void send_transaction_trigger_error_handler(uint64_t receiver, uint64_t code, uint64_t action);
+   static void assert_false_error_handler(const eosio::transaction&);
+   static void send_transaction_max();
+   static void send_transaction_large(uint64_t receiver, uint64_t code, uint64_t action);
+   static void send_action_sender(uint64_t receiver, uint64_t code, uint64_t action);
+   static void deferred_print();
+   static void send_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);
+   static void send_deferred_transaction_replace(uint64_t receiver, uint64_t code, uint64_t action);
+   static void send_deferred_tx_with_dtt_action();
+   static void cancel_deferred_transaction_success();
+   static void cancel_deferred_transaction_not_found();
+   static void send_cf_action();
+   static void send_cf_action_fail();
+   static void stateful_api();
+   static void context_free_api();
+   static void new_feature();
+   static void active_new_feature();
+   static void repeat_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);
 };
 
 struct test_chain {
-  static void test_activeprods();
+   static void test_activeprods();
 };
 
 struct test_fixedpoint {
@@ -214,10 +210,10 @@ struct test_compiler_builtins {
 };
 
 struct test_extended_memory {
-	static void test_initial_buffer();
-	static void test_page_memory();
-	static void test_page_memory_exceeded();
-	static void test_page_memory_negative_bytes();
+   static void test_initial_buffer();
+   static void test_page_memory();
+   static void test_page_memory_exceeded();
+   static void test_page_memory_negative_bytes();
 };
 
 struct test_memory {
@@ -259,22 +255,13 @@ struct test_checktime {
 
    static int i;
 };
-/*
-struct test_softfloat {
-   static void test_f32_add();
-   static void test_f32_sub();
-   static void test_f32_mul();
-   static void test_f32_div();
-   static void test_f32_min();
-};
-*/
 
 struct test_permission {
-  static void check_authorization(uint64_t receiver, uint64_t code, uint64_t action);
-  static void test_permission_last_used(uint64_t receiver, uint64_t code, uint64_t action);
-  static void test_account_creation_time(uint64_t receiver, uint64_t code, uint64_t action);
+   static void check_authorization(uint64_t receiver, uint64_t code, uint64_t action);
+   static void test_permission_last_used(uint64_t receiver, uint64_t code, uint64_t action);
+   static void test_account_creation_time(uint64_t receiver, uint64_t code, uint64_t action);
 };
 
 struct test_datastream {
-  static void test_basic();
+   static void test_basic();
 };

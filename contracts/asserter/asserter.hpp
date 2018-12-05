@@ -2,7 +2,6 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-
 #include <eosiolib/eosio.hpp>
 
 namespace asserter {
@@ -12,4 +11,4 @@ namespace asserter {
 
       EOSLIB_SERIALIZE( assertdef, (condition)(message) )
    };
-}
+} /// asserter

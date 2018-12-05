@@ -1,6 +1,8 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eosiolib/eosio.hpp>
-#include <eosiolib/dispatcher.hpp>
-#include <eosiolib/multi_index.hpp>
 
 using namespace eosio;
 
@@ -17,7 +19,7 @@ namespace multi_index_test {
          uint64_t  expiration;
          name      owner;
 
-         auto primary_key()const { return id; }
+         auto primary_key()const { return id; }         
          uint64_t get_expiration()const { return expiration; }
          uint128_t get_price()const { return price; }
 
@@ -25,8 +27,8 @@ namespace multi_index_test {
       };
 
       struct test_k256 {
-         uint64_t  id;
-         checksum256   val;
+         uint64_t    id;
+         checksum256 val;
 
          auto primary_key()const { return id; }
          checksum256 get_val()const { return val; }
@@ -43,16 +45,16 @@ namespace multi_index_test {
       };
 
       ACTION multitest( uint32_t what ) {
-         trigger t(what);
+         trigger t( what );
 
-         on(t, _self);
+         on( t, _self );
       }
 
       static void on(const trigger& act, name _payer)
       {
          name payer = _payer;
          print("Acting on trigger action.\n");
-         switch(act.what)
+         switch( act.what )
          {
              case 0:
              {
@@ -93,7 +95,7 @@ namespace multi_index_test {
                    print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name{item.owner}, "\n");
                 }
 
-                auto lower = expidx.lower_bound(100);
+                auto lower = expidx.lower_bound( 100 );
 
                 print("First order with an expiration of at least 100 has ID=", lower->id, " and expiration=", lower->get_expiration(), "\n");
 
@@ -127,10 +129,10 @@ namespace multi_index_test {
 
                 auto validx = testtable.get_index<"byval"_n>();
 
-                auto lower1 = validx.lower_bound(checksum256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 40ULL));
+                auto lower1 = validx.lower_bound( checksum256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 40ULL) );
                 print("First entry with a val of at least 40 has ID=", lower1->id, ".\n");
 
-                auto lower2 = validx.lower_bound(checksum256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 50ULL));
+                auto lower2 = validx.lower_bound( checksum256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 50ULL) );
                 print("First entry with a val of at least 50 has ID=", lower2->id, ".\n");
 
                 if( testtable.iterator_to(*lower2) == itr ) {
@@ -142,7 +144,7 @@ namespace multi_index_test {
                    print(" ID=", item.primary_key(), ", val=", item.val, "\n");
                 }
 
-                auto upper = validx.upper_bound(checksum256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL));
+                auto upper = validx.upper_bound( checksum256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL) );
 
                 print("First entry with a val greater than 42 has ID=", upper->id, ".\n");
 
@@ -157,12 +159,11 @@ namespace multi_index_test {
              }
              break;
              default:
-                eosio_assert(0, "Given what code is not supported.");
+                eosio_assert( 0, "Given what code is not supported." );
                 break;
          }
       }
    };
-
 } /// multi_index_test
 
 namespace multi_index_test {
@@ -185,7 +186,7 @@ namespace multi_index_test {
                test.multitest( w );
             }
             else {
-               eosio_assert(false, "Could not dispatch");
+               eosio_assert( false, "Could not dispatch" );
             }
          }
       }
