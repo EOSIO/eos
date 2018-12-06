@@ -162,7 +162,6 @@ fileno_hack(const std::basic_ios<charT, traits>& stream)
 # endif
 #elif defined(_LIBCPP_VERSION)
     return ::fileno(stream.rdbuf()->*stowed< filebuf_file >::value);
-   }
 #else
 #  error "Does anybody know how to fetch the bloody file descriptor?"
     return stream.rdbuf()->fd();  // Maybe a good start?
