@@ -28,7 +28,7 @@ namespace eosio { namespace testing {
    }
 
    std::vector<uint8_t> read_wasm( const char* fn ) {
-      std::cout << fn << std::endl;
+      std::cout << "Reading wasm file:\t" << fn << std::endl;
       std::ifstream wasm_file(fn, std::ios::binary);
       FC_ASSERT( wasm_file.is_open(), "wasm file cannot be found" );
       wasm_file.seekg(0, std::ios::end);
@@ -43,6 +43,7 @@ namespace eosio { namespace testing {
    }
 
    std::vector<char> read_abi( const char* fn ) {
+      std::cout << "Reading abi file:\t" << fn << std::endl;
       std::ifstream abi_file(fn);
       FC_ASSERT( abi_file.is_open(), "abi file cannot be found" );
       abi_file.seekg(0, std::ios::end);
