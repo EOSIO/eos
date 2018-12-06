@@ -1388,7 +1388,7 @@ namespace eosio {
       //
       // 0. my head block id == peer head id means we are all caught up block wise
       // 1. my head block num < peer lib - start sync locally
-      // 2. my lib > peer head num - send an last_irr_catch_up notice if not the first generation
+      // 2. my lib > peer lib - send an last_irr_catch_up notice if not the first generation
       //
       // 3  my head block num <= peer head block num - update sync state and send a catchup request
       // 4  my head block num > peer block num send a notice catchup if this is not the first generation
@@ -1415,7 +1415,7 @@ namespace eosio {
          }
          return;
       }
-      if (lib_num > msg.head_num ) {
+      if (lib_num > msg.last_irreversible_block_num ) {
          fc_dlog(logger, "sync check state 2");
          if (msg.generation > 1 || c->protocol_version > proto_base) {
             notice_message note;
