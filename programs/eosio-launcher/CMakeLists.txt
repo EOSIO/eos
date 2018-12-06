@@ -24,12 +24,14 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../.git)
   endif()
 endif()
 
+find_package(Boost 1.67 REQUIRED COMPONENTS program_options)
+
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
 target_include_directories(eosio-launcher PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(eosio-launcher
-                      PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+                      PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} Boost::boost ${Boost_LIBRARIES})
 
 install( TARGETS
    eosio-launcher

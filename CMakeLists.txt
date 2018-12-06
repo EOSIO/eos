@@ -113,19 +113,14 @@ IF( WIN32 )
   set(Boost_USE_MULTITHREADED ON)
   set(BOOST_ALL_DYN_LINK OFF) # force dynamic linking for all libraries
 ENDIF(WIN32)
-FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
-    thread
-    date_time
-    filesystem
-    system
-    program_options
-    signals
-    serialization
-    chrono
-    unit_test_framework
-    context
-    locale
-    iostreams)
+
+#find_package(Boost)s are scattered about various CMakeLists.txt as appropriate for each library or
+#target. This check below serves as a central location strictly to check the minimum version. Nearly
+#all targets in EOSIO implictly pickup boost's includes and libraries via their dependency on fc.
+function(check_boost_version)
+  find_package(Boost 1.67 REQUIRED)
+endfunction(check_boost_version)
+check_boost_version()
 
 if( WIN32 )
 
