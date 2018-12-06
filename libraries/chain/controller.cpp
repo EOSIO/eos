@@ -26,6 +26,7 @@
 #include <boost/asio/thread_pool.hpp>
 #include <boost/asio/post.hpp>
 
+#include <eosio/chain/fileno.hpp>
 
 namespace eosio { namespace chain {
 
@@ -317,17 +318,24 @@ struct controller_impl {
             ("s", start_block_num)("n", blog_head->block_num()) );
 
       auto start = fc::time_point::now();
+      bool cerr_is_tty = isatty(fileno_hack(std::cerr));
+      auto lineending = "\n";
+      if(cerr_is_tty)
+         lineending = "\r";
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
          replay_push_block( next, controller::block_status::irreversible );
          if( next->block_num() % 100 == 0 ) {
-            std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
+            if(cerr_is_tty)
+               std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() << lineending;
+            else
+               ilog( "${n} of ${head}", ("n", next->block_num())("head", blog_head->block_num()) );
             if( shutdown() ) break;
          }
       }
       std::cerr<< "\n";
       ilog( "${n} blocks replayed", ("n", head->block_num - start_block_num) );
 
-      // if the irreverible log is played without undo sessions enabled, we need to sync the
+      // if the irreversible log is played without undo sessions enabled, we need to sync the
       // revision ordinal to the appropriate expected value here.
       if( self.skip_db_sessions( controller::block_status::irreversible ) )
          db.set_revision(head->block_num);
