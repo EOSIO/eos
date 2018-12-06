@@ -62,6 +62,11 @@ namespace cyberway { namespace chaindb { namespace table_object {
         return idx.find(std::make_tuple(table.code, table.table->name, table.scope, table.pk_order->field));
     }
 
+    template <typename Object>
+    typename index<Object>::iterator find(const index<Object>& idx, const table_info& table) {
+        return idx.find(std::make_tuple(table.code, table.table->name, table.scope, table.pk_order->field));
+    }
+
     template <typename Object, typename... Args>
     Object& emplace(index<Object>& idx, Args&&... args) {
         return const_cast<Object&>(*idx.emplace(std::forward<Args>(args)...).first);

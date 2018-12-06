@@ -13,7 +13,6 @@
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/exception/exception.hpp>
 #include <bsoncxx/json.hpp>
-#include <bsoncxx/types.hpp>
 
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
@@ -37,6 +36,7 @@ namespace cyberway { namespace chaindb {
 
     using mongocxx::bulk_write;
     using mongocxx::model::insert_one;
+    using mongocxx::model::replace_one;
     using mongocxx::model::update_one;
     using mongocxx::model::delete_one;
     using mongocxx::database;
@@ -61,7 +61,8 @@ namespace cyberway { namespace chaindb {
 
     enum class mongo_code: int {
         Unknown = -1,
-        Duplicate = 11000,
+        EmptyBulk = 22,
+        DuplicateValue = 11000,
         NoServer = 13053
     };
 
@@ -72,7 +73,8 @@ namespace cyberway { namespace chaindb {
             auto value = static_cast<mongo_code>(e.code().value());
 
             switch (value) {
-                case mongo_code::Duplicate:
+                case mongo_code::EmptyBulk:
+                case mongo_code::DuplicateValue:
                 case mongo_code::NoServer:
                     return value;
 
@@ -109,42 +111,57 @@ namespace cyberway { namespace chaindb {
             return name.size() == 3; // asc (vs desc)
         }
 
-        variant get_order_value(variant_object object, const index_info& index, const order_def& order) { try {
+        variant get_order_value(const variant_object& row, const index_info& index, const order_def& order) { try {
+            auto* object = &row;
             auto pos = order.path.size();
             for (auto& key: order.path) {
-                auto itr = object.find(key);
-                CYBERWAY_ASSERT(object.end() != itr, driver_absent_field_exception, "Wrong path");
+                auto itr = object->find(key);
+                CYBERWAY_ASSERT(object->end() != itr, driver_absent_field_exception,
+                    "Can't find the part ${key} for the field ${field} in the row ${row} "
+                    "from the table ${table} for the scope '${scope} ",
+                    ("key", key)("field", order.field)
+                    ("table", get_full_table_name(index))("scope", get_scope_name(index))("row", row));
 
                 --pos;
                 if (0 == pos) {
                     return itr->value();
                 } else {
-                    object = itr->value().get_object();
+                    object = &itr->value().get_object();
                 }
             }
-            CYBERWAY_ASSERT(false, driver_absent_field_exception, "Invalid type of primary key");
+            CYBERWAY_ASSERT(false, driver_absent_field_exception,
+                "Wrong logic on parsing of the field ${field} in the row ${row} "
+                "from the table ${table} for the scope '${scope}'",
+                ("table", get_full_table_name(index))("field", order.field)("row", row));
+        } catch (const driver_absent_field_exception&) {
+            throw;
         } catch (...) {
             CYBERWAY_ASSERT(false, driver_absent_field_exception,
-                "External database returns the row in the table ${table} without the field ${field}.",
-                ("table", get_full_table_name(index))("field", order.field));
+                "External database can't read the field ${field} in the row ${row} "
+                "from the table ${table} for the scope '${scope}'",
+                ("field", order.field)
+                ("table", get_full_table_name(index))("scope", get_scope_name(index))("row", row));
         } }
 
-        primary_key_t get_pk_value(const table_info& table, document_view view) { try {
+        primary_key_t get_pk_value(const table_info& table, document_view row) { try {
+            document_view view = row;
             auto& pk_order = *table.pk_order;
             auto pos = pk_order.path.size();
             for (auto& key: pk_order.path) {
                 auto itr = view.find(key);
-                CYBERWAY_ASSERT(view.end() != itr, driver_primary_key_exception, "Wrong path");
+                CYBERWAY_ASSERT(view.end() != itr, driver_primary_key_exception,
+                    "Can't find the part ${key} for the primary key ${pk} in the row ${row} "
+                    "from the table ${table} for the scope '${scope}'",
+                    ("key", key)("pk", pk_order.field)("row", bsoncxx::to_json(row))
+                    ("table", get_full_table_name(table))("scope", get_scope_name(table)));
 
                 --pos;
                 if (0 == pos) {
                     switch (pk_order.type.front()) {
                         case 'i': // int64
                             return static_cast<primary_key_t>(itr->get_int64().value);
-                        case 'u': { // uint64
-                            auto as_string = itr->get_decimal128().value.to_string();
-                            return static_cast<primary_key_t>(std::stoull(as_string));
-                        }
+                        case 'u': // uint64
+                            return static_cast<primary_key_t>(std::stoull(itr->get_decimal128().value.to_string()));
                         case 'n': // name
                             return name(itr->get_utf8().value.data()).value;
                         case 's': // symbol_code
@@ -156,15 +173,22 @@ namespace cyberway { namespace chaindb {
                     view = itr->get_document().value;
                 }
             }
-            CYBERWAY_ASSERT(false, driver_primary_key_exception, "Invalid type of primary key");
+            CYBERWAY_ASSERT(false, driver_primary_key_exception,
+                "Wrong logic on parsing of the primary key ${pk} in the row ${row} "
+                "from the table ${table} for the scope '${scope}'",
+                ("pk", pk_order.field)("row", bsoncxx::to_json(row))
+                ("table", get_full_table_name(table))("scope", get_scope_name(table)));
+        } catch(const driver_primary_key_exception&) {
+            throw;
         } catch (...) {
             CYBERWAY_ASSERT(false, driver_primary_key_exception,
-                "External database locate row in the table ${table} with wrong value of primary key.",
-                ("table", get_full_table_name(table)));
+                "External database can't read the the primary key ${pk} in the row ${row} "
+                "from the table ${table} for the scope '${scope}'",
+                ("pk", table.pk_order->field)("row", bsoncxx::to_json(row))
+                ("table", get_full_table_name(table))("scope", get_scope_name(table)));
         } }
 
-        document make_pk_document(const table_info& table, primary_key_t pk) {
-            document doc;
+        void add_pk_value(sub_document& doc, const table_info& table, const primary_key_t pk) {
             doc.append(kvp(get_scope_field_name(), get_scope_name(table)));
 
             auto& pk_order = *table.pk_order;
@@ -182,9 +206,25 @@ namespace cyberway { namespace chaindb {
                     doc.append(kvp(pk_order.field, symbol(pk << 8).name()));
                     break;
                 default:
-                    CYBERWAY_ASSERT(false, driver_primary_key_exception, "Invalid type of primary key");
+                    CYBERWAY_ASSERT(false, driver_primary_key_exception,
+                        "Invalid type ${type} for the primary key ${pk} in the table ${table} for the scope '${scope}'",
+                        ("type", pk_order.type)("pk", pk)
+                        ("table", get_full_table_name(table))("scope", get_scope_name(table)));
             }
+        }
 
+        document make_pk_document(const table_info& table, const primary_key_t pk) {
+            document doc;
+            add_pk_value(doc, table, pk);
+            return doc;
+        }
+
+        document make_undo_pk_document(const table_info& table, const primary_key_t pk) {
+            document doc;
+
+            doc.append(kvp(get_code_field_name(), get_code_name(table)));
+            doc.append(kvp(get_table_field_name(), get_table_name(table)));
+            add_pk_value(doc, table, pk);
             return doc;
         }
 
@@ -433,8 +473,8 @@ namespace cyberway { namespace chaindb {
             ++itr;
             CYBERWAY_ASSERT(find_cmp_->order != direction::Backward || itr != source_->end(),
                 driver_out_of_range_exception,
-                "External database tries to locate in the ${table} in out of range",
-                ("table", get_full_table_name(index)));
+                "External database tries to locate row in the index ${index} for the scope '${scope}' in out of range",
+                ("table", get_full_index_name(index))("scope", get_scope_name(index)));
             init_pk_value();
         }
 
@@ -472,51 +512,15 @@ namespace cyberway { namespace chaindb {
         }
     }; // struct cursor_location
 
-    enum class changed_value_state {
-        Unknown,
-        Insert,
-        Update,
-        Delete
-    }; // enum class value_state
-
-    struct changed_value_info {
-        changed_value_state state = changed_value_state::Unknown;
-        variant value;
-    }; // struct value_info
-
-    using changed_value_map = std::map<primary_key_t, changed_value_info>;
-
-    struct table_changed_object final: public table_object::object {
-        using table_object::object::object;
-        changed_value_map map;
-    }; // struct table_changed_object
-
-    using table_changed_object_index = table_object::index<table_changed_object>;
-
-    struct changed_value_location {
-        table_changed_object_index::iterator table_itr_;
-        changed_value_map::iterator value_itr_;
-
-        table_changed_object& table() {
-            // not critical, because key parts are const
-            return const_cast<table_changed_object&>(*table_itr_);
-        }
-
-        primary_key_t pk() {
-            return value_itr_->first;
-        }
-
-        changed_value_info& info() {
-            return value_itr_->second;
-        }
-    }; // struct changed_value_location
+    ///----
 
     struct mongodb_driver::mongodb_impl_ {
+        journal& journal_;
         mongocxx::client mongo_conn_;
         code_cursor_map code_cursor_map_;
-        table_changed_object_index table_changed_value_map_;
 
-        mongodb_impl_(const std::string& p) {
+        mongodb_impl_(journal& jrnl, const std::string& p)
+        : journal_(jrnl) {
             init_instance();
             mongocxx::uri uri{p};
             mongo_conn_ = mongocxx::client{uri};
@@ -535,14 +539,11 @@ namespace cyberway { namespace chaindb {
         }
 
         void apply_code_changes(const account_name& code) {
-            auto begin_itr = table_changed_value_map_.lower_bound(std::make_tuple(code));
-            auto end_itr = table_changed_value_map_.upper_bound(std::make_tuple(code));
-
-            apply_range_changes(begin_itr, end_itr);
+            journal_.apply_code_changes(write_ctx_t_(*this), code);
         }
 
         void apply_all_changes() {
-            apply_range_changes(table_changed_value_map_.begin(), table_changed_value_map_.end());
+            journal_.apply_all_changes(write_ctx_t_(*this));
         }
 
         void close_cursor(const cursor_request& request) {
@@ -555,7 +556,7 @@ namespace cyberway { namespace chaindb {
             }
         }
 
-        void close_all_cursors(const account_name& code) {
+        void close_code_cursors(const account_name& code) {
             auto itr = code_cursor_map_.find(code);
             if (code_cursor_map_.end() == itr) return;
 
@@ -624,7 +625,6 @@ namespace cyberway { namespace chaindb {
             CYBERWAY_ASSERT(code_cursor_map_.empty(), driver_opened_cursors_exception, "ChainDB has opened cursors");
 
             code_cursor_map_.clear(); // close all opened cursors
-            table_changed_value_map_.clear(); // cancel all pending changes
 
             auto db_list = mongo_conn_.list_databases();
             for (auto& db: db_list) {
@@ -653,31 +653,19 @@ namespace cyberway { namespace chaindb {
         }
 
         variant value(const table_info& table, const primary_key_t pk) {
-            auto info = find_changed_value(table, pk);
-            if (nullptr != info) {
-                switch(info->state) {
-                    case changed_value_state::Insert:
-                    case changed_value_state::Update:
-                        return info->value;
+            auto cursor = get_db_table(table).find(
+                _detail::make_pk_document(table, pk).view(),
+                options::find().limit(1));
 
-                    case changed_value_state::Delete:
-                    case changed_value_state::Unknown:
-                        break;
-                }
-            } else {
-                auto cursor = get_db_table(table).find(
-                    _detail::make_pk_document(table, pk).view(),
-                    options::find().limit(1));
-
-                auto itr = cursor.begin();
-                if (cursor.end() != itr) {
-                    return build_variant(*itr);
-                }
+            auto itr = cursor.begin();
+            if (cursor.end() != itr) {
+                return build_variant(*itr);
             }
 
             CYBERWAY_ASSERT(false, driver_absent_object_exception,
-                "External database doesn't contain object with the primary key ${scope}.${pk} in the table ${table}",
-                ("scope", get_scope_name(table))("pk", pk)("table", get_full_table_name(table)));
+                "External database doesn't contain object with the primary key ${pk} "
+                "in the table ${table} for the scope '${scope}'",
+                ("pk", pk)("table", get_full_table_name(table))("scope", get_scope_name(table)));
         }
 
         void insert(const table_info& table, const primary_key_t pk, variant value) {
@@ -744,7 +732,11 @@ namespace cyberway { namespace chaindb {
         }
 
         collection get_db_table(const table_info& table) {
-            return mongo_conn_[get_code_name(table)][get_table_name(table)];
+            return mongo_conn_.database(get_code_name(table)).collection(get_table_name(table));
+        }
+
+        collection get_undo_db_table() {
+            return mongo_conn_.database(get_system_code_name()).collection(get_undo_table_name());
         }
 
         cursor_t get_next_cursor_id(code_cursor_map::iterator itr) {
@@ -764,130 +756,145 @@ namespace cyberway { namespace chaindb {
         }
 
         void apply_table_changes(const table_info& table) {
-            auto begin_itr = table_changed_value_map_.lower_bound(std::make_tuple(table.code, table.table->name));
-            auto end_itr = table_changed_value_map_.upper_bound(std::make_tuple(table.code, table.table->name));
-
-            apply_range_changes(begin_itr, end_itr);
-        }
-
-        changed_value_info* find_changed_value(const table_info& table, const primary_key_t pk) {
-            auto table_itr = table_object::find(table_changed_value_map_, table);
-            if (table_changed_value_map_.end() == table_itr) return nullptr;
-
-            auto& map = const_cast<table_changed_object&>(*table_itr).map;
-            auto value_itr = map.find(pk);
-            if (map.end() == value_itr) return nullptr;
-
-            return &value_itr->second;
-        }
-
-        changed_value_location get_changed_value(const table_info& table, const primary_key_t pk) {
-            auto table_itr = table_object::find(table_changed_value_map_, table);
-            if (table_changed_value_map_.end() == table_itr) {
-                table_itr = table_changed_value_map_.emplace(table).first;
-            }
-
-            auto& map = const_cast<table_changed_object&>(*table_itr).map;
-            auto value_itr = map.find(pk);
-            if (map.end() == value_itr) {
-                value_itr = map.emplace(pk, changed_value_info()).first;
-            }
-            return {table_itr, value_itr};
+            journal_.apply_table_changes(write_ctx_t_(*this), table);
         }
 
         cursor_location get_cursor(const cursor_request& request) {
             auto code_itr = code_cursor_map_.find(request.code);
             CYBERWAY_ASSERT(code_cursor_map_.end() != code_itr, driver_invalid_cursor_exception,
-                "Cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
+                "The map for the cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
 
             auto& map = code_itr->second;
             auto cursor_itr = map.find(request.id);
             CYBERWAY_ASSERT(map.end() != cursor_itr, driver_invalid_cursor_exception,
-                "Cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
+                "The cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
 
             return cursor_location{code_itr, cursor_itr};
         }
 
-        void apply_range_changes(table_changed_object_index::iterator itr, table_changed_object_index::iterator end) {
-            std::string error;
-            static auto bulk_options = options::bulk_write().ordered(false);
-            std::unique_ptr<bulk_write> bulk_ptr;
-            account_name code;
-            table_name table;
+        class write_ctx_t_ {
+        public:
+            write_ctx_t_(mongodb_impl_& impl)
+            : impl_(impl),
+              bulk_opts_(options::bulk_write().ordered(false)),
+              prepare_undo_bulk_(impl_.get_undo_db_table().create_bulk_write(bulk_opts_)),
+              complete_undo_bulk_(impl_.get_undo_db_table().create_bulk_write(bulk_opts_)) {
+            }
 
-            auto execute_bulk = [&]() {
-                if (!bulk_ptr) return;
+            void start_table(const table_info& table) {
+                if (table_ != nullptr && table.code == table_->code && table.table->name == table_->table->name) return;
 
-                _detail::auto_reconnect([&]() { try {
-                    bulk_ptr->execute();
-                } catch (const mongocxx::bulk_write_exception& e) {
-                    error = e.what();
-                    elog("Error on bulk write: ${what}", ("what", error));
+                table_ = &table;
+                data_bulk_list_.emplace_back(impl_.get_db_table(table).create_bulk_write(bulk_opts_));
+            }
 
-                    if (_detail::get_mongo_code(e) != mongo_code::Duplicate) throw;
-                }});
-            };
+            void add_data(const primary_key_t pk,  const write_value& data) {
+                append_bulk(_detail::make_pk_document, data_bulk_list_.back(), pk, data);
+            }
 
-            auto init_bulk = [&]() {
-                if (code == itr->code && table == itr->table) return;
+            void add_prepare_undo(const primary_key_t pk, const write_value& data) {
+                append_bulk(_detail::make_undo_pk_document, prepare_undo_bulk_, pk, data);
+            }
 
-                execute_bulk();
+            void add_complete_undo(const primary_key_t pk, const write_value& data) {
+                append_bulk(_detail::make_undo_pk_document, complete_undo_bulk_, pk, data);
+            }
 
-                code = itr->code;
-                table = itr->table;
-                auto db_table = mongo_conn_.database(get_code_name(code)).collection(get_table_name(table));
-
-                bulk_ptr = std::make_unique<bulk_write>(db_table.create_bulk_write(bulk_options));
-            };
-
-            auto append_bulk = [&](const primary_key_t pk, const changed_value_info& info) {
-                auto& bulk = *bulk_ptr.get();
-                auto& table = itr->info();
-                switch (info.state) {
-                    case changed_value_state::Delete:
-                        bulk.append(delete_one(_detail::make_pk_document(table, pk).view()));
-                        break;
-
-                    case changed_value_state::Insert: {
-                        document insert;
-                        build_document(insert, info.value.get_object());
-
-                        bulk.append(insert_one(insert.view()));
-                        break;
-                    }
-
-                    case changed_value_state::Update: {
-                        document update;
-                        build_document(update, info.value.get_object());
-
-                        bulk.append(update_one(
-                            _detail::make_pk_document(table, pk).view(),
-                            make_document(kvp("$set", update))));
-                        break;
-                    }
-
-                    case changed_value_state::Unknown:
-                        CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on apply change to ChainDB");
+            void write() {
+                execute_bulk(prepare_undo_bulk_);
+                for (auto& data_bulk: data_bulk_list_) {
+                    execute_bulk(data_bulk);
                 }
-            };
+                execute_bulk(complete_undo_bulk_);
 
-            for (; end != itr; table_changed_value_map_.erase(itr++)) {
-                auto map = std::move(itr->map);
-                if (map.empty()) continue;
+                CYBERWAY_ASSERT(error_.empty(), driver_duplicate_exception, error_);
+            }
 
-                init_bulk();
-                for (auto& key_value: map) {
-                    append_bulk(key_value.first, key_value.second);
+        private:
+            mongodb_impl_& impl_;
+            std::string error_;
+            const table_info* table_ = nullptr;
+            options::bulk_write bulk_opts_;
+            bulk_write prepare_undo_bulk_;
+            bulk_write complete_undo_bulk_;
+            std::vector<bulk_write> data_bulk_list_;
+
+            template <typename MakePkDocument>
+            void append_bulk(
+                MakePkDocument&& make_pk_document, bulk_write& bulk, const primary_key_t pk, const write_value& data
+            ) {
+                document data_doc;
+                document pk_doc;
+
+                switch (data.operation) {
+                    case write_operation::Insert:
+                    case write_operation::Update:
+                        build_document(data_doc, data.value.get_object());
+
+                    case write_operation::UpdateRevision:
+                        data_doc.append(kvp(get_revision_field_name(), data.set_revision));
+
+                    case write_operation::Delete:
+                        pk_doc = make_pk_document(*table_, pk);
+                        if (impossible_revision != data.find_revision) {
+                            pk_doc.append(kvp(get_revision_field_name(), data.find_revision));
+                        }
+                        break;
+
+                    case write_operation::Unknown:
+                        CYBERWAY_ASSERT(false, driver_write_exception,
+                            "Wrong operation type on writing into the table ${table} for the scope '${scope}"
+                            "with the revision (find: ${find_rev}, set: ${set_rev}) and with the primary key ${pk}",
+                            ("table", get_full_table_name(*table_))("scope", get_scope_name(*table_))
+                            ("find_rev", data.find_revision)("set_rev", data.set_revision)("pk", pk));
+                        return;
+                }
+
+                switch(data.operation) {
+                    case write_operation::Insert:
+                        bulk.append(insert_one(data_doc.view()));
+                        break;
+
+                    case write_operation::Update:
+                        bulk.append(replace_one(pk_doc.view(), data_doc.view()));
+                        break;
+
+                    case write_operation::UpdateRevision:
+                        bulk.append(update_one(pk_doc.view(), make_document(kvp("$set", data_doc))));
+                        break;
+
+                    case write_operation::Delete:
+                        bulk.append(delete_one(pk_doc.view()));
+                        break;
+
+                    case write_operation::Unknown:
+                        break;
                 }
             }
 
-            execute_bulk();
-            CYBERWAY_ASSERT(error.empty(), driver_duplicate_exception, error);
-        }
+            void execute_bulk(bulk_write& bulk) {
+                _detail::auto_reconnect([&]() { try {
+                    bulk.execute();
+                } catch (const mongocxx::bulk_write_exception& e) {
+                    auto code = _detail::get_mongo_code(e);
+                    // TODO: don't try to send empty bulk
+                    if (code == mongo_code::EmptyBulk) return;
+
+                    auto raw_code = e.code().value();
+                    error_ = e.what();
+                    elog("Error on bulk write: ${code}, ${what}", ("what", error_)("code", raw_code));
+
+                    if (code != mongo_code::DuplicateValue) throw; // this shouldn't happen
+                }});
+            }
+        }; // class write_ctx_t_
+
     }; // struct mongodb_driver::mongodb_impl_
 
-    mongodb_driver::mongodb_driver(const std::string& p)
-    : impl_(new mongodb_impl_(p)) {
+    ///----
+
+    mongodb_driver::mongodb_driver(journal& jrnl, const std::string& p)
+    : impl_(new mongodb_impl_(jrnl, p)) {
     }
 
     mongodb_driver::~mongodb_driver() = default;
@@ -904,15 +911,15 @@ namespace cyberway { namespace chaindb {
         impl_->close_cursor(request);
     }
 
-    void mongodb_driver::close_all_cursors(const account_name& code) {
-        impl_->close_all_cursors(code);
+    void mongodb_driver::close_code_cursors(const account_name& code) {
+        impl_->close_code_cursors(code);
     }
 
-    void mongodb_driver::apply_changes(const account_name& code) {
+    void mongodb_driver::apply_code_changes(const account_name& code) {
         impl_->apply_code_changes(code);
     }
 
-    void mongodb_driver::apply_changes() {
+    void mongodb_driver::apply_all_changes() {
         impl_->apply_all_changes();
     }
 
@@ -990,21 +997,6 @@ namespace cyberway { namespace chaindb {
     void mongodb_driver::set_blob(const cursor_info& info, bytes blob) {
         auto& cursor = const_cast<mongodb_cursor_info&>(static_cast<const mongodb_cursor_info&>(info));
         cursor.blob = std::move(blob);
-    }
-
-    primary_key_t mongodb_driver::insert(const table_info& table, const primary_key_t pk, variant value) {
-        impl_->insert(table, pk, std::move(value));
-        return pk;
-    }
-
-    primary_key_t mongodb_driver::update(const table_info& table, const primary_key_t pk, variant value) {
-        impl_->update(table, pk, std::move(value));
-        return pk;
-    }
-
-    primary_key_t mongodb_driver::remove(const table_info& table, primary_key_t pk) {
-        impl_->remove(table, pk);
-        return pk;
     }
 
 } } // namespace cyberway::chaindb

@@ -8,33 +8,36 @@ namespace cyberway { namespace chaindb {
 
     class cache_map;
     class driver_interface;
+    class journal;
     struct table_info;
 
     class undo_stack final {
     public:
-        undo_stack(driver_interface&, cache_map&);
+        undo_stack(driver_interface&, journal&, cache_map&);
 
         undo_stack(const undo_stack&) = delete;
         undo_stack(undo_stack&&) = delete;
 
         ~undo_stack();
 
+        void clear();
+
         chaindb_session start_undo_session(bool enabled);
 
-        void set_revision(revision_t revision);
+        void set_revision(revision_t rev);
         revision_t revision() const;
         bool enabled() const;
 
-        void apply_changes(revision_t revision);
+        void apply_changes(revision_t rev);
 
         /** leaves the UNDO state on the stack when session goes out of scope */
-        void push(revision_t revision);
+        void push(revision_t rev);
 
         /**
          *  Restores the state to how it was prior to the current session discarding all changes
          *  made between the last revision and the current revision.
          */
-        void undo(revision_t revision);
+        void undo(revision_t rev);
 
         /**
          *  This method works similar to git squash, it merges the change set from the two most
@@ -42,12 +45,12 @@ namespace cyberway { namespace chaindb {
          *
          *  This method does not change the state of the index, only the state of the undo buffer.
          */
-        void squash(revision_t revision);
+        void squash(revision_t rev);
 
         /**
          * Discards all undo history prior to revision
          */
-        void commit(revision_t revision);
+        void commit(revision_t rev);
 
         /**
          * Unwinds all undo states
@@ -58,17 +61,17 @@ namespace cyberway { namespace chaindb {
         /**
          * Event on create objects
          */
-        void insert(const table_info&, primary_key_t pk);
+        void insert(const table_info&, primary_key_t, variant);
 
         /**
          * Event on modify objects
          */
-        void update(const table_info&, primary_key_t pk, variant value);
+        void update(const table_info&, primary_key_t, variant orig_value, variant value);
 
         /**
          * Event on remove objects
          */
-        void remove(const table_info&, primary_key_t pk, variant value);
+        void remove(const table_info&, primary_key_t, variant);
 
     private:
         struct undo_stack_impl_;

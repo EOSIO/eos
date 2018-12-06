@@ -14,6 +14,21 @@ namespace cyberway { namespace chaindb {
         return name;
     }
 
+    const string& get_undo_table_name() {
+        static const string name = "UNDO";
+        return name;
+    }
+
+    const string& get_code_field_name() {
+        static const string name = "_CODE_";
+        return name;
+    }
+
+    const string& get_table_field_name() {
+        static const string name = "_TABLE_";
+        return name;
+    }
+
     const string& get_scope_field_name() {
         static const string name = "_SCOPE_";
         return name;
@@ -26,6 +41,16 @@ namespace cyberway { namespace chaindb {
 
     const string& get_size_field_name() {
         static const string name = "_SIZE_";
+        return name;
+    }
+
+    const string& get_revision_field_name() {
+        static const string name = "_REV_";
+        return name;
+    }
+
+    const string& get_operation_field_name() {
+        static const string name = "_OP_";
         return name;
     }
 

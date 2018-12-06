@@ -47,6 +47,7 @@ add_library( eosio_chain
              chaindb/names.cpp
              chaindb/undo_state.cpp
              chaindb/cache_map.cpp
+             chaindb/journal.cpp
              ${CHAINDB_SRCS}
 
 #             get_config.cpp
