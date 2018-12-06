@@ -10,6 +10,38 @@
 # include <ext/stdio_sync_filebuf.h>
 #endif
 
+#if defined(_LIBCPP_VERSION)
+// Generate a static data member of type Tag::type in which to store
+// the address of a private member. It is crucial that Tag does not
+// depend on the /value/ of the the stored address in any way so that
+// we can access it from ordinary code without directly touching
+// private data.
+template < class Tag >
+struct stowed
+{
+  static typename Tag::type value;
+};
+
+template < class Tag >
+typename Tag::type stowed< Tag >::value;
+
+// Generate a static data member whose constructor initializes
+// stowed< Tag >::value. This type will only be named in an explicit
+// instantiation, where it is legal to pass the address of a private
+// member.
+template < class Tag, typename Tag::type x >
+struct stow_private
+{
+  stow_private() { stowed< Tag >::value = x; }
+  static stow_private instance;
+};
+template < class Tag, typename Tag::type x >
+stow_private< Tag, x > stow_private< Tag, x >::instance;
+
+struct filebuf_file { typedef FILE*( std::filebuf::*type ); };
+template struct stow_private< filebuf_file, &std::filebuf::__file_ >;
+#endif
+
 //! Similar to fileno(3), but taking a C++ stream as argument instead of a
 //! FILE*.  Note that there is no way for the library to track what you do with
 //! the descriptor, so be careful.
@@ -129,43 +161,15 @@ fileno_hack(const std::basic_ios<charT, traits>& stream)
 #  endif
 # endif
 #elif defined(_LIBCPP_VERSION)
-    // Generate a static data member of type Tag::type in which to store
-    // the address of a private member. It is crucial that Tag does not
-    // depend on the /value/ of the the stored address in any way so that
-    // we can access it from ordinary code without directly touching
-    // private data.
-    template < class Tag >
-    struct stowed
-    {
-        static typename Tag::type value;
-    };
-
-    template < class Tag >
-    typename Tag::type stowed< Tag >::value;
-
-    // Generate a static data member whose constructor initializes
-    // stowed< Tag >::value. This type will only be named in an explicit
-    // instantiation, where it is legal to pass the address of a private
-    // member.
-    template < class Tag, typename Tag::type x >
-    struct stow_private
-    {
-        stow_private() { stowed< Tag >::value = x; }
-        static stow_private instance;
-    };
-    template < class Tag, typename Tag::type x >
-    stow_private< Tag, x > stow_private< Tag, x >::instance;
-
-    struct filebuf_file { typedef FILE*( std::filebuf::*type ); };
-    template struct stow_private< filebuf_file, &std::filebuf::__file_ >;
-
     return ::fileno(stream.rdbuf()->*stowed< filebuf_file >::value);
    }
 #else
 #  error "Does anybody know how to fetch the bloody file descriptor?"
     return stream.rdbuf()->fd();  // Maybe a good start?
 #endif
+#if !defined(_LIBCPP_VERSION)
     errno = EBADF;
+#endif
     return -1;
 }
 
