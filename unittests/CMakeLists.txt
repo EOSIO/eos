@@ -19,29 +19,6 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/contracts.hpp.in ${CMAKE_CURRENT_BINA
 
 file(GLOB UNIT_TESTS "*.cpp")
 
-# file(GLOB UNIT_TESTS
-#   "main.cpp"
-#   "multisig_tests.cpp"
-#   "api_tests.cpp"
-#   "block_tests.cpp"
-#   "block_timestamp_tests.cpp"
-#   "bootseq_tests.cpp"
-#   "currency_tests.cpp"
-#   "database_tests.cpp"
-#   "eosio.token_tests.cpp"
-#   "forked_tests.cpp"
-#   "message_buffer_tests.cpp"
-#   "misc_tests.cpp"
-#   "multi_index_tests.cpp"
-#   "multisig_tests.cpp"
-#   "payloadless_tests.cpp"
-#   "producer_schedule_tests.cpp"
-#   #"ram_tests.cpp"
-#   "resource_limits_test.cpp"
-#   "snapshot_tests.cpp"
-#   "special_accounts_tests.cpp"
-#   "whitelist_blacklist_tests.cpp") # "*.cpp")
-
 add_executable( unit_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} )
 target_link_libraries( unit_test eosio_chain chainbase eosio_testing eos_utilities abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
 

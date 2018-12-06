@@ -12,8 +12,8 @@ namespace eosio {
 
       // Ignore type in action
       ACTION anyaction( name from,
-                        const eosio::ignore<std::string>& /*type*/,
-                        const eosio::ignore<std::string>& /*data*/ )
+                        const eosio::ignore<std::string>& type,
+                        const eosio::ignore<std::string>& data )
       {
          require_auth( from );
       }

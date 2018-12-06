@@ -764,45 +764,6 @@ BOOST_FIXTURE_TEST_CASE( check_global_reset, TESTER ) try {
    BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( stl_test, TESTER ) try {
-    produce_blocks(2);
-
-    create_accounts( {N(stltest), N(alice), N(bob)} );
-    produce_block();
-
-    set_code(N(stltest), stltest_wast);
-    set_abi(N(stltest), stltest_abi);
-    produce_blocks(1);
-
-    const auto& accnt  = control->db().get<account_object,by_name>( N(stltest) );
-    abi_def abi;
-    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-    abi_serializer abi_ser(abi, abi_serializer_max_time);
-
-    //send message
-    {
-        signed_transaction trx;
-        action msg_act;
-        msg_act.account = N(stltest);
-        msg_act.name = N(message);
-        msg_act.authorization = {{N(stltest), config::active_name}};
-        msg_act.data = abi_ser.variant_to_binary("message", mutable_variant_object()
-                                             ("from", "bob")
-                                             ("to", "alice")
-                                             ("message","Hi Alice!"),
-                                             abi_serializer_max_time
-                                             );
-        trx.actions.push_back(std::move(msg_act));
-
-        set_transaction_headers(trx);
-        trx.sign(get_private_key(N(stltest), "active"), control->get_chain_id());
-        push_transaction(trx);
-        produce_block();
-
-        BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-    }
-} FC_LOG_AND_RETHROW() /// stltest
-
 //Make sure we can create a wasm with maximum pages, but not grow it any
 BOOST_FIXTURE_TEST_CASE( big_memory, TESTER ) try {
    produce_blocks(2);
@@ -1087,9 +1048,9 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
    create_accounts( {N(noop), N(alice)} );
    produce_block();
 
-   set_code(N(noop), noop_wast);
+   set_code(N(noop), contracts::noop_wasm());
 
-   set_abi(N(noop), noop_abi);
+   set_abi(N(noop), contracts::noop_abi().data());
    const auto& accnt  = control->db().get<account_object,by_name>(N(noop));
    abi_def abi;
    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);

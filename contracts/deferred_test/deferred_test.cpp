@@ -2,17 +2,15 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-
 #include <eosiolib/eosio.hpp>
-#include <eosiolib/transaction.hpp>
 #include <eosiolib/dispatcher.hpp>
+#include <eosiolib/transaction.hpp>
 
 using namespace eosio;
 
 CONTRACT deferred_test : public contract {
    public:
       using contract::contract;
-      deferred_test(name self) : contract(self, _code, _ds) {}
 
       struct deferfunc_args {
          uint64_t payload;
@@ -47,7 +45,7 @@ extern "C" {
        if( code == name{"eosio"}.value && action == name{"onerror"}.value ) {
          apply_onerror( receiver, onerror::from_current_action() );
       } else if( code == receiver ) {
-          deferred_test thiscontract(name{receiver});
+          deferred_test thiscontract( name{receiver}, name{code}, eosio::datastream<const char*>{nullptr, 0} );
          if( action == name{"defercall"}.value ) {
             execute_action( name{receiver}, name{code}, &deferred_test::defercall );
          } else if( action == name{"deferfunc"}.value ) {
@@ -56,5 +54,3 @@ extern "C" {
       }
    }
 }
-
-//EOSIO_ABI( deferred_test, (defercall)(deferfunc) )

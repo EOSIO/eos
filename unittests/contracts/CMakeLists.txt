@@ -4,8 +4,6 @@
 
 # set(STANDARD_INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts ${CMAKE_SOURCE_DIR}/unittests/contracts ${CMAKE_SOURCE_DIR}/externals/magic_get/include)
 
-#add_subdirectory(deferred_test)
-
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/eosio.bios/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/eosio.bios/)
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/eosio.msig/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/eosio.msig/)
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/eosio.system/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/eosio.system/)

@@ -14,10 +14,6 @@
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
 
-#define DISABLE_EOSLIB_SERIALIZE
-
-#include <test_api/test_api_common.hpp>
-
 #include <contracts.hpp>
 
 #include "eosio_system_tester.hpp"
@@ -31,7 +27,7 @@ BOOST_AUTO_TEST_SUITE(ram_tests)
  * ram_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
-   auto init_request_bytes = 80000;
+   auto init_request_bytes = 80000 + 7110; // `7110' is for table token row
    const auto increment_contract_bytes = 10000;
    const auto table_allocation_bytes = 12000;
    BOOST_REQUIRE_MESSAGE(table_allocation_bytes > increment_contract_bytes, "increment_contract_bytes must be less than table_allocation_bytes for this test setup to work");
@@ -57,7 +53,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
 
    for (auto i = 0; i < 10; ++i) {
       try {
-         set_abi( N(testram11111), test_ram_limit_abi );
+         set_abi( N(testram11111), contracts::test_ram_limit_abi().data() );
          break;
       } catch (const ram_usage_exceeded&) {
          init_request_bytes += increment_contract_bytes;
@@ -214,7 +210,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                         ("to", 13)
                         ("size", 1720));
    produce_blocks(1);
-
+   
    // verify that new entries for testram22222 exceed the allocation bytes limit
    BOOST_REQUIRE_EXCEPTION(
       tester->push_action( N(testram11111), N(setentry), {N(testram11111),N(testram22222)}, mvo()

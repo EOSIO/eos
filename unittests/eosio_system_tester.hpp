@@ -42,7 +42,6 @@ public:
       create_accounts({ N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake),
                N(eosio.bpay), N(eosio.vpay), N(eosio.saving), N(eosio.names) });
 
-
       produce_blocks( 100 );
 
       set_code( N(eosio.token), contracts::eosio_token_wasm() );
@@ -62,6 +61,11 @@ public:
       set_code( config::system_account_name, contracts::eosio_system_wasm() );
       set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
 
+      base_tester::push_action(config::system_account_name, N(init),
+                            config::system_account_name,  mutable_variant_object()
+                            ("version", 0)
+                            ("core", CORE_SYM_STR));
+
       {
          const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
          abi_def abi;
@@ -78,6 +82,15 @@ public:
       BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("eosio")  + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
    }
 
+   action_result open( account_name  owner,
+                       const string& symbolname,
+                       account_name  ram_payer    ) {
+      return push_action( ram_payer, N(open), mvo()
+                          ( "owner", owner )
+                          ( "symbol", symbolname )
+                          ( "ram_payer", ram_payer )
+         );
+   }
 
    void create_accounts_with_resources( vector<account_name> accounts, account_name creator = config::system_account_name ) {
       for( auto a : accounts ) {
