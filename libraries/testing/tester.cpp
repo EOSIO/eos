@@ -28,6 +28,7 @@ namespace eosio { namespace testing {
    }
 
    std::vector<uint8_t> read_wasm( const char* fn ) {
+      std::cout << fn << std::endl;
       std::ifstream wasm_file(fn, std::ios::binary);
       FC_ASSERT( wasm_file.is_open(), "wasm file cannot be found" );
       wasm_file.seekg(0, std::ios::end);

@@ -25,8 +25,8 @@ namespace eosio {
    namespace testing {
       struct contracts {
          // Contracts in `eos/unittests/contracts' directory
-         static std::vector<uint8_t> deferred_test_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/contracts/deferred_test/deferred_test.wasm"); }
-         static std::vector<char>    deferred_test_abi()  { return read_abi("${CMAKE_BINARY_DIR}/unittests/contracts/deferred_test/deferred_test.abi"); }
+         static std::vector<uint8_t> deferred_test_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/contracts/deferred_test/deferred_test.wasm"); }
+         static std::vector<char>    deferred_test_abi()  { return read_abi("${CMAKE_BINARY_DIR}/contracts/deferred_test/deferred_test.abi"); }
    
          static std::vector<uint8_t> eosio_bios_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.bios/eosio.bios.wasm"); }
          static std::vector<char>    eosio_bios_abi()  { return read_abi("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.bios/eosio.bios.abi"); }
