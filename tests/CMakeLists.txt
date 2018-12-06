@@ -16,12 +16,12 @@ include_directories("${CMAKE_SOURCE_DIR}/plugins/wallet_plugin/include")
 file(GLOB UNIT_TESTS "*.cpp")
 
 add_executable( plugin_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} )
-target_link_libraries( plugin_test eosio_testing eosio_chain chainbase eos_utilities chain_plugin wallet_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( plugin_test eosio_testing eosio_chain chainbase chain_plugin wallet_plugin fc ${PLATFORM_SPECIFIC_LIBS} )
 
 target_include_directories( plugin_test PUBLIC
                             ${CMAKE_SOURCE_DIR}/plugins/net_plugin/include
                             ${CMAKE_SOURCE_DIR}/plugins/chain_plugin/include )
-#
+			    
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/core_symbol.py.in ${CMAKE_CURRENT_BINARY_DIR}/core_symbol.py)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_DIR}/testUtils.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/WalletMgr.py ${CMAKE_CURRENT_BINARY_DIR}/WalletMgr.py COPYONLY)
@@ -85,6 +85,8 @@ add_test(NAME nodeos_sanity_bnet_lr_test COMMAND tests/nodeos_run_test.py -v --s
 set_property(TEST nodeos_sanity_bnet_lr_test PROPERTY LABELS long_running_tests)
 add_test(NAME nodeos_run_check_lr_test COMMAND tests/nodeos_run_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_run_check_lr_test PROPERTY LABELS long_running_tests)
+add_test(NAME nodeos_remote_lr_test COMMAND tests/nodeos_run_remote_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_remote_lr_test PROPERTY LABELS long_running_tests)
 
 #add_test(NAME distributed_transactions_lr_test COMMAND tests/distributed-transactions-test.py -d 2 -p 21 -n 21 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 #set_property(TEST distributed_transactions_lr_test PROPERTY LABELS long_running_tests)

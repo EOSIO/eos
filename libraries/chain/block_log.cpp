@@ -473,7 +473,7 @@ namespace eosio { namespace chain {
             old_block_stream.read( reinterpret_cast<char*>(&tmp_pos), sizeof(tmp_pos) );
          }
          if( pos != tmp_pos ) {
-            bad_block = tmp;
+            bad_block.emplace(std::move(tmp));
             break;
          }
 

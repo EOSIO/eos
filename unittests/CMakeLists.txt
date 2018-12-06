@@ -20,7 +20,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/contracts.hpp.in ${CMAKE_CURRENT_BINA
 file(GLOB UNIT_TESTS "*.cpp")
 
 add_executable( unit_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} )
-target_link_libraries( unit_test eosio_chain chainbase eosio_testing eos_utilities abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
+target_link_libraries( unit_test eosio_chain chainbase eosio_testing fc ${PLATFORM_SPECIFIC_LIBS} )
 
 target_compile_options(unit_test PUBLIC -DDISABLE_EOSLIB_SERIALIZE)
 

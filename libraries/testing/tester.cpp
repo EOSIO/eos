@@ -124,7 +124,7 @@ namespace eosio { namespace testing {
    void base_tester::open( const snapshot_reader_ptr& snapshot) {
       control.reset( new controller(cfg) );
       control->add_indices();
-      control->startup(snapshot);
+      control->startup( []() { return false; }, snapshot);
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
         FC_ASSERT( block_state->block );
@@ -141,8 +141,9 @@ namespace eosio { namespace testing {
    }
 
    signed_block_ptr base_tester::push_block(signed_block_ptr b) {
+      auto bs = control->create_block_state_future(b);
       control->abort_block();
-      control->push_block(b);
+      control->push_block(bs);
 
       auto itr = last_produced_block.find(b->producer);
       if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
@@ -159,17 +160,6 @@ namespace eosio { namespace testing {
 
       if( !control->pending_block_state() || control->pending_block_state()->header.timestamp != next_time ) {
          _start_block( next_time );
-      }
-
-      auto producer = control->head_block_state()->get_scheduled_producer(next_time);
-      private_key_type priv_key;
-      // Check if signing private key exist in the list
-      auto private_key_itr = block_signing_private_keys.find( producer.block_signing_key );
-      if( private_key_itr == block_signing_private_keys.end() ) {
-         // If it's not found, default to active k1 key
-         priv_key = get_private_key( producer.producer_name, "active" );
-      } else {
-         priv_key = private_key_itr->second;
       }
 
       if( !skip_pending_trxs ) {
@@ -192,18 +182,10 @@ namespace eosio { namespace testing {
          }
       }
 
-
-
-      control->finalize_block();
-      control->sign_block( [&]( digest_type d ) {
-                    return priv_key.sign(d);
-                    });
-
-      control->commit_block();
-      last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;
+      auto head_block = _finish_block();
 
       _start_block( next_time + fc::microseconds(config::block_interval_us));
-      return control->head_block_state()->block;
+      return head_block;
    }
 
    void base_tester::_start_block(fc::time_point block_time) {
@@ -220,6 +202,30 @@ namespace eosio { namespace testing {
       control->start_block( block_time, head_block_number - last_produced_block_num );
    }
 
+   signed_block_ptr base_tester::_finish_block() {
+      FC_ASSERT( control->pending_block_state(), "must first start a block before it can be finished" );
+
+      auto producer = control->head_block_state()->get_scheduled_producer( control->pending_block_time() );
+      private_key_type priv_key;
+      // Check if signing private key exist in the list
+      auto private_key_itr = block_signing_private_keys.find( producer.block_signing_key );
+      if( private_key_itr == block_signing_private_keys.end() ) {
+         // If it's not found, default to active k1 key
+         priv_key = get_private_key( producer.producer_name, "active" );
+      } else {
+         priv_key = private_key_itr->second;
+      }
+
+      control->finalize_block();
+      control->sign_block( [&]( digest_type d ) {
+                    return priv_key.sign(d);
+                    });
+
+      control->commit_block();
+      last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;
+
+      return control->head_block_state()->block;
+   }
 
    void base_tester::produce_blocks( uint32_t n, bool empty ) {
       if( empty ) {
@@ -795,8 +801,9 @@ namespace eosio { namespace testing {
          for( int i = 1; i <= a.control->head_block_num(); ++i ) {
             auto block = a.control->fetch_block_by_number(i);
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
+               auto bs = b.control->create_block_state_future( block );
                b.control->abort_block();
-               b.control->push_block(block); //, eosio::chain::validation_steps::created_block);
+               b.control->push_block(bs); //, eosio::chain::validation_steps::created_block);
             }
          }
       };

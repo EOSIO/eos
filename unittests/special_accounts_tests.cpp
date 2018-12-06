@@ -11,7 +11,6 @@
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/utilities/tempdir.hpp>
 
 #include <fc/crypto/digest.hpp>
 

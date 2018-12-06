@@ -1,12 +1,21 @@
 cmake_minimum_required( VERSION 3.5 )
-message(STATUS "Setting up Eosio Tester @VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@ at @EOS_ROOT_DIR@")
+message(STATUS "Setting up Eosio Tester @VERSION_FULL@ at @EOS_ROOT_DIR@")
 
 set(CMAKE_CXX_COMPILER @CMAKE_CXX_COMPILER@)
 set(CMAKE_C_COMPILER   @CMAKE_C_COMPILER@)
 
-set(EOSIO_VERSION "@VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@")
+set(EOSIO_VERSION "@VERSION_FULL@")
 
 enable_testing()
+
+if (UNIX)
+   if (APPLE)
+      if (LLVM_DIR STREQUAL "" OR NOT LLVM_DIR)
+         set(LLVM_DIR "/usr/local/opt/llvm@4/lib/cmake/llvm")
+      endif()
+   endif()
+endif()
+
 
 find_package( Gperftools QUIET )
 if( GPERFTOOLS_FOUND )
@@ -88,8 +97,8 @@ macro(add_eosio_test test_name)
        ${liblogging}
        ${libchainbase}
        ${libbuiltins}
-       ${GMP_LIBRARIES}
        ${libsecp256k1}
+       ${GMP_LIBRARIES}
 
        LLVMX86Disassembler
        LLVMX86AsmParser

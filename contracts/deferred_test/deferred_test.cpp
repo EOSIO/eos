@@ -32,6 +32,12 @@ CONTRACT deferred_test : public contract {
          eosio_assert( payload != 13, "value 13 not allowed in payload" );
       }
 
+      //@abi action
+      void inlinecall( name contract, name authorizer, uint64_t payload ) {
+         action a( {permission_level{authorizer, "active"_n}}, contract, "deferfunc"_n, payload );
+         a.send();
+      }
+
    private:
 };
 
@@ -50,6 +56,8 @@ extern "C" {
             execute_action( name{receiver}, name{code}, &deferred_test::defercall );
          } else if( action == name{"deferfunc"}.value ) {
             execute_action( name{receiver}, name{code}, &deferred_test::deferfunc );
+         } else if(action == name{"inlinecall"}.value) {
+            execute_action( name{receiver}, name{code}, &deferred_test::inlinecall );
          }
       }
    }
