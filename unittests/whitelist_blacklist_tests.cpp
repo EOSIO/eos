@@ -2,10 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
+#include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/testing/tester_network.hpp>
-
-#include <eosio/chain/generated_transaction_object.hpp>
 
 #include <fc/variant_object.hpp>
 
