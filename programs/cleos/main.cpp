@@ -371,8 +371,9 @@ void print_action( const fc::variant& at ) {
    if( console.size() ) {
       std::stringstream ss(console);
       string line;
-      std::getline( ss, line );
-      cout << ">> " << line << "\n";
+      while(std::getline( ss, line )){
+         cout << ">> " << line << "\n";
+      }
    }
 }
 
