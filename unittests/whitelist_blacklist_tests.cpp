@@ -445,12 +445,12 @@ BOOST_AUTO_TEST_CASE( actor_blacklist_inline_deferred ) { try {
    whitelist_blacklist_tester<tester> tester1;
    tester1.init();
    tester1.chain->produce_blocks();
-   tester1.chain->set_code( N(alice), deferred_test_wast );
-   tester1.chain->set_abi( N(alice),  deferred_test_abi );
-   tester1.chain->set_code( N(bob), deferred_test_wast );
-   tester1.chain->set_abi( N(bob),  deferred_test_abi );
-   tester1.chain->set_code( N(charlie), deferred_test_wast );
-   tester1.chain->set_abi( N(charlie),  deferred_test_abi );
+   tester1.chain->set_code( N(alice), contracts::deferred_test_wasm() );
+   tester1.chain->set_abi( N(alice),  contracts::deferred_test_abi().data() );
+   tester1.chain->set_code( N(bob), contracts::deferred_test_wasm() );
+   tester1.chain->set_abi( N(bob),  contracts::deferred_test_abi().data() );
+   tester1.chain->set_code( N(charlie), contracts::deferred_test_wasm() );
+   tester1.chain->set_abi( N(charlie),  contracts::deferred_test_abi().data() );
    tester1.chain->produce_blocks();
 
    auto auth = authority(eosio::testing::base_tester::get_public_key("alice", "active"));
@@ -588,12 +588,12 @@ BOOST_AUTO_TEST_CASE( blacklist_sender_bypass ) { try {
    whitelist_blacklist_tester<tester> tester1;
    tester1.init();
    tester1.chain->produce_blocks();
-   tester1.chain->set_code( N(alice), deferred_test_wast );
-   tester1.chain->set_abi( N(alice),  deferred_test_abi );
-   tester1.chain->set_code( N(bob), deferred_test_wast );
-   tester1.chain->set_abi( N(bob),  deferred_test_abi );
-   tester1.chain->set_code( N(charlie), deferred_test_wast );
-   tester1.chain->set_abi( N(charlie),  deferred_test_abi );
+   tester1.chain->set_code( N(alice), contracts::deferred_test_wasm() );
+   tester1.chain->set_abi( N(alice),  contracts::deferred_test_abi().data() );
+   tester1.chain->set_code( N(bob), contracts::deferred_test_wasm() );
+   tester1.chain->set_abi( N(bob),  contracts::deferred_test_abi().data() );
+   tester1.chain->set_code( N(charlie), contracts::deferred_test_wasm() );
+   tester1.chain->set_abi( N(charlie),  contracts::deferred_test_abi().data() );
    tester1.chain->produce_blocks();
 
    auto auth = authority(eosio::testing::base_tester::get_public_key("alice", "active"));
