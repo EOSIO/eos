@@ -2354,8 +2354,9 @@ int main( int argc, char** argv ) {
                     stringstream out;
                     std::stringstream ss(console);
                     string line;
-                    std::getline( ss, line );
-                    out << ">> " << line << "\n";
+                    while(std::getline( ss, line )){
+                       out << ">> " << line << "\n";
+                    }
                     cerr << out.str(); //ilog( "\r${m}                                   ", ("m",out.str()) );
                  }
               }
