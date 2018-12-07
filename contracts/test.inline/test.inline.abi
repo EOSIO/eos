@@ -1,29 +1,11 @@
 {
-  "types": [],
-  "structs": [
-     {
-       "name": "forward",
-       "base": "",
-       "fields": [
-         {"name":"reqauth", "type":"account_name"},
-         {"name":"forward_code", "type":"account_name"},
-         {"name":"forward_auth", "type":"account_name"}
-       ]
-     },
-     {
-      "name": "reqauth",
-      "base": "",
-      "fields": [
-        {"name":"from", "type":"account_name"}
-      ]
-    }],
-  "actions": [{
-      "name": "reqauth",
-      "type": "reqauth"
-    },{
-      "name": "forward",
-      "type": "forward"
-    }
-  ],
-  "tables": []
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri Dec  7 11:56:42 2018",
+    "version": "eosio::abi/1.1",
+    "structs": [],
+    "types": [],
+    "actions": [],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": [],
+    "abi_extensions": []
 }
