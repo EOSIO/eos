@@ -49,8 +49,13 @@ namespace cyberway { namespace chaindb {
         return name;
     }
 
-    const string& get_operation_field_name() {
-        static const string name = "_OP_";
+    const string& get_record_field_name() {
+        static const string name = "_REC_";
+        return name;
+    }
+
+    const string& get_pk_field_name() {
+        static const string name = "_PK_";
         return name;
     }
 

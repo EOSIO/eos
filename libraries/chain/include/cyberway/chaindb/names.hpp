@@ -14,7 +14,8 @@ namespace cyberway { namespace chaindb {
     const string& get_payer_field_name();
     const string& get_size_field_name();
     const string& get_revision_field_name();
-    const string& get_operation_field_name();
+    const string& get_record_field_name();
+    const string& get_pk_field_name();
 
     ///----
 

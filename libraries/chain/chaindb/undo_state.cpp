@@ -27,6 +27,13 @@ namespace cyberway { namespace chaindb {
         Rollback,
     };
 
+    enum class undo_record {
+        OldValue,
+        RemovedValue,
+        NewValue,
+        NextPk,
+    };
+
     struct undo_state final {
         undo_state() = default;
         undo_state(revision_t rev): revision(rev) { }
@@ -35,6 +42,7 @@ namespace cyberway { namespace chaindb {
         using pk_value_map_t = fc::flat_map<primary_key_t, variant>;
 
         revision_t     revision = impossible_revision;
+        primary_key_t  next_pk = unset_primary_key;
         pk_value_map_t old_values;
         pk_value_map_t removed_values;
         pk_set_t       new_ids;
@@ -306,6 +314,10 @@ namespace cyberway { namespace chaindb {
                     {write_operation::Delete, impossible_revision /*set_rev*/, undo_rev /*find_rev*/});
             }
 
+            if (unset_primary_key != head.next_pk) {
+                cache_.set_next_pk(table.info(), head.next_pk);
+            }
+
             table.undo();
         }
 
@@ -427,6 +439,10 @@ namespace cyberway { namespace chaindb {
                     {write_operation::UpdateRevision, prev_state.revision /*set_rev*/, state.revision /*find_rev*/});
             }
 
+            if (unset_primary_key != state.next_pk) {
+                prev_state.next_pk = state.next_pk;
+            }
+
             // *+del
             for (const auto& obj: state.removed_values) {
                 // new + del -> nop (type C)
@@ -492,61 +508,58 @@ namespace cyberway { namespace chaindb {
             undo(table, table.revision(), table.revision());
         }
 
-        variant create_undo_value(const variant* value, const table_info& table, const write_operation op) {
-            mutable_variant_object object;
+        void add_undo_fields(mutable_variant_object& obj, const table_info& table, const undo_record type) const {
+            obj(get_record_field_name(), type);
+            obj(get_code_field_name(), get_code_name(table));
+            obj(get_table_field_name(), get_table_name(table));
+        }
 
-            if (value != nullptr && variant::type_id::object_type == value->get_type()) {
-                object = value->get_object();
-            }
-
-            switch (op) {
-                case write_operation::Insert:
-                    object(get_operation_field_name(), "Insert");
-                    break;
-
-                case write_operation::Update:
-                    object(get_operation_field_name(), "Update");
-                    break;
-
-                case write_operation::Delete:
-                    object(get_operation_field_name(), "Delete");
-                    break;
-
-                case write_operation::Unknown:
-                case write_operation::UpdateRevision:
-                    break;
-            }
-
-            object(get_code_field_name(), get_code_name(table));
-            object(get_table_field_name(), get_table_name(table));
-
-            return variant(std::move(object));
+        variant create_undo_value(const table_info& table, const undo_record type, const variant& value) const {
+            mutable_variant_object obj(value.get_object());
+            add_undo_fields(obj, table, type);
+            return variant(std::move(obj));
         }
 
         void insert(table_undo_stack& table, const primary_key_t pk, variant value) {
             auto& head = table.head();
             head.new_ids.insert(pk);
 
-            journal_.write(table.info(), pk, {write_operation::Insert, revision_, std::move(value)},
-                {write_operation::Insert, revision_, create_undo_value(nullptr, table.info(), write_operation::Insert)});
+            {
+                mutable_variant_object obj(value.get_object());
+                add_undo_fields(obj, table.info(), undo_record::NewValue);
+                journal_.write(table.info(), pk, {write_operation::Insert, revision_ /*set_rev*/, std::move(value)},
+                    {write_operation::Insert, revision_ /*set_rev*/, std::move(obj)});
+            }
+
+            if (unset_primary_key == head.next_pk) {
+                head.next_pk = pk - 1;
+
+                mutable_variant_object obj;
+                add_undo_fields(obj, table.info(), undo_record::NextPk);
+                obj(get_pk_field_name(), pk);
+
+                journal_.write(table.info(), pk, {}, {write_operation::Insert, revision_ /*set_rev*/, std::move(obj)});
+            }
         }
 
         void update(table_undo_stack& table, const primary_key_t pk, variant orig_value, variant value) {
             auto& head = table.head();
 
             if (head.new_ids.find(pk) != head.new_ids.end()) {
-                journal_.write(table.info(), pk, {write_operation::Update, revision_, std::move(value)}, {});
+                journal_.write(table.info(), pk, {write_operation::Update, revision_ /*set_rev*/, std::move(value)}, {});
                 return;
             }
 
             auto itr = head.old_values.find(pk);
             if (itr != head.old_values.end()) {
-                journal_.write(table.info(), pk, {write_operation::Update, revision_, std::move(value)}, {});
+                journal_.write(table.info(), pk, {write_operation::Update, revision_ /*set_rev*/, std::move(value)}, {});
                 return;
             }
 
-            journal_.write(table.info(), pk, {write_operation::Update, revision_, std::move(value)},
-                {write_operation::Insert, revision_, create_undo_value(&orig_value, table.info(), write_operation::Update)});
+            auto undo_value = create_undo_value(table.info(), undo_record::OldValue, orig_value);
+
+            journal_.write(table.info(), pk, {write_operation::Update, revision_ /*set_rev*/, std::move(value)},
+                {write_operation::Insert, revision_ /*set_rev*/, std::move(undo_value)});
 
             head.old_values.emplace(pk, std::move(value));
         }
@@ -557,13 +570,15 @@ namespace cyberway { namespace chaindb {
             if (head.new_ids.count(pk)) {
                 head.new_ids.erase(pk);
 
-                journal_.write(table.info(), pk, {write_operation::Delete, revision_},
-                    {write_operation::Delete, revision_});
+                journal_.write(table.info(), pk, {write_operation::Delete, revision_ /*set_rev*/},
+                    {write_operation::Delete, revision_ /*set_rev*/});
                 return;
             }
 
-            journal_.write(table.info(), pk, {write_operation::Delete, revision_},
-                {write_operation::Insert, revision_, create_undo_value(&orig_value, table.info(), write_operation::Delete)});
+            auto undo_value = create_undo_value(table.info(), undo_record::RemovedValue, orig_value);
+
+            journal_.write(table.info(), pk, {write_operation::Delete, revision_ /*set_rev*/},
+                {write_operation::Insert, revision_ /*set_rev*/, std::move(undo_value)});
 
             auto itr = head.old_values.find(pk);
             if (itr != head.old_values.end()) {
@@ -727,3 +742,4 @@ namespace cyberway { namespace chaindb {
 } } // namespace cyberway::chaindb
 
 FC_REFLECT_ENUM(cyberway::chaindb::undo_stage, (Unknown)(New)(Stack)(Rollback))
+FC_REFLECT_ENUM(cyberway::chaindb::undo_record, (OldValue)(RemovedValue)(NewValue)(NextPk))
