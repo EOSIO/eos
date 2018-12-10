@@ -32,10 +32,10 @@ using namespace chain;
 
 BOOST_AUTO_TEST_SUITE(abi_tests)
 
-fc::microseconds max_serialization_time = fc:j:seconds(1); // some test machines are very slow
+fc::microseconds max_serialization_time = fc::seconds(1); // some test machines are very slow
 
 // verify that round trip conversion, via bytes, reproduces the exact same data
-fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const type_name& type, const fc::variant& va )
+fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const type_name& type, const fc::variant& var )
 {
    auto bytes = abis.variant_to_binary( type, var, max_serialization_time );
 
