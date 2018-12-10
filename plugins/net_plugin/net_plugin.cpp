@@ -2935,7 +2935,7 @@ namespace eosio {
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
 
          my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
-         if( options.count( "p2p-listen-endpoint" )) {
+         if( options.count( "p2p-listen-endpoint" ) && options.at("p2p-listen-endpoint").as<string>().length()) {
             my->p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
             auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
             auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
@@ -2946,21 +2946,22 @@ namespace eosio {
             my->listen_endpoint = *my->resolver->resolve( query );
 
             my->acceptor.reset( new tcp::acceptor( app().get_io_service()));
-         }
-         if( options.count( "p2p-server-address" )) {
-            my->p2p_address = options.at( "p2p-server-address" ).as<string>();
-         } else {
-            if( my->listen_endpoint.address().to_v4() == address_v4::any()) {
-               boost::system::error_code ec;
-               auto host = host_name( ec );
-               if( ec.value() != boost::system::errc::success ) {
 
-                  FC_THROW_EXCEPTION( fc::invalid_arg_exception,
-                                      "Unable to retrieve host_name. ${msg}", ("msg", ec.message()));
+            if( options.count( "p2p-server-address" )) {
+               my->p2p_address = options.at( "p2p-server-address" ).as<string>();
+            } else {
+               if( my->listen_endpoint.address().to_v4() == address_v4::any()) {
+                  boost::system::error_code ec;
+                  auto host = host_name( ec );
+                  if( ec.value() != boost::system::errc::success ) {
 
+                     FC_THROW_EXCEPTION( fc::invalid_arg_exception,
+                                       "Unable to retrieve host_name. ${msg}", ("msg", ec.message()));
+
+                  }
+                  auto port = my->p2p_address.substr( my->p2p_address.find( ':' ), my->p2p_address.size());
+                  my->p2p_address = host + port;
                }
-               auto port = my->p2p_address.substr( my->p2p_address.find( ':' ), my->p2p_address.size());
-               my->p2p_address = host + port;
             }
          }
 
