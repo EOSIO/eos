@@ -1,3 +1,8 @@
 set( CMAKE_CXX_STANDARD 17 )
 
-add_contract( noop noop noop.cpp )
+if( ${eosio.cdt_FOUND} )
+  add_contract( noop noop noop.cpp )
+else()
+  configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/noop.wasm ${CMAKE_CURRENT_BINARY_DIR}/noop.wasm COPYONLY )  
+  configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/noop.abi ${CMAKE_CURRENT_BINARY_DIR}/noop.abi COPYONLY )
+endif()

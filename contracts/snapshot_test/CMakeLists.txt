@@ -1,3 +1,8 @@
 set( CMAKE_CXX_STANDARD 17 )
 
-add_contract( snapshot_test snapshot_test snapshot_test.cpp )
+if( ${eosio.cdt_FOUND} )
+  add_contract( snapshot_test snapshot_test snapshot_test.cpp )
+else()
+  configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/snapshot_test.wasm ${CMAKE_CURRENT_BINARY_DIR}/snapshot_test.wasm COPYONLY )  
+  configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/snapshot_test.abi ${CMAKE_CURRENT_BINARY_DIR}/snapshot_test.abi COPYONLY )
+endif()
