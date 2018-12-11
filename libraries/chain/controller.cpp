@@ -19,7 +19,6 @@
 #include <eosio/chain/chain_snapshot.hpp>
 
 #include <chainbase/chainbase.hpp>
-#include <appbase/application.hpp>
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
