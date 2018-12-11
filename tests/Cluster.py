@@ -1291,6 +1291,12 @@ class Cluster(object):
             Cluster.dumpErrorDetailImpl(fileName)
             fileName=Cluster.__dataDir + Cluster.nodeExtensionToName(i) + "/stderr.txt"
             Cluster.dumpErrorDetailImpl(fileName)
+            for j in range(1, sys.maxsize):
+                fileName=Cluster.__dataDir + Cluster.nodeExtensionToName(i) + "/stderr.%02d.txt" % j
+                if os.path.exists(fileName):
+                    Cluster.dumpErrorDetailImpl(fileName)
+                else:
+                    break
 
         if self.useBiosBootFile:
             Cluster.dumpErrorDetailImpl(Cluster.__bootlog)
