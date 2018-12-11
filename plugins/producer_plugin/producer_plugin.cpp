@@ -342,12 +342,21 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
       }
 
-      std::deque<std::tuple<packed_transaction_ptr, bool, next_function<transaction_trace_ptr>>> _pending_incoming_transactions;
+      std::deque<std::tuple<packed_transaction_ptr, transaction_metadata_ptr, bool, next_function<transaction_trace_ptr>>> _pending_incoming_transactions;
 
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         packed_transaction_ptr trx_ptr = trx;
+         auto trx_meta = std::make_shared<transaction_metadata>(*trx);
+         chain.warmup_transaction(trx_meta, [this, trx_ptr, trx_meta, persist_until_expired, next]()->void { 
+            on_incoming_transaction_async(trx_ptr, trx_meta, persist_until_expired, next); 
+         });
+      }
+
+      void on_incoming_transaction_async(const packed_transaction_ptr& trx, const transaction_metadata_ptr &trx_meta, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
+         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
          if (!chain.pending_block_state()) {
-            _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
+            _pending_incoming_transactions.emplace_back(trx, trx_meta, persist_until_expired, next);
             return;
          }
 
@@ -401,10 +410,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
 
          try {
-            auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(*trx), deadline);
+            auto trace = chain.push_transaction(trx_meta, deadline);
             if (trace->except) {
                if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
-                  _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
+                  _pending_incoming_transactions.emplace_back(trx, trx_meta, persist_until_expired, next);
                   if (_pending_block_mode == pending_block_mode::producing) {
                      fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
                              ("block_num", chain.head_block_num() + 1)
@@ -1242,7 +1251,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                      _pending_incoming_transactions.pop_front();
                      --orig_pending_txn_size;
                      _incoming_trx_weight -= 1.0;
-                     on_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+                     on_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e), std::get<3>(e));
                   }
 
                   if (block_time <= fc::time_point::now()) {
@@ -1305,7 +1314,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                   auto e = _pending_incoming_transactions.front();
                   _pending_incoming_transactions.pop_front();
                   --orig_pending_txn_size;
-                  on_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+                  on_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e), std::get<3>(e));
                   if (block_time <= fc::time_point::now()) return start_block_result::exhausted;
                }
             }

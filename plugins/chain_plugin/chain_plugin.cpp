@@ -631,7 +631,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->block_validation_mode = options.at("validation-mode").as<validation_mode>();
       }
 
-      my->chain.emplace( *my->chain_config );
+      my->chain.emplace( *my->chain_config, app().get_io_service_ptr());
       my->chain_id.emplace( my->chain->get_chain_id());
 
       // set up method providers

@@ -1,4 +1,7 @@
 #pragma once
+
+#include <boost/asio.hpp>
+
 #include <eosio/chain/block_state.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/genesis_state.hpp>
@@ -87,7 +90,7 @@ namespace eosio { namespace chain {
             incomplete  = 3, ///< this is an incomplete block (either being produced by a producer or speculatively produced by a node)
          };
 
-         controller( const config& cfg );
+         controller( const config& cfg, std::shared_ptr<boost::asio::io_service> io_service = nullptr);
          ~controller();
 
          void add_indices();
@@ -129,6 +132,8 @@ namespace eosio { namespace chain {
           *
           */
          transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
+
+         void warmup_transaction(transaction_metadata_ptr trx, const std::function<void()> next);
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database
@@ -293,6 +298,7 @@ namespace eosio { namespace chain {
          chainbase::database& mutable_db()const;
 
          std::unique_ptr<controller_impl> my;
+         std::shared_ptr<boost::asio::io_service>  io_serv;
 
    };
 

@@ -19,6 +19,7 @@
 #include <eosio/chain/chain_snapshot.hpp>
 
 #include <chainbase/chainbase.hpp>
+#include <appbase/application.hpp>
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
@@ -1727,8 +1728,8 @@ authorization_manager&         controller::get_mutable_authorization_manager()
    return my->authorization;
 }
 
-controller::controller( const controller::config& cfg )
-:my( new controller_impl( cfg, *this ) )
+controller::controller( const controller::config& cfg, std::shared_ptr<boost::asio::io_service> io_service )
+:my( new controller_impl( cfg, *this ) ), io_serv(io_service)
 {
 }
 
@@ -1798,6 +1799,19 @@ transaction_trace_ptr controller::push_transaction( const transaction_metadata_p
    EOS_ASSERT( get_read_mode() != chain::db_read_mode::READ_ONLY, transaction_type_exception, "push transaction not allowed in read-only mode" );
    EOS_ASSERT( trx && !trx->implicit && !trx->scheduled, transaction_type_exception, "Implicit/Scheduled transaction not allowed" );
    return my->push_transaction(trx, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
+}
+
+void controller::warmup_transaction(transaction_metadata_ptr trx, const std::function<void()> next) {
+   if (trx->signing_keys || !io_serv || !(my->thread_pool)) {
+      next();
+   } else {
+      boost::asio::post(*my->thread_pool, [this, trx, next, chain_id = my->chain_id]() {
+         try {
+            trx->signing_keys = std::make_pair(chain_id, trx->trx.get_signature_keys( chain_id ));
+         } catch (...) { }
+         io_serv->post(next);
+      });
+   }
 }
 
 transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us )
