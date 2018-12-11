@@ -79,6 +79,8 @@ namespace cyberway { namespace chaindb {
 
         void close(const cursor_request&);
         void close_code_cursors(const account_name&);
+
+        void apply_all_changes();
         void apply_code_changes(const account_name&);
 
         chaindb_session start_undo_session(bool enabled);

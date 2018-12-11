@@ -28,8 +28,8 @@ namespace cyberway { namespace chaindb {
         virtual void close(const cursor_request&) = 0;
         virtual void close_code_cursors(const account_name& code) = 0;
 
-        virtual void apply_code_changes(const account_name& code) = 0;
         virtual void apply_all_changes() = 0;
+        virtual void apply_code_changes(const account_name& code) = 0;
 
         virtual void verify_table_structure(const table_info&, const microseconds&) = 0;
 

@@ -863,6 +863,10 @@ namespace cyberway { namespace chaindb {
         impl_->driver_.close_code_cursors(code);
     }
 
+    void chaindb_controller::apply_all_changes() {
+        impl_->driver_.apply_all_changes();
+    }
+
     void chaindb_controller::apply_code_changes(const account_name& code) {
         impl_->driver_.apply_code_changes(code);
     }
