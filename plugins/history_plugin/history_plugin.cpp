@@ -504,10 +504,9 @@ namespace eosio {
                 for (const auto &receipt: blk->transactions) {
                     if (receipt.trx.contains<packed_transaction>()) {
                         auto &pt = receipt.trx.get<packed_transaction>();
-                        auto mtrx = transaction_metadata(pt);
-                        if (mtrx.id == result.id) {
+                        if (pt.id() == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
-                            r("trx", chain.to_variant_with_abi(mtrx.trx, abi_serializer_max_time));
+                            r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer_max_time));
                             result.trx = move(r);
                             break;
                         }
@@ -528,14 +527,14 @@ namespace eosio {
                for (const auto& receipt: blk->transactions) {
                   if (receipt.trx.contains<packed_transaction>()) {
                      auto& pt = receipt.trx.get<packed_transaction>();
-                     auto mtrx = transaction_metadata(pt);
-                     if( txn_id_matched(mtrx.id) ) {
-                        result.id = mtrx.id;
+                     const auto& id = pt.id();
+                     if( txn_id_matched(id) ) {
+                        result.id = id;
                         result.last_irreversible_block = chain.last_irreversible_block_num();
                         result.block_num = *p.block_num_hint;
                         result.block_time = blk->timestamp;
                         fc::mutable_variant_object r("receipt", receipt);
-                        r("trx", chain.to_variant_with_abi(mtrx.trx, abi_serializer_max_time));
+                        r("trx", chain.to_variant_with_abi(pt.get_signed_transaction(), abi_serializer_max_time));
                         result.trx = move(r);
                         found = true;
                         break;

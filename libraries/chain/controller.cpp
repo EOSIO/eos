@@ -1028,8 +1028,8 @@ struct controller_impl {
                trx_context.enforce_whiteblacklist = false;
             } else {
                bool skip_recording = replay_head_time && (time_point(trx->trx.expiration) <= *replay_head_time);
-               trx_context.init_for_input_trx( trx->packed_trx.get_unprunable_size(),
-                                               trx->packed_trx.get_prunable_size(),
+               trx_context.init_for_input_trx( trx->packed_trx->get_unprunable_size(),
+                                               trx->packed_trx->get_prunable_size(),
                                                trx->trx.signatures.size(),
                                                skip_recording);
             }
@@ -1057,7 +1057,7 @@ struct controller_impl {
                transaction_receipt::status_enum s = (trx_context.delay == fc::seconds(0))
                                                     ? transaction_receipt::executed
                                                     : transaction_receipt::delayed;
-               trace->receipt = push_receipt(trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage);
+               trace->receipt = push_receipt(*trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage);
                pending->_pending_block_state->trxs.emplace_back(trx);
             } else {
                transaction_receipt_header r;
@@ -1203,7 +1203,7 @@ struct controller_impl {
          for( const auto& receipt : b->transactions ) {
             if( receipt.trx.contains<packed_transaction>()) {
                auto& pt = receipt.trx.get<packed_transaction>();
-               auto mtrx = std::make_shared<transaction_metadata>( pt );
+               auto mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( pt ) );
                if( !self.skip_auth_check() ) {
                   std::weak_ptr<transaction_metadata> mtrx_wp = mtrx;
                   mtrx->signing_keys_future = async_thread_pool( [chain_id = this->chain_id, mtrx_wp]() {
