@@ -11,7 +11,7 @@ Add some configs to your `config.ini` just as follows:
 plugin = eosio::notify_plugin
 # notify-filter-on = account:action
 notify-filter-on = b1:
-notify-filter-on = noprom:transfer
+notify-filter-on = b1:transfer
 notify-filter-on = eosio:delegatebw
 # http endpoint for each action seen on the chain.
 notify-receive-url = http://127.0.0.1:8080/notify
@@ -32,38 +32,38 @@ And you can receive the actions on chain by watching your server endpoint: `http
       "account": "eosio.token",
       "name": "transfer",
       "seq_num": 1,
-      "receiver": "noprom",
+      "receiver": "b1",
       "block_time": "2018-09-29T11:51:06.000",
       "block_num": 127225,
       "authorization": [{
-          "actor": "noprom",
+          "actor": "b1",
           "permission": "active"
         }
       ],
       "action_data": {
-        "from": "noprom",
-        "to": "noprom1",
+        "from": "b1",
+        "to": "b11",
         "quantity": "0.0001 EOS",
-        "memo": "Transfer from noprom to xiaoming"
+        "memo": "Transfer from b1 to b11"
       }
     },{
       "tx_id": "b31885bada6c2d5e71b1302e87d4006c59ff2a40a12108559d76142548d8cf79",
       "account": "eosio.token",
       "name": "transfer",
       "seq_num": 2,
-      "receiver": "noprom1",
+      "receiver": "b11",
       "block_time": "2018-09-29T11:51:06.000",
       "block_num": 127225,
       "authorization": [{
-          "actor": "noprom",
+          "actor": "b1",
           "permission": "active"
         }
       ],
       "action_data": {
-        "from": "noprom",
-        "to": "noprom1",
+        "from": "b1",
+        "to": "b11",
         "quantity": "0.0001 EOS",
-        "memo": "Transfer from noprom to xiaoming"
+        "memo": "Transfer from b1 to b11"
       }
     }
   ]

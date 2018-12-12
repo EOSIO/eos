@@ -134,6 +134,7 @@ fc::variant notify_plugin_impl::deserialize_action_data(action act)
 
 void notify_plugin_impl::build_message(message &msg, const block_state_ptr &block, const transaction_id_type &tx_id, const bool irreversible)
 {
+  // dlog("irreversible: ${a}", ("a", fc::json::to_pretty_string(irreversible)));
   auto range = irreversible ? irreversible_action_queue.equal_range(tx_id) : action_queue.equal_range(tx_id);
 
   msg.irreversible = irreversible;
@@ -163,6 +164,7 @@ action_seq_type notify_plugin_impl::on_action_trace(const action_trace &act, con
     const auto pair = std::make_pair(tx_id, sequenced_action(act.act, act_s, act.receipt.receiver));
     action_queue.insert(pair);
     irreversible_action_queue.insert(pair);
+    // dlog("on_action_trace: ${a}", ("a", fc::json::to_pretty_string(act.act)));
   }
   act_s++;
 
@@ -195,6 +197,7 @@ void notify_plugin_impl::on_accepted_block(const block_state_ptr &block_state)
   {
     message msg;
     transaction_id_type tx_id;
+    // dlog("block_state->block->transactions: ${a}", ("a", fc::json::to_pretty_string(block_state->block->transactions)));
     for (const auto &trx : block_state->block->transactions)
     {
       if (trx.trx.contains<transaction_id_type>())
@@ -206,11 +209,14 @@ void notify_plugin_impl::on_accepted_block(const block_state_ptr &block_state)
         tx_id = trx.trx.get<packed_transaction>().id();
       }
 
+      // dlog("tx_id: ${a}", ("a", fc::json::to_pretty_string(tx_id)));
+      // dlog("action_queue.size(): ${a}", ("a", fc::json::to_pretty_string(action_queue.size())));
       if (action_queue.count(tx_id))
       {
         build_message(msg, block_state, tx_id, false);
       }
     }
+    // dlog("msg: ${a}", ("a", msg));
     if (msg.actions.size() > 0)
     {
       send_message(msg);
@@ -226,6 +232,7 @@ void notify_plugin_impl::on_irreversible_block(const block_state_ptr &block_stat
   {
     message msg;
     transaction_id_type tx_id;
+    // dlog("block_state->block->transactions: ${a}", ("a", fc::json::to_pretty_string(block_state->block->transactions)));
     for (const auto &trx : block_state->block->transactions)
     {
       if (trx.trx.contains<transaction_id_type>())
@@ -236,12 +243,14 @@ void notify_plugin_impl::on_irreversible_block(const block_state_ptr &block_stat
       {
         tx_id = trx.trx.get<packed_transaction>().id();
       }
-
+      // dlog("tx_id: ${a}", ("a", fc::json::to_pretty_string(tx_id)));
+      // dlog("irreversible_action_queue.size(): ${a}", ("a", fc::json::to_pretty_string(irreversible_action_queue.size())));
       if (irreversible_action_queue.count(tx_id))
       {
         build_message(msg, block_state, tx_id, true);
       }
     }
+    // dlog("msg: ${a}", ("a", msg));
     if (msg.actions.size() > 0)
     {
       send_message(msg);
