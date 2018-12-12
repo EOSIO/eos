@@ -11,7 +11,9 @@
 namespace chainbase {
    class database;
 }
-
+namespace boost { namespace asio {
+   class thread_pool;
+}}
 
 namespace eosio { namespace chain {
 
@@ -87,7 +89,7 @@ namespace eosio { namespace chain {
             incomplete  = 3, ///< this is an incomplete block (either being produced by a producer or speculatively produced by a node)
          };
 
-         controller( const config& cfg );
+         explicit controller( const config& cfg );
          ~controller();
 
          void add_indices();
@@ -143,6 +145,8 @@ namespace eosio { namespace chain {
 
          std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b );
          void push_block( std::future<block_state_ptr>& block_state_future );
+
+         boost::asio::thread_pool& get_thread_pool();
 
          const chainbase::database& db()const;
 

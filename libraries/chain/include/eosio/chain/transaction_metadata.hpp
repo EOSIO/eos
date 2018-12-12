@@ -7,8 +7,14 @@
 #include <eosio/chain/types.hpp>
 #include <future>
 
+namespace boost { namespace asio {
+   class thread_pool;
+}}
+
 namespace eosio { namespace chain {
 
+class transaction_metadata;
+using transaction_metadata_ptr = std::shared_ptr<transaction_metadata>;
 /**
  *  This data structure should store context-free cached data about a transaction such as
  *  packed/unpacked/compressed and recovered keys
@@ -43,23 +49,12 @@ class transaction_metadata {
          signed_id = digest_type::hash(*packed_trx);
       }
 
-      const flat_set<public_key_type>& recover_keys( const chain_id_type& chain_id ) {
-         // Unlikely for more than one chain_id to be used in one nodeos instance
-         if( !signing_keys || signing_keys->first != chain_id ) {
-            if( signing_keys_future.valid() ) {
-               signing_keys = signing_keys_future.get();
-               if( signing_keys->first == chain_id ) {
-                  return signing_keys->second;
-               }
-            }
-            signing_keys = std::make_pair( chain_id, trx.get_signature_keys( chain_id ));
-         }
-         return signing_keys->second;
-      }
+      const flat_set<public_key_type>& recover_keys( const chain_id_type& chain_id );
+
+      static void create_signing_keys_future( transaction_metadata_ptr& mtrx,
+                                              boost::asio::thread_pool& thread_pool, const chain_id_type& chain_id );
 
       uint32_t total_actions()const { return trx.context_free_actions.size() + trx.actions.size(); }
 };
-
-using transaction_metadata_ptr = std::shared_ptr<transaction_metadata>;
 
 } } // eosio::chain

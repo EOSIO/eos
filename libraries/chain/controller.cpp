@@ -17,14 +17,12 @@
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
+#include <eosio/chain/thread_utils.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
-
-#include <boost/asio/thread_pool.hpp>
-#include <boost/asio/post.hpp>
 
 
 namespace eosio { namespace chain {
@@ -146,14 +144,6 @@ struct controller_impl {
     *  can query this list when scheduling new transactions into blocks.
     */
    map<digest_type, transaction_metadata_ptr>     unapplied_transactions;
-
-   // async on thread_pool and return future
-   template<typename F>
-   auto async_thread_pool( F&& f ) {
-      auto task = std::make_shared<std::packaged_task<decltype( f() )()>>( std::forward<F>( f ) );
-      boost::asio::post( thread_pool, [task]() { (*task)(); } );
-      return task->get_future();
-   }
 
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
@@ -1202,13 +1192,7 @@ struct controller_impl {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( pt ) );
                if( !self.skip_auth_check() ) {
-                  std::weak_ptr<transaction_metadata> mtrx_wp = mtrx;
-                  mtrx->signing_keys_future = async_thread_pool( [chain_id = this->chain_id, mtrx_wp]() {
-                     auto mtrx = mtrx_wp.lock();
-                     return mtrx ?
-                            std::make_pair( chain_id, mtrx->trx.get_signature_keys( chain_id ) ) :
-                            std::make_pair( chain_id, decltype( mtrx->trx.get_signature_keys( chain_id ) ){} );
-                  } );
+                  transaction_metadata::create_signing_keys_future( mtrx, thread_pool, chain_id );
                }
                packed_transactions.emplace_back( std::move( mtrx ) );
             }
@@ -1286,7 +1270,7 @@ struct controller_impl {
       auto prev = fork_db.get_block( b->previous );
       EOS_ASSERT( prev, unlinkable_block_exception, "unlinkable block ${id}", ("id", id)("previous", b->previous) );
 
-      return async_thread_pool( [b, prev]() {
+      return async_thread_pool( thread_pool, [b, prev]() {
          const bool skip_validate_signee = false;
          return std::make_shared<block_state>( *prev, move( b ), skip_validate_signee );
       } );
@@ -1778,6 +1762,10 @@ void controller::commit_block() {
 
 void controller::abort_block() {
    my->abort_block();
+}
+
+boost::asio::thread_pool& controller::get_thread_pool() {
+   return my->thread_pool;
 }
 
 std::future<block_state_ptr> controller::create_block_state_future( const signed_block_ptr& b ) {
