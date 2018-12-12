@@ -394,7 +394,11 @@ struct controller_impl {
          ilog( "database initialized with hash: ${hash}", ("hash", hash) );
       }
 
-  
+      //*bos begin*
+      sync_name_list(list_type::actor_blacklist_type,true);
+      sync_name_list(list_type::contract_blacklist_type,true);
+      sync_name_list(list_type::resource_greylist_type,true);
+      //*bos end*
    }
 
    ~controller_impl() {
@@ -649,9 +653,7 @@ struct controller_impl {
          gpo.gmr.ram_byte = config::default_gmr_ram_limit;
       });
 
-      sync_name_list(list_type::actor_blacklist_type,true);
-      sync_name_list(list_type::contract_blacklist_type,true);
-      sync_name_list(list_type::resource_greylist_type,true);
+
       // *bos end*
 
       authorization.initialize_database();
