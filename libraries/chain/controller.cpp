@@ -135,7 +135,7 @@ struct controller_impl {
    optional<fc::microseconds>     subjective_cpu_leeway;
    bool                           trusted_producer_light_validation = false;
    uint32_t                       snapshot_head_block = 0;
-   optional<boost::asio::thread_pool>  thread_pool;
+   boost::asio::thread_pool       thread_pool;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -151,7 +151,7 @@ struct controller_impl {
    template<typename F>
    auto async_thread_pool( F&& f ) {
       auto task = std::make_shared<std::packaged_task<decltype( f() )()>>( std::forward<F>( f ) );
-      boost::asio::post( *thread_pool, [task]() { (*task)(); } );
+      boost::asio::post( thread_pool, [task]() { (*task)(); } );
       return task->get_future();
    }
 
@@ -194,7 +194,8 @@ struct controller_impl {
     authorization( s, db ),
     conf( cfg ),
     chain_id( cfg.genesis.compute_chain_id() ),
-    read_mode( cfg.read_mode )
+    read_mode( cfg.read_mode ),
+    thread_pool( cfg.thread_pool_size )
    {
 
 #define SET_APP_HANDLER( receiver, contract, action) \
@@ -349,8 +350,6 @@ struct controller_impl {
 
    void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
 
-      thread_pool.emplace( conf.thread_pool_size );
-
       bool report_integrity_hash = !!snapshot;
       if (snapshot) {
          EOS_ASSERT( !head, fork_database_exception, "" );
@@ -418,10 +417,8 @@ struct controller_impl {
    ~controller_impl() {
       pending.reset();
 
-      if( thread_pool ) {
-         thread_pool->join();
-         thread_pool->stop();
-      }
+      thread_pool.join();
+      thread_pool.stop();
 
       db.flush();
       reversible_blocks.flush();
