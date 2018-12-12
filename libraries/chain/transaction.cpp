@@ -95,9 +95,10 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
       public_key_type recov;
       if( use_cache ) {
          recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find( sig );
-         if( it == recovery_cache.get<by_sig>().end() || it->trx_id != id()) {
+         const auto& tid = id();
+         if( it == recovery_cache.get<by_sig>().end() || it->trx_id != tid) {
             recov = public_key_type( sig, digest );
-            recovery_cache.emplace_back(cached_pub_key{id(), recov, sig} ); //could fail on dup signatures; not a problem
+            recovery_cache.emplace_back(cached_pub_key{tid, recov, sig} ); //could fail on dup signatures; not a problem
          } else {
             recov = it->pub_key;
          }

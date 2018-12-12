@@ -51,7 +51,7 @@ class transaction_metadata {
 
       const flat_set<public_key_type>& recover_keys( const chain_id_type& chain_id );
 
-      static void create_signing_keys_future( transaction_metadata_ptr& mtrx,
+      static void create_signing_keys_future( const transaction_metadata_ptr& mtrx,
                                               boost::asio::thread_pool& thread_pool, const chain_id_type& chain_id );
 
       uint32_t total_actions()const { return trx.context_free_actions.size() + trx.actions.size(); }

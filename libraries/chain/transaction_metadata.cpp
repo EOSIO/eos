@@ -19,8 +19,14 @@ const flat_set<public_key_type>& transaction_metadata::recover_keys( const chain
    return signing_keys->second;
 }
 
-void transaction_metadata::create_signing_keys_future( transaction_metadata_ptr& mtrx,
+void transaction_metadata::create_signing_keys_future( const transaction_metadata_ptr& mtrx,
                                                        boost::asio::thread_pool& thread_pool, const chain_id_type& chain_id ) {
+   if( mtrx->signing_keys && mtrx->signing_keys->first == chain_id )
+      return;
+
+   if( mtrx->signing_keys.valid() ) // already created
+      return;
+
    std::weak_ptr<transaction_metadata> mtrx_wp = mtrx;
    mtrx->signing_keys_future = async_thread_pool( thread_pool, [chain_id, mtrx_wp]() {
       auto mtrx = mtrx_wp.lock();
