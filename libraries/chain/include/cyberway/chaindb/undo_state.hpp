@@ -30,9 +30,6 @@ namespace cyberway { namespace chaindb {
 
         void apply_changes(revision_t rev);
 
-        /** leaves the UNDO state on the stack when session goes out of scope */
-        void push(revision_t rev);
-
         /**
          *  Restores the state to how it was prior to the current session discarding all changes
          *  made between the last revision and the current revision.

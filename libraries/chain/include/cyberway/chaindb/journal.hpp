@@ -85,14 +85,14 @@ namespace cyberway { namespace chaindb {
         }
 
     private:
-        using undo_map_t_ = std::map<revision_t, write_value>;
+        using undo_map_t_ = fc::flat_map<revision_t, write_value>;
 
         struct info_t_ final {
             write_value data;
             undo_map_t_ undo_map;
         }; // struct info_type_
 
-        using info_map_t_ = std::map<primary_key_t, info_t_>;
+        using info_map_t_ = fc::flat_map<primary_key_t, info_t_>;
 
         struct table_t_ final: public table_object::object {
             using table_object::object::object;

@@ -121,7 +121,7 @@ namespace cyberway { namespace chaindb {
         return nullptr;
     }
 
-    void journal::write(const table_info& table, const primary_key_t pk, write_value data, write_value undo) {
+    void journal::write(const table_info& table, const primary_key_t pk, write_value data, write_value undo) { try {
         CYBERWAY_ASSERT(data.operation != write_operation::Unknown || undo.operation != write_operation::Unknown,
             driver_write_exception,
             "Bad operation type on writing to journal for the primary key ${pk} "
@@ -129,14 +129,14 @@ namespace cyberway { namespace chaindb {
             ("pk", pk)("table", get_full_table_name(table))("scope", get_scope_name(table)));
 
         auto table_itr = table_object::find(index_, table);
-        if (BOOST_LIKELY(index_.end() == table_itr)) {
+        if (index_.end() == table_itr) {
             table_itr = index_.emplace(table).first;
         }
 
         // not critical, because map is not a part of the index key
         auto& info_map = const_cast<table_t_&>(*table_itr).info_map;
         auto info_itr = info_map.find(pk);
-        if (BOOST_LIKELY(info_map.end() == info_itr)) {
+        if (info_map.end() == info_itr) {
             info_t_ info{std::move(data)};
             info_itr = info_map.emplace(pk, std::move(info)).first;
         } else if (write_operation::Unknown != data.operation) {
@@ -146,14 +146,19 @@ namespace cyberway { namespace chaindb {
 
         if (BOOST_LIKELY(write_operation::Unknown != undo.operation)) {
             auto& undo_map = info_itr->second.undo_map;
+
             auto rev = (impossible_revision != undo.find_revision) ? undo.find_revision : undo.set_revision;
             auto undo_itr = undo_map.find(rev);
-            if (BOOST_LIKELY(undo_map.end() == undo_itr)) {
-                undo_map.emplace(rev, std::move(undo));
+            if (undo_map.end() == undo_itr) {
+                rev = (impossible_revision != undo.set_revision) ? undo.set_revision : undo.find_revision;
+                undo_itr = undo_map.emplace(rev, std::move(undo)).first;
+            } else if (impossible_revision != undo.set_revision && undo_itr->first) {
+                undo_map.erase(undo_itr);
+                undo_map.emplace(undo.set_revision, std::move(undo));
             } else {
                 _detail::write(std::move(undo), undo_itr->second);
             }
         }
-    }
+    } FC_LOG_AND_RETHROW() }
 
 } } // namespace cyberway::chaindb

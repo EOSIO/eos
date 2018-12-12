@@ -668,63 +668,6 @@ namespace cyberway { namespace chaindb {
                 ("pk", pk)("table", get_full_table_name(table))("scope", get_scope_name(table)));
         }
 
-        void insert(const table_info& table, const primary_key_t pk, variant value) {
-            auto loc = get_changed_value(table, pk);
-            auto& info = loc.info();
-
-            switch (info.state) {
-                case changed_value_state::Unknown:
-                case changed_value_state::Delete: {
-                    info.state = changed_value_state::Insert;
-                    info.value = std::move(value);
-                    break;
-                }
-
-                case changed_value_state::Insert:
-                case changed_value_state::Update:
-                    CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on insert");
-            }
-        }
-
-        void update(const table_info& table, const primary_key_t pk, variant value) {
-            auto loc = get_changed_value(table, pk);
-            auto& info = loc.info();
-
-            switch (info.state) {
-                case changed_value_state::Unknown:
-                    info.state = changed_value_state::Update;
-
-                case changed_value_state::Insert:
-                case changed_value_state::Update:
-                    info.value = std::move(value);
-                    break;
-
-                case changed_value_state::Delete:
-                    CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on update");
-            }
-        }
-
-        void remove(const table_info& table, const primary_key_t pk) {
-            auto loc = get_changed_value(table, pk);
-            auto& info = loc.info();
-
-            switch (info.state) {
-                case changed_value_state::Update:
-                    info.value = {};
-
-                case changed_value_state::Unknown:
-                    info.state = changed_value_state::Delete;
-                    break;
-
-                case changed_value_state::Insert:
-                    loc.table().map.erase(loc.value_itr_);
-                    break;
-
-                case changed_value_state::Delete:
-                    CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on delete");
-            }
-        }
-
     private:
         static mongocxx::instance& init_instance() {
             static mongocxx::instance instance;
@@ -811,17 +754,24 @@ namespace cyberway { namespace chaindb {
             }
 
         private:
+            struct bulk_info_t_ final {
+                bulk_write bulk_;
+                int op_cnt_ = 0;
+
+                bulk_info_t_(bulk_write bulk): bulk_(std::move(bulk)) { }
+            }; // struct bulk_t_;
+
             mongodb_impl_& impl_;
             std::string error_;
             const table_info* table_ = nullptr;
             options::bulk_write bulk_opts_;
-            bulk_write prepare_undo_bulk_;
-            bulk_write complete_undo_bulk_;
-            std::vector<bulk_write> data_bulk_list_;
+            bulk_info_t_ prepare_undo_bulk_;
+            bulk_info_t_ complete_undo_bulk_;
+            std::deque<bulk_info_t_> data_bulk_list_;
 
             template <typename MakePkDocument>
             void append_bulk(
-                MakePkDocument&& make_pk_document, bulk_write& bulk, const primary_key_t pk, const write_value& data
+                MakePkDocument&& make_pk_document, bulk_info_t_& info, const primary_key_t pk, const write_value& data
             ) {
                 document data_doc;
                 document pk_doc;
@@ -850,21 +800,23 @@ namespace cyberway { namespace chaindb {
                         return;
                 }
 
+                ++info.op_cnt_;
+
                 switch(data.operation) {
                     case write_operation::Insert:
-                        bulk.append(insert_one(data_doc.view()));
+                        info.bulk_.append(insert_one(data_doc.view()));
                         break;
 
                     case write_operation::Update:
-                        bulk.append(replace_one(pk_doc.view(), data_doc.view()));
+                        info.bulk_.append(replace_one(pk_doc.view(), data_doc.view()));
                         break;
 
                     case write_operation::UpdateRevision:
-                        bulk.append(update_one(pk_doc.view(), make_document(kvp("$set", data_doc))));
+                        info.bulk_.append(update_one(pk_doc.view(), make_document(kvp("$set", data_doc))));
                         break;
 
                     case write_operation::Delete:
-                        bulk.append(delete_one(pk_doc.view()));
+                        info.bulk_.append(delete_one(pk_doc.view()));
                         break;
 
                     case write_operation::Unknown:
@@ -872,19 +824,17 @@ namespace cyberway { namespace chaindb {
                 }
             }
 
-            void execute_bulk(bulk_write& bulk) {
+            void execute_bulk(bulk_info_t_& info) {
+                if (!info.op_cnt_) return;
+
                 _detail::auto_reconnect([&]() { try {
-                    bulk.execute();
+                    info.bulk_.execute();
                 } catch (const mongocxx::bulk_write_exception& e) {
-                    auto code = _detail::get_mongo_code(e);
-                    // TODO: don't try to send empty bulk
-                    if (code == mongo_code::EmptyBulk) return;
-
-                    auto raw_code = e.code().value();
                     error_ = e.what();
-                    elog("Error on bulk write: ${code}, ${what}", ("what", error_)("code", raw_code));
-
-                    if (code != mongo_code::DuplicateValue) throw; // this shouldn't happen
+                    elog("Error on bulk write: ${code}, ${what}", ("what", error_)("code", e.code().value()));
+                    if (_detail::get_mongo_code(e) != mongo_code::DuplicateValue) {
+                        throw; // this shouldn't happen
+                    }
                 }});
             }
         }; // class write_ctx_t_
