@@ -343,9 +343,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
       }
 
-      std::deque<std::tuple<packed_transaction_ptr, bool, next_function<transaction_trace_ptr>>> _pending_incoming_transactions;
+      std::deque<std::tuple<transaction_metadata_ptr, bool, next_function<transaction_trace_ptr>>> _pending_incoming_transactions;
 
-      void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
+      void on_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
          if (!chain.pending_block_state()) {
             _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
@@ -357,34 +357,34 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto send_response = [this, &trx, &chain, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
             if (response.contains<fc::exception_ptr>()) {
-               _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(response.get<fc::exception_ptr>(), trx));
+               _transaction_ack_channel.publish(std::pair<fc::exception_ptr, transaction_metadata_ptr>(response.get<fc::exception_ptr>(), trx));
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
                         ("prod", chain.pending_block_state()->header.producer)
-                        ("txid", trx->id())
+                        ("txid", trx->id)
                         ("why",response.get<fc::exception_ptr>()->what()));
                } else {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
-                          ("txid", trx->id())
+                          ("txid", trx->id)
                           ("why",response.get<fc::exception_ptr>()->what()));
                }
             } else {
-               _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(nullptr, trx));
+               _transaction_ack_channel.publish(std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}",
                           ("block_num", chain.head_block_num() + 1)
                           ("prod", chain.pending_block_state()->header.producer)
-                          ("txid", trx->id()));
+                          ("txid", trx->id));
                } else {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${txid}",
-                          ("txid", trx->id()));
+                          ("txid", trx->id));
                }
             }
          };
 
-         auto id = trx->id();
-         if( fc::time_point(trx->expiration()) < block_time ) {
+         const auto& id = trx->id;
+         if( fc::time_point(trx->packed_trx->expiration()) < block_time ) {
             send_response(std::static_pointer_cast<fc::exception>(std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", id)) )));
             return;
          }
@@ -402,7 +402,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
 
          try {
-            auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(trx), deadline);
+            auto trace = chain.push_transaction(trx, deadline);
             if (trace->except) {
                if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
                   _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
@@ -410,10 +410,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                      fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
                              ("block_num", chain.head_block_num() + 1)
                              ("prod", chain.pending_block_state()->header.producer)
-                             ("txid", trx->id()));
+                             ("txid", trx->id));
                   } else {
                      fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
-                             ("txid", trx->id()));
+                             ("txid", trx->id));
                   }
                } else {
                   auto e_ptr = trace->except->dynamic_copy_exception();
@@ -423,7 +423,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                if (persist_until_expired) {
                   // if this trx didnt fail/soft-fail and the persist flag is set, store its ID so that we can
                   // ensure its applied to all future speculative blocks as well.
-                  _persistent_transactions.insert(transaction_id_with_expiry{trx->id(), trx->expiration()});
+                  _persistent_transactions.insert(transaction_id_with_expiry{trx->id, trx->packed_trx->expiration()});
                }
                send_response(trace);
             }
@@ -682,7 +682,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       } FC_LOG_AND_DROP();
    });
 
-   my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe([this](const packed_transaction_ptr& trx){
+   my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe([this](const transaction_metadata_ptr& trx){
       try {
          my->on_incoming_transaction_async(trx, false, [](const auto&){});
       } FC_LOG_AND_DROP();
@@ -692,7 +692,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       my->on_incoming_block(block);
    });
 
-   my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider([this](const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
+   my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider([this](const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
       return my->on_incoming_transaction_async(trx, persist_until_expired, next );
    });
 
