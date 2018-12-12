@@ -320,7 +320,7 @@ try:
     if hashNum != 0:
         errorExit("FAILURE - get code currency1111 failed", raw=True)
 
-    contractDir="contracts/eosio.token"
+    contractDir="unittests/contracts/eosio.token"
     wasmFile="eosio.token.wasm"
     abiFile="eosio.token.abi"
     Print("Publish contract")

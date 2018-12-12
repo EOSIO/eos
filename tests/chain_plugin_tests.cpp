@@ -13,9 +13,6 @@
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
-// #include <asserter/asserter.wast.hpp>
-// #include <asserter/asserter.abi.hpp>
-
 #include <contracts.hpp>
 
 #include <fc/io/fstream.hpp>
