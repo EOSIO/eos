@@ -26,7 +26,7 @@ target_compile_options(unit_test PUBLIC -DDISABLE_EOSLIB_SERIALIZE)
 
 target_include_directories( unit_test PUBLIC
                             ${CMAKE_SOURCE_DIR}/libraries/testing/include
-                            ${CMAKE_SOURCE_DIR}/contracts
+                            ${CMAKE_SOURCE_DIR}/test-contracts
                             ${CMAKE_BINARY_DIR}/contracts
                             ${CMAKE_CURRENT_SOURCE_DIR}/contracts
                             ${CMAKE_CURRENT_BINARY_DIR}/contracts

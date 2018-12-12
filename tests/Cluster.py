@@ -961,7 +961,7 @@ class Cluster(object):
             return None
 
         contract="eosio.bios"
-        contractDir="contracts/%s" % (contract)
+        contractDir="unittests/contracts/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
@@ -1085,7 +1085,7 @@ class Cluster(object):
             return None
 
         contract="eosio.token"
-        contractDir="contracts/%s" % (contract)
+        contractDir="unittests/contracts/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
@@ -1140,7 +1140,7 @@ class Cluster(object):
             return None
 
         contract="eosio.system"
-        contractDir="contracts/%s" % (contract)
+        contractDir="unittests/contracts/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))

@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -9,8 +13,10 @@
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
-#include <asserter/asserter.wast.hpp>
-#include <asserter/asserter.abi.hpp>
+// #include <asserter/asserter.wast.hpp>
+// #include <asserter/asserter.abi.hpp>
+
+#include <contracts.hpp>
 
 #include <fc/io/fstream.hpp>
 
@@ -42,8 +48,8 @@ BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
    produce_block();
 
    // setup contract and abi
-   set_code(N(asserter), asserter_wast);
-   set_abi(N(asserter), asserter_abi);
+   set_code( N(asserter), contracts::asserter_wasm() );
+   set_abi( N(asserter), contracts::asserter_abi().data() );
    produce_blocks(1);
 
    auto resolver = [&,this]( const account_name& name ) -> optional<abi_serializer> {
@@ -100,7 +106,7 @@ BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
    BOOST_TEST(block_str.find("011253686f756c64204e6f742041737365727421") != std::string::npos); //action data
 
    // set an invalid abi (int8->xxxx)
-   std::string abi2 = asserter_abi;
+   std::string abi2 = contracts::asserter_abi().data();
    auto pos = abi2.find("int8");
    BOOST_TEST(pos != std::string::npos);
    abi2.replace(pos, 4, "xxxx");
@@ -120,4 +126,3 @@ BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
 } FC_LOG_AND_RETHROW() /// get_block_with_invalid_abi
 
 BOOST_AUTO_TEST_SUITE_END()
-
