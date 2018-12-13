@@ -22,7 +22,8 @@ namespace cyberway { namespace chaindb {
     }
 
     fc::time_point from_date(const bsoncxx::types::b_date& date) {
-        return fc::time_point(fc::milliseconds(date.value.count() * 1000));
+        std::chrono::system_clock::time_point tp = date;
+        return fc::time_point(fc::seconds(std::chrono::system_clock::to_time_t(tp)));
     }
 
     fc::time_point from_timestamp(const bsoncxx::types::b_timestamp& timestamp) {
@@ -34,6 +35,11 @@ namespace cyberway { namespace chaindb {
         if (src.sub_type != bsoncxx::binary_sub_type::k_binary) return {};
         blob_content.assign(src.bytes, src.bytes + src.size);
         return blob_content;
+    }
+
+    bsoncxx::types::b_date to_date(const fc::time_point& date) {
+        const auto as_time_point = std::chrono::system_clock::from_time_t(date.sec_since_epoch());
+        return bsoncxx::types::b_date(as_time_point);
     }
 
 }} // namespace cyberway::chaindb

@@ -262,7 +262,7 @@ namespace cyberway { namespace chaindb {
                         dst.append(item.as_string());
                         break;
                     case variant::time_type:
-                        dst.append(item.as_time_point());
+                        dst.append(to_date(item.as_time_point()));
                          break;
                     case variant::array_type:
                         dst.append([&](sub_array array){ build_document(array, item.get_array()); });
@@ -305,7 +305,7 @@ namespace cyberway { namespace chaindb {
                     dst.append(kvp(key, src.as_string()));
                     break;
                 case variant::time_type:
-                    dst.append(kvp(key, src.as_time_point()));
+                    dst.append(kvp(key, to_date(src.as_time_point())));
                     break;
                 case variant::array_type:
                     dst.append(kvp(key, [&](sub_array array){ build_document(array, src.get_array()); }));

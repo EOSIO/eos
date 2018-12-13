@@ -8,6 +8,7 @@ namespace bsoncxx { namespace types {
     struct b_date;
     struct b_timestamp;
     struct b_binary;
+    struct b_date;
 }} // namespace bsoncxx::types
 
 namespace fc {
@@ -25,5 +26,7 @@ namespace cyberway { namespace chaindb {
     fc::time_point from_timestamp(const bsoncxx::types::b_timestamp& timestamp);
 
     std::vector<char> build_blob_content(const bsoncxx::types::b_binary& src);
+
+    bsoncxx::types::b_date to_date(const fc::time_point& date);
 
 }} // namespace cyberway::chaindb
