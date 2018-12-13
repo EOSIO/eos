@@ -1,7 +1,7 @@
 # BOSCore - 更可用的链，为DApp而生。
 
-## BOSCore Version: v1.0.1
-### Basic EOSIO Version: v1.4.3
+## BOSCore Version: v1.0.2
+### Basic EOSIO Version: v1.4.4
 
 # 背景
 EOS的出现给区块链带来了新的想象力，主网启动短短几个月以来，版本经历了几十次升级，不仅稳定性得到了很大提高，并且新功能也逐步实现，各个节点团队也积极参与建设EOSIO生态。让人更加兴奋的是，EOS已经吸引了越来越多的开发团队，当前已经有数百个DApp在EOS主网上面运行，其交易量和流通市值远超以太坊，可发展的空间愈来愈广阔。

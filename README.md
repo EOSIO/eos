@@ -1,7 +1,7 @@
 # BOSCore - Born for DApp, be more useable.
 
-## BOSCore Version: v1.0.1
-### Basic EOSIO Version: v1.4.3
+## BOSCore Version: v1.0.2
+### Basic EOSIO Version: v1.4.4
 
 # Background
 The emergence of EOS has brought new imagination to the blockchain. In just a few months since the main network was launched, the version has undergone dozens of upgrades, not only the stability has been greatly improved, but also the new functions have been gradually realized. The node team is also actively involved in building the EOSIO ecosystem. What is even more exciting is that EOS has attracted more and more development teams. There are already hundreds of DApp running on the EOS main network. The transaction volume and circulation market value far exceed Ethereum, and the space for development is growing broader.
