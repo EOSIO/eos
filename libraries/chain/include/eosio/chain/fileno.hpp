@@ -172,3 +172,21 @@ fileno_hack(const std::basic_ios<charT, traits>& stream)
 #endif
     return -1;
 }
+
+#if defined(_LIBCPP_VERSION)
+//! 8-Bit character instantiation: fileno(ios).
+template <>
+int
+fileno_hack<char>(const std::ios& stream)
+{
+    return fileno_hack(stream);
+}
+
+//! Wide character instantiation: fileno(wios).
+template <>
+int
+fileno_hack<wchar_t>(const std::wios& stream)
+{
+    return fileno_hack(stream);
+}
+#endif
