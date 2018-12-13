@@ -11,9 +11,12 @@ The `bios-boot-tutorial.py` script simulates the EOSIO bios boot sequence.
 ``Steps``:
 
 1. Install eosio binaries by following the steps outlined in below tutorial
-[Install eosio binaries steps](https://github.com/EOSIO/eos#mac-os-x-brew-install)
+[Install eosio binaries](https://github.com/EOSIO/eos#mac-os-x-brew-install)
 
-2. Compile eosio.contracts
+2. Install eosio.cdt binaries by following the steps outlined in below tutorial
+[Install eosio.cdt binaries](https://github.com/EOSIO/eosio.cdt#binary-releases)
+
+3. Compile eosio.contracts
 
 ```bash
 $ cd ~
@@ -24,11 +27,11 @@ $ pwd
 
 ```
 
-3. Make note of the directory where the contracts were compiled
+4. Make note of the directory where the contracts were compiled
 The last command in the previous step printed on the bash console the contracts' directory, make note of it, we'll reference it from now on as `YOU_CONTRACTS_DIRECTORY`
 
-4. Launch the `bios-boot-tutorial.py` script
-Minimal command line to launch the  script
+5. Launch the `bios-boot-tutorial.py` script
+Minimal command line to launch the script below, make sure you replace `YOU_CONTRACTS_DIRECTORY` with actual directory
 
 ```bash
 $ cd ~
