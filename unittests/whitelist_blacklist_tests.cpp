@@ -463,7 +463,7 @@ BOOST_AUTO_TEST_CASE( actor_blacklist_inline_deferred ) { try {
    );
 
    auth = authority(eosio::testing::base_tester::get_public_key("bob", "active"));
-   auth.accounts.push_back( permission_level_weight{{N(alice), config::active_name}, 1} );
+   auth.accounts.push_back( permission_level_weight{{N(alice), config::eosio_code_name}, 1} );
    auth.accounts.push_back( permission_level_weight{{N(bob), config::eosio_code_name}, 1} );
 
    tester1.chain->push_action( N(eosio), N(updateauth), N(bob), mvo()
