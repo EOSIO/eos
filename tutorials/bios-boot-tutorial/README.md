@@ -24,11 +24,11 @@ $ pwd
 
 ```
 
-3. Make note of the directory where the contracts where compiled
+3. Make note of the directory where the contracts were compiled
 The last command in the previous step printed on the bash console the contracts' directory, make note of it, we'll reference it from now on as `YOU_CONTRACTS_DIRECTORY`
 
 4. Launch the `bios-boot-tutorial.py` script
-Minimal command line to launch the  scrip
+Minimal command line to launch the  script
 
 ```bash
 $ cd ~
