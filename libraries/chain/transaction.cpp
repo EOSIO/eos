@@ -344,10 +344,35 @@ signed_transaction packed_transaction::get_signed_transaction() const
 
 }
 
-void packed_transaction::set_transaction(const transaction& t, packed_transaction::compression_type _compression)
+packed_transaction::packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs,
+                                        bytes&& packed_cfd, vector<bytes>&& cfd, compression_type _compression )
+:signatures(std::move(sigs))
+,compression(_compression)
+,packed_context_free_data(std::move(packed_cfd))
+,packed_trx(std::move(packed_txn))
+{
+   EOS_ASSERT(packed_cfd.empty() || cfd.empty(), tx_decompression_error, "Invalid packed_transaction");
+   if( !cfd.empty() ) {
+      set_context_free_data(cfd);
+   }
+}
+
+packed_transaction::packed_transaction( signed_transaction&& t, bytes&& packed_cfd, compression_type _compression )
+:signatures(std::move(t.signatures))
+,compression(_compression)
+,packed_context_free_data(std::move(packed_cfd))
+{
+   set_transaction(t);
+   // allow passed in packed_cfd to overwrite signed_transaction.context_free_data if provided
+   if( packed_context_free_data.empty() ) {
+      set_context_free_data(t.context_free_data);
+   }
+}
+
+void packed_transaction::set_transaction(const transaction& t)
 {
    try {
-      switch(_compression) {
+      switch(compression) {
          case none:
             packed_trx = pack_transaction(t);
             break;
@@ -357,28 +382,23 @@ void packed_transaction::set_transaction(const transaction& t, packed_transactio
          default:
             EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((_compression)(t))
-   packed_context_free_data.clear();
-   compression = _compression;
+   } FC_CAPTURE_AND_RETHROW((compression)(t))
 }
 
-void packed_transaction::set_transaction(const transaction& t, const vector<bytes>& cfd, packed_transaction::compression_type _compression)
+void packed_transaction::set_context_free_data(const vector<bytes>& cfd)
 {
    try {
-      switch(_compression) {
+      switch(compression) {
          case none:
-            packed_trx = pack_transaction(t);
             packed_context_free_data = pack_context_free_data(cfd);
             break;
          case zlib:
-            packed_trx = zlib_compress_transaction(t);
             packed_context_free_data = zlib_compress_context_free_data(cfd);
             break;
          default:
             EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((_compression)(t))
-   compression = _compression;
+   } FC_CAPTURE_AND_RETHROW((compression))
 }
 
 
