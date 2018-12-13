@@ -594,6 +594,7 @@ class apply_context {
       bool                          privileged   = false;
       bool                          context_free = false;
       bool                          used_context_free_api = false;
+      uint64_t                      global_action_sequence = 0;
 
       generic_index<index64_object>                                  idx64;
       generic_index<index128_object>                                 idx128;

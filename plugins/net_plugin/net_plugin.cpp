@@ -118,6 +118,13 @@ namespace eosio {
       >
    node_transaction_index;
 
+   struct p2p_peer_record{
+        string peer_address;
+        time_point_sec expiry;
+        bool is_config;
+        bool discoverable;
+        bool connected;
+   };
    class net_plugin_impl {
    public:
       unique_ptr<tcp::acceptor>        acceptor;
@@ -128,6 +135,9 @@ namespace eosio {
       uint32_t                         num_clients = 0;
 
       vector<string>                   supplied_peers;
+      map<string,p2p_peer_record>           p2p_peer_records;
+      bool p2p_discoverable;
+      bool request_p2p_flag=true;
       vector<chain::public_key_type>   allowed_peers; ///< peer keys allowed to connect
       std::map<chain::public_key_type,
                chain::private_key_type> private_keys; ///< overlapping with producer keys, also authenticating non-producing nodes
@@ -197,6 +207,8 @@ namespace eosio {
 
       bool is_valid( const handshake_message &msg);
 
+      void send_p2p_request(connection_ptr c);
+
       void handle_message( connection_ptr c, const handshake_message &msg);
       void handle_message( connection_ptr c, const chain_size_message &msg);
       void handle_message( connection_ptr c, const go_away_message &msg );
@@ -220,6 +232,8 @@ namespace eosio {
       void handle_message( connection_ptr c, const sync_request_message &msg);
       void handle_message( connection_ptr c, const signed_block &msg);
       void handle_message( connection_ptr c, const packed_transaction &msg);
+      void handle_message( connection_ptr c, const request_p2p_message &msg);
+      void handle_message( connection_ptr c, const response_p2p_message &msg);
 
       void start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection);
       void start_txn_timer( );
@@ -575,6 +589,8 @@ namespace eosio {
                        std::function<void(boost::system::error_code, std::size_t)> callback);
       void do_queue_write();
 
+      void send_p2p_request(bool discoverable);
+      void send_p2p_response(bool discoverable,string p2p_peer_list);
       /** \brief Process the next message from the pending message buffer
        *
        * Process the next message from the pending_message_buffer.
@@ -940,6 +956,29 @@ namespace eosio {
          }
       }
 
+   }
+
+   void connection::send_p2p_request(bool discoverable)
+   {
+         try
+         {
+               enqueue(net_message(request_p2p_message{discoverable}));
+         }
+         catch (...)
+         {
+               elog("send request_p2p_message message error");
+         }
+   }
+   void connection::send_p2p_response(bool discoverable, string p2p_list)
+   {
+         try
+         {
+               enqueue(net_message(response_p2p_message{discoverable, p2p_list}));
+         }
+         catch (...)
+         {
+               elog("send response_p2p_message message error");
+         }
    }
 
    void connection::stop_send() {
@@ -1952,7 +1991,8 @@ namespace eosio {
             if( !err && c->socket->is_open() ) {
                if (start_session( c )) {
                   c->send_handshake ();
-               }
+                  send_p2p_request(c);
+                  }
             } else {
                if( endpoint_itr != tcp::resolver::iterator() ) {
                   close(c);
@@ -1968,6 +2008,37 @@ namespace eosio {
          } );
    }
 
+   void net_plugin_impl::send_p2p_request(connection_ptr c)
+   {
+         if (p2p_discoverable && request_p2p_flag)
+         {
+               auto peer_record = p2p_peer_records.find(c->peer_addr);
+               if (peer_record != p2p_peer_records.end())
+               {
+                     if (peer_record->second.is_config && !peer_record->second.connected)
+                     {
+                           c->send_p2p_request(p2p_discoverable);
+                           peer_record->second.connected = true;
+                     }
+                     else
+                     {
+                           bool stop_flag = true;
+                           for (auto record : p2p_peer_records)
+                           {
+                                 if (record.second.is_config && !( record.second.connected||record.second.expiry < time_point::now()))
+                                 {
+                                       stop_flag = false;
+                                       break;
+                                 }
+                           }
+                           if (stop_flag)
+                           {
+                                 request_p2p_flag = false;
+                           }
+                     }
+               }
+         }
+   }
    bool net_plugin_impl::start_session( connection_ptr con ) {
       boost::asio::ip::tcp::no_delay nodelay( true );
       boost::system::error_code ec;
@@ -2215,6 +2286,56 @@ namespace eosio {
    void net_plugin_impl::handle_message( connection_ptr c, const chain_size_message &msg) {
       peer_ilog(c, "received chain_size_message");
 
+   }
+
+   void net_plugin_impl::handle_message( connection_ptr c, const request_p2p_message &msg){
+      peer_ilog(c, "received request_p2p_message");
+      string rspm;
+      for(auto sd :p2p_peer_records){
+            if(sd.second.discoverable){
+                  rspm.append(sd.second.peer_address+"#");
+            }
+      }
+      if(p2p_discoverable||rspm.size()>0){
+            c->send_p2p_response(p2p_discoverable,rspm);
+      }
+   }
+
+   void net_plugin_impl::handle_message( connection_ptr c, const response_p2p_message &msg){
+      peer_ilog(c, "received response_p2p_message");
+      auto peer_record=p2p_peer_records.find(c->peer_addr);
+      if(peer_record!=p2p_peer_records.end()){
+      peer_record->second.discoverable=msg.discoverable;
+      if (peer_record->second.is_config&&msg.p2p_peer_list.length()>0){
+
+            vector<string> p2p_peer_list;
+            int start = 0;
+            string delim="#";
+            int idx = msg.p2p_peer_list.find(delim, start);
+            string peer_list;
+            while( idx != std::string::npos )
+            {
+                  if(max_nodes_per_host<=connections.size()||max_nodes_per_host<=p2p_peer_records.size()){
+                        return;
+                  }
+                  peer_list=msg.p2p_peer_list.substr(start, idx-start);
+                  if(peer_list.size()<3){
+                        break;
+                  }
+                  start = idx+delim.size();
+                  idx = msg.p2p_peer_list.find(delim, start);
+                  if( find_connection( peer_list ))
+                  continue;
+                  p2p_peer_record p2prcd;
+                  p2prcd.peer_address=peer_list;
+                  p2prcd.discoverable=false;
+                  p2prcd.is_config=true;
+                  p2prcd.connected=false;
+                  p2p_peer_records.insert(pair<string,p2p_peer_record>(peer_list,p2prcd));
+                  connection_ptr c = std::make_shared<connection>(peer_list);
+                  fc_dlog(logger,"adding new connection to the list");
+                  connections.insert( c );
+              }}}
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
@@ -2879,6 +3000,8 @@ namespace eosio {
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
          ( "max-implicit-request", bpo::value<uint32_t>()->default_value(def_max_just_send), "maximum sizes of transaction or block messages that are sent without first sending a notice")
          ( "use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable expirimental socket read watermark optimization")
+         ( "p2p-discoverable", bpo::value<bool>()->default_value(false),
+           "True to p2p discoverable.")
          ( "peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
            "The string used to format peers when logging messages about them.  Variables are escaped with ${<variable name>}.\n"
            "Available Variables:\n"
@@ -2918,6 +3041,8 @@ namespace eosio {
          my->started_sessions = 0;
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
+
+         my->p2p_discoverable=options.at( "p2p-discoverable" ).as<bool>();
 
          my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
          if( options.count( "p2p-listen-endpoint" )) {
@@ -3037,6 +3162,14 @@ namespace eosio {
       my->start_monitors();
 
       for( auto seed_node : my->supplied_peers ) {
+            p2p_peer_record p2prcd;
+            p2prcd.peer_address=seed_node;
+            p2prcd.discoverable=false;
+            p2prcd.is_config=true;
+            p2prcd.connected=false;
+            p2prcd.expiry=time_point_sec((time_point::now()).sec_since_epoch()+10);
+            my->p2p_peer_records.insert(pair<string,p2p_peer_record>(seed_node,p2prcd));
+
          connect( seed_node );
       }
 

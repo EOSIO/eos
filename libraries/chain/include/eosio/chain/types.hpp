@@ -148,6 +148,7 @@ namespace eosio { namespace chain {
       index_double_object_type,
       index_long_double_object_type,
       global_property_object_type,
+      global_property2_object_type,
       dynamic_global_property_object_type,
       block_summary_object_type,
       transaction_object_type,
@@ -169,6 +170,7 @@ namespace eosio { namespace chain {
       resource_usage_object_type,
       resource_limits_state_object_type,
       resource_limits_config_object_type,
+      gmr_config_object_type,      ///< Defined by bos
       account_history_object_type,              ///< Defined by history_plugin
       action_history_object_type,               ///< Defined by history_plugin
       reversible_block_object_type,

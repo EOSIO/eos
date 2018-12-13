@@ -33,6 +33,7 @@ using controller_index_set = index_set<
    account_index,
    account_sequence_index,
    global_property_multi_index,
+   global_property2_multi_index,
    dynamic_global_property_multi_index,
    block_summary_multi_index,
    transaction_multi_index,
@@ -107,6 +108,8 @@ struct pending_state {
    controller::block_status           _block_status = controller::block_status::incomplete;
 
    optional<block_id_type>            _producer_block_id;
+
+    std::function<signature_type(digest_type)> _signer;
 
    void push() {
       _db_session.push();
@@ -391,6 +394,11 @@ struct controller_impl {
          ilog( "database initialized with hash: ${hash}", ("hash", hash) );
       }
 
+      //*bos begin*
+      sync_name_list(list_type::actor_blacklist_type,true);
+      sync_name_list(list_type::contract_blacklist_type,true);
+      sync_name_list(list_type::resource_greylist_type,true);
+      //*bos end*
    }
 
    ~controller_impl() {
@@ -637,6 +645,17 @@ struct controller_impl {
       });
       db.create<dynamic_global_property_object>([](auto&){});
 
+      // *bos begin*
+      //guaranteed minimum resources  which is abbreviated  gmr
+       db.create<global_property2_object>([&](auto &gpo) {
+         gpo.gmr.cpu_us = config::default_gmr_cpu_limit;
+         gpo.gmr.net_byte = config::default_gmr_net_limit;
+         gpo.gmr.ram_byte = config::default_gmr_ram_limit;
+      });
+
+
+      // *bos end*
+
       authorization.initialize_database();
       resource_limits.initialize_database();
 
@@ -662,7 +681,73 @@ struct controller_impl {
                                                                              conf.genesis.initial_timestamp );
    }
 
+   // "bos begin"
+   void set_name_list(list_type list, list_action_type action, std::vector<account_name> name_list)
+   {
+       int64_t lst = static_cast<int64_t>(list);
 
+      EOS_ASSERT(list >= list_type::actor_blacklist_type && list < list_type::list_type_count, transaction_exception, "unknown list type : ${l}, action: ${n}", ("l", static_cast<int64_t>(list))("n", static_cast<int64_t>(action)));
+      vector<flat_set<account_name> *> lists = {&conf.actor_blacklist, &conf.contract_blacklist, &conf.resource_greylist};
+      EOS_ASSERT(lists.size() == static_cast<int64_t>(list_type::list_type_count) - 1, transaction_exception, " list size wrong : ${l}, action: ${n}", ("l", static_cast<int64_t>(list))("n", static_cast<int64_t>(action)));
+
+      flat_set<account_name> &lo = *lists[lst - 1];
+
+      if (action == list_action_type::insert_type)
+      {
+         lo.insert(name_list.begin(), name_list.end());
+      }
+      else if (action == list_action_type::remove_type)
+      {
+         flat_set<account_name> name_set(name_list.begin(), name_list.end());
+
+         flat_set<account_name> results;
+         results.reserve(lo.size());
+         set_difference(lo.begin(), lo.end(),
+                        name_set.begin(), name_set.end(),
+                        std::inserter(results,results.begin()));
+
+         lo = results;
+      }
+
+      sync_name_list(list);
+   }
+
+   void sync_list_and_db(list_type list, global_property2_object &gprops2,bool isMerge=false)
+   {
+      int64_t lst = static_cast<int64_t>(list);
+      EOS_ASSERT( list >= list_type::actor_blacklist_type && list < list_type::list_type_count, transaction_exception, "unknown list type : ${l}, ismerge: ${n}", ("l", static_cast<int64_t>(list))("n", isMerge));
+      vector<shared_vector<account_name> *> lists = {&gprops2.cfg.actor_blacklist, &gprops2.cfg.contract_blacklist, &gprops2.cfg.resource_greylist};
+      vector<flat_set<account_name> *> conflists = {&conf.actor_blacklist, &conf.contract_blacklist, &conf.resource_greylist};
+      EOS_ASSERT(lists.size() == static_cast<int64_t>(list_type::list_type_count) - 1, transaction_exception, " list size wrong : ${l}, ismerge: ${n}", ("l", static_cast<int64_t>(list))("n", isMerge));
+      shared_vector<account_name> &lo = *lists[lst - 1];
+      flat_set<account_name> &clo = *conflists[lst - 1];
+
+      if (isMerge)
+      {
+         //initialize,  merge elements and deduplication between list and db.result save to  list
+         for (auto &a : lo)
+         {
+            clo.insert(a);
+         }
+      }
+
+      //clear list from db and save merge result to db  object
+      lo.clear();
+      for (auto &a : clo)
+      {
+         lo.push_back(a);
+      }
+   }
+
+   void sync_name_list(list_type list,bool isMerge=false)
+   {
+      const auto &gpo2 = db.get<global_property2_object>();
+      db.modify(gpo2, [&](auto &gprops2) {
+         sync_list_and_db(list, gprops2,isMerge);
+      });
+   }
+
+   // "bos end"
 
    /**
     * @post regardless of the success of commit block there is no active pending block
@@ -1074,7 +1159,7 @@ struct controller_impl {
 
 
    void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s,
-                     const optional<block_id_type>& producer_block_id )
+                     const optional<block_id_type>& producer_block_id , std::function<signature_type(digest_type)> signer = nullptr)
    {
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
 
@@ -1093,6 +1178,7 @@ struct controller_impl {
 
       pending->_block_status = s;
       pending->_producer_block_id = producer_block_id;
+      pending->_signer = signer;
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
 
@@ -1160,9 +1246,12 @@ struct controller_impl {
 
    void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
       try {
-         EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
+         //EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
          auto producer_block_id = b->id();
          start_block( b->timestamp, b->confirmed, s , producer_block_id);
+
+         pending->_pending_block_state->block->header_extensions = b->header_extensions;
+         pending->_pending_block_state->block->block_extensions = b->block_extensions;
 
          transaction_trace_ptr trace;
 
@@ -1228,7 +1317,6 @@ struct controller_impl {
 
    void push_block( const signed_block_ptr& b, controller::block_status s ) {
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
-
       auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
          trusted_producer_light_validation = old_value;
       });
@@ -1361,6 +1449,17 @@ struct controller_impl {
       pending->_pending_block_state->header.transaction_mroot = merkle( move(trx_digests) );
    }
 
+    void set_ext_merkle() {
+        vector<digest_type> ext_digests;
+        const auto& exts = pending->_pending_block_state->block->block_extensions;
+        ext_digests.reserve( exts.size());
+        for( const auto& a : exts )
+           ext_digests.emplace_back( digest_type::hash(a) );
+
+        auto mroot = merkle( move(ext_digests));
+        pending->_pending_block_state->header.set_block_extensions_mroot(mroot);
+    }
+
 
    void finalize_block()
    {
@@ -1385,16 +1484,24 @@ struct controller_impl {
       // Update resource limits:
       resource_limits.process_account_limit_updates();
       const auto& chain_config = self.get_global_properties().configuration;
+      const auto& gmr = self.get_global_properties2().gmr;//guaranteed minimum resources  which is abbreviated  gmr
+
       uint32_t max_virtual_mult = 1000;
       uint64_t CPU_TARGET = EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct);
       resource_limits.set_block_parameters(
          { CPU_TARGET, chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}},
          {EOS_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}}
       );
+
+    resource_limits.set_gmr_parameters(
+         {  gmr.ram_byte, gmr.cpu_us,gmr.net_byte}
+      );
+
       resource_limits.process_block_usage(pending->_pending_block_state->block_num);
 
       set_action_merkle();
       set_trx_merkle();
+      set_ext_merkle();
 
       auto p = pending->_pending_block_state;
       p->id = p->header.id();
@@ -1605,9 +1712,9 @@ chainbase::database& controller::mutable_db()const { return my->db; }
 const fork_database& controller::fork_db()const { return my->fork_db; }
 
 
-void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count) {
+void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count, std::function<signature_type(digest_type)> signer) {
    validate_db_available_size();
-   my->start_block(when, confirm_block_count, block_status::incomplete, optional<block_id_type>() );
+   my->start_block(when, confirm_block_count, block_status::incomplete, optional<block_id_type>() , signer);
 }
 
 void controller::finalize_block() {
@@ -1677,12 +1784,21 @@ void controller::set_actor_whitelist( const flat_set<account_name>& new_actor_wh
 }
 void controller::set_actor_blacklist( const flat_set<account_name>& new_actor_blacklist ) {
    my->conf.actor_blacklist = new_actor_blacklist;
+
+   // *bos begin*
+   my->sync_name_list(list_type::actor_blacklist_type);
+   // *bos end*
 }
 void controller::set_contract_whitelist( const flat_set<account_name>& new_contract_whitelist ) {
    my->conf.contract_whitelist = new_contract_whitelist;
 }
 void controller::set_contract_blacklist( const flat_set<account_name>& new_contract_blacklist ) {
    my->conf.contract_blacklist = new_contract_blacklist;
+
+   // *bos begin*
+  my->sync_name_list(list_type::contract_blacklist_type);
+   // *bos end*
+
 }
 void controller::set_action_blacklist( const flat_set< pair<account_name, action_name> >& new_action_blacklist ) {
    for (auto& act: new_action_blacklist) {
@@ -1742,6 +1858,11 @@ time_point controller::pending_block_time()const {
 optional<block_id_type> controller::pending_producer_block_id()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
    return my->pending->_producer_block_id;
+}
+
+std::function<signature_type(digest_type)> controller::pending_producer_signer()const {
+  EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+  return my->pending->_signer;
 }
 
 uint32_t controller::last_irreversible_block_num() const {
@@ -2092,10 +2213,19 @@ void controller::set_subjective_cpu_leeway(fc::microseconds leeway) {
 
 void controller::add_resource_greylist(const account_name &name) {
    my->conf.resource_greylist.insert(name);
+
+   // *bos begin*
+   my->sync_name_list(list_type::resource_greylist_type);
+   // *bos end*
 }
 
 void controller::remove_resource_greylist(const account_name &name) {
+
    my->conf.resource_greylist.erase(name);
+
+   // *bos begin*
+   my->sync_name_list(list_type::resource_greylist_type);
+   // *bos end*
 }
 
 bool controller::is_resource_greylisted(const account_name &name) const {
@@ -2105,5 +2235,22 @@ bool controller::is_resource_greylisted(const account_name &name) const {
 const flat_set<account_name> &controller::get_resource_greylist() const {
    return  my->conf.resource_greylist;
 }
+
+// *bos begin*
+const global_property2_object& controller::get_global_properties2()const {
+   return my->db.get<global_property2_object>();
+}
+
+void controller::set_name_list(int64_t list, int64_t action, std::vector<account_name> name_list)
+{
+   //redundant sync
+   my->sync_name_list(list_type::actor_blacklist_type, true);
+   my->sync_name_list(list_type::contract_blacklist_type, true);
+   my->sync_name_list(list_type::resource_greylist_type, true);
+
+   my->set_name_list(static_cast<list_type>(list), static_cast<list_action_type>(action), name_list);
+}
+// *bos end*
+
 
 } } /// eosio::chain

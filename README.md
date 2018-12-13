@@ -1,95 +1,37 @@
+# BOSCore - Born for DApp, be more useable.
 
-# EOSIO - The Most Powerful Infrastructure for Decentralized Applications
+## BOSCore Version: v1.0.2
+### Basic EOSIO Version: v1.4.4
 
-[![Build status](https://badge.buildkite.com/370fe5c79410f7d695e4e34c500b4e86e3ac021c6b1f739e20.svg?branch=master)](https://buildkite.com/EOSIO/eosio)
+# Background
+The emergence of EOS has brought new imagination to the blockchain. In just a few months since the main network was launched, the version has undergone dozens of upgrades, not only the stability has been greatly improved, but also the new functions have been gradually realized. The node team is also actively involved in building the EOSIO ecosystem. What is even more exciting is that EOS has attracted more and more development teams. There are already hundreds of DApp running on the EOS main network. The transaction volume and circulation market value far exceed Ethereum, and the space for development is growing broader.
+During the gradual development of the EOS main network, we found some deviations from expectations. As the most competitive third-generation public chain, we look forward to seeing more and more applications running on EOS. Developers will use EOS as their preferred platform for application development. But due to the limitations of the current EOS resource model, higher cost of use including creating more accounts for users and deploying operating DApp. The key technology IBC needed for the millions of TPS to be realized in the white paper has not been promoted. The main network has repeatedly experienced insufficient CPU computing resources, which has intensified the urgency of the demand for cross-chain communication. In addition, due to the Pipeline-DPOS consensus algorithm adopted by EOSIO, a transaction takes nearly three minutes to ensure that it cannot be changed. Although it is much better than Bitcoin and Ethereum, it also brings restrictions to a lot of EOS application scenarios. Fast payment can only focus on small transfers, large transfers must wait long enough to ensure that they cannot be changed, which limits the payment experience of users on the chain and under the chain.
+In addition to the above mentioned, there are many other improvements that have been actively discussed in our community. From this, we feel that we should try more on EOS and let more developers or teams participate in the construction of EOSIO ecosystem. we will together make efforts for the blockchain to land in different scenarios in different industries. As a fully community-maintained EOS side chain, BOS will make more attempts based on its inherited good functions and will feed back to the EOSIO ecosystem its proven new features and functions.
 
-Welcome to the EOSIO source code repository! This software enables businesses to rapidly build and deploy high-performance and high-security blockchain-based applications.
+# Overview
+BOS is committed to providing users with easy-to-access and easy-to-use blockchain services, providing a more user-friendly infrastructure for DApp operations, working to support richer application scenarios, and actively experimenting with DApp booms. In addition to technical improvements, BOS will also try other aspects. For example, in order to increase the participation of users in voting, estimator technology can be used to motivate accounts that meet clear rules. The rewards of BP on BOS will be adjusted according to the number of DApp on the chain, TPS, market value, liquidity and other indicators. Each BP is an encouragement for providing more resources for the ecology. A resolution reached by a community referendum will be coded as much as possible, to reduce human factors in the process, keep the process on chain, and maintain fairness and transparency.
+The codes of the BOS chain are fully contributed and maintained by the community. Each ecological participant can submit codes or suggestions. The related process will refer to existing open source software, such as PEP (Python Enhancement Proposals).
+In order to encourage the development of DApp in BOS, the BOS Foundation will provide Token replacement of low-cost resource mortgage services for DApp in BOS, reduce the operating costs of DApp in the early stage; in addition, it will also regularly provide BOS incentives to developers who contribute on a regular basis in order to establish a mutually reinforcing community development trend.
 
-Some of the groundbreaking features of EOSIO include:
+# Developer Rewards 
 
-1. Free Rate Limited Transactions 
-1. Low Latency Block confirmation (0.5 seconds)
-1. Low-overhead Byzantine Fault Tolerant Finality
-1. Designed for optional high-overhead, low-latency BFT finality 
-1. Smart contract platform powered by Web Assembly
-1. Designed for Sparse Header Light Client Validation
-1. Scheduled Recurring Transactions 
-1. Time Delay Security
-1. Hierarchical Role Based Permissions
-1. Support for Biometric Hardware Secured Keys (e.g. Apple Secure Enclave)
-1. Designed for Parallel Execution of Context Free Validation Logic
-1. Designed for Inter Blockchain Communication 
+An additional 0.8% issuance will be given to the BOS eco-contribution code developer every year. Fifty candidates will be nominated by the community. Top 50 BPs vote 40 winners to get the awards: the top 10 share 40%, people ranked 11 to 20 share 30%, the last 20 share the remaining 30% evenly. The reward happens once every 3 months and each reward will be carried out with a one-week publicity. It will be re-evaluated if there is a reasonable objection. And each reward list will be recorded on chain. 
+As BOS continues to develop, developer rewards will be appropriately adjusted to allow the community to provide more momentum for the evolution of BOS. 
 
-EOSIO is released under the open source MIT license and is offered “AS IS” without warranty of any kind, express or implied. Any security provided by the EOSIO software depends in part on how it is used, configured, and deployed. EOSIO is built upon many third-party libraries such as Binaryen (Apache License) and WAVM  (BSD 3-clause) which are also provided “AS IS” without warranty of any kind. Without limiting the generality of the foregoing, Block.one makes no representation or guarantee that EOSIO or any third-party libraries will perform as intended or will be free of errors, bugs or faulty code. Both may fail in large or small ways that could completely or partially limit functionality or compromise computer systems. If you use or implement EOSIO, you do so at your own risk. In no event will Block.one be liable to any party for any damages whatsoever, even if it had been advised of the possibility of damage.  
+## Links
+1. [Website](https://boscore.io)
+2. [Developer Telegram Group](https://t.me/BOSCoreDev)
+3. [WhitePaper](https://github.com/boscore/Documentation/blob/master/BOSCoreTechnicalWhitePaper.md)
+4. [白皮书](https://github.com/boscore/Documentation/blob/master/zh-CN/BOSCoreTechnicalWhitePaper.md)
 
-Block.one is neither launching nor operating any initial public blockchains based upon the EOSIO software. This release refers only to version 1.0 of our open source software. We caution those who wish to use blockchains built on EOSIO to carefully vet the companies and organizations launching blockchains based on EOSIO before disclosing any private keys to their derivative software. 
+## Start
+1. Build from code : `bash ./eosio_build.sh -s BOS`
+2. Docker Style，check [Docker](./Docker/README.md)
 
-There is no public testnet running currently.
+BOSCore bases on EOSIO, so you can also referer:
 
-**If you have previously installed EOSIO, please run the `eosio_uninstall` script (it is in the directory where you cloned EOSIO) before downloading and using the binary releases.**
+[Getting Started](https://developers.eos.io/eosio-nodeos/docs/overview-1)  
 
-#### Mac OS X Brew Install
-```sh
-$ brew tap eosio/eosio
-$ brew install eosio
-```
-#### Mac OS X Brew Uninstall
-```sh
-$ brew remove eosio
-```
-#### Ubuntu 18.04 Debian Package Install
-```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio_1.4.4-1-ubuntu-18.04_amd64.deb
-$ sudo apt install ./eosio_1.4.4-1-ubuntu-18.04_amd64.deb
-```
-#### Ubuntu 16.04 Debian Package Install
-```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio_1.4.4-1-ubuntu-16.04_amd64.deb
-$ sudo apt install ./eosio_1.4.4-1-ubuntu-16.04_amd64.deb
-```
-#### Debian Package Uninstall
-```sh
-$ sudo apt remove eosio
-```
-#### Centos RPM Package Install
-```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio-1.4.4-1.el7.x86_64.rpm
-$ sudo yum install ./eosio-1.4.4-1.el7.x86_64.rpm
-```
-#### Centos RPM Package Uninstall
-```sh
-$ sudo yum remove eosio.cdt
-```
-#### Fedora RPM Package Install
-```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.4.4/eosio-1.4.4-1.fc27.x86_64.rpm
-$ sudo yum install ./eosio-1.4.4-1.fc27.x86_64.rpm
-```
-#### Fedora RPM Package Uninstall
-```sh
-$ sudo yum remove eosio.cdt
-```
+[EOSIO Developer Portal](https://developers.eos.io).
 
-## Supported Operating Systems
-EOSIO currently supports the following operating systems:  
-1. Amazon 2017.09 and higher
-2. Centos 7
-3. Fedora 25 and higher (Fedora 27 recommended)
-4. Mint 18
-5. Ubuntu 16.04 (Ubuntu 16.10 recommended)
-6. Ubuntu 18.04
-7. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended)
 
-## Resources
-1. [Website](https://eos.io)
-1. [Blog](https://medium.com/eosio)
-1. [Developer Portal](https://developers.eos.io)
-1. [StackExchange for Q&A](https://eosio.stackexchange.com/)
-1. [Community Telegram Group](https://t.me/EOSProject)
-1. [Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
-1. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
-1. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
-
-<a name="gettingstarted"></a>
-## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in [Getting Started](https://developers.eos.io/eosio-nodeos/docs/overview-1) on the [EOSIO Developer Portal](https://developers.eos.io).

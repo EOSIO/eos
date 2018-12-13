@@ -205,7 +205,7 @@ namespace eosiosystem {
       const int64_t max_claimable = 100'000'000'0000ll;
       const int64_t claimable = int64_t(max_claimable * double(now()-base_time) / (10*seconds_per_year) );
 
-      eosio_assert( max_claimable - claimable <= stake, "b1 can only claim their tokens over 10 years" );
+      eosio_assert( max_claimable - claimable <= stake, "bosbosbosbos can only claim their tokens over 10 years" );
    }
 
    void system_contract::changebw( account_name from, account_name receiver,
