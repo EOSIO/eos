@@ -11,7 +11,7 @@ The `bios-boot-tutorial.py` script simulates the EOSIO bios boot sequence.
 ``Steps``:
 
 1. Install eosio binaries by following the steps outlined in below tutorial
-https://github.com/EOSIO/eos#mac-os-x-brew-install
+[Install eosio binaries steps](https://github.com/EOSIO/eos#mac-os-x-brew-install)
 
 2. Compile eosio.contracts
 
