@@ -47,7 +47,6 @@ add_library( eosio_chain
 
 
 #             transaction_metadata.cpp
-             fileno_20050213.cpp
              ${HEADERS}
              )
 
