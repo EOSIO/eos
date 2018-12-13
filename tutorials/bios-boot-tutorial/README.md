@@ -2,23 +2,42 @@
 
 The `bios-boot-tutorial.py` script simulates the EOSIO bios boot sequence.
 
-Prerequisites:
+``Prerequisites``:
 
-1. eosio binaries (keosd, nodeos)
-2. system contracts binaries (built eosio.contracts)
-3. python 3.x
+1. Python 3.x
+2. CMake
+3. git
 
+``Steps``:
 
-Assumming you installed the precompiled eosio binaries, and they were installed in /user/local/bin, 
-and assumming you have built the eosio.contracts and they are located in /Users/test/eos/contracts/eosio.contracts/ folder,
-and assuming you have installed python 3.x version,
-this is the simplest command to start the script:
+1. Install eosio binaries by following the steps outlined in below tutorial
+https://github.com/EOSIO/eos#mac-os-x-brew-install
 
+2. Compile eosio.contracts
 
 ```bash
-$ cd tutorials/bios-boot-tutorial
+$ cd ~
+$ git clone https://github.com/EOSIO/eosio.contracts.git
+$ cd ./eosio.contracts/
+$ ./build.sh
+$ pwd
 
-$ python3 bios-boot-tutorial.py --cleos="/usr/local/bin/cleos --wallet-url http://127.0.0.1:6666 " --nodeos=/usr/local/bin/nodeos --keosd="/usr/local/bin/keosd" --contracts-dir="/Users/test/eos/contracts/eosio.contracts/" -a
+```
+
+3. Make note of the directory where the contracts where compiled
+The last command in the previous step printed on the bash console the contracts' directory, make note of it, we'll reference it from now on as `YOU_CONTRACTS_DIRECTORY`
+
+4. Launch the `bios-boot-tutorial.py` script
+Minimal command line to launch the  scrip
+
+```bash
+$ cd ~
+$ git clone https://github.com/EOSIO/eos.git
+$ cd ./eos/tutorials/bios-boot-tutorial/
+$ python3 bios-boot-tutorial.py --cleos="cleos --wallet-url http://127.0.0.1:6666 " --nodeos=nodeos --keosd=keosd --contracts-dir="/YOU_CONTRACTS_DIRECTORY/" -a
+
 ```
 
 See [EOSIO Documentation Wiki: Tutorial - Bios Boot](https://github.com/EOSIO/eos/wiki/Tutorial-Bios-Boot-Sequence) for additional information.
+
+
