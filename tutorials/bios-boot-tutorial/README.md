@@ -42,5 +42,3 @@ $ python3 bios-boot-tutorial.py --cleos="cleos --wallet-url http://127.0.0.1:666
 ```
 
 See [EOSIO Documentation Wiki: Tutorial - Bios Boot](https://github.com/EOSIO/eos/wiki/Tutorial-Bios-Boot-Sequence) for additional information.
-
-
