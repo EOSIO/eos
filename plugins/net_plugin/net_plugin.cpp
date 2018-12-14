@@ -289,7 +289,6 @@ namespace eosio {
    constexpr auto     def_txn_expire_wait = std::chrono::seconds(3);
    constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
    constexpr auto     def_sync_fetch_span = 100;
-   constexpr uint32_t  def_max_just_send = 1500; // roughly 1 "mtu"
 
    constexpr auto     message_header_size = 4;
 
@@ -629,8 +628,6 @@ namespace eosio {
 
    class dispatch_manager {
    public:
-      uint32_t just_send_it_max = 0;
-
       std::multimap<block_id_type, connection_ptr, sha256_less> received_blocks;
       std::multimap<transaction_id_type, connection_ptr, sha256_less> received_transactions;
 
@@ -2738,7 +2735,6 @@ namespace eosio {
          ( "network-version-match", bpo::value<bool>()->default_value(false),
            "True to require exact match of peer network version.")
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
-         ( "max-implicit-request", bpo::value<uint32_t>()->default_value(def_max_just_send), "(deprecated) this option is ignored")
          ( "use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable expirimental socket read watermark optimization")
          ( "peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
            "The string used to format peers when logging messages about them.  Variables are escaped with ${<variable name>}.\n"
@@ -2772,7 +2768,6 @@ namespace eosio {
          my->max_cleanup_time_ms = options.at("max-cleanup-time-msec").as<int>();
          my->txn_exp_period = def_txn_expire_wait;
          my->resp_expected_period = def_resp_expected_wait;
-         my->dispatcher->just_send_it_max = options.at( "max-implicit-request" ).as<uint32_t>();
          my->max_client_count = options.at( "max-clients" ).as<int>();
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
          my->num_clients = 0;
