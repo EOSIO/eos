@@ -765,7 +765,7 @@ namespace eosio {
               return false;
 
 
-           auto ptrx_ptr = std::make_shared<packed_transaction>( start->trx->packed_trx );
+           auto ptrx_ptr = start->trx->packed_trx;
 
            idx.modify( start, [&]( auto& stat ) {
               stat.mark_known_by_peer();
