@@ -8,17 +8,20 @@
 
 #include "cyberway/chaindb/mongo_driver_utils.h"
 
+namespace {
+    constexpr uint64_t DECIMAL_128_BIAS = 6176;
+    constexpr uint64_t DECIMAL_128_HIGH = DECIMAL_128_BIAS << 49;
+}
+
 namespace cyberway { namespace chaindb {
 
     bsoncxx::types::b_decimal128 to_decimal128(uint64_t val) {
-        const auto val_as_string = std::to_string(val);
-        return bsoncxx::types::b_decimal128(val_as_string);
+        bsoncxx::decimal128 decimal = {DECIMAL_128_HIGH, val};
+        return bsoncxx::types::b_decimal128(decimal);
     }
 
     uint64_t from_decimal128(const bsoncxx::types::b_decimal128& val) {
-        char* end;
-        const uint64_t as_uint64 = std::strtoull(val.value.to_string().c_str(), &end, 10);
-        return as_uint64;
+        return val.value.low();
     }
 
     fc::time_point from_date(const bsoncxx::types::b_date& date) {
