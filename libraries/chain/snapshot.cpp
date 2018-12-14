@@ -21,7 +21,7 @@ void variant_snapshot_writer::write_row( const detail::abstract_snapshot_row_wri
 }
 
 void variant_snapshot_writer::write_end_section( ) {
-   snapshot["sections"].get_array().emplace_back(fc::mutable_variant_object()("name", std::move(current_section_name))("rows", std::move(current_rows)));
+   snapshot["sections"].get_mutable_array().emplace_back(fc::mutable_variant_object()("name", std::move(current_section_name))("rows", std::move(current_rows)));
 }
 
 void variant_snapshot_writer::finalize() {

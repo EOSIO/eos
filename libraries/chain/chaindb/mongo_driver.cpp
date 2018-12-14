@@ -237,40 +237,40 @@ namespace cyberway { namespace chaindb {
         sub_array& build_document(sub_array& dst, const variants& src) {
             for (auto& item: src) {
                 switch (item.get_type()) {
-                    case variant::null_type:
+                    case variant::type_id::null_type:
                         dst.append(b_null());
                         break;
-                    case variant::int64_type:
+                    case variant::type_id::int64_type:
                         dst.append(b_int64{item.as_int64()});
                         break;
-                    case variant::uint64_type:
+                    case variant::type_id::uint64_type:
                         dst.append(to_decimal128(item.as_uint64()));
                         break;
-                    case variant::int128_type:
+                    case variant::type_id::int128_type:
                         dst.append([&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(item.as_int128()).as_object_encoded()); });
                         break;
-                    case variant::uint128_type:
+                    case variant::type_id::uint128_type:
                         dst.append([&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(item.as_uint128()).as_object_encoded()); });
                         break;
-                    case variant::double_type:
+                    case variant::type_id::double_type:
                         dst.append(b_double{item.as_double()});
                         break;
-                    case variant::bool_type:
+                    case variant::type_id::bool_type:
                         dst.append(b_bool{item.as_bool()});
                         break;
-                    case variant::string_type:
+                    case variant::type_id::string_type:
                         dst.append(item.as_string());
                         break;
-                    case variant::time_type:
+                    case variant::type_id::time_type:
                         dst.append(to_date(item.as_time_point()));
-                         break;
-                    case variant::array_type:
+                        break;
+                    case variant::type_id::array_type:
                         dst.append([&](sub_array array){ build_document(array, item.get_array()); });
                         break;
-                    case variant::object_type:
+                    case variant::type_id::object_type:
                         dst.append([&](sub_document sub_doc){ build_document(sub_doc, item.get_object()); });
                         break;
-                    case variant::blob_type:
+                    case variant::type_id::blob_type:
                         dst.append(build_binary(item.as_blob()));
                         break;
                 }
@@ -280,40 +280,40 @@ namespace cyberway { namespace chaindb {
 
         sub_document& build_document(sub_document& dst, const string& key, const variant& src) {
             switch (src.get_type()) {
-                case variant::null_type:
+                case variant::type_id::null_type:
                     dst.append(kvp(key, b_null()));
                     break;
-                case variant::int64_type:
+                case variant::type_id::int64_type:
                     dst.append(kvp(key, b_int64{src.as_int64()}));
                     break;
-                case variant::uint64_type:
+                case variant::type_id::uint64_type:
                      dst.append(kvp(key, to_decimal128(src.as_uint64())));
                     break;
-                 case variant::int128_type:
+                 case variant::type_id::int128_type:
                     dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(src.as_int128()).as_object_encoded());} ));
                     break;
-                 case variant::uint128_type:
+                 case variant::type_id::uint128_type:
                     dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(src.as_uint128()).as_object_encoded());} ));
                     break;
-                case variant::double_type:
+                case variant::type_id::double_type:
                     dst.append(kvp(key, b_double{src.as_double()}));
                     break;
-                case variant::bool_type:
+                case variant::type_id::bool_type:
                     dst.append(kvp(key, b_bool{src.as_bool()}));
                     break;
-                case variant::string_type:
+                case variant::type_id::string_type:
                     dst.append(kvp(key, src.as_string()));
                     break;
-                case variant::time_type:
+                case variant::type_id::time_type:
                     dst.append(kvp(key, to_date(src.as_time_point())));
                     break;
-                case variant::array_type:
+                case variant::type_id::array_type:
                     dst.append(kvp(key, [&](sub_array array){ build_document(array, src.get_array()); }));
                     break;
-                case variant::object_type:
+                case variant::type_id::object_type:
                     dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, src.get_object()); }));
                     break;
-                case variant::blob_type:
+                case variant::type_id::blob_type:
                     dst.append(kvp(key, build_binary(src.as_blob())));
                     break;
             }
@@ -522,9 +522,8 @@ namespace cyberway { namespace chaindb {
             pk = end_primary_key;
             source_.reset();
             reset();
-
+            find_key_ = {};
             find_cmp_ = &_detail::reverse_start_from();
-            find_key_.clear();
             find_pk_ = unset_primary_key;
         }
 
@@ -586,7 +585,7 @@ namespace cyberway { namespace chaindb {
 
         void reset() {
             if (!blob.empty()) blob.clear();
-            if (!object_.is_null()) object_.clear();
+            if (!object_.is_null()) object_ = {};
         }
 
         document create_find_document(const char* forward, const char* backward) const {

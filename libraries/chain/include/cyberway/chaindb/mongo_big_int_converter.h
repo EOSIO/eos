@@ -37,8 +37,6 @@ namespace cyberway { namespace chaindb {
         fc::variant_object as_object_encoded() const;
 
     private:
-        std::string get_uint128_string(const unsigned __int128& value) const;
-        std::string get_int128_string(const __int128& value) const;
         std::vector<char> get_int128_blob() const;
         std::vector<char> get_uint128_blob() const;
         void fill_blob(std::vector<char>::iterator& it, const unsigned __int128& val) const;

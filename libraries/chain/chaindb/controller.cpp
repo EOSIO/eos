@@ -709,17 +709,17 @@ namespace cyberway { namespace chaindb {
             switch(pk_order.type.front()) {
                 case 'i':   // int64
                 case 'u': { // uint64
-                    CYBERWAY_ASSERT(variant::uint64_type == type || variant::int64_type, Exception, "Wrong value type");
+                    CYBERWAY_ASSERT(variant::type_id::uint64_type == type || variant::type_id::int64_type == type, Exception, "Wrong value type");
                     CYBERWAY_ASSERT(pk == value.as_uint64(), Exception, "Wrong value");
                     break;
                 }
                 case 'n': { // name
-                    CYBERWAY_ASSERT(variant::string_type == type, Exception, "Wrong value type");
+                    CYBERWAY_ASSERT(variant::type_id::string_type == type, Exception, "Wrong value type");
                     CYBERWAY_ASSERT(name(value.as_string()).value == pk, Exception, "Wrong value");
                     break;
                 }
                 case 's': { // symbol_code
-                    CYBERWAY_ASSERT(variant::string_type == type, Exception, "Wrong value type ");
+                    CYBERWAY_ASSERT(variant::type_id::string_type == type, Exception, "Wrong value type ");
                     CYBERWAY_ASSERT(symbol(0, value.as_string().c_str()).to_symbol_code() == pk, Exception, "Wrong value");
                     break;
                 }

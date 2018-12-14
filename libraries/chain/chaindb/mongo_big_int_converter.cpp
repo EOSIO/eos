@@ -87,11 +87,11 @@ namespace cyberway { namespace chaindb {
 
         switch (type_) {
             case type::int128:
-                as_string = get_int128_string(value_.int128_val);
+                as_string = boost::lexical_cast<std::string>(value_.int128_val);
                 blob.data = get_int128_blob();
                 break;
             case type::uint128:
-                as_string = get_uint128_string(value_.uint128_val);
+                as_string = boost::lexical_cast<std::string>(value_.uint128_val);
                 blob.data = get_uint128_blob();
                 break;
             default: return {};
@@ -101,26 +101,6 @@ namespace cyberway { namespace chaindb {
         object.set(STRING_FIELD, as_string);
 
         return object;
-    }
-
-    std::string mongo_big_int_converter::get_int128_string(const __int128& val) const {
-        if (val >= 0) {
-            return get_uint128_string(static_cast<unsigned __int128>(val));
-        }
-
-        return ("-") + get_uint128_string(static_cast<unsigned __int128>(-val));;
-    }
-
-    std::string mongo_big_int_converter::get_uint128_string(const unsigned __int128& val) const {
-        std::string as_string_val;
-        as_string_val.reserve(INT128_MAX_DIGITS_SIZE);
-        for (unsigned __int128 remain = val; as_string_val.empty() || remain > 0; remain /= 10) {
-            const char symb = remain % 10;
-            as_string_val.append(std::to_string(symb));
-        }
-
-        std::reverse(as_string_val.begin(), as_string_val.end());
-        return as_string_val;
     }
 
     std::vector<char> mongo_big_int_converter::get_int128_blob() const {

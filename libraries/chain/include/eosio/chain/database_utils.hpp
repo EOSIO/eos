@@ -156,11 +156,6 @@ namespace fc {
    }
 
    inline
-   void to_variant( const eosio::chain::shared_blob& b, variant& v ) {
-      v = variant(base64_encode(b.data(), b.size()));
-   }
-
-   inline
    void from_variant( const variant& v, eosio::chain::shared_blob& b ) {
       string _s = base64_decode(v.as_string());
       b = eosio::chain::shared_blob(_s.begin(), _s.end(), b.get_allocator());
@@ -168,7 +163,7 @@ namespace fc {
 
    inline
    void to_variant( const blob& b, variant& v ) {
-      v = variant(base64_encode(b.data.data(), b.data.size()));
+      v = variant(base64_encode(b.data));
    }
 
    inline

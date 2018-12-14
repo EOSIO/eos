@@ -133,7 +133,7 @@ inline void to_variant(const eosio::chain::asset& var, fc::variant& vo) {
    fc::to_variant(info, vo);
 }
 inline void from_variant(const fc::variant& var, eosio::chain::asset& vo) {
-   if (var.get_type() == fc::variant::object_type) {
+   if (var.get_type() == fc::variant::type_id::object_type) {
       eosio::chain::asset_info info;
       fc::from_variant(var, info);
       vo = info;
