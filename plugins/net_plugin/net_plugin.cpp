@@ -578,10 +578,10 @@ namespace eosio {
       }
 
       void operator()( signed_block&& msg ) const {
-         impl.handle_message( c, std::make_shared<signed_block>( std::forward<signed_block>( msg )));
+         impl.handle_message( c, std::make_shared<signed_block>( std::move( msg ) ) );
       }
       void operator()( packed_transaction&& msg ) const {
-         impl.handle_message( c, std::make_shared<packed_transaction>( std::forward<packed_transaction>( msg )));
+         impl.handle_message( c, std::make_shared<packed_transaction>( std::move( msg ) ) );
       }
 
       template <typename T>
@@ -2738,7 +2738,7 @@ namespace eosio {
          ( "network-version-match", bpo::value<bool>()->default_value(false),
            "True to require exact match of peer network version.")
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
-         ( "max-implicit-request", bpo::value<uint32_t>()->default_value(def_max_just_send), "maximum sizes of transaction or block messages that are sent without first sending a notice")
+         ( "max-implicit-request", bpo::value<uint32_t>()->default_value(def_max_just_send), "(deprecated) this option is ignored")
          ( "use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable expirimental socket read watermark optimization")
          ( "peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
            "The string used to format peers when logging messages about them.  Variables are escaped with ${<variable name>}.\n"
