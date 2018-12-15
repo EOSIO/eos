@@ -17,7 +17,7 @@ const flat_set<public_key_type>& transaction_metadata::recover_keys( const chain
          }
       }
       flat_set<public_key_type> recovered_pub_keys;
-      sig_cpu_usage = trx.get_signature_keys( chain_id, fc::time_point::maximum(), recovered_pub_keys );
+      sig_cpu_usage = packed_trx->get_signed_transaction().get_signature_keys( chain_id, fc::time_point::maximum(), recovered_pub_keys );
       signing_keys.emplace( chain_id, std::move( recovered_pub_keys ));
    }
    return signing_keys->second;
@@ -36,7 +36,8 @@ void transaction_metadata::create_signing_keys_future( const transaction_metadat
       fc::microseconds cpu_usage;
       flat_set<public_key_type> recovered_pub_keys;
       if( mtrx ) {
-         cpu_usage = mtrx->trx.get_signature_keys( chain_id, deadline, recovered_pub_keys );
+         const signed_transaction& trn = mtrx->packed_trx->get_signed_transaction();
+         cpu_usage = trn.get_signature_keys( chain_id, deadline, recovered_pub_keys );
       }
       return std::make_tuple( chain_id, cpu_usage, std::move( recovered_pub_keys ));
    } );

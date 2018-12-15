@@ -734,7 +734,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    using bsoncxx::builder::basic::make_array;
    namespace bbb = bsoncxx::builder::basic;
 
-   const auto& trx = t->trx;
+   const signed_transaction& trx = t->packed_trx->get_signed_transaction();
 
    if( !filter_include( trx ) ) return;
    

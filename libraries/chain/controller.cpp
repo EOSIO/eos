@@ -1009,7 +1009,8 @@ struct controller_impl {
             }
          }
 
-         transaction_context trx_context(self, trx->trx, trx->id, start);
+         const signed_transaction& trn = trx->packed_trx->get_signed_transaction();
+         transaction_context trx_context(self, trn, trx->id, start);
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
@@ -1022,17 +1023,17 @@ struct controller_impl {
                trx_context.init_for_implicit_trx();
                trx_context.enforce_whiteblacklist = false;
             } else {
-               bool skip_recording = replay_head_time && (time_point(trx->trx.expiration) <= *replay_head_time);
+               bool skip_recording = replay_head_time && (time_point(trn.expiration) <= *replay_head_time);
                trx_context.init_for_input_trx( trx->packed_trx->get_unprunable_size(),
                                                trx->packed_trx->get_prunable_size(),
                                                skip_recording);
             }
 
-            trx_context.delay = fc::seconds(trx->trx.delay_sec);
+            trx_context.delay = fc::seconds(trn.delay_sec);
 
             if( !self.skip_auth_check() && !trx->implicit ) {
                authorization.check_authorization(
-                       trx->trx.actions,
+                       trn.actions,
                        trx->recover_keys( chain_id ),
                        {},
                        trx_context.delay,

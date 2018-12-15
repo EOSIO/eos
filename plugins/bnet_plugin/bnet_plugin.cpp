@@ -441,7 +441,7 @@ namespace eosio {
            if( itr != _transaction_status.end() ) {
               if( !itr->known_by_peer() ) {
                  _transaction_status.modify( itr, [&]( auto& stat ) {
-                    stat.expired = std::min<fc::time_point>( fc::time_point::now() + fc::seconds(5), t->trx.expiration );
+                    stat.expired = std::min<fc::time_point>( fc::time_point::now() + fc::seconds(5), t->packed_trx->expiration() );
                  });
               }
               return;
