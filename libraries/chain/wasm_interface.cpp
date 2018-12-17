@@ -1313,7 +1313,7 @@ class transaction_api : public context_aware_api {
          context.execute_context_free_inline(std::move(act));
       }
 
-      void  send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len, uint32_t replace_existing) {
+      void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len, uint32_t replace_existing) {
          transaction trx;
          fc::raw::unpack<transaction>(data, data_len, trx);
          context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);

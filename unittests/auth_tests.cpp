@@ -490,7 +490,6 @@ BOOST_AUTO_TEST_CASE( linkauth_special ) { try {
    chain.create_account(N(tester));
    chain.create_account(N(tester2));
    chain.produce_blocks();
-
    
    chain.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", "tester")

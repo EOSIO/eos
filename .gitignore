@@ -3,6 +3,7 @@
 *.dylib
 *.ll
 *.bc
+*.wasm
 *.wast
 *.wast.hpp
 *.s
