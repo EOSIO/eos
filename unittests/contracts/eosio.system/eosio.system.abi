@@ -1,6 +1,6 @@
 {
     "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Thu Dec 13 12:22:07 2018",
-    "version": "eosio::abi/1.1",
+    "version": "eosio::abi/1.0",
     "structs": [
         {
             "name": "abi_hash",
@@ -1829,6 +1829,5 @@
         }
     ],
     "ricardian_clauses": [],
-    "variants": [],
     "abi_extensions": []
 }
