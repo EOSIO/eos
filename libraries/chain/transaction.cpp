@@ -88,14 +88,12 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
 
    constexpr size_t recovery_cache_size = 1000;
    static thread_local recovery_cache_type recovery_cache;
-   fc::time_point start = fc::time_point::now();
    const digest_type digest = sig_digest(chain_id, cfd);
 
    flat_set<public_key_type> recovered_pub_keys;
    for(const signature_type& sig : signatures) {
-      auto now = fc::time_point::now();
-      EOS_ASSERT( start + now <= deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long",
-                  ("now", now)("deadline", deadline)("start", start) );
+      EOS_ASSERT( fc::time_point::now() < deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long",
+                  ("now", fc::time_point::now())("deadline", deadline) );
       public_key_type recov;
       recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find( sig );
       const auto& tid = id();

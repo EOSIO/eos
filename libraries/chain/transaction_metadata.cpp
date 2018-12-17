@@ -26,7 +26,8 @@ void transaction_metadata::create_signing_keys_future( const transaction_metadat
 
    std::weak_ptr<transaction_metadata> mtrx_wp = mtrx;
    mtrx->signing_keys_future = async_thread_pool( thread_pool, [timelimit, chain_id, mtrx_wp]() {
-      fc::time_point deadline = fc::time_point::now() + timelimit;
+      fc::time_point deadline = timelimit == fc::microseconds::maximum() ?
+            fc::time_point::maximum() : fc::time_point::now() + timelimit;
       auto mtrx = mtrx_wp.lock();
       return mtrx ?
              std::make_pair( chain_id, mtrx->trx.get_signature_keys( chain_id, deadline ) ) :
