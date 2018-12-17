@@ -59,10 +59,7 @@ def getOutput(args):
     return proc.communicate()[0].decode('utf-8')
 
 def getJsonOutput(args):
-    print('bios-boot-tutorial.py:', args)
-    logFile.write(args + '\n')
-    proc = subprocess.Popen(args, shell=True, stdout=subprocess.PIPE)
-    return json.loads(proc.communicate()[0])
+    return json.loads(getOutput(args))
 
 def sleep(t):
     print('sleep', t, '...')
@@ -187,7 +184,10 @@ def listProducers():
 def vote(b, e):
     for i in range(b, e):
         voter = accounts[i]['name']
-        prods = random.sample(range(firstProducer, firstProducer + numProducers), args.num_producers_vote)
+        k = args.num_producers_vote
+        if k > numProducers:
+            k = numProducers - 1
+        prods = random.sample(range(firstProducer, firstProducer + numProducers), k)
         prods = ' '.join(map(lambda x: accounts[x]['name'], prods))
         retry(args.cleos + 'system voteproducer prods ' + voter + ' ' + prods)
 

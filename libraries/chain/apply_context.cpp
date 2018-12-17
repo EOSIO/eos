@@ -51,7 +51,7 @@ void apply_context::exec_one( action_trace& trace )
          privileged = a.privileged;
          auto native = control.find_apply_handler( receiver, act.account, act.name );
          if( native ) {
-            if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
+            if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
                control.check_contract_list( receiver );
                control.check_action_list( act.account, act.name );
             }
@@ -61,7 +61,7 @@ void apply_context::exec_one( action_trace& trace )
          if( a.code.size() > 0
              && !(act.account == config::system_account_name && act.name == N( setcode ) &&
                   receiver == config::system_account_name) ) {
-            if( trx_context.can_subjectively_fail && control.is_producing_block() ) {
+            if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
                control.check_contract_list( receiver );
                control.check_action_list( act.account, act.name );
             }
@@ -205,6 +205,18 @@ void apply_context::execute_inline( action&& a ) {
    EOS_ASSERT( code != nullptr, action_validate_exception,
                "inline action's code account ${account} does not exist", ("account", a.account) );
 
+   bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block();
+   flat_set<account_name> actors;
+
+   bool disallow_send_to_self_bypass = false; // eventually set to whether the appropriate protocol feature has been activated
+   bool send_to_self = (a.account == receiver);
+   bool inherit_parent_authorizations = (!disallow_send_to_self_bypass && send_to_self && (receiver == act.account) && control.is_producing_block());
+
+   flat_set<permission_level> inherited_authorizations;
+   if( inherit_parent_authorizations ) {
+      inherited_authorizations.reserve( a.authorization.size() );
+   }
+
    for( const auto& auth : a.authorization ) {
       auto* actor = control.db().find<account_object, by_name>(auth.actor);
       EOS_ASSERT( actor != nullptr, action_validate_exception,
@@ -212,22 +224,51 @@ void apply_context::execute_inline( action&& a ) {
       EOS_ASSERT( control.get_authorization_manager().find_permission(auth) != nullptr, action_validate_exception,
                   "inline action's authorizations include a non-existent permission: ${permission}",
                   ("permission", auth) );
+      if( enforce_actor_whitelist_blacklist )
+         actors.insert( auth.actor );
+
+      if( inherit_parent_authorizations && std::find(act.authorization.begin(), act.authorization.end(), auth) != act.authorization.end() ) {
+         inherited_authorizations.insert( auth );
+      }
    }
 
-   // No need to check authorization if: replaying irreversible blocks; contract is privileged; or, contract is calling itself.
-   if( !control.skip_auth_check() && !privileged && a.account != receiver ) {
-      control.get_authorization_manager()
-             .check_authorization( {a},
-                                   {},
-                                   {{receiver, config::eosio_code_name}},
-                                   control.pending_block_time() - trx_context.published,
-                                   std::bind(&transaction_context::checktime, &this->trx_context),
-                                   false
-                                 );
+   if( enforce_actor_whitelist_blacklist ) {
+      control.check_actor_list( actors );
+   }
 
-      //QUESTION: Is it smart to allow a deferred transaction that has been delayed for some time to get away
-      //          with sending an inline action that requires a delay even though the decision to send that inline
-      //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
+   // No need to check authorization if replaying irreversible blocks or contract is privileged
+   if( !control.skip_auth_check() && !privileged ) {
+      try {
+         control.get_authorization_manager()
+                .check_authorization( {a},
+                                      {},
+                                      {{receiver, config::eosio_code_name}},
+                                      control.pending_block_time() - trx_context.published,
+                                      std::bind(&transaction_context::checktime, &this->trx_context),
+                                      false,
+                                      inherited_authorizations
+                                    );
+
+         //QUESTION: Is it smart to allow a deferred transaction that has been delayed for some time to get away
+         //          with sending an inline action that requires a delay even though the decision to send that inline
+         //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
+      } catch( const fc::exception& e ) {
+         if( disallow_send_to_self_bypass || !send_to_self ) {
+            throw;
+         } else if( control.is_producing_block() ) {
+            subjective_block_production_exception new_exception(FC_LOG_MESSAGE( error, "Authorization failure with inline action sent to self"));
+            for (const auto& log: e.get_log()) {
+               new_exception.append_log(log);
+            }
+            throw new_exception;
+         }
+      } catch( ... ) {
+         if( disallow_send_to_self_bypass || !send_to_self ) {
+            throw;
+         } else if( control.is_producing_block() ) {
+            EOS_THROW(subjective_block_production_exception, "Unexpected exception occurred validating inline action sent to self");
+         }
+      }
    }
 
    _inline_actions.emplace_back( move(a) );
@@ -249,7 +290,10 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    EOS_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
    trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
-   control.validate_referenced_accounts( trx );
+
+   bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block()
+                                             && !control.sender_avoids_whitelist_blacklist_enforcement( receiver );
+   trx_context.validate_referenced_accounts( trx, enforce_actor_whitelist_blacklist );
 
    // Charge ahead of time for the additional net usage needed to retire the deferred transaction
    // whether that be by successfully executing, soft failure, hard failure, or expiration.
@@ -264,16 +308,30 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          require_authorization(payer); /// uses payer's storage
       }
 
-      // if a contract is deferring only actions to itself then there is no need
-      // to check permissions, it could have done everything anyway.
-      bool check_auth = false;
-      for( const auto& act : trx.actions ) {
-         if( act.account != receiver ) {
-            check_auth = true;
-            break;
+      // Originally this code bypassed authorization checks if a contract was deferring only actions to itself.
+      // The idea was that the code could already do whatever the deferred transaction could do, so there was no point in checking authorizations.
+      // But this is not true. The original implementation didn't validate the authorizations on the actions which allowed for privilege escalation.
+      // It would make it possible to bill RAM to some unrelated account.
+      // Furthermore, even if the authorizations were forced to be a subset of the current action's authorizations, it would still violate the expectations
+      // of the signers of the original transaction, because the deferred transaction would allow billing more CPU and network bandwidth than the maximum limit
+      // specified on the original transaction.
+      // So, the deferred transaction must always go through the authorization checking if it is not sent by a privileged contract.
+      // However, the old logic must still be considered because it cannot objectively change until a consensus protocol upgrade.
+
+      bool disallow_send_to_self_bypass = false; // eventually set to whether the appropriate protocol feature has been activated
+
+      auto is_sending_only_to_self = [&trx]( const account_name& self ) {
+         bool send_to_self = true;
+         for( const auto& act : trx.actions ) {
+            if( act.account != self ) {
+               send_to_self = false;
+               break;
+            }
          }
-      }
-      if( check_auth ) {
+         return send_to_self;
+      };
+
+      try {
          control.get_authorization_manager()
                 .check_authorization( trx.actions,
                                       {},
@@ -282,6 +340,22 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                                       std::bind(&transaction_context::checktime, &this->trx_context),
                                       false
                                     );
+      } catch( const fc::exception& e ) {
+         if( disallow_send_to_self_bypass || !is_sending_only_to_self(receiver) ) {
+            throw;
+         } else if( control.is_producing_block() ) {
+            subjective_block_production_exception new_exception(FC_LOG_MESSAGE( error, "Authorization failure with sent deferred transaction consisting only of actions to self"));
+            for (const auto& log: e.get_log()) {
+               new_exception.append_log(log);
+            }
+            throw new_exception;
+         }
+      } catch( ... ) {
+         if( disallow_send_to_self_bypass || !is_sending_only_to_self(receiver) ) {
+            throw;
+         } else if( control.is_producing_block() ) {
+            EOS_THROW(subjective_block_production_exception, "Unexpected exception occurred validating sent deferred transaction consisting only of actions to self");
+         }
       }
    }
 
