@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/mongo_db_plugin/mongo_db_plugin.hpp>
 #include <eosio/chain/eosio_contract.hpp>
