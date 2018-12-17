@@ -21,9 +21,6 @@ const flat_set<public_key_type>& transaction_metadata::recover_keys( const chain
 
 void transaction_metadata::create_signing_keys_future( const transaction_metadata_ptr& mtrx,
                                                        boost::asio::thread_pool& thread_pool, const chain_id_type& chain_id ) {
-   if( mtrx->signing_keys && mtrx->signing_keys->first == chain_id )
-      return;
-
    if( mtrx->signing_keys.valid() ) // already created
       return;
 
