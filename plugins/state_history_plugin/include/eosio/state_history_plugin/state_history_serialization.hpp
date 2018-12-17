@@ -325,10 +325,20 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.owner.value));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.value));
-   if (obj.obj.parent._id)
-      fc::raw::pack(ds, as_type<uint64_t>(obj.db.get<eosio::chain::permission_object>(obj.obj.parent).name.value));
-   else
+   if (obj.obj.parent._id) {
+      auto&       index  = obj.db.get_index<eosio::chain::permission_index>();
+      const auto* parent = index.find(obj.obj.parent);
+      if (!parent) {
+         auto& undo = index.stack().back();
+         auto  it   = undo.removed_values.find(obj.obj.parent);
+         EOS_ASSERT(it != undo.removed_values.end(), eosio::chain::plugin_exception,
+                    "can not find parent of permission_object");
+         parent = &it->second;
+      }
+      fc::raw::pack(ds, as_type<uint64_t>(parent->name.value));
+   } else {
       fc::raw::pack(ds, as_type<uint64_t>(0));
+   }
    fc::raw::pack(ds, as_type<fc::time_point>(obj.obj.last_updated));
    fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::shared_authority>(obj.obj.auth)));
    return ds;
