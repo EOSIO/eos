@@ -349,8 +349,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void on_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
          const auto& cfg = chain.get_global_properties().configuration;
-         fc::time_point deadline = fc::time_point::now() + fc::time_point( fc::microseconds( cfg.max_transaction_cpu_usage ));
-         transaction_metadata::create_signing_keys_future( trx, *_thread_pool, chain.get_chain_id(), deadline );
+         transaction_metadata::create_signing_keys_future( trx, *_thread_pool, chain.get_chain_id(), fc::microseconds( cfg.max_transaction_cpu_usage ) );
          boost::asio::post( *_thread_pool, [self = this, trx, persist_until_expired, next]() {
             if( trx->signing_keys_future.valid() )
                trx->signing_keys_future.wait();

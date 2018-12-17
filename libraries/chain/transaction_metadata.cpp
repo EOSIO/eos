@@ -20,12 +20,13 @@ const flat_set<public_key_type>& transaction_metadata::recover_keys( const chain
 }
 
 void transaction_metadata::create_signing_keys_future( const transaction_metadata_ptr& mtrx,
-      boost::asio::thread_pool& thread_pool, const chain_id_type& chain_id, fc::time_point deadline ) {
+      boost::asio::thread_pool& thread_pool, const chain_id_type& chain_id, fc::microseconds timelimit ) {
    if( mtrx->signing_keys.valid() ) // already created
       return;
 
    std::weak_ptr<transaction_metadata> mtrx_wp = mtrx;
-   mtrx->signing_keys_future = async_thread_pool( thread_pool, [deadline, chain_id, mtrx_wp]() {
+   mtrx->signing_keys_future = async_thread_pool( thread_pool, [timelimit, chain_id, mtrx_wp]() {
+      fc::time_point deadline = fc::time_point::now() + timelimit;
       auto mtrx = mtrx_wp.lock();
       return mtrx ?
              std::make_pair( chain_id, mtrx->trx.get_signature_keys( chain_id, deadline ) ) :
