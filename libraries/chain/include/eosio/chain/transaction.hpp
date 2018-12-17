@@ -117,21 +117,21 @@ namespace eosio { namespace chain {
       explicit packed_transaction(const signed_transaction& t, compression_type _compression = none)
       :signatures(t.signatures), compression(_compression), unpacked_trx(t)
       {
-         set_packed_transaction(unpacked_trx);
-         set_packed_context_free_data(unpacked_trx.context_free_data);
+         local_pack_transaction();
+         local_pack_context_free_data();
       }
 
       explicit packed_transaction(signed_transaction&& t, compression_type _compression = none)
       :signatures(t.signatures), compression(_compression), unpacked_trx(std::move(t))
       {
-         set_packed_transaction(unpacked_trx);
-         set_packed_context_free_data(unpacked_trx.context_free_data);
+         local_pack_transaction();
+         local_pack_context_free_data();
       }
 
       // used by abi_serializer
-      explicit packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs,
-                                   bytes&& packed_cfd, vector<bytes>&& cfd, compression_type _compression );
-      explicit packed_transaction( signed_transaction&& t, bytes&& packed_cfd, compression_type _compression );
+      packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression );
+      packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs, vector<bytes>&& cfd, compression_type _compression );
+      packed_transaction( transaction&& t, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression );
 
       uint32_t get_unprunable_size()const;
       uint32_t get_prunable_size()const;
@@ -151,10 +151,10 @@ namespace eosio { namespace chain {
       const bytes&                  get_packed_transaction()const { return packed_trx; }
 
    private:
-      void local_unpack_context_free_data();
       void local_unpack_transaction(vector<bytes>&& context_free_data);
-      void set_packed_transaction(const transaction& t);
-      void set_packed_context_free_data(const vector<bytes>& cfd);
+      void local_unpack_context_free_data();
+      void local_pack_transaction();
+      void local_pack_context_free_data();
 
       friend struct fc::reflector<packed_transaction>;
       friend struct fc::reflector_verifier_visitor<packed_transaction>;

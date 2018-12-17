@@ -289,31 +289,36 @@ bytes packed_transaction::get_raw_transaction() const
    } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
 }
 
-packed_transaction::packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs,
-                                        bytes&& packed_cfd, vector<bytes>&& cfd, compression_type _compression )
+packed_transaction::packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression )
 :signatures(std::move(sigs))
 ,compression(_compression)
 ,packed_context_free_data(std::move(packed_cfd))
 ,packed_trx(std::move(packed_txn))
 {
-   const bool cfd_empty = cfd.empty();
-   EOS_ASSERT( cfd_empty || packed_cfd.empty(), tx_decompression_error, "Invalid packed_transaction" );
-   local_unpack_transaction( cfd_empty ? vector<bytes>() : std::move( cfd ) );
-   if( !cfd_empty ) {
-      set_packed_context_free_data( unpacked_trx.context_free_data );
-   } else if( !packed_context_free_data.empty() ) {
+   local_unpack_transaction({});
+   if( !packed_context_free_data.empty() ) {
       local_unpack_context_free_data();
    }
 }
 
-packed_transaction::packed_transaction( signed_transaction&& t, bytes&& packed_cfd, compression_type _compression )
-:signatures(t.signatures)
+packed_transaction::packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs, vector<bytes>&& cfd, compression_type _compression )
+:signatures(std::move(sigs))
+,compression(_compression)
+,packed_trx(std::move(packed_txn))
+{
+   local_unpack_transaction( std::move( cfd ) );
+   if( !unpacked_trx.context_free_data.empty() ) {
+      local_pack_context_free_data();
+   }
+}
+
+packed_transaction::packed_transaction( transaction&& t, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression )
+:signatures(std::move(sigs))
 ,compression(_compression)
 ,packed_context_free_data(std::move(packed_cfd))
-,unpacked_trx(std::move(t))
+,unpacked_trx(std::move(t), signatures, {})
 {
-   EOS_ASSERT( packed_cfd.empty() || unpacked_trx.context_free_data.empty(), tx_decompression_error, "Invalid packed_transaction" );
-   set_packed_transaction( unpacked_trx );
+   local_pack_transaction();
    if( !packed_context_free_data.empty() ) {
       local_unpack_context_free_data();
    }
@@ -363,31 +368,31 @@ void packed_transaction::local_unpack_context_free_data()
    } FC_CAPTURE_AND_RETHROW( (compression) )
 }
 
-void packed_transaction::set_packed_transaction(const transaction& t)
+void packed_transaction::local_pack_transaction()
 {
    try {
       switch(compression) {
          case none:
-            packed_trx = pack_transaction(t);
+            packed_trx = pack_transaction(unpacked_trx);
             break;
          case zlib:
-            packed_trx = zlib_compress_transaction(t);
+            packed_trx = zlib_compress_transaction(unpacked_trx);
             break;
          default:
             EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((compression)(t))
+   } FC_CAPTURE_AND_RETHROW((compression))
 }
 
-void packed_transaction::set_packed_context_free_data(const vector<bytes>& cfd)
+void packed_transaction::local_pack_context_free_data()
 {
    try {
       switch(compression) {
          case none:
-            packed_context_free_data = pack_context_free_data(cfd);
+            packed_context_free_data = pack_context_free_data(unpacked_trx.context_free_data);
             break;
          case zlib:
-            packed_context_free_data = zlib_compress_context_free_data(cfd);
+            packed_context_free_data = zlib_compress_context_free_data(unpacked_trx.context_free_data);
             break;
          default:
             EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
