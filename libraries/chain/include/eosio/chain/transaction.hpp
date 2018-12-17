@@ -157,8 +157,8 @@ namespace eosio { namespace chain {
       void local_pack_context_free_data();
 
       friend struct fc::reflector<packed_transaction>;
-      friend struct fc::reflector_verifier_visitor<packed_transaction>;
-      void reflector_verify();
+      friend struct fc::reflector_init_visitor<packed_transaction>;
+      void reflector_init();
    private:
       vector<signature_type>                  signatures;
       fc::enum_type<uint8_t,compression_type> compression;

@@ -324,12 +324,12 @@ packed_transaction::packed_transaction( transaction&& t, vector<signature_type>&
    }
 }
 
-void packed_transaction::reflector_verify()
+void packed_transaction::reflector_init()
 {
    // called after construction, but always on the same thread and before packed_transaction passed to any other threads
-   static_assert(&fc::reflector_verifier_visitor<packed_transaction>::reflector_verify, "FC with reflector_verify required");
-   static_assert(fc::raw::has_feature_reflector_verify_on_unpacked_reflected_types,
-                 "FC unpack needs to call reflector_verify otherwise unpacked_trx will not be initialized");
+   static_assert(&fc::reflector_init_visitor<packed_transaction>::reflector_init, "FC with reflector_init required");
+   static_assert(fc::raw::has_feature_reflector_init_on_unpacked_reflected_types,
+                 "FC unpack needs to call reflector_init otherwise unpacked_trx will not be initialized");
    EOS_ASSERT( unpacked_trx.expiration == time_point_sec(), tx_decompression_error, "packed_transaction already unpacked" );
    local_unpack_transaction({});
    local_unpack_context_free_data();

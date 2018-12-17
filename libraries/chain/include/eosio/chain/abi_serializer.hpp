@@ -625,11 +625,11 @@ namespace impl {
     * @tparam Reslover - callable with the signature (const name& code_account) -> optional<abi_def>
     */
    template<typename T, typename Resolver>
-   class abi_from_variant_visitor : reflector_verifier_visitor<T>
+   class abi_from_variant_visitor : reflector_init_visitor<T>
    {
       public:
          abi_from_variant_visitor( const variant_object& _vo, T& v, Resolver _resolver, abi_traverse_context& _ctx )
-         : reflector_verifier_visitor<T>(v)
+         : reflector_init_visitor<T>(v)
          ,_vo(_vo)
          ,_resolver(_resolver)
          ,_ctx(_ctx)
