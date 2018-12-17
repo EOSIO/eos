@@ -738,6 +738,8 @@ void chain_plugin::plugin_shutdown() {
    my->accepted_transaction_connection.reset();
    my->applied_transaction_connection.reset();
    my->accepted_confirmation_connection.reset();
+   my->chain->get_thread_pool().stop();
+   my->chain->get_thread_pool().join();
    my->chain.reset();
 }
 

@@ -114,13 +114,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       {
       }
 
-      ~producer_plugin_impl() {
-         if( _thread_pool ) {
-            _thread_pool->join();
-            _thread_pool->stop();
-         }
-      }
-
       optional<fc::time_point> calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const;
       void schedule_production_loop();
       void produce_block();
@@ -791,6 +784,10 @@ void producer_plugin::plugin_shutdown() {
       edump((e.to_detail_string()));
    }
 
+   if( my->_thread_pool ) {
+      my->_thread_pool->join();
+      my->_thread_pool->stop();
+   }
    my->_accepted_block_connection.reset();
    my->_irreversible_block_connection.reset();
 }
