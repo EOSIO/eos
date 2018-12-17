@@ -14,22 +14,22 @@ const flat_set<public_key_type>& transaction_metadata::recover_keys( const chain
             return signing_keys->second;
          }
       }
-      signing_keys = std::make_pair( chain_id, trx.get_signature_keys( chain_id ));
+      signing_keys = std::make_pair( chain_id, trx.get_signature_keys( chain_id, fc::time_point::maximum() ));
    }
    return signing_keys->second;
 }
 
 void transaction_metadata::create_signing_keys_future( const transaction_metadata_ptr& mtrx,
-                                                       boost::asio::thread_pool& thread_pool, const chain_id_type& chain_id ) {
+      boost::asio::thread_pool& thread_pool, const chain_id_type& chain_id, fc::time_point deadline ) {
    if( mtrx->signing_keys.valid() ) // already created
       return;
 
    std::weak_ptr<transaction_metadata> mtrx_wp = mtrx;
-   mtrx->signing_keys_future = async_thread_pool( thread_pool, [chain_id, mtrx_wp]() {
+   mtrx->signing_keys_future = async_thread_pool( thread_pool, [deadline, chain_id, mtrx_wp]() {
       auto mtrx = mtrx_wp.lock();
       return mtrx ?
-             std::make_pair( chain_id, mtrx->trx.get_signature_keys( chain_id ) ) :
-             std::make_pair( chain_id, decltype( mtrx->trx.get_signature_keys( chain_id ) ){} );
+             std::make_pair( chain_id, mtrx->trx.get_signature_keys( chain_id, deadline ) ) :
+             std::make_pair( chain_id, decltype( mtrx->trx.get_signature_keys( chain_id, deadline ) ){} );
    } );
 }
 
