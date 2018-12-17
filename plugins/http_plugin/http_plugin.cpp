@@ -561,6 +561,9 @@ namespace eosio {
       try {
          try {
             throw;
+         } catch (chain::unknown_block_exception& e) {
+            error_results results{400, "Unknown Block", error_results::error_info(e, verbose_http_errors)};
+            cb( 400, fc::json::to_string( results ));
          } catch (chain::unsatisfied_authorization& e) {
             error_results results{401, "UnAuthorized", error_results::error_info(e, verbose_http_errors)};
             cb( 401, fc::json::to_string( results ));
