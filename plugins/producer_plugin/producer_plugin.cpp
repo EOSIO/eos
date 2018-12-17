@@ -114,6 +114,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       {
       }
 
+      ~producer_plugin_impl() {
+         if( _thread_pool ) {
+            _thread_pool->join();
+            _thread_pool->stop();
+         }
+      }
+
       optional<fc::time_point> calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const;
       void schedule_production_loop();
       void produce_block();
@@ -131,6 +138,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::map<chain::account_name, uint32_t>                   _producer_watermarks;
       pending_block_mode                                        _pending_block_mode;
       transaction_id_with_expiry_index                          _persistent_transactions;
+      fc::optional<boost::asio::thread_pool>                    _thread_pool;
 
       int32_t                                                   _max_transaction_time_ms;
       fc::microseconds                                          _max_irreversible_block_age_us;
@@ -349,8 +357,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          chain::controller& chain = chain_plug->chain();
          const auto& cfg = chain.get_global_properties().configuration;
          fc::time_point deadline = fc::time_point::now() + fc::time_point( fc::microseconds( cfg.max_transaction_cpu_usage ));
-         transaction_metadata::create_signing_keys_future( trx, chain.get_thread_pool(), chain.get_chain_id(), deadline );
-         boost::asio::post( chain.get_thread_pool(), [self = this, trx, persist_until_expired, next]() {
+         transaction_metadata::create_signing_keys_future( trx, *_thread_pool, chain.get_chain_id(), deadline );
+         boost::asio::post( *_thread_pool, [self = this, trx, persist_until_expired, next]() {
             if( trx->signing_keys_future.valid() )
                trx->signing_keys_future.wait();
             app().get_io_service().post( [self, trx, persist_until_expired, next]() {
@@ -543,6 +551,8 @@ void producer_plugin::set_program_options(
           "offset of last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("incoming-defer-ratio", bpo::value<double>()->default_value(1.0),
           "ratio between incoming transations and deferred transactions when both are exhausted")
+         ("producer-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
+          "Number of worker threads in producer thread pool")
          ("snapshots-dir", bpo::value<bfs::path>()->default_value("snapshots"),
           "the location of the snapshots directory (absolute path or relative to application data dir)")
          ;
@@ -674,6 +684,11 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
 
    my->_incoming_defer_ratio = options.at("incoming-defer-ratio").as<double>();
+
+   auto thread_pool_size = options.at( "producer-threads" ).as<uint16_t>();
+   EOS_ASSERT( thread_pool_size > 0, plugin_config_exception,
+               "producer-threads ${num} must be greater than 0", ("num", thread_pool_size));
+   my->_thread_pool.emplace( thread_pool_size );
 
    if( options.count( "snapshots-dir" )) {
       auto sd = options.at( "snapshots-dir" ).as<bfs::path>();
