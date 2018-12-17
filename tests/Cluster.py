@@ -1171,7 +1171,10 @@ class Cluster(object):
         if not biosNode.waitForTransInBlock(transId):
             Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
             return None
-
+        action="init"
+        data="{\"version\":0,\"core\":\"4,%s\"}" % (CORE_SYMBOL)
+        opts="--permission %s@active" % (eosioAccount.name)
+        trans=biosNode.pushMessage(eosioAccount.name, action, data, opts)
         Utils.Print("Cluster bootstrap done.")
 
         return biosNode
