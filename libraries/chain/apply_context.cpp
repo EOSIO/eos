@@ -144,6 +144,10 @@ void apply_context::exec( action_trace& trace )
 
 } /// exec()
 
+bool apply_context::is_domain(const domain_name& domain) const {
+   return nullptr != db.find<domain_object,by_name>(domain);
+}
+
 bool apply_context::is_account( const account_name& account )const {
    return nullptr != db.find<account_object,by_name>( account );
 }

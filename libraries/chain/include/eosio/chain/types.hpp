@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/name.hpp>
+#include <eosio/chain/domain_name.hpp>
 #include <eosio/chain/chain_id_type.hpp>
 
 #include <chainbase/chainbase.hpp>
@@ -143,6 +144,7 @@ namespace eosio { namespace chain {
       permission_object_type,
       permission_usage_object_type,
       permission_link_object_type,
+      domain_object_type,
       UNUSED_action_code_object_type,
       key_value_object_type,
       index64_object_type,
@@ -180,6 +182,7 @@ namespace eosio { namespace chain {
 
    class account_object;
    class producer_object;
+   class domain_object;
 
    using block_id_type       = fc::sha256;
    using checksum_type       = fc::sha256;

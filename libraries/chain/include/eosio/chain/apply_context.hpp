@@ -508,6 +508,10 @@ class apply_context {
       bool is_account(const account_name& account)const;
 
       /**
+       * @return true if domain name exists, false if it does not
+       */
+      bool is_domain(const domain_name& domain) const;
+      /**
        * Requires that the current action be delivered to account
        */
       void require_recipient(account_name account);

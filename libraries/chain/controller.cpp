@@ -38,7 +38,8 @@ using controller_index_set = index_set<
    dynamic_global_property_multi_index,
    block_summary_multi_index,
    transaction_multi_index,
-   generated_transaction_multi_index
+   generated_transaction_multi_index,
+   domain_index
 >;
 
 class maybe_session {
@@ -600,6 +601,25 @@ struct controller_impl {
          {"delay", cyberway::chaindb::tag<by_delay>::get_code(), true, {{"delay_until", "asc"}, {"id", "asc"}}},
          {"senderid", cyberway::chaindb::tag<by_sender_id>::get_code(), true, {{"sender", "asc"}, {"sender_id", "asc"}}}}
       });
+
+      // domain names
+      abi.structs.emplace_back( eosio::chain::struct_def{
+        "domain", "",
+        {{"id", "uint64"},
+         {"owner", "name"},
+         {"creation_date", "block_timestamp_type"},
+         {"name", "string"}}
+      });
+
+      abi.tables.emplace_back( eosio::chain::table_def {
+        "domain",
+        cyberway::chaindb::tag<domain_object>::get_code(),
+        "domain",
+        {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {"string", cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}},
+         {"name", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}}
+      });
+
    }
 
    void clear_all_undo() {
@@ -752,6 +772,12 @@ struct controller_impl {
       });
       db.create<account_sequence_object>([&](auto & a) {
         a.name = name;
+      });
+      // to test domain names table, create records in it; TODO: remove
+      db.create<domain_object>([&](auto& a) {
+         a.owner = name;
+         a.creation_date = conf.genesis.initial_timestamp;
+         a.name = string(name);
       });
 
       const auto& owner_permission  = authorization.create_permission(name, config::owner_name, 0,
@@ -2112,6 +2138,10 @@ const account_object& controller::get_account( account_name name )const
 { try {
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
+
+const domain_object& controller::get_domain(domain_name name) const { try {
+   return my->db.get<domain_object, by_name>(name);
+} FC_CAPTURE_AND_RETHROW((name)) }
 
 vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {
    vector<transaction_metadata_ptr> result;

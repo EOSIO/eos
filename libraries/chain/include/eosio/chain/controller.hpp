@@ -6,6 +6,7 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/account_object.hpp>
+#include <eosio/chain/domain_object.hpp>
 #include <eosio/chain/snapshot.hpp>
 
 #include <cyberway/chaindb/common.hpp>
@@ -165,6 +166,7 @@ namespace eosio { namespace chain {
          chaindb_controller& chaindb() const;
 
          const account_object&                 get_account( account_name n )const;
+         const domain_object&                  get_domain(domain_name n) const;
          const global_property_object&         get_global_properties()const;
          const dynamic_global_property_object& get_dynamic_global_properties()const;
          const resource_limits_manager&        get_resource_limits_manager()const;
