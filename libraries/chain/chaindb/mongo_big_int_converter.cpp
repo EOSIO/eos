@@ -5,15 +5,14 @@
 #include <fc/variant_object.hpp>
 #include <fc/crypto/hex.hpp>
 
-#include <cyberway/chaindb/mongo_driver_utils.h>
-#include <cyberway/chaindb/mongo_big_int_converter.h>
+#include <cyberway/chaindb/mongo_driver_utils.hpp>
+#include <cyberway/chaindb/mongo_big_int_converter.hpp>
 
 namespace cyberway { namespace chaindb {
 
     namespace {
         constexpr size_t NUMBER_128_BITS        = sizeof(__int128) * CHAR_BIT;
         constexpr size_t NUMBER_128_BLOB_SIZE   = sizeof(__int128) + 1;
-        constexpr size_t INT128_MAX_DIGITS_SIZE = std::numeric_limits<__int128>::digits10 + 1;
     }
 
     const std::string mongo_big_int_converter::BINARY_FIELD = "binary";

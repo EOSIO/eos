@@ -4,12 +4,10 @@
 
 #include <fc/variant.hpp>
 
+#include <cyberway/chaindb/common.hpp>
+
 namespace cyberway { namespace chaindb {
     using fc::variant;
-
-    using primary_key_t = uint64_t;
-    static constexpr primary_key_t unset_primary_key = (-2);
-    static constexpr primary_key_t end_primary_key = (-1);
 
     class cache_item;
     struct cache_item_data;
