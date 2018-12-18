@@ -239,7 +239,7 @@ class Node(object):
             accountInfo=self.getEosAccount(account.name, exitOnError=True)
             try:
                 if not self.enableMongo:
-                    assert(accountInfo["account_name"] == account.name)
+                    assert(accountInfo["name"] == account.name)
                 else:
                     assert(accountInfo["name"] == account.name)
             except (AssertionError, TypeError, KeyError) as _:
