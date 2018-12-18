@@ -94,6 +94,7 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
    static std::mutex cache_mtx;
 
    auto start = fc::time_point::now();
+   recovered_pub_keys.clear();
    const digest_type digest = sig_digest(chain_id, cfd);
 
    std::unique_lock<std::mutex> lock(cache_mtx, std::defer_lock);
