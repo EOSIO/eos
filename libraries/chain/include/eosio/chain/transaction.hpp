@@ -58,11 +58,12 @@ namespace eosio { namespace chain {
 
       transaction_id_type        id()const;
       digest_type                sig_digest( const chain_id_type& chain_id, const vector<bytes>& cfd = vector<bytes>() )const;
-      flat_set<public_key_type>  get_signature_keys( const vector<signature_type>& signatures,
+      fc::microseconds           get_signature_keys( const vector<signature_type>& signatures,
                                                      const chain_id_type& chain_id,
                                                      fc::time_point deadline,
-                                                     const vector<bytes>& cfd = vector<bytes>(),
-                                                     bool allow_duplicate_keys = false)const;
+                                                     const vector<bytes>& cfd,
+                                                     flat_set<public_key_type>& recovered_pub_keys,
+                                                     bool allow_duplicate_keys = false) const;
 
       uint32_t total_actions()const { return context_free_actions.size() + actions.size(); }
       account_name first_authorizor()const {
@@ -92,7 +93,8 @@ namespace eosio { namespace chain {
 
       const signature_type&     sign(const private_key_type& key, const chain_id_type& chain_id);
       signature_type            sign(const private_key_type& key, const chain_id_type& chain_id)const;
-      flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id, fc::time_point deadline,
+      fc::microseconds          get_signature_keys( const chain_id_type& chain_id, fc::time_point deadline,
+                                                    flat_set<public_key_type>& recovered_pub_keys,
                                                     bool allow_duplicate_keys = false )const;
    };
 

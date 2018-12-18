@@ -25,8 +25,10 @@ class transaction_metadata {
       transaction_id_type                                        signed_id;
       signed_transaction                                         trx;
       packed_transaction_ptr                                     packed_trx;
+      fc::microseconds                                           sig_cpu_usage;
       optional<pair<chain_id_type, flat_set<public_key_type>>>   signing_keys;
-      std::future<pair<chain_id_type,flat_set<public_key_type>>> signing_keys_future;
+      std::future<std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>>>
+                                                                 signing_keys_future;
       bool                                                       accepted = false;
       bool                                                       implicit = false;
       bool                                                       scheduled = false;

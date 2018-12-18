@@ -84,9 +84,9 @@ digest_type transaction::sig_digest( const chain_id_type& chain_id, const vector
    return enc.result();
 }
 
-
-flat_set<public_key_type> transaction::get_signature_keys( const vector<signature_type>& signatures,
-      const chain_id_type& chain_id, fc::time_point deadline, const vector<bytes>& cfd, bool allow_duplicate_keys)const
+fc::microseconds transaction::get_signature_keys( const vector<signature_type>& signatures,
+      const chain_id_type& chain_id, fc::time_point deadline, const vector<bytes>& cfd,
+      flat_set<public_key_type>& recovered_pub_keys, bool allow_duplicate_keys)const
 { try {
    using boost::adaptors::transformed;
 
@@ -96,7 +96,7 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
    const digest_type digest = sig_digest(chain_id, cfd);
 
    std::unique_lock<std::mutex> lock(cache_mtx, std::defer_lock);
-   flat_set<public_key_type> recovered_pub_keys;
+   fc::microseconds sig_cpu_usage;
    for(const signature_type& sig : signatures) {
       auto now = fc::time_point::now();
       EOS_ASSERT( now < deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long",
@@ -111,8 +111,10 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
          fc::microseconds cpu_usage = fc::time_point::now() - start;
          lock.lock();
          recovery_cache.emplace_back( cached_pub_key{tid, recov, sig, cpu_usage} ); //could fail on dup signatures; not a problem
+         sig_cpu_usage += cpu_usage;
       } else {
          recov = it->pub_key;
+         sig_cpu_usage += it->cpu_usage;
       }
       lock.unlock();
       bool successful_insertion = false;
@@ -127,7 +129,7 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
       recovery_cache.erase( recovery_cache.begin());
    lock.unlock();
 
-   return recovered_pub_keys;
+   return sig_cpu_usage;
 } FC_CAPTURE_AND_RETHROW() }
 
 
@@ -140,10 +142,12 @@ signature_type signed_transaction::sign(const private_key_type& key, const chain
    return key.sign(sig_digest(chain_id, context_free_data));
 }
 
-flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id, fc::time_point deadline,
-                                                                  bool allow_duplicate_keys)const
+fc::microseconds
+signed_transaction::get_signature_keys( const chain_id_type& chain_id, fc::time_point deadline,
+                                        flat_set<public_key_type>& recovered_pub_keys,
+                                        bool allow_duplicate_keys)const
 {
-   return transaction::get_signature_keys(signatures, chain_id, deadline, context_free_data, allow_duplicate_keys);
+   return transaction::get_signature_keys(signatures, chain_id, deadline, context_free_data, recovered_pub_keys, allow_duplicate_keys);
 }
 
 uint32_t packed_transaction::get_unprunable_size()const {
