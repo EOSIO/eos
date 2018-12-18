@@ -19,8 +19,8 @@ namespace spaceaction {
             case N(clear):
                 clear();
                 return;
-            case N(printcode):
-                printcode(unpack_action_data<args_name>());
+            case N(hascontract):
+                hascontract(unpack_action_data<args_name>());
                 return;
         }
     }
@@ -48,9 +48,9 @@ namespace spaceaction {
         return r;
     }
 
-    void actiondemo::printcode(const args_name& t){
+    void actiondemo::hascontract(const args_name& t){
         bool r = has_contract(t.name);
-        print_f("% code hash:%", name{t.name}.to_string(),r);
+        print_f("% has_contract:%", name{t.name}.to_string(),r);
     }
 
     void actiondemo::generate(const args& t){

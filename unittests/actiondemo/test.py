@@ -161,9 +161,9 @@ def stepGenerate():
 
 def stepGetCode():
     print ("===========================    set stepGetCode   ===========================" )
-    run(args.cleos + 'push action %s printcode \'[{"name":"eosio.token"}]\' -p %s ' %(args.contract,args.contract))
-    run(args.cleos + 'push action %s printcode \'[{"name":"eosio"}]\' -p %s ' %(args.contract,args.contract))
-    run(args.cleos + 'push action %s printcode \'[{"name":"eosio.ram"}]\' -p %s ' %(args.contract,args.contract))
+    run(args.cleos + 'push action %s hascontract \'[{"name":"eosio.token"}]\' -p %s ' %(args.contract,args.contract))
+    run(args.cleos + 'push action %s hascontract \'[{"name":"eosio"}]\' -p %s ' %(args.contract,args.contract))
+    run(args.cleos + 'push action %s hascontract \'[{"name":"eosio.ram"}]\' -p %s ' %(args.contract,args.contract))
     print ("sleep 5")
 
 

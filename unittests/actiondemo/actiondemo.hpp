@@ -26,7 +26,7 @@ namespace spaceaction {
             account_name name;
         };
         //@abi action
-        void printcode(const args_name& t);
+        void hascontract(const args_name& t);
 
 
         struct args_inline{

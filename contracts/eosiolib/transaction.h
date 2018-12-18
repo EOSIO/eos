@@ -109,9 +109,9 @@ extern "C" {
    void get_action_sequence(uint64_t* seq);
 
     /**
-    * Get the code_hash of the account
+    * Tests if the account has an installed contract
     * @param name : account name
-    * @return : Return has code
+    * @return : Return has contract
     */
     bool has_contract( account_name name);
 
