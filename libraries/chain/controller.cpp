@@ -998,7 +998,20 @@ struct controller_impl {
 
       transaction_trace_ptr trace;
       try {
-         transaction_context trx_context(self, trx->trx, trx->id);
+         auto start = fc::time_point::now();
+         if( !explicit_billed_cpu_time ) {
+            int64_t cpu_per_signature_us = 10; // TODO: plumb in producer configuration for this value.
+            auto already_consumed_time = fc::microseconds( cpu_per_signature_us * trx->trx.signatures.size() );
+            // Alternatively store actual time to recover keys in transaction_metadata and use that as already_consumed_time (makes more sense if recovery cache was removed).
+
+            if( start.time_since_epoch() <  already_consumed_time ) {
+               start = fc::time_point();
+            } else {
+               start -= already_consumed_time;
+            }
+         }
+
+         transaction_context trx_context(self, trx->trx, trx->id, start);
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
@@ -1014,7 +1027,6 @@ struct controller_impl {
                bool skip_recording = replay_head_time && (time_point(trx->trx.expiration) <= *replay_head_time);
                trx_context.init_for_input_trx( trx->packed_trx->get_unprunable_size(),
                                                trx->packed_trx->get_prunable_size(),
-                                               trx->trx.signatures.size(),
                                                skip_recording);
             }
 
