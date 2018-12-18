@@ -38,7 +38,7 @@ void transaction_metadata::create_signing_keys_future( const transaction_metadat
       if( mtrx ) {
          cpu_usage = mtrx->trx.get_signature_keys( chain_id, deadline, recovered_pub_keys );
       }
-      return std::make_tuple( chain_id, cpu_usage, recovered_pub_keys);
+      return std::make_tuple( chain_id, cpu_usage, std::move( recovered_pub_keys ));
    } );
 }
 
