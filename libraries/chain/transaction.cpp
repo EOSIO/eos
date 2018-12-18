@@ -6,6 +6,7 @@
 #include <fc/bitutil.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <algorithm>
+#include <mutex>
 
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/multi_index_container.hpp>
@@ -49,8 +50,6 @@ typedef multi_index_container<
    >
 > recovery_cache_type;
 
-static std::mutex cache_mtx;
-
 void transaction_header::set_reference_block( const block_id_type& reference_block ) {
    ref_block_num    = fc::endian_reverse_u32(reference_block._hash[0]);
    ref_block_prefix = reference_block._hash[1];
@@ -92,6 +91,8 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
 
    constexpr size_t recovery_cache_size = 10000;
    static recovery_cache_type recovery_cache;
+   static std::mutex cache_mtx;
+
    auto start = fc::time_point::now();
    const digest_type digest = sig_digest(chain_id, cfd);
 
