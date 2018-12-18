@@ -583,27 +583,36 @@ namespace impl {
          from_variant(vo["compression"], compression);
 
          bytes packed_cfd;
+         std::vector<bytes> cfd;
+         bool use_packed_cfd = false;
+         if( vo.contains("packed_context_free_data") && vo["packed_context_free_data"].is_string() && !vo["packed_context_free_data"].as_string().empty() ) {
+            from_variant(vo["packed_context_free_data"], packed_cfd );
+            use_packed_cfd = true;
+         } else if( vo.contains("context_free_data") ) {
+            from_variant(vo["context_free_data"], cfd);
+         }
+
          if( vo.contains("packed_trx") && vo["packed_trx"].is_string() && !vo["packed_trx"].as_string().empty() ) {
             bytes packed_trx;
-            std::vector<bytes> cfd;
             from_variant(vo["packed_trx"], packed_trx);
-            if( vo.contains("packed_context_free_data") && vo["packed_context_free_data"].is_string() && !vo["packed_context_free_data"].as_string().empty() ) {
-               from_variant(vo["packed_context_free_data"], packed_cfd );
-            } else if( vo.contains("context_free_data") ) {
-               from_variant(vo["context_free_data"], cfd);
+            if( use_packed_cfd ) {
+               ptrx = packed_transaction( std::move( packed_trx ), std::move( signatures ), std::move( packed_cfd ), compression );
+            } else {
+               ptrx = packed_transaction( std::move( packed_trx ), std::move( signatures ), std::move( cfd ), compression );
             }
-            ptrx = packed_transaction( std::move(packed_trx), std::move(signatures), std::move(packed_cfd), std::move(cfd), compression );
          } else {
             EOS_ASSERT(vo.contains("transaction"), packed_transaction_type_exception, "Missing transaction");
-            signed_transaction trx;
-            trx.signatures = std::move(signatures);
-            extract(vo["transaction"], trx, resolver, ctx);
-            if( vo.contains("packed_context_free_data") && vo["packed_context_free_data"].is_string() && !vo["packed_context_free_data"].as_string().empty() ) {
-               from_variant(vo["packed_context_free_data"], packed_cfd );
-            } else if( vo.contains("context_free_data") ) {
-               from_variant(vo["context_free_data"], trx.context_free_data );
+            if( use_packed_cfd ) {
+               transaction trx;
+               extract( vo["transaction"], trx, resolver, ctx );
+               ptrx = packed_transaction( std::move(trx), std::move(signatures), std::move(packed_cfd), compression );
+            } else {
+               signed_transaction trx;
+               extract( vo["transaction"], trx, resolver, ctx );
+               trx.signatures = std::move( signatures );
+               trx.context_free_data = std::move(cfd);
+               ptrx = packed_transaction( std::move( trx ), compression );
             }
-            ptrx = packed_transaction( std::move(trx), std::move(packed_cfd), compression );
          }
       }
    };
@@ -616,11 +625,11 @@ namespace impl {
     * @tparam Reslover - callable with the signature (const name& code_account) -> optional<abi_def>
     */
    template<typename T, typename Resolver>
-   class abi_from_variant_visitor : reflector_verifier_visitor<T>
+   class abi_from_variant_visitor : reflector_init_visitor<T>
    {
       public:
          abi_from_variant_visitor( const variant_object& _vo, T& v, Resolver _resolver, abi_traverse_context& _ctx )
-         : reflector_verifier_visitor<T>(v)
+         : reflector_init_visitor<T>(v)
          ,_vo(_vo)
          ,_resolver(_resolver)
          ,_ctx(_ctx)
