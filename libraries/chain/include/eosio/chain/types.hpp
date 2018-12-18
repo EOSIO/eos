@@ -112,10 +112,13 @@ namespace eosio { namespace chain {
             assign(s.c_str(), s.size());
          }
 
-         shared_blob &operator=(const shared_blob &s) {
+
+         shared_blob& operator=(const shared_blob& s) {
             assign(s.c_str(), s.size());
             return *this;
          }
+
+         shared_blob& operator=(shared_blob&& ) = default;
 
          template <typename InputIterator>
          shared_blob(InputIterator f, InputIterator l, const allocator_type& a)
