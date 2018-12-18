@@ -168,7 +168,7 @@ namespace eosio {
       void send_all( const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify );
 
       void accepted_block(const block_state_ptr&);
-      void transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>&);
+      void transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>&);
 
       bool is_valid( const handshake_message &msg);
 
@@ -631,7 +631,7 @@ namespace eosio {
       std::multimap<block_id_type, connection_ptr, sha256_less> received_blocks;
       std::multimap<transaction_id_type, connection_ptr, sha256_less> received_transactions;
 
-      void bcast_transaction(const packed_transaction_ptr& trx);
+      void bcast_transaction(const transaction_metadata_ptr& trx);
       void rejected_transaction(const transaction_id_type& msg);
       void bcast_block(const block_state_ptr& bs);
       void rejected_block(const block_id_type& id);
@@ -1596,9 +1596,9 @@ namespace eosio {
       received_blocks.erase(range.first, range.second);
    }
 
-   void dispatch_manager::bcast_transaction(const packed_transaction_ptr& trx) {
+   void dispatch_manager::bcast_transaction(const transaction_metadata_ptr& ptrx) {
       std::set<connection_ptr> skips;
-      transaction_id_type id = trx->id();
+      const auto& id = ptrx->id;
 
       auto range = received_transactions.equal_range(id);
       for (auto org = range.first; org != range.second; ++org) {
@@ -1611,13 +1611,14 @@ namespace eosio {
          return;
       }
 
-      time_point_sec trx_expiration = trx->expiration();
+      time_point_sec trx_expiration = ptrx->packed_trx->expiration();
+      const packed_transaction& trx = *ptrx->packed_trx;
 
       // this implementation is to avoid copy of packed_transaction to net_message
       int which = 8; // matches which of net_message for packed_transaction
 
       uint32_t which_size = fc::raw::pack_size( unsigned_int( which ));
-      uint32_t payload_size = which_size + fc::raw::pack_size( *trx );
+      uint32_t payload_size = which_size + fc::raw::pack_size( trx );
 
       char* header = reinterpret_cast<char*>(&payload_size);
       size_t header_size = sizeof(payload_size);
@@ -1627,7 +1628,7 @@ namespace eosio {
       fc::datastream<char*> ds( buff->data(), buffer_size);
       ds.write( header, header_size );
       fc::raw::pack( ds, unsigned_int( which ));
-      fc::raw::pack( ds, *trx );
+      fc::raw::pack( ds, trx );
 
       node_transaction_state nts = {id, trx_expiration, 0, buff};
       my_impl->local_txns.insert(std::move(nts));
@@ -2358,28 +2359,31 @@ namespace eosio {
          fc_dlog(logger, "got a txn during sync - dropping");
          return;
       }
-      transaction_id_type tid = trx->id();
+
+      auto ptrx = std::make_shared<transaction_metadata>( trx );
+      const auto& tid = ptrx->id;
+
       c->cancel_wait();
       if(local_txns.get<by_id>().find(tid) != local_txns.end()) {
          fc_dlog(logger, "got a duplicate transaction - dropping");
          return;
       }
       dispatcher->recv_transaction(c, tid);
-      chain_plug->accept_transaction(trx, [c, this, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+      chain_plug->accept_transaction(ptrx, [c, this, ptrx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          if (result.contains<fc::exception_ptr>()) {
             peer_dlog(c, "bad packed_transaction : ${m}", ("m",result.get<fc::exception_ptr>()->what()));
          } else {
             auto trace = result.get<transaction_trace_ptr>();
             if (!trace->except) {
                fc_dlog(logger, "chain accepted transaction");
-               this->dispatcher->bcast_transaction(trx);
+               this->dispatcher->bcast_transaction(ptrx);
                return;
             }
 
             peer_elog(c, "bad packed_transaction : ${m}", ("m",trace->except->what()));
          }
 
-         dispatcher->rejected_transaction(trx->id());
+         dispatcher->rejected_transaction(ptrx->id);
       });
    }
 
@@ -2572,8 +2576,8 @@ namespace eosio {
       dispatcher->bcast_block(block);
    }
 
-   void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, packed_transaction_ptr>& results) {
-      transaction_id_type id = results.second->id();
+   void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>& results) {
+      const auto& id = results.second->id;
       if (results.first) {
          fc_ilog(logger,"signaled NACK, trx-id = ${id} : ${why}",("id", id)("why", results.first->to_detail_string()));
          dispatcher->rejected_transaction(id);

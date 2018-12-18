@@ -770,9 +770,10 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    if( t->signing_keys.valid() ) {
       signing_keys_json = fc::json::to_string( t->signing_keys->second );
    } else {
-      auto signing_keys = trx.get_signature_keys( *chain_id, false, false );
-      if( !signing_keys.empty() ) {
-         signing_keys_json = fc::json::to_string( signing_keys );
+      flat_set<public_key_type> keys;
+      trx.get_signature_keys( *chain_id, fc::time_point::maximum(), keys, false );
+      if( !keys.empty() ) {
+         signing_keys_json = fc::json::to_string( keys );
       }
    }
 

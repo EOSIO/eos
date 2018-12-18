@@ -1558,6 +1558,8 @@ namespace eosio {
       if( mark_transaction_known_by_peer( id ) )
         return;
 
-      app().get_channel<incoming::channels::transaction>().publish(p);
+      auto ptr = std::make_shared<transaction_metadata>(p);
+
+      app().get_channel<incoming::channels::transaction>().publish(ptr);
    }
 } /// namespace eosio
