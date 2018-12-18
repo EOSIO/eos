@@ -28,6 +28,7 @@ struct cached_pub_key {
    transaction_id_type trx_id;
    public_key_type pub_key;
    signature_type sig;
+   fc::microseconds cpu_usage;
    cached_pub_key(const cached_pub_key&) = delete;
    cached_pub_key() = delete;
    cached_pub_key& operator=(const cached_pub_key&) = delete;
@@ -47,6 +48,8 @@ typedef multi_index_container<
       >
    >
 > recovery_cache_type;
+
+static std::mutex cache_mtx;
 
 void transaction_header::set_reference_block( const block_id_type& reference_block ) {
    ref_block_num    = fc::endian_reverse_u32(reference_block._hash[0]);
@@ -81,38 +84,48 @@ digest_type transaction::sig_digest( const chain_id_type& chain_id, const vector
    return enc.result();
 }
 
+
 flat_set<public_key_type> transaction::get_signature_keys( const vector<signature_type>& signatures,
       const chain_id_type& chain_id, fc::time_point deadline, const vector<bytes>& cfd, bool allow_duplicate_keys)const
 { try {
    using boost::adaptors::transformed;
 
-   constexpr size_t recovery_cache_size = 1000;
-   static thread_local recovery_cache_type recovery_cache;
+   constexpr size_t recovery_cache_size = 10000;
+   static recovery_cache_type recovery_cache;
+   auto start = fc::time_point::now();
    const digest_type digest = sig_digest(chain_id, cfd);
 
+   std::unique_lock<std::mutex> lock(cache_mtx, std::defer_lock);
    flat_set<public_key_type> recovered_pub_keys;
    for(const signature_type& sig : signatures) {
-      EOS_ASSERT( fc::time_point::now() < deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long",
-                  ("now", fc::time_point::now())("deadline", deadline) );
+      auto now = fc::time_point::now();
+      EOS_ASSERT( now < deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long",
+                  ("now", now)("deadline", deadline)("start", start) );
       public_key_type recov;
-      recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find( sig );
       const auto& tid = id();
+      lock.lock();
+      recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find( sig );
       if( it == recovery_cache.get<by_sig>().end() || it->trx_id != tid ) {
+         lock.unlock();
          recov = public_key_type( sig, digest );
-         recovery_cache.emplace_back( cached_pub_key{tid, recov, sig} ); //could fail on dup signatures; not a problem
+         fc::microseconds cpu_usage = fc::time_point::now() - start;
+         lock.lock();
+         recovery_cache.emplace_back( cached_pub_key{tid, recov, sig, cpu_usage} ); //could fail on dup signatures; not a problem
       } else {
          recov = it->pub_key;
       }
+      lock.unlock();
       bool successful_insertion = false;
       std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
       EOS_ASSERT( allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
                   "transaction includes more than one signature signed using the same key associated with public key: ${key}",
-                  ("key", recov)
-               );
+                  ("key", recov) );
    }
 
+   lock.lock();
    while ( recovery_cache.size() > recovery_cache_size )
       recovery_cache.erase( recovery_cache.begin());
+   lock.unlock();
 
    return recovered_pub_keys;
 } FC_CAPTURE_AND_RETHROW() }
