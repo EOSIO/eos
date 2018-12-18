@@ -108,6 +108,13 @@ extern "C" {
     */
    void get_action_sequence(uint64_t* seq);
 
+    /**
+    * Get the code_hash of the account
+    * @param name : account name
+    * @return : Return has code
+    */
+    bool has_contract( account_name name);
+
    /**
     * Get the producer's signature for the action
     * @param sig : Memory buffer

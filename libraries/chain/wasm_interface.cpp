@@ -1406,6 +1406,12 @@ class context_free_transaction_api : public context_aware_api {
            seq = context.global_action_sequence;
       }
 
+      bool has_contract(account_name name){
+          const auto accnt  = context.db.find<account_object,by_name>( name );
+          EOS_ASSERT( accnt != nullptr, action_validate_exception, "account '${account}' does not exist", ("account", name) );
+          return accnt->code.size() > 0;
+      }
+
       int expiration() {
         return context.trx_context.trx.expiration.sec_since_epoch();
       }
@@ -1946,6 +1952,7 @@ REGISTER_INTRINSICS(context_free_transaction_api,
    (transaction_size,       int()                    )
    (get_transaction_id,     void(int)                )
    (get_action_sequence,    void(int)                )
+   (has_contract,           int(int64_t)             )
    (expiration,             int()                    )
    (tapos_block_prefix,     int()                    )
    (tapos_block_num,        int()                    )

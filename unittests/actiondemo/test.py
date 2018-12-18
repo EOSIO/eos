@@ -159,6 +159,13 @@ def stepGenerate():
     run(args.cleos + 'get table %s %s seedobjs'  %(args.contract2, args.contract2) )
     print ("sleep 5")
 
+def stepGetCode():
+    print ("===========================    set stepGetCode   ===========================" )
+    run(args.cleos + 'push action %s printcode \'[{"name":"eosio.token"}]\' -p %s ' %(args.contract,args.contract))
+    run(args.cleos + 'push action %s printcode \'[{"name":"eosio"}]\' -p %s ' %(args.contract,args.contract))
+    run(args.cleos + 'push action %s printcode \'[{"name":"eosio.ram"}]\' -p %s ' %(args.contract,args.contract))
+    print ("sleep 5")
+
 
 parser = argparse.ArgumentParser()
 
@@ -169,6 +176,7 @@ commands = [
     ('i', 'init',      stepInitCaee,                      True,         "stepInitCaee"),
     ('c', 'clear',      stepClear,                      True,         "stepInitCaee"),
     ('g', 'generate',      stepGenerate,                True,         "stepInitCaee"),
+    ('d', 'getcode',      stepGetCode,                True,         "stepGetCode"),
 ]
 
 parser.add_argument('--public-key', metavar='', help="EOSIO Public Key", default='EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV', dest="public_key")
