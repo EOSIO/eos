@@ -1000,9 +1000,7 @@ struct controller_impl {
       try {
          auto start = fc::time_point::now();
          if( !explicit_billed_cpu_time ) {
-            int64_t cpu_per_signature_us = 10; // TODO: plumb in producer configuration for this value.
-            auto already_consumed_time = fc::microseconds( cpu_per_signature_us * trx->trx.signatures.size() );
-            // Alternatively store actual time to recover keys in transaction_metadata and use that as already_consumed_time (makes more sense if recovery cache was removed).
+            fc::microseconds already_consumed_time( EOS_PERCENT(trx->sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
 
             if( start.time_since_epoch() <  already_consumed_time ) {
                start = fc::time_point();
