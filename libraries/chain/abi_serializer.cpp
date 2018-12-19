@@ -465,6 +465,14 @@ namespace eosio { namespace chain {
                      auto h2 = ctx.disallow_extensions_unless( &field == &st.fields.back() );
                      _variant_to_binary(_remove_bin_extension(field.type), vo[field.name], ds, ctx);
                   }
+               } else if( is_optional(field.type) ) {
+                  if( disallow_additional_fields ) {
+                     EOS_THROW( pack_exception, "Unexpected field '${f}' found in input object while processing struct '${p}'",
+                                ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
+                  } else {
+                      char flag = 0;
+                      fc::raw::pack(ds, flag);
+                  }
                } else if( ends_with(field.type, "$") && ctx.extensions_allowed() ) {
                   disallow_additional_fields = true;
                } else if( disallow_additional_fields ) {
