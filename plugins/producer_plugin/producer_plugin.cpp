@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/chain/producer_object.hpp>
@@ -131,6 +131,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::map<chain::account_name, uint32_t>                   _producer_watermarks;
       pending_block_mode                                        _pending_block_mode;
       transaction_id_with_expiry_index                          _persistent_transactions;
+      fc::optional<boost::asio::thread_pool>                    _thread_pool;
 
       int32_t                                                   _max_transaction_time_ms;
       fc::microseconds                                          _max_irreversible_block_age_us;
@@ -144,6 +145,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       uint32_t   _last_signed_block_num = 0;
 
       producer_plugin* _self = nullptr;
+      chain_plugin* chain_plug = nullptr;
 
       incoming::channels::block::channel_type::handle         _incoming_block_subscription;
       incoming::channels::transaction::channel_type::handle   _incoming_transaction_subscription;
@@ -215,7 +217,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          // since the watermark has to be set before a block is created, we are looking into the future to
          // determine the new schedule to identify producers that have become active
-         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         chain::controller& chain = chain_plug->chain();
          const auto hbn = bsp->block_num;
          auto new_block_header = bsp->header;
          new_block_header.timestamp = new_block_header.timestamp.next();
@@ -292,7 +294,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          EOS_ASSERT( block->timestamp < (fc::time_point::now() + fc::seconds( 7 )), block_from_the_future,
                      "received a block from the future, ignoring it: ${id}", ("id", id) );
 
-         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+         chain::controller& chain = chain_plug->chain();
 
          /* de-dupe here... no point in aborting block if we already know the block */
          auto existing = chain.fetch_block_by_id( id );
@@ -314,7 +316,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          try {
             chain.push_block( bsf );
          } catch ( const guard_exception& e ) {
-            app().get_plugin<chain_plugin>().handle_guard_exception(e);
+            chain_plug->handle_guard_exception(e);
             return;
          } catch( const fc::exception& e ) {
             elog((e.to_detail_string()));
@@ -342,10 +344,23 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
       }
 
-      std::deque<std::tuple<packed_transaction_ptr, bool, next_function<transaction_trace_ptr>>> _pending_incoming_transactions;
+      std::deque<std::tuple<transaction_metadata_ptr, bool, next_function<transaction_trace_ptr>>> _pending_incoming_transactions;
 
-      void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
-         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+      void on_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
+         chain::controller& chain = chain_plug->chain();
+         const auto& cfg = chain.get_global_properties().configuration;
+         transaction_metadata::create_signing_keys_future( trx, *_thread_pool, chain.get_chain_id(), fc::microseconds( cfg.max_transaction_cpu_usage ) );
+         boost::asio::post( *_thread_pool, [self = this, trx, persist_until_expired, next]() {
+            if( trx->signing_keys_future.valid() )
+               trx->signing_keys_future.wait();
+            app().get_io_service().post( [self, trx, persist_until_expired, next]() {
+               self->process_incoming_transaction_async( trx, persist_until_expired, next );
+            });
+         });
+      }
+
+      void process_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
+         chain::controller& chain = chain_plug->chain();
          if (!chain.pending_block_state()) {
             _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
             return;
@@ -356,34 +371,34 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto send_response = [this, &trx, &chain, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
             if (response.contains<fc::exception_ptr>()) {
-               _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(response.get<fc::exception_ptr>(), trx));
+               _transaction_ack_channel.publish(std::pair<fc::exception_ptr, transaction_metadata_ptr>(response.get<fc::exception_ptr>(), trx));
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
                         ("prod", chain.pending_block_state()->header.producer)
-                        ("txid", trx->id())
+                        ("txid", trx->id)
                         ("why",response.get<fc::exception_ptr>()->what()));
                } else {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
-                          ("txid", trx->id())
+                          ("txid", trx->id)
                           ("why",response.get<fc::exception_ptr>()->what()));
                }
             } else {
-               _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(nullptr, trx));
+               _transaction_ack_channel.publish(std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}",
                           ("block_num", chain.head_block_num() + 1)
                           ("prod", chain.pending_block_state()->header.producer)
-                          ("txid", trx->id()));
+                          ("txid", trx->id));
                } else {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${txid}",
-                          ("txid", trx->id()));
+                          ("txid", trx->id));
                }
             }
          };
 
-         auto id = trx->id();
-         if( fc::time_point(trx->expiration()) < block_time ) {
+         const auto& id = trx->id;
+         if( fc::time_point(trx->packed_trx->expiration()) < block_time ) {
             send_response(std::static_pointer_cast<fc::exception>(std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", id)) )));
             return;
          }
@@ -401,7 +416,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
 
          try {
-            auto trace = chain.push_transaction(std::make_shared<transaction_metadata>(*trx), deadline);
+            auto trace = chain.push_transaction(trx, deadline);
             if (trace->except) {
                if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
                   _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
@@ -409,10 +424,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                      fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
                              ("block_num", chain.head_block_num() + 1)
                              ("prod", chain.pending_block_state()->header.producer)
-                             ("txid", trx->id()));
+                             ("txid", trx->id));
                   } else {
                      fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
-                             ("txid", trx->id()));
+                             ("txid", trx->id));
                   }
                } else {
                   auto e_ptr = trace->except->dynamic_copy_exception();
@@ -422,13 +437,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                if (persist_until_expired) {
                   // if this trx didnt fail/soft-fail and the persist flag is set, store its ID so that we can
                   // ensure its applied to all future speculative blocks as well.
-                  _persistent_transactions.insert(transaction_id_with_expiry{trx->id(), trx->expiration()});
+                  _persistent_transactions.insert(transaction_id_with_expiry{trx->id, trx->packed_trx->expiration()});
                }
                send_response(trace);
             }
 
          } catch ( const guard_exception& e ) {
-            app().get_plugin<chain_plugin>().handle_guard_exception(e);
+            chain_plug->handle_guard_exception(e);
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
          } CATCH_AND_CALL(send_response);
@@ -528,6 +543,8 @@ void producer_plugin::set_program_options(
           "offset of last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("incoming-defer-ratio", bpo::value<double>()->default_value(1.0),
           "ratio between incoming transations and deferred transactions when both are exhausted")
+         ("producer-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
+          "Number of worker threads in producer thread pool")
          ("snapshots-dir", bpo::value<bfs::path>()->default_value("snapshots"),
           "the location of the snapshots directory (absolute path or relative to application data dir)")
          ;
@@ -599,6 +616,8 @@ make_keosd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl,
 
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
+   my->chain_plug = app().find_plugin<chain_plugin>();
+   EOS_ASSERT( my->chain_plug, plugin_config_exception, "chain_plugin not found" );
    my->_options = &options;
    LOAD_VALUE_SET(options, "producer-name", my->_producers, types::account_name)
 
@@ -658,6 +677,11 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
    my->_incoming_defer_ratio = options.at("incoming-defer-ratio").as<double>();
 
+   auto thread_pool_size = options.at( "producer-threads" ).as<uint16_t>();
+   EOS_ASSERT( thread_pool_size > 0, plugin_config_exception,
+               "producer-threads ${num} must be greater than 0", ("num", thread_pool_size));
+   my->_thread_pool.emplace( thread_pool_size );
+
    if( options.count( "snapshots-dir" )) {
       auto sd = options.at( "snapshots-dir" ).as<bfs::path>();
       if( sd.is_relative()) {
@@ -679,7 +703,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       } FC_LOG_AND_DROP();
    });
 
-   my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe([this](const packed_transaction_ptr& trx){
+   my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe([this](const transaction_metadata_ptr& trx){
       try {
          my->on_incoming_transaction_async(trx, false, [](const auto&){});
       } FC_LOG_AND_DROP();
@@ -689,7 +713,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       my->on_incoming_block(block);
    });
 
-   my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider([this](const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
+   my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider([this](const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
       return my->on_incoming_transaction_async(trx, persist_until_expired, next );
    });
 
@@ -717,7 +741,7 @@ void producer_plugin::plugin_startup()
 
    ilog("producer plugin:  plugin_startup() begin");
 
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = my->chain_plug->chain();
    EOS_ASSERT( my->_producers.empty() || chain.get_read_mode() == chain::db_read_mode::SPECULATIVE, plugin_config_exception,
               "node cannot have any producer-name configured because block production is impossible when read_mode is not \"speculative\"" );
 
@@ -759,6 +783,10 @@ void producer_plugin::plugin_shutdown() {
       edump((e.to_detail_string()));
    }
 
+   if( my->_thread_pool ) {
+      my->_thread_pool->join();
+      my->_thread_pool->stop();
+   }
    my->_accepted_block_connection.reset();
    my->_irreversible_block_connection.reset();
 }
@@ -773,7 +801,7 @@ void producer_plugin::resume() {
    // re-evaluate that now
    //
    if (my->_pending_block_mode == pending_block_mode::speculating) {
-      chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+      chain::controller& chain = my->chain_plug->chain();
       chain.abort_block();
       my->schedule_production_loop();
    }
@@ -808,13 +836,13 @@ void producer_plugin::update_runtime_options(const runtime_options& options) {
    }
 
    if (check_speculating && my->_pending_block_mode == pending_block_mode::speculating) {
-      chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+      chain::controller& chain = my->chain_plug->chain();
       chain.abort_block();
       my->schedule_production_loop();
    }
 
    if (options.subjective_cpu_leeway_us) {
-      chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+      chain::controller& chain = my->chain_plug->chain();
       chain.set_subjective_cpu_leeway(fc::microseconds(*options.subjective_cpu_leeway_us));
    }
 }
@@ -829,21 +857,21 @@ producer_plugin::runtime_options producer_plugin::get_runtime_options() const {
 }
 
 void producer_plugin::add_greylist_accounts(const greylist_params& params) {
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = my->chain_plug->chain();
    for (auto &acc : params.accounts) {
       chain.add_resource_greylist(acc);
    }
 }
 
 void producer_plugin::remove_greylist_accounts(const greylist_params& params) {
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = my->chain_plug->chain();
    for (auto &acc : params.accounts) {
       chain.remove_resource_greylist(acc);
    }
 }
 
 producer_plugin::greylist_params producer_plugin::get_greylist() const {
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = my->chain_plug->chain();
    greylist_params result;
    const auto& list = chain.get_resource_greylist();
    result.accounts.reserve(list.size());
@@ -854,7 +882,7 @@ producer_plugin::greylist_params producer_plugin::get_greylist() const {
 }
 
 producer_plugin::whitelist_blacklist producer_plugin::get_whitelist_blacklist() const {
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = my->chain_plug->chain();
    return {
       chain.get_actor_whitelist(),
       chain.get_actor_blacklist(),
@@ -866,7 +894,7 @@ producer_plugin::whitelist_blacklist producer_plugin::get_whitelist_blacklist() 
 }
 
 void producer_plugin::set_whitelist_blacklist(const producer_plugin::whitelist_blacklist& params) {
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = my->chain_plug->chain();
    if(params.actor_whitelist.valid()) chain.set_actor_whitelist(*params.actor_whitelist);
    if(params.actor_blacklist.valid()) chain.set_actor_blacklist(*params.actor_blacklist);
    if(params.contract_whitelist.valid()) chain.set_contract_whitelist(*params.contract_whitelist);
@@ -876,7 +904,7 @@ void producer_plugin::set_whitelist_blacklist(const producer_plugin::whitelist_b
 }
 
 producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash() const {
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = my->chain_plug->chain();
 
    auto reschedule = fc::make_scoped_exit([this](){
       my->schedule_production_loop();
@@ -893,7 +921,7 @@ producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash(
 }
 
 producer_plugin::snapshot_information producer_plugin::create_snapshot() const {
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = my->chain_plug->chain();
 
    auto reschedule = fc::make_scoped_exit([this](){
       my->schedule_production_loop();
@@ -924,7 +952,7 @@ producer_plugin::snapshot_information producer_plugin::create_snapshot() const {
 }
 
 optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const {
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = chain_plug->chain();
    const auto& hbs = chain.head_block_state();
    const auto& active_schedule = hbs->active_schedule.producers;
 
@@ -980,7 +1008,7 @@ optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const a
 }
 
 fc::time_point producer_plugin_impl::calculate_pending_block_time() const {
-   const chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   const chain::controller& chain = chain_plug->chain();
    const fc::time_point now = fc::time_point::now();
    const fc::time_point base = std::max<fc::time_point>(now, chain.head_block_time());
    const int64_t min_time_to_next_block = (config::block_interval_us) - (base.time_since_epoch().count() % (config::block_interval_us) );
@@ -1001,7 +1029,7 @@ enum class tx_category {
 
 
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool &last_block) {
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = chain_plug->chain();
 
    if( chain.get_read_mode() == chain::db_read_mode::READ_ONLY )
       return start_block_result::waiting;
@@ -1134,7 +1162,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                apply_trxs.reserve(unapplied_trxs.size());
 
                auto calculate_transaction_category = [&](const transaction_metadata_ptr& trx) {
-                  if (trx->packed_trx.expiration() < pbs->header.timestamp.to_time_point()) {
+                  if (trx->packed_trx->expiration() < pbs->header.timestamp.to_time_point()) {
                      return tx_category::EXPIRED;
                   } else if (persisted_by_id.find(trx->id) != persisted_by_id.end()) {
                      return tx_category::PERSISTED;
@@ -1191,7 +1219,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                         num_applied++;
                      }
                   } catch ( const guard_exception& e ) {
-                     app().get_plugin<chain_plugin>().handle_guard_exception(e);
+                     chain_plug->handle_guard_exception(e);
                      return start_block_result::failed;
                   } FC_LOG_AND_DROP();
                }
@@ -1242,7 +1270,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                      _pending_incoming_transactions.pop_front();
                      --orig_pending_txn_size;
                      _incoming_trx_weight -= 1.0;
-                     on_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+                     process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
                   }
 
                   if (block_time <= fc::time_point::now()) {
@@ -1276,7 +1304,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                         num_applied++;
                      }
                   } catch ( const guard_exception& e ) {
-                     app().get_plugin<chain_plugin>().handle_guard_exception(e);
+                     chain_plug->handle_guard_exception(e);
                      return start_block_result::failed;
                   } FC_LOG_AND_DROP();
 
@@ -1305,7 +1333,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                   auto e = _pending_incoming_transactions.front();
                   _pending_incoming_transactions.pop_front();
                   --orig_pending_txn_size;
-                  on_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+                  process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
                   if (block_time <= fc::time_point::now()) return start_block_result::exhausted;
                }
             }
@@ -1323,7 +1351,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
 }
 
 void producer_plugin_impl::schedule_production_loop() {
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = chain_plug->chain();
    _timer.cancel();
    std::weak_ptr<producer_plugin_impl> weak_this = shared_from_this();
 
@@ -1434,7 +1462,7 @@ bool producer_plugin_impl::maybe_produce_block() {
          produce_block();
          return true;
       } catch ( const guard_exception& e ) {
-         app().get_plugin<chain_plugin>().handle_guard_exception(e);
+         chain_plug->handle_guard_exception(e);
          return false;
       } FC_LOG_AND_DROP();
    } catch ( boost::interprocess::bad_alloc&) {
@@ -1443,7 +1471,7 @@ bool producer_plugin_impl::maybe_produce_block() {
    }
 
    fc_dlog(_log, "Aborting block due to produce_block error");
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = chain_plug->chain();
    chain.abort_block();
    return false;
 }
@@ -1466,7 +1494,7 @@ static auto maybe_make_debug_time_logger() -> fc::optional<decltype(make_debug_t
 void producer_plugin_impl::produce_block() {
    //ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
    EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
-   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = chain_plug->chain();
    const auto& pbs = chain.pending_block_state();
    const auto& hbs = chain.head_block_state();
    EOS_ASSERT(pbs, missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");

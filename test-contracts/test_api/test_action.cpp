@@ -1,6 +1,6 @@
 /**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
+ * @file action_test.cpp
+ * @copyright defined in eos/LICENSE
  */
 #include <eosiolib/action.hpp>
 #include <eosiolib/chain.h>

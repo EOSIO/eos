@@ -1,6 +1,6 @@
 /**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
+ * @file
+ * @copyright defined in eos/LICENSE
  */
 #include <vector>
 
