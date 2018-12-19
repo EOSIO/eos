@@ -11,6 +11,7 @@
 
 #include <fc/io/json.hpp>
 
+#include <boost/asio/thread_pool.hpp>
 #include <boost/test/unit_test.hpp>
 
 #ifdef NON_VALIDATING_TEST
@@ -661,6 +662,88 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
 } FC_LOG_AND_RETHROW() }
+
+
+BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
+
+   testing::TESTER test;
+   signed_transaction trx;
+
+   variant pretty_trx = fc::mutable_variant_object()
+      ("actions", fc::variants({
+         fc::mutable_variant_object()
+            ("account", "eosio")
+            ("name", "reqauth")
+            ("authorization", fc::variants({
+               fc::mutable_variant_object()
+                  ("actor", "eosio")
+                  ("permission", "active")
+            }))
+            ("data", fc::mutable_variant_object()
+               ("from", "eosio")
+            )
+         })
+      )
+      ("context_free_actions", fc::variants({
+         fc::mutable_variant_object()
+            ("account", "eosio")
+            ("name", "nonce")
+            ("data", fc::raw::pack(std::string("dummy data")))
+         })
+      );
+
+      abi_serializer::from_variant(pretty_trx, trx, test.get_resolver(), test.abi_serializer_max_time);
+
+      test.set_transaction_headers(trx);
+      trx.expiration = fc::time_point::now();
+
+      auto private_key = test.get_private_key( config::system_account_name, "active" );
+      auto public_key = private_key.get_public_key();
+      trx.sign( private_key, test.control->get_chain_id()  );
+      BOOST_CHECK_EQUAL(1, trx.signatures.size());
+
+      packed_transaction pkt(trx, packed_transaction::none);
+      packed_transaction pkt2(trx, packed_transaction::zlib);
+
+      transaction_metadata_ptr mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::none) );
+      transaction_metadata_ptr mtrx2 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::zlib) );
+
+      BOOST_CHECK_EQUAL(trx.id(), pkt.id());
+      BOOST_CHECK_EQUAL(trx.id(), pkt2.id());
+      BOOST_CHECK_EQUAL(trx.id(), mtrx->id);
+      BOOST_CHECK_EQUAL(trx.id(), mtrx2->id);
+
+      boost::asio::thread_pool thread_pool(5);
+
+      BOOST_CHECK( !mtrx->signing_keys_future.valid() );
+      BOOST_CHECK( !mtrx2->signing_keys_future.valid() );
+
+      transaction_metadata::create_signing_keys_future( mtrx, thread_pool, test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::create_signing_keys_future( mtrx2, thread_pool, test.control->get_chain_id(), fc::microseconds::maximum() );
+
+      BOOST_CHECK( mtrx->signing_keys_future.valid() );
+      BOOST_CHECK( mtrx2->signing_keys_future.valid() );
+
+      // no-op
+      transaction_metadata::create_signing_keys_future( mtrx, thread_pool, test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::create_signing_keys_future( mtrx2, thread_pool, test.control->get_chain_id(), fc::microseconds::maximum() );
+
+      auto keys = mtrx->recover_keys( test.control->get_chain_id() );
+      BOOST_CHECK_EQUAL(1, keys.size());
+      BOOST_CHECK_EQUAL(public_key, *keys.begin());
+
+      // again
+      keys = mtrx->recover_keys( test.control->get_chain_id() );
+      BOOST_CHECK_EQUAL(1, keys.size());
+      BOOST_CHECK_EQUAL(public_key, *keys.begin());
+
+      auto keys2 = mtrx2->recover_keys( test.control->get_chain_id() );
+      BOOST_CHECK_EQUAL(1, keys.size());
+      BOOST_CHECK_EQUAL(public_key, *keys.begin());
+
+
+} FC_LOG_AND_RETHROW() }
+
 
 BOOST_AUTO_TEST_SUITE_END()
 
