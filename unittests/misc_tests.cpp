@@ -586,7 +586,9 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(0, trx.signatures.size());
    ((const signed_transaction &)trx).sign( test.get_private_key( config::system_account_name, "active" ), test.control->get_chain_id());
    BOOST_CHECK_EQUAL(0, trx.signatures.size());
-   trx.sign( test.get_private_key( config::system_account_name, "active" ), test.control->get_chain_id()  );
+   auto private_key = test.get_private_key( config::system_account_name, "active" );
+   auto public_key = private_key.get_public_key();
+   trx.sign( private_key, test.control->get_chain_id()  );
    BOOST_CHECK_EQUAL(1, trx.signatures.size());
    trx.validate();
 
@@ -603,6 +605,60 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    bytes raw = pkt.get_raw_transaction();
    bytes raw2 = pkt2.get_raw_transaction();
    BOOST_CHECK_EQUAL(raw.size(), raw2.size());
+   BOOST_CHECK_EQUAL(true, std::equal(raw.begin(), raw.end(), raw2.begin()));
+
+   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt2.get_signed_transaction().id());
+   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt2.id());
+
+   flat_set<public_key_type> keys;
+   auto cpu_time1 = pkt.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   BOOST_CHECK_EQUAL(1, keys.size());
+   BOOST_CHECK_EQUAL(public_key, *keys.begin());
+   keys.clear();
+   auto cpu_time2 = pkt.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   BOOST_CHECK_EQUAL(1, keys.size());
+   BOOST_CHECK_EQUAL(public_key, *keys.begin());
+
+   BOOST_CHECK(cpu_time1 > fc::microseconds(0));
+   BOOST_CHECK(cpu_time2 > fc::microseconds(0));
+
+   // verify that hitting cache still indicates same billable time
+   // if we remove cache so that the second is a real time calculation then remove this check
+   BOOST_CHECK(cpu_time1 == cpu_time2);
+
+   // pack
+   uint32_t pack_size = fc::raw::pack_size( pkt );
+   vector<char> buf(pack_size);
+   fc::datastream<char*> ds(buf.data(), pack_size);
+   fc::raw::pack( ds, pkt );
+   // unpack
+   ds.seekp(0);
+   packed_transaction pkt3;
+   fc::raw::unpack(ds, pkt3);
+   // pack again
+   pack_size = fc::raw::pack_size( pkt3 );
+   fc::datastream<char*> ds2(buf.data(), pack_size);
+   fc::raw::pack( ds2, pkt3 );
+   // unpack
+   ds2.seekp(0);
+   packed_transaction pkt4;
+   fc::raw::unpack(ds2, pkt4);
+
+   bytes raw3 = pkt3.get_raw_transaction();
+   bytes raw4 = pkt4.get_raw_transaction();
+   BOOST_CHECK_EQUAL(raw.size(), raw3.size());
+   BOOST_CHECK_EQUAL(raw3.size(), raw4.size());
+   BOOST_CHECK_EQUAL(true, std::equal(raw.begin(), raw.end(), raw3.begin()));
+   BOOST_CHECK_EQUAL(true, std::equal(raw.begin(), raw.end(), raw4.begin()));
+   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt3.get_signed_transaction().id());
+   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt4.get_signed_transaction().id());
+   BOOST_CHECK_EQUAL(pkt.id(), pkt4.get_signed_transaction().id());
+   BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.expiration());
+   BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.get_signed_transaction().expiration);
+   keys.clear();
+   auto cpu_time3 = pkt4.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   BOOST_CHECK_EQUAL(1, keys.size());
+   BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
 } FC_LOG_AND_RETHROW() }
 
