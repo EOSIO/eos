@@ -618,7 +618,7 @@ namespace cyberway { namespace chaindb {
             auto id = get_next_cursor_id(itr);
             auto db_table = get_db_table(index);
             mongodb_cursor_info new_cursor(id, std::move(index), std::move(db_table));
-            return add_cursor(itr, code, std::move(new_cursor));
+            return add_cursor(std::move(itr), code, std::move(new_cursor));
         }
 
         void drop_db() {

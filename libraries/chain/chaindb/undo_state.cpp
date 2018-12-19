@@ -572,7 +572,7 @@ namespace cyberway { namespace chaindb {
             head.new_ids_.insert(pk);
 
             {
-                mutable_variant_object obj(value.get_object());
+                mutable_variant_object obj(std::move(value));
                 add_undo_fields(obj, table.info(), undo_record::NewValue);
                 journal_.write(table.info(), pk, {write_operation::Insert, revision_ /*set_rev*/, std::move(value)},
                     {write_operation::Insert, revision_ /*set_rev*/, std::move(obj)});
@@ -603,7 +603,7 @@ namespace cyberway { namespace chaindb {
                 return;
             }
 
-            auto undo_value = create_undo_value(table.info(), undo_record::OldValue, orig_value);
+            auto undo_value = create_undo_value(table.info(), undo_record::OldValue, std::move(orig_value));
 
             journal_.write(table.info(), pk, {write_operation::Update, revision_ /*set_rev*/, value},
                 {write_operation::Insert, revision_ /*set_rev*/, std::move(undo_value)});

@@ -756,6 +756,7 @@ namespace cyberway { namespace chaindb {
             validate_service_fields(table, value, pk);
 
             mutable_variant_object object(std::move(value));
+            object.reserve(3);
             object(get_scope_field_name(), get_scope_name(table));
             object(get_payer_field_name(), get_payer_name(payer));
             object(get_size_field_name(), size);

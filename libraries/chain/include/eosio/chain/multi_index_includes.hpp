@@ -166,7 +166,7 @@ namespace cyberway { namespace chaindb {
        emplace_return_type emplace(Constructor&& constructor, Allocator&&) {
            try {
                auto iter = impl.emplace(std::forward<Constructor>(constructor));
-               return std::make_pair(iter, true);
+               return std::make_pair(std::move(iter), true);
            } catch (const fc::exception& err) {
                return std::make_pair(end(), false);
            }

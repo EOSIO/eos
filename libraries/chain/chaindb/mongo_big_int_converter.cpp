@@ -96,8 +96,8 @@ namespace cyberway { namespace chaindb {
             default: return {};
         }
 
-        object.set(BINARY_FIELD, blob);
-        object.set(STRING_FIELD, as_string);
+        object(BINARY_FIELD, blob);
+        object(STRING_FIELD, as_string);
 
         return object;
     }

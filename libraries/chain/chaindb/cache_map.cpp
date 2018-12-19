@@ -74,7 +74,8 @@ namespace cyberway { namespace chaindb {
         if (cache.map.end() != itr) {
             itr->second = std::move(item);
         } else {
-            cache.map.emplace(item->pk, std::move(item));
+            const auto primary_key = item->pk;
+            cache.map.emplace(primary_key, std::move(item));
         }
     }
 
