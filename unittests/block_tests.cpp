@@ -42,8 +42,9 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
 
    // Push block with invalid transaction to other chain
    tester validator;
+   auto bs = validator.control->create_block_state_future( copy_b );
    validator.control->abort_block();
-   BOOST_REQUIRE_EXCEPTION(validator.control->push_block( copy_b ), fc::exception ,
+   BOOST_REQUIRE_EXCEPTION(validator.control->push_block( bs ), fc::exception ,
    [] (const fc::exception &e)->bool {
       return e.code() == account_name_exists_exception::code_value ;
    }) ;

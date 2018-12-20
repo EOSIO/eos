@@ -126,6 +126,9 @@ class Cluster(object):
         if len(self.nodes) > 0:
             raise RuntimeError("Cluster already running.")
 
+        if pnodes > totalNodes:
+            raise RuntimeError("totalNodes (%d) must be equal to or greater than pnodes(%d)." % (totalNodes, pnodes))
+
         if self.walletMgr is None:
             self.walletMgr=WalletMgr(True)
 
