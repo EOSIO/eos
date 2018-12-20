@@ -1387,8 +1387,8 @@ namespace eosio {
       // 1. my head block num < peer lib - start sync locally
       // 2. my lib > peer head num - send an last_irr_catch_up notice if not the first generation
       //
-      // 3  my head block num <= peer head block num - update sync state and send a catchup request
-      // 4  my head block num > peer block num send a notice catchup if this is not the first generation
+      // 3  my head block num < peer head block num - update sync state and send a catchup request
+      // 4  my head block num >= peer block num send a notice catchup if this is not the first generation
       //
       //-----------------------------
 
@@ -1426,7 +1426,7 @@ namespace eosio {
          return;
       }
 
-      if (head <= msg.head_num ) {
+      if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
          verify_catchup(c, msg.head_num, msg.head_id);
          return;
