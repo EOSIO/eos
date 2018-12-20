@@ -6,7 +6,6 @@ add_subdirectory( wasm-jit )
 add_subdirectory( appbase )
 add_subdirectory( chain )
 add_subdirectory( testing )
-add_subdirectory( abi_generator )
 add_subdirectory( wabt )
 add_subdirectory( singularity )
 #turn these off for now
