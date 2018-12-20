@@ -903,6 +903,9 @@ class authorization_api : public context_aware_api {
    bool is_domain(null_terminated_ptr ptr)const {
       return context.is_domain(std::string(ptr));
    }
+   bool is_username(const account_name& scope, null_terminated_ptr ptr)const {
+      return context.is_username(scope, std::string(ptr));
+   }
 
 };
 
@@ -1817,6 +1820,7 @@ REGISTER_INTRINSICS(authorization_api,
    (has_authorization,     int(int64_t), "has_auth", bool(authorization_api::*)(const account_name&)const )
    (is_account,            int(int64_t)           )
    (is_domain,             int(int)               )
+   (is_username,           int(int64_t,int)       )
 );
 
 REGISTER_INTRINSICS(console_api,

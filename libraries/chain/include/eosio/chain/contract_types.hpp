@@ -156,6 +156,45 @@ struct providebw {
     }
 };
 
+// it's ugly, but removes boilerplate. TODO: write better
+#define SYS_ACTION_STRUCT(NAME) struct NAME { \
+    NAME() = default; \
+    static account_name get_account() { return config::system_account_name; } \
+    static action_name get_name()     { return N(NAME); }
+#define SYS_ACTION_STRUCT_END };
+
+SYS_ACTION_STRUCT(newdomain)
+   account_name creator;
+   domain_name name;
+SYS_ACTION_STRUCT_END;
+
+SYS_ACTION_STRUCT(passdomain)
+   account_name from;
+   account_name to;
+   domain_name name;
+SYS_ACTION_STRUCT_END;
+
+SYS_ACTION_STRUCT(linkdomain)
+   account_name owner;
+   account_name to;
+   domain_name name;
+SYS_ACTION_STRUCT_END;
+
+SYS_ACTION_STRUCT(unlnkdomain)
+   account_name owner;
+   domain_name name;
+SYS_ACTION_STRUCT_END;
+
+SYS_ACTION_STRUCT(newusername)
+   account_name owner;
+   account_name scope;
+   username name;
+SYS_ACTION_STRUCT_END;
+
+#undef SYS_ACTION_STRUCT
+#undef SYS_ACTION_STRUCT_END
+
+
 struct onerror {
    uint128_t      sender_id;
    bytes          sent_trx;
@@ -184,3 +223,9 @@ FC_REFLECT( eosio::chain::unlinkauth                       , (account)(code)(typ
 FC_REFLECT( eosio::chain::providebw                        , (provider)(account) )
 FC_REFLECT( eosio::chain::canceldelay                      , (canceling_auth)(trx_id) )
 FC_REFLECT( eosio::chain::onerror                          , (sender_id)(sent_trx) )
+
+FC_REFLECT(eosio::chain::newdomain,    (creator)(name))
+FC_REFLECT(eosio::chain::passdomain,   (from)(to)(name))
+FC_REFLECT(eosio::chain::linkdomain,   (owner)(to)(name))
+FC_REFLECT(eosio::chain::unlnkdomain,  (owner)(name))
+FC_REFLECT(eosio::chain::newusername,  (owner)(scope)(name))

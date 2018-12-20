@@ -603,21 +603,37 @@ struct controller_impl {
       });
 
       // domain names
-      abi.structs.emplace_back( eosio::chain::struct_def{
+      abi.structs.emplace_back(eosio::chain::struct_def{
         "domain", "",
         {{"id", "uint64"},
          {"owner", "name"},
+         {"linked_to", "name"},
          {"creation_date", "block_timestamp_type"},
          {"name", "string"}}
       });
-
-      abi.tables.emplace_back( eosio::chain::table_def {
+      abi.tables.emplace_back(eosio::chain::table_def{
         "domain",
         cyberway::chaindb::tag<domain_object>::get_code(),
         "domain",
         {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {"string", cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}},
-         {"name", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}}
+         {"name", cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}},
+         {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}}
+      });
+
+      abi.structs.emplace_back(eosio::chain::struct_def{
+        "username", "",
+        {{"id", "uint64"},
+         {"owner", "name"},
+         {"scope", "name"},
+         {"name", "string"}}
+      });
+      abi.tables.emplace_back(eosio::chain::table_def{
+        "username",
+        cyberway::chaindb::tag<username_object>::get_code(),
+        "username",
+        {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {"scopename", cyberway::chaindb::tag<by_scope_name>::get_code(), true, {{"scope", "asc"},{"name", "asc"}}},
+         {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}}
       });
 
    }
