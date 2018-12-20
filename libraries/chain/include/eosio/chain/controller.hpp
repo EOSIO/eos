@@ -166,7 +166,8 @@ namespace eosio { namespace chain {
          chaindb_controller& chaindb() const;
 
          const account_object&                 get_account( account_name n )const;
-         const domain_object&                  get_domain(domain_name n) const;
+         const domain_object&                  get_domain(const domain_name& n) const;
+         const username_object&                get_username(account_name scope, const username& n) const;
          const global_property_object&         get_global_properties()const;
          const dynamic_global_property_object& get_dynamic_global_properties()const;
          const resource_limits_manager&        get_resource_limits_manager()const;

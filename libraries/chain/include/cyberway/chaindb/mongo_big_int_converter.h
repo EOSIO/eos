@@ -8,8 +8,8 @@
 
 
 namespace fc {
-    struct variant_object;
-    struct variant;
+    class variant_object;
+    class variant;
 }
 
 namespace cyberway { namespace chaindb {
