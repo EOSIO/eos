@@ -8,17 +8,21 @@ if(EOSIO_CDT_ROOT STREQUAL "" OR NOT EOSIO_CDT_ROOT)
    find_package(eosio.cdt)
 endif()
 
-ExternalProject_Add(
-   test_contracts_project
-   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test-contracts
-   BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/test-contracts
-   CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${EOSIO_CDT_ROOT}/lib/cmake/eosio.cdt/EosioWasmToolchain.cmake -DBoost_INCLUDE_DIRS=${Boost_INCLUDE_DIRS}
-   UPDATE_COMMAND ""
-   PATCH_COMMAND ""
-   TEST_COMMAND ""
-   INSTALL_COMMAND ""
-   BUILD_ALWAYS 1
-)
+if (eosio.cdt_FOUND)
+   ExternalProject_Add(
+      test_contracts_project
+      SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test-contracts
+      BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/test-contracts
+      CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${EOSIO_CDT_ROOT}/lib/cmake/eosio.cdt/EosioWasmToolchain.cmake -DBoost_INCLUDE_DIRS=${Boost_INCLUDE_DIRS}
+      UPDATE_COMMAND ""
+      PATCH_COMMAND ""
+      TEST_COMMAND ""
+      INSTALL_COMMAND ""
+      BUILD_ALWAYS 1
+   )
+else()
+   add_subdirectory(test-contracts)
+endif()
 
 if( GPERFTOOLS_FOUND )
     message( STATUS "Found gperftools; compiling tests with TCMalloc")
