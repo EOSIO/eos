@@ -230,10 +230,6 @@ def create_scope(type, name, inherit, start, content, parent_scope):
         assert False, "Script does not account for type = \"%s\" found in \"%s\"" % (type, content[start:])
 
 class ClassStruct(EmptyScope):
-   #field_pattern = re.compile(r'\n\s*?(?:mutable\s+)?(%s\w[\w:]*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?)?>\s*)?)(?:\*\s+|\s+\*|\s+)(\w+)\s*(?:=\s[^;]+;|;|=\s*(?:\w[\w:<>,]*)?{|\s*{[^\}]*}\s*;)' % (EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern), re.MULTILINE | re.DOTALL)
-   #field_pattern = re.compile(r'\n\s*?(?:mutable\s+)?(%s\w[\w:]*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?)?>\s*)?)(?:\*\s+|\s+\*|\s+)(\w+)\s*(?:;|=\s*(?:\w[\w:]*(?:<[^\n;]>)?)?(?:{|(?:[^;]*?)\s*;)|\s*{[^\}]*}\s*;)' % (EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern), re.MULTILINE | re.DOTALL)
-   #field_pattern = re.compile(r'\n\s*?(?:mutable\s+)?(%s\w[\w:]*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?)?>\s*)?)(?:\*\s+|\s+\*|\s+)(\w+)\s*(?:;|=\s*(?:\w[\w:]*(?:<[^\n;]>)?)?(?:{|(?:\([^)]*\)*?)\s*;)|\s*{[^\}]*}\s*;)' % (EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern), re.MULTILINE | re.DOTALL)
-   #field_pattern = re.compile(r'\n\s*?(?:mutable\s+)?(%s\w[\w:]*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?)?>\s*)?)(?:\*\s+|\s+\*|\s+)(\w+)\s*(?:;|=\s*(?:\w[\w:]*(?:<[^\n;]>)?)?(?:{|(?:\([^\)]*\)*?)\s*;)|\s*{[^\}]*}\s*;)' % (EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern), re.MULTILINE | re.DOTALL)
     field_pattern = re.compile(r'\n\s*?(?:mutable\s+)?(%s\w[\w:]*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?(?:,\s*%s\w[\w:]*\s*(?:\s*<\s*%s\w[\w:]*\s*(?:,\s*%s\w[\w:]*\s*)*>\s*)?)?>\s*)?)?>\s*)?)(?:\*\s+|\s+\*|\s+)(\w+)\s*(?:;|=\s*[-]?\w[\w:]*(?:\s*[-/\*\+]\s*[-]?\w[\w:]*)*\s*;|=\s*(?:\w[\w:]*(?:<[^\n;]>)?)?(?:{|(?:\([^\)]*\)?|(?:\"[^\"]*\")?)\s*;)|\s*{[^\}]*}\s*;)' % (EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern, EmptyScope.multi_word_type_pattern), re.MULTILINE | re.DOTALL)
     enum_field_pattern = re.compile(r'[,\{]\s*?(\w+)\s*(?:=\s*[^,}\s]+)?\s*(?:,|})', re.MULTILINE | re.DOTALL)
     class_pattern = re.compile(r'(%s|%s|%s)\s+(\w+)\s*(:\s*public\s+([^<\s]+)[^{]*)?\s*\{' % (EmptyScope.struct_str, EmptyScope.class_str, EmptyScope.enum_str), re.MULTILINE | re.DOTALL)
@@ -442,12 +438,12 @@ class Reflections:
                     debug("  %s" % g)
                 debug("}")
                 assert len(match_2_comments.groups()) == 7, "match_2_comments wrong size due to regex pattern change"
-                ignore_or_swap1 = match_2_comments.group(2)
-                next_reflect_ignore_swap1 = match_2_comments.group(3)
-                ignore_or_swap2 = match_2_comments.group(4)
-                next_reflect_ignore_swap2 = match_2_comments.group(5)
-                search_string_for_next_reflect_class = match_2_comments.group(6)
-                next_reflect_class = match_2_comments.group(7)
+                (ignore_or_swap1, 
+                 next_reflect_ignore_swap1,
+                 ignore_or_swap2,
+                 next_reflect_ignore_swap2,
+                 search_string_for_next_reflect_class,
+                 next_reflect_class) = match_2_comments.group(*range(2, 8))
                 self.add_ignore_swaps(next_reflect_class, next_reflect_ignore_swap1, ignore_or_swap1)
                 self.add_ignore_swaps(next_reflect_class, next_reflect_ignore_swap2, ignore_or_swap2)
             elif match_comment:
@@ -458,10 +454,10 @@ class Reflections:
                 debug("}")
                 assert len(match_comment.groups()) == 5, "match_comment too short due to regex pattern change"
                 # not using array indices here because for some reason the type of match_2_comments and match_comment are different
-                ignore_or_swap = match_comment.group(2)
-                next_reflect_ignore_swap = match_comment.group(3)
-                search_string_for_next_reflect_class = match_comment.group(4)
-                next_reflect_class = match_comment.group(5)
+                (ignore_or_swap,
+                 next_reflect_ignore_swap,
+                 search_string_for_next_reflect_class,
+                 next_reflect_class) = match_comment.group(*range(2, 6))
                 self.add_ignore_swaps(next_reflect_class, next_reflect_ignore_swap, ignore_or_swap)
 
             if match_reflect:
@@ -471,15 +467,15 @@ class Reflections:
                     debug("  %s" % g)
                 debug("}")
                 assert len(match_reflect.groups()) == 5, "match_reflect too short due to regex pattern change"
-                next_reflect = match_reflect.group(2)
-                next_reflect_class = match_reflect.group(3)
-                next_reflect_potential_derived = match_reflect.group(4)
-                next_reflect_fields = match_reflect.group(5)
+                (next_reflect,
+                 next_reflect_class,
+                 next_reflect_potential_derived,
+                 next_reflect_fields) = match_reflect.group(*range(2, 6))
                 derived = None
                 derived_match = self.reflect_derived_pattern.search(next_reflect_potential_derived)
                 if derived_match:
                     derived = derived_match.group(1)
-                    debug("derived class: %s may its own reflection (%s)" % (derived, ",".join(self.classes)))
+                    debug("derived class: %s has its own reflection (%s)" % (derived, ",".join(self.classes)))
                     # if the derived class has its own reflection, then don't add the derived class
                     if derived in self.classes:
                         debug("derived class: %s has its own reflection, don't add" % (derived))
@@ -591,6 +587,7 @@ def validate_file(file):
     f = open(file, "r")
     contents = "\n" + f.read()   # lazy fix for complex regex
     f.close()
+    print("analyze %s" % (file))
     debug("analyze %s" % (file))
     contents = EmptyScope.multi_line_comment_pattern.sub(replace_multi_line_comment, contents)
     contents = EmptyScope.single_comment_pattern.sub(replace_line_comment, contents)
