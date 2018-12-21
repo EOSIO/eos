@@ -56,7 +56,7 @@ namespace cyberway { namespace chaindb {
             switch (dst.operation) {
                 case write_operation::Insert:
                     dst.operation = write_operation::Unknown;
-                    dst.value = {};
+                    dst.value.clear();
                     break;
 
                 case write_operation::Unknown:
