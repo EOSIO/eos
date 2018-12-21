@@ -381,4 +381,76 @@ void apply_eosio_canceldelay(apply_context& context) {
    context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id), account_name());
 }
 
+
+void apply_eosio_newdomain(apply_context& context) {
+   auto op = context.act.data_as<newdomain>();
+   try {
+      context.require_authorization(op.creator);
+      validate_domain_name(op.name);             // TODO: can move validation to domain_name deserializer
+      auto& db = context.db;
+      db.create<domain_object>([&](auto& d) {
+         d.owner = op.creator;
+         d.creation_date = context.control.pending_block_time();
+         d.name = op.name;
+      });
+      context.add_ram_usage(op.creator, sizeof(domain_object) + op.name.size());    // TODO: fix
+} FC_CAPTURE_AND_RETHROW((op)) }
+
+void apply_eosio_passdomain(apply_context& context) {
+   auto op = context.act.data_as<passdomain>();
+   try {
+      context.require_authorization(op.from);   // TODO: special case if nobody owns domain
+      validate_domain_name(op.name);
+      const auto& domain = context.control.get_domain(op.name);
+      EOS_ASSERT(op.from == domain.owner, action_validate_exception, "Domain pass `from` must be domain owner");
+      auto& db = context.db;
+      db.modify(domain, [&](auto& d) {
+         d.owner = op.to;
+      });
+      // TODO: move ram usage to new owner
+} FC_CAPTURE_AND_RETHROW((op)) }
+
+void apply_eosio_linkdomain(apply_context& context) {
+   auto op = context.act.data_as<linkdomain>();
+   try {
+      context.require_authorization(op.owner);
+      validate_domain_name(op.name);
+      const auto& domain = context.control.get_domain(op.name);
+      EOS_ASSERT(op.owner == domain.owner, action_validate_exception, "Domain link wrong `owner`");
+      auto& db = context.db;
+      db.modify(domain, [&](auto& d) {
+         d.linked_to = op.to;
+      });
+      // ram usage unchanged
+} FC_CAPTURE_AND_RETHROW((op)) }
+
+void apply_eosio_unlnkdomain(apply_context& context) {
+   auto op = context.act.data_as<unlnkdomain>();
+   try {
+      context.require_authorization(op.owner);
+      validate_domain_name(op.name);
+      const auto& domain = context.control.get_domain(op.name);
+      EOS_ASSERT(op.owner == domain.owner, action_validate_exception, "Domain unlink wrong `owner`");
+      auto& db = context.db;
+      db.modify(domain, [&](auto& d) {
+         d.linked_to = account_name();
+      });
+      // ram usage unchanged
+} FC_CAPTURE_AND_RETHROW((op)) }
+
+void apply_eosio_newusername(apply_context& context) {
+   auto op = context.act.data_as<newusername>();
+   try {
+      context.require_authorization(op.owner);
+      validate_username(op.name);               // TODO: can move validation to username deserializer
+      auto& db = context.db;
+      db.create<username_object>([&](auto& d) {
+         d.owner = op.owner;
+         d.scope = op.scope;
+         d.name = op.name;
+      });
+      context.add_ram_usage(op.owner, sizeof(username_object) + op.name.size());     // TODO: fix
+} FC_CAPTURE_AND_RETHROW((op)) }
+
+
 } } // namespace eosio::chain

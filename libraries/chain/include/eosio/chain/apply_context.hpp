@@ -508,10 +508,6 @@ class apply_context {
       bool is_account(const account_name& account)const;
 
       /**
-       * @return true if domain name exists, false if it does not
-       */
-      bool is_domain(const domain_name& domain) const;
-      /**
        * Requires that the current action be delivered to account
        */
       void require_recipient(account_name account);
@@ -521,6 +517,18 @@ class apply_context {
        * delivered to the specified account.
        */
       bool has_recipient(account_name account)const;
+
+
+   /// Domain methods:
+   public:
+      /**
+       * @return true if domain name exists, false if it does not
+       */
+      bool is_domain(const domain_name& domain) const;
+      /**
+       * @return true if username exists in given scope, false if it does not
+       */
+      bool is_username(const account_name& scope, const username& name) const;
 
    /// Console methods:
    public:

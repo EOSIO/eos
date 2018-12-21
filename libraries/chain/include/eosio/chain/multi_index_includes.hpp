@@ -36,6 +36,7 @@ namespace eosio { namespace chain {
     struct by_delay {};
     struct by_status {};
     struct by_sender_id {};
+    struct by_scope_name {};
 
 } } // namespace eosio::chain
 

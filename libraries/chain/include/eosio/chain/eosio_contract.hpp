@@ -23,6 +23,12 @@ namespace eosio { namespace chain {
 
    void apply_eosio_providebw(apply_context&);
 
+   void apply_eosio_newdomain(apply_context&);
+   void apply_eosio_passdomain(apply_context&);
+   void apply_eosio_linkdomain(apply_context&);
+   void apply_eosio_freedomain(apply_context&);
+   void apply_eosio_newusername(apply_context&);
+
    /*
    void apply_eosio_postrecovery(apply_context&);
    void apply_eosio_passrecovery(apply_context&);

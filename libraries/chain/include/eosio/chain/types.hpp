@@ -145,6 +145,7 @@ namespace eosio { namespace chain {
       permission_usage_object_type,
       permission_link_object_type,
       domain_object_type,
+      username_object_type,
       UNUSED_action_code_object_type,
       key_value_object_type,
       index64_object_type,
