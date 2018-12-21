@@ -584,7 +584,7 @@ def replace_braces_initialization(match):
     return all
 
 def validate_file(file):
-    f = open(file, "r")
+    f = open(file, "r", encoding="utf-8")
     contents = "\n" + f.read()   # lazy fix for complex regex
     f.close()
     print("analyze %s" % (file))
