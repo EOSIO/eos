@@ -128,6 +128,7 @@ struct hello {
    uint32_t                      last_irr_block_num = 0;
    vector<block_id_type>         pending_block_ids;
 };
+// @swap user, password
 FC_REFLECT( hello, (peer_id)(network_version)(user)(password)(agent)(protocol_version)(chain_id)(request_transactions)(last_irr_block_num)(pending_block_ids) )
 
 struct hello_extension_irreversible_only {};
