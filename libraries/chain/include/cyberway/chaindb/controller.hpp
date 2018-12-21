@@ -53,8 +53,8 @@ namespace cyberway { namespace chaindb {
         const abi_info*    abi      = nullptr;
 
         table_info(const account_name& code, const account_name& scope)
-        : code(code), scope(scope)
-        { }
+        : code(code), scope(scope) {
+        }
     }; // struct table_info
 
     struct index_info: public table_info {
@@ -78,8 +78,10 @@ namespace cyberway { namespace chaindb {
         void remove_abi(const account_name&);
 
         void close(const cursor_request&);
-        void close_all_cursors(const account_name&);
-        void apply_changes(const account_name&);
+        void close_code_cursors(const account_name&);
+
+        void apply_all_changes();
+        void apply_code_changes(const account_name&);
 
         chaindb_session start_undo_session(bool enabled);
         void undo();
@@ -130,11 +132,11 @@ namespace cyberway { namespace chaindb {
         chaindb_guard(const chaindb_guard&) = delete;
 
         chaindb_guard(chaindb_controller& controller, const account_name& code)
-        : controller_(controller), code_(code)
-        { }
+        : controller_(controller), code_(code) {
+        }
 
         ~chaindb_guard() {
-            controller_.close_all_cursors(code_);
+            controller_.close_code_cursors(code_);
         }
 
     private:

@@ -13,8 +13,8 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 
-#include <cyberway/chaindb/mongo_driver_utils.h>
-#include <cyberway/chaindb/mongo_big_int_converter.h>
+#include <cyberway/chaindb/mongo_driver_utils.hpp>
+#include <cyberway/chaindb/mongo_big_int_converter.hpp>
 
 #include "chaindb.h"
 

@@ -47,37 +47,42 @@ class maybe_session {
       maybe_session() = default;
 
       maybe_session( maybe_session&& other)
-      :_session(move(other._session)),
-       _chaindb_session(move(other._chaindb_session))
+// TODO: removed by CyberWay
+//      : _session(move(other._session)),
+      : _chaindb_session(move(other._chaindb_session))
       {
       }
 
       explicit maybe_session(database& db, chaindb_controller& chaindb) {
-         _session = db.start_undo_session(true);
+// TODO: removed by CyberWay
+//         _session = db.start_undo_session(true);
          _chaindb_session = chaindb.start_undo_session(true);
       }
 
       maybe_session(const maybe_session&) = delete;
 
       void squash() {
-         if (_session)
-            _session->squash();
+// TODO: removed by CyberWay
+//         if (_session)
+//            _session->squash();
          if (_chaindb_session) {
             _chaindb_session->squash();
          }
       }
 
       void undo() {
-         if (_session)
-            _session->undo();
+// TODO: removed by CyberWay
+//         if (_session)
+//            _session->undo();
          if (_chaindb_session) {
             _chaindb_session->undo();
          }
       }
 
       void push() {
-         if (_session)
-            _session->push();
+// TODO: removed by CyberWay
+//         if (_session)
+//            _session->push();
          if (_chaindb_session) {
             _chaindb_session->push();
          }
@@ -90,12 +95,13 @@ class maybe_session {
       }
 
       maybe_session& operator = ( maybe_session&& mv ) {
-         if (mv._session) {
-            _session = move(*mv._session);
-            mv._session.reset();
-         } else {
-            _session.reset();
-         }
+// TODO: removed by CyberWay
+//         if (mv._session) {
+//            _session = move(*mv._session);
+//            mv._session.reset();
+//         } else {
+//            _session.reset();
+//         }
 
          if (mv._chaindb_session) {
             _chaindb_session = move(*mv._chaindb_session);
@@ -108,7 +114,8 @@ class maybe_session {
       };
 
    private:
-      optional<database::session>     _session;
+// TODO: removed by CyberWay
+//      optional<database::session>     _session;
       optional<chaindb_session>       _chaindb_session;
 };
 
@@ -182,7 +189,8 @@ struct controller_impl {
             unapplied_transactions[t->signed_id] = t;
       }
       head = prev;
-      db.undo();
+// TODO: removed by CyberWay
+//      db.undo();
       chaindb.undo();
    }
 
@@ -285,8 +293,8 @@ struct controller_impl {
          }
       }
 
-
-      db.commit( s->block_num );
+// TODO: removed by CyberWay
+//      db.commit( s->block_num );
       chaindb.commit( s->block_num );
 
       if( append_to_blog ) {
@@ -324,7 +332,8 @@ struct controller_impl {
    }
 
    void set_revision(uint64_t revision) {
-      db.set_revision(revision);
+// TODO: removed by CyberWay
+//      db.set_revision(revision);
       chaindb.set_revision(revision);
    }
 
@@ -415,7 +424,8 @@ struct controller_impl {
                ("db",chaindb.revision())("head",head->block_num) );
       }
       while (chaindb.revision() > head->block_num) {
-         db.undo();
+// TODO: removed by CyberWay
+//         db.undo();
          chaindb.undo();
       }
 
@@ -428,7 +438,9 @@ struct controller_impl {
    ~controller_impl() {
       pending.reset();
 
-      db.flush();
+// TODO: removed by CyberWay
+//      db.flush();
+      chaindb.apply_all_changes();
       reversible_blocks.flush();
    }
 
@@ -641,7 +653,8 @@ struct controller_impl {
    void clear_all_undo() {
       // Rewind the database to the last irreversible block
       db.with_write_lock([&] {
-         db.undo_all();
+// TODO: removed by CyberWay
+//         db.undo_all();
          chaindb.undo_all();
          /*
          FC_ASSERT(db.revision() == self.head_block_num(),

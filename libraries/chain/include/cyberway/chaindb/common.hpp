@@ -7,6 +7,13 @@
 
 namespace cyberway { namespace chaindb {
 
+    using revision_t = int64_t;
+    static constexpr revision_t impossible_revision = (-1);
+
+    using primary_key_t = uint64_t;
+    static constexpr primary_key_t unset_primary_key = (-2);
+    static constexpr primary_key_t end_primary_key = (-1);
+
     enum class chaindb_type {
         MongoDB,
         // TODO: RocksDB
@@ -33,18 +40,18 @@ namespace cyberway { namespace chaindb {
         /** Undo changes made in this session */
         void undo();
 
-        int64_t revision() const {
+        revision_t revision() const {
             return revision_;
         }
 
     private:
         friend class undo_stack;
 
-        chaindb_session(undo_stack& stack, int64_t revision);
+        chaindb_session(undo_stack& stack, revision_t revision);
 
         undo_stack& stack_;
         bool apply_ = true;
-        const int64_t revision_ = -1;
+        const revision_t revision_ = -1;
     }; // struct session
 
     std::ostream& operator<<(std::ostream&, const chaindb_type);

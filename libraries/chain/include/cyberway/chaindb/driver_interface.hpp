@@ -10,7 +10,6 @@ namespace cyberway { namespace chaindb {
 
     using eosio::chain::bytes;
 
-
     struct cursor_info {
         cursor_t      id = invalid_cursor;
         index_info    index;
@@ -27,10 +26,10 @@ namespace cyberway { namespace chaindb {
         virtual const cursor_info& clone(const cursor_request&) = 0;
 
         virtual void close(const cursor_request&) = 0;
-        virtual void close_all_cursors(const account_name& code) = 0;
+        virtual void close_code_cursors(const account_name& code) = 0;
 
-        virtual void apply_changes(const account_name& code) = 0;
-        virtual void apply_changes() = 0;
+        virtual void apply_all_changes() = 0;
+        virtual void apply_code_changes(const account_name& code) = 0;
 
         virtual void verify_table_structure(const table_info&, const microseconds&) = 0;
 
@@ -51,10 +50,6 @@ namespace cyberway { namespace chaindb {
         virtual       void     set_blob(const cursor_info&, bytes blob) = 0;
 
         virtual primary_key_t available_pk(const table_info&) = 0;
-
-        virtual primary_key_t insert(const table_info&, primary_key_t, const variant&) = 0;
-        virtual primary_key_t update(const table_info&, primary_key_t, const variant&) = 0;
-        virtual primary_key_t remove(const table_info&, primary_key_t) = 0;
     }; // class driver_interface
 
 } } // namespace cyberway::chaindb

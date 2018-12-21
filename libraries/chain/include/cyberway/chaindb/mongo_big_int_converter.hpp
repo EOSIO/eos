@@ -4,13 +4,19 @@
 #include <vector>
 
 #include <bsoncxx/config/prelude.hpp>
-#include <bsoncxx/document/view.hpp>
 
+namespace bsoncxx {
+BSONCXX_INLINE_NAMESPACE_BEGIN
+    namespace document {
+        class view;
+    } // namespace document
+BSONCXX_INLINE_NAMESPACE_END
+} // namespace bsoncxx
 
 namespace fc {
-    struct variant_object;
-    struct variant;
-}
+    class variant;
+    class variant_object;
+} // namespace fc
 
 namespace cyberway { namespace chaindb {
 
@@ -25,6 +31,10 @@ namespace cyberway { namespace chaindb {
             uint128,
             invalid
         };
+
+    public:
+        static const std::string BINARY_FIELD;
+        static const std::string STRING_FIELD;
 
     public:
         mongo_big_int_converter(const bsoncxx::document::view& document);
@@ -43,14 +53,9 @@ namespace cyberway { namespace chaindb {
 
         void parse_binary(const std::vector<char>& bytes);
 
-    public:
-        static const std::string BINARY_FIELD;
-        static const std::string STRING_FIELD;
-
     private:
         type type_;
         raw_value value_;
     };
 
-
-}} // namespace cyberway::chaindb
+} } // namespace cyberway::chaindb

@@ -7,9 +7,15 @@ namespace cyberway { namespace chaindb {
 
     const string& get_system_code_name();
     const string& get_unknown_name();
+    const string& get_undo_table_name();
+    const string& get_code_field_name();
+    const string& get_table_field_name();
     const string& get_scope_field_name();
     const string& get_payer_field_name();
     const string& get_size_field_name();
+    const string& get_revision_field_name();
+    const string& get_record_field_name();
+    const string& get_pk_field_name();
 
     ///----
 

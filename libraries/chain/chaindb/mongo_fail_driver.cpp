@@ -85,15 +85,7 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
-    primary_key_t mongodb_driver::insert(const table_info&, primary_key_t, const variant&) {
-        NOT_SUPPORTED;
-    }
-
-    primary_key_t mongodb_driver::update(const table_info&, primary_key_t, const variant&) {
-        NOT_SUPPORTED;
-    }
-
-    primary_key_t mongodb_driver::remove(const table_info&, primary_key_t) {
+    void write(const table_info&, primary_key_t, revision_t, write_value, write_value) {
         NOT_SUPPORTED;
     }
 

@@ -40,15 +40,6 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(driver_absent_object_exception, chaindb_internal_exception,
                                      3710007, "ChainDB driver can't find object")
 
-        FC_DECLARE_DERIVED_EXCEPTION(driver_insert_exception, chaindb_internal_exception,
-                                     3710008, "ChainDB driver fail to insert object")
-
-        FC_DECLARE_DERIVED_EXCEPTION(driver_update_exception, chaindb_internal_exception,
-                                     3710009, "ChainDB driver fail to update object")
-
-        FC_DECLARE_DERIVED_EXCEPTION(driver_delete_exception, chaindb_internal_exception,
-                                     3710010, "ChainDB driver fail to delete object")
-
         FC_DECLARE_DERIVED_EXCEPTION(session_exception, chaindb_internal_exception,
                                      3710011, "ChainDB session failed")
 
@@ -66,6 +57,9 @@ namespace cyberway { namespace chaindb {
 
         FC_DECLARE_DERIVED_EXCEPTION(driver_open_exception, chaindb_internal_exception,
                                      3710016, "ChainDB driver fail to open database")
+
+        FC_DECLARE_DERIVED_EXCEPTION(driver_opened_cursors_exception, chaindb_internal_exception,
+                                     3710017, "ChainDB driver has opened cursors")
 
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_abi_exception, chaindb_exception,
                                  3720000, "ChainDB ABI exception")
