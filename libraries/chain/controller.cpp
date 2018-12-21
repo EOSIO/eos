@@ -665,12 +665,12 @@ struct controller_impl {
    }
 
    void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
-      snapshot->write_section("contract_tables", [this]( auto& section ) {
+      snapshot->write_section("contract_tables", []( auto& section ) {
       });
    }
 
    void read_contract_tables_from_snapshot( const snapshot_reader_ptr& snapshot ) {
-      snapshot->read_section("contract_tables", [this]( auto& section ) {
+      snapshot->read_section("contract_tables", []( auto& section ) {
       });
    }
 

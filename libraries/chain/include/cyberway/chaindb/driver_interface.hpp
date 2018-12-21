@@ -38,6 +38,7 @@ namespace cyberway { namespace chaindb {
         virtual const cursor_info& find(index_info, primary_key_t, variant key) = 0;
         virtual const cursor_info& opt_find_by_pk(index_info, primary_key_t, variant key) = 0;
 
+        virtual const cursor_info& begin(index_info) = 0;
         virtual const cursor_info& end(index_info) = 0;
 
         virtual const cursor_info& current(const cursor_info&) = 0;
@@ -49,7 +50,7 @@ namespace cyberway { namespace chaindb {
         virtual const variant& value(const cursor_info&) = 0;
         virtual       void     set_blob(const cursor_info&, bytes blob) = 0;
 
-        virtual primary_key_t available_pk(const table_info&) = 0;
+        virtual primary_key_t  available_pk(const table_info&) = 0;
     }; // class driver_interface
 
 } } // namespace cyberway::chaindb

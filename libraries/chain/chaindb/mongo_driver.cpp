@@ -292,7 +292,7 @@ namespace cyberway { namespace chaindb {
             return dst;
         }
 
-        void open(const cmp_info& find_cmp, variant key, const primary_key_t locate_pk = unset_primary_key) {
+        mongodb_cursor_info& open(const cmp_info& find_cmp, variant key, const primary_key_t locate_pk = unset_primary_key) {
             pk = unset_primary_key;
             source_.reset();
             reset();
@@ -300,9 +300,11 @@ namespace cyberway { namespace chaindb {
             find_cmp_ = &find_cmp;
             find_key_ = std::move(key);
             find_pk_ = locate_pk;
+
+            return *this;
         }
 
-        void open_by_pk(const cmp_info& find_cmp, variant key, const primary_key_t locate_pk) {
+        mongodb_cursor_info& open_by_pk(const cmp_info& find_cmp, variant key, const primary_key_t locate_pk) {
             source_.reset();
             reset();
             pk = locate_pk;
@@ -310,15 +312,31 @@ namespace cyberway { namespace chaindb {
             find_cmp_ = &find_cmp;
             find_key_ = std::move(key);
             find_pk_ = unset_primary_key;
+
+            return *this;
         }
 
-        void open_end() {
+        mongodb_cursor_info& open_begin() {
+            pk = unset_primary_key;
+            source_.reset();
+            reset();
+
+            find_cmp_ = &_detail::start_from();
+            find_key_.clear();
+            find_pk_ = unset_primary_key;
+
+            return *this;
+        }
+
+        mongodb_cursor_info& open_end() {
             pk = end_primary_key;
             source_.reset();
             reset();
-            find_key_ = {};
+            find_key_.clear();
             find_cmp_ = &_detail::reverse_start_from();
             find_pk_ = unset_primary_key;
+
+            return *this;
         }
 
         void next() {
@@ -379,7 +397,7 @@ namespace cyberway { namespace chaindb {
 
         void reset() {
             if (!blob.empty()) blob.clear();
-            if (!object_.is_null()) object_ = {};
+            if (!object_.is_null()) object_.clear();
         }
 
         document create_find_document(const char* forward, const char* backward) const {
@@ -531,7 +549,6 @@ namespace cyberway { namespace chaindb {
         cursor_location get_applied_cursor(const cursor_request& request) {
             auto loc = get_cursor(request);
             auto& cursor = loc.cursor();
-
             if (cursor.pk == unset_primary_key) {
                 apply_table_changes(cursor.index);
             }
@@ -618,6 +635,7 @@ namespace cyberway { namespace chaindb {
             auto id = get_next_cursor_id(itr);
             auto db_table = get_db_table(index);
             mongodb_cursor_info new_cursor(id, std::move(index), std::move(db_table));
+            apply_table_changes(index);
             return add_cursor(std::move(itr), code, std::move(new_cursor));
         }
 
@@ -879,19 +897,25 @@ namespace cyberway { namespace chaindb {
 
     const cursor_info& mongodb_driver::lower_bound(index_info index, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(_detail::start_from(), std::move(key));
+        cursor.open(_detail::start_from(), std::move(key)).current();
         return cursor;
     }
 
     const cursor_info& mongodb_driver::upper_bound(index_info index, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(_detail::start_after(), std::move(key));
+        cursor.open(_detail::start_after(), std::move(key)).current();
         return cursor;
     }
 
     const cursor_info& mongodb_driver::find(index_info index, primary_key_t pk, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(_detail::start_from(), std::move(key), pk);
+        cursor.open(_detail::start_from(), std::move(key), pk).current();
+        return cursor;
+    }
+
+    const cursor_info& mongodb_driver::begin(index_info index) {
+        auto& cursor = impl_->create_cursor(std::move(index));
+        cursor.open_begin().current();
         return cursor;
     }
 
@@ -903,7 +927,7 @@ namespace cyberway { namespace chaindb {
 
     const cursor_info& mongodb_driver::opt_find_by_pk(index_info index, primary_key_t pk, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open_by_pk(_detail::start_from(), std::move(key), pk);
+        cursor.open_by_pk(_detail::start_from(), std::move(key), pk).current();
         return cursor;
     }
 

@@ -30,6 +30,7 @@ namespace cyberway { namespace chaindb {
         const cursor_info& find(index_info, primary_key_t, variant key) override;
         const cursor_info& opt_find_by_pk(index_info, primary_key_t, variant key) override;
 
+        const cursor_info& begin(index_info) override;
         const cursor_info& end(index_info) override;
 
         const cursor_info& current(const cursor_info&) override;
@@ -41,7 +42,7 @@ namespace cyberway { namespace chaindb {
         const variant& value(const cursor_info&) override;
               void     set_blob(const cursor_info&, bytes blob) override;
 
-        primary_key_t available_pk(const table_info&) override;
+        primary_key_t  available_pk(const table_info&) override;
 
     private:
         struct mongodb_impl_;

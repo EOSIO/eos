@@ -69,13 +69,13 @@ namespace cyberway { namespace chaindb {
         if (!item) return;
 
         auto& cache = impl_->get(table);
-        auto itr = cache.map.find(item->pk);
+        const auto pk = item->pk;
+        auto itr = cache.map.find(pk);
 
         if (cache.map.end() != itr) {
             itr->second = std::move(item);
         } else {
-            const auto primary_key = item->pk;
-            cache.map.emplace(primary_key, std::move(item));
+            cache.map.emplace(pk, std::move(item));
         }
     }
 
