@@ -1,8 +1,0 @@
-set( CMAKE_CXX_STANDARD 17 )
-
-if( ${eosio.cdt_FOUND} )
-  add_contract( payloadless payloadless payloadless.cpp )
-else()
-  configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/payloadless.wasm ${CMAKE_CURRENT_BINARY_DIR}/payloadless.wasm COPYONLY )
-  configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/payloadless.abi ${CMAKE_CURRENT_BINARY_DIR}/payloadless.abi COPYONLY )
-endif()

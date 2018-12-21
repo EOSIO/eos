@@ -21,69 +21,35 @@ struct core_sym {
    }
 };
 
+// CN -> contract C++ name, C -> contract name, D -> top level directory
+#define MAKE_READ_WASM_ABI(CN,C, D) \
+   static std::vector<uint8_t> CN ## _wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/" #D "/" #C "/" #C ".wasm"); } \
+   static std::vector<char> CN ## _abi() { return read_abi("${CMAKE_BINARY_DIR}/unittests/" #D "/" #C "/" #C ".abi"); }
+
 namespace eosio {
    namespace testing {
       struct contracts {
          // Contracts in `eos/unittests/contracts' directory
-         static std::vector<uint8_t> deferred_test_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/deferred_test/deferred_test.wasm"); }
-         static std::vector<char>    deferred_test_abi()  { return read_abi("${CMAKE_BINARY_DIR}/test-contracts/deferred_test/deferred_test.abi"); }
-   
-         static std::vector<uint8_t> eosio_bios_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.bios/eosio.bios.wasm"); }
-         static std::vector<char>    eosio_bios_abi()  { return read_abi("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.bios/eosio.bios.abi"); }
+         MAKE_READ_WASM_ABI(eosio_bios,   eosio.bios, contracts)
+         MAKE_READ_WASM_ABI(eosio_msig,   eosio.msig, contracts)
+         MAKE_READ_WASM_ABI(eosio_system, eosio.system, contracts)
+         MAKE_READ_WASM_ABI(eosio_token,  eosio.token,  contracts)
+         MAKE_READ_WASM_ABI(eosio_wrap,   eosio.wrap,   contracts)
 
-         static std::vector<uint8_t> eosio_msig_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.msig/eosio.msig.wasm"); }
-         static std::vector<char>    eosio_msig_abi()  { return read_abi("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.msig/eosio.msig.abi"); }
-   
-         static std::vector<uint8_t> eosio_system_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.system/eosio.system.wasm"); }
-         static std::vector<char>    eosio_system_abi()  { return read_abi("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.system/eosio.system.abi"); }
-
-         static std::vector<uint8_t> eosio_token_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.token/eosio.token.wasm"); }
-         static std::vector<char>    eosio_token_abi()  { return read_abi("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.token/eosio.token.abi"); }
-
-         static std::vector<uint8_t> eosio_wrap_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.wrap/eosio.wrap.wasm"); }
-         static std::vector<char>    eosio_wrap_abi()  { return read_abi("${CMAKE_BINARY_DIR}/unittests/contracts/eosio.wrap/eosio.wrap.abi"); }
-
-         // Contracts in `eos/contracts' directory
-         static std::vector<uint8_t> asserter_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/asserter/asserter.wasm"); }
-         static std::vector<char>    asserter_abi()  { return read_abi("${CMAKE_BINARY_DIR}/test-contracts/asserter/asserter.abi"); }
-   
-         static std::vector<uint8_t> hello_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/hello/hello.wasm"); }
-         static std::vector<char>    hello_abi()  { return read_abi("${CMAKE_BINARY_DIR}/test-contracts/hello/hello.abi"); }
-   
-         static std::vector<uint8_t> infinite_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/infinite/infinite.wasm"); }
-         static std::vector<char>    infinite_abi()  { return read_abi("${CMAKE_BINARY_DIR}/test-contracts/infinite/infinite.abi"); }
-
-         static std::vector<uint8_t> integration_test_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/integration_test/integration_test.wasm"); }
-         static std::vector<char>    integration_test_abi()  { return read_abi("${CMAKE_BINARY_DIR}/test-contracts/integration_test/integration_test.abi"); }
-
-         static std::vector<uint8_t> multi_index_test_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/multi_index_test/multi_index_test.wasm"); }
-         static std::vector<char>    multi_index_test_abi()  { return read_abi("${CMAKE_BINARY_DIR}/test-contracts/multi_index_test/multi_index_test.abi"); }
-
-         static std::vector<uint8_t> noop_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/noop/noop.wasm"); }
-         static std::vector<char>    noop_abi()  { return read_abi("${CMAKE_BINARY_DIR}/test-contracts/noop/noop.abi"); }
-
-         static std::vector<uint8_t> payloadless_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/payloadless/payloadless.wasm"); }
-         static std::vector<char>    payloadless_abi()  { return read_abi("${CMAKE_BINARY_DIR}/test-contracts/payloadless/payloadless.abi"); }
-
-         static std::vector<uint8_t> proxy_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/proxy/proxy.wasm"); }
-         static std::vector<char>    proxy_abi()  { return read_abi("${CMAKE_BINARY_DIR}/test-contracts/proxy/proxy.abi"); }
-
-         static std::vector<uint8_t> simple_token_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/simple.token/simple.token.wasm"); }
-         static std::vector<char>    simple_token_abi()  { return read_abi("${CMAKE_BINARY_DIR}/test-contracts/simple.token/simple.token.abi"); }
-
-         static std::vector<uint8_t> snapshot_test_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/snapshot_test/snapshot_test.wasm"); }
-         static std::vector<char>    snapshot_test_abi()  { return read_abi("${CMAKE_BINARY_DIR}/test-contracts/snapshot_test/snapshot_test.abi"); }
-
-         static std::vector<uint8_t> test_ram_limit_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/test_ram_limit/test_ram_limit.wasm"); }
-         static std::vector<char>    test_ram_limit_abi()  { return read_abi("${CMAKE_BINARY_DIR}/test-contracts/test_ram_limit/test_ram_limit.abi"); }
-   
-         static std::vector<uint8_t> test_api_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/test_api/test_api.wasm"); }
-   
-         static std::vector<uint8_t> test_api_db_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/test_api_db/test_api_db.wasm"); }
-
-         static std::vector<uint8_t> test_api_multi_index_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/test_api_multi_index/test_api_multi_index.wasm"); }
-
-         static std::vector<uint8_t> test_api_mem_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/test-contracts/test_api_mem/test_api_mem.wasm"); }
+         // Contracts in `eos/unittests/unittests/test-contracts' directory
+         MAKE_READ_WASM_ABI(deferred_test,        deferred_test,        test-contracts)
+         MAKE_READ_WASM_ABI(asserter,             asserter,             test-contracts)
+         MAKE_READ_WASM_ABI(integration_test,     integration_test,     test-contracts)
+         MAKE_READ_WASM_ABI(multi_index_test,     multi_index_test,     test-contracts)
+         MAKE_READ_WASM_ABI(noop,                 noop,                 test-contracts)
+         MAKE_READ_WASM_ABI(payloadless,          payloadless,          test-contracts)
+         MAKE_READ_WASM_ABI(proxy,                proxy,                test-contracts)
+         MAKE_READ_WASM_ABI(snapshot_test,        snapshot_test,        test-contracts)
+         MAKE_READ_WASM_ABI(test_ram_limit,       test_ram_limit,       test-contracts)
+         MAKE_READ_WASM_ABI(test_api,             test_api,             test-contracts)
+         MAKE_READ_WASM_ABI(test_api_db,          test_api_db,          test-contracts)
+         MAKE_READ_WASM_ABI(test_api_multi_index, test_api_multi_index, test-contracts)
+         MAKE_READ_WASM_ABI(test_api_mem,         test_api_mem,         test-contracts)
       };
    } /// eosio::testing
 }  /// eosio

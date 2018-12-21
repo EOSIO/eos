@@ -1,0 +1,11 @@
+if( ${eosio.cdt_FOUND} )
+   message(STATUS "not building test_ram_limit, read README.txt in eos/unittests/test-contracts/test_ram_limit")
+   #add_contract( test_ram_limit test_ram_limit test_ram_limit.cpp )
+   #target_compile_options(test_ram_limit PUBLIC -Os)
+   ### TODO change the test_ram_test to be less flaky, or remove it
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/test_ram_limit.wasm ${CMAKE_CURRENT_BINARY_DIR}/test_ram_limit.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/test_ram_limit.abi ${CMAKE_CURRENT_BINARY_DIR}/test_ram_limit.abi COPYONLY )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/test_ram_limit.wasm ${CMAKE_CURRENT_BINARY_DIR}/test_ram_limit.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/test_ram_limit.abi ${CMAKE_CURRENT_BINARY_DIR}/test_ram_limit.abi COPYONLY )
+endif()
