@@ -4,6 +4,8 @@ steps:
       sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job && \
       echo "+++ Building :hammer:" && \
       echo 1 | ./eosio_build.sh && \
+      echo "+++ Validating:" && \
+      echo 1 | ./tools/validate_reflection.py plugins/ programs/ libraries/ --recurse --extension "cpp" --extension "hpp" -e && \
       echo "--- Compressing build directory :compression:" && \
       tar -pczf build.tar.gz build/
     label: ":darwin: High Sierra Build"
@@ -17,6 +19,8 @@ steps:
       sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job && \
       echo "+++ Building :hammer:" && \
       echo 1 | ./eosio_build.sh && \
+      echo "+++ Validating:" && \
+      echo 1 | ./tools/validate_reflection.py plugins/ programs/ libraries/ --recurse --extension "cpp" --extension "hpp" -e && \
       echo "--- Compressing build directory :compression:" && \
       tar -pczf build.tar.gz build/
     label: ":darwin: Mojave Build"
@@ -29,6 +33,8 @@ steps:
   - command: |
         echo "+++ :hammer: Building" && \
         echo 1 | ./eosio_build.sh && \
+        echo "+++ Validating:" && \
+        echo 1 | ./tools/validate_reflection.py plugins/ programs/ libraries/ --recurse --extension "cpp" --extension "hpp" -e && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":ubuntu: Build"
@@ -44,6 +50,8 @@ steps:
   - command: |
         echo "+++ :hammer: Building" && \
         echo 1 | ./eosio_build.sh && \
+        echo "+++ Validating:" && \
+        echo 1 | ./tools/validate_reflection.py plugins/ programs/ libraries/ --recurse --extension "cpp" --extension "hpp" -e && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":ubuntu: 18.04 Build"
@@ -59,6 +67,8 @@ steps:
   - command: |
         echo "+++ :hammer: Building" && \
         echo 1 | ./eosio_build.sh && \
+        echo "+++ Validating:" && \
+        echo 1 | ./tools/validate_reflection.py plugins/ programs/ libraries/ --recurse --extension "cpp" --extension "hpp" -e && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":fedora: Build"
@@ -74,6 +84,8 @@ steps:
   - command: |
         echo "+++ :hammer: Building" && \
         echo 1 | ./eosio_build.sh && \
+        echo "+++ Validating:" && \
+        echo 1 | ./tools/validate_reflection.py plugins/ programs/ libraries/ --recurse --extension "cpp" --extension "hpp" -e && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":centos: Build"
@@ -89,6 +101,8 @@ steps:
   - command: |
         echo "+++ :hammer: Building" && \
         echo 1 | ./eosio_build.sh && \
+        echo "+++ Validating:" && \
+        echo 1 | ./tools/validate_reflection.py plugins/ programs/ libraries/ --recurse --extension "cpp" --extension "hpp" -e && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
     label: ":aws: Build"
