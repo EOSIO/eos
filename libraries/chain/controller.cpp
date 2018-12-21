@@ -2168,9 +2168,17 @@ const account_object& controller::get_account( account_name name )const
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
-const domain_object& controller::get_domain(domain_name name) const { try {
+const domain_object& controller::get_domain(const domain_name& name) const { try {
    return my->db.get<domain_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW((name)) }
+
+const username_object& controller::get_username(account_name scope, const username& name) const { try {
+   // return my->db.get<username_object, by_scope_name>(boost::make_tuple(scope,name));   // can't compile for some reason
+   const auto* user = my->db.find<username_object, by_scope_name>(boost::make_tuple(scope,name));
+   EOS_ASSERT(user != nullptr, transaction_exception,
+      "username '${name}' not found in scope '${scope}'", ("name",name)("scope",scope));
+   return *user;
+} FC_CAPTURE_AND_RETHROW((scope)(name)) }
 
 vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {
    vector<transaction_metadata_ptr> result;

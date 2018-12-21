@@ -529,6 +529,18 @@ class apply_context {
        * @return true if username exists in given scope, false if it does not
        */
       bool is_username(const account_name& scope, const username& name) const;
+      /**
+       * @return account currently owning domain name
+       */
+      account_name get_domain_owner(const domain_name& domain) const;
+      /**
+       * @return account linked to domain name (can be 0)
+       */
+      account_name resolve_domain(const domain_name& domain) const;
+      /**
+       * @return account owning username in given scope
+       */
+      account_name resolve_username(const account_name& scope, const username& name) const;
 
    /// Console methods:
    public:
