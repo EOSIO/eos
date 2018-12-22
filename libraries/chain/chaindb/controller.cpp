@@ -465,15 +465,6 @@ namespace cyberway { namespace chaindb {
             return driver_.available_pk(table);
         }
 
-        primary_key_t get_next_pk(const table_info& table) const {
-            auto next_pk = cache_.get_next_pk(table);
-            if (next_pk == unset_primary_key) {
-                next_pk = driver_.available_pk(table);
-                cache_.set_next_pk(table, next_pk + 1);
-            }
-            return next_pk;
-        }
-
         int32_t datasize(const cursor_request& request) const {
             auto& cursor = driver_.current(request);
             init_cursor_blob(cursor);
@@ -494,8 +485,13 @@ namespace cyberway { namespace chaindb {
 
         cache_item_ptr create_cache_item(const table_request& request, const cache_converter_interface& converter) {
             auto table = get_table(request);
-            auto next_pk = get_next_pk(table);
-            return std::make_shared<cache_item>(next_pk, converter);
+            auto item = cache_.create(table, converter);
+            if (BOOST_UNLIKELY(!item)) {
+                auto pk = driver_.available_pk(table);
+                cache_.set_next_pk(table, pk);
+                item = cache_.create(table, converter);
+            }
+            return item;
         }
 
         cache_item_ptr get_cache_item(
@@ -505,7 +501,7 @@ namespace cyberway { namespace chaindb {
             auto table = get_table(table_req);
 
             auto item = cache_.find(table, pk);
-            if (!item) {
+            if (BOOST_UNLIKELY(!item)) {
                 auto& cursor = driver_.current(cursor_req);
                 auto value = driver_.value(cursor);
                 item = std::make_shared<cache_item>(pk, converter);
@@ -534,10 +530,8 @@ namespace cyberway { namespace chaindb {
             return opt_find_by_pk(info, pk);
         }
 
-        primary_key_t insert(const table_request& request, cache_item_ptr item, variant value, const size_t size) {
+        primary_key_t insert(const table_request& request, const primary_key_t pk, variant value, const size_t size) {
             auto info = get_table(request);
-            auto pk = item->pk;
-            cache_.insert(info, std::move(item));
             insert(info, std::move(value), 0, pk, size);
 
             return pk;
@@ -970,9 +964,9 @@ namespace cyberway { namespace chaindb {
     }
 
     primary_key_t chaindb_controller::insert(
-        const table_request& request, cache_item_ptr item, variant data, size_t size
+        const table_request& request, primary_key_t pk, variant data, size_t size
     ) {
-        return impl_->insert(request, std::move(item), std::move(data), size);
+        return impl_->insert(request, pk, std::move(data), size);
     }
 
     primary_key_t chaindb_controller::update(

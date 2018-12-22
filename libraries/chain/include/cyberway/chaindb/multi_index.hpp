@@ -722,22 +722,27 @@ public:
     template<typename Lambda>
     const_iterator emplace(Lambda&& constructor) const {
         auto item = controller_.create_cache_item(get_table_request(), variant_converter_);
-        auto pk = item->pk;
-        item->data = std::make_unique<item_data>(*item.get(), allocator_, [&](auto& o) {
-            constructor(static_cast<T&>(o));
-            o.id = pk;
-        });
+        try {
+            auto pk = item->pk;
+            item->data = std::make_unique<item_data>(*item.get(), allocator_, [&](auto& o) {
+                constructor(static_cast<T&>(o));
+                o.id = pk;
+            });
 
-        auto& obj = item_data::get_T(item);
-        auto obj_pk = primary_key_extractor_type()(obj);
-        CYBERWAY_INDEX_ASSERT(obj_pk == item->pk, "invalid value of primary key");
+            auto& obj = item_data::get_T(item);
+            auto obj_pk = primary_key_extractor_type()(obj);
+            CYBERWAY_INDEX_ASSERT(obj_pk == item->pk, "invalid value of primary key");
 
-        fc::variant value;
-        fc::to_variant(obj, value);
-        auto size = fc::raw::pack_size(obj);
-        controller_.insert(get_table_request(), item, std::move(value), size);
+            fc::variant value;
+            fc::to_variant(obj, value);
+            auto size = fc::raw::pack_size(obj);
+            controller_.insert(get_table_request(), pk, std::move(value), size);
 
-        return const_iterator(this, uninitilized_cursor::find_by_pk, pk, std::move(item));
+            return const_iterator(this, uninitilized_cursor::find_by_pk, pk, std::move(item));
+        } catch (...) {
+            item->mark_deleted();
+            throw;
+        }
     }
 
     template<typename Lambda>

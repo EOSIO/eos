@@ -121,7 +121,7 @@ namespace cyberway { namespace chaindb {
         primary_key_t update(apply_context&, const table_request&, const account_name&, primary_key_t, const char*, size_t);
         primary_key_t remove(apply_context&, const table_request&, primary_key_t);
 
-        primary_key_t insert(const table_request&, cache_item_ptr, variant, size_t);
+        primary_key_t insert(const table_request&, primary_key_t, variant, size_t);
         primary_key_t update(const table_request&, primary_key_t, variant, size_t);
         primary_key_t remove(const table_request&, primary_key_t);
 
