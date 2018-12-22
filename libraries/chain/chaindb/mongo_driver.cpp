@@ -292,7 +292,7 @@ namespace cyberway { namespace chaindb {
             return dst;
         }
 
-        void open(const cmp_info& find_cmp, variant key, const primary_key_t locate_pk = unset_primary_key) {
+        mongodb_cursor_info& open(const cmp_info& find_cmp, variant key, const primary_key_t locate_pk = unset_primary_key) {
             pk = unset_primary_key;
             source_.reset();
             reset();
@@ -300,9 +300,11 @@ namespace cyberway { namespace chaindb {
             find_cmp_ = &find_cmp;
             find_key_ = std::move(key);
             find_pk_ = locate_pk;
+
+            return *this;
         }
 
-        void open_by_pk(const cmp_info& find_cmp, variant key, const primary_key_t locate_pk) {
+        mongodb_cursor_info& open_by_pk(const cmp_info& find_cmp, variant key, const primary_key_t locate_pk) {
             source_.reset();
             reset();
             pk = locate_pk;
@@ -310,15 +312,31 @@ namespace cyberway { namespace chaindb {
             find_cmp_ = &find_cmp;
             find_key_ = std::move(key);
             find_pk_ = unset_primary_key;
+
+            return *this;
         }
 
-        void open_end() {
+        mongodb_cursor_info& open_begin() {
+            pk = unset_primary_key;
+            source_.reset();
+            reset();
+
+            find_cmp_ = &_detail::start_from();
+            find_key_.clear();
+            find_pk_ = unset_primary_key;
+
+            return *this;
+        }
+
+        mongodb_cursor_info& open_end() {
             pk = end_primary_key;
             source_.reset();
             reset();
-            find_key_ = {};
+            find_key_.clear();
             find_cmp_ = &_detail::reverse_start_from();
             find_pk_ = unset_primary_key;
+
+            return *this;
         }
 
         void next() {
@@ -379,7 +397,7 @@ namespace cyberway { namespace chaindb {
 
         void reset() {
             if (!blob.empty()) blob.clear();
-            if (!object_.is_null()) object_ = {};
+            if (!object_.is_null()) object_.clear();
         }
 
         document create_find_document(const char* forward, const char* backward) const {
@@ -531,7 +549,6 @@ namespace cyberway { namespace chaindb {
         cursor_location get_applied_cursor(const cursor_request& request) {
             auto loc = get_cursor(request);
             auto& cursor = loc.cursor();
-
             if (cursor.pk == unset_primary_key) {
                 apply_table_changes(cursor.index);
             }
@@ -618,6 +635,7 @@ namespace cyberway { namespace chaindb {
             auto id = get_next_cursor_id(itr);
             auto db_table = get_db_table(index);
             mongodb_cursor_info new_cursor(id, std::move(index), std::move(db_table));
+            apply_table_changes(index);
             return add_cursor(std::move(itr), code, std::move(new_cursor));
         }
 
@@ -715,20 +733,38 @@ namespace cyberway { namespace chaindb {
             return cursor_location{code_itr, cursor_itr};
         }
 
-        class write_ctx_t_ {
+        class write_ctx_t_ final {
+            struct bulk_info_t_ final {
+                bulk_write bulk_;
+                int op_cnt_ = 0;
+
+                bulk_info_t_(bulk_write bulk): bulk_(std::move(bulk)) { }
+            }; // struct bulk_info_t_;
+
         public:
             write_ctx_t_(mongodb_impl_& impl)
-            : impl_(impl),
-              bulk_opts_(options::bulk_write().ordered(false)),
-              prepare_undo_bulk_(impl_.get_undo_db_table().create_bulk_write(bulk_opts_)),
-              complete_undo_bulk_(impl_.get_undo_db_table().create_bulk_write(bulk_opts_)) {
+            : impl_(impl) {
+            }
+
+            bulk_info_t_ create_bulk_info(collection db_table) {
+                static options::bulk_write opts(options::bulk_write().ordered(false));
+                return bulk_info_t_(db_table.create_bulk_write(opts));
+            }
+
+            void init() {
+                data_bulk_list_.emplace_back(create_bulk_info(impl_.get_undo_db_table()));
+                complete_undo_bulk_ = std::make_unique<bulk_info_t_>(create_bulk_info(impl_.get_undo_db_table()));
             }
 
             void start_table(const table_info& table) {
-                if (table_ != nullptr && table.code == table_->code && table.table->name == table_->table->name) return;
+                if (BOOST_LIKELY(
+                        table_ != nullptr &&
+                        table.code == table_->code &&
+                        table.table->name == table_->table->name))
+                    return;
 
                 table_ = &table;
-                data_bulk_list_.emplace_back(impl_.get_db_table(table).create_bulk_write(bulk_opts_));
+                data_bulk_list_.emplace_back(create_bulk_info(impl_.get_db_table(table)));
             }
 
             void add_data(const primary_key_t pk,  const write_value& data) {
@@ -736,37 +772,27 @@ namespace cyberway { namespace chaindb {
             }
 
             void add_prepare_undo(const primary_key_t pk, const write_value& data) {
-                append_bulk(_detail::make_undo_pk_document, prepare_undo_bulk_, pk, data);
+                append_bulk(_detail::make_undo_pk_document, data_bulk_list_.front(), pk, data);
             }
 
             void add_complete_undo(const primary_key_t pk, const write_value& data) {
-                append_bulk(_detail::make_undo_pk_document, complete_undo_bulk_, pk, data);
+                append_bulk(_detail::make_undo_pk_document, *complete_undo_bulk_, pk, data);
             }
 
             void write() {
-                execute_bulk(prepare_undo_bulk_);
                 for (auto& data_bulk: data_bulk_list_) {
                     execute_bulk(data_bulk);
                 }
-                execute_bulk(complete_undo_bulk_);
+                execute_bulk(*complete_undo_bulk_);
 
                 CYBERWAY_ASSERT(error_.empty(), driver_duplicate_exception, error_);
             }
 
         private:
-            struct bulk_info_t_ final {
-                bulk_write bulk_;
-                int op_cnt_ = 0;
-
-                bulk_info_t_(bulk_write bulk): bulk_(std::move(bulk)) { }
-            }; // struct bulk_t_;
-
             mongodb_impl_& impl_;
             std::string error_;
             const table_info* table_ = nullptr;
-            options::bulk_write bulk_opts_;
-            bulk_info_t_ prepare_undo_bulk_;
-            bulk_info_t_ complete_undo_bulk_;
+            std::unique_ptr<bulk_info_t_> complete_undo_bulk_;
             std::deque<bulk_info_t_> data_bulk_list_;
 
             template <typename MakePkDocument>
@@ -879,19 +905,25 @@ namespace cyberway { namespace chaindb {
 
     const cursor_info& mongodb_driver::lower_bound(index_info index, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(_detail::start_from(), std::move(key));
+        cursor.open(_detail::start_from(), std::move(key)).current();
         return cursor;
     }
 
     const cursor_info& mongodb_driver::upper_bound(index_info index, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(_detail::start_after(), std::move(key));
+        cursor.open(_detail::start_after(), std::move(key)).current();
         return cursor;
     }
 
     const cursor_info& mongodb_driver::find(index_info index, primary_key_t pk, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(_detail::start_from(), std::move(key), pk);
+        cursor.open(_detail::start_from(), std::move(key), pk).current();
+        return cursor;
+    }
+
+    const cursor_info& mongodb_driver::begin(index_info index) {
+        auto& cursor = impl_->create_cursor(std::move(index));
+        cursor.open_begin().current();
         return cursor;
     }
 
@@ -903,7 +935,7 @@ namespace cyberway { namespace chaindb {
 
     const cursor_info& mongodb_driver::opt_find_by_pk(index_info index, primary_key_t pk, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open_by_pk(_detail::start_from(), std::move(key), pk);
+        cursor.open_by_pk(_detail::start_from(), std::move(key), pk).current();
         return cursor;
     }
 

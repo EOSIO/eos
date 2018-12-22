@@ -23,7 +23,7 @@ namespace cyberway { namespace chaindb {
     using account_name_t = account_name::value_type;
 
     using cursor_t = int32_t;
-    static constexpr cursor_t invalid_cursor = (-1);
+    static constexpr cursor_t invalid_cursor = (0);
 
     struct index_request final {
         const account_name code;
@@ -63,6 +63,11 @@ namespace cyberway { namespace chaindb {
         using table_info::table_info;
     }; // struct index_info
 
+    struct find_info final {
+        cursor_t cursor  = invalid_cursor;
+        primary_key_t pk = end_primary_key;
+    };
+
     class chaindb_controller final {
     public:
         chaindb_controller() = delete;
@@ -91,12 +96,14 @@ namespace cyberway { namespace chaindb {
         int64_t revision() const;
         void set_revision(uint64_t revision);
 
-        cursor_t lower_bound(const index_request&, const char* key, size_t);
-        cursor_t upper_bound(const index_request&, const char* key, size_t);
-        cursor_t find(const index_request&, primary_key_t, const char* key, size_t);
+        find_info lower_bound(const index_request&, const char* key, size_t);
+        find_info upper_bound(const index_request&, const char* key, size_t);
+        find_info find(const index_request&, primary_key_t, const char* key, size_t);
 
-        cursor_t end(const index_request&);
-        cursor_t clone(const cursor_request&);
+        find_info begin(const index_request&);
+        find_info end(const index_request&);
+        find_info clone(const cursor_request&);
+        find_info opt_find_by_pk(const index_request& request, primary_key_t pk);
 
         primary_key_t current(const cursor_request&);
         primary_key_t next(const cursor_request&);
@@ -114,7 +121,7 @@ namespace cyberway { namespace chaindb {
         primary_key_t update(apply_context&, const table_request&, const account_name&, primary_key_t, const char*, size_t);
         primary_key_t remove(apply_context&, const table_request&, primary_key_t);
 
-        cursor_t      insert(const table_request&, cache_item_ptr, variant, size_t);
+        primary_key_t insert(const table_request&, primary_key_t, variant, size_t);
         primary_key_t update(const table_request&, primary_key_t, variant, size_t);
         primary_key_t remove(const table_request&, primary_key_t);
 

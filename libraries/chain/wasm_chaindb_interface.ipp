@@ -13,7 +13,7 @@ namespace eosio { namespace chain {
         using context_aware_api::context_aware_api;
 
         cursor_t chaindb_clone(account_name_t code, cursor_t cursor) {
-            return context.chaindb.clone({code, cursor});
+            return context.chaindb.clone({code, cursor}).cursor;
         }
 
         void chaindb_close(account_name_t code, cursor_t cursor) {
@@ -24,27 +24,27 @@ namespace eosio { namespace chain {
             account_name_t code, account_name_t scope, table_name_t table, index_name_t index,
             array_ptr<const char> key, size_t size
         ) {
-            return context.chaindb.lower_bound({code, scope, table, index}, key, size);
+            return context.chaindb.lower_bound({code, scope, table, index}, key, size).cursor;
         }
 
         cursor_t chaindb_upper_bound(
             account_name_t code, account_name_t scope, table_name_t table, index_name_t index,
             array_ptr<const char> key, size_t size
         ) {
-            return context.chaindb.upper_bound({code, scope, table, index}, key, size);
+            return context.chaindb.upper_bound({code, scope, table, index}, key, size).cursor;
         }
 
         cursor_t chaindb_find(
             account_name_t code, account_name_t scope, table_name_t table, index_name_t index,
             primary_key_t pk, array_ptr<const char> key, size_t size
         ) {
-            return context.chaindb.find({code, scope, table, index}, pk, key, size);
+            return context.chaindb.find({code, scope, table, index}, pk, key, size).cursor;
         }
 
         cursor_t chaindb_end(
             account_name_t code, account_name_t scope, table_name_t table, index_name_t index
         ) {
-            return context.chaindb.end({code, scope, table, index});
+            return context.chaindb.end({code, scope, table, index}).cursor;
         }
 
         primary_key_t chaindb_current(account_name_t code, cursor_t cursor) {

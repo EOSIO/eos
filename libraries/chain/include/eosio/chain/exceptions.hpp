@@ -8,9 +8,9 @@
 #include <boost/core/typeinfo.hpp>
 
 
-#define EOS_ASSERT( expr, exc_type, FORMAT, ... )                \
+#define EOS_ASSERT( expr, exc_type, FORMAT, ... )                     \
    FC_MULTILINE_MACRO_BEGIN                                           \
-   if( !(expr) )                                                      \
+   if( BOOST_UNLIKELY( !(expr) ) )                                    \
       FC_THROW_EXCEPTION( exc_type, FORMAT, __VA_ARGS__ );            \
    FC_MULTILINE_MACRO_END
 

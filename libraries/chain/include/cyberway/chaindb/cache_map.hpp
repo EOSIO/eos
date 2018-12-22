@@ -11,9 +11,9 @@ namespace cyberway { namespace chaindb {
         cache_map();
         ~cache_map();
 
-        primary_key_t get_next_pk(const table_info&) const;
         void set_next_pk(const table_info&, primary_key_t) const;
 
+        cache_item_ptr create(const table_info&, const cache_converter_interface& converter);
         cache_item_ptr find(const table_info&, primary_key_t);
 
         void insert(const table_info&, cache_item_ptr);

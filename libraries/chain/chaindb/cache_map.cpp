@@ -42,40 +42,53 @@ namespace cyberway { namespace chaindb {
 
     cache_map::~cache_map() = default;
 
-    primary_key_t cache_map::get_next_pk(const table_info& table) const {
+    cache_item_ptr cache_map::create(const table_info& table, const cache_converter_interface& converter) {
+        cache_item_ptr item;
         auto cache = impl_->find(table);
-        if (cache && cache->next_pk != unset_primary_key) return cache->next_pk++;
-
-        return unset_primary_key;
+        if (BOOST_UNLIKELY(cache && cache->next_pk != unset_primary_key)) {
+            const auto pk = cache->next_pk++;
+            item = std::make_shared<cache_item>(pk, converter);
+            cache->map.emplace(pk, item);
+        }
+        return item;
     }
 
     void cache_map::set_next_pk(const table_info& table, const primary_key_t pk) const {
         auto& cache = impl_->get(table);
         cache.next_pk = pk;
+
+        auto itr = cache.map.lower_bound(pk);
+        for (auto etr = cache.map.end(); itr != etr; ) cache.map.erase(itr++);
     }
 
     cache_item_ptr cache_map::find(const table_info& table, const primary_key_t pk) {
+        cache_item_ptr item;
         auto cache = impl_->find(table);
         if (cache) {
             auto itr = cache->map.find(pk);
-            if (cache->map.end() != itr) return itr->second;
+            if (cache->map.end() != itr) {
+                if (itr->second->is_deleted()) {
+                    cache->map.erase(itr);
+                } else {
+                    item = itr->second;
+                }
+            }
         }
 
-        // not found case:
-        return cache_item_ptr();
+        return item;
     }
 
     void cache_map::insert(const table_info& table, cache_item_ptr item) {
         if (!item) return;
 
         auto& cache = impl_->get(table);
-        auto itr = cache.map.find(item->pk);
+        const auto pk = item->pk;
+        auto itr = cache.map.find(pk);
 
         if (cache.map.end() != itr) {
             itr->second = std::move(item);
         } else {
-            const auto primary_key = item->pk;
-            cache.map.emplace(primary_key, std::move(item));
+            cache.map.emplace(pk, std::move(item));
         }
     }
 
