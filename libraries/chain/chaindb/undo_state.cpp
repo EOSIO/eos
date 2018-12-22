@@ -316,7 +316,7 @@ namespace cyberway { namespace chaindb {
                 "Wrong undo revision ${undo_revision} != (${revision}, ${test_revision}) "
                 "for the table ${table} for the scope '${scope}",
                 ("revision", head.revision_)("undo_revision", undo_rev)("test_revision", test_rev)
-                ("table", get_full_table_name(table))("scope", get_scope_name(table)));
+                ("table", get_full_table_name(table.info()))("scope", get_scope_name(table.info())));
 
             for (const auto& obj: head.old_values_) {
                 cache_.update(table.info(), obj.first, obj.second);
@@ -383,7 +383,7 @@ namespace cyberway { namespace chaindb {
                 "Wrong squash revision ${squash_revision} != (${revision}, ${test_revision})"
                 "for the table ${table} for the scope '${scope}",
                 ("revision", state.revision_)("squash_revision", squash_rev)("test_revision", test_rev)
-                ("table", get_full_table_name(table))("scope", get_scope_name(table)));
+                ("table", get_full_table_name(table.info()))("scope", get_scope_name(table.info())));
 
             // Only one stack item
             if (table.size() == 1) {
@@ -512,7 +512,7 @@ namespace cyberway { namespace chaindb {
 
                 // del + del -> N/A
                 CYBERWAY_SESSION_ASSERT(!prev_state.removed_values_.count(obj.first),
-                    "UB for the table ${table}: Delete + Delete", ("table", get_full_table_name(table)));
+                    "UB for the table ${table}: Delete + Delete", ("table", get_full_table_name(table.info())));
 
                 // nop + del(was=Y) -> del(was=Y)
                 prev_state.removed_values_.emplace(std::move(obj)); //[obj.second->id] = std::move(obj.second);
