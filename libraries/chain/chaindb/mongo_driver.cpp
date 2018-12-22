@@ -733,20 +733,38 @@ namespace cyberway { namespace chaindb {
             return cursor_location{code_itr, cursor_itr};
         }
 
-        class write_ctx_t_ {
+        class write_ctx_t_ final {
+            struct bulk_info_t_ final {
+                bulk_write bulk_;
+                int op_cnt_ = 0;
+
+                bulk_info_t_(bulk_write bulk): bulk_(std::move(bulk)) { }
+            }; // struct bulk_info_t_;
+
         public:
             write_ctx_t_(mongodb_impl_& impl)
-            : impl_(impl),
-              bulk_opts_(options::bulk_write().ordered(false)),
-              prepare_undo_bulk_(impl_.get_undo_db_table().create_bulk_write(bulk_opts_)),
-              complete_undo_bulk_(impl_.get_undo_db_table().create_bulk_write(bulk_opts_)) {
+            : impl_(impl) {
+            }
+
+            bulk_info_t_ create_bulk_info(collection db_table) {
+                static options::bulk_write opts(options::bulk_write().ordered(false));
+                return bulk_info_t_(db_table.create_bulk_write(opts));
+            }
+
+            void init() {
+                data_bulk_list_.emplace_back(create_bulk_info(impl_.get_undo_db_table()));
+                complete_undo_bulk_ = std::make_unique<bulk_info_t_>(create_bulk_info(impl_.get_undo_db_table()));
             }
 
             void start_table(const table_info& table) {
-                if (table_ != nullptr && table.code == table_->code && table.table->name == table_->table->name) return;
+                if (BOOST_LIKELY(
+                        table_ != nullptr &&
+                        table.code == table_->code &&
+                        table.table->name == table_->table->name))
+                    return;
 
                 table_ = &table;
-                data_bulk_list_.emplace_back(impl_.get_db_table(table).create_bulk_write(bulk_opts_));
+                data_bulk_list_.emplace_back(create_bulk_info(impl_.get_db_table(table)));
             }
 
             void add_data(const primary_key_t pk,  const write_value& data) {
@@ -754,37 +772,27 @@ namespace cyberway { namespace chaindb {
             }
 
             void add_prepare_undo(const primary_key_t pk, const write_value& data) {
-                append_bulk(_detail::make_undo_pk_document, prepare_undo_bulk_, pk, data);
+                append_bulk(_detail::make_undo_pk_document, data_bulk_list_.front(), pk, data);
             }
 
             void add_complete_undo(const primary_key_t pk, const write_value& data) {
-                append_bulk(_detail::make_undo_pk_document, complete_undo_bulk_, pk, data);
+                append_bulk(_detail::make_undo_pk_document, *complete_undo_bulk_, pk, data);
             }
 
             void write() {
-                execute_bulk(prepare_undo_bulk_);
                 for (auto& data_bulk: data_bulk_list_) {
                     execute_bulk(data_bulk);
                 }
-                execute_bulk(complete_undo_bulk_);
+                execute_bulk(*complete_undo_bulk_);
 
                 CYBERWAY_ASSERT(error_.empty(), driver_duplicate_exception, error_);
             }
 
         private:
-            struct bulk_info_t_ final {
-                bulk_write bulk_;
-                int op_cnt_ = 0;
-
-                bulk_info_t_(bulk_write bulk): bulk_(std::move(bulk)) { }
-            }; // struct bulk_t_;
-
             mongodb_impl_& impl_;
             std::string error_;
             const table_info* table_ = nullptr;
-            options::bulk_write bulk_opts_;
-            bulk_info_t_ prepare_undo_bulk_;
-            bulk_info_t_ complete_undo_bulk_;
+            std::unique_ptr<bulk_info_t_> complete_undo_bulk_;
             std::deque<bulk_info_t_> data_bulk_list_;
 
             template <typename MakePkDocument>
