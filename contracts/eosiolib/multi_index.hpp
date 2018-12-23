@@ -632,13 +632,13 @@ class multi_index
        *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
-       *      addressbook(account_name self):contract(self) {}
-       *      typedef eosio::multi_index< N(address), address > address_index;
+       *      addressbook(name self):contract(_self, _code, _ds) {}
+       *      typedef eosio::multi_index< name("address"), address > address_index;
        *      void myaction() {
-       *        address_index addresses(_self, _self); // code, scope
+       *        address_index addresses(_code, _code.value); // code, scope
        *      }
-       *  }
-       *  EOSIO_ABI( addressbook, (myaction) )
+       *  } 
+       *  EOSIO_DISPATCH( addressbook, (myaction) )
        *  @endcode
        */
       multi_index( uint64_t code, uint64_t scope )
