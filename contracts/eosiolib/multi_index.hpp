@@ -632,7 +632,8 @@ class multi_index
        *       EOSLIB_SERIALIZE( address, (account_name)(first_name)(last_name)(street)(city)(state) )
        *    };
        *    public:
-       *      addressbook(name self):contract(_self, _code, _ds) {}
+       *      typedef name account_name;
+       *      addressbook(account_name self):contract(_self, _code, _ds) {}
        *      typedef eosio::multi_index< name("address"), address > address_index;
        *      void myaction() {
        *        address_index addresses(_code, _code.value); // code, scope
