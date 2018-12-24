@@ -11,7 +11,7 @@ Some of the groundbreaking features of EOSIO include:
 1. Low Latency Block confirmation (0.5 seconds)
 1. Low-overhead Byzantine Fault Tolerant Finality
 1. Designed for optional high-overhead, low-latency BFT finality 
-1. Smart contract platform powered by Web Assembly
+1. Smart contract platform powered by WebAssembly
 1. Designed for Sparse Header Light Client Validation
 1. Scheduled Recurring Transactions 
 1. Time Delay Security
