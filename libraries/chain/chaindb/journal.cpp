@@ -56,7 +56,7 @@ namespace cyberway { namespace chaindb {
             switch (dst.operation) {
                 case write_operation::Insert:
                     dst.operation = write_operation::Unknown;
-                    dst.value = {};
+                    dst.value.clear();
                     break;
 
                 case write_operation::Unknown:
@@ -151,7 +151,9 @@ namespace cyberway { namespace chaindb {
             auto undo_itr = undo_map.find(rev);
             if (undo_map.end() == undo_itr) {
                 rev = (impossible_revision != undo.set_revision) ? undo.set_revision : undo.find_revision;
-                undo_itr = undo_map.emplace(rev, std::move(undo)).first;
+                undo_itr = undo_map.find(rev);
+                CYBERWAY_ASSERT(undo_itr == undo_map.end(), driver_write_exception, "set revision is not empty");
+                undo_map.emplace(rev, std::move(undo));
             } else if (impossible_revision != undo.set_revision && undo_itr->first) {
                 undo_map.erase(undo_itr);
                 undo_map.emplace(undo.set_revision, std::move(undo));

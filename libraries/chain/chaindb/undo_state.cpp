@@ -8,7 +8,7 @@
 /** Session exception is a critical errors and they doesn't handle by chain */
 #define CYBERWAY_SESSION_ASSERT(expr, FORMAT, ...)                      \
     FC_MULTILINE_MACRO_BEGIN                                            \
-        if (!(expr)) {                                                  \
+        if (BOOST_UNLIKELY( !(expr) )) {                                \
             elog(FORMAT, __VA_ARGS__);                                  \
             FC_THROW_EXCEPTION(session_exception, FORMAT, __VA_ARGS__); \
         }                                                               \
@@ -154,13 +154,13 @@ namespace cyberway { namespace chaindb {
 
                 case undo_stage::Stack: {
                     stack_.pop_back();
-                    if (empty()) {
-                        stage_    = undo_stage::Unknown;
-                        revision_ = impossible_revision;
-                    } else {
-                        revision_ = stack_.back().revision_;
+                    if (!empty()) {
+                        --revision_;
+                        if (stack_.back().revision_ != revision_) {
+                            stage_ = undo_stage::New;
+                        }
+                        return;
                     }
-                    return;
                 }
 
                 case undo_stage::New:
@@ -398,7 +398,7 @@ namespace cyberway { namespace chaindb {
             auto& prev_state = table.prev_state();
 
             // Two stack items but they are not neighbours
-            if (prev_state.revision_ != state.revision_ + 1) {
+            if (prev_state.revision_ != state.revision_ - 1) {
                 squash_state(table, state);
                 return;
             }
@@ -572,7 +572,7 @@ namespace cyberway { namespace chaindb {
             head.new_ids_.insert(pk);
 
             {
-                mutable_variant_object obj(std::move(value));
+                mutable_variant_object obj;
                 add_undo_fields(obj, table.info(), undo_record::NewValue);
                 journal_.write(table.info(), pk, {write_operation::Insert, revision_ /*set_rev*/, std::move(value)},
                     {write_operation::Insert, revision_ /*set_rev*/, std::move(obj)});
