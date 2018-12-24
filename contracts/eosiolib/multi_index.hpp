@@ -633,7 +633,9 @@ class multi_index
        *    };
        *    public:
        *      typedef name account_name;
-       *      addressbook(account_name self):contract(_self, _code, _ds) {}
+       *      addressbook(account_name self, account_name code,
+       *                  datastream<const char*> ds)
+       *          : contract(self, code, ds) {}
        *      typedef eosio::multi_index< name("address"), address > address_index;
        *      void myaction() {
        *        address_index addresses(_code, _code.value); // code, scope
