@@ -25,6 +25,7 @@ RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+COPY --from=builder /usr/local/lib/* /usr/local/lib/
 COPY --from=builder /cyberway/Docker/config.ini /
 COPY --from=builder /etc/cyberway-version /etc
 COPY --from=builder /opt/cyberway /opt/cyberway
