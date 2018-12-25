@@ -433,7 +433,7 @@ private:
         }
 
         void lazy_open_find_by_pk() const {
-            auto info = controller().opt_find_by_pk(get_index_request(), primary_key_);
+            auto info = controller().opt_find_by_pk(get_table_request(), primary_key_);
             cursor_ = info.cursor;
             primary_key_ = info.pk;
         }
@@ -458,6 +458,10 @@ private:
                     break;
             }
             CYBERWAY_INDEX_ASSERT(is_cursor_initialized(), "unable to open cursor");
+        }
+
+        table_request get_table_request() const {
+            return multidx().get_table_request();
         }
 
         index_request get_index_request() const {
