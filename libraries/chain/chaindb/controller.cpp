@@ -515,19 +515,19 @@ namespace cyberway { namespace chaindb {
             apply_context&, const table_request& request, const account_name& payer,
             const primary_key_t pk, const char* data, const size_t size
         ) {
-            auto info = get_table(request);
+            auto table = get_table(request);
 
-            auto value = info.abi->to_object(info, data, size, max_abi_time_);
-            insert(info, std::move(value), payer, pk, size);
+            auto value = table.abi->to_object(table, data, size, max_abi_time_);
+            insert(table, std::move(value), payer, pk, size);
 
             // TODO: update RAM usage
 
-            return opt_find_by_pk(info, pk);
+            return opt_find_by_pk(table, pk);
         }
 
-        const cursor_info& opt_find_by_pk(const index_request& request, primary_key_t pk) {
-            auto info = get_index(request);
-            return opt_find_by_pk(info, pk);
+        const cursor_info& opt_find_by_pk(const table_request& request, primary_key_t pk) {
+            auto table = get_table(request);
+            return opt_find_by_pk(table, pk);
         }
 
         primary_key_t insert(const table_request& request, const primary_key_t pk, variant value, const size_t size) {
@@ -585,18 +585,19 @@ namespace cyberway { namespace chaindb {
     private:
         std::map<account_name /* code */, abi_info> abi_map_;
 
-        const cursor_info& opt_find_by_pk(index_info& info, primary_key_t pk) {
-            info.index = &_detail::get_pk_index(info);
-            auto pk_key_value = _detail::get_pk_value(info, pk);
-            return driver_.opt_find_by_pk(info, pk, std::move(pk_key_value));
+        const cursor_info& opt_find_by_pk(const table_info& table, primary_key_t pk) {
+            index_info index(table);
+            index.index = &_detail::get_pk_index(table);
+            auto pk_key_value = _detail::get_pk_value(table, pk);
+            return driver_.opt_find_by_pk(index, pk, std::move(pk_key_value));
         }
 
-        index_info get_table(const table_request& request) const {
+        table_info get_table(const table_request& request) const {
             auto info = find_table<index_info>(request);
             CYBERWAY_ASSERT(info.table, unknown_table_exception,
                 "ABI table ${table} doesn't exists", ("table", get_full_table_name(request)));
 
-            return info;
+            return std::move(info);
         }
 
         index_info get_index(const index_request& request) const {
@@ -781,12 +782,10 @@ namespace cyberway { namespace chaindb {
         }
 
         void insert(
-            index_info& info, variant raw_value,
+            table_info& table, variant raw_value,
             const account_name& payer, const primary_key_t pk, const size_t size
         ) {
-            auto& table = static_cast<const table_info&>(info);
             auto value = add_service_fields(table, std::move(raw_value), payer, pk, size);
-
             undo_.insert(table, pk, std::move(value));
         }
 
@@ -987,7 +986,7 @@ namespace cyberway { namespace chaindb {
         return impl_->value_at_cursor(request);
     }
 
-    find_info chaindb_controller::opt_find_by_pk(const index_request& request, primary_key_t pk) {
+    find_info chaindb_controller::opt_find_by_pk(const table_request& request, primary_key_t pk) {
         const auto& info = impl_->opt_find_by_pk(request, pk);
         return {info.id, info.pk};
     }

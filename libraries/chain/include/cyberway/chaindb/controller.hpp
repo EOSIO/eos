@@ -61,6 +61,10 @@ namespace cyberway { namespace chaindb {
         const index_def* index = nullptr;
 
         using table_info::table_info;
+
+        index_info(const table_info& src)
+        : table_info(src) {
+        }
     }; // struct index_info
 
     struct find_info final {
@@ -103,7 +107,7 @@ namespace cyberway { namespace chaindb {
         find_info begin(const index_request&);
         find_info end(const index_request&);
         find_info clone(const cursor_request&);
-        find_info opt_find_by_pk(const index_request& request, primary_key_t pk);
+        find_info opt_find_by_pk(const table_request& request, primary_key_t pk);
 
         primary_key_t current(const cursor_request&);
         primary_key_t next(const cursor_request&);
