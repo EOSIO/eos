@@ -617,17 +617,13 @@ namespace bacc = boost::accumulators;
    }
 
    void transaction_context::record_transaction( const transaction_id_type& id, fc::time_point_sec expire ) {
-      try {
-          control.mutable_db().create<transaction_object>([&](transaction_object& transaction) {
-              transaction.trx_id = id;
-              transaction.expiration = expire;
-          });
-      } catch( const boost::interprocess::bad_alloc& ) {
-         throw;
-      } catch ( ... ) {
-          EOS_ASSERT( false, tx_duplicate,
-                     "duplicate transaction ${id}", ("id", id ) );
-      }
+      auto trx = control.db().find<transaction_object, by_trx_id>(id);
+      EOS_ASSERT(nullptr == trx, tx_duplicate, "duplicate transaction ${id}", ("id", id ));
+
+      control.mutable_db().create<transaction_object>([&](transaction_object& transaction) {
+         transaction.trx_id     = id;
+         transaction.expiration = expire;
+      });
    } /// record_transaction
 
 
