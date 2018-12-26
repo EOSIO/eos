@@ -579,7 +579,7 @@ namespace cyberway { namespace chaindb {
             }
 
             if (unset_primary_key == head.next_pk_) {
-                head.next_pk_ = pk - 1;
+                head.next_pk_ = pk;
 
                 mutable_variant_object obj;
                 add_undo_fields(obj, table.info(), undo_record::NextPk);
