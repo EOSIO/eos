@@ -581,11 +581,11 @@ namespace cyberway { namespace chaindb {
             if (unset_primary_key == head.next_pk_) {
                 head.next_pk_ = pk;
 
-                mutable_variant_object obj;
-                add_undo_fields(obj, table.info(), undo_record::NextPk);
-                obj(get_pk_field_name(), pk);
-
-                journal_.write(table.info(), pk, {}, {write_operation::Insert, revision_ /*set_rev*/, std::move(obj)});
+//                mutable_variant_object obj;
+//                add_undo_fields(obj, table.info(), undo_record::NextPk);
+//                obj(get_pk_field_name(), pk);
+//
+//                journal_.write(table.info(), -1, {}, {write_operation::Insert, revision_ /*set_rev*/, std::move(obj)});
             }
         }
 

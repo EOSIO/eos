@@ -8,8 +8,12 @@ namespace cyberway { namespace chaindb {
         void insert(write_value src, write_value& dst) {
             switch (dst.operation) {
                 case write_operation::Unknown:
-                case write_operation::Delete:
                     dst = std::move(src);
+                    return;
+
+                case write_operation::Delete:
+                    dst.value.clear();
+                    dst.operation = write_operation::Unknown;
                     return;
 
                 case write_operation::Insert:
