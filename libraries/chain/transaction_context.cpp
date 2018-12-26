@@ -154,7 +154,8 @@ namespace bacc = boost::accumulators;
    :control(c)
    ,trx(t)
    ,id(trx_id)
-   ,undo_session()
+   // TODO: removed by CyberWay
+   // ,undo_session()
    ,chaindb_undo_session()
    ,trace(std::make_shared<transaction_trace>())
    ,start(s)
@@ -162,7 +163,8 @@ namespace bacc = boost::accumulators;
    ,pseudo_start(s)
    {
       if (!c.skip_db_sessions()) {
-         undo_session = c.mutable_db().start_undo_session(true);
+         // TODO: removed by CyberWay
+         // undo_session = c.mutable_db().start_undo_session(true);
          chaindb_undo_session = c.chaindb().start_undo_session(true);
       }
       trace->id = id;
@@ -418,13 +420,15 @@ namespace bacc = boost::accumulators;
    }
 
    void transaction_context::squash() {
-      if (undo_session) undo_session->squash();
+      // TODO: removed by CyberWay
+      // if (undo_session) undo_session->squash();
       if (chaindb_undo_session) chaindb_undo_session->squash();
    }
 
    void transaction_context::undo() {
-      if (undo_session) undo_session->undo();
-       if (chaindb_undo_session) chaindb_undo_session->undo();
+      // TODO: removed by CyberWay
+      // if (undo_session) undo_session->undo();
+      if (chaindb_undo_session) chaindb_undo_session->undo();
    }
 
    void transaction_context::check_net_usage()const {
