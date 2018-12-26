@@ -11,9 +11,6 @@
 #include <algorithm>
 #include <memory>
 
-#include <boost/multi_index/mem_fun.hpp>
-#include <boost/intrusive_ptr.hpp>
-
 #include <eosiolib/action.h>
 #include <eosiolib/types.hpp>
 #include <eosiolib/serialize.hpp>
@@ -24,6 +21,305 @@
 #define chaindb_assert(_EXPR, ...) eosio_assert(_EXPR, __VA_ARGS__)
 
 namespace eosio {
+
+constexpr static inline name same_payer{};
+
+template<class Class,typename Type,Type (Class::*PtrToMemberFunction)()const>
+struct const_mem_fun
+{
+  typedef typename std::remove_reference<Type>::type result_type;
+
+  template<typename ChainedPtr>
+
+  auto operator()(const ChainedPtr& x)const -> std::enable_if_t<!std::is_convertible<const ChainedPtr&, const Class&>::value, Type>
+  {
+    return operator()(*x);
+  }
+
+  Type operator()(const Class& x)const
+  {
+    return (x.*PtrToMemberFunction)();
+  }
+
+  Type operator()(const std::reference_wrapper<const Class>& x)const
+  {
+    return operator()(x.get());
+  }
+
+  Type operator()(const std::reference_wrapper<Class>& x)const
+  {
+    return operator()(x.get());
+  }
+};
+
+template<typename A>
+struct get_result_type {
+    using type = typename A::result_type;
+}; // struct get_result_type
+
+template<typename Value, typename... Fields>
+struct composite_key {
+    using result_type = bool;
+    using key_type = std::tuple<typename get_result_type<Fields>::type...>;
+
+    auto operator()(const Value& v) {
+        return std::make_tuple(Fields()(v)...);
+    }
+}; // struct composite_key
+
+namespace _detail {
+template<class Class,typename Type,Type Class::*PtrToMember>
+struct const_member_base {
+    typedef Type result_type;
+
+    template<typename ChainedPtr>
+    auto operator()(const ChainedPtr& x) const
+    -> std::enable_if_t<!std::is_convertible<const ChainedPtr&, const Class&>::type, Type&> {
+        return operator()(*x);
+    }
+
+    Type& operator()(const Class& x) const {
+        return x.*PtrToMember;
+    }
+    Type& operator()(const std::reference_wrapper<const Class>& x) const {
+        return operator()(x.get());
+    }
+    Type& operator()(const std::reference_wrapper<Class>& x) const {
+        return operator()(x.get());
+    }
+}; // struct const_member_base
+
+template<class Class,typename Type,Type Class::*PtrToMember>
+struct non_const_member_base {
+    typedef Type result_type;
+
+    template<typename ChainedPtr>
+    auto operator()(const ChainedPtr& x) const
+    -> std::enable_if_t<!std::is_convertible<const ChainedPtr&, const Class&>::type, Type&> {
+        return operator()(*x);
+    }
+
+    const Type& operator()(const Class& x) const {
+        return x.*PtrToMember;
+    }
+    Type& operator()(Class& x) const {
+        return x.*PtrToMember;
+    }
+    const Type& operator()(const std::reference_wrapper<const Class>& x) const {
+        return operator()(x.get());
+    }
+    Type& operator()(const std::reference_wrapper<Class>& x) const {
+        return operator()(x.get());
+    }
+}; // struct non_const_member_base
+}
+
+template<class Class,typename Type,Type Class::*PtrToMember>
+struct member: std::conditional<
+    std::is_const<Type>::value,
+    _detail::const_member_base<Class,Type,PtrToMember>,
+    _detail::non_const_member_base<Class,Type,PtrToMember>
+  >::type
+{
+};
+
+//
+//  intrusive_ptr
+//
+//  A smart pointer that uses intrusive reference counting.
+//
+//  Relies on unqualified calls to
+//
+//      void intrusive_ptr_add_ref(T * p);
+//      void intrusive_ptr_release(T * p);
+//
+//          (p != 0)
+//
+//  The object is responsible for destroying itself.
+//
+template<class T> class intrusive_ptr
+{
+private:
+
+    typedef intrusive_ptr this_type;
+
+public:
+
+    typedef T element_type;
+
+    intrusive_ptr() BOOST_NOEXCEPT : px( 0 )
+    {
+    }
+
+    intrusive_ptr( T * p, bool add_ref = true ): px( p )
+    {
+        if( px != 0 && add_ref ) intrusive_ptr_add_ref( px );
+    }
+
+    intrusive_ptr(intrusive_ptr const & rhs): px( rhs.px )
+    {
+        if( px != 0 ) intrusive_ptr_add_ref( px );
+    }
+
+    ~intrusive_ptr()
+    {
+        if( px != 0 ) intrusive_ptr_release( px );
+    }
+
+    intrusive_ptr & operator=(intrusive_ptr const & rhs)
+    {
+        this_type(rhs).swap(*this);
+        return *this;
+    }
+
+    intrusive_ptr & operator=(T * rhs)
+    {
+        this_type(rhs).swap(*this);
+        return *this;
+    }
+
+    void reset() BOOST_NOEXCEPT
+    {
+        this_type().swap( *this );
+    }
+
+    void reset( T * rhs )
+    {
+        this_type( rhs ).swap( *this );
+    }
+
+    void reset( T * rhs, bool add_ref )
+    {
+        this_type( rhs, add_ref ).swap( *this );
+    }
+
+    T * get() const BOOST_NOEXCEPT
+    {
+        return px;
+    }
+
+    T * detach() BOOST_NOEXCEPT
+    {
+        T * ret = px;
+        px = 0;
+        return ret;
+    }
+
+    operator bool () const BOOST_NOEXCEPT
+    {
+        return px != 0;
+    }
+
+    T & operator*() const
+    {
+        BOOST_ASSERT( px != 0 );
+        return *px;
+    }
+
+    T * operator->() const
+    {
+        BOOST_ASSERT( px != 0 );
+        return px;
+    }
+
+    void swap(intrusive_ptr & rhs) BOOST_NOEXCEPT
+    {
+        T * tmp = px;
+        px = rhs.px;
+        rhs.px = tmp;
+    }
+
+private:
+
+    T * px;
+};
+
+
+
+namespace _detail {
+    template <typename T> constexpr T& min(T& a, T& b) {
+        return a > b ? b : a;
+    }
+
+    template<int I, int Max> struct comparator_helper {
+        template<typename L, typename V>
+        bool operator()(const L& left, const V& value) const {
+            return std::get<I>(left) == std::get<I>(value) &&
+                comparator_helper<I + 1, Max>()(left, value);
+        }
+    }; // struct comparator_helper
+
+    template<int I> struct comparator_helper<I, I> {
+        template<typename... L> bool operator()(L&&...) const { return true; }
+    }; // struct comparator_helper
+
+    template<int I, int Max> struct converter_helper {
+        template<typename L, typename V> void operator()(L& left, const V& value) const {
+            std::get<I>(left) = std::get<I>(value);
+            converter_helper<I + 1, Max>()(left, value);
+        }
+    }; // struct converter_helper
+
+    template<int I> struct converter_helper<I, I> {
+        template<typename... L> void operator()(L&&...) const { }
+    }; // struct converter_helper
+} // namespace _detail
+
+template<typename Key>
+struct key_comparator {
+    static bool compare_eq(const Key& left, const Key& right) {
+        return left == right;
+    }
+}; // struct key_comparator
+
+template<typename... Indices>
+struct key_comparator<std::tuple<Indices...>> {
+    using key_type = std::tuple<Indices...>;
+
+    template<typename Value>
+    static bool compare_eq(const key_type& left, const Value& value) {
+        return std::get<0>(left) == value;
+    }
+
+    template<typename... Values>
+    static bool compare_eq(const key_type& left, const std::tuple<Values...>& value) {
+        using value_type = std::tuple<Values...>;
+        using namespace _detail;
+
+        return comparator_helper<0, min(std::tuple_size<value_type>::value, std::tuple_size<key_type>::value)>()(left, value);
+    }
+}; // struct key_comparator
+
+template<typename Key>
+struct key_converter {
+    static Key convert(const Key& key) {
+        return key;
+    }
+}; // struct key_converter
+
+template<typename... Indices>
+struct key_converter<std::tuple<Indices...>> {
+    using key_type = std::tuple<Indices...>;
+
+    template<typename Value>
+    static key_type convert(const Value& value) {
+        key_type index;
+        std::get<0>(index) = value;
+        return index;
+    }
+
+    template<typename... Values>
+    static key_type convert(const std::tuple<Values...>& value) {
+        using namespace _detail;
+        using value_type = std::tuple<Values...>;
+
+        key_type index;
+        converter_helper<0, min(std::tuple_size<value_type>::value, std::tuple_size<key_type>::value)>()(index, value);
+        return index;
+    }
+}; // struct key_converter
+
+
 
 template<typename T, typename MultiIndex>
 struct multi_index_item: public T {
@@ -49,11 +345,9 @@ inline void intrusive_ptr_release(eosio::multi_index_item<T, MultiIndex>* obj) {
     if (!obj->ref_cnt_) delete obj;
 }
 
-using boost::multi_index::const_mem_fun;
-
 template<index_name_t IndexName, typename Extractor>
 struct indexed_by {
-    enum constants { index_name = IndexName };
+    enum constants { index_name = static_cast<uint64_t>(IndexName) };
     typedef Extractor extractor_type;
 };
 
@@ -110,7 +404,7 @@ private:
     constexpr static bool validate_table_name(table_name_t n) {
         // Limit table names to 12 characters so that
         // the last character (4 bits) can be used to distinguish between the secondary indices.
-        return (n & 0x000000000000000FULL) == 0;
+        return (static_cast<uint64_t>(n) & 0x000000000000000FULL) == 0;
     }
 
     static_assert(
@@ -118,13 +412,13 @@ private:
         "multi_index does not support table names with a length greater than 12");
 
     using item = multi_index_item<T, multi_index>;
-    using item_ptr = boost::intrusive_ptr<item>;
+    using item_ptr = intrusive_ptr<item>;
     using primary_key_extractor_type = primary_key_extractor;
 
     template<index_name_t IndexName, typename Extractor> struct index;
 
     const account_name_t code_;
-    const account_name_t scope_;
+    const scope_t scope_;
 
     mutable primary_key_t next_primary_key_ = end_primary_key;
     mutable std::vector<item_ptr> items_vector_;
@@ -133,6 +427,8 @@ private:
     struct const_iterator_impl: public std::iterator<std::bidirectional_iterator_tag, const T> {
     public:
         friend bool operator == (const const_iterator_impl& a, const const_iterator_impl& b) {
+            a.lazy_open();
+            b.lazy_open();
             return a.primary_key_ == b.primary_key_;
         }
         friend bool operator != (const const_iterator_impl& a, const const_iterator_impl& b) {
@@ -142,16 +438,14 @@ private:
         constexpr static table_name_t table_name() { return TableName; }
         constexpr static index_name_t index_name() { return IndexName; }
         account_name_t get_code() const            { return multidx_->get_code(); }
-        account_name_t get_scope() const           { return multidx_->get_scope(); }
+        scope_t        get_scope() const           { return multidx_->get_scope(); }
 
         const T& operator*() const {
-            load_object();
-            //return *static_cast<const T*>(item_.get());
+            lazy_load_object();
             return *static_cast<const T*>(item_.get());
         }
         const T* operator->() const {
-            load_object();
-            // return static_cast<const T*>(item_.get());
+            lazy_load_object();
             return static_cast<const T*>(item_.get());
         }
 
@@ -161,6 +455,7 @@ private:
             return result;
         }
         const_iterator_impl& operator++() {
+            lazy_open();
             chaindb_assert(primary_key_ != end_primary_key, "cannot increment end iterator");
             primary_key_ = chaindb_next(get_code(), cursor_);
             item_.reset();
@@ -173,7 +468,7 @@ private:
             return result;
         }
         const_iterator_impl& operator--() {
-            lazy_load_end_cursor();
+            lazy_open();
             primary_key_ = chaindb_prev(get_code(), cursor_);
             item_.reset();
             chaindb_assert(primary_key_ != end_primary_key, "out of range on decrement of iterator");
@@ -193,7 +488,7 @@ private:
             primary_key_ = src.primary_key_;
             item_ = src.item_;
 
-            src.cursor_ = invalid_cursor;
+            src.cursor_ = uninitialized_state;
             src.primary_key_ = end_primary_key;
             src.item_.reset();
 
@@ -207,7 +502,13 @@ private:
             if (this == &src) return *this;
 
             multidx_ = src.multidx_;
-            cursor_ = chaindb_clone(get_code(), src.cursor_);
+
+            if (src.is_cursor_initialized()) {
+                cursor_ = chaindb_clone(get_code(), src.cursor_);
+            } else {
+                cursor_ = src.cursor_;
+            }
+
             primary_key_ = src.primary_key_;
             item_ = src.item_;
 
@@ -215,54 +516,92 @@ private:
         }
 
         ~const_iterator_impl() {
-            if (cursor_ != invalid_cursor) chaindb_close(get_code(), cursor_);
+            if (is_cursor_initialized()) chaindb_close(get_code(), cursor_);
         }
 
     private:
         friend multi_index;
         template<index_name_t, typename> struct index;
 
-        const_iterator_impl(const multi_index* midx)
-        : multidx_(midx) { }
-
         const_iterator_impl(const multi_index* midx, const cursor_t cursor)
         : multidx_(midx), cursor_(cursor) {
-            if (cursor_ != invalid_cursor) primary_key_ = chaindb_current(get_code(), cursor);
         }
 
         const_iterator_impl(const multi_index* midx, const cursor_t cursor, const primary_key_t pk, item_ptr item)
         : multidx_(midx), cursor_(cursor), primary_key_(pk), item_(item) { }
 
         const multi_index* multidx_ = nullptr;
-        mutable cursor_t cursor_ = invalid_cursor;
+        mutable cursor_t cursor_ = uninitialized_state;
         mutable primary_key_t primary_key_ = end_primary_key;
         mutable item_ptr item_;
 
-        void load_object() const {
+        void lazy_load_object() const {
             if (item_ && !item_->deleted_) return;
 
+            lazy_open();
             chaindb_assert(primary_key_ != end_primary_key, "cannot load object from end iterator");
             item_ = multidx_->load_object(cursor_, primary_key_);
         }
 
-        void lazy_load_end_cursor() {
-            if (primary_key_ != end_primary_key || cursor_ != invalid_cursor) return;
+        void lazy_open() const {
+            if (BOOST_LIKELY(is_cursor_initialized())) return;
 
-            cursor_ = chaindb_end(get_code(), get_scope(), table_name(), index_name());
-            chaindb_assert(cursor_ != invalid_cursor, "unable to open end iterator");
+            switch (cursor_) {
+                case uninitialized_begin:
+                    lazy_open_begin();
+                    break;
+
+                case uninitialized_end:
+                    lazy_open_end();
+                    break;
+
+                case uninitialized_find_by_pk:
+                    lazy_open_find_by_pk();
+                    break;
+
+                default:
+                    break;
+            }
+            chaindb_assert(is_cursor_initialized(), "unable to open cursor");
         }
+
+        bool is_cursor_initialized() const {
+            return cursor_ > uninitialized_state;
+        }
+
+        void lazy_open_begin() const {
+            cursor_ = chaindb_lower_bound(get_code(), get_scope(), table_name(), index_name(), nullptr, 0);
+            chaindb_assert(is_cursor_initialized(), "unable to open begin iterator");
+            primary_key_ = chaindb_current(get_code(), cursor_);
+        }
+
+        void lazy_open_end() const {
+            cursor_ = chaindb_end(get_code(), get_scope(), table_name(), index_name());
+            chaindb_assert(is_cursor_initialized(), "unable to open end iterator");
+        }
+
+        void lazy_open_find_by_pk() const {
+            cursor_ = chaindb_find(get_code(), get_scope(), table_name(), index_name(), primary_key_, nullptr, 0);
+            chaindb_assert(is_cursor_initialized(), "unable to open find_by_pk iterator");
+        }
+
+    private:
+        static constexpr cursor_t uninitialized_state = 0;
+        static constexpr cursor_t uninitialized_end = -1;
+        static constexpr cursor_t uninitialized_begin = -2;
+        static constexpr cursor_t uninitialized_find_by_pk = -3;
     }; /// struct multi_index::const_iterator_impl
 
     template<index_name_t IndexName, typename Extractor>
     struct index {
     public:
         using extractor_type = Extractor;
-        using key_type = typename std::decay<decltype(Extractor()(nullptr))>::type;
+        using key_type = typename std::decay<decltype(Extractor()(static_cast<const T&>(*(const T*)nullptr)))>::type;
         using const_iterator = const_iterator_impl<IndexName>;
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
         constexpr static bool validate_index_name(index_name_t n) {
-           return n != 0;
+           return static_cast<uint64_t>(n) != 0;
         }
 
         static_assert(validate_index_name(IndexName), "invalid index name used in multi_index");
@@ -270,16 +609,15 @@ private:
         constexpr static table_name_t table_name() { return TableName; }
         constexpr static index_name_t index_name() { return IndexName; }
         account_name_t get_code() const            { return multidx_->get_code(); }
-        account_name_t get_scope() const           { return multidx_->get_scope(); }
+        scope_t        get_scope() const           { return multidx_->get_scope(); }
 
         const_iterator cbegin() const {
-            auto cursor = chaindb_lower_bound(get_code(), get_scope(), table_name(), index_name(), nullptr, 0);
-            return {multidx_, cursor};
+            return {multidx_, const_iterator::uninitialized_begin};
         }
         const_iterator begin() const  { return cbegin(); }
 
         const_iterator cend() const {
-            return {multidx_};
+            return {multidx_, const_iterator::uninitialized_end};
         }
         const_iterator end() const  { return cend(); }
 
@@ -291,6 +629,15 @@ private:
 
         const_iterator find(key_type&& key) const {
            return find(key);
+        }
+        template<typename Value>
+        const_iterator find(const Value& value) const {
+            auto key = key_converter<key_type>::convert(value);
+            auto itr = lower_bound(key);
+            auto etr = cend();
+            if (itr == etr) return etr;
+            if (!key_comparator<key_type>::compare_eq(extractor_type()(*itr), value)) return etr;
+            return itr;
         }
         const_iterator find(const key_type& key) const {
            auto itr = lower_bound(key);
@@ -329,6 +676,10 @@ private:
                 cursor = chaindb_lower_bound(get_code(), get_scope(), table_name(), index_name(), data, size);
             });
             return const_iterator(multidx_, cursor);
+        }
+        template<typename Value>
+        const_iterator lower_bound(const Value& value) const {
+            return lower_bound(key_converter<key_type>::convert(value));
         }
 
         const_iterator upper_bound(key_type&& key) const {
@@ -438,13 +789,13 @@ public:
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
 public:
-    multi_index(const account_name_t code, account_name_t scope)
+    multi_index(const account_name_t code, scope_t scope)
     : code_(code), scope_(scope), primary_idx_(this) {}
 
     constexpr static table_name_t table_name() { return TableName; }
 
     account_name_t get_code() const  { return code_; }
-    account_name_t get_scope() const { return scope_; }
+    scope_t get_scope() const { return scope_; }
 
     const_iterator cbegin() const { return primary_idx_.cbegin(); }
     const_iterator begin() const  { return cbegin(); }
@@ -480,7 +831,7 @@ public:
 
         auto res = hana::find_if(indices_, [](auto&& in) {
             return std::integral_constant<
-                bool, std::decay<decltype(in)>::type::index_name == IndexName>();
+                bool, std::decay<decltype(in)>::type::index_name == static_cast<uint64_t>(IndexName)>();
         });
 
         static_assert(res != hana::nothing, "name provided is not the name of any secondary index within multi_index");
@@ -495,7 +846,7 @@ public:
     template<typename Lambda>
     const_iterator emplace(const account_name_t payer, Lambda&& constructor) const {
         // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
-        chaindb_assert(get_code() == current_receiver(), "cannot modify objects in table of another contract");
+        chaindb_assert(static_cast<uint64_t>(get_code()) == current_receiver(), "cannot modify objects in table of another contract");
 
         auto ptr = item_ptr(new item(this, [&](auto& itm) {
             constructor(static_cast<T&>(itm));
@@ -505,18 +856,15 @@ public:
         auto pk = primary_key_extractor_type()(obj);
         chaindb_assert(pk != end_primary_key, "invalid value of primary key");
 
-        cursor_t cursor;
         safe_allocate(pack_size(obj), "invalid size of object", [&](auto& data, auto& size) {
             pack_object(obj, data, size);
-            cursor = chaindb_insert(get_code(), get_scope(), table_name(), payer, pk, data, size);
+            chaindb_insert(get_code(), get_scope(), table_name(), payer, pk, data, size);
         });
-
-        chaindb_assert(cursor != invalid_cursor, "unable to create object");
 
         add_object_to_cache(ptr);
 
         next_primary_key_ = pk + 1;
-        return const_iterator(this, cursor, pk, std::move(ptr));
+        return const_iterator(this, const_iterator::uninitialized_find_by_pk, pk, std::move(ptr));
     }
 
     template<typename Lambda>
@@ -528,7 +876,7 @@ public:
     template<typename Lambda>
     void modify(const T& obj, const account_name_t payer, Lambda&& updater) const {
         // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
-        chaindb_assert(get_code() == current_receiver(), "cannot modify objects in table of another contract");
+        chaindb_assert(static_cast<uint64_t>(get_code()) == current_receiver(), "cannot modify objects in table of another contract");
 
         const auto& itm = static_cast<const item&>(obj);
         chaindb_assert(itm.multidx_ == this, "object passed to modify is not in multi_index");
