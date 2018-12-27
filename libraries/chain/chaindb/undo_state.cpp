@@ -201,6 +201,31 @@ namespace cyberway { namespace chaindb {
           cache_(cache) {
         }
 
+        void add_abi_tables(eosio::chain::abi_def& abi) const {
+            abi.structs.emplace_back( eosio::chain::struct_def{
+                names::undo_table, "",
+                {{names::undo_pk_field,  "uint64"},
+                 {names::code_field,     "name"},
+                 {names::table_field,    "name"},
+                 {names::scope_field,    "name"},
+                 {names::pk_field,       "uint64"},
+                 {names::revision_field, "int64"}}
+            });
+
+            abi.tables.emplace_back( eosio::chain::table_def {
+                names::undo_table,
+                0,
+                names::undo_table,
+                {{"primary", 1, true,  {
+                    {names::undo_pk_field,  names::asc_order}}},
+                 {"table",   2, false, {
+                    {names::code_field,     names::asc_order},
+                    {names::table_field,    names::asc_order},
+                    {names::revision_field, names::asc_order},
+                    {names::pk_field,       names::asc_order}}}}
+            });
+        }
+
         void clear() {
             tables_.clear();
             revision_ = 0;
@@ -554,11 +579,11 @@ namespace cyberway { namespace chaindb {
         }
 
         void add_undo_fields(mutable_variant_object& obj, const table_info& table, const undo_record type) const {
-            obj.erase(get_revision_field_name());
+            obj.erase(names::revision_field);
 
-            obj(get_record_field_name(), type);
-            obj(get_code_field_name(), get_code_name(table));
-            obj(get_table_field_name(), get_table_name(table));
+            obj(names::operation_field, type);
+            obj(names::code_field,      get_code_name(table));
+            obj(names::table_field,     get_table_name(table));
         }
 
         variant create_undo_value(const table_info& table, const undo_record type, const variant& value) const {
@@ -583,7 +608,7 @@ namespace cyberway { namespace chaindb {
 
 //                mutable_variant_object obj;
 //                add_undo_fields(obj, table.info(), undo_record::NextPk);
-//                obj(get_pk_field_name(), pk);
+//                obj(names::pk_field, pk);
 //
 //                journal_.write(table.info(), -1, {}, {write_operation::Insert, revision_ /*set_rev*/, std::move(obj)});
             }
@@ -674,6 +699,10 @@ namespace cyberway { namespace chaindb {
     }
 
     undo_stack::~undo_stack() = default;
+
+    void undo_stack::add_abi_tables(eosio::chain::abi_def& abi) const {
+        impl_->add_abi_tables(abi);
+    }
 
     void undo_stack::clear() {
         impl_->clear();

@@ -100,7 +100,7 @@ namespace cyberway { namespace chaindb {
         }
 
         const vector<string>& get_reserved_fields() {
-            static const vector<string> fields = {get_scope_field_name(), get_payer_field_name(), get_size_field_name()};
+            static const vector<string> fields = {names::scope_field, names::payer_field, names::size_field};
 
             return fields;
         }
@@ -413,6 +413,9 @@ namespace cyberway { namespace chaindb {
         }
 
         void set_abi(const account_name& code, abi_def abi) {
+            if (code.empty()) {
+                undo_.add_abi_tables(abi);
+            }
             time_point deadline = time_point::now() + max_abi_time_;
             abi_info info(code, std::move(abi), deadline, max_abi_time_);
             set_abi(code, std::move(info), deadline);
@@ -765,9 +768,9 @@ namespace cyberway { namespace chaindb {
 
             mutable_variant_object object(std::move(value));
             object.reserve(3);
-            object(get_scope_field_name(), get_scope_name(table));
-            object(get_payer_field_name(), get_payer_name(payer));
-            object(get_size_field_name(), size);
+            object(names::scope_field, get_scope_name(table));
+            object(names::payer_field, get_payer_name(payer));
+            object(names::size_field, size);
 
             return variant(std::move(object));
         }
@@ -795,7 +798,7 @@ namespace cyberway { namespace chaindb {
 
             if (payer.empty()) {
                 auto& orig_object = orig_value.get_object();
-                payer = orig_object[get_payer_field_name()].as_string();
+                payer = orig_object[names::payer_field].as_string();
             }
 
             auto value = add_service_fields(table, raw_value, payer, pk, size);

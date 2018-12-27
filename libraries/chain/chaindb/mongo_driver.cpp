@@ -189,7 +189,7 @@ namespace cyberway { namespace chaindb {
         } }
 
         void add_pk_value(sub_document& doc, const table_info& table, const primary_key_t pk) {
-            doc.append(kvp(get_scope_field_name(), get_scope_name(table)));
+            doc.append(kvp(names::scope_field, get_scope_name(table)));
 
             auto& pk_order = *table.pk_order;
             switch (pk_order.type.front()) {
@@ -222,8 +222,8 @@ namespace cyberway { namespace chaindb {
         document make_undo_pk_document(const table_info& table, const primary_key_t pk) {
             document doc;
 
-            doc.append(kvp(get_code_field_name(), get_code_name(table)));
-            doc.append(kvp(get_table_field_name(), get_table_name(table)));
+            doc.append(kvp(names::code_field, get_code_name(table)));
+            doc.append(kvp(names::table_field, get_table_name(table)));
             add_pk_value(doc, table, pk);
             return doc;
         }
@@ -403,7 +403,7 @@ namespace cyberway { namespace chaindb {
         document create_find_document(const char* forward, const char* backward) const {
             document find;
 
-            find.append(kvp(get_scope_field_name(), get_scope_name(index)));
+            find.append(kvp(names::scope_field, get_scope_name(index)));
             if (!find_key_.is_object()) return find;
 
             auto& find_object = find_key_.get_object();
@@ -599,7 +599,7 @@ namespace cyberway { namespace chaindb {
             for (auto& index: indexes) {
                 bool was_pk = false;
                 document doc;
-                doc.append(kvp(get_scope_field_name(), 1));
+                doc.append(kvp(names::scope_field, 1));
                 for (auto& o: index.orders) {
                     auto field = o.field;
                     // ui128 || i128
@@ -622,6 +622,7 @@ namespace cyberway { namespace chaindb {
                     try {
                         db_table.create_index(doc.view(), options::index().name(db_index_name).unique(index.unique));
                     } catch (const mongocxx::operation_exception& e) {
+                        wlog("Error on create index: ${code}, ${what}", ("what", e.what())("code", e.code().value()));
                         db_table.indexes().drop_one(db_index_name);
                         db_table.create_index(doc.view(), options::index().name(db_index_name).unique(index.unique));
                     }
@@ -647,7 +648,7 @@ namespace cyberway { namespace chaindb {
             auto db_list = mongo_conn_.list_databases();
             for (auto& db: db_list) {
                 auto db_name = db["name"].get_utf8().value;
-                if (!db_name.starts_with(get_system_code_name())) continue;
+                if (!db_name.starts_with(names::system_code)) continue;
 
                 mongo_conn_.database(db_name).drop();
             }
@@ -657,7 +658,7 @@ namespace cyberway { namespace chaindb {
             apply_table_changes(table);
 
             auto cursor = get_db_table(table).find(
-                make_document(kvp(get_scope_field_name(), get_scope_name(table))),
+                make_document(kvp(names::scope_field, get_scope_name(table))),
                 options::find()
                     .sort(make_document(kvp(table.pk_order->field, -1)))
                     .limit(1));
@@ -697,7 +698,7 @@ namespace cyberway { namespace chaindb {
         }
 
         collection get_undo_db_table() {
-            return mongo_conn_.database(get_system_code_name()).collection(get_undo_table_name());
+            return mongo_conn_.database(names::system_code).collection(names::undo_table);
         }
 
         cursor_t get_next_cursor_id(code_cursor_map::iterator itr) {
@@ -808,12 +809,12 @@ namespace cyberway { namespace chaindb {
                         build_document(data_doc, data.value.get_object());
 
                     case write_operation::UpdateRevision:
-                        data_doc.append(kvp(get_revision_field_name(), data.set_revision));
+                        data_doc.append(kvp(names::revision_field, data.set_revision));
 
                     case write_operation::Delete:
                         pk_doc = make_pk_document(*table_, pk);
                         if (impossible_revision != data.find_revision) {
-                            pk_doc.append(kvp(get_revision_field_name(), data.find_revision));
+                            pk_doc.append(kvp(names::revision_field, data.find_revision));
                         }
                         break;
 

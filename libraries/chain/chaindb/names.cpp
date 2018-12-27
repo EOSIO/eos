@@ -3,60 +3,26 @@
 namespace cyberway { namespace chaindb {
 
     // name can't contains _ that is why they are used for internal db and key names
-        
-    const string& get_system_code_name() {
-        static const string name = "_CYBERWAY_";
-        return name;
-    }
 
-    const string& get_unknown_name() {
-        static const string name = "_UNKNOWN_";
-        return name;
-    }
+    const string names::unknown         = "_UNKNOWN_";
 
-    const string& get_undo_table_name() {
-        static const string name = "UNDO";
-        return name;
-    }
+    const string names::system_code     = "_CYBERWAY_";
 
-    const string& get_code_field_name() {
-        static const string name = "_CODE_";
-        return name;
-    }
+    const string names::undo_table      = "undo";
 
-    const string& get_table_field_name() {
-        static const string name = "_TABLE_";
-        return name;
-    }
+    const string names::code_field      = "_CODE_";
+    const string names::table_field     = "_TABLE_";
+    const string names::scope_field     = "_SCOPE_";
+    const string names::pk_field        = "_PK_";
 
-    const string& get_scope_field_name() {
-        static const string name = "_SCOPE_";
-        return name;
-    }
+    const string names::undo_pk_field   = "_UPK_";
+    const string names::revision_field  = "_REV";
+    const string names::operation_field = "_OP_";
 
-    const string& get_payer_field_name() {
-        static const string name = "_PAYER_";
-        return name;
-    }
+    const string names::payer_field     = "_PAYER_";
+    const string names::size_field      = "_SIZE_";
 
-    const string& get_size_field_name() {
-        static const string name = "_SIZE_";
-        return name;
-    }
-
-    const string& get_revision_field_name() {
-        static const string name = "_REV_";
-        return name;
-    }
-
-    const string& get_record_field_name() {
-        static const string name = "_REC_";
-        return name;
-    }
-
-    const string& get_pk_field_name() {
-        static const string name = "_PK_";
-        return name;
-    }
+    const string names::asc_order       = "asc";
+    const string names::desc_order      = "desc";
 
 } } // namespace cyberway::chaindb

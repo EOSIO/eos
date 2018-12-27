@@ -20,6 +20,8 @@ namespace cyberway { namespace chaindb {
 
         ~undo_stack();
 
+        void add_abi_tables(eosio::chain::abi_def&) const;
+
         void clear();
 
         chaindb_session start_undo_session(bool enabled);
