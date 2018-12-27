@@ -7,6 +7,7 @@
 #include <eosio/chain/action.hpp>
 #include <eosio/chain/action_receipt.hpp>
 #include <eosio/chain/block.hpp>
+#include <eosio/chain/event.hpp>
 
 namespace eosio { namespace chain {
 
@@ -36,6 +37,7 @@ namespace eosio { namespace chain {
       fc::optional<block_id_type>     producer_block_id;
       flat_set<account_delta>         account_ram_deltas;
       fc::optional<fc::exception>     except;
+      std::vector<event>              events;
    };
 
    struct action_trace : public base_action_trace {

@@ -31,16 +31,35 @@ event_engine_plugin_impl::event_engine_plugin_impl() {
 event_engine_plugin_impl::~event_engine_plugin_impl() {
 }
 
-void event_engine_plugin_impl::accepted_block( const chain::block_state_ptr& ) {
+void event_engine_plugin_impl::accepted_block( const chain::block_state_ptr& state) {
+    ilog("Accepted block: ${block_num}", ("block_num", state->block_num));
 }
 
-void event_engine_plugin_impl::irreversible_block(const chain::block_state_ptr&) {
+void event_engine_plugin_impl::irreversible_block(const chain::block_state_ptr& state) {
+    ilog("Irreversible block: ${block_num}", ("block_num", state->block_num));
 }
 
-void event_engine_plugin_impl::accepted_transaction(const chain::transaction_metadata_ptr&) {
+void event_engine_plugin_impl::accepted_transaction(const chain::transaction_metadata_ptr& trx_meta) {
+//    ilog("Accepted trx: ${id}, ${signed_id}", ("id", trx_meta->id)("signed_id", trx_meta->signed_id));
 }
 
-void event_engine_plugin_impl::applied_transaction(const chain::transaction_trace_ptr&) {
+void event_engine_plugin_impl::applied_transaction(const chain::transaction_trace_ptr& trx_trace) {
+    ilog("Applied trx: ${block_num}, ${id}", ("block_num", trx_trace->block_num)("id", trx_trace->id));
+
+    std::function<void(const chain::action_trace&)> print_action_trace = [&](const chain::action_trace& trace) {
+        std::vector<chain::name> events;
+        for(auto &event: trace.events) {
+            events.push_back(event.name);
+        }
+        ilog("  action: ${contract}:${action} ${events}", ("contract", trace.act.account)("action", trace.act.name)("events", events));
+        for(auto &inline_trace: trace.inline_traces) {
+            print_action_trace(inline_trace);
+        }
+    };
+
+    for(auto &trace: trx_trace->action_traces) {
+        print_action_trace(trace);
+    }
 }
 
 

@@ -124,6 +124,7 @@ namespace eosio { namespace chain {
    using permission_name  = name;
    using table_name       = name;
    using index_name       = name;
+   using event_name       = name;
 
 
    /**
