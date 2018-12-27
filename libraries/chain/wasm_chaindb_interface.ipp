@@ -71,7 +71,7 @@ namespace eosio { namespace chain {
             return context.chaindb.available_pk({code, scope, table});
         }
 
-        cursor_t chaindb_insert(
+        primary_key_t chaindb_insert(
             account_name_t code, account_name_t scope, table_name_t table,
             account_name_t payer, primary_key_t pk, array_ptr<const char> data, size_t size
         ) {
@@ -110,7 +110,7 @@ namespace eosio { namespace chain {
 
         (chaindb_available_primary_key, int64_t(int64_t, int64_t, int64_t) )
 
-        (chaindb_insert,      int(int64_t, int64_t, int64_t, int64_t, int64_t, int, int)     )
+        (chaindb_insert,      int64_t(int64_t, int64_t, int64_t, int64_t, int64_t, int, int) )
         (chaindb_update,      int64_t(int64_t, int64_t, int64_t, int64_t, int64_t, int, int) )
         (chaindb_delete,      int64_t(int64_t, int64_t, int64_t, int64_t)                    )
     );

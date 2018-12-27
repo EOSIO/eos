@@ -294,9 +294,8 @@ private:
     class const_iterator_impl: public std::iterator<std::bidirectional_iterator_tag, const T> {
     public:
         friend bool operator == (const const_iterator_impl& a, const const_iterator_impl& b) {
-            b.lazy_open_begin();
-            a.lazy_open_begin();
-
+            a.lazy_open();
+            b.lazy_open();
             return a.primary_key_ == b.primary_key_;
         }
         friend bool operator != (const const_iterator_impl& a, const const_iterator_impl& b) {
