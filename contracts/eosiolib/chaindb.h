@@ -32,7 +32,7 @@ primary_key_t chaindb_data(account_name_t code, cursor_t, void* data, const size
 
 primary_key_t chaindb_available_primary_key(account_name_t code, scope_t scope, table_name_t table);
 
-void chaindb_insert(account_name_t code, scope_t scope, account_name_t payer, table_name_t, primary_key_t, void* data, size_t);
+primary_key_t chaindb_insert(account_name_t code, scope_t scope, account_name_t payer, table_name_t, primary_key_t, void* data, size_t);
 primary_key_t chaindb_update(account_name_t code, scope_t scope, account_name_t payer, table_name_t, primary_key_t, void* data, size_t);
 primary_key_t chaindb_delete(account_name_t code, scope_t scope, table_name_t, primary_key_t);
 

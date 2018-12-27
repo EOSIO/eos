@@ -511,7 +511,7 @@ namespace cyberway { namespace chaindb {
             return item;
         }
 
-        void insert(
+        primary_key_t insert(
             apply_context&, const table_request& request, const account_name& payer,
             const primary_key_t pk, const char* data, const size_t size
         ) {
@@ -519,6 +519,7 @@ namespace cyberway { namespace chaindb {
 
             auto value = table.abi->to_object(table, data, size, max_abi_time_);
             insert(table, std::move(value), payer, pk, size);
+            return pk;
         }
 
         const cursor_info& opt_find_by_pk(const table_request& request, primary_key_t pk) {
@@ -940,11 +941,11 @@ namespace cyberway { namespace chaindb {
         return impl_->available_pk(request);
     }
 
-    void chaindb_controller::insert(
+    primary_key_t chaindb_controller::insert(
         apply_context& ctx, const table_request& request, const account_name& payer,
         primary_key_t pk, const char* data, size_t size
     ) {
-         impl_->insert(ctx, request, payer, pk, data, size);
+         return impl_->insert(ctx, request, payer, pk, data, size);
     }
 
     primary_key_t chaindb_controller::update(
