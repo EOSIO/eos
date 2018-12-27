@@ -20,13 +20,12 @@
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
+#include <fc/fileno.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 
 #include <boost/asio/thread_pool.hpp>
 #include <boost/asio/post.hpp>
-
-#include <eosio/chain/fileno.hpp>
 
 namespace eosio { namespace chain {
 
@@ -332,7 +331,8 @@ struct controller_impl {
             if( shutdown() ) break;
          }
       }
-      std::cerr<< "\n";
+      if(cerr_is_tty)
+         std::cerr<< "\n";
       ilog( "${n} blocks replayed", ("n", head->block_num - start_block_num) );
 
       // if the irreversible log is played without undo sessions enabled, we need to sync the
