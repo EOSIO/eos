@@ -10,17 +10,24 @@ namespace cyberway { namespace chaindb {
 
     const string names::undo_table      = "undo";
 
-    const string names::code_field      = "_CODE_";
-    const string names::table_field     = "_TABLE_";
-    const string names::scope_field     = "_SCOPE_";
-    const string names::pk_field        = "_PK_";
+    const string names::service_field   = "_SERVICE_";
 
-    const string names::undo_pk_field   = "_UPK_";
-    const string names::revision_field  = "_REV";
-    const string names::operation_field = "_OP_";
+    const string names::code_field      = "code";
+    const string names::table_field     = "table";
+    const string names::hash_field      = "hash";
+    const string names::scope_field     = "scope";
+    const string names::pk_field        = "pk";
 
-    const string names::payer_field     = "_PAYER_";
-    const string names::size_field      = "_SIZE_";
+    const string names::undo_pk_field   = "upk";
+    const string names::undo_rec_field  = "rec";
+    const string names::revision_field  = "rev";
+
+    const string names::payer_field     = "payer";
+    const string names::size_field      = "size";
+
+    const string names::scope_path      = string(names::service_field).append(".").append(names::scope_field);
+    const string names::undo_pk_path    = string(names::service_field).append(".").append(names::undo_pk_field);
+    const string names::revision_path   = string(names::service_field).append(".").append(names::revision_field);
 
     const string names::asc_order       = "asc";
     const string names::desc_order      = "desc";

@@ -3,6 +3,7 @@
 #include <eosio/chain/symbol.hpp>
 
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chaindb/object_value.hpp>
 #include <cyberway/chaindb/exception.hpp>
 #include <cyberway/chaindb/names.hpp>
 #include <cyberway/chaindb/driver_interface.hpp>
@@ -19,7 +20,6 @@ namespace cyberway { namespace chaindb {
     using eosio::chain::struct_def;
     using eosio::chain::abi_serializer;
     using eosio::chain::type_name;
-    using eosio::chain::code_type;
 
     using fc::variant;
     using fc::variants;
@@ -99,12 +99,6 @@ namespace cyberway { namespace chaindb {
             return types;
         }
 
-        const vector<string>& get_reserved_fields() {
-            static const vector<string> fields = {names::scope_field, names::payer_field, names::size_field};
-
-            return fields;
-        }
-
         template <typename Info>
         const index_def& get_pk_index(const Info& info) {
             // abi structure is already validated by abi_serializer
@@ -135,7 +129,9 @@ namespace cyberway { namespace chaindb {
                     value = variant(symbol(pk << 8).name());
                     break;
                 default:
-                    CYBERWAY_ASSERT(false, primary_key_exception, "Invalid type of primary key");
+                    CYBERWAY_ASSERT(false, invalid_primary_key_exception,
+                        "Invalid type ${type} of the primary key for the table ${table}",
+                        ("type", pk_order.type)("table", get_full_table_name(table)));
             }
 
             for (auto itr = pk_order.path.rbegin(), etr = pk_order.path.rend(); etr != itr; ++itr) {
@@ -147,7 +143,7 @@ namespace cyberway { namespace chaindb {
     } } // namespace _detail
 
     class index_builder final {
-        using table_map_type = fc::flat_map<code_type, table_def>;
+        using table_map_type = fc::flat_map<hash_t, table_def>;
         index_info info_;
         abi_serializer& serializer_;
         table_map_type& table_map_;
@@ -170,7 +166,7 @@ namespace cyberway { namespace chaindb {
 
                 for (auto& index: table.indexes) {
                     // if abi was loaded instead of declared
-                    if (!index.code) index.code = index.name.value;
+                    if (!index.hash) index.hash = index.name.value;
 
                     build_index(table, index, table_struct);
                 }
@@ -204,7 +200,8 @@ namespace cyberway { namespace chaindb {
             auto struct_name = get_root_index_name(table, index);
             auto& root_struct = dst_struct_map.emplace(struct_name, struct_def(struct_name, "", {})).first->second;
             for (auto& order: index.orders) {
-                CYBERWAY_ASSERT(order.order == "asc" || order.order == "desc", invalid_index_description_exception,
+                CYBERWAY_ASSERT(order.order == names::asc_order || order.order == names::desc_order,
+                    invalid_index_description_exception,
                     "Invalid type '${type}' for the index order for the index ${index}",
                     ("type", order.order)("index", root_struct.name));
 
@@ -275,8 +272,8 @@ namespace cyberway { namespace chaindb {
             serializer_.set_abi(abi, max_time);
 
             for (auto& table: abi.tables) {
-                auto code = (!table.code ? table.name.value : table.code);
-                table_map_.emplace(code, std::move(table));
+                auto hash = (!table.hash ? table.name.value : table.hash);
+                table_map_.emplace(hash, std::move(table));
             }
 
             index_builder builder(code, serializer_, table_map_);
@@ -287,9 +284,6 @@ namespace cyberway { namespace chaindb {
             driver_interface& driver, const time_point& deadline, const microseconds& max_time
         ) const {
             for (auto& t: table_map_) {
-                CYBERWAY_ASSERT(time_point::now() < deadline, abi_serialization_deadline_exception,
-                    "serialization time limit ${t}us exceeded", ("t", max_time));
-
                 table_info info(code_, code_);
                 info.table = &t.second;
                 info.abi = this;
@@ -329,8 +323,8 @@ namespace cyberway { namespace chaindb {
             return is_removed_;
         }
 
-        const table_def* find_table(code_type code) const {
-            auto itr = table_map_.find(code);
+        const table_def* find_table(hash_t hash) const {
+            auto itr = table_map_.find(hash);
             if (table_map_.end() != itr) return &itr->second;
 
             return nullptr;
@@ -339,7 +333,7 @@ namespace cyberway { namespace chaindb {
     private:
         const account_name code_;
         abi_serializer serializer_;
-        fc::flat_map<code_type, table_def> table_map_;
+        fc::flat_map<hash_t, table_def> table_map_;
         bool is_removed_ = false;
 
         template<typename Type>
@@ -486,43 +480,32 @@ namespace cyberway { namespace chaindb {
             return cursor;
         }
 
-        cache_item_ptr create_cache_item(const table_request& request, const cache_converter_interface& converter) {
+        void set_cache_converter(const table_request& request, const cache_converter_interface& converter) {
             auto table = get_table(request);
-            auto item = cache_.create(table, converter);
+            cache_.set_cache_converter(table, converter);
+        }
+
+        cache_item_ptr create_cache_item(const table_request& req) {
+            auto table = get_table(req);
+            auto item = cache_.create(table);
             if (BOOST_UNLIKELY(!item)) {
                 auto pk = driver_.available_pk(table);
                 cache_.set_next_pk(table, pk);
-                item = cache_.create(table, converter);
+                item = cache_.create(table);
             }
             return item;
         }
 
         cache_item_ptr get_cache_item(
-            const cursor_request& cursor_req, const table_request& table_req,
-            const primary_key_t pk, const cache_converter_interface& converter
+            const cursor_request& cursor_req, const table_request& table_req, const primary_key_t pk
         ) {
             auto table = get_table(table_req);
-
             auto item = cache_.find(table, pk);
             if (BOOST_UNLIKELY(!item)) {
-                auto& cursor = driver_.current(cursor_req);
-                auto value = driver_.value(cursor);
-                item = std::make_shared<cache_item>(pk, converter);
-                item->convert_variant(value);
-                cache_.insert(table, item);
+                auto obj = object_at_cursor(cursor_req);
+                item = cache_.emplace(table, std::move(obj));
             }
             return item;
-        }
-
-        primary_key_t insert(
-            apply_context&, const table_request& request, const account_name& payer,
-            const primary_key_t pk, const char* data, const size_t size
-        ) {
-            auto table = get_table(request);
-
-            auto value = table.abi->to_object(table, data, size, max_abi_time_);
-            insert(table, std::move(value), payer, pk, size);
-            return pk;
         }
 
         const cursor_info& opt_find_by_pk(const table_request& request, primary_key_t pk) {
@@ -530,56 +513,90 @@ namespace cyberway { namespace chaindb {
             return opt_find_by_pk(table, pk);
         }
 
-        primary_key_t insert(const table_request& request, const primary_key_t pk, variant value, const size_t size) {
-            auto info = get_table(request);
-            insert(info, std::move(value), 0, pk, size);
+        // From contracts
+        primary_key_t insert(
+            apply_context&, const table_request& request, const account_name& payer,
+            const primary_key_t pk, const char* data, const size_t size
+        ) {
+            auto table = get_table(request);
+            auto value = table.abi->to_object(table, data, size, max_abi_time_);
+            auto obj = object_value{{table, pk, payer, size}, std::move(value)};
 
-            return pk;
+            auto inserted_pk = insert(table, obj);
+            // TODO: update RAM usage
+
+            return inserted_pk;
         }
 
+        // From internal
+        primary_key_t insert(cache_item& itm, variant value, const size_t size) {
+            auto table = get_table(itm);
+            auto obj = object_value{{table, itm.pk(), account_name() /* payer */, size}, std::move(value)};
+
+            auto inserted_pk = insert(table, obj);
+            itm.set_object(std::move(obj));
+
+            return inserted_pk;
+        }
+
+        // From contracts
         primary_key_t update(
             apply_context&, const table_request& request, account_name payer,
             const primary_key_t pk, const char* data, const size_t size
         ) {
             auto table = get_table(request);
             auto value = table.abi->to_object(table, data, size, max_abi_time_);
-            auto updated_pk = update(table, std::move(value), payer, pk, size);
+            auto obj = object_value{{table, pk, payer, size}, std::move(value)};
+
+            auto updated_pk = update(table, obj);
 
             // TODO: update RAM usage
 
             return updated_pk;
         }
 
-        primary_key_t update(
-            const table_request& request, const primary_key_t pk, variant value, const size_t size
-        ) {
-            auto table = get_table(request);
-            return update(table, std::move(value), 0, pk, size);
+        // From internal
+        primary_key_t update(cache_item& itm, variant value, const size_t size) {
+            auto table = get_table(itm);
+            auto obj = object_value{{table, itm.pk(), account_name() /* payer */, size}, std::move(value)};
+
+            auto updated_pk = update(table, obj);
+            itm.set_object(std::move(obj));
+
+            return updated_pk;
         }
 
-        primary_key_t remove(apply_context&, const table_request& request, primary_key_t pk) {
+        // From contracts
+        primary_key_t remove(apply_context&, const table_request& request, const primary_key_t pk) {
             auto table = get_table(request);
-            auto removed_pk = remove(table, pk);
+            auto obj = object_by_pk(table, pk);
+            auto removed_pk = remove(table, obj);
 
             // TODO: update RAM usage
 
             return removed_pk;
         }
 
-        primary_key_t remove(const table_request& request, primary_key_t pk) {
-            auto table = get_table(request);
-            cache_.remove(table, pk);
-            return remove(table, pk);
+        // From internal
+        primary_key_t remove(cache_item& itm) {
+            auto table = get_table(itm);
+            auto orig_obj = itm.object();
+            auto removed_pk = remove(table, std::move(orig_obj));
+            cache_.remove(table, removed_pk);
+
+            return removed_pk;
         }
 
-        variant value_by_pk(const table_request& request, primary_key_t pk) {
+        object_value object_by_pk(const table_request& request, const primary_key_t pk) {
             auto table = get_table(request);
-            return driver_.value(table, pk);
+            return object_by_pk(table, pk);
         }
 
-        variant value_at_cursor(const cursor_request& request) {
+        object_value object_at_cursor(const cursor_request& request) {
             auto& cursor = driver_.current(request);
-            return driver_.value(cursor);
+            auto obj = driver_.object_at_cursor(cursor);
+            validate_object(cursor.index, obj, cursor.pk);
+            return obj;
         }
 
     private:
@@ -592,10 +609,20 @@ namespace cyberway { namespace chaindb {
             return driver_.opt_find_by_pk(index, pk, std::move(pk_key_value));
         }
 
+        table_info get_table(const cache_item& itm) const {
+            auto& service = itm.object().service;
+            auto info = find_table<index_info>(service);
+            CYBERWAY_ASSERT(info.table, unknown_table_exception,
+                "ABI table ${table} doesn't exists", ("table", get_full_table_name(service)));
+
+            return std::move(info);
+        }
+
         table_info get_table(const table_request& request) const {
             auto info = find_table<index_info>(request);
             CYBERWAY_ASSERT(info.table, unknown_table_exception,
-                "ABI table ${table} doesn't exists", ("table", get_full_table_name(request)));
+                "ABI table ${code}.${table} doesn't exists",
+                ("code", get_code_name(request))("table", get_table_name(request.hash)));
 
             return std::move(info);
         }
@@ -603,7 +630,9 @@ namespace cyberway { namespace chaindb {
         index_info get_index(const index_request& request) const {
             auto info = find_index(request);
             CYBERWAY_ASSERT(info.index, unknown_index_exception,
-                "ABI index ${index} doesn't exists", ("index", get_full_index_name(request)));
+                "ABI index ${code}.${table}.${index} doesn't exists",
+                ("code", get_code_name(request))("table", get_table_name(request.hash))
+                ("index", get_index_name(request.index)));
 
             return info;
         }
@@ -612,13 +641,13 @@ namespace cyberway { namespace chaindb {
         Info find_table(const Request& request) const {
             account_name code(request.code);
             account_name scope(request.scope);
-            Info info(code, scope);
+            Info info(std::move(code), std::move(scope));
 
             auto itr = abi_map_.find(code);
             if (abi_map_.end() == itr) return info;
 
             info.abi = &itr->second;
-            info.table = itr->second.find_table(request.table);
+            info.table = itr->second.find_table(request.hash);
             if (info.table) info.pk_order = &_detail::get_pk_order(info);
             return info;
         }
@@ -628,7 +657,7 @@ namespace cyberway { namespace chaindb {
             if (info.table == nullptr) return info;
 
             for (auto& i: info.table->indexes) {
-                if (i.code == request.index) {
+                if (i.hash == request.index) {
                     info.index = &i;
                     break;
                 }
@@ -642,137 +671,107 @@ namespace cyberway { namespace chaindb {
 
             if (!cursor.blob.empty()) return;
 
-            auto& value = driver_.value(cursor);
-            validate_object(cursor.index, value, cursor.pk);
+            auto& obj = driver_.object_at_cursor(cursor);
+            validate_object(cursor.index, obj, cursor.pk);
 
-            auto buffer = cursor.index.abi->to_bytes(cursor.index, value, max_abi_time_);
+            auto buffer = cursor.index.abi->to_bytes(cursor.index, obj.value, max_abi_time_);
             driver_.set_blob(cursor, std::move(buffer));
         }
 
-        template <typename Exception>
+        object_value object_by_pk(const table_info& table, const primary_key_t pk) {
+            auto itm = cache_.find(table, pk);
+            if (itm) return itm->object();
+
+            auto obj = driver_.object_by_pk(table, pk);
+            validate_object(table, obj, pk);
+            cache_.emplace(table, obj);
+            return obj;
+        }
+
         void validate_pk_field(const table_info& table, const variant& row, const primary_key_t pk) const { try {
+            CYBERWAY_ASSERT(pk != unset_primary_key && pk != end_primary_key, primary_key_exception,
+                "Value ${pk} can't be used as primary key in the row ${row} "
+                "from the table ${table} for the scope '${scope}'",
+                ("pk", pk)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
+
             auto& pk_order = *table.pk_order;
             const variant* value = &row;
             for (auto& key: pk_order.path) {
-                CYBERWAY_ASSERT(value->is_object(), Exception,
-                    "The part ${key} in the primary key is not an object for the table ${table} for the scope '${scope}'",
-                    ("key", key)("value", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
+                CYBERWAY_ASSERT(value->is_object(), primary_key_exception,
+                    "The part ${key} in the primary key is not an object in the row ${row}"
+                    "from the table ${table} for the scope '${scope}'",
+                    ("key", key)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
 
                 auto& object = value->get_object();
                 auto itr = object.find(key);
-                CYBERWAY_ASSERT(object.end() != itr, Exception,
-                    "Can't find the part ${key} for the primary key in the table ${table} for the scope '${scope}'",
-                    ("key", key)("value", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
+                CYBERWAY_ASSERT(object.end() != itr, primary_key_exception,
+                    "Can't find the part ${key} for the primary key in the row ${row} "
+                    "from the table ${table} for the scope '${scope}'",
+                    ("key", key)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
 
                 value = &(*itr).value();
             }
 
             auto type = value->get_type();
+
+            auto validate_type = [&](const bool test) {
+                CYBERWAY_ASSERT(test, primary_key_exception,
+                    "Wrong value type '${type} for the primary key in the row ${row}"
+                    "from the table ${table} for the scope '${scope}'",
+                    ("type", type)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
+            };
+
+            auto validate_value = [&](const bool test) {
+                CYBERWAY_ASSERT(test, primary_key_exception,
+                    "Wrong value ${pk} != ${value} for the primary key in the row ${row}"
+                    "from the table ${table} for the scope '${scope}'",
+                    ("pk", pk)("value", *value)
+                    ("type", type)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
+            };
+
             switch(pk_order.type.front()) {
                 case 'i': { // int64
-                    CYBERWAY_ASSERT(variant::type_id::int64_type == type, Exception,
-                        "Wrong value type '${type} for the primary key in the row ${row}"
-                        "from the table ${table} for the scope '${scope}'",
-                        ("type", type)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-                    CYBERWAY_ASSERT(pk == value->as_uint64(), Exception,
-                        "Wrong value ${pk} != ${value} for the primary key in the row ${row}"
-                        "from the table ${table} for the scope '${scope}'",
-                        ("pk", pk)("value", value->as_uint64())
-                        ("type", type)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
+                    validate_type(variant::type_id::int64_type == type);
+                    validate_value(value->as_uint64() == pk);
                     break;
                 }
                 case 'u': { // uint64
-                    CYBERWAY_ASSERT(variant::type_id::uint64_type == type, Exception,
-                        "Wrong value type '${type} for the primary key in the row ${row}"
-                        "from the table ${table} for the scope '${scope}'",
-                        ("type", type)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-                    CYBERWAY_ASSERT(pk == value->as_uint64(), Exception,
-                        "Wrong value ${pk} != ${value} for the primary key in the row ${row}"
-                        "from the table ${table} for the scope '${scope}'",
-                        ("pk", pk)("value", value->as_uint64())
-                        ("type", type)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
+                    validate_type(variant::type_id::uint64_type == type);
+                    validate_value(value->as_uint64() == pk);
                     break;
                 }
                 case 'n': { // name
-                    CYBERWAY_ASSERT(variant::type_id::string_type == type, Exception,
-                        "Wrong value type '${type} for the primary key in the row ${row}"
-                        "from the table ${table} for the scope '${scope}'",
-                        ("type", type)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-                    CYBERWAY_ASSERT(name(value->as_string()).value == pk, Exception,
-                        "Wrong value ${pk} != ${value} for the primary key in the row ${row}"
-                        "from the table ${table} for the scope '${scope}'",
-                        ("pk", pk)("value", value->as_uint64())
-                        ("type", type)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
+                    validate_type(variant::type_id::string_type == type);
+                    validate_value(name(value->as_string()).value == pk);
                     break;
                 }
                 case 's': { // symbol_code
-                    CYBERWAY_ASSERT(variant::type_id::string_type == type, Exception,
-                        "Wrong value type '${type} for the primary key in the row ${row}"
-                        "from the table ${table} for the scope '${scope}'",
-                        ("type", type)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-                    CYBERWAY_ASSERT(symbol(0, value->as_string().c_str()).to_symbol_code() == pk, Exception,
-                        "Wrong value ${pk} != ${value} for the primary key in the row ${row}"
-                        "from the table ${table} for the scope '${scope}'",
-                        ("pk", pk)("value", value->as_uint64())
-                        ("type", type)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
+                    validate_type(variant::type_id::string_type == type);
+                    validate_value(symbol(0, value->as_string().c_str()).to_symbol_code() == pk);
                     break;
                 }
                 default:
-                    CYBERWAY_ASSERT(false, Exception,
-                        "Invalid type ${type} of the primary key for the table ${table} for the scope '${scope}'",
-                        ("type", pk_order.type)("table", get_full_table_name(table))("scope", get_scope_name(table)));
+                    validate_type(false);
             }
-        } catch (const Exception&) {
+        } catch (const primary_key_exception&) {
             throw;
         } catch (...) {
-            CYBERWAY_ASSERT(false, Exception,
+            CYBERWAY_ASSERT(false, primary_key_exception,
                 "Wrong value of the primary key in the row ${row} "
                 "from the table ${table} for the scope '${scope}'",
                 ("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
         } }
 
-        void validate_object(const table_info& table, const variant& value, const primary_key_t pk) const {
-            CYBERWAY_ASSERT(value.is_object(), broken_driver_exception, "ChainDB driver returns not object.");
-            auto& object = value.get_object();
+        void validate_object(const table_info& table, const object_value& obj, const primary_key_t pk) const {
+            CYBERWAY_ASSERT(obj.value.get_type() == variant::type_id::object_type, invalid_abi_store_type_exception,
+                "Receives ${obj} instead of object.", ("obj", obj.value));
+            auto& value = obj.value.get_object();
 
-            auto& fields = _detail::get_reserved_fields();
-            for (auto& field: fields) {
-                CYBERWAY_ASSERT(object.end() != object.find(field), driver_absent_field_exception,
-                    "ChainDB driver returns object without the field ${field} "
-                    "for the table ${table} for the scope '${scope}'",
-                    ("field", field)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-            }
+            CYBERWAY_ASSERT(value.end() == value.find(names::service_field), reserved_field_exception,
+                "Object has the reserved field ${field} for the table ${table} for the scope '${scope}'",
+                ("field", names::service_field)("table", get_full_table_name(table))("scope", get_scope_name(table)));
 
-            validate_pk_field<driver_primary_key_exception>(table, value, pk);
-        }
-
-        void validate_service_fields(const table_info& table, const variant& value, const primary_key_t pk) const {
-            // type is object - should be checked before this call
-            auto& object = value.get_object();
-
-            auto& fields = _detail::get_reserved_fields();
-            for (auto& field: fields) {
-                CYBERWAY_ASSERT(object.end() == object.find(field), reserved_field_name_exception,
-                    "The table ${table} in the scope '${scope}' can't use ${field} as field name.",
-                    ("field", field)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-            }
-            validate_pk_field<primary_key_exception>(table, value, pk);
-        }
-
-        variant add_service_fields(
-            const table_info& table, variant value, const account_name& payer, const primary_key_t pk, size_t size
-        ) const {
-            using namespace _detail;
-
-            validate_service_fields(table, value, pk);
-
-            mutable_variant_object object(std::move(value));
-            object.reserve(3);
-            object(names::scope_field, get_scope_name(table));
-            object(names::payer_field, get_payer_name(payer));
-            object(names::size_field, size);
-
-            return variant(std::move(object));
+            validate_pk_field(table, obj.value, pk);
         }
 
         void set_abi(const account_name& code, abi_info&& info, time_point deadline) {
@@ -781,37 +780,28 @@ namespace cyberway { namespace chaindb {
             abi_map_.emplace(code, std::forward<abi_info>(info));
         }
 
-        void insert(
-            table_info& table, variant raw_value,
-            const account_name& payer, const primary_key_t pk, const size_t size
-        ) {
-            auto value = add_service_fields(table, std::move(raw_value), payer, pk, size);
-            undo_.insert(table, pk, std::move(value));
+        primary_key_t insert(const table_info& table, object_value& obj) {
+            validate_object(table, obj, obj.pk());
+            undo_.insert(table, obj);
+            return obj.pk();
         }
 
-        primary_key_t update(
-            const table_info& table, variant raw_value,
-            account_name payer, const primary_key_t pk, const size_t size
-        ) {
-            auto orig_value = driver_.value(table, pk);
-            validate_object(table, orig_value, pk);
+        primary_key_t update(const table_info& table, object_value& obj) {
+            validate_object(table, obj, obj.pk());
 
-            if (payer.empty()) {
-                auto& orig_object = orig_value.get_object();
-                payer = orig_object[names::payer_field].as_string();
+            auto orig_obj = object_by_pk(table, obj.pk());
+            if (obj.service.payer.empty()) {
+                obj.service.payer = orig_obj.service.payer;
             }
 
-            auto value = add_service_fields(table, raw_value, payer, pk, size);
-            undo_.update(table, pk, std::move(orig_value), std::move(value));
+            undo_.update(table, std::move(orig_obj), obj);
 
-            return pk;
+            return obj.pk();
         }
 
-        primary_key_t remove(const table_info& table, primary_key_t pk) {
-            auto orig_value = driver_.value(table, pk);
-            validate_object(table, orig_value, pk);
-
-            undo_.remove(table, pk, std::move(orig_value));
+        primary_key_t remove(const table_info& table, object_value orig_obj) {
+            auto pk = orig_obj.pk();
+            undo_.remove(table, std::move(orig_obj));
             return pk;
         }
     }; // class chaindb_controller::controller_impl_
@@ -927,17 +917,18 @@ namespace cyberway { namespace chaindb {
         return impl_->data(request, data, size).pk;
     }
 
-    cache_item_ptr chaindb_controller::create_cache_item(
-        const table_request& table, const cache_converter_interface& converter
-    ) {
-        return impl_->create_cache_item(table, converter);
+    void chaindb_controller::set_cache_converter(const table_request& table, const cache_converter_interface& conv) {
+        impl_->set_cache_converter(table, conv);
+    }
+
+    cache_item_ptr chaindb_controller::create_cache_item(const table_request& table) {
+        return impl_->create_cache_item(table);
     }
 
     cache_item_ptr chaindb_controller::get_cache_item(
-        const cursor_request& cursor, const table_request& table,
-        const primary_key_t pk, const cache_converter_interface& converter
+        const cursor_request& cursor, const table_request& table, const primary_key_t pk
     ) {
-        return impl_->get_cache_item(cursor, table, pk, converter);
+        return impl_->get_cache_item(cursor, table, pk);
     }
 
     primary_key_t chaindb_controller::available_pk(const table_request& request) {
@@ -962,28 +953,25 @@ namespace cyberway { namespace chaindb {
         return impl_->remove(ctx, request, pk);
     }
 
-    primary_key_t chaindb_controller::insert(
-        const table_request& request, primary_key_t pk, variant data, size_t size
-    ) {
-        return impl_->insert(request, pk, std::move(data), size);
+    primary_key_t chaindb_controller::insert(cache_item& itm, variant data, size_t size) {
+        return impl_->insert(itm, std::move(data), size);
     }
 
-    primary_key_t chaindb_controller::update(
-        const table_request& request, primary_key_t pk, variant data, size_t size
+    primary_key_t chaindb_controller::update(cache_item& itm, variant data, size_t size
     ) {
-        return impl_->update(request, pk, std::move(data), size);
+        return impl_->update(itm, std::move(data), size);
     }
 
-    primary_key_t chaindb_controller::remove(const table_request& request, primary_key_t pk) {
-        return impl_->remove(request, pk);
+    primary_key_t chaindb_controller::remove(cache_item& itm) {
+        return impl_->remove(itm);
     }
 
     variant chaindb_controller::value_by_pk(const table_request& request, primary_key_t pk) {
-        return impl_->value_by_pk(request, pk);
+        return impl_->object_by_pk(request, pk).value;
     }
 
     variant chaindb_controller::value_at_cursor(const cursor_request& request) {
-        return impl_->value_at_cursor(request);
+        return impl_->object_at_cursor(request).value;
     }
 
     find_info chaindb_controller::opt_find_by_pk(const table_request& request, primary_key_t pk) {

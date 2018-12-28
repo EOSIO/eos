@@ -13,8 +13,8 @@ namespace eosio { namespace chain {
 
 namespace cyberway { namespace chaindb {
     using fc::microseconds;
+    using fc::variant;
 
-    using eosio::chain::account_name;
     using eosio::chain::apply_context;
     using eosio::chain::abi_def;
 
@@ -28,34 +28,20 @@ namespace cyberway { namespace chaindb {
     struct index_request final {
         const account_name code;
         const account_name scope;
-        const table_name_t table;
+        const hash_t       hash;
         const index_name_t index;
     }; // struct index_request
 
     struct table_request final {
         const account_name code;
         const account_name scope;
-        const table_name_t table;
+        const hash_t       hash;
     }; // struct table_request
 
     struct cursor_request final {
         const account_name code;
-        const cursor_t id;
+        const cursor_t     id;
     }; // struct cursor_request
-
-    class abi_info;
-
-    struct table_info {
-        const account_name code;
-        const account_name scope;
-        const table_def*   table    = nullptr;
-        const order_def*   pk_order = nullptr;
-        const abi_info*    abi      = nullptr;
-
-        table_info(const account_name& code, const account_name& scope)
-        : code(code), scope(scope) {
-        }
-    }; // struct table_info
 
     struct index_info: public table_info {
         const index_def* index = nullptr;
@@ -68,8 +54,8 @@ namespace cyberway { namespace chaindb {
     }; // struct index_info
 
     struct find_info final {
-        cursor_t cursor  = invalid_cursor;
-        primary_key_t pk = end_primary_key;
+        cursor_t      cursor  = invalid_cursor;
+        primary_key_t pk      = end_primary_key;
     };
 
     class chaindb_controller final {
@@ -116,8 +102,9 @@ namespace cyberway { namespace chaindb {
         int32_t       datasize(const cursor_request&);
         primary_key_t data(const cursor_request&, const char*, size_t);
 
-        cache_item_ptr create_cache_item(const table_request&, const cache_converter_interface&);
-        cache_item_ptr get_cache_item(const cursor_request&, const table_request&, primary_key_t, const cache_converter_interface&);
+        void set_cache_converter(const table_request&, const cache_converter_interface&);
+        cache_item_ptr create_cache_item(const table_request&);
+        cache_item_ptr get_cache_item(const cursor_request&, const table_request&, primary_key_t);
 
         primary_key_t available_pk(const table_request&);
 
@@ -125,9 +112,9 @@ namespace cyberway { namespace chaindb {
         primary_key_t update(apply_context&, const table_request&, const account_name&, primary_key_t, const char*, size_t);
         primary_key_t remove(apply_context&, const table_request&, primary_key_t);
 
-        primary_key_t insert(const table_request&, primary_key_t, variant, size_t);
-        primary_key_t update(const table_request&, primary_key_t, variant, size_t);
-        primary_key_t remove(const table_request&, primary_key_t);
+        primary_key_t insert(cache_item&, variant, size_t);
+        primary_key_t update(cache_item&, variant, size_t);
+        primary_key_t remove(cache_item&);
 
         variant value_by_pk(const table_request& request, primary_key_t pk);
         variant value_at_cursor(const cursor_request& request);

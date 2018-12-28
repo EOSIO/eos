@@ -1,67 +1,91 @@
 #pragma once
 
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chaindb/object_value.hpp>
 #include <cyberway/chaindb/table_object.hpp>
 
 namespace cyberway { namespace chaindb {
 
-    using fc::variant;
+    struct write_operation final {
+        enum operation_t {
+            Unknown,
+            Insert,
+            Update,
+            Revision, // <- update only revision
+            Remove,
+        }; // enum operation_t
 
-    enum class write_operation {
-        Unknown,
-        Insert,
-        Update,
-        UpdateRevision, // <- update only revision
-        Delete,
-    }; // enum class write_operation
+        operation_t  operation     = Unknown;
+        revision_t   find_revision = impossible_revision;
+        object_value object;
 
-    struct write_value final {
-        write_operation operation = write_operation::Unknown;
-        revision_t set_revision = impossible_revision;
-        revision_t find_revision = impossible_revision;
-        variant value;
+        write_operation(const operation_t op): operation(op) { }
 
-        write_value() = default;
-        write_value(write_value&&) = default;
-        write_value& operator=(write_value&&) = default;
+        write_operation() = default;
+        write_operation(write_operation&&) = default;
+        write_operation& operator=(write_operation&&) = default;
 
-        write_value(write_operation op)
-        : operation(op) {
+        static write_operation insert(object_value obj) {
+            write_operation op(Insert);
+            op.object = std::move(obj);
+            return op;
         }
 
-        write_value(write_operation op, revision_t set_rev)
-        : operation(op),
-          set_revision(set_rev) {
+        static write_operation update(object_value obj) {
+            write_operation op(Update);
+            op.object = std::move(obj);
+            return op;
         }
 
-        write_value(write_operation op, revision_t set_rev, variant val)
-        : operation(op),
-          set_revision(set_rev),
-          value(std::move(val)) {
+        static write_operation update(const revision_t find_rev, object_value obj) {
+            write_operation op(Update);
+            op.object = std::move(obj);
+            op.find_revision = find_rev;
+            return op;
         }
 
-        write_value(write_operation op, revision_t set_rev, revision_t find_rev)
-        : operation(op),
-          set_revision(set_rev),
-          find_revision(find_rev) {
+        static write_operation revision(const revision_t find_rev, object_value obj) {
+            write_operation op(Revision);
+            op.object = std::move(obj);
+            op.find_revision = find_rev;
+            return op;
         }
 
-        write_value(write_operation op, revision_t set_rev, revision_t find_rev, variant val)
-        : operation(op),
-          set_revision(set_rev),
-          find_revision(find_rev),
-          value(std::move(val)) {
+        static write_operation remove(object_value obj) {
+            write_operation op(Remove);
+            op.object = std::move(obj);
+            return op;
         }
-    }; // struct write_value
+
+        static write_operation remove(const revision_t find_rev, object_value obj) {
+            write_operation op(Remove);
+            op.object = std::move(obj);
+            op.find_revision = find_rev;
+            return op;
+        }
+
+        void clear() {
+            write_operation op(Unknown);
+            *this = std::move(op);
+        }
+    }; // struct write_operation
 
     class journal final {
+        class write_ctx;
+
     public:
         journal();
         ~journal();
 
         void clear();
-        const variant* value(const table_info& table, const primary_key_t pk) const;
-        void write(const table_info&, const primary_key_t, write_value data, write_value undo);
+
+        write_ctx create_ctx(const table_info&);
+
+        void write     (write_ctx&, write_operation data, write_operation undo);
+        void write_data(write_ctx&, write_operation);
+        void write_undo(write_ctx&, write_operation);
+
+        void write_data(const table_info&, write_operation);
 
         template <typename Ctx>
         void apply_code_changes(Ctx&& ctx, const account_name& code) {
@@ -85,19 +109,33 @@ namespace cyberway { namespace chaindb {
         }
 
     private:
-        using undo_map_t_ = fc::flat_map<revision_t, write_value>;
+        using undo_map_t_ = fc::flat_map<revision_t, write_operation>;
 
         struct info_t_ final {
-            write_value data;
-            undo_map_t_ undo_map;
-        }; // struct info_type_
+            write_operation data;
+            undo_map_t_     undo_map;
+        }; // struct info_t_
 
-        using info_map_t_ = fc::flat_map<primary_key_t, info_t_>;
+        using info_map_t_ = std::map<primary_key_t, info_t_>;
 
         struct table_t_ final: public table_object::object {
             using table_object::object::object;
             info_map_t_ info_map;
-        }; // struct table_type_
+        }; // struct table_t_
+
+        class write_ctx final {
+            primary_key_t pk_   = unset_primary_key;
+            info_t_*      info_ = nullptr;
+
+        public:
+            write_ctx(table_t_& table)
+            : table(table) {
+            }
+
+            table_t_& table;
+
+            info_t_&  info(const primary_key_t);
+        }; // class write_ctx
 
         using index_t_ = table_object::index<table_t_>;
         index_t_ index_;
@@ -113,11 +151,10 @@ namespace cyberway { namespace chaindb {
 
                 ctx.start_table(table.info());
                 for (auto& info_itm: table.info_map) {
-                    auto& pk = info_itm.first;
                     auto& info = info_itm.second;
 
                     if (info.data.operation != write_operation::Unknown) {
-                        ctx.add_data(pk, info.data);
+                        ctx.add_data(info.data);
                     }
 
                     for (auto& undo_itm: info.undo_map) {
@@ -125,13 +162,13 @@ namespace cyberway { namespace chaindb {
 
                         switch(undo.operation) {
                             case write_operation::Insert:
-                                ctx.add_prepare_undo(pk, undo);
+                                ctx.add_prepare_undo(undo);
                                 break;
 
                             case write_operation::Update:
-                            case write_operation::UpdateRevision:
-                            case write_operation::Delete:
-                                ctx.add_complete_undo(pk, undo);
+                            case write_operation::Revision:
+                            case write_operation::Remove:
+                                ctx.add_complete_undo(undo);
                                 break;
 
                             case write_operation::Unknown:

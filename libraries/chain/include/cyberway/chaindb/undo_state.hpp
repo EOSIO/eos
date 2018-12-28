@@ -1,10 +1,9 @@
 #pragma once
 
 #include <cyberway/chaindb/common.hpp>
+#include <cyberway/chaindb/object_value.hpp>
 
 namespace cyberway { namespace chaindb {
-
-    using fc::variant;
 
     class cache_map;
     class driver_interface;
@@ -60,17 +59,17 @@ namespace cyberway { namespace chaindb {
         /**
          * Event on create objects
          */
-        void insert(const table_info&, primary_key_t, variant);
+        void insert(const table_info&, object_value obj);
 
         /**
          * Event on modify objects
          */
-        void update(const table_info&, primary_key_t, variant orig_value, variant value);
+        void update(const table_info&, object_value orig_obj, object_value obj);
 
         /**
          * Event on remove objects
          */
-        void remove(const table_info&, primary_key_t, variant);
+        void remove(const table_info&, object_value orig_obj);
 
     private:
         struct undo_stack_impl_;

@@ -16,35 +16,25 @@
 
 namespace cyberway { namespace chaindb {
 
-    using fc::mutable_variant_object;
-
-    namespace bmi = boost::multi_index;
-
     enum class undo_stage {
         Unknown,
         New,
         Stack,
-    };
-
-    enum class undo_record {
-        OldValue,
-        RemovedValue,
-        NewValue,
-        NextPk,
-    };
+    }; // enum undo_stage
 
     struct undo_state final {
         undo_state() = default;
         undo_state(revision_t rev): revision_(rev) { }
 
-        using pk_set_t = fc::flat_set<primary_key_t>;
-        using pk_value_map_t = fc::flat_map<primary_key_t, variant>;
+        using pk_value_map_t_ = std::map<primary_key_t, object_value>;
 
-        revision_t     revision_ = impossible_revision;
-        primary_key_t  next_pk_ = unset_primary_key;
-        pk_value_map_t old_values_;
-        pk_value_map_t removed_values_;
-        pk_set_t       new_ids_;
+        primary_key_t   next_pk_      = unset_primary_key;
+        primary_key_t   undo_next_pk_ = unset_primary_key;
+        revision_t      revision_     = impossible_revision;
+
+        pk_value_map_t_ new_values_;
+        pk_value_map_t_ old_values_;
+        pk_value_map_t_ removed_values_;
     }; // struct undo_state
 
     class table_undo_stack final: public table_object::object {
@@ -195,47 +185,46 @@ namespace cyberway { namespace chaindb {
     }; // struct table_undo_stack
 
     struct undo_stack::undo_stack_impl_ final {
-        undo_stack_impl_(driver_interface& driver, journal& jrl, cache_map& cache)
+        undo_stack_impl_(driver_interface& driver, journal& jrnl, cache_map& cache)
         : driver_(driver),
-          journal_(jrl),
+          journal_(jrnl),
           cache_(cache) {
         }
 
-        void add_abi_tables(eosio::chain::abi_def& abi) const {
-            abi.structs.emplace_back( eosio::chain::struct_def{
-                names::undo_table, "",
-                {{names::undo_pk_field,  "uint64"},
-                 {names::code_field,     "name"},
-                 {names::table_field,    "name"},
-                 {names::scope_field,    "name"},
-                 {names::pk_field,       "uint64"},
-                 {names::revision_field, "int64"}}
+        void add_abi_tables(eosio::chain::abi_def& abi) {
+            undo_abi_.structs.emplace_back( eosio::chain::struct_def{
+               names::service_field, "",
+               {{names::undo_pk_field,  "uint64"}}
             });
 
-            abi.tables.emplace_back( eosio::chain::table_def {
-                names::undo_table,
-                0,
-                names::undo_table,
-                {{"primary", 1, true,  {
-                    {names::undo_pk_field,  names::asc_order}}},
-                 {"table",   2, false, {
-                    {names::code_field,     names::asc_order},
-                    {names::table_field,    names::asc_order},
-                    {names::revision_field, names::asc_order},
-                    {names::pk_field,       names::asc_order}}}}
+            undo_abi_.structs.emplace_back( eosio::chain::struct_def{
+                names::undo_table, "",
+                {{names::service_field, names::service_field}}
             });
+
+            undo_abi_.tables.emplace_back( eosio::chain::table_def {
+                names::undo_table,
+                names::undo_table,
+                {{"primary", 1, true, {{ names::undo_pk_path , names::asc_order}} }},
+            });
+
+            abi.structs.insert(abi.structs.end(), undo_abi_.structs.begin(), undo_abi_.structs.end());
+            abi.tables.emplace_back(undo_abi_.tables.front());
+
+            undo_table_.table = &undo_abi_.tables.front();
+            undo_table_.pk_order = &undo_abi_.tables.front().indexes.front().orders.front();
         }
 
         void clear() {
             tables_.clear();
             revision_ = 0;
-            begin_revision_ = 0;
+            tail_revision_ = 0;
         }
 
         void set_revision(const revision_t rev) {
             CYBERWAY_SESSION_ASSERT(tables_.empty(), "Cannot set revision while there is an existing undo stack.");
             revision_ = rev;
-            begin_revision_ = rev;
+            tail_revision_ = rev;
         }
 
         revision_t start_undo_session(bool enabled) {
@@ -275,7 +264,7 @@ namespace cyberway { namespace chaindb {
                 undo(table, undo_rev, revision_);
             });
             --revision_;
-            if (revision_ == begin_revision_) {
+            if (revision_ == tail_revision_) {
                 stage_ = undo_stage::Unknown;
             }
         }
@@ -285,7 +274,7 @@ namespace cyberway { namespace chaindb {
                 squash(table, squash_rev, revision_);
             });
             --revision_;
-            if (revision_ == begin_revision_) {
+            if (revision_ == tail_revision_) {
                 stage_ = undo_stage::Unknown;
             }
         }
@@ -294,8 +283,8 @@ namespace cyberway { namespace chaindb {
             for_tables([&](auto& table){
                 commit(table, commit_rev);
             });
-            begin_revision_ = commit_rev;
-            if (revision_ == begin_revision_) {
+            tail_revision_ = commit_rev;
+            if (revision_ == tail_revision_) {
                 stage_ = undo_stage::Unknown;
             }
         }
@@ -305,37 +294,44 @@ namespace cyberway { namespace chaindb {
                 undo_all(table);
             });
             stage_ = undo_stage::Unknown;
-            revision_ = begin_revision_;
+            revision_ = tail_revision_;
         }
 
-        void insert(const table_info& table, const primary_key_t pk, variant value) {
+        void insert(const table_info& table, object_value obj) {
+            obj.set_revision(revision_);
+
             if (enabled()) {
-                insert(get_table(table), pk, std::move(value));
+                insert(get_table(table), std::move(obj));
             } else {
-                journal_.write(table, pk, {write_operation::Insert, revision_ /*set_rev*/, std::move(value)}, {});
+                journal_.write_data(table, write_operation::insert(std::move(obj)));
             }
         }
 
-        void update(const table_info& table, const primary_key_t pk, variant orig_value, variant value) {
+        void update(const table_info& table, object_value orig_obj, object_value obj) {
+            obj.set_revision(revision_);
+            orig_obj.set_revision(revision_);
+
             if (enabled()) {
-                update(get_table(table), pk, std::move(orig_value), std::move(value));
+                update(get_table(table), std::move(orig_obj), std::move(obj));
             } else {
-                journal_.write(table, pk, {write_operation::Update, revision_ /*set_rev*/, std::move(value)}, {});
+                journal_.write_data(table, write_operation::update(std::move(obj)));
             }
         }
 
-        void remove(const table_info& table, const primary_key_t pk, variant orig_value) {
+        void remove(const table_info& table, object_value orig_obj) {
+            orig_obj.set_revision(revision_);
+
             if (enabled()) {
-                remove(get_table(table), pk, std::move(orig_value));
+                remove(get_table(table), std::move(orig_obj));
             } else {
-                journal_.write(table, pk, {write_operation::Delete}, {});
+                journal_.write_data(table, write_operation::remove(std::move(orig_obj)));
             }
         }
 
         void undo(table_undo_stack& table, const revision_t undo_rev, const revision_t test_rev) {
             if (undo_rev > table.revision()) return;
 
-            const auto& head = table.head();
+            auto& head = table.head();
 
             CYBERWAY_SESSION_ASSERT(head.revision_ == undo_rev && undo_rev == test_rev,
                 "Wrong undo revision ${undo_revision} != (${revision}, ${test_revision}) "
@@ -343,59 +339,95 @@ namespace cyberway { namespace chaindb {
                 ("revision", head.revision_)("undo_revision", undo_rev)("test_revision", test_rev)
                 ("table", get_full_table_name(table.info()))("scope", get_scope_name(table.info())));
 
-            for (const auto& obj: head.old_values_) {
-                cache_.update(table.info(), obj.first, obj.second);
-                journal_.write(table.info(), obj.first,
-                    {write_operation::Update, undo_rev - 1 /*set_rev*/, undo_rev /*find_rev*/, std::move(obj.second)},
-                    {write_operation::Delete, impossible_revision /*set_rev*/, undo_rev /*find_rev*/});
+            auto ctx = journal_.create_ctx(table.info());
+
+            for (auto& obj: head.old_values_) {
+                auto undo_pk = obj.second.clone_undo_pk();
+
+                obj.second.set_revision(undo_rev - 1);
+                cache_.emplace(table.info(), obj.second);
+
+                journal_.write(ctx,
+                    write_operation::update(undo_rev, std::move(obj.second)),
+                    write_operation::remove(undo_rev, std::move(undo_pk)));
             }
 
-            for (const auto pk: head.new_ids_) {
-                cache_.remove(table.info(), pk);
-                journal_.write(table.info(), pk,
-                    {write_operation::Delete, impossible_revision /*set_rev*/, undo_rev /*find_rev*/},
-                    {write_operation::Delete, impossible_revision /*set_rev*/, undo_rev /*find_rev*/});
-            }
-
-            for (const auto& obj: head.removed_values_) {
+            for (auto& obj: head.new_values_) {
                 cache_.remove(table.info(), obj.first);
-                // insert
-                journal_.write(table.info(), obj.first,
-                    {write_operation::Insert, undo_rev - 1 /*set_rev*/, std::move(obj.second)},
-                    {write_operation::Delete, impossible_revision /*set_rev*/, undo_rev /*find_rev*/});
+                journal_.write(ctx,
+                    write_operation::remove(undo_rev, obj.second.clone_pk()),
+                    write_operation::remove(undo_rev, obj.second.clone_undo_pk()));
+            }
+
+            for (auto& obj: head.removed_values_) {
+                auto undo_pk = obj.second.clone_undo_pk();
+
+                obj.second.set_revision(undo_rev - 1);
+                cache_.emplace(table.info(), obj.second);
+
+                journal_.write(ctx,
+                    write_operation::insert(std::move(obj.second)),
+                    write_operation::remove(undo_rev, std::move(undo_pk)));
             }
 
             if (unset_primary_key != head.next_pk_) {
                 cache_.set_next_pk(table.info(), head.next_pk_);
             }
 
-            table.undo();
-        }
-
-        void remove_state(table_undo_stack& table, const undo_state& state) {
-            auto update = [&](auto& pk) {
-                journal_.write(table.info(), pk,
-                    {write_operation::UpdateRevision, state.revision_ - 1 /*set_rev*/, state.revision_ /*find_rev*/},
-                    {write_operation::Delete,         impossible_revision /*set_rev*/, state.revision_ /*find_rev*/});
-            };
-
-            for (const auto& obj: state.old_values_)     update(obj.first);
-            for (const auto& pk:  state.new_ids_)        update(pk);
-            for (const auto& obj: state.removed_values_) update(obj.first);
+            remove_next_pk(table, head);
 
             table.undo();
         }
 
-        void squash_state(table_undo_stack& table, const undo_state& state) {
-            auto update = [&](auto& pk) {
-                journal_.write(table.info(), pk,
-                    {write_operation::UpdateRevision, state.revision_ - 1 /*set_rev*/, state.revision_ /*find_rev*/},
-                    {write_operation::UpdateRevision, state.revision_ - 1 /*set_rev*/, state.revision_ /*find_rev*/});
-            };
+        template <typename Write>
+        void process_state(undo_state& state, Write&& write) const {
+            const auto rev = state.revision_;
+            for (auto& obj: state.old_values_)     write(obj.second, rev);
+            for (auto& obj: state.new_values_)     write(obj.second, rev);
+            for (auto& obj: state.removed_values_) write(obj.second, rev);
+        }
 
-            for (const auto& obj: state.old_values_)     update(obj.first);
-            for (const auto& pk:  state.new_ids_)        update(pk);
-            for (const auto& obj: state.removed_values_) update(obj.first);
+        void remove_next_pk(table_undo_stack& table, undo_state& state) const {
+            if (state.next_pk_ != unset_primary_key) {
+//                journal_.write_undo(table.info(),
+//                    write_operation::remove(state.revision_, {state.undo_next_pk_, undo_record::NextPk}));
+            }
+        }
+
+        void squash_next_pk(table_undo_stack& table, undo_state& state) const {
+            if (state.next_pk_ != unset_primary_key) {
+//                journal_.write_undo(table.info(),
+//                    write_operation::remove(state.revision_, {state.undo_next_pk_, undo_record::NextPk}));
+            }
+        }
+
+        void remove_state(table_undo_stack& table, undo_state& state) {
+            auto ctx = journal_.create_ctx(table.info());
+
+            process_state(state, [&](auto& obj, auto& rev) {
+                auto undo_pk = obj.clone_undo_pk();
+                obj.set_revision(rev - 1);
+                journal_.write(ctx,
+                    write_operation::revision(rev, obj.clone_pk()),
+                    write_operation::remove(  rev, std::move(undo_pk)));
+             });
+
+            remove_next_pk(table, state);
+
+            table.undo();
+        }
+
+        void squash_state(table_undo_stack& table, undo_state& state) {
+            auto ctx = journal_.create_ctx(table.info());
+
+            process_state(state, [&](auto& obj, auto& rev) {
+                obj.set_revision(rev - 1);
+                journal_.write(ctx,
+                    write_operation::revision(rev, obj.clone_pk()),
+                    write_operation::revision(rev, obj.clone_undo_pk()));
+            });
+
+            squash_next_pk(table, state);
 
             table.squash();
         }
@@ -412,7 +444,7 @@ namespace cyberway { namespace chaindb {
 
             // Only one stack item
             if (table.size() == 1) {
-                if (state.revision_ > begin_revision_) {
+                if (state.revision_ > tail_revision_) {
                     squash_state(table, state);
                 } else {
                     remove_state(table, state);
@@ -470,102 +502,109 @@ namespace cyberway { namespace chaindb {
 
             // We can only be outside type A/AB (the nop path) if B is not nop, so it suffices to iterate through B's three containers.
 
-            for (const auto& obj: state.old_values_) {
-                // new+upd -> new, type A
-                if (prev_state.new_ids_.count(obj.first)) {
-                    journal_.write(table.info(), obj.first,
-                        {write_operation::UpdateRevision, prev_state.revision_ /*set_rev*/, state.revision_ /*find_rev*/},
-                        {write_operation::Delete,         impossible_revision  /*set_rev*/, state.revision_ /*find_rev*/});
-                    continue;
-                }
+            auto ctx = journal_.create_ctx(table.info());
 
-                // upd(was=X) + upd(was=Y) -> upd(was=X), type A
-                if (prev_state.old_values_.count(obj.first)) {
-                    journal_.write(table.info(), obj.first,
-                        {write_operation::UpdateRevision, prev_state.revision_ /*set_rev*/, state.revision_ /*find_rev*/},
-                        {write_operation::Delete,         impossible_revision  /*set_rev*/, state.revision_ /*find_rev*/});
+            for (auto& obj: state.old_values_) {
+                const auto pk = obj.second.pk();
+
+                // 1. new+upd -> new,                        type A
+                // 2. upd(was=X) + upd(was=Y) -> upd(was=X), type A
+                if (prev_state.old_values_.count(pk) || prev_state.new_values_.count(pk)) {
+                    auto undo_pk = obj.second.clone_undo_pk();
+
+                    obj.second.set_revision(prev_state.revision_);
+
+                    journal_.write(ctx,
+                        write_operation::revision(state.revision_, obj.second.clone_pk()),
+                        write_operation::remove(  state.revision_, std::move(undo_pk)));
                     continue;
                 }
 
                 // del+upd -> N/A
-                CYBERWAY_SESSION_ASSERT(!prev_state.removed_values_.count(obj.first),
+                CYBERWAY_SESSION_ASSERT(!prev_state.removed_values_.count(pk),
                     "UB for the table ${table}: Delete + Update", ("table", get_full_table_name(table.info())));
 
                 // nop+upd(was=Y) -> upd(was=Y), type B
-                prev_state.old_values_.emplace(obj.first, std::move(obj.second));
 
-                journal_.write(table.info(), obj.first,
-                    {write_operation::UpdateRevision, prev_state.revision_ /*set_rev*/, state.revision_ /*find_rev*/},
-                    {write_operation::UpdateRevision, prev_state.revision_ /*set_rev*/, state.revision_ /*find_rev*/});
+                obj.second.set_revision(prev_state.revision_);
+
+                journal_.write(ctx,
+                    write_operation::revision(state.revision_, obj.second.clone_pk()),
+                    write_operation::revision(state.revision_, obj.second.clone_undo_pk()));
+
+                prev_state.old_values_.emplace(pk, std::move(obj.second));
             }
 
             // *+new, but we assume the N/A cases don't happen, leaving type B nop+new -> new
-            for (const auto& pk: state.new_ids_) {
-                prev_state.new_ids_.insert(pk);
+            for (auto& obj: state.new_values_) {
+                const auto pk = obj.second.pk();
 
-                journal_.write(table.info(), pk,
-                    {write_operation::UpdateRevision, prev_state.revision_ /*set_rev*/, state.revision_ /*find_rev*/},
-                    {write_operation::UpdateRevision, prev_state.revision_ /*set_rev*/, state.revision_ /*find_rev*/});
-            }
+                obj.second.set_revision(prev_state.revision_);
 
-            if (unset_primary_key != state.next_pk_) {
-                prev_state.next_pk_ = state.next_pk_;
+                journal_.write(ctx,
+                    write_operation::revision(state.revision_, obj.second.clone_pk()),
+                    write_operation::revision(state.revision_, obj.second.clone_undo_pk()));
+
+                prev_state.new_values_.emplace(pk, std::move(obj.second));
             }
 
             // *+del
-            for (const auto& obj: state.removed_values_) {
-                // new + del -> nop (type C)
-                auto nitr = prev_state.new_ids_.find(obj.first);
-                if (nitr != prev_state.new_ids_.end()) {
-                    prev_state.new_ids_.erase(nitr);
+            for (auto& obj: state.removed_values_) {
+                const auto pk = obj.second.pk();
 
-                    journal_.write(table.info(), obj.first, {},
-                        {write_operation::Delete, impossible_revision /*set_rev*/, prev_state.revision_ /*find_rev*/});
+                // new + del -> nop (type C)
+                auto nitr = prev_state.new_values_.find(pk);
+                if (nitr != prev_state.new_values_.end()) {
+                    prev_state.new_values_.erase(nitr);
+
+                    journal_.write_undo(ctx, write_operation::remove(prev_state.revision_, obj.second.clone_undo_pk()));
                     continue;
                 }
 
                 // upd(was=X) + del(was=Y) -> del(was=X)
-                auto itr = prev_state.old_values_.find(obj.first);
-                if (itr != prev_state.old_values_.end()) {
-                    prev_state.removed_values_.emplace(std::move(*itr));
-                    prev_state.old_values_.erase(obj.first);
+                auto oitr = prev_state.old_values_.find(pk);
+                if (oitr != prev_state.old_values_.end()) {
+                    prev_state.removed_values_.emplace(std::move(*oitr));
+                    prev_state.old_values_.erase(oitr);
 
-                    journal_.write(table.info(), obj.first, {},
-                        {write_operation::Delete, impossible_revision /*set_rev*/, prev_state.revision_ /*find_rev*/});
+                    journal_.write_undo(ctx, write_operation::remove(prev_state.revision_, obj.second.clone_undo_pk()));
                     continue;
                 }
 
                 // del + del -> N/A
-                CYBERWAY_SESSION_ASSERT(!prev_state.removed_values_.count(obj.first),
+                CYBERWAY_SESSION_ASSERT(!prev_state.removed_values_.count(pk),
                     "UB for the table ${table}: Delete + Delete", ("table", get_full_table_name(table.info())));
 
                 // nop + del(was=Y) -> del(was=Y)
-                prev_state.removed_values_.emplace(std::move(obj)); //[obj.second->id] = std::move(obj.second);
 
-                journal_.write(table.info(), obj.first, {},
-                    {write_operation::UpdateRevision, prev_state.revision_ /*set_rev*/, state.revision_ /*find_rev*/});
+                obj.second.set_revision(prev_state.revision_);
+
+                journal_.write_undo(ctx, write_operation::revision(state.revision_, obj.second.clone_undo_pk()));
+
+                prev_state.removed_values_.emplace(std::move(obj));
             }
+
+            remove_next_pk(table, state);
 
             table.undo();
         }
 
-        void commit(table_undo_stack& table, const revision_t rev) {
+        void commit(table_undo_stack& table, const revision_t commit_rev) {
             CYBERWAY_SESSION_ASSERT(!table.empty(),
                 "Stack of the table ${table} is empty.", ("table", table.get_full_table_name()));
 
-            auto update = [&](auto& pk, auto& rev) {
-                journal_.write(table.info(), pk, {},
-                   {write_operation::Delete, impossible_revision /*set_rev*/, rev /*find_rev*/});
-            };
+            auto ctx = journal_.create_ctx(table.info());
 
             while (!table.empty()) {
                 auto& state = table.tail();
 
-                if (state.revision_ > rev) return;
+                if (state.revision_ > commit_rev) return;
 
-                for (const auto& obj: state.old_values_)     update(obj.first, state.revision_);
-                for (const auto& pk:  state.new_ids_)        update(pk, state.revision_);
-                for (const auto& obj: state.removed_values_) update(obj.first, state.revision_);
+                process_state(state, [&](auto& obj, auto& rev){
+                    journal_.write_undo(ctx, write_operation::remove(rev, obj.clone_undo_pk()));
+                });
+
+                remove_next_pk(table, state);
 
                 table.commit();
             }
@@ -578,93 +617,88 @@ namespace cyberway { namespace chaindb {
             undo(table, table.revision(), table.revision());
         }
 
-        void add_undo_fields(mutable_variant_object& obj, const table_info& table, const undo_record type) const {
-            obj.erase(names::revision_field);
-
-            obj(names::operation_field, type);
-            obj(names::code_field,      get_code_name(table));
-            obj(names::table_field,     get_table_name(table));
-        }
-
-        variant create_undo_value(const table_info& table, const undo_record type, const variant& value) const {
-            mutable_variant_object obj(value.get_object());
-            add_undo_fields(obj, table, type);
-            return variant(std::move(obj));
-        }
-
-        void insert(table_undo_stack& table, const primary_key_t pk, variant value) {
+        void insert(table_undo_stack& table, object_value obj) {
+            const auto pk = obj.pk();
             auto& head = table.head();
-            head.new_ids_.insert(pk);
+            auto ctx = journal_.create_ctx(table.info());
 
-            {
-                mutable_variant_object obj;
-                add_undo_fields(obj, table.info(), undo_record::NewValue);
-                journal_.write(table.info(), pk, {write_operation::Insert, revision_ /*set_rev*/, std::move(value)},
-                    {write_operation::Insert, revision_ /*set_rev*/, std::move(obj)});
-            }
+            obj.set_undo_pk(generate_undo_pk())
+               .set_undo_rec(undo_record::NewValue);
+
+            head.new_values_.emplace(pk, obj.clone_undo_pk());
+
+            auto undo_pk = obj.clone_undo_pk();
+
+            journal_.write(ctx,
+                write_operation::insert(std::move(obj)),
+                write_operation::insert(std::move(undo_pk)));
 
             if (unset_primary_key == head.next_pk_) {
-                head.next_pk_ = pk;
+                head.next_pk_      = pk;
+                head.undo_next_pk_ = generate_undo_pk();
 
-//                mutable_variant_object obj;
-//                add_undo_fields(obj, table.info(), undo_record::NextPk);
-//                obj(names::pk_field, pk);
-//
-//                journal_.write(table.info(), -1, {}, {write_operation::Insert, revision_ /*set_rev*/, std::move(obj)});
+//                journal_.write_undo(ctx,
+//                    write_operation::insert({head.undo_next_pk_, undo_record::NextPk, revision_}));
             }
         }
 
-        void update(table_undo_stack& table, const primary_key_t pk, variant orig_value, variant value) {
+        void update(table_undo_stack& table, object_value orig_obj, object_value obj) {
+            const auto pk = orig_obj.pk();
             auto& head = table.head();
 
-            if (head.new_ids_.find(pk) != head.new_ids_.end()) {
-                journal_.write(table.info(), pk, {write_operation::Update, revision_ /*set_rev*/, std::move(value)}, {});
+            if (head.new_values_.count(pk) || head.old_values_.count(pk)) {
                 return;
             }
 
-            auto itr = head.old_values_.find(pk);
-            if (itr != head.old_values_.end()) {
-                journal_.write(table.info(), pk, {write_operation::Update, revision_ /*set_rev*/, std::move(value)}, {});
-                return;
-            }
+            auto ctx = journal_.create_ctx(table.info());
 
-            auto undo_value = create_undo_value(table.info(), undo_record::OldValue, std::move(orig_value));
+            orig_obj
+                .set_undo_pk(generate_undo_pk())
+                .set_undo_rec(undo_record::OldValue);
 
-            journal_.write(table.info(), pk, {write_operation::Update, revision_ /*set_rev*/, value},
-                {write_operation::Insert, revision_ /*set_rev*/, std::move(undo_value)});
+            journal_.write(ctx,
+                write_operation::update(std::move(obj)),
+                write_operation::insert(orig_obj));
 
-            head.old_values_.emplace(pk, std::move(value));
+            head.old_values_.emplace(pk, std::move(orig_obj));
         }
 
-        void remove(table_undo_stack& table, const primary_key_t pk, variant orig_value) {
+        void remove(table_undo_stack& table, object_value orig_obj) {
             auto& head = table.head();
+            const auto pk = orig_obj.pk();
+            auto ctx = journal_.create_ctx(table.info());
 
-            if (head.new_ids_.count(pk)) {
-                head.new_ids_.erase(pk);
+            journal_.write_data(ctx, write_operation::remove(orig_obj.clone_pk()));
 
-                journal_.write(table.info(), pk, {write_operation::Delete, revision_ /*set_rev*/},
-                    {write_operation::Delete, revision_ /*set_rev*/});
+            auto nitr = head.new_values_.find(pk);
+            if (head.new_values_.end() != nitr) {
+                journal_.write_undo(ctx, write_operation::remove(std::move(nitr->second)));
+                head.new_values_.erase(nitr);
                 return;
             }
 
-            auto undo_value = create_undo_value(table.info(), undo_record::RemovedValue, orig_value);
-
-            journal_.write(table.info(), pk, {write_operation::Delete, revision_ /*set_rev*/},
-                {write_operation::Insert, revision_ /*set_rev*/, std::move(undo_value)});
-
-            auto itr = head.old_values_.find(pk);
-            if (itr != head.old_values_.end()) {
-                head.removed_values_.emplace(std::move(*itr));
-                head.old_values_.erase(pk);
+            auto oitr = head.old_values_.find(pk);
+            if (oitr != head.old_values_.end()) {
+                oitr->second.set_undo_rec(undo_record::RemovedValue);
+                journal_.write_undo(ctx, write_operation::update(oitr->second));
+                head.removed_values_.emplace(std::move(*oitr));
+                head.old_values_.erase(oitr);
                 return;
             }
 
-            head.removed_values_.emplace(pk, std::move(orig_value));
+            orig_obj
+                .set_undo_pk(generate_undo_pk())
+                .set_undo_rec(undo_record::RemovedValue);
+
+            journal_.write_undo(ctx, write_operation::insert(orig_obj));
+            head.removed_values_.emplace(pk, std::move(orig_obj));
         }
 
         table_undo_stack& get_table(const table_info& table) {
             auto itr = table_object::find(tables_, table);
-            if (tables_.end() != itr) return const_cast<table_undo_stack&>(*itr); // not critical
+            if (tables_.end() != itr) {
+                return const_cast<table_undo_stack&>(*itr); // not critical
+            }
 
             return table_object::emplace(tables_, table, revision_);
         }
@@ -683,15 +717,26 @@ namespace cyberway { namespace chaindb {
             }
         } FC_LOG_AND_RETHROW() }
 
+
+        primary_key_t generate_undo_pk() {
+            if (undo_pk_ > 1'000'000'000) {
+                undo_pk_ = 1;
+            }
+            return undo_pk_++;
+        }
+
         using index_t_ = table_object::index<table_undo_stack>;
 
-        undo_stage stage_ = undo_stage::Unknown;
-        revision_t revision_ = 0;
-        revision_t begin_revision_ = 0;
+        undo_stage        stage_ = undo_stage::Unknown;
+        revision_t        revision_ = 0;
+        revision_t        tail_revision_ = 0;
+        abi_def           undo_abi_;
+        table_info        undo_table_ = {account_name(), account_name()};
+        primary_key_t     undo_pk_ = 1;
         driver_interface& driver_;
-        journal& journal_;
-        cache_map& cache_;
-        index_t_ tables_;
+        journal&          journal_;
+        cache_map&        cache_;
+        index_t_          tables_;
     }; // struct undo_stack::undo_stack_impl_
 
     undo_stack::undo_stack(driver_interface& driver, journal& j, cache_map& cache)
@@ -748,16 +793,16 @@ namespace cyberway { namespace chaindb {
         impl_->undo(impl_->revision_);
     }
 
-    void undo_stack::insert(const table_info& table, const primary_key_t pk, variant value) {
-        impl_->insert(table, pk, std::move(value));
+    void undo_stack::insert(const table_info& table, object_value obj) {
+        impl_->insert(table, std::move(obj));
     }
 
-    void undo_stack::update(const table_info& table, const primary_key_t pk, variant orig_value, variant value) {
-        impl_->update(table, pk, std::move(orig_value), std::move(value));
+    void undo_stack::update(const table_info& table, object_value orig_obj, object_value obj) {
+        impl_->update(table,  std::move(orig_obj), std::move(obj));
     }
 
-    void undo_stack::remove(const table_info& table, const primary_key_t pk, variant orig_value) {
-        impl_->remove(table, pk, std::move(orig_value));
+    void undo_stack::remove(const table_info& table, object_value orig_obj) {
+        impl_->remove(table,  std::move(orig_obj));
     }
 
     //------
@@ -812,4 +857,3 @@ namespace cyberway { namespace chaindb {
 } } // namespace cyberway::chaindb
 
 FC_REFLECT_ENUM(cyberway::chaindb::undo_stage, (Unknown)(New)(Stack))
-FC_REFLECT_ENUM(cyberway::chaindb::undo_record, (OldValue)(RemovedValue)(NewValue)(NextPk))

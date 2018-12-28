@@ -38,11 +38,11 @@ namespace cyberway { namespace chaindb {
         const cursor_info& next(const cursor_request&) override;
         const cursor_info& prev(const cursor_request&) override;
 
-              variant  value(const table_info&, primary_key_t) override;
-        const variant& value(const cursor_info&) override;
-              void     set_blob(const cursor_info&, bytes blob) override;
+              object_value  object_by_pk(const table_info&, primary_key_t) override;
+        const object_value& object_at_cursor(const cursor_info&) override;
+              void          set_blob(const cursor_info&, bytes blob) override;
 
-        primary_key_t  available_pk(const table_info&) override;
+        primary_key_t available_pk(const table_info&) override;
 
     private:
         struct mongodb_impl_;

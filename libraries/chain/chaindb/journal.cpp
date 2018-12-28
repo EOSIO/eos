@@ -5,76 +5,83 @@ namespace cyberway { namespace chaindb {
 
     namespace { namespace _detail {
 
-        void insert(write_value src, write_value& dst) {
+        void copy_find_revision(write_operation& dst, revision_t find_revision) {
+            if (impossible_revision == dst.find_revision) {
+                dst.find_revision = find_revision;
+            }
+        }
+
+        void insert(write_operation src, write_operation& dst) {
             switch (dst.operation) {
                 case write_operation::Unknown:
                     dst = std::move(src);
                     return;
 
-                case write_operation::Delete:
-                    dst.value.clear();
-                    dst.operation = write_operation::Unknown;
+                case write_operation::Remove:
+                    dst.operation = write_operation::Update;
+                    dst.object = std::move(src.object);
+                    copy_find_revision(dst, src.find_revision);
                     return;
 
                 case write_operation::Insert:
                 case write_operation::Update:
-                case write_operation::UpdateRevision:
+                case write_operation::Revision:
                     CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on insert");
             }
         }
 
-        void update_revision(write_value src, write_value& dst) {
+        void update_revision(write_operation src, write_operation& dst) {
             switch (dst.operation) {
                 case write_operation::Unknown:
                     dst.operation = src.operation;
                 case write_operation::Insert:
                 case write_operation::Update:
-                case write_operation::UpdateRevision:
-                    dst.set_revision = src.set_revision;
-                    dst.find_revision = src.find_revision;
+                case write_operation::Revision:
+                    dst.object.service = std::move(src.object.service);
+                    copy_find_revision(dst, src.find_revision);
                     break;
 
-                case write_operation::Delete:
+                case write_operation::Remove:
                     CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on update_revision");
             }
         }
 
-        void update(write_value src, write_value& dst) {
+        void update(write_operation src, write_operation& dst) {
             switch (dst.operation) {
                 case write_operation::Unknown:
-                case write_operation::UpdateRevision:
+                case write_operation::Revision:
                     dst.operation = src.operation;
                 case write_operation::Insert:
                 case write_operation::Update:
-                    dst.set_revision = src.set_revision;
-                    dst.find_revision = src.find_revision;
-                    dst.value = std::move(src.value);
+                    dst.object = std::move(src.object);
+                    copy_find_revision(dst, src.find_revision);
                     break;
 
-                case write_operation::Delete:
+                case write_operation::Remove:
                     CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on update");
             }
         }
 
-        void remove(write_value src, write_value& dst) {
+        void remove(write_operation src, write_operation& dst) {
             switch (dst.operation) {
                 case write_operation::Insert:
-                    dst.operation = write_operation::Unknown;
-                    dst.value.clear();
+                    dst.clear();
                     break;
 
                 case write_operation::Unknown:
                 case write_operation::Update:
-                case write_operation::UpdateRevision:
-                    dst = std::move(src);
+                case write_operation::Revision:
+                    dst.operation = src.operation;
+                    dst.object = std::move(src.object);
+                    copy_find_revision(dst, src.find_revision);
                     break;
 
-                case write_operation::Delete:
+                case write_operation::Remove:
                     CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on delete");
             }
         }
 
-        void write(write_value src, write_value& dst) {
+        void write(write_operation src, write_operation& dst) {
             switch (src.operation) {
                 case write_operation::Insert:
                     return insert(std::move(src), dst);
@@ -82,10 +89,10 @@ namespace cyberway { namespace chaindb {
                 case write_operation::Update:
                     return update(std::move(src), dst);
 
-                case write_operation::UpdateRevision:
+                case write_operation::Revision:
                     return update_revision(std::move(src), dst);
 
-                case write_operation::Delete:
+                case write_operation::Remove:
                     return remove(std::move(src), dst);
 
                 case write_operation::Unknown:
@@ -102,69 +109,64 @@ namespace cyberway { namespace chaindb {
         index_.clear();
     }
 
-    const variant* journal::value(const table_info& table, const primary_key_t pk) const {
+    journal::write_ctx journal::create_ctx(const table_info& table) {
         auto table_itr = table_object::find(index_, table);
-        if (index_.end() == table_itr) return nullptr;
-
-        auto& info_map = table_itr->info_map;
-        auto info_itr = info_map.find(pk);
-        if (info_map.end() == info_itr) return nullptr;
-
-        auto& data = info_itr->second.data;
-        switch(data.operation) {
-            case write_operation::Insert:
-            case write_operation::Update:
-                return &data.value;
-
-            case write_operation::UpdateRevision:
-            case write_operation::Delete:
-            case write_operation::Unknown:
-                break;
+        if (index_.end() != table_itr) {
+            return write_ctx(const_cast<table_t_&>(*table_itr));
         }
 
-        return nullptr;
+        return write_ctx(table_object::emplace(index_, table));
     }
 
-    void journal::write(const table_info& table, const primary_key_t pk, write_value data, write_value undo) { try {
-        CYBERWAY_ASSERT(data.operation != write_operation::Unknown || undo.operation != write_operation::Unknown,
-            driver_write_exception,
-            "Bad operation type on writing to journal for the primary key ${pk} "
-            "for the table ${table} in the scope '${scope}'",
-            ("pk", pk)("table", get_full_table_name(table))("scope", get_scope_name(table)));
+    journal::info_t_& journal::write_ctx::info(const primary_key_t pk) {
+        CYBERWAY_ASSERT(pk != unset_primary_key, driver_write_exception, "Empty primary key");
 
-        auto table_itr = table_object::find(index_, table);
-        if (index_.end() == table_itr) {
-            table_itr = index_.emplace(table).first;
+        if (pk == pk_) return *info_;
+
+        pk_ = pk;
+
+        auto itr = table.info_map.find(pk);
+        if (itr == table.info_map.end()) {
+            itr = table.info_map.emplace(pk, info_t_()).first;
+        }
+        info_ = &itr->second;
+
+        return *info_;
+    }
+
+    void journal::write_data(write_ctx& ctx, write_operation data) { try {
+        auto& info = ctx.info(data.object.pk());
+        _detail::write(std::move(data), info.data);
+    } FC_LOG_AND_RETHROW() }
+
+    void journal::write_data(const table_info& table, write_operation data) {
+        auto ctx = create_ctx(table);
+        write_data(ctx, std::move(data));
+    }
+
+    void journal::write_undo(write_ctx& ctx, write_operation undo) { try {
+        auto& info = ctx.info(undo.object.pk());
+        const auto rev = undo.object.revision();
+        const auto find_rev = (impossible_revision != undo.find_revision) ? undo.find_revision : rev;
+        auto itr = info.undo_map.find(find_rev);
+
+        if (info.undo_map.end() == itr) {
+            itr = info.undo_map.find(rev);
         }
 
-        // not critical, because map is not a part of the index key
-        auto& info_map = const_cast<table_t_&>(*table_itr).info_map;
-        auto info_itr = info_map.find(pk);
-        if (info_map.end() == info_itr) {
-            info_t_ info{std::move(data)};
-            info_itr = info_map.emplace(pk, std::move(info)).first;
-        } else if (write_operation::Unknown != data.operation) {
-            auto& info = info_itr->second;
-            _detail::write(std::move(data), info.data);
-        }
-
-        if (BOOST_LIKELY(write_operation::Unknown != undo.operation)) {
-            auto& undo_map = info_itr->second.undo_map;
-
-            auto rev = (impossible_revision != undo.find_revision) ? undo.find_revision : undo.set_revision;
-            auto undo_itr = undo_map.find(rev);
-            if (undo_map.end() == undo_itr) {
-                rev = (impossible_revision != undo.set_revision) ? undo.set_revision : undo.find_revision;
-                undo_itr = undo_map.find(rev);
-                CYBERWAY_ASSERT(undo_itr == undo_map.end(), driver_write_exception, "set revision is not empty");
-                undo_map.emplace(rev, std::move(undo));
-            } else if (impossible_revision != undo.set_revision && undo_itr->first) {
-                undo_map.erase(undo_itr);
-                undo_map.emplace(undo.set_revision, std::move(undo));
-            } else {
-                _detail::write(std::move(undo), undo_itr->second);
-            }
+        if (info.undo_map.end() == itr) {
+            info.undo_map.emplace(rev, std::move(undo));
+        } else if (itr->first != rev) {
+            info.undo_map.erase(itr);
+            info.undo_map.emplace(rev, std::move(undo));
+        } else {
+            _detail::write(std::move(undo), itr->second);
         }
     } FC_LOG_AND_RETHROW() }
+
+    void journal::write(write_ctx& ctx, write_operation data, write_operation undo) {
+        write_data(ctx, std::move(data));
+        write_undo(ctx, std::move(undo));
+    }
 
 } } // namespace cyberway::chaindb
