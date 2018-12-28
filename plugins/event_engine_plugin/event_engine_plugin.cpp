@@ -5,6 +5,10 @@
 #include <eosio/event_engine_plugin/event_engine_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/variant_object.hpp>
+#include <fc/io/json.hpp>
+
+#include <fstream>
 
 namespace eosio {
    static appbase::abstract_plugin& _event_engine_plugin = app().register_plugin<event_engine_plugin>();
@@ -18,6 +22,8 @@ public:
     fc::optional<boost::signals2::scoped_connection> irreversible_block_connection;
     fc::optional<boost::signals2::scoped_connection> accepted_transaction_connection;
     fc::optional<boost::signals2::scoped_connection> applied_transaction_connection;
+
+    std::fstream dumpstream;
 
     void accepted_block( const chain::block_state_ptr& );
     void irreversible_block(const chain::block_state_ptr&);
@@ -37,6 +43,11 @@ void event_engine_plugin_impl::accepted_block( const chain::block_state_ptr& sta
 
 void event_engine_plugin_impl::irreversible_block(const chain::block_state_ptr& state) {
     ilog("Irreversible block: ${block_num}", ("block_num", state->block_num));
+    using mvo = fc::mutable_variant_object;
+    auto event = mvo()("event_name", "irreversible_block")("block_num", state->block_num);
+    auto msg = fc::json::to_string(static_cast<fc::variant_object>(event));
+    dumpstream << msg << std::endl;
+    dumpstream.flush();
 }
 
 void event_engine_plugin_impl::accepted_transaction(const chain::transaction_metadata_ptr& trx_meta) {
@@ -68,10 +79,18 @@ event_engine_plugin::event_engine_plugin():my(new event_engine_plugin_impl()){}
 event_engine_plugin::~event_engine_plugin(){}
 
 void event_engine_plugin::set_program_options(options_description&, options_description& cfg) {
+    cfg.add_options()
+        ("event-engine-dumpfile", bpo::value<string>()->default_value(""))
+        ;
 }
 
 void event_engine_plugin::plugin_initialize(const variables_map& options) {
     try {
+        std::string dump_filename = options.at("event-engine-dumpfile").as<string>();
+        ilog("Openning dumpfile \"${filename}\"", ("filename", dump_filename));
+        my->dumpstream.open(dump_filename, std::ofstream::out | std::ofstream::app);
+        EOS_ASSERT(!my->dumpstream.fail(), chain::plugin_config_exception, "Can't open event-engine-dumpfile");
+
         chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
         EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, ""  );
         auto& chain = chain_plug->chain();
@@ -104,6 +123,7 @@ void event_engine_plugin::plugin_startup() {
 
 void event_engine_plugin::plugin_shutdown() {
    // OK, that's enough magic
+   my->dumpstream.close();
    my->accepted_block_connection.reset();
    my->irreversible_block_connection.reset();
    my->accepted_transaction_connection.reset();
