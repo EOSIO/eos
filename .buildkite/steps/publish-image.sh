@@ -10,6 +10,11 @@ docker login -u=$DHUBU -p=$DHUBP
 docker push cyberway/cyberway:${IMAGETAG}
 
 if [[ "${IMAGETAG}" == "master" ]]; then
+    docker tag cyberway/cyberway:${IMAGETAG} cyberway/cyberway:stable
+    docker push cyberway/cyberway:stable
+fi
+
+if [[ "${IMAGETAG}" == "develop" ]]; then
     docker tag cyberway/cyberway:${IMAGETAG} cyberway/cyberway:latest
     docker push cyberway/cyberway:latest
 fi
