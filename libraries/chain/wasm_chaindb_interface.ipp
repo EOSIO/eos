@@ -34,6 +34,10 @@ namespace eosio { namespace chain {
             return context.chaindb.upper_bound({code, scope, table, index}, key, size).cursor;
         }
 
+        cursor_t chaindb_opt_find_by_pk(account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk) {
+             return context.chaindb.opt_find_by_pk({code, scope, table}, pk).cursor;
+        }
+
         cursor_t chaindb_find(
             account_name_t code, account_name_t scope, table_name_t table, index_name_t index,
             primary_key_t pk, array_ptr<const char> key, size_t size
@@ -90,11 +94,14 @@ namespace eosio { namespace chain {
         ) {
             return context.chaindb.remove(context, {code, scope, table}, pk);
         }
+
     }; // class chaindb_api
 
     REGISTER_INTRINSICS( chaindb_api,
         (chaindb_clone,       int(int64_t, int)  )
         (chaindb_close,       void(int64_t, int) )
+
+        (chaindb_opt_find_by_pk, int(int64_t, int64_t, int64_t, int64_t))
 
         (chaindb_lower_bound, int(int64_t, int64_t, int64_t, int64_t, int, int)          )
         (chaindb_upper_bound, int(int64_t, int64_t, int64_t, int64_t, int, int)          )
