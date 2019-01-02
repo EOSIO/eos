@@ -1050,7 +1050,7 @@ class Node(object):
 
         if exitOnError and trans is None:
             Utils.cmdError("could not \"%s\". %s" % (cmdDesc,exitMsg))
-            errorExit("Failed to \"%s\"" % (cmdDesc))
+            Utils.errorExit("Failed to \"%s\"" % (cmdDesc))
 
         return trans
 
@@ -1210,10 +1210,10 @@ class Node(object):
         assert self.popenProc is not None, "node: \"%s\" does not have a popenProc, this may be because it is only set after a relaunch." % (self.cmd)
         self.popenProc.send_signal(signal.SIGINT)
         try:
-            outs, _ = self.popenProc.communicate(timeout=0.2)
+            outs, _ = self.popenProc.communicate(timeout=1)
             assert self.popenProc.returncode == 0, "Expected terminating \"%s\" to have an exit status of 0, but got %d" % (self.cmd, self.popenProc.returncode)
         except subprocess.TimeoutExpired:
-            errorExit("Terminate call failed on node: %s" % (self.cmd))
+            Utils.errorExit("Terminate call failed on node: %s" % (self.cmd))
 
     def verifyAlive(self, silent=False):
         if not silent and Utils.Debug: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
@@ -1239,7 +1239,7 @@ class Node(object):
         blockProducer=block["producer"]
         if blockProducer is None and exitOnError:
             Utils.cmdError("could not get producer for block number %s" % (blockNum))
-            errorExit("Failed to get block's producer")
+            Utils.errorExit("Failed to get block's producer")
         return blockProducer
 
     def getBlockProducer(self, timeout=None, waitForBlock=True, exitOnError=True, blockType=BlockType.head):
@@ -1248,7 +1248,7 @@ class Node(object):
         blockProducer=block["producer"]
         if blockProducer is None and exitOnError:
             Utils.cmdError("could not get producer for block number %s" % (blockNum))
-            errorExit("Failed to get block's producer")
+            Utils.errorExit("Failed to get block's producer")
         return blockProducer
 
     def getNextCleanProductionCycle(self, trans):
