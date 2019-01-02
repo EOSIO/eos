@@ -6,6 +6,7 @@ import os
 import re
 import datetime
 import json
+import signal
 
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
@@ -51,6 +52,7 @@ class Node(object):
         self.transCache={}
         self.walletMgr=walletMgr
         self.missingTransaction=False
+        self.popenProc=None           # initial process is started by launcher, this will only be set on relaunch
         if self.enableMongo:
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
@@ -1203,6 +1205,16 @@ class Node(object):
         self.killed=True
         return True
 
+    def interruptAndVerifyExitStatus(self):
+        if Utils.Debug: Utils.Print("terminating node: %s" % (self.cmd))
+        assert self.popenProc is not None, "node: \"%s\" does not have a popenProc, this may be because it is only set after a relaunch." % (self.cmd)
+        self.popenProc.send_signal(signal.SIGINT)
+        try:
+            outs, _ = self.popenProc.communicate(timeout=0.2)
+            assert self.popenProc.returncode == 0, "Expected terminating \"%s\" to have an exit status of 0, but got %d" % (self.cmd, self.popenProc.returncode)
+        except subprocess.TimeoutExpired:
+            errorExit("Terminate call failed on node: %s" % (self.cmd))
+
     def verifyAlive(self, silent=False):
         if not silent and Utils.Debug: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
         if self.killed or self.pid is None:
@@ -1312,8 +1324,8 @@ class Node(object):
         with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
             cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
             Utils.Print("cmd: %s" % (cmd))
-            popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
-            self.pid=popen.pid
+            self.popenProc=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
+            self.pid=self.popenProc.pid
             if Utils.Debug: Utils.Print("restart Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
 
         def isNodeAlive():
