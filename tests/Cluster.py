@@ -1140,10 +1140,7 @@ class Cluster(object):
             return None
 
         contract="eosio.system"
-        if self.enableMongo:
-            contractDir="unittests/contracts/%s_old" % (contract)
-        else:
-            contractDir="unittests/contracts/%s" % (contract)
+        contractDir="unittests/contracts/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
