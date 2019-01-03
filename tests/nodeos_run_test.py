@@ -4,6 +4,7 @@ from testUtils import Utils
 from Cluster import Cluster
 from WalletMgr import WalletMgr
 from Node import Node
+from Node import ReturnType
 from TestHelper import TestHelper
 
 import decimal
@@ -638,12 +639,18 @@ try:
 
     Print("Get account defproducera")
     account=node.getEosAccount(defproduceraAccount.name, exitOnError=True)
+    coreLiquidBalance=account['core_liquid_balance']
 
     Print("Unlocking wallet \"%s\"." % (defproduceraWallet.name))
     if not walletMgr.unlockWallet(testWallet):
         cmdError("%s wallet unlock test" % (ClientName))
         errorExit("Failed to unlock wallet %s" % (testWallet.name))
 
+
+    Print("Verify non-JSON call works")
+    account=node.getEosAccount(defproduceraAccount.name, exitOnError=True, returnType=ReturnType.raw)
+    match=re.search(r'\bliquid:\s*%s\s' % (coreLiquidBalance), account, re.MULTILINE | re.DOTALL)
+    assert match is not None, "did not find the core liquid balance (\"liquid:\") of %d in \"%s\"" % (coreLiquidBalance, account)
 
     Print("Get head block num.")
     currentBlockNum=node.getHeadBlockNum()
