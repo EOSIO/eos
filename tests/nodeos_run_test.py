@@ -648,7 +648,8 @@ try:
 
 
     Print("Verify non-JSON call works")
-    account=node.getEosAccount(defproduceraAccount.name, exitOnError=True, returnType=ReturnType.raw)
+    # force call to avoid mongodb and retrieve data from cleos
+    account=node.getEosAccount(defproduceraAccount.name, exitOnError=True, returnType=ReturnType.raw, avoidMongo=True)
     match=re.search(r'\bliquid:\s*%s\s' % (coreLiquidBalance), account, re.MULTILINE | re.DOTALL)
     assert match is not None, "did not find the core liquid balance (\"liquid:\") of %d in \"%s\"" % (coreLiquidBalance, account)
 
