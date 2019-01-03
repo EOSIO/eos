@@ -1,35 +1,31 @@
-#include <boost/test/unit_test.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-
-#include <eosio/testing/tester.hpp>
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/wasm_eosio_constraints.hpp>
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
-#include <asserter/asserter.wast.hpp>
-#include <asserter/asserter.abi.hpp>
-
-#include <stltest/stltest.wast.hpp>
-#include <stltest/stltest.abi.hpp>
-
-#include <noop/noop.wast.hpp>
-#include <noop/noop.abi.hpp>
-
-#include <fc/io/fstream.hpp>
-
-#include <Runtime/Runtime.h>
-
-#include <fc/variant_object.hpp>
-#include <fc/io/json.hpp>
-
-#include "test_wasts.hpp"
-#include "test_softfloat_wasts.hpp"
-
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <array>
 #include <utility>
 
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/wasm_eosio_constraints.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
+#include <eosio/testing/tester.hpp>
+
+#include <Runtime/Runtime.h>
+
+#include <boost/test/unit_test.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+
+#include <fc/io/fstream.hpp>
+#include <fc/io/json.hpp>
+#include <fc/variant_object.hpp>
+
 #include "incbin.h"
+#include "test_wasts.hpp"
+#include "test_softfloat_wasts.hpp"
+
+#include <contracts.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -81,7 +77,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
    create_accounts( {N(asserter)} );
    produce_block();
 
-   set_code(N(asserter), asserter_wast);
+   set_code(N(asserter), contracts::asserter_wasm());
    produce_blocks(1);
 
    transaction_id_type no_assert_id;
@@ -140,7 +136,7 @@ BOOST_FIXTURE_TEST_CASE( prove_mem_reset, TESTER ) try {
    create_accounts( {N(asserter)} );
    produce_block();
 
-   set_code(N(asserter), asserter_wast);
+   set_code(N(asserter), contracts::asserter_wasm());
    produce_blocks(1);
 
    // repeat the action multiple times, each time the action handler checks for the expected
@@ -170,8 +166,8 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, TESTER ) try {
    create_accounts( {N(asserter)} );
    produce_block();
 
-   set_code(N(asserter), asserter_wast);
-   set_abi(N(asserter), asserter_abi);
+   set_code(N(asserter), contracts::asserter_wasm());
+   set_abi(N(asserter), contracts::asserter_abi().data());
    produce_blocks(1);
 
    auto resolver = [&,this]( const account_name& name ) -> optional<abi_serializer> {
@@ -689,45 +685,6 @@ BOOST_FIXTURE_TEST_CASE( check_global_reset, TESTER ) try {
    BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( stl_test, TESTER ) try {
-    produce_blocks(2);
-
-    create_accounts( {N(stltest), N(alice), N(bob)} );
-    produce_block();
-
-    set_code(N(stltest), stltest_wast);
-    set_abi(N(stltest), stltest_abi);
-    produce_blocks(1);
-
-    const auto& accnt  = control->db().get<account_object,by_name>( N(stltest) );
-    abi_def abi;
-    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-    abi_serializer abi_ser(abi, abi_serializer_max_time);
-
-    //send message
-    {
-        signed_transaction trx;
-        action msg_act;
-        msg_act.account = N(stltest);
-        msg_act.name = N(message);
-        msg_act.authorization = {{N(stltest), config::active_name}};
-        msg_act.data = abi_ser.variant_to_binary("message", mutable_variant_object()
-                                             ("from", "bob")
-                                             ("to", "alice")
-                                             ("message","Hi Alice!"),
-                                             abi_serializer_max_time
-                                             );
-        trx.actions.push_back(std::move(msg_act));
-
-        set_transaction_headers(trx);
-        trx.sign(get_private_key(N(stltest), "active"), control->get_chain_id());
-        push_transaction(trx);
-        produce_block();
-
-        BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-    }
-} FC_LOG_AND_RETHROW() /// stltest
-
 //Make sure we can create a wasm with maximum pages, but not grow it any
 BOOST_FIXTURE_TEST_CASE( big_memory, TESTER ) try {
    produce_blocks(2);
@@ -1012,9 +969,9 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
    create_accounts( {N(noop), N(alice)} );
    produce_block();
 
-   set_code(N(noop), noop_wast);
+   set_code(N(noop), contracts::noop_wasm());
 
-   set_abi(N(noop), noop_abi);
+   set_abi(N(noop), contracts::noop_abi().data());
    const auto& accnt  = control->db().get<account_object,by_name>(N(noop));
    abi_def abi;
    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);

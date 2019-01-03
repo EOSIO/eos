@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -9,14 +13,7 @@
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
-#include <asserter/asserter.wast.hpp>
-#include <asserter/asserter.abi.hpp>
-
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
-
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
+#include <contracts.hpp>
 
 #include <fc/io/fstream.hpp>
 
@@ -51,8 +48,8 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
    create_accounts(accs);
    produce_block();
 
-   set_code( N(eosio.token), eosio_token_wast );
-   set_abi( N(eosio.token), eosio_token_abi );
+   set_code( N(eosio.token), contracts::eosio_token_wasm() );
+   set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
    produce_blocks(1);
 
    // create currency
@@ -127,8 +124,8 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
    create_accounts(accs);
    produce_block();
 
-   set_code( N(eosio.token), eosio_token_wast );
-   set_abi( N(eosio.token), eosio_token_abi );
+   set_code( N(eosio.token), contracts::eosio_token_wasm() );
+   set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
    produce_blocks(1);
 
    // create currency
@@ -322,8 +319,8 @@ BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
    create_accounts(accs);
    produce_block();
 
-   set_code( N(eosio.token), eosio_token_wast );
-   set_abi( N(eosio.token), eosio_token_abi );
+   set_code( N(eosio.token), contracts::eosio_token_wasm() );
+   set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
    produce_blocks(1);
 
    // create currency
@@ -341,9 +338,14 @@ BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
                   );
    }
    produce_blocks(1);
-
-   set_code( config::system_account_name, eosio_system_wast );
-   set_abi( config::system_account_name, eosio_system_abi );
+   
+   set_code( config::system_account_name, contracts::eosio_system_wasm() );
+   set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
+   
+   base_tester::push_action(config::system_account_name, N(init),
+                            config::system_account_name,  mutable_variant_object()
+                            ("version", 0)
+                            ("core", CORE_SYM_STR));
 
    // bidname
    auto bidname = [this]( const account_name& bidder, const account_name& newname, const asset& bid ) {

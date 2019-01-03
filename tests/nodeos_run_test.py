@@ -320,7 +320,7 @@ try:
     if hashNum != 0:
         errorExit("FAILURE - get code currency1111 failed", raw=True)
 
-    contractDir="contracts/eosio.token"
+    contractDir="unittests/contracts/eosio.token"
     wasmFile="eosio.token.wasm"
     abiFile="eosio.token.abi"
     Print("Publish contract")
@@ -344,7 +344,7 @@ try:
         abiName=account["abi"]["structs"][0]["name"]
         abiActionName=account["abi"]["actions"][0]["name"]
         abiType=account["abi"]["actions"][0]["type"]
-        if abiName != "transfer" or abiActionName != "transfer" or abiType != "transfer":
+        if abiName != "account" or abiActionName != "close" or abiType != "close":
             errorExit("FAILURE - get EOS account failed", raw=True)
 
     Print("push create action to currency1111 contract")

@@ -961,7 +961,7 @@ class Cluster(object):
             return None
 
         contract="eosio.bios"
-        contractDir="contracts/%s" % (contract)
+        contractDir="unittests/contracts/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
@@ -1085,7 +1085,7 @@ class Cluster(object):
             return None
 
         contract="eosio.token"
-        contractDir="contracts/%s" % (contract)
+        contractDir="unittests/contracts/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
@@ -1140,7 +1140,10 @@ class Cluster(object):
             return None
 
         contract="eosio.system"
-        contractDir="contracts/%s" % (contract)
+        if self.enableMongo:
+            contractDir="unittests/contracts/%s_old" % (contract)
+        else:
+            contractDir="unittests/contracts/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
@@ -1171,7 +1174,10 @@ class Cluster(object):
         if not biosNode.waitForTransInBlock(transId):
             Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
             return None
-
+        action="init"
+        data="{\"version\":0,\"core\":\"4,%s\"}" % (CORE_SYMBOL)
+        opts="--permission %s@active" % (eosioAccount.name)
+        trans=biosNode.pushMessage(eosioAccount.name, action, data, opts)
         Utils.Print("Cluster bootstrap done.")
 
         return biosNode

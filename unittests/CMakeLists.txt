@@ -1,6 +1,29 @@
-#file(GLOB COMMON_SOURCES "common/*.cpp")
-
 find_package( Gperftools QUIET )
+
+### Build contracts with cdt if available
+include(ExternalProject)
+# if no cdt root is given use default path
+if(EOSIO_CDT_ROOT STREQUAL "" OR NOT EOSIO_CDT_ROOT)
+   set(EOSIO_WASM_OLD_BEHAVIOR "Off")
+   find_package(eosio.cdt)
+endif()
+
+if (eosio.cdt_FOUND)
+   ExternalProject_Add(
+      test_contracts_project
+      SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test-contracts
+      BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/test-contracts
+      CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${EOSIO_CDT_ROOT}/lib/cmake/eosio.cdt/EosioWasmToolchain.cmake -DBoost_INCLUDE_DIRS=${Boost_INCLUDE_DIRS}
+      UPDATE_COMMAND ""
+      PATCH_COMMAND ""
+      TEST_COMMAND ""
+      INSTALL_COMMAND ""
+      BUILD_ALWAYS 1
+   )
+else()
+   add_subdirectory(test-contracts)
+endif()
+
 if( GPERFTOOLS_FOUND )
     message( STATUS "Found gperftools; compiling tests with TCMalloc")
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
@@ -15,20 +38,22 @@ set( CMAKE_CXX_STANDARD 14 )
 add_subdirectory(contracts)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/config.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/include/config.hpp ESCAPE_QUOTES)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/contracts.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/include/contracts.hpp ESCAPE_QUOTES)
 
 file(GLOB UNIT_TESTS "*.cpp")
 
 add_executable( unit_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} )
 target_link_libraries( unit_test eosio_chain chainbase eosio_testing fc ${PLATFORM_SPECIFIC_LIBS} )
 
+target_compile_options(unit_test PUBLIC -DDISABLE_EOSLIB_SERIALIZE)
+
 target_include_directories( unit_test PUBLIC
                             ${CMAKE_SOURCE_DIR}/libraries/testing/include
-                            ${CMAKE_SOURCE_DIR}/contracts
+                            ${CMAKE_SOURCE_DIR}/test-contracts
                             ${CMAKE_BINARY_DIR}/contracts
                             ${CMAKE_CURRENT_SOURCE_DIR}/contracts
                             ${CMAKE_CURRENT_BINARY_DIR}/contracts
                             ${CMAKE_CURRENT_BINARY_DIR}/include )
-add_dependencies(unit_test asserter test_api test_api_mem test_api_db test_ram_limit test_api_multi_index eosio.token proxy identity identity_test stltest eosio.system eosio.token eosio.bios multi_index_test noop eosio.msig payloadless tic_tac_toe deferred_test snapshot_test)
 
 #Manually run unit_test for all supported runtimes
 #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
