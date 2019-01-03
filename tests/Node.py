@@ -549,15 +549,16 @@ class Node(object):
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def getEosAccount(self, name, exitOnError=False, returnType=ReturnType.json):
+    def getEosAccount(self, name, exitOnError=False, returnType=ReturnType.json, avoidMongo=False):
         assert(isinstance(name, str))
-        if not self.enableMongo:
+        if not self.enableMongo or avoidMongo:
             cmdDesc="get account"
             jsonFlag="-j" if returnType==ReturnType.json else ""
             cmd="%s %s %s" % (cmdDesc, jsonFlag, name)
             msg="( getEosAccount(name=%s) )" % (name);
             return self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg, returnType=returnType)
         else:
+            assert returnType == ReturnType.json, "MongoDB only supports a returnType of ReturnType.json" 
             return self.getEosAccountFromDb(name, exitOnError=exitOnError)
 
     def getEosAccountFromDb(self, name, exitOnError=False):
