@@ -639,19 +639,18 @@ try:
 
     Print("Get account defproducera")
     account=node.getEosAccount(defproduceraAccount.name, exitOnError=True)
-    coreLiquidBalance=account['core_liquid_balance']
 
     Print("Unlocking wallet \"%s\"." % (defproduceraWallet.name))
     if not walletMgr.unlockWallet(testWallet):
         cmdError("%s wallet unlock test" % (ClientName))
         errorExit("Failed to unlock wallet %s" % (testWallet.name))
 
-
-    Print("Verify non-JSON call works")
-    # force call to avoid mongodb and retrieve data from cleos
-    account=node.getEosAccount(defproduceraAccount.name, exitOnError=True, returnType=ReturnType.raw, avoidMongo=True)
-    match=re.search(r'\bliquid:\s*%s\s' % (coreLiquidBalance), account, re.MULTILINE | re.DOTALL)
-    assert match is not None, "did not find the core liquid balance (\"liquid:\") of %d in \"%s\"" % (coreLiquidBalance, account)
+    if not enableMongo:
+        Print("Verify non-JSON call works")
+        rawAccount=node.getEosAccount(defproduceraAccount.name, exitOnError=True, returnType=ReturnType.raw)
+        coreLiquidBalance=account['core_liquid_balance']
+        match=re.search(r'\bliquid:\s*%s\s' % (coreLiquidBalance), rawAccount, re.MULTILINE | re.DOTALL)
+        assert match is not None, "did not find the core liquid balance (\"liquid:\") of %d in \"%s\"" % (coreLiquidBalance, rawAccount)
 
     Print("Get head block num.")
     currentBlockNum=node.getHeadBlockNum()
