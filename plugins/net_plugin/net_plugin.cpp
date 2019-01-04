@@ -1836,7 +1836,8 @@ namespace eosio {
 
    void net_plugin_impl::start_listen_loop() {
       auto socket = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
-      acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
+      acceptor->async_accept( *socket,
+            app().get_priority_queue().wrap(priority::low, [socket,this]( boost::system::error_code ec ) {
             if( !ec ) {
                uint32_t visitors = 0;
                uint32_t from_addr = 0;
@@ -1895,7 +1896,7 @@ namespace eosio {
                }
             }
             start_listen_loop();
-         });
+         }));
    }
 
    void net_plugin_impl::start_read_message(const connection_ptr& conn) {
