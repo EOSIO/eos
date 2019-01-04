@@ -917,7 +917,7 @@ namespace eosio {
          */
         void wait_on_app() {
            app().post( priority::low, [self = shared_from_this()]() {
-              boost::asio::bind_executor( self->_strand, [self] { self->do_read(); } );
+              app().get_io_service().post( boost::asio::bind_executor( self->_strand, [self] { self->do_read(); } ) );
            } );
         }
 
