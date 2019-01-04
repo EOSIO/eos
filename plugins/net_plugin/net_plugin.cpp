@@ -341,16 +341,7 @@ namespace eosio {
    struct peer_block_state {
       block_id_type id;
       uint32_t      block_num;
-      bool          is_known;
-      bool          is_noticed;
-      time_point    requested_time;
    };
-
-   struct update_request_time {
-      void operator() (struct eosio::peer_block_state &bs) {
-         bs.requested_time = time_point::now();
-      }
-   } set_request_time;
 
    typedef multi_index_container<
       eosio::peer_block_state,
@@ -361,13 +352,6 @@ namespace eosio {
       > peer_block_state_index;
 
 
-   struct update_known_by_peer {
-      void operator() (eosio::peer_block_state& bs) {
-         bs.is_known = true;
-      }
-   } set_is_known;
-
-
    struct update_block_num {
       uint32_t new_bnum;
       update_block_num(uint32_t bnum) : new_bnum(bnum) {}
@@ -376,9 +360,6 @@ namespace eosio {
       }
       void operator() (transaction_state& ts) {
          ts.block_num = new_bnum;
-      }
-      void operator() (peer_block_state& pbs) {
-         pbs.block_num = new_bnum;
       }
    };
 
@@ -530,7 +511,7 @@ namespace eosio {
        */
       bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
 
-      bool add_peer_block(const peer_block_state &pbs);
+      void add_peer_block(const peer_block_state& pbs);
 
       fc::optional<fc::variant_object> _logger_variant;
       const fc::variant_object& get_logger_variant()  {
@@ -1165,22 +1146,17 @@ namespace eosio {
       return true;
    }
 
-   bool connection::add_peer_block(const peer_block_state &entry) {
+   void connection::add_peer_block(const peer_block_state& entry) {
       auto bptr = blk_state.get<by_id>().find(entry.id);
       bool added = (bptr == blk_state.end());
       if (added){
          blk_state.insert(entry);
+      } else {
+         blk_state.modify(bptr, [&entry](auto& e){
+            e.id = entry.id;
+            e.block_num = entry.block_num;
+         });
       }
-      else {
-         blk_state.modify(bptr,set_is_known);
-         if (entry.block_num == 0) {
-            blk_state.modify(bptr,update_block_num(entry.block_num));
-         }
-         else {
-            blk_state.modify(bptr,set_request_time);
-         }
-      }
-      return added;
    }
 
    //-----------------------------------------------------------
@@ -1387,8 +1363,8 @@ namespace eosio {
       // 1. my head block num < peer lib - start sync locally
       // 2. my lib > peer head num - send an last_irr_catch_up notice if not the first generation
       //
-      // 3  my head block num <= peer head block num - update sync state and send a catchup request
-      // 4  my head block num > peer block num send a notice catchup if this is not the first generation
+      // 3  my head block num < peer head block num - update sync state and send a catchup request
+      // 4  my head block num >= peer block num send a notice catchup if this is not the first generation
       //
       //-----------------------------
 
@@ -1426,7 +1402,7 @@ namespace eosio {
          return;
       }
 
-      if (head <= msg.head_num ) {
+      if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
          verify_catchup(c, msg.head_num, msg.head_id);
          return;
@@ -1556,11 +1532,9 @@ namespace eosio {
       }
       received_blocks.erase(range.first, range.second);
 
-      block_id_type bid = bs->id;
       uint32_t bnum = bs->block_num;
-      peer_block_state pbstate = {bid, bnum, false, true, time_point()};
+      peer_block_state pbstate{bs->id, bnum};
 
-      pbstate.is_known = true;
       for( auto& cp : my_impl->connections ) {
          if( skips.find( cp ) != skips.end() || !cp->current() ) {
             continue;
@@ -1584,7 +1558,6 @@ namespace eosio {
           c->last_req->req_blocks.ids.back() == id) {
          c->last_req.reset();
       }
-      c->add_peer_block({id, bnum, false,true,time_point()});
 
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
       c->cancel_wait();
@@ -1687,11 +1660,11 @@ namespace eosio {
          controller& cc = my_impl->chain_plug->chain();
          for( const auto& blkid : msg.known_blocks.ids) {
             signed_block_ptr b;
-            peer_block_state entry = {blkid,0,true,true,fc::time_point()};
             try {
                b = cc.fetch_block_by_id(blkid);
-               if(b)
-                  entry.block_num = b->block_num();
+               if(b) {
+                  c->add_peer_block({blkid, b->block_num()});
+               }
             } catch (const assert_exception &ex) {
                ilog( "caught assert on fetch_block_by_id, ${ex}",("ex",ex.what()));
                // keep going, client can ask another peer
@@ -1701,9 +1674,7 @@ namespace eosio {
             if (!b) {
                send_req = true;
                req.req_blocks.ids.push_back( blkid );
-               entry.requested_time = fc::time_point::now();
             }
-            c->add_peer_block(entry);
          }
       }
       else if (msg.known_blocks.mode != none) {
@@ -1749,7 +1720,7 @@ namespace eosio {
          }
          else {
             auto blk = conn->blk_state.get<by_id>().find(bid);
-            sendit = blk != conn->blk_state.end() && blk->is_known;
+            sendit = blk != conn->blk_state.end();
          }
          if (sendit) {
             conn->enqueue(*c->last_req);
