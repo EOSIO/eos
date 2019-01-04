@@ -1057,7 +1057,7 @@ namespace eosio {
    void connection::sync_wait() {
       response_expected->expires_from_now( my_impl->resp_expected_period);
       connection_wptr c(shared_from_this());
-      response_expected->async_wait( [c]( boost::system::error_code ec){
+      response_expected->async_wait( app().get_priority_queue().wrap(priority::low, [c]( boost::system::error_code ec){
             connection_ptr conn = c.lock();
             if (!conn) {
                // connection was destroyed before this lambda was delivered
@@ -1065,13 +1065,13 @@ namespace eosio {
             }
 
             conn->sync_timeout(ec);
-         } );
+         }) );
    }
 
    void connection::fetch_wait() {
       response_expected->expires_from_now( my_impl->resp_expected_period);
       connection_wptr c(shared_from_this());
-      response_expected->async_wait( [c]( boost::system::error_code ec){
+      response_expected->async_wait( app().get_priority_queue().wrap(priority::low, [c]( boost::system::error_code ec){
             connection_ptr conn = c.lock();
             if (!conn) {
                // connection was destroyed before this lambda was delivered
@@ -1079,7 +1079,7 @@ namespace eosio {
             }
 
             conn->fetch_timeout(ec);
-         } );
+         }) );
    }
 
    void connection::sync_timeout( boost::system::error_code ec ) {
@@ -2425,7 +2425,7 @@ namespace eosio {
 
    void net_plugin_impl::start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection) {
       connector_check->expires_from_now( du);
-      connector_check->async_wait( [this, from_connection](boost::system::error_code ec) {
+      connector_check->async_wait(app().get_priority_queue().wrap(priority::low, [this, from_connection](boost::system::error_code ec) {
             if( !ec) {
                connection_monitor(from_connection);
             }
@@ -2433,12 +2433,12 @@ namespace eosio {
                elog( "Error from connection check monitor: ${m}",( "m", ec.message()));
                start_conn_timer( connector_period, std::weak_ptr<connection>());
             }
-         });
+         }));
    }
 
    void net_plugin_impl::start_txn_timer() {
       transaction_check->expires_from_now( txn_exp_period);
-      transaction_check->async_wait( [this](boost::system::error_code ec) {
+      transaction_check->async_wait(app().get_priority_queue().wrap(priority::low-1, [this](boost::system::error_code ec) {
             if( !ec) {
                expire_txns();
             }
@@ -2446,12 +2446,12 @@ namespace eosio {
                elog( "Error from transaction check monitor: ${m}",( "m", ec.message()));
                start_txn_timer();
             }
-         });
+         }));
    }
 
    void net_plugin_impl::ticker() {
       keepalive_timer->expires_from_now(keepalive_interval);
-      keepalive_timer->async_wait([this](boost::system::error_code ec) {
+      keepalive_timer->async_wait(app().get_priority_queue().wrap(priority::low, [this](boost::system::error_code ec) {
             ticker();
             if (ec) {
                wlog("Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()));
@@ -2461,7 +2461,7 @@ namespace eosio {
                   c->send_time();
                }
             }
-         });
+         }));
    }
 
    void net_plugin_impl::start_monitors() {
