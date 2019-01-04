@@ -353,7 +353,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          boost::asio::post( *_thread_pool, [self = this, trx, persist_until_expired, next]() {
             if( trx->signing_keys_future.valid() )
                trx->signing_keys_future.wait();
-            app().get_io_service().post( [self, trx, persist_until_expired, next]() {
+            app().post(priority::low, [self, trx, persist_until_expired, next]() {
                self->process_incoming_transaction_async( trx, persist_until_expired, next );
             });
          });
