@@ -51,6 +51,15 @@ namespace spaceaction {
     void actiondemo::hascontract(const args_name& t){
         bool r = has_contract(t.name);
         print_f("% has_contract:%", name{t.name}.to_string(),r);
+
+//        if (r) {
+            checksum256 code;
+            get_contract_code(t.name, &code);
+
+            std::string s = to_hex((char*)&code.hash, 32);
+            print_f("% contract_code:%", name{t.name}.to_string(),s);
+//        }
+
     }
 
     void actiondemo::generate(const args& t){
