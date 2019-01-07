@@ -765,7 +765,7 @@ mongodconf
 			exit 1;
 			fi
 		fi
-		if ! git clone --depth 1 -b v0.2 https://github.com/boscore/cppkafka.git
+		if ! git clone --depth 1 -b 0.2 https://github.com/boscore/cppkafka.git
 		then
 			printf "\\tUnable to clone cppkafka repo.\\n"
 			printf "\\n\\tExiting now.\\n"
