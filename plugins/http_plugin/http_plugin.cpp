@@ -541,6 +541,22 @@ namespace eosio {
             throw;
          }
       }
+
+#define CALL(api_name, call_name, http_response_code) \
+{std::string("/v1/" #api_name "/" #call_name), \
+   [&](string, string body, url_response_callback cb) mutable { \
+          try { \
+             if (body.empty()) body = "{}"; \
+             auto result = (*this).call_name(); \
+             cb(http_response_code, fc::json::to_string(result)); \
+          } catch (...) { \
+             http_plugin::handle_exception(#api_name, #call_name, body, cb); \
+          } \
+       }}
+
+      add_api({
+         CALL(node, get_supported_apis, 200)
+      });
    }
 
    void http_plugin::plugin_shutdown() {
@@ -615,4 +631,13 @@ namespace eosio {
       return verbose_http_errors;
    }
 
+   http_plugin::get_supported_apis_result http_plugin::get_supported_apis()const {
+      get_supported_apis_result result;
+
+      for (const auto& handler : my->url_handlers) {
+         result.apis.emplace_back(handler.first);
+      }
+
+      return result;
+   }
 }
