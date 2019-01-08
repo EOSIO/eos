@@ -73,20 +73,25 @@ BOOST_AUTO_TEST_CASE(set_name_list_test)
       vector<name> list = parse_list_string(str);
 
       flat_set<account_name> nameset(list.begin(), list.end());
+         // Create an account
+         db.create<account_object>([](account_object &a) {
+            a.name = "alice";
+         });
 
-      test.control->set_actor_blacklist(nameset);
+
+      test.control->add_resource_greylist(N(alice));
 
       // Make sure we can retrieve that account by name
       const global_property2_object &ptr = db.get<global_property2_object>();
 
       // Create an account
       db.modify(ptr, [&](global_property2_object &a) {
-         a.cfg.actor_blacklist = {N(a)};
-         a.cfg.contract_blacklist = {N(a)};
-         a.cfg.resource_greylist = {N(a)};
+         // a.cfg.actor_blacklist = {N(a)};
+         // a.cfg.contract_blacklist = {N(a)};
+         // a.cfg.resource_greylist = {N(a)};
       });
 
-      int64_t lt = static_cast<int64_t>(list_type::actor_blacklist_type);
+      int64_t lt = static_cast<int64_t>(list_type::resource_greylist_type);
       int64_t lat = static_cast<int64_t>(list_action_type::insert_type);
       test.control->set_name_list(lt, lat, list);
 
@@ -114,24 +119,24 @@ BOOST_AUTO_TEST_CASE(set_name_list_test)
       const global_property2_object &ptr1 = db.get<global_property2_object>();
       chain_config2 c = ptr1.cfg;
 
-      BOOST_TEST(c.actor_blacklist.size() == 4);
-      BOOST_TEST(ab.size() == 4);
+      BOOST_TEST(c.resource_greylist.size() == 1);
+      BOOST_TEST(rg.size() == 1);
 
       convert_names(c.actor_blacklist, aab);
       convert_names(c.contract_blacklist, acb);
       convert_names(c.resource_greylist, arg);
 
      
-      if (c.actor_blacklist.size() == 4)
+      if (c.resource_greylist.size() == 1)
       {
 
-         bool b = (aab.find(N(a)) != aab.end());
-         BOOST_TEST(b);
+         // bool b = (aab.find(N(a)) != aab.end());
+         // BOOST_TEST(b);
       }
 
-      bool d = ab.find(N(a)) != ab.end();
-      BOOST_TEST(d);
-      bool m = aab.find(N(alice)) != aab.end();
+      // bool d = ab.find(N(a)) != ab.end();
+      // BOOST_TEST(d);
+      bool m = arg.find(N(alice)) != arg.end();
       BOOST_TEST(m);
 
       // Undo creation of the account

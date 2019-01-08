@@ -741,10 +741,17 @@ struct controller_impl {
 
    void sync_name_list(list_type list,bool isMerge=false)
    {
-      const auto &gpo2 = db.get<global_property2_object>();
-      db.modify(gpo2, [&](auto &gprops2) {
-         sync_list_and_db(list, gprops2,isMerge);
-      });
+      try
+      {
+         const auto &gpo2 = db.get<global_property2_object>();
+         db.modify(gpo2, [&](auto &gprops2) {
+            sync_list_and_db(list, gprops2, isMerge);
+         });
+      }
+      catch (...)
+      {
+         wlog("plugin initialize  sync list ignore before initialize database");
+      }
    }
 
    // "bos end"
