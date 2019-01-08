@@ -119,8 +119,6 @@ namespace cyberway { namespace chaindb {
     }
 
     journal::info_t_& journal::write_ctx::info(const primary_key_t pk) {
-        CYBERWAY_ASSERT(pk != unset_primary_key, driver_write_exception, "Empty primary key");
-
         if (pk == pk_) return *info_;
 
         pk_ = pk;

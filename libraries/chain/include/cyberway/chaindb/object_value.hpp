@@ -27,17 +27,18 @@ namespace cyberway { namespace chaindb {
         undo_record   undo_rec = undo_record::Unknown;
         revision_t    revision = impossible_revision;
 
-        service_state(const table_info& table, const primary_key_t pk)
+        service_state(const table_info& table, primary_key_t pk)
         : pk(pk), code(table.code), scope(table.scope), table(table.table->name), hash(table.table->hash) {
         }
 
-        service_state(const table_info& table, const primary_key_t pk, const account_name& payer, const size_t size)
+        service_state(const table_info& table, primary_key_t pk, const account_name& payer, size_t size)
         : pk(pk), payer(payer), size(size), code(table.code), scope(table.scope),
           table(table.table->name), hash(table.table->hash) {
         }
 
-        service_state(const primary_key_t pk, const primary_key_t undo_pk, const undo_record undo_rec)
-        : pk(pk), undo_pk(undo_pk), undo_rec(undo_rec) {
+        service_state(const table_info& table, primary_key_t undo_pk, undo_record rec, revision_t rev)
+        : code(table.code), scope(table.scope), table(table.table->name), hash(table.table->hash),
+          undo_pk(undo_pk), undo_rec(rec), revision(rev) {
         }
 
         service_state() = default;
@@ -76,12 +77,6 @@ namespace cyberway { namespace chaindb {
         }
 
         object_value clone_pk() const {
-            object_value obj;
-            obj.service = service;
-            return obj;
-        }
-
-        object_value clone_undo_pk() const {
             object_value obj;
             obj.service = service;
             return obj;
