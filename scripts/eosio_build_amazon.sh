@@ -534,9 +534,9 @@ fi
 		printf "\\tMongo C++ driver found at /usr/local/lib64/libmongocxx-static.a.\\n"
 	fi
 
-	printf "\\n\\tChecking LLVM with WASM support.\\n"
+	printf "\\n\\tChecking LLVM4.\\n"
 	if [ ! -d "${HOME}/opt/wasm/bin" ]; then
-		printf "\\tInstalling LLVM & WASM.\\n"
+		printf "\\tInstalling LLVM4.\\n"
 		if ! cd "${TEMP_DIR}"
 		then
 			printf "\\n\\tUnable to cd into directory %s.\\n" "${TEMP_DIR}"
@@ -567,12 +567,6 @@ fi
 			printf "\\n\\tExiting now.\\n"
 			exit 1;
 		fi
-		if ! git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
-		then
-			printf "\\tUnable to clone clang repo @ https://github.com/llvm-mirror/clang.git.\\n"
-			printf "\\tExiting now.\\n\\n"
-			exit 1;
-		fi
 		if ! cd "${TEMP_DIR}/llvm-compiler/llvm"
 		then
 			printf "\\n\\tUnable to change directory into %s/llvm-compiler/llvm.\\n" "${TEMP_DIR}"
@@ -592,22 +586,22 @@ fi
 			exit 1;
 		fi
 		if ! "$CMAKE" -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="${HOME}/opt/wasm" \
-		-DLLVM_ENABLE_RTTI=1 -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="WebAssembly" \
+		-DLLVM_ENABLE_RTTI=1 -DLLVM_TARGETS_TO_BUILD="host" -DLLVM_BUILD_TOOLS=false \
 		-DCMAKE_BUILD_TYPE="Release" ..
 		then
-			printf "\\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\\n"
+			printf "\\tError compiling LLVM4.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! make -j"${JOBS}"
 		then
-			printf "\\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\\n"
+			printf "\\tError compiling LLVM4.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! make install
 		then
-			printf "\\tError installing LLVM and clang with EXPERIMENTAL WASM support.\\n"
+			printf "\\tError installing LLVM4.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
@@ -617,9 +611,9 @@ fi
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		printf "\\tWASM successfully installed at %s/opt/wasm.\\n" "${HOME}"
+		printf "\\LLVM4 successfully installed at %s/opt/wasm.\\n" "${HOME}"
 	else
-		printf "\\tWASM found at %s/opt/wasm.\\n" "${HOME}"
+		printf "\\LLVM4 found at %s/opt/wasm.\\n" "${HOME}"
 	fi
 
 	function print_instructions()
