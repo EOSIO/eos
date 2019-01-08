@@ -272,8 +272,8 @@ namespace cyberway { namespace chaindb {
             serializer_.set_abi(abi, max_time);
 
             for (auto& table: abi.tables) {
-                auto hash = (!table.hash ? table.name.value : table.hash);
-                table_map_.emplace(hash, std::move(table));
+                if (!table.hash) table.hash = table.name.value;
+                table_map_.emplace(table.hash, std::move(table));
             }
 
             index_builder builder(code, serializer_, table_map_);
