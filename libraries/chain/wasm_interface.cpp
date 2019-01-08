@@ -1412,6 +1412,17 @@ class context_free_transaction_api : public context_aware_api {
           return accnt->code.size() > 0;
       }
 
+      void get_contract_code(account_name name, fc::sha256& code ) {
+          const auto accnt  = context.db.find<account_object,by_name>( name );
+          EOS_ASSERT( accnt != nullptr, action_validate_exception, "account '${account}' does not exist", ("account", name) );
+
+          if( accnt->code.size() > 0) {
+              code = fc::sha256::hash( accnt->code.data(), accnt->code.size() );
+          } else {
+              code = fc::sha256();
+          }
+      }
+
       int expiration() {
         return context.trx_context.trx.expiration.sec_since_epoch();
       }
@@ -1953,6 +1964,7 @@ REGISTER_INTRINSICS(context_free_transaction_api,
    (get_transaction_id,     void(int)                )
    (get_action_sequence,    void(int)                )
    (has_contract,           int(int64_t)             )
+   (get_contract_code,      void(int64_t, int)       )
    (expiration,             int()                    )
    (tapos_block_prefix,     int()                    )
    (tapos_block_num,        int()                    )
