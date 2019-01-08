@@ -954,7 +954,7 @@ namespace eosio {
                string pname = conn ? conn->peer_name() : "no connection name";
                elog("Exception in do_queue_write to ${p}", ("p",pname) );
             }
-         }));
+         }, __FILE__, __LINE__, __func__));
    }
 
    void connection::cancel_sync(go_away_reason reason) {
@@ -1071,7 +1071,7 @@ namespace eosio {
             }
 
             conn->sync_timeout(ec);
-         }) );
+         }, __FILE__, __LINE__, __func__) );
    }
 
    void connection::fetch_wait() {
@@ -1085,7 +1085,7 @@ namespace eosio {
             }
 
             conn->fetch_timeout(ec);
-         }) );
+         }, __FILE__, __LINE__, __func__) );
    }
 
    void connection::sync_timeout( boost::system::error_code ec ) {
@@ -1785,7 +1785,7 @@ namespace eosio {
                                      elog( "Unable to resolve ${peer_addr}: ${error}",
                                            (  "peer_addr", c->peer_name() )("error", err.message() ) );
                                   }
-                               }));
+                               }, __FILE__, __LINE__, __func__));
    }
 
    void net_plugin_impl::connect(const connection_ptr& c, tcp::resolver::iterator endpoint_itr) {
@@ -1818,7 +1818,7 @@ namespace eosio {
                   my_impl->close(c);
                }
             }
-         } ));
+         }, __FILE__, __LINE__, __func__ ));
    }
 
    bool net_plugin_impl::start_session(const connection_ptr& con) {
@@ -1905,7 +1905,7 @@ namespace eosio {
                }
             }
             start_listen_loop();
-         }));
+         }, __FILE__, __LINE__, __func__));
    }
 
    void net_plugin_impl::start_read_message(const connection_ptr& conn) {
@@ -1989,7 +1989,7 @@ namespace eosio {
                            }
                         }
                      }
-                     start_read_message(conn);
+                     app().post(priority::medium, [this, conn]() { start_read_message(conn); });
                   } else {
                      auto pname = conn->peer_name();
                      if (ec.value() != boost::asio::error::eof) {
@@ -2015,7 +2015,7 @@ namespace eosio {
                   elog( "Undefined exception hanlding the read data from connection ${p}",( "p",pname));
                   close( conn );
                }
-            } ));
+            }, __FILE__, __LINE__, __func__ ));
       } catch (...) {
          string pname = conn ? conn->peer_name() : "no connection name";
          elog( "Undefined exception handling reading ${p}",("p",pname) );
@@ -2443,7 +2443,7 @@ namespace eosio {
                elog( "Error from connection check monitor: ${m}",( "m", ec.message()));
                start_conn_timer( connector_period, std::weak_ptr<connection>());
             }
-         }));
+         }, __FILE__, __LINE__, __func__));
    }
 
    void net_plugin_impl::start_txn_timer() {
@@ -2456,7 +2456,7 @@ namespace eosio {
                elog( "Error from transaction check monitor: ${m}",( "m", ec.message()));
                start_txn_timer();
             }
-         }));
+         }, __FILE__, __LINE__, __func__));
    }
 
    void net_plugin_impl::ticker() {
@@ -2471,7 +2471,7 @@ namespace eosio {
                   c->send_time();
                }
             }
-         }));
+         }, __FILE__, __LINE__, __func__));
    }
 
    void net_plugin_impl::start_monitors() {
