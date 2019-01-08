@@ -1254,7 +1254,7 @@ namespace eosio {
             _timer->async_wait(app().get_priority_queue().wrap(priority::low, [=](const boost::system::error_code& ec) {
                 if( ec ) { return; }
                 on_reconnect_peers();
-            }));
+            }, __FILE__, __LINE__, __func__));
          }
    };
 

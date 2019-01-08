@@ -1273,6 +1273,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                      --orig_pending_txn_size;
                      _incoming_trx_weight -= 1.0;
                      process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+                     if (block_time <= fc::time_point::now()) break;
                   }
 
                   if (block_time <= fc::time_point::now()) {
@@ -1365,12 +1366,13 @@ void producer_plugin_impl::schedule_production_loop() {
       _timer.expires_from_now( boost::posix_time::microseconds( config::block_interval_us  / 10 ));
 
       // we failed to start a block, so try again later?
-      _timer.async_wait([weak_this,cid=++_timer_corelation_id](const boost::system::error_code& ec) {
-         auto self = weak_this.lock();
-         if (self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id) {
-            self->schedule_production_loop();
-         }
-      });
+      _timer.async_wait( app().get_priority_queue().wrap( priority::medium,
+          [weak_this, cid = ++_timer_corelation_id]( const boost::system::error_code& ec ) {
+             auto self = weak_this.lock();
+             if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id ) {
+                self->schedule_production_loop();
+             }
+          }, __FILE__, __LINE__, __func__ ) );
    } else if (result == start_block_result::waiting){
       if (!_producers.empty() && !production_disabled_by_policy()) {
          fc_dlog(_log, "Waiting till another block is received and scheduling Speculative/Production Change");
@@ -1406,16 +1408,17 @@ void producer_plugin_impl::schedule_production_loop() {
          }
       }
 
-      _timer.async_wait([&chain,weak_this,cid=++_timer_corelation_id](const boost::system::error_code& ec) {
-         auto self = weak_this.lock();
-         if (self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id) {
-            fc_dlog(_log, "Produce block timer running at ${time}", ("time", fc::time_point::now()));
-            // pending_block_state expected, but can't assert inside async_wait
-            auto block_num = chain.pending_block_state() ? chain.pending_block_state()->block_num : 0;
-            auto res = self->maybe_produce_block();
-            fc_dlog(_log, "Producing Block #${num} returned: ${res}", ("num", block_num)("res", res));
-         }
-      });
+      _timer.async_wait( app().get_priority_queue().wrap( priority::high,
+            [&chain,weak_this,cid=++_timer_corelation_id](const boost::system::error_code& ec) {
+               auto self = weak_this.lock();
+               if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id ) {
+                  fc_dlog( _log, "Produce block timer running at ${time}", ("time", fc::time_point::now()) );
+                  // pending_block_state expected, but can't assert inside async_wait
+                  auto block_num = chain.pending_block_state() ? chain.pending_block_state()->block_num : 0;
+                  auto res = self->maybe_produce_block();
+                  fc_dlog( _log, "Producing Block #${num} returned: ${res}", ("num", block_num)( "res", res ) );
+               }
+            }, __FILE__, __LINE__, __func__ ) );
    } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && !production_disabled_by_policy()){
       fc_dlog(_log, "Specualtive Block Created; Scheduling Speculative/Production Change");
       EOS_ASSERT( chain.pending_block_state(), missing_pending_block_state, "speculating without pending_block_state" );
@@ -1446,12 +1449,13 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
       fc_dlog(_log, "Scheduling Speculative/Production Change at ${time}", ("time", wake_up_time));
       static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
       _timer.expires_at(epoch + boost::posix_time::microseconds(wake_up_time->time_since_epoch().count()));
-      _timer.async_wait([weak_this,cid=++_timer_corelation_id](const boost::system::error_code& ec) {
-         auto self = weak_this.lock();
-         if (self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id) {
-            self->schedule_production_loop();
-         }
-      });
+      _timer.async_wait( app().get_priority_queue().wrap( priority::high,
+         [weak_this,cid=++_timer_corelation_id](const boost::system::error_code& ec) {
+            auto self = weak_this.lock();
+            if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id ) {
+               self->schedule_production_loop();
+            }
+         }, __FILE__, __LINE__, __func__ ) );
    } else {
       fc_dlog(_log, "Not Scheduling Speculative/Production, no local producers had valid wake up times");
    }
