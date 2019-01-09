@@ -219,16 +219,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          // determine the new schedule to identify producers that have become active
          chain::controller& chain = chain_plug->chain();
          const auto hbn = bsp->block_num;
-         auto new_block_header = bsp->header;
-         new_block_header.timestamp = new_block_header.timestamp.next();
-         new_block_header.previous = bsp->id;
-         auto new_bs = bsp->generate_next(new_block_header.timestamp);
+         auto new_pbhs = bsp->next(bsp->header.timestamp.next(), 0);
 
          // for newly installed producers we can set their watermarks to the block they became active
-         if (new_bs.maybe_promote_pending() && bsp->active_schedule.version != new_bs.active_schedule.version) {
+         if( bsp->active_schedule.version != new_pbhs.active_schedule.version ) {
             flat_set<account_name> new_producers;
-            new_producers.reserve(new_bs.active_schedule.producers.size());
-            for( const auto& p: new_bs.active_schedule.producers) {
+            new_producers.reserve(new_pbhs.active_schedule.producers.size());
+            for( const auto& p: new_pbhs.active_schedule.producers) {
                if (_producers.count(p.producer_name) > 0)
                   new_producers.insert(p.producer_name);
             }
@@ -361,12 +358,12 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void process_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
-         if (!chain.pending_block_state()) {
+         if (!chain.is_building_block()) {
             _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
             return;
          }
 
-         auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
+         auto block_time = chain.pending_block_time();
 
          auto send_response = [this, &trx, &chain, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
@@ -375,7 +372,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
-                        ("prod", chain.pending_block_state()->header.producer)
+                        ("prod", chain.pending_block_producer())
                         ("txid", trx->id)
                         ("why",response.get<fc::exception_ptr>()->what()));
                } else {
@@ -388,7 +385,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}",
                           ("block_num", chain.head_block_num() + 1)
-                          ("prod", chain.pending_block_state()->header.producer)
+                          ("prod", chain.pending_block_producer())
                           ("txid", trx->id));
                } else {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${txid}",
@@ -423,7 +420,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   if (_pending_block_mode == pending_block_mode::producing) {
                      fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
                              ("block_num", chain.head_block_num() + 1)
-                             ("prod", chain.pending_block_state()->header.producer)
+                             ("prod", chain.pending_block_producer())
                              ("txid", trx->id));
                   } else {
                      fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
@@ -910,7 +907,7 @@ producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash(
       my->schedule_production_loop();
    });
 
-   if (chain.pending_block_state()) {
+   if (chain.is_building_block()) {
       // abort the pending block
       chain.abort_block();
    } else {
@@ -927,7 +924,7 @@ producer_plugin::snapshot_information producer_plugin::create_snapshot() const {
       my->schedule_production_loop();
    });
 
-   if (chain.pending_block_state()) {
+   if (chain.is_building_block()) {
       // abort the pending block
       chain.abort_block();
    } else {
@@ -975,7 +972,7 @@ optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const a
    if (current_watermark_itr != _producer_watermarks.end()) {
       auto watermark = current_watermark_itr->second;
       auto block_num = chain.head_block_state()->block_num;
-      if (chain.pending_block_state()) {
+      if (chain.is_building_block()) {
          ++block_num;
       }
       if (watermark > block_num) {
@@ -1107,11 +1104,13 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
       chain.start_block(block_time, blocks_to_confirm);
    } FC_LOG_AND_DROP();
 
-   const auto& pbs = chain.pending_block_state();
-   if (pbs) {
 
-      if (_pending_block_mode == pending_block_mode::producing && pbs->block_signing_key != scheduled_producer.block_signing_key) {
-         elog("Block Signing Key is not expected value, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual\"", ("expected", scheduled_producer.block_signing_key)("actual", pbs->block_signing_key));
+   if( chain.is_building_block() ) {
+      auto pending_block_time = chain.pending_block_time();
+      auto pending_block_signing_key = chain.pending_block_signing_key();
+
+      if (_pending_block_mode == pending_block_mode::producing && pending_block_signing_key != scheduled_producer.block_signing_key) {
+         elog("Block Signing Key is not expected value, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual\"", ("expected", scheduled_producer.block_signing_key)("actual", pending_block_signing_key));
          _pending_block_mode = pending_block_mode::speculating;
       }
 
@@ -1125,12 +1124,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
          int num_expired_persistent = 0;
          int orig_count = _persistent_transactions.size();
 
-         while(!persisted_by_expiry.empty() && persisted_by_expiry.begin()->expiry <= pbs->header.timestamp.to_time_point()) {
+         while(!persisted_by_expiry.empty() && persisted_by_expiry.begin()->expiry <= pending_block_time) {
             auto const& txid = persisted_by_expiry.begin()->trx_id;
             if (_pending_block_mode == pending_block_mode::producing) {
                fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is EXPIRING PERSISTED tx: ${txid}",
                        ("block_num", chain.head_block_num() + 1)
-                       ("prod", chain.pending_block_state()->header.producer)
+                       ("prod", chain.pending_block_producer())
                        ("txid", txid));
             } else {
                fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${txid}",
@@ -1162,7 +1161,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block(bool 
                apply_trxs.reserve(unapplied_trxs.size());
 
                auto calculate_transaction_category = [&](const transaction_metadata_ptr& trx) {
-                  if (trx->packed_trx->expiration() < pbs->header.timestamp.to_time_point()) {
+                  if (trx->packed_trx->expiration() < pending_block_time) {
                      return tx_category::EXPIRED;
                   } else if (persisted_by_id.find(trx->id) != persisted_by_id.end()) {
                      return tx_category::PERSISTED;
@@ -1384,20 +1383,20 @@ void producer_plugin_impl::schedule_production_loop() {
       static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
       if (result == start_block_result::succeeded) {
          // ship this block off no later than its deadline
-         EOS_ASSERT( chain.pending_block_state(), missing_pending_block_state, "producing without pending_block_state, start_block succeeded" );
+         EOS_ASSERT( chain.is_building_block(), missing_pending_block_state, "producing without pending_block_state, start_block succeeded" );
          auto deadline = chain.pending_block_time().time_since_epoch().count() + (last_block ? _last_block_time_offset_us : _produce_time_offset_us);
          _timer.expires_at( epoch + boost::posix_time::microseconds( deadline ));
-         fc_dlog(_log, "Scheduling Block Production on Normal Block #${num} for ${time}", ("num", chain.pending_block_state()->block_num)("time",deadline));
+         fc_dlog(_log, "Scheduling Block Production on Normal Block #${num} for ${time}", ("num", chain.head_block_num()+1)("time",deadline));
       } else {
-         EOS_ASSERT( chain.pending_block_state(), missing_pending_block_state, "producing without pending_block_state" );
+         EOS_ASSERT( chain.is_building_block(), missing_pending_block_state, "producing without pending_block_state" );
          auto expect_time = chain.pending_block_time() - fc::microseconds(config::block_interval_us);
          // ship this block off up to 1 block time earlier or immediately
          if (fc::time_point::now() >= expect_time) {
             _timer.expires_from_now( boost::posix_time::microseconds( 0 ));
-            fc_dlog(_log, "Scheduling Block Production on Exhausted Block #${num} immediately", ("num", chain.pending_block_state()->block_num));
+            fc_dlog(_log, "Scheduling Block Production on Exhausted Block #${num} immediately", ("num", chain.head_block_num()+1));
          } else {
             _timer.expires_at(epoch + boost::posix_time::microseconds(expect_time.time_since_epoch().count()));
-            fc_dlog(_log, "Scheduling Block Production on Exhausted Block #${num} at ${time}", ("num", chain.pending_block_state()->block_num)("time",expect_time));
+            fc_dlog(_log, "Scheduling Block Production on Exhausted Block #${num} at ${time}", ("num", chain.head_block_num()+1)("time",expect_time));
          }
       }
 
@@ -1405,16 +1404,15 @@ void producer_plugin_impl::schedule_production_loop() {
          auto self = weak_this.lock();
          if (self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id) {
             // pending_block_state expected, but can't assert inside async_wait
-            auto block_num = chain.pending_block_state() ? chain.pending_block_state()->block_num : 0;
+            auto block_num = chain.is_building_block() ? chain.head_block_num() + 1 : 0;
             auto res = self->maybe_produce_block();
             fc_dlog(_log, "Producing Block #${num} returned: ${res}", ("num", block_num)("res", res));
          }
       });
    } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && !production_disabled_by_policy()){
       fc_dlog(_log, "Specualtive Block Created; Scheduling Speculative/Production Change");
-      EOS_ASSERT( chain.pending_block_state(), missing_pending_block_state, "speculating without pending_block_state" );
-      const auto& pbs = chain.pending_block_state();
-      schedule_delayed_production_loop(weak_this, pbs->header.timestamp);
+      EOS_ASSERT( chain.is_building_block(), missing_pending_block_state, "speculating without pending_block_state" );
+      schedule_delayed_production_loop(weak_this, chain.pending_block_time());
    } else {
       fc_dlog(_log, "Speculative Block Created");
    }
@@ -1495,16 +1493,14 @@ void producer_plugin_impl::produce_block() {
    //ilog("produce_block ${t}", ("t", fc::time_point::now())); // for testing _produce_time_offset_us
    EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
    chain::controller& chain = chain_plug->chain();
-   const auto& pbs = chain.pending_block_state();
    const auto& hbs = chain.head_block_state();
-   EOS_ASSERT(pbs, missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");
-   auto signature_provider_itr = _signature_providers.find( pbs->block_signing_key );
+   EOS_ASSERT(chain.is_building_block(), missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");
+   auto signature_provider_itr = _signature_providers.find( chain.pending_block_signing_key() );
 
    EOS_ASSERT(signature_provider_itr != _signature_providers.end(), producer_priv_key_not_found, "Attempting to produce a block for which we don't have the private key");
 
    //idump( (fc::time_point::now() - chain.pending_block_time()) );
-   chain.finalize_block();
-   chain.sign_block( [&]( const digest_type& d ) {
+   chain.finalize_block( [&]( const digest_type& d ) {
       auto debug_logger = maybe_make_debug_time_logger();
       return signature_provider_itr->second(d);
    } );

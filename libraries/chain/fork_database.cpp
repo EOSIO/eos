@@ -110,7 +110,7 @@ namespace eosio { namespace chain {
 
    void fork_database::set( block_state_ptr s ) {
       auto result = my->index.insert( s );
-      EOS_ASSERT( s->id == s->header.id(), fork_database_exception, 
+      EOS_ASSERT( s->id == s->header.id(), fork_database_exception,
                   "block state id (${id}) is different from block state header id (${hid})", ("id", string(s->id))("hid", string(s->header.id())) );
 
          //FC_ASSERT( s->block_num == s->header.block_num() );
@@ -196,8 +196,8 @@ namespace eosio { namespace chain {
          result.second.push_back(second_branch);
          first_branch = get_block( first_branch->header.previous );
          second_branch = get_block( second_branch->header.previous );
-         EOS_ASSERT( first_branch && second_branch, fork_db_block_not_found, 
-                     "either block ${fid} or ${sid} does not exist", 
+         EOS_ASSERT( first_branch && second_branch, fork_db_block_not_found,
+                     "either block ${fid} or ${sid} does not exist",
                      ("fid", string(first_branch->header.previous))("sid", string(second_branch->header.previous)) );
       }
 
@@ -297,6 +297,7 @@ namespace eosio { namespace chain {
       return *nitr;
    }
 
+   /*
    void fork_database::add( const header_confirmation& c ) {
       auto b = get_block( c.block_id );
       EOS_ASSERT( b, fork_db_block_not_found, "unable to find block id ${id}", ("id",c.block_id));
@@ -307,7 +308,8 @@ namespace eosio { namespace chain {
          set_bft_irreversible( c.block_id );
       }
    }
-
+   */
+   
    /**
     *  This method will set this block as being BFT irreversible and will update
     *  all blocks which build off of it to have the same bft_irb if their existing
@@ -315,6 +317,7 @@ namespace eosio { namespace chain {
     *
     *  This will require a search over all forks
     */
+#if 0
    void fork_database::set_bft_irreversible( block_id_type id ) {
       auto& idx = my->index.get<by_block_id>();
       auto itr = idx.find(id);
@@ -354,5 +357,6 @@ namespace eosio { namespace chain {
          queue = update( queue );
       }
    }
+#endif
 
 } } /// eosio::chain
