@@ -1366,7 +1366,7 @@ void producer_plugin_impl::schedule_production_loop() {
       _timer.expires_from_now( boost::posix_time::microseconds( config::block_interval_us  / 10 ));
 
       // we failed to start a block, so try again later?
-      _timer.async_wait( app().get_priority_queue().wrap( priority::medium,
+      _timer.async_wait( app().get_priority_queue().wrap( priority::high,
           [weak_this, cid = ++_timer_corelation_id]( const boost::system::error_code& ec ) {
              auto self = weak_this.lock();
              if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id ) {
