@@ -33,6 +33,7 @@ inline bool is_valid_char(char c) {
 
 enum name_error {
    valid = 0,
+   name_empty,
    name_too_long,
    part_too_short,
    part_too_long,
@@ -51,6 +52,7 @@ name_error validate_part(const string& n, size_t min_size, size_t max_size) {
 }
 
 name_error validate_domain_name(const string& d, size_t max_size, size_t min_part, size_t max_part, bool strict_tld) {
+   if (!d.size()) return name_empty;
    if (d.size() > max_size) return name_too_long;
    if (!std::all_of(d.begin(), d.end(), is_valid_char)) return bad_char;
    std::vector<std::string> parts;
@@ -71,6 +73,7 @@ void validate_domain_name(const domain_name& n) {
    auto r = validate_domain_name(n, domain_max_size, domain_min_part_size, domain_max_part_size, true);
    static const std::vector<string> err = {
       "",
+      "Domain name is empty",
       "Domain name is too long",
       "Domain label is too short",
       "Domain label is too long",
@@ -85,6 +88,7 @@ void validate_username(const username& n) {
    auto r = validate_domain_name(n, username_max_size, username_min_part_size, username_max_part_size, false);
    static const std::vector<string> err = {
       "",
+      "Username is empty",
       "Username is too long",
       "Username part is too short",
       "Username part is too long",

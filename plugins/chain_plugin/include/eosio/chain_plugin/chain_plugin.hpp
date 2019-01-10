@@ -205,6 +205,27 @@ public:
    get_raw_abi_results get_raw_abi( const get_raw_abi_params& params)const;
 
 
+    /*
+     * each name can be either domain name or full name.
+     * full name can be in 2 forms: username@domain and username@@account (note double @)
+     */
+
+    /*
+     * 1. throws if any name is invalid or can't be resolved
+     * 2. domain resolves either to {resolved_domain: account}, or {resolved_domain: 0} if unlinked
+     * 3. username@domain resolves to {resolved_domain: accountD, resolved_username: accountU}
+     * 4. username@@account resolves to {resolved_username: account}
+     */
+    struct resolve_names_item {
+        optional<name> resolved_domain;
+        optional<name> resolved_username;
+    };
+    using resolve_names_results = vector<resolve_names_item>;
+    using resolve_names_params = vector<string>;
+
+    resolve_names_results resolve_names(const resolve_names_params& params) const;
+
+
 
    struct abi_json_to_bin_params {
       name         code;
@@ -714,3 +735,5 @@ FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
+
+FC_REFLECT(eosio::chain_apis::read_only::resolve_names_item, (resolved_domain)(resolved_username))

@@ -905,19 +905,19 @@ class domain_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-   bool is_domain(null_terminated_ptr ptr)const {
+   bool is_domain(null_terminated_ptr ptr) const {
       return context.is_domain(std::string(ptr));
    }
-   bool is_username(const account_name& scope, null_terminated_ptr ptr)const {
+   bool is_username(const account_name& scope, null_terminated_ptr ptr) const {
       return context.is_username(scope, std::string(ptr));
    }
-   account_name get_domain_owner(null_terminated_ptr ptr)const {
+   account_name get_domain_owner(null_terminated_ptr ptr) const {
       return context.get_domain_owner(std::string(ptr));
    }
-   account_name resolve_domain(null_terminated_ptr ptr)const {
+   account_name resolve_domain(null_terminated_ptr ptr) const {
       return context.resolve_domain(std::string(ptr));
    }
-   account_name resolve_username(const account_name& scope, null_terminated_ptr ptr)const {
+   account_name resolve_username(const account_name& scope, null_terminated_ptr ptr) const {
       return context.resolve_username(scope, std::string(ptr));
    }
 };
