@@ -119,7 +119,7 @@ namespace cyberway { namespace chaindb {
     }
 
     journal::info_t_& journal::write_ctx::info(const primary_key_t pk) {
-        if (pk == pk_) return *info_;
+        if (pk == pk_ && info_ != nullptr) return *info_;
 
         pk_ = pk;
 

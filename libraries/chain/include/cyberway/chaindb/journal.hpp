@@ -48,6 +48,8 @@ namespace cyberway { namespace chaindb {
             write_operation op(Revision);
             op.object = std::move(obj);
             op.find_revision = find_rev;
+            // see undo_state.cpp - revision is always downgraded to one position
+            op.object.set_revision(find_rev - 1);
             return op;
         }
 

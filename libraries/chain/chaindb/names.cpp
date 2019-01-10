@@ -18,6 +18,7 @@ namespace cyberway { namespace chaindb {
     const string names::scope_field     = "scope";
     const string names::pk_field        = "pk";
 
+    const string names::next_pk_field   = "npk";
     const string names::undo_pk_field   = "upk";
     const string names::undo_rec_field  = "rec";
     const string names::revision_field  = "rev";

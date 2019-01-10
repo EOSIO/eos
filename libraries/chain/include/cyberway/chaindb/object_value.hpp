@@ -76,7 +76,7 @@ namespace cyberway { namespace chaindb {
             return *this;
         }
 
-        object_value clone_pk() const {
+        object_value clone_service() const {
             object_value obj;
             obj.service = service;
             return obj;
