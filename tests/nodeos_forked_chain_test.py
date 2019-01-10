@@ -97,7 +97,7 @@ def analyzeBPs(bps0, bps1, expectDivergence):
     if errorInDivergence:
         msg="Failed analyzing block producers - "
         if expectDivergence:
-            msg+="nodes indicate different block producers for the same blocks, but did not expect them to diverge."
+            msg+="nodes do not indicate different block producers for the same blocks, but they are expected to diverge at some point."
         else:
             msg+="did not expect nodes to indicate different block producers for the same blocks."
         msg+="\n  Matching Blocks= %s \n  Diverging branch node0= %s \n  Diverging branch node1= %s" % (bpsStr,bpsStr0,bpsStr1)
@@ -348,8 +348,12 @@ try:
         if blockProducer0!=blockProducer1:
             Utils.errorExit("Groups reported different block producers for block number %d. %s != %s." % (blockNum,blockProducer0,blockProducer1))
 
+    #verify that the non producing node is not alive (and populate the producer nodes with current getInfo data to report if
+    #an error occurs)
+    if nonProdNode.verifyAlive():
+        Utils.errorExit("Expected the non-producing node to have shutdown.")
 
-    # ***   Analyze the producers leading up to the block after killing the non-producing node   ***
+    Print("Analyze the producers leading up to the block after killing the non-producing node")
 
     firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=True)
     # Nodes should not have diverged till the last block
@@ -358,15 +362,11 @@ try:
     blockProducers0=[]
     blockProducers1=[]
 
-    #verify that the non producing node is not alive (and populate the producer nodes with current getInfo data to report if
-    #an error occurs)
-    if nonProdNode.verifyAlive():
-        Utils.errorExit("Expected the non-producing node to have shutdown.")
     for prodNode in prodNodes:
         prodNode.getInfo()
 
 
-    # ***   Track the blocks from the divergence till there are 10*12 blocks on one chain and 10*12+1 on the other   ***
+    Print("Track the blocks from the divergence till there are 10*12 blocks on one chain and 10*12+1 on the other")
 
     killBlockNum=blockNum
     lastBlockNum=killBlockNum+(maxActiveProducers - 1)*inRowCountPerProducer+1  # allow 1st testnet group to produce just 1 more block than the 2nd
@@ -377,7 +377,7 @@ try:
         blockProducers1.append({"blockNum":blockNum, "prod":blockProducer1})
 
 
-    # ***   Analyze the producers from the divergence to the lastBlockNum and verify they stay diverged   ***
+    Print("Analyze the producers from the divergence to the lastBlockNum and verify they stay diverged")
 
     firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=True)
     if firstDivergence!=killBlockNum:
@@ -386,13 +386,13 @@ try:
     blockProducers1=[]
 
 
-    # ***   Relaunch the non-producing bridge node to connect the producing nodes again   ***
+    Print("Relaunch the non-producing bridge node to connect the producing nodes again")
 
     if not nonProdNode.relaunch(nonProdNode.nodeNum, None):
         errorExit("Failure - (non-production) node %d should have restarted" % (nonProdNode.nodeNum))
 
 
-    # ***   Identify the producers from the saved LIB to the current highest head   ***
+    Print("Identify the producers from the saved LIB to the current highest head")
 
     #ensure that the nodes have enough time to get in concensus, so wait for 3 producers to produce their complete round
     time.sleep(inRowCountPerProducer * 3 / 2)
@@ -407,7 +407,7 @@ try:
         blockProducers1.append({"blockNum":blockNum, "prod":blockProducer1})
 
 
-    # ***   Analyze the producers from the saved LIB to the current highest head and verify they match now   ***
+    Print("Analyze the producers from the saved LIB to the current highest head and verify they match now")
 
     analyzeBPs(blockProducers0, blockProducers1, expectDivergence=False)
 
