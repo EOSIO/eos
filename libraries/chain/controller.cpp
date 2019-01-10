@@ -2169,14 +2169,15 @@ const account_object& controller::get_account( account_name name )const
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
 const domain_object& controller::get_domain(const domain_name& name) const { try {
-   return my->db.get<domain_object, by_name>(name);
+    const auto* d = my->db.find<domain_object, by_name>(name);
+    EOS_ASSERT(d != nullptr, chain::domain_query_exception, "domain `${name}` not found", ("name", name));
+    return *d;
 } FC_CAPTURE_AND_RETHROW((name)) }
 
 const username_object& controller::get_username(account_name scope, const username& name) const { try {
-   // return my->db.get<username_object, by_scope_name>(boost::make_tuple(scope,name));   // can't compile for some reason
-   const auto* user = my->db.find<username_object, by_scope_name>(boost::make_tuple(scope,name));
-   EOS_ASSERT(user != nullptr, transaction_exception,
-      "username '${name}' not found in scope '${scope}'", ("name",name)("scope",scope));
+    const auto* user = my->db.find<username_object, by_scope_name>(boost::make_tuple(scope,name));
+    EOS_ASSERT(user != nullptr, username_query_exception,
+        "username `${name}` not found in scope `${scope}`", ("name",name)("scope",scope));
    return *user;
 } FC_CAPTURE_AND_RETHROW((scope)(name)) }
 
