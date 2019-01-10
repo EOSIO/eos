@@ -314,7 +314,7 @@ try:
     blockProducers1=[]
     libs0=[]
     libs1=[]
-    lastBlockNum=max([preKillBlockNum,postKillBlockNum])+maxActiveProducers*inRowCountPerProducer
+    lastBlockNum=max([preKillBlockNum,postKillBlockNum])+2*maxActiveProducers*inRowCountPerProducer
     actualLastBlockNum=None
     prodChanged=False
     nextProdChange=False
