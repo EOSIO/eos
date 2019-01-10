@@ -1372,7 +1372,7 @@ void producer_plugin_impl::schedule_production_loop() {
              if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id ) {
                 self->schedule_production_loop();
              }
-          }, __FILE__, __LINE__, __func__ ) );
+          } ) );
    } else if (result == start_block_result::waiting){
       if (!_producers.empty() && !production_disabled_by_policy()) {
          fc_dlog(_log, "Waiting till another block is received and scheduling Speculative/Production Change");
@@ -1418,7 +1418,7 @@ void producer_plugin_impl::schedule_production_loop() {
                   auto res = self->maybe_produce_block();
                   fc_dlog( _log, "Producing Block #${num} returned: ${res}", ("num", block_num)( "res", res ) );
                }
-            }, __FILE__, __LINE__, __func__ ) );
+            } ) );
    } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && !production_disabled_by_policy()){
       fc_dlog(_log, "Specualtive Block Created; Scheduling Speculative/Production Change");
       EOS_ASSERT( chain.pending_block_state(), missing_pending_block_state, "speculating without pending_block_state" );
@@ -1455,7 +1455,7 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
             if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id ) {
                self->schedule_production_loop();
             }
-         }, __FILE__, __LINE__, __func__ ) );
+         } ) );
    } else {
       fc_dlog(_log, "Not Scheduling Speculative/Production, no local producers had valid wake up times");
    }
