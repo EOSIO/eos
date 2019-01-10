@@ -1159,7 +1159,6 @@ namespace eosio {
          }
 
          void on_session_close( const session* s ) {
-            verify_strand_in_this_thread(app().get_io_service().get_executor(), __func__, __LINE__);
             auto itr = _sessions.find(s);
             if( _sessions.end() != itr )
                _sessions.erase(itr);
@@ -1223,7 +1222,6 @@ namespace eosio {
          };
 
          void on_reconnect_peers() {
-             verify_strand_in_this_thread(app().get_io_service().get_executor(), __func__, __LINE__);
              for( const auto& peer : _connect_to_peers ) {
                 bool found = false;
                 for( const auto& con : _sessions ) {
