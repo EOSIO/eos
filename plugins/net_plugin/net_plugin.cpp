@@ -1016,7 +1016,7 @@ namespace eosio {
       enqueue_buffer( send_buffer, trigger_send, priority::low, close_after_send );
    }
 
-   void connection::enqueue_block( const signed_block_ptr& sb, bool trigger_send ) {
+   static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_ptr& sb ) {
       // this implementation is to avoid copy of signed_block to net_message
       int which = 7; // matches which of net_message for signed_block
 
@@ -1033,7 +1033,11 @@ namespace eosio {
       fc::raw::pack( ds, unsigned_int( which ));
       fc::raw::pack( ds, *sb );
 
-      enqueue_buffer( send_buffer, trigger_send, priority::high, no_reason );
+      return send_buffer;
+   }
+
+   void connection::enqueue_block( const signed_block_ptr& sb, bool trigger_send ) {
+      enqueue_buffer( create_send_buffer( sb ), trigger_send, priority::high, no_reason );
    }
 
    void connection::enqueue_buffer( const std::shared_ptr<std::vector<char>>& send_buffer,
@@ -1541,6 +1545,7 @@ namespace eosio {
       uint32_t bnum = bs->block_num;
       peer_block_state pbstate{bs->id, bnum};
 
+      std::shared_ptr<std::vector<char>> send_buffer;
       for( auto& cp : my_impl->connections ) {
          if( skips.find( cp ) != skips.end() || !cp->current() ) {
             continue;
@@ -1549,7 +1554,10 @@ namespace eosio {
          if( !has_block ) {
             fc_dlog(logger, "bcast block ${b} to ${p}", ("b", bnum)("p", cp->peer_name()));
             cp->add_peer_block( pbstate );
-            cp->enqueue_block( bs->block );
+            if( !send_buffer ) {
+               send_buffer = create_send_buffer( bs->block );
+            }
+            cp->enqueue_buffer( send_buffer, true, priority::high, no_reason );
          }
       }
 
