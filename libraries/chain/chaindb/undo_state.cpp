@@ -1,9 +1,13 @@
 #include <cyberway/chaindb/undo_state.hpp>
+#include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/driver_interface.hpp>
 #include <cyberway/chaindb/exception.hpp>
 #include <cyberway/chaindb/cache_map.hpp>
 #include <cyberway/chaindb/table_object.hpp>
 #include <cyberway/chaindb/journal.hpp>
+#include <cyberway/chaindb/abi_info.hpp>
+
+#include <eosio/chain/account_object.hpp>
 
 /** Session exception is a critical errors and they doesn't handle by chain */
 #define CYBERWAY_SESSION_ASSERT(expr, FORMAT, ...)                      \
@@ -53,20 +57,21 @@ namespace cyberway { namespace chaindb {
           revision_(rev) {
         }
 
-        revision_t revision() const {
+        revision_t head_revision() const {
             if (stack_.empty()) {
                 return 0;
             }
             return stack_.back().revision_;
         }
 
-        void start_session(const revision_t rev) {
-            CYBERWAY_SESSION_ASSERT(!empty(),
-                "The stack of the table ${table} is empty.", ("table", get_full_table_name()));
+        revision_t revision() const {
+            return revision_;
+        }
 
-            CYBERWAY_SESSION_ASSERT(stack_.back().revision_ < rev,
+        void start_session(const revision_t rev) {
+            CYBERWAY_SESSION_ASSERT(revision_ < rev,
                 "Bad revision ${table_revision} (new ${revision}) for the table ${table}.",
-                ("table", get_full_table_name())("table_revision", stack_.back().revision_)
+                ("table", get_full_table_name())("table_revision", revision_)
                 ("revision", rev));
 
             revision_ = rev;
@@ -200,8 +205,9 @@ namespace cyberway { namespace chaindb {
     }; // struct table_undo_stack
 
     struct undo_stack::undo_stack_impl_ final {
-        undo_stack_impl_(driver_interface& driver, journal& jrnl, cache_map& cache)
-        : driver_(driver),
+        undo_stack_impl_(chaindb_controller& controller, driver_interface& driver, journal& jrnl, cache_map& cache)
+        : controller_(controller),
+          driver_(driver),
           journal_(jrnl),
           cache_(cache) {
         }
@@ -226,9 +232,14 @@ namespace cyberway { namespace chaindb {
             abi.structs.insert(abi.structs.end(), undo_abi_.structs.begin(), undo_abi_.structs.end());
             abi.tables.emplace_back(undo_abi_.tables.front());
 
-            undo_abi_.tables.front().indexes.front().orders.front().type = "uint64";
-            undo_table_.table = &undo_abi_.tables.front();
-            undo_table_.pk_order = &undo_abi_.tables.front().indexes.front().orders.front();
+            auto& undo_def = undo_abi_.tables.front();
+
+            auto& pk_order = undo_def.indexes.front().orders.front();
+            pk_order.type = "uint64";
+            pk_order.path = {names::service_field, names::undo_pk_field};
+
+            undo_table_.table = &undo_def;
+            undo_table_.pk_order = &pk_order;
         }
 
         void clear() {
@@ -348,9 +359,101 @@ namespace cyberway { namespace chaindb {
             }
         }
 
+        void restore() { try {
+            CYBERWAY_SESSION_ASSERT(start_revision >= revision_ && start_revision >= tail_revision_,
+                "Wrong state on restore");
+
+            chainbase::allocator<eosio::chain::account_object>* alloc = nullptr;
+            eosio::chain::account_index account_table(*alloc /*isn't used*/, controller_);
+            auto account_idx = account_table.get<eosio::chain::by_name>();
+            auto& abi_map = controller_.get_abi_map();
+
+            auto get_system_table_def = [&](const auto& service) -> table_def {
+                auto itr = abi_map.find(account_name());
+                assert(itr != abi_map.end());
+
+                auto def = itr->second.find_table(service.hash);
+                CYBERWAY_SESSION_ASSERT(nullptr != def, "The table ${table} doesn't exist on restore",
+                    ("table", get_full_table_name(service)));
+                return *def;
+            };
+
+            auto get_contract_table_def = [&](const auto& service) -> table_def {
+                auto itr = account_idx.find(service.code);
+                auto abi = itr->get_abi();
+                auto dtr = std::find_if(abi.tables.begin(), abi.tables.end(), [&](auto& def){
+                    return def.name.value == service.hash;
+                });
+                CYBERWAY_SESSION_ASSERT(dtr != abi.tables.end(), "The table ${table} doesn't exist",
+                    ("table", get_full_table_name(service)));
+                return (*dtr);
+            };
+
+            auto get_state = [&](const auto& service) -> undo_state& {
+                auto table = table_info(service.code, service.scope);
+                auto def   = table_def();
+                if (account_name() == service.code) {
+                    def = get_system_table_def(service);
+                } else {
+                    def = get_contract_table_def(service);
+                }
+                table.table = &def;
+                table.pk_order = &get_pk_order(table);
+
+                auto& stack = get_table(table);
+                if (stack.revision() != service.revision) {
+                    stack.start_session(service.revision);
+                }
+                return stack.head();
+            };
+
+            auto index = index_info(undo_table_);
+            index.index = &undo_table_.table->indexes.front();
+
+            auto& cursor = driver_.lower_bound(std::move(index), {});
+            for (; cursor.pk != end_primary_key; driver_.next(cursor)) {
+                auto  obj   = driver_.object_at_cursor(cursor);
+                auto  pk    = obj.pk();
+                auto& state = get_state(obj.service);
+
+                if (obj.undo_pk()  >= undo_pk_      ) undo_pk_       = obj.undo_pk() + 1;
+                if (obj.revision() >  revision_     ) revision_      = obj.revision();
+                if (start_revision >= tail_revision_) tail_revision_ = obj.revision() - 1;
+
+                switch (obj.service.undo_rec) {
+                    case undo_record::NewValue:
+                        state.new_values_.emplace(pk, std::move(obj));
+                        break;
+
+                    case undo_record::OldValue:
+                        state.old_values_.emplace(pk, std::move(obj));
+                        break;
+
+                    case undo_record::RemovedValue:
+                        state.removed_values_.emplace(pk, std::move(obj));
+                        break;
+
+                    case undo_record::NextPk:
+                        state.next_pk_ = obj.value.get_object()[names::next_pk_field].as_uint64();
+                        state.undo_next_pk_ = obj.service.undo_pk;
+                        break;
+
+                    case undo_record::Unknown:
+                    default:
+                        CYBERWAY_SESSION_ASSERT(false, "Unknown undo state on loading from DB");
+                }
+            }
+
+            if (revision_) stage_ = undo_stage::Stack;
+        } catch (const session_exception&) {
+            throw;
+        } catch (const std::exception& e) {
+            CYBERWAY_SESSION_ASSERT(false, e.what());
+        } }
+
     private:
         void undo(table_undo_stack& table, const revision_t undo_rev, const revision_t test_rev) {
-            if (undo_rev > table.revision()) {
+            if (undo_rev > table.head_revision()) {
                 table.undo();
                 return;
             }
@@ -464,7 +567,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void squash(table_undo_stack& table, const revision_t squash_rev, const revision_t test_rev) {
-            if (squash_rev > table.revision()) {
+            if (squash_rev > table.head_revision()) {
                 table.squash();
                 return;
             }
@@ -750,7 +853,6 @@ namespace cyberway { namespace chaindb {
             }
         } FC_LOG_AND_RETHROW() }
 
-
         primary_key_t generate_undo_pk() {
             if (undo_pk_ > 1'000'000'000) {
                 undo_pk_ = 1;
@@ -758,28 +860,35 @@ namespace cyberway { namespace chaindb {
             return undo_pk_++;
         }
 
+
+
         using index_t_ = table_object::index<table_undo_stack>;
 
-        undo_stage        stage_ = undo_stage::Unknown;
-        revision_t        revision_ = 0;
-        revision_t        tail_revision_ = 0;
-        abi_def           undo_abi_;
-        table_info        undo_table_ = {account_name(), account_name()};
-        primary_key_t     undo_pk_ = 1;
-        driver_interface& driver_;
-        journal&          journal_;
-        cache_map&        cache_;
-        index_t_          tables_;
+        undo_stage          stage_ = undo_stage::Unknown;
+        revision_t          revision_ = 0;
+        revision_t          tail_revision_ = 0;
+        abi_def             undo_abi_;
+        table_info          undo_table_ = {account_name(), account_name()};
+        primary_key_t       undo_pk_ = 1;
+        chaindb_controller& controller_;
+        driver_interface&   driver_;
+        journal&            journal_;
+        cache_map&          cache_;
+        index_t_            tables_;
     }; // struct undo_stack::undo_stack_impl_
 
-    undo_stack::undo_stack(driver_interface& driver, journal& j, cache_map& cache)
-    : impl_(new undo_stack_impl_(driver, j, cache)) {
+    undo_stack::undo_stack(chaindb_controller& controller, driver_interface& driver, journal& jrnl, cache_map& cache)
+    : impl_(new undo_stack_impl_(controller, driver, jrnl, cache)) {
     }
 
     undo_stack::~undo_stack() = default;
 
     void undo_stack::add_abi_tables(eosio::chain::abi_def& abi) const {
         impl_->add_abi_tables(abi);
+    }
+
+    void undo_stack::restore() {
+        impl_->restore();
     }
 
     void undo_stack::clear() {

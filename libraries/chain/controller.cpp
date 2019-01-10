@@ -415,6 +415,8 @@ struct controller_impl {
                     ("blog_head",end->block_num())("head",head->block_num)  );
       }
 
+      chaindb.restore_db();
+
       EOS_ASSERT(chaindb.revision() >= head->block_num, fork_database_exception, "fork database is inconsistent with shared memory",
                  ("db",chaindb.revision())("head",head->block_num));
 

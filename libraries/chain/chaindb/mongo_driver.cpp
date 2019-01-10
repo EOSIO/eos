@@ -275,6 +275,12 @@ namespace cyberway { namespace chaindb {
             auto& view = *source_->begin();
             object_ = build_object(index, view);
             pk = object_.service.pk;
+            if (!object_.service.hash) {
+                object_.service.code  = index.code;
+                object_.service.scope = index.scope;
+                object_.service.table = index.table->name;
+                object_.service.hash  = index.table->hash;
+            }
 
             return object_;
         }
@@ -872,8 +878,20 @@ namespace cyberway { namespace chaindb {
         return cursor;
     }
 
+    const cursor_info& mongodb_driver::next(const cursor_info& info) {
+        auto& cursor = const_cast<mongodb_cursor_info&>(static_cast<const mongodb_cursor_info&>(info));
+        cursor.next();
+        return cursor;
+    }
+
     const cursor_info& mongodb_driver::prev(const cursor_request& request) {
         auto& cursor = impl_->get_applied_cursor(request).cursor();
+        cursor.prev();
+        return cursor;
+    }
+
+    const cursor_info& mongodb_driver::prev(const cursor_info& info) {
+        auto& cursor = const_cast<mongodb_cursor_info&>(static_cast<const mongodb_cursor_info&>(info));
         cursor.prev();
         return cursor;
     }

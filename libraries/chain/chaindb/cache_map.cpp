@@ -26,7 +26,7 @@ namespace cyberway { namespace chaindb {
                 itr->second->set_object(std::move(obj));
             }
             if (!itr->second->object().is_null()) {
-                converter_.convert_variant(*itr->second, itr->second->object());
+                itr->second->data = converter_.convert_variant(*itr->second, itr->second->object());
             }
             return itr->second;
         }

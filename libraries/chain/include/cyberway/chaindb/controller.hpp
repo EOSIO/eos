@@ -54,8 +54,8 @@ namespace cyberway { namespace chaindb {
     }; // struct index_info
 
     struct find_info final {
-        cursor_t      cursor  = invalid_cursor;
-        primary_key_t pk      = end_primary_key;
+        cursor_t      cursor = invalid_cursor;
+        primary_key_t pk     = end_primary_key;
     };
 
     class chaindb_controller final {
@@ -66,11 +66,14 @@ namespace cyberway { namespace chaindb {
         chaindb_controller(const microseconds& max_abi_time, chaindb_type, string);
         ~chaindb_controller();
 
+        void restore_db();
         void drop_db();
 
         bool has_abi(const account_name&);
         void add_abi(const account_name&, abi_def);
         void remove_abi(const account_name&);
+
+        const abi_map& get_abi_map() const;
 
         void close(const cursor_request&);
         void close_code_cursors(const account_name&);

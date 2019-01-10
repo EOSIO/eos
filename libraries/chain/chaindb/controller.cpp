@@ -1,7 +1,3 @@
-#include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/name.hpp>
-#include <eosio/chain/symbol.hpp>
-
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/object_value.hpp>
 #include <cyberway/chaindb/exception.hpp>
@@ -10,6 +6,10 @@
 #include <cyberway/chaindb/cache_map.hpp>
 #include <cyberway/chaindb/undo_state.hpp>
 #include <cyberway/chaindb/mongo_driver.hpp>
+#include <cyberway/chaindb/abi_info.hpp>
+
+#include <eosio/chain/name.hpp>
+#include <eosio/chain/symbol.hpp>
 
 #include <boost/algorithm/string.hpp>
 
@@ -17,15 +17,11 @@ namespace cyberway { namespace chaindb {
 
     using eosio::chain::name;
     using eosio::chain::symbol;
-    using eosio::chain::struct_def;
-    using eosio::chain::abi_serializer;
-    using eosio::chain::type_name;
 
     using fc::variant;
     using fc::variants;
     using fc::variant_object;
     using fc::mutable_variant_object;
-    using fc::time_point;
 
     using std::vector;
 
@@ -72,45 +68,6 @@ namespace cyberway { namespace chaindb {
                 "Invalid type ${type} of ChainDB connection", ("type", t));
         }
 
-        using struct_def_map_type = fc::flat_map<type_name, struct_def>;
-
-        const struct_def_map_type& get_system_types() {
-            static auto types = [](){
-                struct_def_map_type init_types;
-
-                init_types.emplace("asset", struct_def{
-                    "asset", "", {
-                        {"amount", "uint64"},
-                        {"decs",   "uint8"},
-                        {"sym",    "symbol_code"},
-                    }
-                });
-
-                init_types.emplace("symbol", struct_def{
-                    "symbol", "", {
-                        {"decs", "uint8"},
-                        {"sym",  "symbol_code"},
-                    }
-                });
-
-                return init_types;
-            }();
-
-            return types;
-        }
-
-        template <typename Info>
-        const index_def& get_pk_index(const Info& info) {
-            // abi structure is already validated by abi_serializer
-            return info.table->indexes.front();
-        }
-
-        template <typename Info>
-        const order_def& get_pk_order(const Info& info) {
-            // abi structure is already validated by abi_serializer
-            return get_pk_index(info).orders.front();
-        }
-
         variant get_pk_value(const table_info& table, const primary_key_t pk) {
             auto& pk_order = *table.pk_order;
 
@@ -142,240 +99,6 @@ namespace cyberway { namespace chaindb {
 
     } } // namespace _detail
 
-    class index_builder final {
-        using table_map_type = fc::flat_map<hash_t, table_def>;
-        index_info info_;
-        abi_serializer& serializer_;
-        table_map_type& table_map_;
-
-    public:
-        index_builder(const account_name& code, abi_serializer& serializer, table_map_type& table_map)
-        : info_(code, code),
-          serializer_(serializer),
-          table_map_(table_map) {
-        }
-
-        void build_indexes(const time_point& deadline, const microseconds& max_time) {
-            for (auto& t: table_map_) { try {
-                CYBERWAY_ASSERT(time_point::now() < deadline, abi_serialization_deadline_exception,
-                    "serialization time limit ${t}us exceeded", ("t", max_time));
-
-                // if abi was loaded instead of declared
-                auto& table = t.second;
-                auto& table_struct = serializer_.get_struct(serializer_.resolve_type(table.type));
-
-                for (auto& index: table.indexes) {
-                    // if abi was loaded instead of declared
-                    if (!index.hash) index.hash = index.name.value;
-
-                    build_index(table, index, table_struct);
-                }
-                validate_pk_index(table);
-
-            } FC_CAPTURE_AND_RETHROW((t.second)) }
-        }
-
-    private:
-        const struct_def& get_struct(const type_name& type) const {
-            auto resolved_type = serializer_.resolve_type(type);
-
-            auto& system_map = _detail::get_system_types();
-            auto itr = system_map.find(resolved_type);
-            if (system_map.end() != itr) {
-                return itr->second;
-            }
-
-            return serializer_.get_struct(resolved_type);
-        }
-
-        type_name get_root_index_name(const table_def& table, const index_def& index) {
-            info_.table = &table;
-            info_.index = &index;
-            return get_full_index_name(info_);
-        }
-
-        void build_index(table_def& table, index_def& index, const struct_def& table_struct) {
-            _detail::struct_def_map_type dst_struct_map;
-
-            auto struct_name = get_root_index_name(table, index);
-            auto& root_struct = dst_struct_map.emplace(struct_name, struct_def(struct_name, "", {})).first->second;
-            for (auto& order: index.orders) {
-                CYBERWAY_ASSERT(order.order == names::asc_order || order.order == names::desc_order,
-                    invalid_index_description_exception,
-                    "Invalid type '${type}' for the index order for the index ${index}",
-                    ("type", order.order)("index", root_struct.name));
-
-                boost::split(order.path, order.field, [](char c){return c == '.';});
-
-                auto dst_struct = &root_struct;
-                auto src_struct = &table_struct;
-                auto size = order.path.size();
-                for (auto& key: order.path) {
-                    for (auto& src_field: src_struct->fields) {
-                        if (src_field.name != key) continue;
-
-                        --size;
-                        if (!size) {
-                            auto field = src_field;
-                            field.type = serializer_.resolve_type(src_field.type);
-                            order.type = field.type;
-                            dst_struct->fields.emplace_back(std::move(field));
-                        } else {
-                            src_struct = &get_struct(src_field.type);
-
-                            struct_name.append('.', 1).append(key);
-                            auto itr = dst_struct_map.find(struct_name);
-                            if (dst_struct_map.end() == itr) {
-                                dst_struct->fields.emplace_back(key, struct_name);
-                                itr = dst_struct_map.emplace(struct_name, struct_def(struct_name, "", {})).first;
-                            }
-                            dst_struct = &itr->second;
-                        }
-                        break;
-                    }
-                }
-                CYBERWAY_ASSERT(!size && !order.type.empty(), invalid_index_description_exception,
-                    "Can't find type for fields of the index ${index}", ("index", root_struct.name));
-
-                struct_name = root_struct.name;
-            }
-
-            for (auto& t: dst_struct_map) {
-                serializer_.add_struct(std::move(t.second));
-            }
-        }
-
-        void validate_pk_index(const table_def& table) const {
-            CYBERWAY_ASSERT(!table.indexes.empty(), invalid_primary_key_exception,
-                "The table ${table} must contain at least one index", ("table", get_table_name(table)));
-
-            auto& p = table.indexes.front();
-            CYBERWAY_ASSERT(p.unique && p.orders.size() == 1, invalid_primary_key_exception,
-                "The primary index ${index} of the table ${table} should be unique and has one field",
-                ("table", get_table_name(table))("index", get_index_name(p)));
-
-            auto& k = p.orders.front();
-            CYBERWAY_ASSERT(k.type == "int64" || k.type == "uint64" || k.type == "name" || k.type == "symbol_code",
-                invalid_primary_key_exception,
-                "The field ${field} of the table ${table} is declared as primary "
-                "and it should has type int64, uint64, name or symbol_code",
-                ("field", k.field)("table", get_table_name(table)));
-        }
-    }; // struct index_builder
-
-    class abi_info final {
-    public:
-        abi_info() = default;
-
-        abi_info(const account_name& code, abi_def abi, const time_point& deadline, const microseconds& max_time)
-        : code_(code) {
-            serializer_.set_abi(abi, max_time);
-
-            for (auto& table: abi.tables) {
-                if (!table.hash) table.hash = table.name.value;
-                table_map_.emplace(table.hash, std::move(table));
-            }
-
-            index_builder builder(code, serializer_, table_map_);
-            builder.build_indexes(deadline, max_time);
-        }
-
-        void verify_tables_structure(
-            driver_interface& driver, const time_point& deadline, const microseconds& max_time
-        ) const {
-            for (auto& t: table_map_) {
-                table_info info(code_, code_);
-                info.table = &t.second;
-                info.abi = this;
-                info.pk_order = &_detail::get_pk_order(info);
-
-                driver.verify_table_structure(info, max_time);
-            }
-        }
-
-        variant to_object(
-            const table_info& info, const void* data, const size_t size, const microseconds& max_time
-        ) const {
-            CYBERWAY_ASSERT(info.table, unknown_table_exception, "NULL table");
-            return to_object_("table", [&]{return get_full_table_name(info);}, info.table->type, data, size, max_time);
-        }
-
-        variant to_object(
-            const index_info& info, const void* data, const size_t size, const microseconds& max_time
-        ) const {
-            CYBERWAY_ASSERT(info.index, unknown_index_exception, "NULL index");
-            auto type = get_full_index_name(info);
-            return to_object_("index", [&](){return type;}, type, data, size, max_time);
-        }
-
-        bytes to_bytes(
-            const table_info& info, const variant& value, const microseconds& max_time
-        ) const {
-            CYBERWAY_ASSERT(info.table, unknown_table_exception, "NULL table");
-            return to_bytes_("table", [&]{return get_full_table_name(info);}, info.table->type, value, max_time);
-        }
-
-        void mark_removed() {
-            is_removed_ = true;
-        }
-
-        bool is_removed() const {
-            return is_removed_;
-        }
-
-        const table_def* find_table(hash_t hash) const {
-            auto itr = table_map_.find(hash);
-            if (table_map_.end() != itr) return &itr->second;
-
-            return nullptr;
-        }
-
-    private:
-        const account_name code_;
-        abi_serializer serializer_;
-        fc::flat_map<hash_t, table_def> table_map_;
-        bool is_removed_ = false;
-
-        template<typename Type>
-        variant to_object_(
-            const char* value_type, Type&& db_type,
-            const string& type, const void* data, const size_t size, const microseconds& max_time
-        ) const {
-            // begin()
-            if (nullptr == data || 0 == size) return variant_object();
-
-            fc::datastream<const char*> ds(static_cast<const char*>(data), size);
-            auto value = serializer_.binary_to_variant(type, ds, max_time);
-
-//            dlog(
-//                "The ${value_type} '${type}': ${value}",
-//                ("value_type", value_type)("type", db_type())("value", value));
-
-            CYBERWAY_ASSERT(value.is_object(), invalid_abi_store_type_exception,
-                "ABI serializer returns bad type for the ${value_type} for ${type}: ${value}",
-                ("value_type", value_type)("type", db_type())("value", value));
-
-            return value;
-        }
-
-        template<typename Type>
-        bytes to_bytes_(
-            const char* value_type, Type&& db_type,
-            const string& type, const variant& value, const microseconds& max_time
-        ) const {
-
-//            dlog(
-//                "The ${value_type} '${type}': ${value}",
-//                ("value", value_type)("type", db_type())("value", value));
-
-            CYBERWAY_ASSERT(value.is_object(), invalid_abi_store_type_exception,
-                "ABI serializer receive wrong type for the ${value_type} for '${type}': ${value}",
-                ("value_type", value_type)("type", db_type())("value", value));
-
-            return serializer_.variant_to_binary(type, value, max_time);
-        }
-    }; // struct abi_info
-
     struct chaindb_controller::controller_impl_ final {
         const microseconds max_abi_time_;
         journal journal_;
@@ -384,21 +107,25 @@ namespace cyberway { namespace chaindb {
         cache_map cache_;
         undo_stack undo_;
 
-        controller_impl_(const microseconds& max_abi_time, const chaindb_type t, string p)
+        controller_impl_(chaindb_controller& controller, const microseconds& max_abi_time, const chaindb_type t, string p)
         : max_abi_time_(max_abi_time),
           driver_ptr_(_detail::create_driver(t, journal_, std::move(p))),
           driver_(*driver_ptr_.get()),
-          undo_(driver_, journal_, cache_) {
+          undo_(controller, driver_, journal_, cache_) {
         }
 
         ~controller_impl_() = default;
 
+        void restore_db() {
+            undo_.restore();
+        }
+
         void drop_db() {
-            const auto system_abi_itr = abi_map_.find(0);
+            const auto itr = abi_map_.find(0);
 
-            assert(system_abi_itr != abi_map_.end());
+            assert(itr != abi_map_.end());
 
-            auto system_abi = std::move(system_abi_itr->second);
+            auto system_abi = std::move(itr->second);
             undo_.clear(); // remove all undo states
             journal_.clear(); // remove all pending changes
             driver_.drop_db(); // drop database
@@ -427,6 +154,10 @@ namespace cyberway { namespace chaindb {
             if (abi_map_.end() == itr) return false;
 
             return !itr->second.is_removed();
+        }
+
+        const abi_map& get_abi_map() const {
+            return abi_map_;
         }
 
         const cursor_info& lower_bound(const index_request& request, const char* key, const size_t size) const {
@@ -600,11 +331,11 @@ namespace cyberway { namespace chaindb {
         }
 
     private:
-        std::map<account_name /* code */, abi_info> abi_map_;
+        abi_map abi_map_;
 
         const cursor_info& opt_find_by_pk(const table_info& table, primary_key_t pk) {
             index_info index(table);
-            index.index = &_detail::get_pk_index(table);
+            index.index = &get_pk_index(table);
             auto pk_key_value = _detail::get_pk_value(table, pk);
             return driver_.opt_find_by_pk(index, pk, std::move(pk_key_value));
         }
@@ -639,16 +370,14 @@ namespace cyberway { namespace chaindb {
 
         template <typename Info, typename Request>
         Info find_table(const Request& request) const {
-            account_name code(request.code);
-            account_name scope(request.scope);
-            Info info(std::move(code), std::move(scope));
+            Info info(request.code, request.scope);
 
-            auto itr = abi_map_.find(code);
+            auto itr = abi_map_.find(request.code);
             if (abi_map_.end() == itr) return info;
 
             info.abi = &itr->second;
             info.table = itr->second.find_table(request.hash);
-            if (info.table) info.pk_order = &_detail::get_pk_order(info);
+            if (info.table) info.pk_order = &get_pk_order(info);
             return info;
         }
 
@@ -807,10 +536,14 @@ namespace cyberway { namespace chaindb {
     }; // class chaindb_controller::controller_impl_
 
     chaindb_controller::chaindb_controller(const microseconds& max_abi_time, const chaindb_type t, string p)
-    : impl_(new controller_impl_(max_abi_time, t, std::move(p))) {
+    : impl_(new controller_impl_(*this, max_abi_time, t, std::move(p))) {
     }
 
     chaindb_controller::~chaindb_controller() = default;
+
+    void chaindb_controller::restore_db() {
+        impl_->restore_db();
+    }
 
     void chaindb_controller::drop_db() {
         impl_->drop_db();
@@ -826,6 +559,10 @@ namespace cyberway { namespace chaindb {
 
     bool chaindb_controller::has_abi(const account_name& code) {
         return impl_->has_abi(code);
+    }
+
+    const abi_map& chaindb_controller::get_abi_map() const {
+        return impl_->get_abi_map();
     }
 
     chaindb_session chaindb_controller::start_undo_session(bool enabled) {

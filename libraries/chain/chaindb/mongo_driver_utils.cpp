@@ -238,7 +238,12 @@ namespace cyberway { namespace chaindb {
                 case 'c': {
                     validate_field_name(names::code_field == key, src, itm);
                     validate_field_type(type::k_utf8 == key_type, src, itm);
-                    state.code = account_name(itm.get_utf8().value.to_string());
+                    const auto str = itm.get_utf8().value.to_string();
+                    if (str == names::system_code) {
+                        state.code = account_name();
+                    } else {
+                        state.code = account_name(str);
+                    }
                     break;
                 }
                 case 't': {
@@ -296,6 +301,7 @@ namespace cyberway { namespace chaindb {
                     validate_field_name(names::hash_field == key, src, itm);
                     validate_field_type(type::k_decimal128 == key_type, src, itm);
                     state.hash = from_decimal128(itm.get_decimal128());
+                    break;
                 }
                 default:
                     validate_field_name(false, src, itm);

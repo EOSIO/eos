@@ -12,7 +12,7 @@ namespace cyberway { namespace chaindb {
 
     class undo_stack final {
     public:
-        undo_stack(driver_interface&, journal&, cache_map&);
+        undo_stack(chaindb_controller&, driver_interface&, journal&, cache_map&);
 
         undo_stack(const undo_stack&) = delete;
         undo_stack(undo_stack&&) = delete;
@@ -20,6 +20,8 @@ namespace cyberway { namespace chaindb {
         ~undo_stack();
 
         void add_abi_tables(eosio::chain::abi_def&) const;
+
+        void restore();
 
         void clear();
 

@@ -236,13 +236,13 @@ public:
 private:
     static_assert(sizeof...(Indices) <= 16, "multi_index only supports a maximum of 16 secondary indices");
 
-    Allocator allocator_;
+    Allocator& allocator_;
     chaindb_controller& controller_;
 
     struct item_data: public cache_item_data {
         struct item_type: public T {
             template<typename Constructor>
-            item_type(cache_item& cache, Constructor&& constructor, Allocator alloc)
+            item_type(cache_item& cache, Constructor&& constructor, Allocator& alloc)
             : T(std::forward<Constructor>(constructor), alloc),
               cache(cache) {
             }
@@ -251,7 +251,7 @@ private:
         } item;
 
         template<typename Constructor>
-        item_data(cache_item& cache, Allocator alloc, Constructor&& constructor)
+        item_data(cache_item& cache, Allocator& alloc, Constructor&& constructor)
         : item(cache, std::forward<Constructor>(constructor), alloc) {
         }
 
@@ -268,13 +268,13 @@ private:
 
     struct variant_converter: public cache_converter_interface {
         variant_converter(Allocator& allocator)
-        : allocator(allocator) {
+        : allocator_(allocator) {
         }
 
         ~variant_converter() = default;
 
         cache_item_data_ptr convert_variant(cache_item& itm, const object_value& obj) const override {
-            auto ptr = std::make_unique<item_data>(itm, allocator, [&](auto& o) {
+            auto ptr = std::make_unique<item_data>(itm, allocator_, [&](auto& o) {
                 T& data = static_cast<T&>(o);
                 fc::from_variant(obj.value, data);
             });
@@ -286,7 +286,8 @@ private:
             return ptr;
         }
 
-        Allocator& allocator;
+    private:
+        Allocator& allocator_;
     } variant_converter_;
 
     using primary_key_extractor_type = typename Index::extractor;
@@ -666,8 +667,8 @@ public:
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
 public:
-    multi_index(Allocator* allocator, chaindb_controller& controller)
-    : allocator_(*allocator),
+    multi_index(Allocator& allocator, chaindb_controller& controller)
+    : allocator_(allocator),
       controller_(controller),
       variant_converter_(allocator_),
       primary_idx_(this) {
