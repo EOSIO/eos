@@ -10,7 +10,6 @@ namespace cyberway { namespace chaindb {
         RemovedValue,
         NewValue,
         NextPk,
-        Revision,
     }; // enum class undo_type
 
     struct service_state final {
@@ -102,4 +101,4 @@ namespace cyberway { namespace chaindb {
 
 } } // namespace cyberway::chaindb
 
-FC_REFLECT_ENUM(cyberway::chaindb::undo_record, (Unknown)(OldValue)(RemovedValue)(NewValue)(NextPk)(Revision))
+FC_REFLECT_ENUM(cyberway::chaindb::undo_record, (Unknown)(OldValue)(RemovedValue)(NewValue)(NextPk))
