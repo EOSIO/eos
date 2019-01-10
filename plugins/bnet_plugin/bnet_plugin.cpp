@@ -916,7 +916,7 @@ namespace eosio {
          * the connection from being closed.
          */
         void wait_on_app() {
-           app().post( priority::low, [self = shared_from_this()]() {
+           app().post( priority::medium, [self = shared_from_this()]() {
               app().get_io_service().post( boost::asio::bind_executor( self->_strand, [self] { self->do_read(); } ) );
            } );
         }
