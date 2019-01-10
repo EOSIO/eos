@@ -237,6 +237,10 @@ namespace cyberway { namespace chaindb {
             tail_revision_ = 0;
         }
 
+        revision_t revision() const {
+            return revision_;
+        }
+
         void set_revision(const revision_t rev) {
             CYBERWAY_SESSION_ASSERT(tables_.empty(), "Cannot set revision while there is an existing undo stack.");
             revision_ = rev;
@@ -344,6 +348,7 @@ namespace cyberway { namespace chaindb {
             }
         }
 
+    private:
         void undo(table_undo_stack& table, const revision_t undo_rev, const revision_t test_rev) {
             if (undo_rev > table.revision()) {
                 table.undo();
@@ -790,7 +795,7 @@ namespace cyberway { namespace chaindb {
     }
 
     revision_t undo_stack::revision() const {
-        return impl_->revision_;
+        return impl_->revision();
     }
 
     bool undo_stack::enabled() const {
@@ -818,7 +823,7 @@ namespace cyberway { namespace chaindb {
     }
 
     void undo_stack::undo() {
-        impl_->undo(impl_->revision_);
+        impl_->undo(impl_->revision());
     }
 
     void undo_stack::insert(const table_info& table, object_value obj) {
