@@ -496,6 +496,8 @@ namespace cyberway { namespace chaindb {
                 "Receives ${obj} instead of object.", ("obj", obj.value));
             auto& value = obj.value.get_object();
 
+            if (pk == end_primary_key && obj.service.pk == pk) return;
+
             CYBERWAY_ASSERT(value.end() == value.find(names::service_field), reserved_field_exception,
                 "Object has the reserved field ${field} for the table ${table} for the scope '${scope}'",
                 ("field", names::service_field)("table", get_full_table_name(table))("scope", get_scope_name(table)));
