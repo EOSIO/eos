@@ -15,6 +15,8 @@ avail_blks=$(df . | tail -1 | awk '{print $4}')
 DISK_TOTAL=$((total_blks / gbfactor ))
 DISK_AVAIL=$((avail_blks / gbfactor ))
 
+export HOMEBREW_NO_AUTO_UPDATE=1
+
 COUNT=1
 PERMISSION_GETTEXT=0
 DISPLAY=""
@@ -154,9 +156,6 @@ if [ $COUNT -gt 1 ]; then
 	select yn in "Yes" "No"; do
 		case $yn in
 			[Yy]* )
-				if [ $PERMISSION_GETTEXT -eq 1 ]; then
-					sudo chown -R "$(whoami)" /usr/local/share
-				fi
 				"${XCODESELECT}" --install 2>/dev/null;
 				printf "\\nDo you wish to update homebrew packages first?\\n"
 				select yn in "Yes" "No"; do
@@ -183,13 +182,12 @@ if [ $COUNT -gt 1 ]; then
 				# Build from source to use local cmake
 				for DEP in $DEPS; do
 					if [[ $DEP =~ 'mongo-c' ]]; then FLAGS="--build-from-source"; else FLAGS=""; fi
-					if ! HOMEBREW_NO_AUTO_UPDATE=1 $BREW install $DEP $FLAGS; then
+					if ! $BREW install $DEP $FLAGS; then
 						printf "Homebrew exited with the above errors.\\n"
 						printf "Exiting now.\\n\\n"
 						exit 1;
 					fi
 				done
-				exit 1
 			break;;
 			[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
 			* ) echo "Please type 1 for yes or 2 for no.";;
@@ -199,6 +197,8 @@ else
 	printf "No required Home Brew dependencies to install.\\n"
 fi
 
+# Failed to find Gettext libintl (missing: Intl_INCLUDE_DIR); known bug
+brew unlink gettext 2> /dev/null && brew link --force gettext
 
 printf "\\n"
 

@@ -68,7 +68,7 @@ if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
 fi
 
 # llvm-4.0 is installed into /usr/lib/llvm-4.0
-DEP_ARRAY=(llvm-4.0 mmake automake libbz2-dev libssl-dev \
+DEP_ARRAY=(llvm-4.0 make automake libbz2-dev libssl-dev \
 libgmp3-dev autotools-dev build-essential libicu-dev python2.7-dev python3-dev \
 autoconf libtool curl zlib1g-dev sudo)
 COUNT=1
