@@ -1037,7 +1037,7 @@ namespace eosio {
    }
 
    void connection::enqueue_block( const signed_block_ptr& sb, bool trigger_send ) {
-      enqueue_buffer( create_send_buffer( sb ), trigger_send, priority::high, no_reason );
+      enqueue_buffer( create_send_buffer( sb ), trigger_send, priority::low, no_reason );
    }
 
    void connection::enqueue_buffer( const std::shared_ptr<std::vector<char>>& send_buffer,
