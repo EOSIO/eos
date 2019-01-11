@@ -67,7 +67,7 @@ if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
 	exit 1
 fi
 
-DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev make automake libbz2-dev libssl-dev \
+DEP_ARRAY=(llvm-4.0 mmake automake libbz2-dev libssl-dev \
 libgmp3-dev autotools-dev build-essential libicu-dev python2.7-dev python3-dev \
 autoconf libtool curl zlib1g-dev sudo)
 COUNT=1
@@ -244,9 +244,11 @@ printf "\\n"
 
 function print_instructions()
 {
-	printf "Please ensure the following \$PATH stucture in the order specified within your ~/.bash_profile/rc file:\\n"
+printf "Please ensure the following \$PATH and \$LD_LIBRARY_PATH stucture, in the order specified, within your ~/.bash_profile/rc file:\\n"
 	# HOME/bin first to load proper cmake version over the one in /usr/bin.
-	printf "PATH=\$HOME/bin:\$PATH:/usr/local/opt/gettext/bin\\n"
+	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang + We don't symlink into $HOME/bin
+	printf "export PATH=\$HOME/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
+	printf "export LD_LIBRARY_PATH=\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n"
 	printf "$( command -v mongod ) --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
 	printf "cd ${BUILD_DIR} && make test\\n"
 	return 0
