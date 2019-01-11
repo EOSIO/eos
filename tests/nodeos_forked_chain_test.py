@@ -353,7 +353,7 @@ try:
     if nonProdNode.verifyAlive():
         Utils.errorExit("Expected the non-producing node to have shutdown.")
 
-    Print("Analyze the producers leading up to the block after killing the non-producing node")
+    Print("Analyzing the producers leading up to the block after killing the non-producing node")
 
     firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=True)
     # Nodes should not have diverged till the last block
@@ -366,7 +366,7 @@ try:
         prodNode.getInfo()
 
 
-    Print("Track the blocks from the divergence till there are 10*12 blocks on one chain and 10*12+1 on the other")
+    Print("Tracking the blocks from the divergence till there are 10*12 blocks on one chain and 10*12+1 on the other")
 
     killBlockNum=blockNum
     lastBlockNum=killBlockNum+(maxActiveProducers - 1)*inRowCountPerProducer+1  # allow 1st testnet group to produce just 1 more block than the 2nd
