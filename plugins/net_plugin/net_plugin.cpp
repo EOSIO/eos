@@ -2456,7 +2456,8 @@ namespace eosio {
 
    void net_plugin_impl::start_txn_timer() {
       transaction_check->expires_from_now( txn_exp_period);
-      transaction_check->async_wait(app().get_priority_queue().wrap(priority::low-1, [this](boost::system::error_code ec) {
+      int lower_than_low = priority::low - 1;
+      transaction_check->async_wait(app().get_priority_queue().wrap(lower_than_low, [this](boost::system::error_code ec) {
             if( !ec) {
                expire_txns();
             }
