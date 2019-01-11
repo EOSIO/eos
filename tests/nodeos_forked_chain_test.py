@@ -377,7 +377,7 @@ try:
         blockProducers1.append({"blockNum":blockNum, "prod":blockProducer1})
 
 
-    Print("Analyze the producers from the divergence to the lastBlockNum and verify they stay diverged")
+    Print("Analyzing the producers from the divergence to the lastBlockNum and verify they stay diverged")
 
     firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=True)
     if firstDivergence!=killBlockNum:
@@ -386,13 +386,13 @@ try:
     blockProducers1=[]
 
 
-    Print("Relaunch the non-producing bridge node to connect the producing nodes again")
+    Print("Relaunching the non-producing bridge node to connect the producing nodes again")
 
     if not nonProdNode.relaunch(nonProdNode.nodeNum, None):
         errorExit("Failure - (non-production) node %d should have restarted" % (nonProdNode.nodeNum))
 
 
-    Print("Identify the producers from the saved LIB to the current highest head")
+    Print("Identifying the producers from the saved LIB to the current highest head")
 
     #ensure that the nodes have enough time to get in concensus, so wait for 3 producers to produce their complete round
     time.sleep(inRowCountPerProducer * 3 / 2)
@@ -407,7 +407,7 @@ try:
         blockProducers1.append({"blockNum":blockNum, "prod":blockProducer1})
 
 
-    Print("Analyze the producers from the saved LIB to the current highest head and verify they match now")
+    Print("Analyzing the producers from the saved LIB to the current highest head and verify they match now")
 
     analyzeBPs(blockProducers0, blockProducers1, expectDivergence=False)
 
