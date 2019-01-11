@@ -1790,14 +1790,18 @@ read_only::resolve_names_results read_only::resolve_names(const resolve_names_pa
         if (at == string::npos) {
             set_domain(n, item);
         } else {
-            auto at2 = n.find('@', at + 1);
-            bool at_acc = at2 == at + 1;
-            EOS_ASSERT(at_acc || at2 == string::npos, name_type_exception, "Unknown name format: several `@` symbols");
-            auto username = n.substr(0, at - 1);
+            auto tail_pos = at + 1;
+            auto at2 = n.find('@', tail_pos);
+            bool at_acc = at2 == tail_pos;
+            if (at_acc) {
+                tail_pos++;
+                at2 = n.find('@', tail_pos);
+            }
+            EOS_ASSERT(at2 == string::npos, username_type_exception, "Unknown name format: excess `@` symbol");
+            auto username = n.substr(0, at);
             validate_username(username);
 
-            at += at_acc ? 2 : 1;    // move split position to point after `@` symbol
-            auto tail = n.substr(at, n.length() - at);
+            auto tail = n.substr(tail_pos, n.length() - tail_pos);
             if (!at_acc) {
                 set_domain(tail, item);
             }
@@ -1808,7 +1812,7 @@ read_only::resolve_names_results read_only::resolve_names(const resolve_names_pa
         if (fc::time_point::now() > timeout) {
             break;   // early exit if takes too much time
         }
-    } EOS_RETHROW_EXCEPTIONS(name_type_exception, "Can't resolve name: ${n}", ("n", n)) }
+    } EOS_RETHROW_EXCEPTIONS(domain_name_type_exception, "Can't resolve name: ${n}", ("n", n)) }   // TODO: use same exception as thrown
     return r;
 }
 

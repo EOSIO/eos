@@ -129,6 +129,9 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( symbol_type_exception,           chain_type_exception,
                                     3010014, "Invalid symbol" )
 
+        FC_DECLARE_DERIVED_EXCEPTION(domain_name_type_exception, chain_type_exception, 3010015, "Invalid domain name")
+        FC_DECLARE_DERIVED_EXCEPTION(username_type_exception,    chain_type_exception, 3010016, "Invalid username")
+
 
    FC_DECLARE_DERIVED_EXCEPTION( fork_database_exception, chain_exception,
                                  3020000, "Fork database exception" )
@@ -228,6 +231,10 @@ namespace eosio { namespace chain {
                                     3060003, "Contract Table Query Exception" )
       FC_DECLARE_DERIVED_EXCEPTION( contract_query_exception,       database_exception,
                                     3060004, "Contract Query Exception" )
+
+        FC_DECLARE_DERIVED_EXCEPTION(domain_query_exception,   database_exception, 3060005, "Domain Query Exception")
+        FC_DECLARE_DERIVED_EXCEPTION(username_query_exception, database_exception, 3060006, "Username Query Exception")
+
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
                                  3060100, "Guard Exception" )

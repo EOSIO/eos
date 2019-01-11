@@ -14,7 +14,7 @@ constexpr size_t domain_max_part_size = 63;
 
 constexpr size_t username_max_size = 32;        // it's 16 in Golos
 constexpr size_t username_min_part_size = 1;    // it's 3 in Golos
-constexpr size_t username_max_part_size = 32;
+constexpr size_t username_max_part_size = username_max_size;
 
 
 //
@@ -81,7 +81,7 @@ void validate_domain_name(const domain_name& n) {
       "Domain name contains bad symbol",
       "Top-level name is all-numeric"
    };
-   EOS_ASSERT(r == valid, name_type_exception, err[r]);  // TODO: proper exception type
+   EOS_ASSERT(r == valid, domain_name_type_exception, err[r]);
 }
 
 void validate_username(const username& n) {
@@ -95,7 +95,7 @@ void validate_username(const username& n) {
       "Username part can't start or end with '-'",
       "Username contains bad symbol"
    };
-   EOS_ASSERT(r == valid, name_type_exception, err[r]);  // TODO: proper exception type
+   EOS_ASSERT(r == valid, username_type_exception, err[r]);
 }
 
 
