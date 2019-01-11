@@ -257,7 +257,7 @@ if [ "$ARCH" == "Darwin" ]; then
 fi
 
 # Cleanup old installation
-. ${CURRENT_DIR}/scripts/clean_old_install.sh
+(. ${CURRENT_DIR}/scripts/clean_old_install.sh)
 if [ $? -ne 0 ]; then
    printf "\\nError occurred while trying to remove old installation!\\n\\n"
    exit -1

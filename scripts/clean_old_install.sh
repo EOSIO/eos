@@ -3,24 +3,40 @@
 OPT_LOCATION=${HOME}/opt
 
 # ./build check for local cleanup while refactoring build scripts
-if [ -d "/usr/local/include/eosio" ] || [ -d "$OPT_LOCATION/eosio" ] || [ -d "./build" ]; then
-   printf "\n\tOld eosio install needs to be removed.\n\n"
-   printf "\tDo you wish to remove this install? (requires sudo)\n"
+if [ -d "./build" ]; then
+   printf "\nEOSIO installation already found...\n"
+   printf "Do you wish to remove this install?\n"
+   select yn in "Yes" "No"; do
+      case $yn in
+         [Yy]* )
+            if [ $( uname ) == "Darwin" ]; then
+               brew uninstall mongo-cxx-driver mongo-c-driver llvm@4 libidn2 gettext --force
+            fi
+            rm -rf ./build
+         break;;
+         [Nn]* )
+            printf "Skipping\n\n"
+            exit 0
+      esac
+   done
+fi
+if [ -d "/usr/local/include/eosio" ]; then
+   printf "\nEOSIO installation already found...\n"
+   printf "Do you wish to remove this install? (requires sudo)\n"
    select yn in "Yes" "No"; do
       case $yn in
          [Yy]* )
             if [ "$(id -u)" -ne 0 ]; then
-               printf "\n\tThis requires sudo, please run ./scripts/clean_old_install.sh with sudo\n\n"
+               printf "\nThis requires sudo, please run ./scripts/clean_old_install.sh with sudo.\n"
                exit -1
             fi
+            exit
             pushd /usr/local &> /dev/null
 
             rm -rf wasm
 
             if [ $( uname ) == "Darwin" ]; then
-               brew uninstall mongo-c-driver --force
-               brew uninstall mongo-cxx-driver --force
-               brew uninstall llvm@4 --force
+               brew uninstall mongo-cxx-driver mongo-c-driver llvm@4 gettext automake libtool gmp wget --force
             fi
 
             pushd include &> /dev/null
@@ -85,8 +101,8 @@ if [ -d "/usr/local/include/eosio" ] || [ -d "$OPT_LOCATION/eosio" ] || [ -d "./
             popd &> /dev/null
             break;;
          [Nn]* )
-            printf "\tAborting uninstall\n\n"
-            exit -1;;
+            printf "Skipping\n\n"
+            exit 0
       esac
    done
 fi
