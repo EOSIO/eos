@@ -105,7 +105,7 @@
 						printf "\\n\\tDPKG dependencies installed successfully.\\n"
 					fi
 				break;;
-				[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
+				[Nn]* ) echo "User aborting installation of required dependencies."; break;;
 				* ) echo "Please type 1 for yes or 2 for no.";;
 			esac
 		done
