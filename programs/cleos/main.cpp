@@ -84,6 +84,7 @@ Options:
 #include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
+#include <fc/static_variant.hpp>
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/config.hpp>
@@ -133,6 +134,7 @@ using namespace eosio::client::http;
 using namespace eosio::client::localize;
 using namespace eosio::client::config;
 using namespace boost::filesystem;
+using auth_type = fc::static_variant<public_key_type, permission_level>;
 
 FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
 FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
@@ -512,14 +514,20 @@ void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_trans
    }
 }
 
-chain::action create_newaccount(const name& creator, const name& newaccount, public_key_type owner, public_key_type active) {
+chain::permission_level get_permission_level(const std::string& str) {
+   auto at_pos = str.find('@');
+   EOSC_ASSERT(at_pos != std::string::npos, "invalid permission level");
+   return permission_level { str.substr(0, at_pos), str.substr(at_pos + 1) };
+}
+
+chain::action create_newaccount(const name& creator, const name& newaccount, auth_type owner, auth_type active) {
    return action {
       get_account_permissions(tx_permission, {creator,config::active_name}),
       eosio::chain::newaccount{
          .creator      = creator,
          .name         = newaccount,
-         .owner        = eosio::chain::authority{1, {{owner, 1}}, {}},
-         .active       = eosio::chain::authority{1, {{active, 1}}, {}}
+         .owner        = !owner.which() ? authority(owner.get<public_key_type>()) : authority(owner.get<permission_level>()),
+         .active       = !active.which() ? authority(active.get<public_key_type>()) : authority(active.get<permission_level>())
       }
    };
 }
@@ -987,8 +995,8 @@ struct create_account_subcommand {
       );
       createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
-      createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
-      createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"));
+      createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key or permission level for the new account"))->required();
+      createAccount->add_option("ActiveKey", active_key_str, localized("The active public key or permission level for the new account"));
 
       if (!simple) {
          createAccount->add_option("--stake-net", stake_net,
@@ -1010,14 +1018,23 @@ struct create_account_subcommand {
       createAccount->set_callback([this] {
             if( !active_key_str.size() )
                active_key_str = owner_key_str;
-            public_key_type owner_key, active_key;
+            auth_type owner, active;
             try {
-               owner_key = public_key_type(owner_key_str);
-            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str));
+               owner = public_key_type(owner_key_str);
+            } catch (...) {
+               try {
+                  owner = get_permission_level(owner_key_str);
+               } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str));
+            }
             try {
-               active_key = public_key_type(active_key_str);
-            } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
-            auto create = create_newaccount(creator, account_name, owner_key, active_key);
+               active = public_key_type(active_key_str);
+            } catch (...) {
+               try {
+                  active = get_permission_level(active_key_str);
+               } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
+            }
+
+            auto create = create_newaccount(creator, account_name, owner, active);
             if (!simple) {
                EOSC_ASSERT( buy_ram_eos.size() || buy_ram_bytes_in_kbytes || buy_ram_bytes, "ERROR: One of --buy-ram, --buy-ram-kbytes or --buy-ram-bytes should have non-zero value" );
                EOSC_ASSERT( !buy_ram_bytes_in_kbytes || !buy_ram_bytes, "ERROR: --buy-ram-kbytes and --buy-ram-bytes cannot be set at the same time" );
