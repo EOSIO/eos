@@ -18,7 +18,7 @@ DISK_AVAIL=$((avail_blks / gbfactor ))
 COUNT=1
 PERMISSION_GETTEXT=0
 DISPLAY=""
-DEP=""
+DEPS=""
 
 printf "\\nOS name: ${OS_NAME}\\n"
 printf "OS Version: ${OS_VER}\\n"
@@ -126,7 +126,7 @@ while read -r name tester testee brewname uri; do
 	if [ "${brewname}" = "gettext" ]; then
 		PERMISSION_GETTEXT=1
 	fi
-	DEP=$DEP"${brewname} "
+	DEPS=$DEPS"${brewname} "
 	DISPLAY="${DISPLAY}${COUNT}. ${name}\\n"
 	printf " - %s ${bldred}NOT${txtrst} found.\\n" "${name}"
 	(( COUNT++ ))
@@ -139,7 +139,7 @@ if [ ! -d /usr/local/Frameworks ]; then
 	exit 1;
 fi
 if [  -z "$( python3 -c 'import sys; print(sys.version_info.major)' 2>/dev/null )" ]; then
-	DEP=$DEP"python@3 "
+	DEPS=$DEPS"python@3 "
 	DISPLAY="${DISPLAY}${COUNT}. Python 3\\n"
 	printf " - python3 ${bldred}NOT${txtrst} found.\\n"
 	(( COUNT++ ))
@@ -171,21 +171,25 @@ if [ $COUNT -gt 1 ]; then
 								printf "\\brew update complete.\\n"
 							fi
 						break;;
-						[Nn]* ) echo "Proceeding without update!";;
+						[Nn]* ) echo "Proceeding without update!"
+						break;;
 						* ) echo "Please type 1 for yes or 2 for no.";;
 					esac
 				done
 
 				brew tap eosio/eosio # Required to install mongo-cxx-driver with static library
-				printf "Installing Dependencies.\\n"
+				printf "\\nInstalling Dependencies.\\n"
 				# Ignore cmake so we don't install a newer version.
 				# Build from source to use local cmake
-				if [[ $DEP =~ 'mongo-c' ]]; then FLAGS="--build-from-source"; fi
-				if ! "${BREW}" install $DEP $FLAGS; then
-					printf "Homebrew exited with the above errors.\\n"
-					printf "Exiting now.\\n\\n"
-					exit 1;
-				fi
+				for DEP in $DEPS; do
+					if [[ $DEP =~ 'mongo-c' ]]; then FLAGS="--build-from-source"; else FLAGS=""; fi
+					if ! HOMEBREW_NO_AUTO_UPDATE=1 $BREW install $DEP $FLAGS; then
+						printf "Homebrew exited with the above errors.\\n"
+						printf "Exiting now.\\n\\n"
+						exit 1;
+					fi
+				done
+				exit 1
 			break;;
 			[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
 			* ) echo "Please type 1 for yes or 2 for no.";;
