@@ -278,12 +278,17 @@ namespace cyberway { namespace chaindb {
 
         const object_value& get_object_value() {
             lazy_open();
-            if (is_end()) return object_;
             if (!object_.value.is_null()) return object_;
 
-            auto& view = *source_->begin();
-            object_ = build_object(index, view);
-            pk = object_.service.pk;
+            if (is_end()) {
+                object_.value = variant_object();
+                object_.service.pk = pk;
+            } else {
+                auto& view = *source_->begin();
+                object_ = build_object(index, view);
+                pk = object_.service.pk;
+            }
+
             if (!object_.service.hash) {
                 object_.service.code  = index.code;
                 object_.service.scope = index.scope;
@@ -616,6 +621,9 @@ namespace cyberway { namespace chaindb {
             auto itr = cursor.begin();
             if (cursor.end() != itr) {
                 return build_object(table, *itr);
+            } else {
+                obj.value = variant_object();
+                return obj;
             }
 
             CYBERWAY_ASSERT(false, driver_absent_object_exception,
