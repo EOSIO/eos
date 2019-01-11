@@ -117,8 +117,9 @@ using boost::multi_index::const_mem_fun;
 template<class C> struct tag {
     using type = C;
 
-    constexpr static uint64_t get_code() {
-        return hash_64_fnv1a(boost::core::demangle(typeid(C).name()));
+    static uint64_t get_code() {
+        static uint64_t code = hash_64_fnv1a(boost::core::demangle(typeid(C).name()));
+        return code;
     }
 }; // struct tag
 
@@ -212,7 +213,7 @@ struct code_extractor;
 
 template<typename C>
 struct code_extractor<tag<C>> {
-    static uint64_t get_code() {
+    constexpr static uint64_t get_code() {
         return tag<C>::get_code();
     }
 }; // struct code_extractor
@@ -235,25 +236,24 @@ public:
 private:
     static_assert(sizeof...(Indices) <= 16, "multi_index only supports a maximum of 16 secondary indices");
 
-    Allocator allocator_;
+    Allocator& allocator_;
     chaindb_controller& controller_;
-    uint64_t table_code_;
 
     struct item_data: public cache_item_data {
         struct item_type: public T {
             template<typename Constructor>
-            item_type(cache_item& cache, Constructor&& constructor, Allocator alloc)
+            item_type(cache_item& cache, Constructor&& constructor, Allocator& alloc)
             : T(std::forward<Constructor>(constructor), alloc),
-              cache(cache)
-            { }
+              cache(cache) {
+            }
 
             cache_item& cache;
         } item;
 
         template<typename Constructor>
-        item_data(cache_item& cache, Allocator alloc, Constructor&& constructor)
-        : item(cache, std::forward<Constructor>(constructor), alloc)
-        { }
+        item_data(cache_item& cache, Allocator& alloc, Constructor&& constructor)
+        : item(cache, std::forward<Constructor>(constructor), alloc) {
+        }
 
         static const T& get_T(const cache_item_ptr& cache) {
             return static_cast<const T&>(static_cast<const item_data*>(cache->data.get())->item);
@@ -268,24 +268,26 @@ private:
 
     struct variant_converter: public cache_converter_interface {
         variant_converter(Allocator& allocator)
-        : allocator(allocator)
-        { }
+        : allocator_(allocator) {
+        }
 
         ~variant_converter() = default;
 
-        cache_item_data_ptr convert_variant(cache_item& itm, const primary_key_t pk, const variant& value) const override {
-            auto ptr = std::make_unique<item_data>(itm, allocator, [&](auto& o) {
-                T& obj = static_cast<T&>(o);
-                fc::from_variant(value, obj);
+        cache_item_data_ptr convert_variant(cache_item& itm, const object_value& obj) const override {
+            auto ptr = std::make_unique<item_data>(itm, allocator_, [&](auto& o) {
+                T& data = static_cast<T&>(o);
+                fc::from_variant(obj.value, data);
             });
 
-            auto& obj = static_cast<const T&>(ptr->item);
-            auto ptr_pk = primary_key_extractor_type()(obj);
-            CYBERWAY_INDEX_ASSERT(ptr_pk == pk, "invalid primary key ${pk} for the object ${obj}", ("pk", pk)("obj", value));
+            auto& data = static_cast<const T&>(ptr->item);
+            auto ptr_pk = primary_key_extractor_type()(data);
+            CYBERWAY_INDEX_ASSERT(ptr_pk == obj.pk(),
+                "invalid primary key ${pk} for the object ${obj}", ("pk", obj.pk())("obj", obj.value));
             return ptr;
         }
 
-        Allocator& allocator;
+    private:
+        Allocator& allocator_;
     } variant_converter_;
 
     using primary_key_extractor_type = typename Index::extractor;
@@ -302,8 +304,8 @@ private:
             return !(operator == (a, b));
         }
 
-        constexpr static table_name_t   table_name() { return code_extractor<TableName>::get_code(); }
-        constexpr static index_name_t   index_name() { return code_extractor<IndexName>::get_code(); }
+                  static table_name_t   table_name() { return code_extractor<TableName>::get_code(); }
+                  static index_name_t   index_name() { return code_extractor<IndexName>::get_code(); }
         constexpr static account_name_t get_code()   { return 0; }
         constexpr static account_name_t get_scope()  { return 0; }
 
@@ -460,7 +462,7 @@ private:
         }
 
         table_request get_table_request() const {
-            return multidx().get_table_request();
+            return {get_code(), get_scope(), table_name()};
         }
 
         index_request get_index_request() const {
@@ -474,7 +476,7 @@ private:
 
     cache_item_ptr load_object(const cursor_t& cursor, const primary_key_t& pk) const {
         // controller will call as to convert_object()
-        auto ptr = controller_.get_cache_item({get_code(), cursor}, get_table_request(), pk, variant_converter_);
+        auto ptr = controller_.get_cache_item({get_code(), cursor}, get_table_request(), pk);
 
         auto& obj = item_data::get_T(ptr);
         auto ptr_pk = primary_key_extractor_type()(obj);
@@ -503,13 +505,14 @@ public:
         using const_iterator = const_iterator_impl<IndexName>;
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-        constexpr static table_name_t table_name()  { return code_extractor<TableName>::get_code(); }
-        constexpr static index_name_t index_name()  { return code_extractor<IndexName>::get_code(); }
-        constexpr static account_name_t get_code()  { return 0; }
-        constexpr static account_name_t get_scope() { return 0; }
+                  static table_name_t   table_name() { return code_extractor<TableName>::get_code(); }
+                  static index_name_t   index_name() { return code_extractor<IndexName>::get_code(); }
+        constexpr static account_name_t get_code()   { return 0; }
+        constexpr static account_name_t get_scope()  { return 0; }
 
         index(const multi_index* midx)
-        : multidx_(midx) { }
+        : multidx_(midx) {
+        }
 
         const_iterator cbegin() const {
             return const_iterator(multidx_, uninitilized_cursor::begin);
@@ -615,8 +618,7 @@ public:
 
         const_iterator iterator_to(const T& obj) const {
             const auto& d = item_data::get_cache(obj);
-            CYBERWAY_INDEX_ASSERT(d.is_valid_converter(multidx_->variant_converter_),
-                "object passed to iterator_to is not in multi_index");
+            CYBERWAY_INDEX_ASSERT(d.is_valid_table(table_name()), "object passed to iterator_to is not in multi_index");
 
             auto key = extractor_type()(obj);
             auto pk = primary_key_extractor_type()(obj);
@@ -665,17 +667,17 @@ public:
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
 public:
-    multi_index(Allocator* allocator, chaindb_controller& controller)
-    : allocator_(*allocator),
+    multi_index(Allocator& allocator, chaindb_controller& controller)
+    : allocator_(allocator),
       controller_(controller),
-      table_code_(code_extractor<TableName>::get_code()),
       variant_converter_(allocator_),
       primary_idx_(this) {
+        controller_.set_cache_converter(get_table_request(), variant_converter_);
     }
 
-    table_name_t table_name() const { return table_code_; }
-    constexpr static account_name_t get_code()  { return 0; }
-    constexpr static account_name_t get_scope() { return 0; }
+              static table_name_t   table_name() { return code_extractor<TableName>::get_code(); }
+    constexpr static account_name_t get_code()   { return 0; }
+    constexpr static account_name_t get_scope()  { return 0; }
 
     table_request get_table_request() const {
         return {get_code(), get_scope(), table_name()};
@@ -724,26 +726,26 @@ public:
 
     template<typename Lambda>
     const_iterator emplace(Lambda&& constructor) const {
-        auto item = controller_.create_cache_item(get_table_request(), variant_converter_);
+        auto itm = controller_.create_cache_item(get_table_request());
         try {
-            auto pk = item->pk;
-            item->data = std::make_unique<item_data>(*item.get(), allocator_, [&](auto& o) {
+            auto pk = itm->pk();
+            itm->data = std::make_unique<item_data>(*itm.get(), allocator_, [&](auto& o) {
                 constructor(static_cast<T&>(o));
                 o.id = pk;
             });
 
-            auto& obj = item_data::get_T(item);
+            auto& obj = item_data::get_T(itm);
             auto obj_pk = primary_key_extractor_type()(obj);
-            CYBERWAY_INDEX_ASSERT(obj_pk == item->pk, "invalid value of primary key");
+            CYBERWAY_INDEX_ASSERT(obj_pk == pk, "invalid value of primary key");
 
             fc::variant value;
             fc::to_variant(obj, value);
             auto size = fc::raw::pack_size(obj);
-            controller_.insert(get_table_request(), pk, std::move(value), size);
+            controller_.insert(*itm.get(), std::move(value), size);
 
-            return const_iterator(this, uninitilized_cursor::find_by_pk, pk, std::move(item));
+            return const_iterator(this, uninitilized_cursor::find_by_pk, pk, std::move(itm));
         } catch (...) {
-            item->mark_deleted();
+            itm->mark_deleted();
             throw;
         }
     }
@@ -756,8 +758,8 @@ public:
 
     template<typename Lambda>
     void modify(const T& obj, Lambda&& updater) const {
-        const auto& d = item_data::get_cache(obj);
-        CYBERWAY_INDEX_ASSERT(d.is_valid_converter(variant_converter_), "object passed to modify is not in multi_index");
+        auto& itm = item_data::get_cache(obj);
+        CYBERWAY_INDEX_ASSERT(itm.is_valid_table(table_name()), "object passed to modify is not in multi_index");
 
         auto pk = primary_key_extractor_type()(obj);
 
@@ -770,7 +772,7 @@ public:
         auto size = fc::raw::pack_size(obj);
         fc::variant value;
         fc::to_variant(obj, value);
-        auto upk = controller_.update(get_table_request(), pk, std::move(value), size);
+        auto upk = controller_.update(itm, std::move(value), size);
         CYBERWAY_INDEX_ASSERT(upk == pk, "unable to update object");
     }
 
@@ -798,12 +800,11 @@ public:
     }
 
     void erase(const T& obj) const {
-        auto& d = item_data::get_cache(obj);
-        CYBERWAY_INDEX_ASSERT(d.is_valid_converter(variant_converter_), "object passed to delete is not in multi_index");
-        d.mark_deleted();
+        auto& itm = item_data::get_cache(obj);
+        CYBERWAY_INDEX_ASSERT(itm.is_valid_table(table_name()), "object passed to delete is not in multi_index");
 
         auto pk = primary_key_extractor_type()(obj);
-        auto dpk = controller_.remove(get_table_request(), pk);
+        auto dpk = controller_.remove(itm);
         CYBERWAY_INDEX_ASSERT(dpk == pk, "unable to delete object");
     }
 }; // struct multi_index

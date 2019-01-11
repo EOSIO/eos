@@ -17,13 +17,10 @@ namespace cyberway { namespace chaindb { namespace table_object {
         table_info      info_;       // <- for const reference
 
     public:
-        const field_name   pk_field; // <- for case when contract change its primary key
-
         object(const table_info& src)
         : table_def_(*src.table),    // <- one copy per X - it is not very critical
           pk_order_(*src.pk_order),  // <- one copy per X - it is not very critical
-          info_(src),
-          pk_field(src.pk_order->field) {
+          info_(src) {
             info_.table = &table_def_;
             info_.pk_order = &pk_order_;
         }
@@ -61,17 +58,16 @@ namespace cyberway { namespace chaindb { namespace table_object {
                     Object,
                     bmi::const_mem_fun<object, const account_name&, &object::code>,
                     bmi::const_mem_fun<object, const table_name&,   &object::table>,
-                    bmi::const_mem_fun<object, const account_name&, &object::scope>,
-                    bmi::member       <object, const field_name,    &object::pk_field>>>>>;
+                    bmi::const_mem_fun<object, const account_name&, &object::scope>>>>>;
 
     template <typename Object>
     typename index<Object>::iterator find(index<Object>& idx, const table_info& table) {
-        return idx.find(std::make_tuple(table.code, table.table->name, table.scope, table.pk_order->field));
+        return idx.find(std::make_tuple(table.code, table.table->name, table.scope));
     }
 
     template <typename Object>
     typename index<Object>::iterator find(const index<Object>& idx, const table_info& table) {
-        return idx.find(std::make_tuple(table.code, table.table->name, table.scope, table.pk_order->field));
+        return idx.find(std::make_tuple(table.code, table.table->name, table.scope));
     }
 
     template <typename Object, typename... Args>

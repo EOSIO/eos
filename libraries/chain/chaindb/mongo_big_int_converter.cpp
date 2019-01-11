@@ -19,23 +19,24 @@ namespace cyberway { namespace chaindb {
     const std::string mongo_big_int_converter::STRING_FIELD = "string";
 
     mongo_big_int_converter::mongo_big_int_converter(const bsoncxx::document::view& document) {
-        auto binary_it = document.find(BINARY_FIELD);
-        auto string_it = document.find(STRING_FIELD);
+        type_ = type::invalid;
 
-        if (binary_it == document.end() || string_it == document.end()) {
-            type_ = type::invalid;
-            return;
-        }
+        auto binary_itr = document.begin();
+        if (binary_itr->key().to_string() != BINARY_FIELD) return;
 
-        parse_binary(cyberway::chaindb::build_blob_content(binary_it->get_binary()));
+        auto string_itr = binary_itr;
+        ++string_itr;
+        if (string_itr->key().to_string() != STRING_FIELD) return;
+
+        auto end_itr = string_itr;
+        ++end_itr;
+
+        parse_binary(cyberway::chaindb::build_blob_content(binary_itr->get_binary()));
     }
 
     void mongo_big_int_converter::parse_binary(const std::vector<char> &bytes) {
+        if (bytes.size() != NUMBER_128_BLOB_SIZE) return;
 
-        if (bytes.size() != NUMBER_128_BLOB_SIZE) {
-            type_ = type::invalid;
-            return;
-        }
         auto it = bytes.begin();
 
         __int128 val = 0;
@@ -78,28 +79,28 @@ namespace cyberway { namespace chaindb {
         return type_ != type::invalid;
     }
 
-    fc::variant_object mongo_big_int_converter::as_object_encoded() const {
-        fc::mutable_variant_object object;
-
-        fc::string as_string;
-        fc::blob blob;
-
+    std::vector<char> mongo_big_int_converter::get_blob_value() const {
         switch (type_) {
             case type::int128:
-                as_string = boost::lexical_cast<std::string>(value_.int128_val);
-                blob.data = get_int128_blob();
-                break;
+                return get_int128_blob();
             case type::uint128:
-                as_string = boost::lexical_cast<std::string>(value_.uint128_val);
-                blob.data = get_uint128_blob();
+                return get_uint128_blob();
+            default:
                 break;
-            default: return {};
         }
+        return {};
+    }
 
-        object(BINARY_FIELD, blob);
-        object(STRING_FIELD, as_string);
-
-        return object;
+    std::string mongo_big_int_converter::get_string_value() const {
+        switch (type_) {
+            case type::int128:
+                return boost::lexical_cast<std::string>(value_.int128_val);
+            case type::uint128:
+                return boost::lexical_cast<std::string>(value_.uint128_val);
+            default:
+                break;
+        }
+        return std::string();
     }
 
     std::vector<char> mongo_big_int_converter::get_int128_blob() const {

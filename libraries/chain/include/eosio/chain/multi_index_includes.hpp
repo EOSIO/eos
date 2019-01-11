@@ -200,11 +200,11 @@ namespace cyberway { namespace chaindb {
        }
 
        explicit shared_multi_index_container(allocator_type& al, chaindb_controller& controller)
-       : impl(&al, controller), allocator(al)
+       : impl(al, controller), allocator(al)
        { }
 
    private:
-       allocator_type allocator;
+       allocator_type& allocator;
    };
 
 } } // namespace cyberway::chaindb

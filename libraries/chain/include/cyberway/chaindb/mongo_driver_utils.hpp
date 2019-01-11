@@ -33,13 +33,24 @@ namespace  fc {
 
 namespace cyberway { namespace chaindb {
 
+    struct table_info;
+    struct object_value;
+
+    using primary_key_t = uint64_t;
+
     namespace basic = bsoncxx::builder::basic;
     namespace types = bsoncxx::types;
 
-    fc::variant build_variant(const bsoncxx::document::view&);
+    std::string to_json(const bsoncxx::document::view&);
 
-    basic::sub_document& build_document(basic::sub_document&, const fc::variant_object&);
+    object_value build_object(const table_info&, const bsoncxx::document::view&);
+
+    basic::sub_document& build_document(basic::sub_document&, const object_value&);
     basic::sub_document& build_document(basic::sub_document&, const std::string&, const fc::variant&);
+    basic::sub_document& build_service_document(basic::sub_document&, const table_info&, const object_value&);
+    basic::sub_document& build_undo_service_document(basic::sub_document&, const table_info&, const object_value&);
+    basic::sub_document& build_find_pk_document(basic::sub_document&, const table_info&, const object_value&);
+    basic::sub_document& build_find_undo_pk_document(basic::sub_document&, const table_info&, const object_value&);
 
     types::b_decimal128 to_decimal128(uint64_t val);
 
@@ -52,5 +63,7 @@ namespace cyberway { namespace chaindb {
     std::vector<char> build_blob_content(const types::b_binary& src);
 
     types::b_date to_date(const fc::time_point& date);
+
+    primary_key_t get_pk_value(const table_info&, const bsoncxx::document::view&);
 
 }} // namespace cyberway::chaindb

@@ -73,11 +73,11 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
-    variant mongodb_driver::value(const table_info&, const primary_key_t) {
+    variant mongodb_driver::object_by_pk(const table_info&, const primary_key_t) {
         NOT_SUPPORTED;
     }
 
-    const variant& mongodb_driver::value(const cursor_info&) {
+    const variant& mongodb_driver::object_at_cursor(const cursor_info&) {
         NOT_SUPPORTED;
     }
 

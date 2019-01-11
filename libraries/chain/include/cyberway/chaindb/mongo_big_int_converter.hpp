@@ -15,7 +15,6 @@ BSONCXX_INLINE_NAMESPACE_END
 
 namespace fc {
     class variant;
-    class variant_object;
 } // namespace fc
 
 namespace cyberway { namespace chaindb {
@@ -44,7 +43,9 @@ namespace cyberway { namespace chaindb {
         bool is_valid_value() const;
 
         fc::variant get_raw_value() const;
-        fc::variant_object as_object_encoded() const;
+
+        std::vector<char> get_blob_value() const;
+        std::string get_string_value() const;
 
     private:
         std::vector<char> get_int128_blob() const;
