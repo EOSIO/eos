@@ -227,7 +227,7 @@ if [ ! -d $LLVM_ROOT ]; then
 	&& make install \
 	&& cd ../.. \
 	|| exit 1
-	printf "WASM compiler successfully installed @ ${LLVM_ROOT}\\n"
+	printf " - WASM compiler successfully installed @ ${LLVM_ROOT}\\n"
 else
 	printf " - WASM found @ ${LLVM_ROOT}.\\n"
 fi
