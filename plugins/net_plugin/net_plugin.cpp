@@ -165,7 +165,7 @@ namespace eosio {
       size_t count_open_sockets() const;
 
       template<typename VerifierFunc>
-      void send_all( const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify );
+      void send_transaction_to_all( const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify );
 
       void accepted_block(const block_state_ptr&);
       void transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>&);
@@ -1620,7 +1620,7 @@ namespace eosio {
       node_transaction_state nts = {id, trx_expiration, 0, buff};
       my_impl->local_txns.insert(std::move(nts));
 
-      my_impl->send_all( buff, [&id, &skips, trx_expiration](const connection_ptr& c) -> bool {
+      my_impl->send_transaction_to_all( buff, [&id, &skips, trx_expiration](const connection_ptr& c) -> bool {
          if( skips.find(c) != skips.end() || c->syncing ) {
             return false;
           }
@@ -1997,7 +1997,7 @@ namespace eosio {
                            }
                         }
                      }
-                     app().post(priority::medium, [this, conn]() { start_read_message(conn); });
+                     start_read_message(conn);
                   } else {
                      auto pname = conn->peer_name();
                      if (ec.value() != boost::asio::error::eof) {
@@ -2043,7 +2043,7 @@ namespace eosio {
 
 
    template<typename VerifierFunc>
-   void net_plugin_impl::send_all(const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify) {
+   void net_plugin_impl::send_transaction_to_all(const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify) {
       for( auto &c : connections) {
          if( c->current() && verify( c )) {
             c->enqueue_buffer( send_buffer, true, priority::low, no_reason );
