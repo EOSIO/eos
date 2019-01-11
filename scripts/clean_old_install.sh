@@ -20,7 +20,7 @@ if [ -d "./build" ]; then
       esac
    done
 fi
-if [ -d "/usr/local/include/eosio" ] || [ $1 == "force" ]; then # use force for running the script directly
+if [ -d "/usr/local/include/eosio" ] || [[ $1 == "force" ]]; then # use force for running the script directly
    printf "\nEOSIO installation already found...\n"
    printf "Do you wish to remove this install? (requires sudo)\n"
    select yn in "Yes" "No"; do
