@@ -473,7 +473,7 @@ struct controller_impl {
          {"code_version", "checksum256"},
          {"creation_date", "block_timestamp_type"},
          {"code", "string"},
-         {"abi", "string"}}
+         {"abi", "bytes"}}
       });
 
       abi.tables.emplace_back( eosio::chain::table_def {

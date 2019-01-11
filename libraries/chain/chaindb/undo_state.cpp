@@ -782,11 +782,12 @@ namespace cyberway { namespace chaindb {
             const auto pk = orig_obj.pk();
             auto& head = table.head();
 
+            auto ctx = journal_.create_ctx(table.info());
+
             if (head.new_values_.count(pk) || head.old_values_.count(pk)) {
+                journal_.write_data(ctx, write_operation::update(std::move(obj)));
                 return;
             }
-
-            auto ctx = journal_.create_ctx(table.info());
 
             orig_obj
                 .set_undo_pk(generate_undo_pk())

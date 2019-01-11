@@ -25,7 +25,7 @@ namespace eosio { namespace chain {
       block_timestamp_type creation_date;
 
       string               code;
-      string               abi;
+      bytes                abi;
 
       void set_abi( const eosio::chain::abi_def& a ) {
          abi.resize( fc::raw::pack_size( a ) );
