@@ -67,6 +67,7 @@ if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
 	exit 1
 fi
 
+# llvm-4.0 is installed into /usr/lib/llvm-4.0
 DEP_ARRAY=(llvm-4.0 mmake automake libbz2-dev libssl-dev \
 libgmp3-dev autotools-dev build-essential libicu-dev python2.7-dev python3-dev \
 autoconf libtool curl zlib1g-dev sudo)
@@ -238,6 +239,17 @@ fi
 
 
 printf "\\n"
+
+
+printf "Checking LLVM with WASM support...\\n"
+if [ ! -d $LLVM_ROOT ]; then
+	ln -s /usr/lib/llvm-4.0 $LLVM_ROOT \
+	|| exit 1
+	printf " - LLVM (WASM compiler) successfully linked from /usr/lib/llvm-4.0 to ${LLVM_ROOT}\\n"
+else
+	printf " - LLVM (WASM compiler) found @ ${LLVM_ROOT}.\\n"
+fi
+
 
 cd ..
 printf "\\n"
