@@ -220,10 +220,12 @@ namespace _detail {
                      dst.append(cyberway::chaindb::to_decimal128(item.as_uint64()));
                     break;
                 case variant::type_id::int128_type:
-                    dst.append([&](sub_document sub_doc){ build_document(sub_doc, cyberway::chaindb::mongo_big_int_converter(item.as_int128()).as_object_encoded()); });
+                    // TODO: add function for manual packing of int128/uint128
+                    // dst.append([&](sub_document sub_doc){ build_document(sub_doc, cyberway::chaindb::mongo_big_int_converter(item.as_int128()).as_object_encoded()); });
                     break;
                 case variant::type_id::uint128_type:
-                    dst.append([&](sub_document sub_doc){ build_document(sub_doc, cyberway::chaindb::mongo_big_int_converter(item.as_uint128()).as_object_encoded()); });
+                    // TODO: add function for manual packing of int128/uint128
+                    // dst.append([&](sub_document sub_doc){ build_document(sub_doc, cyberway::chaindb::mongo_big_int_converter(item.as_uint128()).as_object_encoded()); });
                     break;
                 case variant::type_id::double_type:
                     dst.append(b_double{item.as_double()});
@@ -263,10 +265,12 @@ namespace _detail {
                 dst.append(kvp(key, cyberway::chaindb::to_decimal128(src.as_uint64())));
                 break;
             case variant::type_id::int128_type:
-                dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, cyberway::chaindb::mongo_big_int_converter(src.as_int128()).as_object_encoded());} ));
+                // TODO: add function for manual packing of int128/uint128
+                // dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, cyberway::chaindb::mongo_big_int_converter(src.as_int128()).as_object_encoded());} ));
                 break;
             case variant::type_id::uint128_type:
-                dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, cyberway::chaindb::mongo_big_int_converter(src.as_uint128()).as_object_encoded());} ));
+                // TODO: add function for manual packing of int128/uint128
+                // dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, cyberway::chaindb::mongo_big_int_converter(src.as_uint128()).as_object_encoded());} ));
                 break;
             case variant::type_id::double_type:
                 dst.append(kvp(key, b_double{src.as_double()}));
