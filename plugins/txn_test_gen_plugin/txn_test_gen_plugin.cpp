@@ -91,6 +91,7 @@ struct txn_test_gen_plugin_impl {
 
    uint64_t _total_us = 0;
    uint64_t _txcount = 0;
+   time_point _start_time;
 
    int _remain = 0;
 
@@ -262,6 +263,7 @@ struct txn_test_gen_plugin_impl {
          throw fc::exception(fc::invalid_operation_exception_code);
 
       running = true;
+      _start_time = fc::time_point::now();
 
       controller& cc = app().get_plugin<chain_plugin>().chain();
       auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
@@ -368,10 +370,12 @@ struct txn_test_gen_plugin_impl {
          throw fc::exception(fc::invalid_operation_exception_code);
       timer.cancel();
       running = false;
+      auto elapsed_ms = (fc::time_point::now() - _start_time).count()/1000;
       ilog("Stopping transaction generation test");
 
       if (_txcount) {
-         ilog("${d} transactions executed, ${t}us / transaction", ("d", _txcount)("t", _total_us / (double)_txcount));
+         ilog("${d} transactions executed for ${s} ms (${tps} TPS), ${t} us / transaction",
+            ("d", _txcount) ("s", elapsed_ms) ("tps", (uint16_t)(((double)_txcount/elapsed_ms)*1000)) ("t", _total_us / (double)_txcount));
          _txcount = _total_us = 0;
       }
    }
