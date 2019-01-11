@@ -180,6 +180,7 @@ if [ $COUNT -gt 1 ]; then
 				printf "\\nInstalling Dependencies.\\n"
 				# Ignore cmake so we don't install a newer version.
 				# Build from source to use local cmake
+				# DON'T INSTALL llvm@4 WITH --force!
 				for DEP in $DEPS; do
 					if [[ $DEP =~ 'mongo-c' ]]; then FLAGS="--build-from-source"; else FLAGS=""; fi
 					if ! $BREW install $DEP $FLAGS; then
