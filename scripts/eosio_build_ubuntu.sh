@@ -141,7 +141,7 @@ fi
 
 printf "\\n"
 
-
+CMAKE=$(command -v cmake 2>/dev/null)
 printf "Checking CMAKE installation...\\n"
 if [ ! -d $SRC_LOCATION/cmake-$CMAKE_VERSION ]; then
 	printf "Installing CMAKE...\\n"
