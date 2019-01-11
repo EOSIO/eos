@@ -1,7 +1,7 @@
 FROM ubuntu:18.04
 
-LABEL author="xiaobo <peterwillcn@gmail.com>" maintainer="Xiaobo <peterwillcn@gmail.com> Huang-Ming Huang <huangh@objectcomputing.com>" version="0.1.1" \
-  description="This is a base image for building eosio/eos"
+LABEL author="xiaobo <peterwillcn@gmail.com>" maintainer="Xiaobo <peterwillcn@gmail.com> Huang-Ming Huang <huangh@objectcomputing.com> Winlin <pcguangtao@gmail.com>" version="0.1.2" \
+  description="This is a base image for building boscore/bos"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
   && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -56,3 +56,18 @@ RUN git clone --depth 1 -b releases/v3.3 https://github.com/mongodb/mongo-cxx-dr
     && make -j$(nproc) \
     && make install \
     && cd ../../ && rm -rf mongo-cxx-driver
+
+RUN git clone --depth 1 -b v0.11.6 https://github.com/boscore/librdkafka.git \
+    && cd librdkafka/ \
+    && cmake -H. -B_cmake_build \
+    && cmake -DRDKAFKA_BUILD_STATIC=1 --build _cmake_build \
+    && cd _cmake_build \
+    && make install \
+    && cd ../../ && rm -rf librdkafka
+
+RUN git clone --depth 1 -b 0.2 https://github.com/boscore/cppkafka.git \
+    && cd cppkafka/ \
+    && mkdir build && cd build \
+    && cmake -DCPPKAFKA_RDKAFKA_STATIC_LIB=1 -DCPPKAFKA_BUILD_SHARED=0 .. \
+    && make install \
+    && cd ../../ && rm -rf cppkafka

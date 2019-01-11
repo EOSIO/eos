@@ -372,8 +372,9 @@ namespace eosio {
 
 
    namespace history_apis {
+
       read_only::get_actions_result read_only::get_actions( const read_only::get_actions_params& params )const {
-         edump((params));
+        edump((params));
         auto& chain = history->chain_plug->chain();
         const auto& db = chain.db();
         const auto abi_serializer_max_time = history->chain_plug->get_abi_serializer_max_time();
@@ -564,6 +565,94 @@ namespace eosio {
          return result;
       }
 
+      fc::variant read_only::get_block_detail(const read_only::get_block_detail_params& params) const {
+        static char const TRANSACTIONS[] = "transactions";
+        static char const TRX[]          = "trx";
+        static char const ID[]           = "id";
+        static char const TRACES[]       = "traces";
+
+        auto & plugin   = history->chain_plug;
+        auto & chain    = plugin->chain();
+
+        auto get_object_value = [](fc::variant const& src, char const * key) -> fc::variant const & {
+          static auto const null_variant = fc::variant();
+
+          if ( !src.is_object() )
+            return null_variant;
+
+          auto       & obj = src.get_object();
+          auto const & itr = obj.find(key);
+          if ( itr == obj.end() )
+            return null_variant;
+
+          return itr->value();
+        };
+
+        auto get_tx_array = [&get_object_value](fc::variant const& block) -> fc::variants const & {
+          static auto const null_variants = fc::variants();
+
+          auto & value = get_object_value(block, TRANSACTIONS);
+          if ( !value.is_array() )
+            return null_variants;
+          
+          return value.get_array();
+        };
+
+        auto get_tx_id = [&get_object_value](fc::variant const& tx) -> optional<transaction_id_type> {
+          auto & id = get_object_value(get_object_value(tx, TRX), ID);
+          if ( !id.is_string() )
+            return fc::optional<transaction_id_type>();
+
+          return fc::optional<transaction_id_type>(id.get_string());
+        };
+
+        auto const & src = plugin->get_read_only_api().get_block(
+          chain_apis::read_only::get_block_params {
+            /*block_num_or_id = */ params.block_num_or_id
+          }
+        );
+
+        auto & rhs = get_tx_array(src);
+        if ( rhs.empty() )
+          return src;
+        
+        auto lhs = fc::variants();
+        lhs.reserve(rhs.size());
+
+        auto & database = chain.db();
+        auto & index    = database.get_index<action_history_index, by_trx_id>();
+        auto const abi_serializer_max_time = plugin->get_abi_serializer_max_time();
+        for ( auto const & tx : rhs ) {
+          auto maybe_id = get_tx_id(tx);
+          if ( maybe_id ) {
+            auto id     = *maybe_id;
+            auto itr    = index.lower_bound(boost::make_tuple(id));
+            auto traces = fc::variants();
+
+            while ( itr != index.end() && itr->trx_id == id ) {
+
+              fc::datastream<const char*> ds( itr->packed_action_trace.data(), itr->packed_action_trace.size() );
+              action_trace t;
+              fc::raw::unpack( ds, t );
+              traces.emplace_back( chain.to_variant_with_abi(t, abi_serializer_max_time) );
+
+              ++itr;
+            }
+
+            if ( !traces.empty() ) {
+              auto new_trx = fc::mutable_variant_object(tx[TRX])(TRACES, traces);
+              auto new_tx  = fc::mutable_variant_object(tx).set(TRX, move(new_trx));
+              lhs.emplace_back(move(new_tx));
+              continue;
+            }
+          }
+
+          lhs.emplace_back(tx);
+        }
+
+        return fc::mutable_variant_object(src).set(TRANSACTIONS, move(lhs));
+      }
+
       read_only::get_key_accounts_results read_only::get_key_accounts(const get_key_accounts_params& params) const {
          std::set<account_name> accounts;
          const auto& db = history->chain_plug->chain().db();
@@ -585,7 +674,5 @@ namespace eosio {
       }
 
    } /// history_apis
-
-
 
 } /// namespace eosio

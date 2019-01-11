@@ -44,6 +44,9 @@ void apply_context::exec_one( action_trace& trace )
    trace.act = act;
    trace.context_free = context_free;
 
+   const auto& p = control.get_dynamic_global_properties();
+   global_action_sequence = p.global_action_sequence + 1;
+
    const auto& cfg = control.get_global_properties().configuration;
    try {
       try {
@@ -79,6 +82,7 @@ void apply_context::exec_one( action_trace& trace )
 
    r.global_sequence  = next_global_sequence();
    r.recv_sequence    = next_recv_sequence( receiver );
+   global_action_sequence = 0;
 
    const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
    r.code_sequence    = account_sequence.code_sequence; // could be modified by action execution above
