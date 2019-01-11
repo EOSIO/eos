@@ -79,7 +79,7 @@ if [[ "${ENABLE_CODE_COVERAGE}" == true ]]; then
 	DEP_ARRAY+=(lcov)
 fi
 
-printf "\\nDo you wish to update repositories with apt-get update?\\n\\n"
+printf "Do you wish to update repositories with apt-get update?\\n\\n"
 select yn in "Yes" "No"; do
 	case $yn in
 		[Yy]* ) 
