@@ -526,8 +526,8 @@ chain::action create_newaccount(const name& creator, const name& newaccount, aut
       eosio::chain::newaccount{
          .creator      = creator,
          .name         = newaccount,
-         .owner        = !owner.which() ? authority(owner.get<public_key_type>()) : authority(owner.get<permission_level>()),
-         .active       = !active.which() ? authority(active.get<public_key_type>()) : authority(active.get<permission_level>())
+         .owner        = owner.contains<public_key_type>() ? authority(owner.get<public_key_type>()) : authority(owner.get<permission_level>()),
+         .active       = active.contains<public_key_type>() ? authority(active.get<public_key_type>()) : authority(active.get<permission_level>())
       }
    };
 }
