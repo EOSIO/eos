@@ -514,10 +514,9 @@ void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_trans
    }
 }
 
-chain::permission_level get_permission_level(const std::string& str) {
-   auto at_pos = str.find('@');
-   EOSC_ASSERT(at_pos != std::string::npos, "invalid permission level");
-   return permission_level { str.substr(0, at_pos), str.substr(at_pos + 1) };
+chain::permission_level to_permission_level(const std::string& s) {
+   auto at_pos = s.find('@');
+   return permission_level { s.substr(0, at_pos), s.substr(at_pos + 1) };
 }
 
 chain::action create_newaccount(const name& creator, const name& newaccount, auth_type owner, auth_type active) {
@@ -1016,22 +1015,28 @@ struct create_account_subcommand {
       add_standard_transaction_options(createAccount, "creator@active");
 
       createAccount->set_callback([this] {
-            if( !active_key_str.size() )
-               active_key_str = owner_key_str;
             auth_type owner, active;
-            try {
-               owner = public_key_type(owner_key_str);
-            } catch (...) {
+
+            if( owner_key_str.find('@') != string::npos ) {
                try {
-                  owner = get_permission_level(owner_key_str);
-               } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str));
+                  owner = to_permission_level(owner_key_str);
+               } EOS_RETHROW_EXCEPTIONS( explained_exception, "Invalid owner permission level: ${permission}", ("permission", owner_key_str) )
+            } else {
+               try {
+                  owner = public_key_type(owner_key_str);
+               } EOS_RETHROW_EXCEPTIONS( public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str) );
             }
-            try {
-               active = public_key_type(active_key_str);
-            } catch (...) {
+
+            if( !active_key_str.size() ) {
+               active = owner;
+            } else if( active_key_str.find('@') != string::npos ) {
                try {
-                  active = get_permission_level(active_key_str);
-               } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
+                  active = to_permission_level(active_key_str);
+               } EOS_RETHROW_EXCEPTIONS( explained_exception, "Invalid active permission level: ${permission}", ("permission", active_key_str) )
+            } else {
+               try {
+                  active = public_key_type(active_key_str);
+               } EOS_RETHROW_EXCEPTIONS( public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str) );
             }
 
             auto create = create_newaccount(creator, account_name, owner, active);
