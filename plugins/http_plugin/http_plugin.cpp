@@ -542,21 +542,18 @@ namespace eosio {
          }
       }
 
-#define CALL(api_name, call_name, http_response_code) \
-{std::string("/v1/" #api_name "/" #call_name), \
-   [&](string, string body, url_response_callback cb) mutable { \
-          try { \
-             if (body.empty()) body = "{}"; \
-             auto result = (*this).call_name(); \
-             cb(http_response_code, fc::json::to_string(result)); \
-          } catch (...) { \
-             http_plugin::handle_exception(#api_name, #call_name, body, cb); \
-          } \
-       }}
-
-      add_api({
-         CALL(node, get_supported_apis, 200)
-      });
+      add_api({{
+         std::string("/v1/node/get_supported_apis"),
+         [&](string, string body, url_response_callback cb) mutable {
+            try {
+               if (body.empty()) body = "{}";
+               auto result = (*this).get_supported_apis();
+               cb(200, fc::json::to_string(result));
+            } catch (...) {
+               handle_exception("node", "get_supported_apis", body, cb);
+            }
+         }
+      }});
    }
 
    void http_plugin::plugin_shutdown() {
