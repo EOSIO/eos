@@ -597,6 +597,37 @@ public:
  constexpr const char dec[]       = "dec";
  constexpr const char hex[]       = "hex";
 
+ template<typename Word>
+ static void set_from_word_sequence(const Word* arr_begin, const Word* arr_end, chain::key256_t& key) {
+    using word_t = uint128_t;
+
+    auto itr = key.begin();
+    word_t temp_word = 0;
+    const size_t sub_word_shift = 8 * sizeof(Word);
+    const size_t num_sub_words = sizeof(word_t) / sizeof(Word);
+    auto sub_words_left = num_sub_words;
+    for( auto w_itr = arr_begin; w_itr != arr_end; ++w_itr ) {
+       if( sub_words_left > 1 ) {
+           temp_word |= static_cast<word_t>(*w_itr);
+           temp_word <<= sub_word_shift;
+           --sub_words_left;
+           continue;
+       }
+
+       FC_ASSERT( sub_words_left == 1, "unexpected error in keytype conversion" );
+       temp_word |= static_cast<word_t>(*w_itr);
+       sub_words_left = num_sub_words;
+
+       *itr = temp_word;
+       temp_word = 0;
+       ++itr;
+    }
+    if( sub_words_left != num_sub_words ) {
+       if( sub_words_left > 1 )
+          temp_word <<= 8 * (sub_words_left-1);
+       *itr = temp_word;
+    }
+ }
 
  template<const char*key_type , const char *encoding=chain_apis::dec>
  struct keytype_converter ;
@@ -608,8 +639,8 @@ public:
      static auto function() {
         return [](const input_type& v) {
             chain::key256_t k;
-            k[0] = ((uint128_t *)&v._hash)[0]; //0-127
-            k[1] = ((uint128_t *)&v._hash)[1]; //127-256
+            auto a = reinterpret_cast<const uint8_t*>(v._hash);
+            set_from_word_sequence(a, a + sizeof(v._hash), k);
             return k;
         };
      }
@@ -623,8 +654,8 @@ public:
      static auto function() {
         return [](const input_type& v) {
             chain::key256_t k;
-            memset(k.data(), 0, sizeof(k));
-            memcpy(k.data(), v._hash, sizeof(v._hash));
+            auto a = reinterpret_cast<const uint8_t*>(v._hash);
+            set_from_word_sequence(a, a + sizeof(v._hash), k);
             return k;
         };
      }
@@ -637,8 +668,8 @@ public:
      static auto function() {
         return [](const input_type v) {
             chain::key256_t k;
-            k[0] = ((uint128_t *)&v)[0]; //0-127
-            k[1] = ((uint128_t *)&v)[1]; //127-256
+            k[0] = ((uint128_t *)&v)[1]; // 128-255
+            k[1] = ((uint128_t *)&v)[0]; // 0-127
             return k;
         };
      }
