@@ -632,7 +632,8 @@ namespace eosio {
       get_supported_apis_result result;
 
       for (const auto& handler : my->url_handlers) {
-         result.apis.emplace_back(handler.first);
+         if (handler.first != "/v1/node/get_supported_apis")
+            result.apis.emplace_back(handler.first);
       }
 
       return result;
