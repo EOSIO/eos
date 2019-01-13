@@ -952,13 +952,8 @@ struct register_producer_subcommand {
       register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
       register_producer->add_option("url", url, localized("url where info about producer can be found"), true);
-<<<<<<< HEAD
-      register_producer->add_option("location", loc, localized("relative location for purpose of nearest neighbor scheduling"), true);
-      add_standard_transaction_options(register_producer, "account@active");
-=======
       register_producer->add_option("location", loc, localized("time zone from -11 to 12 "))->required();
-      add_standard_transaction_options(register_producer);
->>>>>>> develop
+      add_standard_transaction_options(register_producer, "account@active");
 
 
       register_producer->set_callback([this] {

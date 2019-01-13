@@ -1,7 +1,7 @@
 # BOSCore - Born for DApps. Born for Usability.
 
-## BOSCore Version: v1.0.3
-### Basic EOSIO Version: v1.4.4
+## BOSCore Version: v2.0.1
+### Basic EOSIO Version: v1.5.3-patched
 
 # Background
 The emergence of EOS has brought new imagination to the blockchain. In just a few months since the main network was launched, the version has undergone dozens of upgrades, not only the stability has been greatly improved, but also the new functions have been gradually realized. The node team is also actively involved in building the EOSIO ecosystem. What is even more exciting is that EOS has attracted more and more development teams. There are already hundreds of DApp running on the EOS main network. The transaction volume and circulation market value far exceed Ethereum, and the space for development is growing broader.
@@ -20,18 +20,19 @@ As BOS continues to develop, developer rewards will be appropriately adjusted to
 
 ## Links
 1. [Website](https://boscore.io)
-2. [Developer Telegram Group](https://t.me/BOSCoreDev)
-3. [WhitePaper](https://github.com/boscore/Documentation/blob/master/BOSCoreTechnicalWhitePaper.md)
-4. [白皮书](https://github.com/boscore/Documentation/blob/master/zh-CN/BOSCoreTechnicalWhitePaper.md)
+2. [Developer Telegram Group](https://t.me/BOSDevelopers)
+3. [Community Telegram Group](https://t.me/boscorecommunity)
+4. [WhitePaper](https://github.com/boscore/Documentation/blob/master/BOSCoreTechnicalWhitePaper.md)
+5. [白皮书](https://github.com/boscore/Documentation/blob/master/zh-CN/BOSCoreTechnicalWhitePaper.md)
 
 ## Start
 1. Build from code : `bash ./eosio_build.sh -s BOS`
 2. Docker Style，check [Docker](./Docker/README.md)
 
+
 BOSCore bases on EOSIO, so you can also referer:
 
 [Getting Started](https://developers.eos.io/eosio-nodeos/docs/overview-1)  
-
 
 [EOSIO Developer Portal](https://developers.eos.io).
 
