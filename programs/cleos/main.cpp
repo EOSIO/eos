@@ -557,7 +557,7 @@ chain::action create_delegate(const name& from, const name& receiver, const asse
                         config::system_account_name, N(delegatebw), act_payload);
 }
 
-fc::variant regproducer_variant(const account_name& producer, const public_key_type& key, const string& url, uint16_t location) {
+fc::variant regproducer_variant(const account_name& producer, const public_key_type& key, const string& url, int16_t location) {
    FC_ASSERT(location>-12&&location<=12,"time zone setting is not legal");
    location=location>=0?location:24+location;
    return fc::mutable_variant_object()
@@ -944,7 +944,7 @@ struct register_producer_subcommand {
    string producer_str;
    string producer_key_str;
    string url;
-   uint16_t loc = 0;
+   int16_t loc = 0;
 
    register_producer_subcommand(CLI::App* actionRoot) {
       auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
