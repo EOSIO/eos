@@ -1027,7 +1027,7 @@ struct create_account_subcommand {
                } EOS_RETHROW_EXCEPTIONS( public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str) );
             }
 
-            if( !active_key_str.size() ) {
+            if( active_key_str.empty() ) {
                active = owner;
             } else if( active_key_str.find('@') != string::npos ) {
                try {
