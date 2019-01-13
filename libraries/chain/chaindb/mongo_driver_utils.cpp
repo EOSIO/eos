@@ -457,7 +457,8 @@ namespace cyberway { namespace chaindb {
                     dst.append([&](sub_document sub_doc){ build_document(sub_doc, item.get_object()); });
                     break;
                 case variant::type_id::blob_type:
-                    dst.append(build_binary(item.as_blob()));
+                    // dst.append(build_binary(item.as_blob()));
+                    dst.append(item.as_string());
                     break;
             }
         }
@@ -504,7 +505,8 @@ namespace cyberway { namespace chaindb {
                 dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, src.get_object()); }));
                 break;
             case variant::type_id::blob_type:
-                dst.append(kvp(key, build_binary(src.as_blob())));
+                // dst.append(kvp(key, build_binary(src.as_blob())));
+                dst.append(kvp(key, src.as_string()));
                 break;
         }
         return dst;
