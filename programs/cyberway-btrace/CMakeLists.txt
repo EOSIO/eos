@@ -4,6 +4,10 @@ if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
 
+IF(APPLE)
+  ADD_COMPILE_FLAG("-D_GNU_SOURCE")
+endif()
+
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../.git)
   find_package(Git)
   if(GIT_FOUND)
