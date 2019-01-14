@@ -152,4 +152,4 @@ if(ENABLE_COVERAGE_TESTING)
     )
 endif()
 
-add_subdirectory(chaindb)
+# add_subdirectory(chaindb)

@@ -703,13 +703,14 @@ namespace cyberway { namespace chaindb {
             }
 
             void start_table(const table_info& table) {
+                auto old_table = table_;
+                table_ = &table;
                 if (BOOST_LIKELY(
-                        table_ != nullptr &&
-                        table.code == table_->code &&
-                        table.table->name == table_->table->name))
+                        old_table != nullptr &&
+                        table.code == old_table->code &&
+                        table.table->name == old_table->table->name))
                     return;
 
-                table_ = &table;
                 data_bulk_list_.emplace_back(create_bulk_info(impl_.get_db_table(table)));
             }
 

@@ -135,7 +135,10 @@ namespace cyberway { namespace chaindb {
     void journal::write_data(write_ctx& ctx, write_operation data) { try {
         auto& info = ctx.info(data.object.pk());
         _detail::write(std::move(data), info.data);
-    } FC_LOG_AND_RETHROW() }
+    } FC_CAPTURE_LOG_AND_RETHROW(
+        (get_full_table_name(data.object.service))
+        (get_scope_name(data.object.service))(data.object.service.pk))
+    }
 
     void journal::write_data(const table_info& table, write_operation data) {
         auto ctx = create_ctx(table);
@@ -160,7 +163,10 @@ namespace cyberway { namespace chaindb {
         } else {
             _detail::write(std::move(undo), itr->second);
         }
-    } FC_LOG_AND_RETHROW() }
+    } FC_CAPTURE_LOG_AND_RETHROW(
+        (get_full_table_name(undo.object.service))
+        (get_scope_name(undo.object.service))(undo.object.service.pk))
+    }
 
     void journal::write(write_ctx& ctx, write_operation data, write_operation undo) {
         write_data(ctx, std::move(data));

@@ -84,6 +84,7 @@ Options:
 #include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
+#include <fc/stacktrace.hpp>
 #include <eosio/utilities/key_conversion.hpp>
 
 #include <eosio/chain/name.hpp>
@@ -1792,6 +1793,9 @@ int main( int argc, char** argv ) {
    textdomain(locale_domain);
    context = eosio::client::http::create_http_context();
    wallet_url = default_wallet_url;
+
+   auto root = fc::app_path();
+   fc::install_btrace_signal_handler(root / "eosio/cleos/backtrace.dmp");
 
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();

@@ -83,6 +83,8 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::init(bool push_genesis, db_read_mode read_mode) {
+      fc::exception::enable_detailed_strace();
+
       cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
       cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
       cfg.state_size = 1024*1024*8;
@@ -111,6 +113,8 @@ namespace eosio { namespace testing {
 
 
    void base_tester::init(controller::config config, const snapshot_reader_ptr& snapshot) {
+      fc::exception::enable_detailed_strace();
+
       cfg = config;
       open(snapshot);
    }
