@@ -13,16 +13,13 @@ fi
 
 NAME="${PROJECT}_${VERSION_NO_SUFFIX}-${RELEASE}_amd64"
 
-DEPS_STR=""
-for dep in "${DEPS[@]}"; do
-   DEPS_STR="${DEPS_STR} Depends: ${dep}"
-done
 mkdir -p ${PROJECT}/DEBIAN
+chmod 0755 ${PROJECT}/DEBIAN
 echo "Package: ${PROJECT} 
 Version: ${VERSION_NO_SUFFIX}-${RELEASE}
 Section: devel
 Priority: optional
-Depends: libbz2-dev (>= 1.0), libssl-dev (>= 1.0), libgmp3-dev, build-essential, libicu-dev, zlib1g-dev
+Depends: libbz2-dev (>= 1.0), libssl-dev (>= 1.0), libgmp3-dev, build-essential, libicu-dev, zlib1g-dev, libtinfo5
 Architecture: amd64
 Homepage: ${URL} 
 Maintainer: ${EMAIL} 
