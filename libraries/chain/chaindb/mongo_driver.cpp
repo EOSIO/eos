@@ -280,7 +280,7 @@ namespace cyberway { namespace chaindb {
             lazy_open();
             if (!object_.value.is_null()) return object_;
 
-            if (is_end()) {
+            if (end_primary_key == get_pk_value()) {
                 object_.value = variant_object();
                 object_.service.pk = pk;
             } else {
@@ -308,10 +308,6 @@ namespace cyberway { namespace chaindb {
 
         std::unique_ptr<mongocxx::cursor> source_;
         object_value object_;
-
-        bool is_end() const {
-            return end_primary_key == pk;
-        }
 
         void change_direction(const cmp_info& find_cmp) {
             find_cmp_ = &find_cmp;
@@ -374,8 +370,8 @@ namespace cyberway { namespace chaindb {
         }
 
         void lazy_open() {
-            if (unset_primary_key != pk) return;
             if (source_) return;
+            if (end_primary_key == pk) return;
 
             reset();
 

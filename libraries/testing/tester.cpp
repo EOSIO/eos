@@ -116,6 +116,7 @@ namespace eosio { namespace testing {
       fc::exception::enable_detailed_strace();
 
       cfg = config;
+      cfg.chaindb_address = getenv("MONGO_URL") ?: "mongodb://127.0.0.1:27017";
       open(snapshot);
    }
 
@@ -737,25 +738,18 @@ namespace eosio { namespace testing {
 
    vector<char> base_tester::get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act ) const {
       vector<char> data;
-      const auto& db = control->db();
-      const auto* t_id = db.find<chain::table_id_object, chain::by_code_scope_table>( boost::make_tuple( code, scope, table ) );
-      if ( !t_id ) {
-         return data;
-      }
-      //FC_ASSERT( t_id != 0, "object not found" );
 
-      const auto& idx = db.get_index<chain::key_value_index, chain::by_scope_primary>();
+      auto& db = control->chaindb();
+      auto find = db.opt_find_by_pk({code, scope, table}, act.value);
+      if (find.pk == cyberway::chaindb::end_primary_key) return data;
+      std::cout << find.pk << std::endl;
+      std::cout << find.cursor << std::endl;
 
-      auto itr = idx.lower_bound( boost::make_tuple( t_id->id, act ) );
-      if ( itr == idx.end() || itr->t_id != t_id->id || act.value != itr->primary_key ) {
-         return data;
-      }
-
-      data.resize( itr->value.size() );
-      memcpy( data.data(), itr->value.data(), data.size() );
+      auto size = db.datasize({code, find.cursor});
+      data.resize(size);
+      db.data({code, find.cursor}, data.data(), size);
       return data;
    }
-
 
    vector<uint8_t> base_tester::to_uint8_vector(const string& s) {
       vector<uint8_t> v(s.size());
