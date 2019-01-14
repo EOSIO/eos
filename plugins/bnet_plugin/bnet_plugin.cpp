@@ -1002,7 +1002,7 @@ namespace eosio {
            auto id = b->id();
            mark_block_status( id, true, true );
 
-           app().get_channel<incoming::channels::block>().publish(b);
+           app().get_channel<incoming::channels::block>().publish(priority::high, b);
 
            mark_block_transactions_known_by_peer( b );
         }
@@ -1553,6 +1553,6 @@ namespace eosio {
 
       auto ptr = std::make_shared<transaction_metadata>(p);
 
-      app().get_channel<incoming::channels::transaction>().publish(ptr);
+      app().get_channel<incoming::channels::transaction>().publish(priority::low, ptr);
    }
 } /// namespace eosio
