@@ -47,7 +47,7 @@ case "${OS_NAME}" in
 		if [ $OS_MAJ -gt 16 ]; then
 			export MONGODB_VERSION=4.1.1
 		else
-			export MONGODB_VERSION=3.6.3
+			export MONGODB_VERSION=$MONGODB_VERSION
 		fi
 		# We have to re-set this with the new version
 		export MONGODB_ROOT=${OPT_LOCATION}/mongodb-${MONGODB_VERSION}
