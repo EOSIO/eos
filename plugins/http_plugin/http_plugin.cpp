@@ -282,10 +282,16 @@ namespace eosio {
                auto handler_itr = url_handlers.find( resource );
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
-                  handler_itr->second( resource, body, [con]( auto code, auto&& body ) {
-                     con->set_body( std::move( body ));
-                     con->set_status( websocketpp::http::status_code::value( code ));
-                     con->send_http_response();
+                  app().post( appbase::priority::low, [handler_itr, resource, body, con]() {
+                     try {
+                        handler_itr->second( resource, body, [con]( auto code, auto&& body ) {
+                           con->set_body( std::move( body ) );
+                           con->set_status( websocketpp::http::status_code::value( code ) );
+                           con->send_http_response();
+                        } );
+                     } catch( ... ) {
+                        handle_exception<T>( con );
+                     }
                   } );
 
                } else {
@@ -554,7 +560,7 @@ namespace eosio {
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {
       ilog( "add api url: ${c}", ("c",url) );
-      app().get_io_service().post([=](){
+      app().post(priority::low, [=](){
         my->url_handlers.insert(std::make_pair(url,handler));
       });
    }
