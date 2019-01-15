@@ -182,7 +182,6 @@ if [ $COUNT -gt 1 ]; then
 				# Build from source to use local cmake
 				# DON'T INSTALL llvm@4 WITH --force!
 				for DEP in $DEPS; do
-					if [[ $DEP =~ 'mongo-c' ]]; then FLAGS="--build-from-source"; else FLAGS=""; fi
 					if ! $BREW install $DEP $FLAGS; then
 						printf "Homebrew exited with the above errors.\\n"
 						printf "Exiting now.\\n\\n"
@@ -250,26 +249,6 @@ if [ ! -d $LLVM_ROOT ]; then
 	printf " - LLVM (WASM compiler) successfully linked from /usr/local/opt/llvm@4 to ${LLVM_ROOT}\\n"
 else
 	printf " - LLVM (WASM compiler) found @ ${LLVM_ROOT}.\\n"
-fi
-
-
-printf "\\n"
-
-
-printf "Checking Doxygen installation...\\n"
-if [ ! -d $DOXYGEN_ROOT ]; then
-	printf "Installing Doxygen...\\n"
-	curl -L https://github.com/doxygen/doxygen/archive/Release_$DOXYGEN_VERSION.tar.gz -o doxygen_$DOXYGEN_VERSION.tar.gz \
-	&& tar -xzvf DOXYGEN_$DOXYGEN_VERSION.tar.gz \
-	&& mkdir build && cd build \
-	&& cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$HOME .. \
-	&& make -j"${JOBS}" \
-	&& make install \
-	&& cd ../.. \
-	|| exit 1
-	printf " - Doxygen successfully installed @ ${DOXYGEN_ROOT}.\\n"
-else
-	printf " - Doxygen found with correct version @ ${DOXYGEN_ROOT}.\\n"
 fi
 
 cd ..

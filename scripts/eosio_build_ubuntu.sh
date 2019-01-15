@@ -66,7 +66,7 @@ if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
 fi
 
 # llvm-4.0 is installed into /usr/lib/llvm-4.0
-DEP_ARRAY=(llvm-4.0 clang-4.0 libclang-4.0-dev make automake libbz2-dev libssl-dev \
+DEP_ARRAY=(llvm-4.0 clang-4.0 libclang-4.0-dev make automake libbz2-dev libssl-dev doxygen graphviz \
 libgmp3-dev autotools-dev build-essential libicu-dev python2.7-dev python3-dev \
 autoconf libtool curl zlib1g-dev sudo)
 COUNT=1
@@ -247,26 +247,6 @@ if [ ! -d $LLVM_ROOT ]; then
 	printf " - LLVM (WASM compiler) successfully linked from /usr/lib/llvm-4.0 to ${LLVM_ROOT}\\n"
 else
 	printf " - LLVM (WASM compiler) found @ ${LLVM_ROOT}.\\n"
-fi
-
-
-printf "\\n"
-
-
-printf "Checking Doxygen installation...\\n"
-if [ ! -d $DOXYGEN_ROOT ]; then
-	printf "Installing Doxygen...\\n"
-	curl -L https://github.com/doxygen/doxygen/archive/Release_$DOXYGEN_VERSION.tar.gz -o doxygen_$DOXYGEN_VERSION.tar.gz \
-	&& tar -xzvf DOXYGEN_$DOXYGEN_VERSION.tar.gz \
-	&& mkdir build && cd build \
-	&& cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$HOME .. \
-	&& make -j"${JOBS}" \
-	&& make install \
-	&& cd ../.. \
-	|| exit 1
-	printf " - Doxygen successfully installed @ ${DOXYGEN_ROOT}.\\n"
-else
-	printf " - Doxygen found with correct version @ ${DOXYGEN_ROOT}.\\n"
 fi
 
 cd ..
