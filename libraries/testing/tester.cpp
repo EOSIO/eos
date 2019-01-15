@@ -742,8 +742,6 @@ namespace eosio { namespace testing {
       auto& db = control->chaindb();
       auto find = db.opt_find_by_pk({code, scope, table}, act.value);
       if (find.pk == cyberway::chaindb::end_primary_key) return data;
-      std::cout << find.pk << std::endl;
-      std::cout << find.cursor << std::endl;
 
       auto size = db.datasize({code, find.cursor});
       data.resize(size);
