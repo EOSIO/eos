@@ -258,10 +258,7 @@ fi
 
 # Cleanup old installation
 (. ${CURRENT_DIR}/scripts/clean_old_install.sh)
-if [ $? -ne 0 ]; then
-   printf "\\nError occurred while trying to remove old installation!\\n\\n"
-   exit -1
-fi
+if [ $? -ne 0 ]; then exit -1; fi # Stop if exit from script is not 0
 
 cd $SRC_LOCATION
 . "$FILE" # Execute OS specific build file
