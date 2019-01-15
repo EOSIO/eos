@@ -18,6 +18,9 @@ if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [[ $1 =~ for
                rm -f $HOME/opt/boost
                rm -rf $HOME/src/boost_*
                rm -rf $HOME/src/cmake-*
+               rm -rf $HOME/share/cmake-*
+               rm -rf $HOME/share/aclocal/cmake*
+               rm -rf $HOME/doc/cmake*
                rm -f $HOME/bin/nodeos $HOME/bin/keosd $HOME/bin/cleos $HOME/bin/ctest $HOME/bin/*cmake* $HOME/bin/cpack
             fi
 
