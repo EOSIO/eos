@@ -564,7 +564,7 @@ fc::variant regproducer_variant(const account_name& producer, const public_key_t
             ("producer", producer)
             ("producer_key", key)
             ("url", url)
-            ("location", _location)
+            ("location", location)
             ;
 }
 
