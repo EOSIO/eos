@@ -13,7 +13,7 @@ DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
 DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
 
 DEP_ARRAY=( 
-	sudo procps which gcc72 gcc72-c++ autoconf automake libtool make \
+	sudo procps which gcc72 gcc72-c++ autoconf automake libtool make doxygen.x86_64 graphviz.x86_64 \
     bzip2 bzip2-devel openssl-devel gmp gmp-devel libstdc++72 python27 python27-devel python34-devel \
     libedit-devel ncurses-devel swig wget file
 )
@@ -231,26 +231,6 @@ if [ ! -d $LLVM_ROOT ]; then
 	printf " - WASM compiler successfully installed @ ${LLVM_ROOT}\\n"
 else
 	printf " - WASM found @ ${LLVM_ROOT}.\\n"
-fi
-
-
-printf "\\n"
-
-
-printf "Checking Doxygen installation...\\n"
-if [ ! -d $DOXYGEN_ROOT ]; then
-	printf "Installing Doxygen...\\n"
-	curl -L https://github.com/doxygen/doxygen/archive/Release_$DOXYGEN_VERSION.tar.gz -o doxygen_$DOXYGEN_VERSION.tar.gz \
-	&& tar -xzvf DOXYGEN_$DOXYGEN_VERSION.tar.gz \
-	&& mkdir build && cd build \
-	&& cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$HOME .. \
-	&& make -j"${JOBS}" \
-	&& make install \
-	&& cd ../.. \
-	|| exit 1
-	printf " - Doxygen successfully installed @ ${DOXYGEN_ROOT}.\\n"
-else
-	printf " - Doxygen found with correct version @ ${DOXYGEN_ROOT}.\\n"
 fi
 
 cd ..

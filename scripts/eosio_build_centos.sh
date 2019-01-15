@@ -128,7 +128,7 @@ printf "Centos devtoolset-7 successfully enabled.\\n"
 
 printf "\\n"
 
-DEP_ARRAY=( git autoconf automake libtool make bzip2 \
+DEP_ARRAY=( git autoconf automake libtool make bzip2 doxygen graphviz-devel.x86_64 \
 				bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 \
 				ocaml.x86_64 doxygen libicu-devel.x86_64 python33.x86_64 python-devel.x86_64 \
 				gettext-devel.x86_64 file sudo )
@@ -261,9 +261,9 @@ fi
 printf "Checking MongoDB C++ driver installation...\\n"
 if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C++ driver...\\n"
-	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-$MONGO_CXX_DRIVER_VERSION.tar.gz \
-	&& tar -xzvf mongo-cxx-driver-${MONGO_CXX_DRIVER_VERSION}.tar.gz \
-	&& cd mongo-cxx-driver-$MONGO_CXX_DRIVER_VERSION/build \
+	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+	&& tar -xzvf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
+	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
 	&& cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
 	&& make -j"${JOBS}" VERBOSE=1 \
 	&& make install \
@@ -293,26 +293,6 @@ if [ ! -d $LLVM_ROOT ]; then
 	printf " - WASM compiler successfully installed @ ${LLVM_ROOT}\\n"
 else
 	printf " - WASM found @ ${LLVM_ROOT}.\\n"
-fi
-
-
-printf "\\n"
-
-
-printf "Checking Doxygen installation...\\n"
-if [ ! -d $DOXYGEN_ROOT ]; then
-	printf "Installing Doxygen...\\n"
-	curl -L https://github.com/doxygen/doxygen/archive/Release_$DOXYGEN_VERSION.tar.gz -o doxygen_$DOXYGEN_VERSION.tar.gz \
-	&& tar -xzvf DOXYGEN_$DOXYGEN_VERSION.tar.gz \
-	&& mkdir build && cd build \
-	&& cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$HOME .. \
-	&& make -j"${JOBS}" \
-	&& make install \
-	&& cd ../.. \
-	|| exit 1
-	printf " - Doxygen successfully installed @ ${DOXYGEN_ROOT}.\\n"
-else
-	printf " - Doxygen found with correct version @ ${DOXYGEN_ROOT}.\\n"
 fi
 
 cd ..
