@@ -528,6 +528,19 @@ namespace eosio {
             throw;
          }
       }
+
+      add_api({{
+         std::string("/v1/node/get_supported_apis"),
+         [&](string, string body, url_response_callback cb) mutable {
+            try {
+               if (body.empty()) body = "{}";
+               auto result = (*this).get_supported_apis();
+               cb(200, fc::json::to_string(result));
+            } catch (...) {
+               handle_exception("node", "get_supported_apis", body, cb);
+            }
+         }
+      }});
    }
 
    void http_plugin::plugin_shutdown() {
@@ -602,4 +615,14 @@ namespace eosio {
       return verbose_http_errors;
    }
 
+   http_plugin::get_supported_apis_result http_plugin::get_supported_apis()const {
+      get_supported_apis_result result;
+
+      for (const auto& handler : my->url_handlers) {
+         if (handler.first != "/v1/node/get_supported_apis")
+            result.apis.emplace_back(handler.first);
+      }
+
+      return result;
+   }
 }
