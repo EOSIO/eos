@@ -1772,6 +1772,51 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    return result;
 }
 
+
+read_only::resolve_names_results read_only::resolve_names(const resolve_names_params& p) const {
+    resolve_names_results r;
+
+    auto set_domain = [&](const auto& n, resolve_names_item& item) {
+        validate_domain_name(n);
+        item.resolved_domain = db.get_domain(n).linked_to;
+    };
+
+    // don't limit names count, but prevent from running too long
+    auto timeout = fc::time_point::now() + fc::microseconds(1000 * 10); // 10ms max time
+
+    for (const auto& n: p) { try {
+        resolve_names_item item; // TODO: restrict doubles or cache names
+        auto at = n.find('@');
+        if (at == string::npos) {
+            set_domain(n, item);
+        } else {
+            auto tail_pos = at + 1;
+            auto at2 = n.find('@', tail_pos);
+            bool at_acc = at2 == tail_pos;
+            if (at_acc) {
+                tail_pos++;
+                at2 = n.find('@', tail_pos);
+            }
+            EOS_ASSERT(at2 == string::npos, username_type_exception, "Unknown name format: excess `@` symbol");
+            auto username = n.substr(0, at);
+            validate_username(username);
+
+            auto tail = n.substr(tail_pos, n.length() - tail_pos);
+            if (!at_acc) {
+                set_domain(tail, item);
+            }
+            auto scope = at_acc ? name(tail) : *item.resolved_domain;
+            item.resolved_username = db.get_username(scope, username).owner;
+        }
+        r.push_back(item);
+        if (fc::time_point::now() > timeout) {
+            break;   // early exit if takes too much time
+        }
+    } EOS_RETHROW_EXCEPTIONS(domain_name_type_exception, "Can't resolve name: ${n}", ("n", n)) }   // TODO: use same exception as thrown
+    return r;
+}
+
+
 static variant action_abi_to_variant( const abi_def& abi, type_name action_type ) {
    variant v;
    auto it = std::find_if(abi.structs.begin(), abi.structs.end(), [&](auto& x){return x.name == action_type;});

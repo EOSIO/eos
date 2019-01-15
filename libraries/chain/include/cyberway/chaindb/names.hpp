@@ -5,22 +5,47 @@
 
 namespace cyberway { namespace chaindb {
 
-    const string& get_system_code_name();
-    const string& get_unknown_name();
-    const string& get_scope_field_name();
-    const string& get_payer_field_name();
-    const string& get_size_field_name();
+    struct names {
+        static const string unknown;
+
+        static const string system_code;
+
+        static const string undo_table;
+
+        static const string service_field;
+        static const string code_field;
+        static const string table_field;
+        static const string hash_field;
+        static const string scope_field;
+        static const string pk_field;
+
+        static const string next_pk_field;
+        static const string undo_pk_field;
+        static const string undo_rec_field;
+        static const string revision_field;
+
+        static const string payer_field;
+        static const string size_field;
+
+        static const string scope_path;
+        static const string undo_pk_path;
+        static const string revision_path;
+
+        static const string asc_order;
+        static const string desc_order;
+    }; // struct names
+
 
     ///----
 
     inline string get_code_name(const account_name& code) {
         if (!code.empty()) {
             string str;
-            str.append(get_system_code_name()).append(code.to_string());
+            str.append(names::system_code).append(code.to_string());
             std::replace( str.begin(), str.end(), '.', '-');
             return str;
         }
-        return get_system_code_name();
+        return names::system_code;
     }
 
     inline string get_code_name(const account_name_t code) {
@@ -55,7 +80,7 @@ namespace cyberway { namespace chaindb {
         if (!table.empty()) {
             return table.to_string();
         }
-        return get_unknown_name();
+        return names::unknown;
     }
 
     inline string get_table_name(const table_name_t table) {
@@ -70,7 +95,7 @@ namespace cyberway { namespace chaindb {
         if (table) {
             return get_table_name(*table);
         }
-        return get_unknown_name();
+        return names::unknown;
     }
 
     template <typename Info>
@@ -89,7 +114,7 @@ namespace cyberway { namespace chaindb {
         if (!index.empty()) {
             return index.to_string();
         }
-        return get_unknown_name();
+        return names::unknown;
     }
 
     inline string get_index_name(const index_name_t index) {
@@ -109,7 +134,7 @@ namespace cyberway { namespace chaindb {
         if (index) {
             return get_index_name(*index);
         }
-        return get_unknown_name();
+        return names::unknown;
     }
 
     template<typename Info>

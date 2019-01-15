@@ -1,13 +1,15 @@
 #include <limits>
+
+#include <cyberway/chaindb/mongo_big_int_converter.hpp>
 #include <cyberway/chaindb/mongo_driver.hpp>
 #include <cyberway/chaindb/exception.hpp>
-
-#include <eosio/chain/symbol.hpp>
+#include <cyberway/chaindb/names.hpp>
+#include <cyberway/chaindb/table_object.hpp>
+#include <cyberway/chaindb/mongo_driver_utils.hpp>
 
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/exception/exception.hpp>
-#include <bsoncxx/json.hpp>
 
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
@@ -16,55 +18,26 @@
 #include <mongocxx/exception/logic_error.hpp>
 #include <mongocxx/exception/query_exception.hpp>
 
-#include <cyberway/chaindb/names.hpp>
-#include <cyberway/chaindb/mongo_driver_utils.h>
-#include <cyberway/chaindb/mongo_big_int_converter.h>
-
 namespace cyberway { namespace chaindb {
 
-    using eosio::chain::name;
-    using eosio::chain::symbol;
-
-    using fc::optional;
-    using fc::blob;
-    using fc::variants;
-    using fc::__uint128;
-
     using fc::variant_object;
-    using fc::mutable_variant_object;
 
     using bsoncxx::builder::basic::make_document;
     using bsoncxx::builder::basic::document;
     using bsoncxx::builder::basic::sub_document;
-    using bsoncxx::builder::basic::sub_array;
     using bsoncxx::builder::basic::kvp;
-
-    using bsoncxx::document::element;
-    using document_view = bsoncxx::document::view;
-    using array_view = bsoncxx::array::view;
-
-    using bsoncxx::types::b_null;
-    using bsoncxx::types::b_oid;
-    using bsoncxx::types::b_bool;
-    using bsoncxx::types::b_double;
-    using bsoncxx::types::b_int64;
-    using bsoncxx::types::b_decimal128;
-    using bsoncxx::types::b_binary;
-    using bsoncxx::types::b_array;
-    using bsoncxx::types::b_document;
-
-    using bsoncxx::decimal128;
-    using bsoncxx::type;
-    using bsoncxx::binary_sub_type;
-    using bsoncxx::oid;
 
     using mongocxx::bulk_write;
     using mongocxx::model::insert_one;
+    using mongocxx::model::replace_one;
     using mongocxx::model::update_one;
     using mongocxx::model::delete_one;
+    using mongocxx::database;
     using mongocxx::collection;
     using mongocxx::query_exception;
     namespace options = mongocxx::options;
+
+    using document_view = bsoncxx::document::view;
 
     enum class direction: int {
         Forward = 1,
@@ -81,7 +54,8 @@ namespace cyberway { namespace chaindb {
 
     enum class mongo_code: int {
         Unknown = -1,
-        Duplicate = 11000,
+        EmptyBulk = 22,
+        DuplicateValue = 11000,
         NoServer = 13053
     };
 
@@ -92,239 +66,14 @@ namespace cyberway { namespace chaindb {
             auto value = static_cast<mongo_code>(e.code().value());
 
             switch (value) {
-                case mongo_code::Duplicate:
+                case mongo_code::EmptyBulk:
+                case mongo_code::DuplicateValue:
                 case mongo_code::NoServer:
                     return value;
 
                 default:
                     return mongo_code::Unknown;
             }
-        }
-
-        variant build_variant(const document_view&);
-
-        variants build_variant(const array_view& src) {
-            variants dst;
-            for (auto& item: src) {
-                switch (item.type()) {
-                    case type::k_null:
-                        dst.emplace_back(variant());
-                        break;
-                    case type::k_int32:
-                        dst.emplace_back(item.get_int32().value);
-                        break;
-                    case type::k_int64:
-                        dst.emplace_back(item.get_int64().value);
-                        break;
-                    case type::k_decimal128:
-                        dst.emplace_back(from_decimal128(item.get_decimal128()));
-                        break;
-                    case type::k_double:
-                        dst.emplace_back(item.get_double().value);
-                        break;
-                    case type::k_utf8:
-                        dst.emplace_back(item.get_utf8().value.to_string());
-                        break;
-                    case type::k_date:
-                        dst.emplace_back(from_date(item.get_date()));
-                        break;
-                    case type::k_timestamp:
-                        dst.emplace_back(from_timestamp(item.get_timestamp()));
-                        break;
-                    case type::k_document:
-                        dst.emplace_back(build_variant(item.get_document().value));
-                        break;
-                    case type::k_array:
-                        dst.emplace_back(build_variant(item.get_array().value));
-                        break;
-                    case type::k_binary:
-                        dst.emplace_back(blob{build_blob_content(item.get_binary())});
-                        break;
-                    case type::k_bool:
-                        dst.emplace_back(item.get_bool().value);
-                        break;
-
-                        // SKIP
-                    case type::k_code:
-                    case type::k_codewscope:
-                    case type::k_symbol:
-                    case type::k_dbpointer:
-                    case type::k_regex:
-                    case type::k_oid:
-                    case type::k_maxkey:
-                    case type::k_minkey:
-                    case type::k_undefined:
-                        break;
-                }
-            }
-            return dst;
-        }
-
-        void build_variant(mutable_variant_object& dst, string key, const element& src) {
-            switch (src.type()) {
-                case type::k_null:
-                    dst.set(std::move(key), variant());
-                    break;
-                case type::k_int32:
-                    dst.set(std::move(key), src.get_int32().value);
-                    break;
-                case type::k_int64:
-                    dst.set(std::move(key), src.get_int64().value);
-                    break;
-                case type::k_decimal128:
-                    dst.set(std::move(key), from_decimal128(src.get_decimal128()));
-                    break;
-                case type::k_double:
-                    dst.set(std::move(key), src.get_double().value);
-                    break;
-                case type::k_utf8:
-                    dst.set(std::move(key), src.get_utf8().value.to_string());
-                    break;
-                case type::k_date:
-                    dst.set(std::move(key), from_date(src.get_date()));
-                    break;
-                case type::k_timestamp:
-                    dst.set(std::move(key), from_timestamp(src.get_timestamp()));
-                    break;
-                case type::k_document:
-                    dst.set(std::move(key), build_variant(src.get_document().value));
-                    break;
-                case type::k_array:
-                    dst.set(std::move(key), build_variant(src.get_array().value));
-                    break;
-                case type::k_binary:
-                    dst.set(std::move(key), blob{build_blob_content(src.get_binary())});
-                    break;
-                case type::k_bool:
-                    dst.set(std::move(key), src.get_bool().value);
-                    break;
-
-                    // SKIP
-                case type::k_code:
-                case type::k_codewscope:
-                case type::k_symbol:
-                case type::k_dbpointer:
-                case type::k_regex:
-                case type::k_oid:
-                case type::k_maxkey:
-                case type::k_minkey:
-                case type::k_undefined:
-                    break;
-            }
-        }
-
-        variant build_variant(const document_view& src) {
-            const mongo_big_int_converter converter(src);
-            if (converter.is_valid_value()) {
-                return converter.get_raw_value();
-            }
-
-            mutable_variant_object dst;
-            for (auto& item: src) {
-                build_variant(dst, item.key().to_string(), item);
-            }
-            return variant(std::move(dst));
-        }
-
-        sub_document& build_document(sub_document&, const variant_object&);
-
-        b_binary build_binary(const blob& src) {
-            auto size = uint32_t(src.data.size());
-            auto data = reinterpret_cast<const uint8_t*>(src.data.data());
-            return b_binary{binary_sub_type::k_binary, size, data};
-        }
-
-        sub_array& build_document(sub_array& dst, const variants& src) {
-            for (auto& item: src) {
-                switch (item.get_type()) {
-                    case variant::type_id::null_type:
-                        dst.append(b_null());
-                        break;
-                    case variant::type_id::int64_type:
-                        dst.append(b_int64{item.as_int64()});
-                        break;
-                    case variant::type_id::uint64_type:
-                        dst.append(to_decimal128(item.as_uint64()));
-                        break;
-                    case variant::type_id::int128_type:
-                        dst.append([&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(item.as_int128()).as_object_encoded()); });
-                        break;
-                    case variant::type_id::uint128_type:
-                        dst.append([&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(item.as_uint128()).as_object_encoded()); });
-                        break;
-                    case variant::type_id::double_type:
-                        dst.append(b_double{item.as_double()});
-                        break;
-                    case variant::type_id::bool_type:
-                        dst.append(b_bool{item.as_bool()});
-                        break;
-                    case variant::type_id::string_type:
-                        dst.append(item.as_string());
-                        break;
-                    case variant::type_id::time_type:
-                        dst.append(to_date(item.as_time_point()));
-                        break;
-                    case variant::type_id::array_type:
-                        dst.append([&](sub_array array){ build_document(array, item.get_array()); });
-                        break;
-                    case variant::type_id::object_type:
-                        dst.append([&](sub_document sub_doc){ build_document(sub_doc, item.get_object()); });
-                        break;
-                    case variant::type_id::blob_type:
-                        dst.append(build_binary(item.as_blob()));
-                        break;
-                }
-            }
-            return dst;
-        }
-
-        sub_document& build_document(sub_document& dst, const string& key, const variant& src) {
-            switch (src.get_type()) {
-                case variant::type_id::null_type:
-                    dst.append(kvp(key, b_null()));
-                    break;
-                case variant::type_id::int64_type:
-                    dst.append(kvp(key, b_int64{src.as_int64()}));
-                    break;
-                case variant::type_id::uint64_type:
-                     dst.append(kvp(key, to_decimal128(src.as_uint64())));
-                    break;
-                 case variant::type_id::int128_type:
-                    dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(src.as_int128()).as_object_encoded());} ));
-                    break;
-                 case variant::type_id::uint128_type:
-                    dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, mongo_big_int_converter(src.as_uint128()).as_object_encoded());} ));
-                    break;
-                case variant::type_id::double_type:
-                    dst.append(kvp(key, b_double{src.as_double()}));
-                    break;
-                case variant::type_id::bool_type:
-                    dst.append(kvp(key, b_bool{src.as_bool()}));
-                    break;
-                case variant::type_id::string_type:
-                    dst.append(kvp(key, src.as_string()));
-                    break;
-                case variant::type_id::time_type:
-                    dst.append(kvp(key, to_date(src.as_time_point())));
-                    break;
-                case variant::type_id::array_type:
-                    dst.append(kvp(key, [&](sub_array array){ build_document(array, src.get_array()); }));
-                    break;
-                case variant::type_id::object_type:
-                    dst.append(kvp(key, [&](sub_document sub_doc){ build_document(sub_doc, src.get_object()); }));
-                    break;
-                case variant::type_id::blob_type:
-                    dst.append(kvp(key, build_binary(src.as_blob())));
-                    break;
-            }
-            return dst;
-        }
-
-        sub_document& build_document(sub_document& dst, const variant_object& src) {
-            for (auto& item: src) {
-                build_document(dst, item.key(), item.value());
-            }
-            return dst;
         }
 
         const cmp_info& start_from() {
@@ -352,87 +101,40 @@ namespace cyberway { namespace chaindb {
         }
 
         bool is_asc_order(const string& name) {
-            return name.size() == 3; // asc (vs desc)
+            return name.size() == names::asc_order.size();
         }
 
-        variant get_order_value(variant_object object, const index_info& index, const order_def& order) { try {
+        variant get_order_value(const variant_object& row, const index_info& index, const order_def& order) { try {
+            auto* object = &row;
             auto pos = order.path.size();
             for (auto& key: order.path) {
-                auto itr = object.find(key);
-                CYBERWAY_ASSERT(object.end() != itr, driver_absent_field_exception, "Wrong path");
+                auto itr = object->find(key);
+                CYBERWAY_ASSERT(object->end() != itr, driver_absent_field_exception,
+                    "Can't find the part ${key} for the field ${field} in the row ${row} "
+                    "from the table ${table} for the scope '${scope} ",
+                    ("key", key)("field", order.field)
+                    ("table", get_full_table_name(index))("scope", get_scope_name(index))("row", row));
 
                 --pos;
                 if (0 == pos) {
                     return itr->value();
                 } else {
-                    object = itr->value().get_object();
+                    object = &itr->value().get_object();
                 }
             }
-            CYBERWAY_ASSERT(false, driver_absent_field_exception, "Invalid type of primary key");
+            CYBERWAY_ASSERT(false, driver_absent_field_exception,
+                "Wrong logic on parsing of the field ${field} in the row ${row} "
+                "from the table ${table} for the scope '${scope}'",
+                ("table", get_full_table_name(index))("field", order.field)("row", row));
+        } catch (const driver_absent_field_exception&) {
+            throw;
         } catch (...) {
             CYBERWAY_ASSERT(false, driver_absent_field_exception,
-                "External database returns the row in the table ${table} without the field ${field}.",
-                ("table", get_full_table_name(index))("field", order.field));
+                "External database can't read the field ${field} in the row ${row} "
+                "from the table ${table} for the scope '${scope}'",
+                ("field", order.field)
+                ("table", get_full_table_name(index))("scope", get_scope_name(index))("row", row));
         } }
-
-        primary_key_t get_pk_value(const table_info& table, document_view view) { try {
-            auto& pk_order = *table.pk_order;
-            auto pos = pk_order.path.size();
-            for (auto& key: pk_order.path) {
-                auto itr = view.find(key);
-                CYBERWAY_ASSERT(view.end() != itr, driver_primary_key_exception, "Wrong path");
-
-                --pos;
-                if (0 == pos) {
-                    switch (pk_order.type.front()) {
-                        case 'i': // int64
-                            return static_cast<primary_key_t>(itr->get_int64().value);
-                        case 'u': { // uint64
-                            const std::string as_string = itr->get_decimal128().value.to_string();
-                            return static_cast<primary_key_t>(std::stoull(as_string));
-                        }
-                        case 'n': // name
-                            return name(itr->get_utf8().value.data()).value;
-                        case 's': // symbol_code
-                            return symbol(0, itr->get_utf8().value.data()).to_symbol_code();
-                        default:
-                            break;
-                    }
-                } else {
-                    view = itr->get_document().value;
-                }
-            }
-            CYBERWAY_ASSERT(false, driver_primary_key_exception, "Invalid type of primary key");
-        } catch (...) {
-            CYBERWAY_ASSERT(false, driver_primary_key_exception,
-                "External database locate row in the table ${table} with wrong value of primary key.",
-                ("table", get_full_table_name(table)));
-        } }
-
-        document make_pk_document(const table_info& table, primary_key_t pk) {
-            document doc;
-            doc.append(kvp(get_scope_field_name(), get_scope_name(table)));
-
-            auto& pk_order = *table.pk_order;
-            switch (pk_order.type.front()) {
-                case 'i': // int64
-                    doc.append(kvp(pk_order.field, static_cast<int64_t>(pk)));
-                    break;
-                case 'u': // uint64
-                    doc.append(kvp(pk_order.field, to_decimal128(pk)));
-                    break;
-                case 'n': // name
-                    doc.append(kvp(pk_order.field, name(pk).to_string()));
-                    break;
-                case 's': // symbol_code
-                    doc.append(kvp(pk_order.field, symbol(pk << 8).name()));
-                    break;
-                default:
-                    CYBERWAY_ASSERT(false, driver_primary_key_exception, "Invalid type of primary key");
-            }
-
-            return doc;
-        }
 
         template <typename Lambda>
         void auto_reconnect(Lambda&& lambda) {
@@ -461,22 +163,20 @@ namespace cyberway { namespace chaindb {
 
     } } // namespace _detail
 
-    class mongodb_cursor: public cursor_info {
+    class mongodb_cursor_info: public cursor_info {
     public:
-        mongodb_cursor(cursor_t id, index_info index, collection db_table)
+        mongodb_cursor_info(cursor_t id, index_info index, collection db_table)
         : cursor_info{id, std::move(index)},
-          db_table_(std::move(db_table))
-        { }
+          db_table_(std::move(db_table)) {
+        }
 
-        mongodb_cursor() = default;
-        mongodb_cursor(mongodb_cursor&&) = default;
+        mongodb_cursor_info() = default;
+        mongodb_cursor_info(mongodb_cursor_info&&) = default;
 
-        mongodb_cursor(const mongodb_cursor&) = delete;
+        mongodb_cursor_info(const mongodb_cursor_info&) = delete;
 
-        mongodb_cursor clone(cursor_t id) {
-            mongodb_cursor dst(id, index, db_table_);
-            dst.pk = pk;
-            dst.blob = blob;
+        mongodb_cursor_info clone(cursor_t id) {
+            mongodb_cursor_info dst(id, index, db_table_);
 
             if (find_cmp_->order == direction::Forward) {
                 dst.find_cmp_ = &_detail::start_from();
@@ -484,47 +184,73 @@ namespace cyberway { namespace chaindb {
                 dst.find_cmp_ = &_detail::reverse_start_from();
             }
 
-            if (source_.valid()) {
+            if (source_) {
                 // it is faster to get object from exist cursor then to open a new cursor, locate, and get object
                 dst.object_ = get_object_value();
-                dst.find_key_ = dst.object_;
+                dst.find_key_ = dst.object_.value;
                 dst.find_pk_ = get_pk_value();
             } else {
                 dst.find_key_ = find_key_;
                 dst.find_pk_ = find_pk_;
                 dst.object_ = object_;
             }
+            dst.pk = pk;
+            dst.blob = blob;
 
             return dst;
         }
 
-        void open(const cmp_info& find_cmp, variant key, const primary_key_t locate_pk = unset_primary_key) {
-            pk = unset_primary_key;
-            source_.reset();
+        mongodb_cursor_info& open(const cmp_info& find_cmp, variant key, const primary_key_t locate_pk = unset_primary_key) {
             reset();
 
             find_cmp_ = &find_cmp;
             find_key_ = std::move(key);
             find_pk_ = locate_pk;
+
+            return *this;
         }
 
-        void open_by_pk(const cmp_info& find_cmp, variant key, const primary_key_t locate_pk) {
-            source_.reset();
+        mongodb_cursor_info& open_by_pk(variant key, const primary_key_t locate_pk) {
             reset();
             pk = locate_pk;
 
-            find_cmp_ = &find_cmp;
+            find_cmp_ = &_detail::start_from();
             find_key_ = std::move(key);
             find_pk_ = unset_primary_key;
+
+            return *this;
         }
 
-        void open_end() {
-            pk = end_primary_key;
-            source_.reset();
+        mongodb_cursor_info& open_begin() {
             reset();
-            find_key_ = {};
-            find_cmp_ = &_detail::reverse_start_from();
+
+            find_cmp_ = &_detail::start_from();
+            find_key_.clear();
             find_pk_ = unset_primary_key;
+
+            return *this;
+        }
+
+        mongodb_cursor_info& open_end() {
+            reset();
+            pk = end_primary_key;
+
+            find_cmp_ = &_detail::reverse_start_from();
+            find_key_.clear();
+            find_pk_ = unset_primary_key;
+
+            return *this;
+        }
+
+        mongodb_cursor_info& open_end_() {
+            reset();
+            pk = end_primary_key;
+
+            find_cmp_ = &_detail::reverse_start_from();
+            find_key_.clear();
+            find_pk_ = unset_primary_key;
+
+            return *this;
         }
 
         void next() {
@@ -535,11 +261,13 @@ namespace cyberway { namespace chaindb {
         }
 
         void prev() {
-            if (find_cmp_->order == direction::Forward) {
-                change_direction(_detail::reverse_start_from());
-            } else if (end_primary_key == pk) {
+            if (end_primary_key == pk) {
+                open_end_();
+                pk = unset_primary_key;
                 lazy_open();
                 return;
+            } else if (find_cmp_->order == direction::Forward) {
+                change_direction(_detail::reverse_start_from());
             }
             lazy_next();
         }
@@ -548,13 +276,25 @@ namespace cyberway { namespace chaindb {
             lazy_open();
         }
 
-        const variant& get_object_value() {
+        const object_value& get_object_value() {
             lazy_open();
-            if (is_end() || !object_.is_null()) return object_;
+            if (!object_.value.is_null()) return object_;
 
-            auto& view = *source_->begin();
-            object_ = _detail::build_variant(view);
-            pk = _detail::get_pk_value(index, view);
+            if (end_primary_key == get_pk_value()) {
+                object_.value = variant_object();
+                object_.service.pk = pk;
+            } else {
+                auto& view = *source_->begin();
+                object_ = build_object(index, view);
+                pk = object_.service.pk;
+            }
+
+            if (!object_.service.hash) {
+                object_.service.code  = index.code;
+                object_.service.scope = index.scope;
+                object_.service.table = index.table->name;
+                object_.service.hash  = index.table->hash;
+            }
 
             return object_;
         }
@@ -566,32 +306,34 @@ namespace cyberway { namespace chaindb {
         variant find_key_;
         primary_key_t find_pk_ = unset_primary_key;
 
-        optional<mongocxx::cursor> source_;
-        variant object_;
-
-        bool is_end() const {
-            return end_primary_key == pk;
-        }
+        std::unique_ptr<mongocxx::cursor> source_;
+        object_value object_;
 
         void change_direction(const cmp_info& find_cmp) {
             find_cmp_ = &find_cmp;
-            if (source_.valid()) {
-                find_key_ = get_object_value();
+            if (source_) {
+                find_key_ = get_object_value().value;
                 find_pk_ = get_pk_value();
             }
 
-            source_.reset();
+            reset();
+        }
+
+        void reset_object() {
+            pk = unset_primary_key;
+            if (!blob.empty()) blob.clear();
+            if (!object_.is_null()) object_.clear();
         }
 
         void reset() {
-            if (!blob.empty()) blob.clear();
-            if (!object_.is_null()) object_ = {};
+            reset_object();
+            source_.reset();
         }
 
         document create_find_document(const char* forward, const char* backward) const {
             document find;
 
-            find.append(kvp(get_scope_field_name(), get_scope_name(index)));
+            find.append(kvp(names::scope_path, get_scope_name(index)));
             if (!find_key_.is_object()) return find;
 
             auto& find_object = find_key_.get_object();
@@ -601,7 +343,7 @@ namespace cyberway { namespace chaindb {
             for (auto& o: orders) {
                 auto cmp = _detail::is_asc_order(o.order) ? forward : backward;
                 auto value = _detail::get_order_value(find_object, index, o);
-                find.append(kvp(o.field, [&](sub_document doc){_detail::build_document(doc, cmp, value);}));
+                find.append(kvp(o.field, [&](sub_document doc){build_document(doc, cmp, value);}));
             }
 
             return find;
@@ -629,9 +371,9 @@ namespace cyberway { namespace chaindb {
 
         void lazy_open() {
             if (source_) return;
+            if (end_primary_key == pk) return;
 
             reset();
-            pk = unset_primary_key;
 
             auto find = create_find_document(find_cmp_->from_forward, find_cmp_->from_backward);
             auto sort = create_sort_document();
@@ -640,7 +382,7 @@ namespace cyberway { namespace chaindb {
             find_pk_ = unset_primary_key;
 
             _detail::auto_reconnect([&]() {
-                source_.emplace(db_table_.find(find.view(), options::find().sort(sort.view())));
+                source_ = std::make_unique<mongocxx::cursor>(db_table_.find(find.view(), options::find().sort(sort.view())));
 
                 init_pk_value();
                 if (unset_primary_key == find_pk || find_pk == pk || end_primary_key == pk) return;
@@ -653,14 +395,14 @@ namespace cyberway { namespace chaindb {
 
                 auto to_pk = unset_primary_key;
                 auto to_itr = to_cursor.begin();
-                if (to_itr != to_cursor.end()) to_pk = _detail::get_pk_value(index, *to_itr);
+                if (to_itr != to_cursor.end()) to_pk = chaindb::get_pk_value(index, *to_itr);
 
                 // TODO: limitation by deadline
                 static constexpr int max_iters = 10000;
                 auto itr = source_->begin();
                 auto etr = source_->end();
                 for (int i = 0; i < max_iters && itr != etr; ++i, ++itr) {
-                    pk = _detail::get_pk_value(index, *to_itr);
+                    pk = chaindb::get_pk_value(index, *to_itr);
                     // range is end, but pk not found
                     if (to_pk == pk) break;
                     // ok, key is found
@@ -672,15 +414,18 @@ namespace cyberway { namespace chaindb {
         }
 
         void lazy_next() {
+            reset_object();
             lazy_open();
-            reset();
+            if (!source_) return;
 
             auto itr = source_->begin();
-            ++itr;
+            if (source_->end() != itr) {
+                ++itr;
+            }
             CYBERWAY_ASSERT(find_cmp_->order != direction::Backward || itr != source_->end(),
                 driver_out_of_range_exception,
-                "External database tries to locate in the ${table} in out of range",
-                ("table", get_full_table_name(index)));
+                "External database tries to locate row in the index ${index} for the scope '${scope}' in out of range",
+                ("index", get_full_index_name(index))("scope", get_scope_name(index)));
             init_pk_value();
         }
 
@@ -694,90 +439,39 @@ namespace cyberway { namespace chaindb {
         void init_pk_value() {
             auto itr = source_->begin();
             if (source_->end() == itr) {
-                open_end();
+                pk = end_primary_key;
             } else {
-                pk = _detail::get_pk_value(index, *itr);
+                pk = chaindb::get_pk_value(index, *itr);
             }
         }
 
-    }; // class mongodb_cursor
+    }; // class mongodb_cursor_info
 
-    using cursor_map = std::map<cursor_t, mongodb_cursor>;
-
-    struct code_info {
-        cursor_map cursor_map_;
-
-        code_info() = default;
-        code_info(code_info&&) = default;
-
-        code_info& operator=(code_info&&) = default;
-
-        ~code_info() = default;
-
-        bool empty() const {
-            return cursor_map_.empty() && tables_bulk_write_.empty();
-        }
-
-        bool has_changes() const {
-            return !tables_bulk_write_.empty();
-        }
-
-        void apply_changes() { try {
-            auto tables = std::move(tables_bulk_write_);
-            for (auto& table: tables) {
-                _detail::auto_reconnect([&]() {
-                    table.second.execute();
-                });
-            }
-        } catch (const mongocxx::bulk_write_exception& e) {
-            throw_exception(e);
-        } }
-
-        void apply_changes(const table_name& table) { try {
-            auto itr = tables_bulk_write_.find(table);
-            if (tables_bulk_write_.end() != itr) {
-                auto bulk = std::move(itr->second);
-                tables_bulk_write_.erase(itr);
-                _detail::auto_reconnect([&]() {
-                    bulk.execute();
-                });
-            }
-        } catch (const mongocxx::bulk_write_exception& e) {
-            throw_exception(e);
-        } }
-
-        bulk_write& get_changes_buffer(const table_name& table, collection db_table) {
-            auto itr = tables_bulk_write_.find(table);
-            if (tables_bulk_write_.end() == itr) {
-                itr = tables_bulk_write_.emplace(table, db_table.create_bulk_write(options::bulk_write().ordered(false))).first;
-            }
-            return itr->second;
-        }
-
-    private:
-        std::map<table_name, bulk_write> tables_bulk_write_;
-
-        void throw_exception(const mongocxx::bulk_write_exception& e) {
-            CYBERWAY_ASSERT(_detail::get_mongo_code(e) == mongo_code::Duplicate, driver_write_exception, e.what());
-            CYBERWAY_ASSERT(false, driver_duplicate_exception, e.what());
-        }
-    }; // struct code_info
-
-    using code_map = std::map<account_name, code_info>;
+    using cursor_map = std::map<cursor_t, mongodb_cursor_info>;
+    using code_cursor_map = std::map<account_name /* code */, cursor_map>;
 
     struct cursor_location {
-        mongodb_cursor& cursor_;
-        code_map::iterator code_itr_;
+        code_cursor_map::iterator code_itr_;
         cursor_map::iterator cursor_itr_;
-        code_map& code_map_;
-        code_info& code_info_;
+
+        mongodb_cursor_info& cursor() {
+            return cursor_itr_->second;
+        }
+
+        cursor_map& map() {
+            return code_itr_->second;
+        }
     }; // struct cursor_location
 
-    struct mongodb_driver::mongodb_impl_ {
-        mongocxx::client mongo_conn_;
-        code_map code_map_;
+    ///----
 
-        mongodb_impl_(const std::string& p) {
+    struct mongodb_driver::mongodb_impl_ {
+        journal& journal_;
+        mongocxx::client mongo_conn_;
+        code_cursor_map code_cursor_map_;
+
+        mongodb_impl_(journal& jrnl, const std::string& p)
+        : journal_(jrnl) {
             init_instance();
             mongocxx::uri uri{p};
             mongo_conn_ = mongocxx::client{uri};
@@ -785,110 +479,47 @@ namespace cyberway { namespace chaindb {
 
         ~mongodb_impl_() = default;
 
-        static mongocxx::instance& init_instance() {
-            static mongocxx::instance instance;
-            return instance;
-        }
-
-        cursor_location get_cursor(const cursor_request& request) {
-            auto code_itr = code_map_.find(request.code);
-            CYBERWAY_ASSERT(
-                code_map_.end() != code_itr, driver_invalid_cursor_exception,
-                "Cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
-
-            auto& cursor_map_ = code_itr->second.cursor_map_;
-            auto cursor_itr = cursor_map_.find(request.id);
-            CYBERWAY_ASSERT(
-                cursor_map_.end() != cursor_itr, driver_invalid_cursor_exception,
-                "Cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
-
-            return cursor_location{cursor_itr->second, code_itr, cursor_itr, code_map_, code_itr->second};
-        }
-
         cursor_location get_applied_cursor(const cursor_request& request) {
             auto loc = get_cursor(request);
-            if (loc.cursor_.pk == unset_primary_key) {
-                apply_changes(loc.cursor_.index);
+            auto& cursor = loc.cursor();
+            if (cursor.pk == unset_primary_key) {
+                apply_table_changes(cursor.index);
             }
             return loc;
         }
 
-        collection get_db_table(const table_info& table) {
-            return mongo_conn_[get_code_name(table)][get_table_name(table)];
+        void apply_code_changes(const account_name& code) {
+            journal_.apply_code_changes(write_ctx_t_(*this), code);
         }
 
-        bulk_write& get_mutable_db_table(const table_info& table) {
-            auto itr = code_map_.find(table.code);
-            if (code_map_.end() == itr) {
-                itr = code_map_.emplace(table.code, code_info()).first;
-            }
-            return itr->second.get_changes_buffer(table.table->name, get_db_table(table));
-        }
-
-        void apply_changes(const table_info& table) {
-            auto itr = code_map_.find(table.code);
-            if (code_map_.end() != itr) {
-                itr->second.apply_changes(table.table->name);
-                if (itr->second.empty()) {
-                    code_map_.erase(itr);
-                }
-            }
-        }
-
-        void apply_changes(const account_name& code) {
-            auto itr = code_map_.find(code);
-            if (code_map_.end() == itr) return;
-
-            itr->second.apply_changes();
-        }
-
-        void apply_changes() {
-            for (auto itr = code_map_.begin(), etr = code_map_.end(); etr != itr;) {
-                itr->second.apply_changes();
-                if (itr->second.empty()) {
-                    code_map_.erase(itr++);
-                } else {
-                    ++itr;
-                }
-            }
-        }
-
-        cursor_t get_next_cursor_id(code_map::iterator itr) {
-            if (itr != code_map_.end() && !itr->second.cursor_map_.empty()) {
-                return itr->second.cursor_map_.rbegin()->second.id + 1;
-            }
-            return 1;
-        }
-
-        mongodb_cursor& add_cursor(code_map::iterator itr, const account_name& code, mongodb_cursor cursor) {
-            if (code_map_.end() == itr) {
-                itr = code_map_.emplace(code, code_info()).first;
-            }
-            return itr->second.cursor_map_.emplace(cursor.id, std::move(cursor)).first->second;
+        void apply_all_changes() {
+            journal_.apply_all_changes(write_ctx_t_(*this));
         }
 
         void close_cursor(const cursor_request& request) {
             auto loc = get_cursor(request);
-            loc.code_info_.cursor_map_.erase(loc.cursor_itr_);
-            if (loc.code_info_.empty()) {
-                loc.code_map_.erase(loc.code_itr_);
+            auto& map = loc.map();
+
+            map.erase(loc.cursor_itr_);
+            if (map.empty()) {
+                code_cursor_map_.erase(loc.code_itr_);
             }
         }
 
-        void close_all_cursors(const account_name& code) {
-            auto itr = code_map_.find(code);
-            if (code_map_.end() == itr) return;
+        void close_code_cursors(const account_name& code) {
+            auto itr = code_cursor_map_.find(code);
+            if (code_cursor_map_.end() == itr) return;
 
 //            CYBERWAY_ASSERT(!itr->second.has_changes(), driver_has_unapplied_changes_exception,
 //                "Chaindb has unapplied changes for the db ${db}", ("db", get_code_name(code)));
-            code_map_.erase(itr);
+            code_cursor_map_.erase(itr);
         }
 
-        mongodb_cursor& clone_cursor(const cursor_request& request) {
+        mongodb_cursor_info& clone_cursor(const cursor_request& request) {
             auto loc = get_cursor(request);
             auto next_id = get_next_cursor_id(loc.code_itr_);
 
-            auto cloned_cursor = loc.cursor_.clone(next_id);
+            auto cloned_cursor = loc.cursor().clone(next_id);
             return add_cursor(loc.code_itr_, request.code, std::move(cloned_cursor));
         }
 
@@ -901,11 +532,12 @@ namespace cyberway { namespace chaindb {
             for (auto& index: indexes) {
                 bool was_pk = false;
                 document doc;
-                doc.append(kvp(get_scope_field_name(), 1));
+                doc.append(kvp(names::scope_path, 1));
                 for (auto& o: index.orders) {
                     auto field = o.field;
-                    if (o.type == "i128" || o.type == "ui128") {
-                        field += "." + mongo_big_int_converter::BINARY_FIELD;
+                    // ui128 || i128
+                    if (o.type.back() == '8' && (o.type.front() == 'i' || o.type.front() == 'u')) {
+                        field.append(".").append(mongo_big_int_converter::BINARY_FIELD);
                     }
                     if (_detail::is_asc_order(o.order)) {
                         doc.append(kvp(field, 1));
@@ -923,6 +555,7 @@ namespace cyberway { namespace chaindb {
                     try {
                         db_table.create_index(doc.view(), options::index().name(db_index_name).unique(index.unique));
                     } catch (const mongocxx::operation_exception& e) {
+                        wlog("Error on create index: ${code}, ${what}", ("what", e.what())("code", e.code().value()));
                         db_table.indexes().drop_one(db_index_name);
                         db_table.create_index(doc.view(), options::index().name(db_index_name).unique(index.unique));
                     }
@@ -930,30 +563,259 @@ namespace cyberway { namespace chaindb {
             }
         }
 
-        mongodb_cursor& create_cursor(index_info index) {
+        mongodb_cursor_info& create_cursor(index_info index) {
             auto code = index.code;
-            auto itr = code_map_.find(code);
+            auto itr = code_cursor_map_.find(code);
             auto id = get_next_cursor_id(itr);
             auto db_table = get_db_table(index);
-            mongodb_cursor new_cursor(id, std::move(index), std::move(db_table));
-            return add_cursor(itr, code, std::move(new_cursor));
+            mongodb_cursor_info new_cursor(id, std::move(index), std::move(db_table));
+            apply_table_changes(index);
+            return add_cursor(std::move(itr), code, std::move(new_cursor));
         }
 
         void drop_db() {
-            code_map_.clear();
+            CYBERWAY_ASSERT(code_cursor_map_.empty(), driver_opened_cursors_exception, "ChainDB has opened cursors");
+
+            code_cursor_map_.clear(); // close all opened cursors
 
             auto db_list = mongo_conn_.list_databases();
             for (auto& db: db_list) {
                 auto db_name = db["name"].get_utf8().value;
-                if (!db_name.starts_with(get_system_code_name())) continue;
+                if (!db_name.starts_with(names::system_code)) continue;
+
                 mongo_conn_.database(db_name).drop();
             }
         }
-    };
 
-    mongodb_driver::mongodb_driver(const std::string& p)
-    : impl_(new mongodb_impl_(p))
-    { }
+        primary_key_t available_pk(const table_info& table) {
+            apply_table_changes(table);
+
+            auto cursor = get_db_table(table).find(
+                make_document(kvp(names::scope_path, get_scope_name(table))),
+                options::find()
+                    .sort(make_document(kvp(table.pk_order->field, -1)))
+                    .limit(1));
+
+            auto itr = cursor.begin();
+            if (cursor.end() != itr) {
+                return chaindb::get_pk_value(table, *itr) + 1;
+            }
+
+            return 0;
+        }
+
+        object_value object_by_pk(const table_info& table, const primary_key_t pk) {
+            document pk_doc;
+            object_value obj;
+
+            apply_table_changes(table);
+
+            obj.service.pk = pk;
+            build_find_pk_document(pk_doc, table, obj);
+            auto cursor = get_db_table(table).find(pk_doc.view(), options::find().limit(1));
+
+            auto itr = cursor.begin();
+            if (cursor.end() != itr) {
+                return build_object(table, *itr);
+            } else {
+                obj.value = variant_object();
+                return obj;
+            }
+
+            CYBERWAY_ASSERT(false, driver_absent_object_exception,
+                "External database doesn't contain object with the primary key ${pk} "
+                "in the table ${table} for the scope '${scope}'",
+                ("pk", pk)("table", get_full_table_name(table))("scope", get_scope_name(table)));
+        }
+
+    private:
+        static mongocxx::instance& init_instance() {
+            static mongocxx::instance instance;
+            return instance;
+        }
+
+        collection get_db_table(const table_info& table) {
+            return mongo_conn_.database(get_code_name(table)).collection(get_table_name(table));
+        }
+
+        collection get_undo_db_table() {
+            return mongo_conn_.database(names::system_code).collection(names::undo_table);
+        }
+
+        cursor_t get_next_cursor_id(code_cursor_map::iterator itr) {
+            if (itr != code_cursor_map_.end() && !itr->second.empty()) {
+                return itr->second.rbegin()->second.id + 1;
+            }
+            return 1;
+        }
+
+        mongodb_cursor_info& add_cursor(
+            code_cursor_map::iterator itr, const account_name& code, mongodb_cursor_info cursor
+        ) {
+            if (code_cursor_map_.end() == itr) {
+                itr = code_cursor_map_.emplace(code, cursor_map()).first;
+            }
+            return itr->second.emplace(cursor.id, std::move(cursor)).first->second;
+        }
+
+        void apply_table_changes(const table_info& table) {
+            journal_.apply_table_changes(write_ctx_t_(*this), table);
+        }
+
+        cursor_location get_cursor(const cursor_request& request) {
+            auto code_itr = code_cursor_map_.find(request.code);
+            CYBERWAY_ASSERT(code_cursor_map_.end() != code_itr, driver_invalid_cursor_exception,
+                "The map for the cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
+
+            auto& map = code_itr->second;
+            auto cursor_itr = map.find(request.id);
+            CYBERWAY_ASSERT(map.end() != cursor_itr, driver_invalid_cursor_exception,
+                "The cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
+
+            return cursor_location{code_itr, cursor_itr};
+        }
+
+        class write_ctx_t_ final {
+            struct bulk_info_t_ final {
+                bulk_write bulk_;
+                int op_cnt_ = 0;
+
+                bulk_info_t_(bulk_write bulk): bulk_(std::move(bulk)) { }
+            }; // struct bulk_info_t_;
+
+        public:
+            write_ctx_t_(mongodb_impl_& impl)
+            : impl_(impl) {
+            }
+
+            bulk_info_t_ create_bulk_info(collection db_table) {
+                static options::bulk_write opts(options::bulk_write().ordered(false));
+                return bulk_info_t_(db_table.create_bulk_write(opts));
+            }
+
+            void init() {
+                data_bulk_list_.emplace_back(create_bulk_info(impl_.get_undo_db_table()));
+                complete_undo_bulk_ = std::make_unique<bulk_info_t_>(create_bulk_info(impl_.get_undo_db_table()));
+            }
+
+            void start_table(const table_info& table) {
+                auto old_table = table_;
+                table_ = &table;
+                if (BOOST_LIKELY(
+                        old_table != nullptr &&
+                        table.code == old_table->code &&
+                        table.table->name == old_table->table->name))
+                    return;
+
+                data_bulk_list_.emplace_back(create_bulk_info(impl_.get_db_table(table)));
+            }
+
+            void add_data(const write_operation& op) {
+                append_bulk(build_find_pk_document, build_service_document, data_bulk_list_.back(), op);
+            }
+
+            void add_prepare_undo(const write_operation& op) {
+                append_bulk(build_find_undo_pk_document, build_undo_service_document, data_bulk_list_.front(), op);
+            }
+
+            void add_complete_undo(const write_operation& op) {
+                append_bulk(build_find_undo_pk_document, build_undo_service_document, *complete_undo_bulk_, op);
+            }
+
+            void write() {
+                for (auto& data_bulk: data_bulk_list_) {
+                    execute_bulk(data_bulk);
+                }
+                execute_bulk(*complete_undo_bulk_);
+
+                CYBERWAY_ASSERT(error_.empty(), driver_duplicate_exception, error_);
+            }
+
+        private:
+            mongodb_impl_& impl_;
+            std::string error_;
+            const table_info* table_ = nullptr;
+            std::unique_ptr<bulk_info_t_> complete_undo_bulk_;
+            std::deque<bulk_info_t_> data_bulk_list_;
+
+            template <typename BuildFindDocument, typename BuildServiceDocument>
+            void append_bulk(
+                BuildFindDocument&& build_find_document, BuildServiceDocument&& build_service_document,
+                bulk_info_t_& info, const write_operation& op
+            ) {
+                document data_doc;
+                document pk_doc;
+
+                switch (op.operation) {
+                    case write_operation::Insert:
+                    case write_operation::Update:
+                        build_document(data_doc, op.object);
+
+                    case write_operation::Revision:
+                        build_service_document(data_doc, *table_, op.object);
+
+                    case write_operation::Remove:
+                        build_find_document(pk_doc, *table_, op.object);
+                        if (impossible_revision != op.find_revision) {
+                            pk_doc.append(kvp(names::revision_path, op.find_revision));
+                        }
+                        break;
+
+                    case write_operation::Unknown:
+                        CYBERWAY_ASSERT(false, driver_write_exception,
+                            "Wrong operation type on writing into the table ${table} for the scope '${scope}"
+                            "with the revision (find: ${find_rev}, set: ${set_rev}) and with the primary key ${pk}",
+                            ("table", get_full_table_name(*table_))("scope", get_scope_name(*table_))
+                            ("find_rev", op.find_revision)("set_rev", op.object.revision())("pk", op.object.pk()));
+                        return;
+                }
+
+                ++info.op_cnt_;
+
+                switch(op.operation) {
+                    case write_operation::Insert:
+                        info.bulk_.append(insert_one(data_doc.view()));
+                        break;
+
+                    case write_operation::Update:
+                        info.bulk_.append(replace_one(pk_doc.view(), data_doc.view()));
+                        break;
+
+                    case write_operation::Revision:
+                        info.bulk_.append(update_one(pk_doc.view(), make_document(kvp("$set", data_doc))));
+                        break;
+
+                    case write_operation::Remove:
+                        info.bulk_.append(delete_one(pk_doc.view()));
+                        break;
+
+                    case write_operation::Unknown:
+                        break;
+                }
+            }
+
+            void execute_bulk(bulk_info_t_& info) {
+                if (!info.op_cnt_) return;
+
+                _detail::auto_reconnect([&]() { try {
+                    info.bulk_.execute();
+                } catch (const mongocxx::bulk_write_exception& e) {
+                    error_ = e.what();
+                    elog("Error on bulk write: ${code}, ${what}", ("what", error_)("code", e.code().value()));
+                    if (_detail::get_mongo_code(e) != mongo_code::DuplicateValue) {
+                        throw; // this shouldn't happen
+                    }
+                }});
+            }
+        }; // class write_ctx_t_
+
+    }; // struct mongodb_driver::mongodb_impl_
+
+    ///----
+
+    mongodb_driver::mongodb_driver(journal& jrnl, const std::string& p)
+    : impl_(new mongodb_impl_(jrnl, p)) {
+    }
 
     mongodb_driver::~mongodb_driver() = default;
 
@@ -969,16 +831,16 @@ namespace cyberway { namespace chaindb {
         impl_->close_cursor(request);
     }
 
-    void mongodb_driver::close_all_cursors(const account_name& code) {
-        impl_->close_all_cursors(code);
+    void mongodb_driver::close_code_cursors(const account_name& code) {
+        impl_->close_code_cursors(code);
     }
 
-    void mongodb_driver::apply_changes(const account_name& code) {
-        impl_->apply_changes(code);
+    void mongodb_driver::apply_code_changes(const account_name& code) {
+        impl_->apply_code_changes(code);
     }
 
-    void mongodb_driver::apply_changes() {
-        impl_->apply_changes();
+    void mongodb_driver::apply_all_changes() {
+        impl_->apply_all_changes();
     }
 
     void mongodb_driver::verify_table_structure(const table_info& table, const microseconds& max_time) {
@@ -987,19 +849,25 @@ namespace cyberway { namespace chaindb {
 
     const cursor_info& mongodb_driver::lower_bound(index_info index, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(_detail::start_from(), std::move(key));
+        cursor.open(_detail::start_from(), std::move(key)).current();
         return cursor;
     }
 
     const cursor_info& mongodb_driver::upper_bound(index_info index, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(_detail::start_after(), std::move(key));
+        cursor.open(_detail::start_after(), std::move(key)).current();
         return cursor;
     }
 
     const cursor_info& mongodb_driver::find(index_info index, primary_key_t pk, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(_detail::start_from(), std::move(key), pk);
+        cursor.open(_detail::start_from(), std::move(key), pk).current();
+        return cursor;
+    }
+
+    const cursor_info& mongodb_driver::begin(index_info index) {
+        auto& cursor = impl_->create_cursor(std::move(index));
+        cursor.open_begin().current();
         return cursor;
     }
 
@@ -1011,126 +879,62 @@ namespace cyberway { namespace chaindb {
 
     const cursor_info& mongodb_driver::opt_find_by_pk(index_info index, primary_key_t pk, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open_by_pk(_detail::start_from(), std::move(key), pk);
+        cursor.open_by_pk(std::move(key), pk).current();
         return cursor;
     }
 
     const cursor_info& mongodb_driver::current(const cursor_info& info) {
-        auto& cursor = const_cast<mongodb_cursor&>(static_cast<const mongodb_cursor&>(info));
+        auto& cursor = const_cast<mongodb_cursor_info&>(static_cast<const mongodb_cursor_info&>(info));
         cursor.current();
         return cursor;
     }
 
     const cursor_info& mongodb_driver::current(const cursor_request& request) {
-        auto loc = impl_->get_applied_cursor(request);
-        loc.cursor_.current();
-        return loc.cursor_;
+        auto& cursor = impl_->get_applied_cursor(request).cursor();
+        cursor.current();
+        return cursor;
     }
 
     const cursor_info& mongodb_driver::next(const cursor_request& request) {
-        auto loc = impl_->get_applied_cursor(request);
-        loc.cursor_.next();
-        return loc.cursor_;
+        auto& cursor = impl_->get_applied_cursor(request).cursor();
+        cursor.next();
+        return cursor;
+    }
+
+    const cursor_info& mongodb_driver::next(const cursor_info& info) {
+        auto& cursor = const_cast<mongodb_cursor_info&>(static_cast<const mongodb_cursor_info&>(info));
+        cursor.next();
+        return cursor;
     }
 
     const cursor_info& mongodb_driver::prev(const cursor_request& request) {
-        auto loc = impl_->get_applied_cursor(request);
-        loc.cursor_.prev();
-        return loc.cursor_;
+        auto& cursor = impl_->get_applied_cursor(request).cursor();
+        cursor.prev();
+        return cursor;
     }
 
-    variant mongodb_driver::value(const table_info& table, const primary_key_t pk) {
-        impl_->apply_changes(table);
-
-        auto cursor = impl_->get_db_table(table).find(
-            _detail::make_pk_document(table, pk).view(),
-            options::find().limit(1));
-
-        auto itr = cursor.begin();
-        CYBERWAY_ASSERT(cursor.end() != itr, driver_absent_object_exception,
-            "External database doesn't contain object with the primary key ${pk} in the table ${table}",
-            ("pk", pk)("table", get_full_table_name(table)));
-
-        return _detail::build_variant(*itr);
+    const cursor_info& mongodb_driver::prev(const cursor_info& info) {
+        auto& cursor = const_cast<mongodb_cursor_info&>(static_cast<const mongodb_cursor_info&>(info));
+        cursor.prev();
+        return cursor;
     }
 
-    const variant& mongodb_driver::value(const cursor_info& info) {
-        auto& cursor = const_cast<mongodb_cursor&>(static_cast<const mongodb_cursor&>(info));
+    primary_key_t mongodb_driver::available_pk(const table_info& table) {
+        return impl_->available_pk(table);
+    }
+
+    object_value mongodb_driver::object_by_pk(const table_info& table, const primary_key_t pk) {
+        return impl_->object_by_pk(table, pk);
+    }
+
+    const object_value& mongodb_driver::object_at_cursor(const cursor_info& info) {
+        auto& cursor = const_cast<mongodb_cursor_info&>(static_cast<const mongodb_cursor_info&>(info));
         return cursor.get_object_value();
     }
 
     void mongodb_driver::set_blob(const cursor_info& info, bytes blob) {
-        auto& cursor = const_cast<mongodb_cursor&>(static_cast<const mongodb_cursor&>(info));
+        auto& cursor = const_cast<mongodb_cursor_info&>(static_cast<const mongodb_cursor_info&>(info));
         cursor.blob = std::move(blob);
-    }
-
-    primary_key_t mongodb_driver::available_pk(const table_info& table) {
-        impl_->apply_changes(table);
-
-        auto cursor = impl_->get_db_table(table).find(
-            make_document(kvp(get_scope_field_name(), get_scope_name(table))),
-            options::find()
-                .sort(make_document(kvp(table.pk_order->field, -1)))
-                .limit(1));
-
-        auto itr = cursor.begin();
-        if (cursor.end() != itr) {
-            return _detail::get_pk_value(table, *itr) + 1;
-        }
-
-        return 0;
-    }
-
-    primary_key_t mongodb_driver::insert(const table_info& table, const primary_key_t pk, const variant& value) {
-        auto& object = value.get_object();
-
-        document insert;
-        _detail::build_document(insert, object);
-
-        impl_->get_mutable_db_table(table).append(insert_one(insert.view()));
-
-//        std::cout << bsoncxx::to_json(insert.view()) << std::endl;
-
-//        auto inserted = impl_->get_db_table(table).insert_one(insert.view());
-//        CYBERWAY_ASSERT(inserted && inserted->result().inserted_count() == 1, driver_insert_exception,
-//            "Fail to insert object ${object} into the table ${table}",
-//            ("object", object)("table", get_full_table_name(table)));
-
-        return pk;
-    }
-
-    primary_key_t mongodb_driver::update(const table_info& table, const primary_key_t pk, const variant& value) {
-        auto& object = value.get_object();
-
-        document update;
-        _detail::build_document(update, object);
-
-        impl_->get_mutable_db_table(table).append(update_one(
-            _detail::make_pk_document(table, pk).view(),
-            make_document(kvp("$set", update))));
-
-//        auto updated = impl_->get_db_table(table).update_one(
-//            _detail::make_pk_document(table, pk).view(),
-//            make_document(kvp("$set", update)));
-//
-//        CYBERWAY_ASSERT(updated && updated->result().matched_count() == 1, driver_update_exception,
-//            "Fail to update object ${object} in the table ${table}",
-//            ("object", object)("table", get_full_table_name(table)));
-
-        return pk;
-    }
-
-    primary_key_t mongodb_driver::remove(const table_info& table, primary_key_t pk) {
-        impl_->get_mutable_db_table(table).append(delete_one(
-            _detail::make_pk_document(table, pk).view()));
-
-//        auto deleted = impl_->get_db_table(table).delete_one(_detail::make_pk_document(table, pk).view()));
-//
-//        CYBERWAY_ASSERT(deleted && deleted->result().deleted_count() == 1, driver_update_exception,
-//            "Fail to delete object ${object} from the table ${table}",
-//            ("object", bsoncxx::to_json(doc.view()))("table", get_full_table_name(table)));
-
-        return pk;
     }
 
 } } // namespace cyberway::chaindb

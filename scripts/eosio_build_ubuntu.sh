@@ -76,6 +76,9 @@
 	for (( i=0; i<${#DEP_ARRAY[@]}; i++ ));
 	do
 		pkg=$( dpkg -s "${DEP_ARRAY[$i]}" 2>/dev/null | grep Status | tr -s ' ' | cut -d\  -f4 )
+		if [ -z "$pkg" -a "${DEP_ARRAY[$i]}" = "libssl-dev" ]; then
+			pkg=$( dpkg -s "libssl1.0-dev" 2>/dev/null | grep Status | tr -s ' ' | cut -d\  -f4 )
+		fi
 		if [ -z "$pkg" ]; then
 			DEP=$DEP" ${DEP_ARRAY[$i]} "
 			DISPLAY="${DISPLAY}${COUNT}. ${DEP_ARRAY[$i]}\\n\\t"
@@ -105,7 +108,7 @@
 						printf "\\n\\tDPKG dependencies installed successfully.\\n"
 					fi
 				break;;
-				[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
+				[Nn]* ) echo "User aborting installation of required dependencies."; exit 1;;
 				* ) echo "Please type 1 for yes or 2 for no.";;
 			esac
 		done

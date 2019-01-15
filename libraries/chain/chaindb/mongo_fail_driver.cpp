@@ -45,6 +45,10 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
+    const cursor_info& mongodb_driver::begin(index_info) {
+        NOT_SUPPORTED;
+    }
+
     const cursor_info& mongodb_driver::end(index_info) {
         NOT_SUPPORTED;
     }
@@ -69,11 +73,11 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
-    variant mongodb_driver::value(const table_info&, const primary_key_t) {
+    variant mongodb_driver::object_by_pk(const table_info&, const primary_key_t) {
         NOT_SUPPORTED;
     }
 
-    const variant& mongodb_driver::value(const cursor_info&) {
+    const variant& mongodb_driver::object_at_cursor(const cursor_info&) {
         NOT_SUPPORTED;
     }
 
@@ -85,15 +89,7 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
-    primary_key_t mongodb_driver::insert(const table_info&, primary_key_t, const variant&) {
-        NOT_SUPPORTED;
-    }
-
-    primary_key_t mongodb_driver::update(const table_info&, primary_key_t, const variant&) {
-        NOT_SUPPORTED;
-    }
-
-    primary_key_t mongodb_driver::remove(const table_info&, primary_key_t) {
+    void write(const table_info&, primary_key_t, revision_t, write_value, write_value) {
         NOT_SUPPORTED;
     }
 

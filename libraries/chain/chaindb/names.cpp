@@ -3,30 +3,34 @@
 namespace cyberway { namespace chaindb {
 
     // name can't contains _ that is why they are used for internal db and key names
-        
-    const string& get_system_code_name() {
-        static const string name = "_CYBERWAY_";
-        return name;
-    }
 
-    const string& get_unknown_name() {
-        static const string name = "_UNKNOWN_";
-        return name;
-    }
+    const string names::unknown         = "_UNKNOWN_";
 
-    const string& get_scope_field_name() {
-        static const string name = "_SCOPE_";
-        return name;
-    }
+    const string names::system_code     = "_CYBERWAY_";
 
-    const string& get_payer_field_name() {
-        static const string name = "_PAYER_";
-        return name;
-    }
+    const string names::undo_table      = "undo";
 
-    const string& get_size_field_name() {
-        static const string name = "_SIZE_";
-        return name;
-    }
+    const string names::service_field   = "_SERVICE_";
+
+    const string names::code_field      = "code";
+    const string names::table_field     = "table";
+    const string names::hash_field      = "hash";
+    const string names::scope_field     = "scope";
+    const string names::pk_field        = "pk";
+
+    const string names::next_pk_field   = "npk";
+    const string names::undo_pk_field   = "upk";
+    const string names::undo_rec_field  = "rec";
+    const string names::revision_field  = "rev";
+
+    const string names::payer_field     = "payer";
+    const string names::size_field      = "size";
+
+    const string names::scope_path      = string(names::service_field).append(".").append(names::scope_field);
+    const string names::undo_pk_path    = string(names::service_field).append(".").append(names::undo_pk_field);
+    const string names::revision_path   = string(names::service_field).append(".").append(names::revision_field);
+
+    const string names::asc_order       = "asc";
+    const string names::desc_order      = "desc";
 
 } } // namespace cyberway::chaindb

@@ -47,37 +47,42 @@ class maybe_session {
       maybe_session() = default;
 
       maybe_session( maybe_session&& other)
-      :_session(move(other._session)),
-       _chaindb_session(move(other._chaindb_session))
+// TODO: removed by CyberWay
+//      : _session(move(other._session)),
+      : _chaindb_session(move(other._chaindb_session))
       {
       }
 
       explicit maybe_session(database& db, chaindb_controller& chaindb) {
-         _session = db.start_undo_session(true);
+// TODO: removed by CyberWay
+//         _session = db.start_undo_session(true);
          _chaindb_session = chaindb.start_undo_session(true);
       }
 
       maybe_session(const maybe_session&) = delete;
 
       void squash() {
-         if (_session)
-            _session->squash();
+// TODO: removed by CyberWay
+//         if (_session)
+//            _session->squash();
          if (_chaindb_session) {
             _chaindb_session->squash();
          }
       }
 
       void undo() {
-         if (_session)
-            _session->undo();
+// TODO: removed by CyberWay
+//         if (_session)
+//            _session->undo();
          if (_chaindb_session) {
             _chaindb_session->undo();
          }
       }
 
       void push() {
-         if (_session)
-            _session->push();
+// TODO: removed by CyberWay
+//         if (_session)
+//            _session->push();
          if (_chaindb_session) {
             _chaindb_session->push();
          }
@@ -90,12 +95,13 @@ class maybe_session {
       }
 
       maybe_session& operator = ( maybe_session&& mv ) {
-         if (mv._session) {
-            _session = move(*mv._session);
-            mv._session.reset();
-         } else {
-            _session.reset();
-         }
+// TODO: removed by CyberWay
+//         if (mv._session) {
+//            _session = move(*mv._session);
+//            mv._session.reset();
+//         } else {
+//            _session.reset();
+//         }
 
          if (mv._chaindb_session) {
             _chaindb_session = move(*mv._chaindb_session);
@@ -108,7 +114,8 @@ class maybe_session {
       };
 
    private:
-      optional<database::session>     _session;
+// TODO: removed by CyberWay
+//      optional<database::session>     _session;
       optional<chaindb_session>       _chaindb_session;
 };
 
@@ -182,7 +189,8 @@ struct controller_impl {
             unapplied_transactions[t->signed_id] = t;
       }
       head = prev;
-      db.undo();
+// TODO: removed by CyberWay
+//      db.undo();
       chaindb.undo();
    }
 
@@ -285,8 +293,8 @@ struct controller_impl {
          }
       }
 
-
-      db.commit( s->block_num );
+// TODO: removed by CyberWay
+//      db.commit( s->block_num );
       chaindb.commit( s->block_num );
 
       if( append_to_blog ) {
@@ -324,7 +332,8 @@ struct controller_impl {
    }
 
    void set_revision(uint64_t revision) {
-      db.set_revision(revision);
+// TODO: removed by CyberWay
+//      db.set_revision(revision);
       chaindb.set_revision(revision);
    }
 
@@ -406,6 +415,8 @@ struct controller_impl {
                     ("blog_head",end->block_num())("head",head->block_num)  );
       }
 
+      chaindb.restore_db();
+
       EOS_ASSERT(chaindb.revision() >= head->block_num, fork_database_exception, "fork database is inconsistent with shared memory",
                  ("db",chaindb.revision())("head",head->block_num));
 
@@ -415,7 +426,8 @@ struct controller_impl {
                ("db",chaindb.revision())("head",head->block_num) );
       }
       while (chaindb.revision() > head->block_num) {
-         db.undo();
+// TODO: removed by CyberWay
+//         db.undo();
          chaindb.undo();
       }
 
@@ -428,7 +440,9 @@ struct controller_impl {
    ~controller_impl() {
       pending.reset();
 
-      db.flush();
+// TODO: removed by CyberWay
+//      db.flush();
+      chaindb.apply_all_changes();
       reversible_blocks.flush();
    }
 
@@ -459,7 +473,7 @@ struct controller_impl {
          {"code_version", "checksum256"},
          {"creation_date", "block_timestamp_type"},
          {"code", "string"},
-         {"abi", "string"}}
+         {"abi", "bytes"}}
       });
 
       abi.tables.emplace_back( eosio::chain::table_def {
@@ -603,21 +617,37 @@ struct controller_impl {
       });
 
       // domain names
-      abi.structs.emplace_back( eosio::chain::struct_def{
+      abi.structs.emplace_back(eosio::chain::struct_def{
         "domain", "",
         {{"id", "uint64"},
          {"owner", "name"},
+         {"linked_to", "name"},
          {"creation_date", "block_timestamp_type"},
          {"name", "string"}}
       });
-
-      abi.tables.emplace_back( eosio::chain::table_def {
+      abi.tables.emplace_back(eosio::chain::table_def{
         "domain",
         cyberway::chaindb::tag<domain_object>::get_code(),
         "domain",
         {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {"string", cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}},
-         {"name", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}}
+         {"name", cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}},
+         {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}}
+      });
+
+      abi.structs.emplace_back(eosio::chain::struct_def{
+        "username", "",
+        {{"id", "uint64"},
+         {"owner", "name"},
+         {"scope", "name"},
+         {"name", "string"}}
+      });
+      abi.tables.emplace_back(eosio::chain::table_def{
+        "username",
+        cyberway::chaindb::tag<username_object>::get_code(),
+        "username",
+        {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {"scopename", cyberway::chaindb::tag<by_scope_name>::get_code(), true, {{"scope", "asc"},{"name", "asc"}}},
+         {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}}
       });
 
    }
@@ -625,7 +655,8 @@ struct controller_impl {
    void clear_all_undo() {
       // Rewind the database to the last irreversible block
       db.with_write_lock([&] {
-         db.undo_all();
+// TODO: removed by CyberWay
+//         db.undo_all();
          chaindb.undo_all();
          /*
          FC_ASSERT(db.revision() == self.head_block_num(),
@@ -636,12 +667,12 @@ struct controller_impl {
    }
 
    void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
-      snapshot->write_section("contract_tables", [this]( auto& section ) {
+      snapshot->write_section("contract_tables", []( auto& section ) {
       });
    }
 
    void read_contract_tables_from_snapshot( const snapshot_reader_ptr& snapshot ) {
-      snapshot->read_section("contract_tables", [this]( auto& section ) {
+      snapshot->read_section("contract_tables", []( auto& section ) {
       });
    }
 
@@ -2139,9 +2170,18 @@ const account_object& controller::get_account( account_name name )const
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
-const domain_object& controller::get_domain(domain_name name) const { try {
-   return my->db.get<domain_object, by_name>(name);
+const domain_object& controller::get_domain(const domain_name& name) const { try {
+    const auto* d = my->db.find<domain_object, by_name>(name);
+    EOS_ASSERT(d != nullptr, chain::domain_query_exception, "domain `${name}` not found", ("name", name));
+    return *d;
 } FC_CAPTURE_AND_RETHROW((name)) }
+
+const username_object& controller::get_username(account_name scope, const username& name) const { try {
+    const auto* user = my->db.find<username_object, by_scope_name>(boost::make_tuple(scope,name));
+    EOS_ASSERT(user != nullptr, username_query_exception,
+        "username `${name}` not found in scope `${scope}`", ("name",name)("scope",scope));
+   return *user;
+} FC_CAPTURE_AND_RETHROW((scope)(name)) }
 
 vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {
    vector<transaction_metadata_ptr> result;

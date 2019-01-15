@@ -1,145 +1,142 @@
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/composite_key.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/indexed_by.hpp>
-
 #include <cyberway/chaindb/cache_map.hpp>
 #include <cyberway/chaindb/controller.hpp>
-
-#include <cyberway/chaindb/names.hpp>
+#include <cyberway/chaindb/table_object.hpp>
 
 namespace cyberway { namespace chaindb {
 
-    class cache_table_object final {
-        const table_def table_def_;  // <- copy to replace pointer in info_
-        const order_def pk_order_;   // <- copy to replace pointer in info_
-        table_info      info_;       // <- for const reference
-
-    public:
-        const account_name code;
-        const account_name scope;
-        const table_name   table;
-        const field_name   pk_field; // <- for case when contract change its primary key
-
-        cache_table_object(const table_info& src)
-        : table_def_(*src.table),
-          pk_order_(*src.pk_order),
-          info_(src),
-          code(src.code),
-          scope(src.scope),
-          table(src.table->name),
-          pk_field(src.pk_order->field) {
-            info_.table = &table_def_;
-            info_.pk_order = &pk_order_;
-        }
-
-        const table_info& info() const {
-            return info_;
+    struct table_cache_object final: public table_object::object {
+        table_cache_object(const table_info& src, const cache_converter_interface& converter)
+        : object(src),
+          converter_(converter) {
         }
 
         using map_type = std::map<primary_key_t, cache_item_ptr>;
 
         map_type map;
         primary_key_t next_pk = unset_primary_key;
-    }; // struct cache_table
 
-    namespace bmi = boost::multi_index;
+        cache_item_ptr emplace(object_value obj) {
+            auto pk = obj.pk();
+            auto itr = map.find(pk);
 
-    using cache_table_index = bmi::multi_index_container<
-        cache_table_object,
-        bmi::indexed_by<
-            bmi::ordered_unique<
-                bmi::composite_key<
-                    cache_table_object,
-                    bmi::member<cache_table_object, const account_name, &cache_table_object::code>,
-                    bmi::member<cache_table_object, const account_name, &cache_table_object::scope>,
-                    bmi::member<cache_table_object, const table_name,   &cache_table_object::table>,
-                    bmi::member<cache_table_object, const field_name,   &cache_table_object::pk_field>>>>>;
+            if (map.end() == itr) {
+                auto itm = std::make_shared<cache_item>(std::move((obj)));
+                itr = map.emplace(pk, std::move(itm)).first;
+            } else {
+                itr->second->set_object(std::move(obj));
+            }
+            if (!itr->second->object().is_null()) {
+                itr->second->data = converter_.convert_variant(*itr->second, itr->second->object());
+            }
+            return itr->second;
+        }
+
+    private:
+        const cache_converter_interface& converter_;
+    }; // struct table_cache_object
+
+    using table_cache_object_index = table_object::index<table_cache_object>;
 
     struct cache_map::cache_map_impl_ final {
         cache_map_impl_() = default;
         ~cache_map_impl_() = default;
 
-        cache_table_object* find(const table_info& table) {
-            auto itr = tables.find(std::make_tuple(table.code, table.scope, table.table->name, table.pk_order->field));
-            if (tables.end() != itr) return &const_cast<cache_table_object&>(*itr);
+        table_cache_object* find(const table_info& table) {
+            auto itr = table_object::find(index_, table);
+            if (index_.end() != itr) return &const_cast<table_cache_object&>(*itr);
 
             return nullptr;
         }
 
-        cache_table_object& get(const table_info& table) {
+        void set_converter(const table_info& table, const cache_converter_interface& converter) {
             auto cache = find(table);
-            if (cache) return *cache;
+            if (cache) return;
 
-            auto result = tables.emplace(table);
-            return const_cast<cache_table_object&>(*result.first);
+            table_object::emplace(index_, table, converter);
         }
 
-        cache_table_index tables;
+        void erase(table_cache_object& cache) {
+            index_.erase(index_.iterator_to(cache));
+        }
+
+    private:
+        table_cache_object_index index_;
     }; // struct cache_map::cache_map_impl_
 
     cache_map::cache_map()
-    : impl_(new cache_map_impl_())
-    { }
+    : impl_(new cache_map_impl_()) {
+    }
 
     cache_map::~cache_map() = default;
 
-    primary_key_t cache_map::get_next_pk(const table_info& table) const {
-        auto cache = impl_->find(table);
-        if (cache && cache->next_pk != unset_primary_key) return cache->next_pk++;
-
-        return unset_primary_key;
+    void cache_map::set_cache_converter(const table_info& table, const cache_converter_interface& converter) const  {
+        impl_->set_converter(table, converter);
     }
 
-    void cache_map::set_next_pk(const table_info& table, const primary_key_t pk) const {
-        auto& cache = impl_->get(table);
-        cache.next_pk = pk;
-    }
-
-    cache_item_ptr cache_map::find(const table_info& table, const primary_key_t pk) {
+    cache_item_ptr cache_map::create(const table_info& table) const {
+        cache_item_ptr item;
         auto cache = impl_->find(table);
-        if (cache) {
-            auto itr = cache->map.find(pk);
-            if (cache->map.end() != itr) return itr->second;
+        if (BOOST_LIKELY(cache && cache->next_pk != unset_primary_key)) {
+            const auto pk = cache->next_pk++;
+            return cache->emplace({{table, pk}, {}});
         }
-
-        // not found case:
         return cache_item_ptr();
     }
 
-    void cache_map::insert(const table_info& table, cache_item_ptr item) {
-        if (!item) return;
+    void cache_map::set_next_pk(const table_info& table, const primary_key_t pk) const {
+        auto cache = impl_->find(table);
+        if (!cache) return;
 
-        auto& cache = impl_->get(table);
-        auto itr = cache.map.find(item->pk);
+        cache->next_pk = pk;
 
-        if (cache.map.end() != itr) {
-            itr->second = std::move(item);
-        } else {
-            cache.map.emplace(item->pk, std::move(item));
-        }
+        // TODO: is it possible case?
+//        auto itr = cache->map.lower_bound(pk);
+//        for (auto etr = cache->map.end(); itr != etr; ) {
+//            cache->map.erase(itr++);
+//        }
     }
 
-    void cache_map::update(const table_info& table, const primary_key_t pk, const variant& value) {
+    cache_item_ptr cache_map::find(const table_info& table, const primary_key_t pk) const {
+        cache_item_ptr item;
+        auto cache = impl_->find(table);
+        if (!cache) return item;
+
+        auto itr = cache->map.find(pk);
+        if (cache->map.end() != itr) {
+            if (itr->second->is_deleted()) {
+                cache->map.erase(itr);
+            } else {
+                return itr->second;
+            }
+        }
+
+        return item;
+    }
+
+    cache_item_ptr cache_map::emplace(const table_info& table, object_value obj) const {
+        if (obj.pk() == unset_primary_key) return cache_item_ptr();
+
+        auto cache = impl_->find(table);
+        if (!cache) return cache_item_ptr();
+
+        return cache->emplace(std::move(obj));
+    }
+
+    void cache_map::remove(const table_info& table, const primary_key_t pk) const {
         if (pk == unset_primary_key) return;
 
         auto cache = impl_->find(table);
         if (!cache) return;
 
         auto itr = cache->map.find(pk);
-        if (cache->map.end() == itr) return;
+        if (itr != cache->map.end()) {
+            itr->second->mark_deleted();
+            cache->map.erase(itr);
+        }
 
-        itr->second->convert_variant(value);
-    }
-
-    void cache_map::remove(const table_info& table, const primary_key_t pk) {
-        if (pk == unset_primary_key) return;
-
-        auto cache = impl_->find(table);
-        if (!cache) return;
-
-        cache->map.erase(pk);
+        if (cache->map.empty() && cache->code() != account_name()) {
+            impl_->erase(*cache);
+        }
     }
 
     //-----------

@@ -11,14 +11,15 @@ namespace cyberway { namespace chaindb {
         cache_map();
         ~cache_map();
 
-        primary_key_t get_next_pk(const table_info&) const;
+        void set_cache_converter(const table_info&, const cache_converter_interface&) const;
+
         void set_next_pk(const table_info&, primary_key_t) const;
 
-        cache_item_ptr find(const table_info&, primary_key_t);
+        cache_item_ptr create(const table_info&) const;
+        cache_item_ptr find(const table_info&, primary_key_t) const;
 
-        void insert(const table_info&, cache_item_ptr);
-        void update(const table_info&, primary_key_t, const variant&);
-        void remove(const table_info&, primary_key_t);
+        cache_item_ptr emplace(const table_info&, object_value) const;
+        void remove(const table_info&, primary_key_t) const;
 
     private:
         struct cache_map_impl_;

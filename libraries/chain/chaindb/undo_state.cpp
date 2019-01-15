@@ -1,18 +1,18 @@
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/composite_key.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/indexed_by.hpp>
-
 #include <cyberway/chaindb/undo_state.hpp>
+#include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chaindb/driver_interface.hpp>
 #include <cyberway/chaindb/exception.hpp>
-#include <cyberway/chaindb/names.hpp>
 #include <cyberway/chaindb/cache_map.hpp>
+#include <cyberway/chaindb/table_object.hpp>
+#include <cyberway/chaindb/journal.hpp>
+#include <cyberway/chaindb/abi_info.hpp>
+
+#include <eosio/chain/account_object.hpp>
 
 /** Session exception is a critical errors and they doesn't handle by chain */
 #define CYBERWAY_SESSION_ASSERT(expr, FORMAT, ...)                      \
     FC_MULTILINE_MACRO_BEGIN                                            \
-        if (!(expr)) {                                                  \
+        if (BOOST_UNLIKELY( !(expr) )) {                                \
             elog(FORMAT, __VA_ARGS__);                                  \
             FC_THROW_EXCEPTION(session_exception, FORMAT, __VA_ARGS__); \
         }                                                               \
@@ -20,81 +20,61 @@
 
 namespace cyberway { namespace chaindb {
 
-    namespace bmi = boost::multi_index;
-
-    static constexpr int64_t impossible_revision = std::numeric_limits<int64_t>::max();
+    using fc::mutable_variant_object;
 
     enum class undo_stage {
         Unknown,
         New,
         Stack,
-        Rollback,
-    };
+    }; // enum undo_stage
 
     struct undo_state final {
         undo_state() = default;
-        undo_state(int64_t value): revision(value) { }
+        undo_state(revision_t rev): revision_(rev) { }
 
-        using pk_set = std::set<primary_key_t>;
-        using pk_value_map = std::map<primary_key_t, variant>;
+        using pk_value_map_t_ = std::map<primary_key_t, object_value>;
 
-        int64_t      revision = impossible_revision;
-        pk_value_map old_values;
-        pk_value_map removed_values;
-        pk_set       new_ids;
+        primary_key_t   next_pk_      = unset_primary_key;
+        primary_key_t   undo_next_pk_ = unset_primary_key;
+        revision_t      revision_     = impossible_revision;
+
+        pk_value_map_t_ new_values_;
+        pk_value_map_t_ old_values_;
+        pk_value_map_t_ removed_values_;
     }; // struct undo_state
 
-    class table_undo_stack final {
-        const table_def table_def_;  // <- copy to replace pointer in info_
-        const order_def pk_order_;   // <- copy to replace pointer in info_
-        table_info      info_;       // <- for const reference
-        undo_stage      stage_ = undo_stage::Unknown;    // <- state machine - changes via actions
-        int64_t         revision_ = impossible_revision; // <- part of state machine - changes via actions
-
-        std::deque<undo_state> stack_;                   // <- access depends on state machine
+    class table_undo_stack final: public table_object::object {
+        undo_stage stage_    = undo_stage::Unknown; // <- state machine - changes via actions
+        revision_t revision_ = impossible_revision; // <- part of state machine - changes via actions
+        std::deque<undo_state> stack_;              // <- access depends on state machine
 
     public:
-        // key part
-        const account_name code;
-        const account_name scope;
-        const table_name   table;
-        const field_name   pk_field; // <- for case when contract change its primary key
-
         table_undo_stack() = delete;
 
-        table_undo_stack(const table_info& src, const int64_t revision)
-        : table_def_(*src.table),   // <- one copy per serie of sessions - it is not very critical
-          pk_order_(*src.pk_order), // <- one copy per serie of sessions - it is not very critical
-          info_(src),
+        table_undo_stack(const table_info& src, const revision_t rev)
+        : object(src),
           stage_(undo_stage::New),
-          revision_(revision),
-          code(src.code),
-          scope(src.scope),
-          table(src.table->name),
-          pk_field(src.pk_order->field) { // <- one copy per serie of sessions - it is not very critical
-            info_.table = &table_def_;
-            info_.pk_order = &pk_order_;
-
+          revision_(rev) {
         }
 
-        const table_info& info() const {
-            return info_;
+        revision_t head_revision() const {
+            if (stack_.empty()) {
+                return 0;
+            }
+            return stack_.back().revision_;
         }
 
-        int64_t revision() const {
+        revision_t revision() const {
             return revision_;
         }
 
-        void start_session(const int64_t revision) {
-            CYBERWAY_SESSION_ASSERT(!empty(),
-                "The stack of the table ${table} is empty.", ("table", get_full_table_name(info_)));
-
-            CYBERWAY_SESSION_ASSERT(stack_.back().revision < revision,
+        void start_session(const revision_t rev) {
+            CYBERWAY_SESSION_ASSERT(revision_ < rev,
                 "Bad revision ${table_revision} (new ${revision}) for the table ${table}.",
-                ("table", get_full_table_name(info_))("table_revision", stack_.back().revision)
-                ("revision", revision));
+                ("table", get_full_table_name())("table_revision", revision_)
+                ("revision", rev));
 
-            revision_ = revision;
+            revision_ = rev;
             stage_ = undo_stage::New;
         }
 
@@ -105,80 +85,101 @@ namespace cyberway { namespace chaindb {
                     stack_.emplace_back(revision_);
                 }
 
-                case undo_stage::Unknown:
-                case undo_stage::Rollback:
-                    if (stack_.empty()) {
-                        break;
-                    }
-
                 case undo_stage::Stack:
                     return stack_.back();
+
+                case undo_stage::Unknown:
+                    break;
             }
 
             CYBERWAY_SESSION_ASSERT(false,
                 "Wrong stage ${stage} of the table ${table} on getting of a head.",
-                ("table", get_full_table_name(info_))("stage", stage_));
+                ("table", get_full_table_name())("stage", stage_));
+        }
+
+        undo_state& tail() {
+            if (!stack_.empty()) {
+                return stack_.front();
+            }
+
+            CYBERWAY_SESSION_ASSERT(false,
+                "Wrong stage ${stage} of the table ${table} on getting of a tail.",
+                ("table", get_full_table_name())("stage", stage_));
         }
 
         undo_state& prev_state() {
             switch (stage_) {
                 case undo_stage::Unknown:
-                case undo_stage::Rollback:
+                    break;
+
                 case undo_stage::Stack:
                     CYBERWAY_SESSION_ASSERT(size() >= 2,
-                        "The table ${table} doesn't have 2 states.", ("table", get_full_table_name(info_)));
+                        "The table ${table} doesn't have 2 states.", ("table", get_full_table_name()));
                     return stack_[stack_.size() - 2];
 
                 case undo_stage::New:
                     CYBERWAY_SESSION_ASSERT(!empty(),
-                        "The table ${table} doesn't have any state.", ("table", get_full_table_name(info_)));
+                        "The table ${table} doesn't have any state.", ("table", get_full_table_name()));
                     return stack_.back();
             }
 
             CYBERWAY_SESSION_ASSERT(false,
                 "Wrong stage ${stage} of the table ${table} on getting of a previous state.",
-                ("table", get_full_table_name(info_))("stage", stage_));
+                ("table", get_full_table_name())("stage", stage_));
         }
 
-        void commit(const int64_t revision) {
-            CYBERWAY_SESSION_ASSERT(!empty(),
-                "Stack of the table ${table} is empty.", ("table", get_full_table_name(info_)));
+        void squash() {
+            switch (stage_) {
+                case undo_stage::Unknown:
+                    break;
 
-            if (stack_.back().revision <= revision) {
-                stack_.clear();
-            } else {
-                while (!stack_.empty() && stack_.front().revision <= revision) {
-                    stack_.pop_front();
+                case undo_stage::Stack:
+                    --stack_.back().revision_;
+
+                case undo_stage::New: {
+                    --revision_;
+                    update_stage();
+                    return;
                 }
             }
+
+            CYBERWAY_SESSION_ASSERT(false,
+                "Wrong stage ${stage} of the table ${table} on squashing of changes.",
+                ("table", get_full_table_name())("stage", stage_));
         }
 
         void undo() {
             switch (stage_) {
                 case undo_stage::Unknown:
-                case undo_stage::Rollback:
-                    if (stack_.empty()) {
-                        break;
-                    }
+                    break;
 
-                case undo_stage::Stack: {
+                case undo_stage::Stack:
                     stack_.pop_back();
-                    if (empty()) {
-                        stage_    = undo_stage::Rollback;
-                        revision_ = impossible_revision; // for validation in other places
-                        return; // table should be removed
-                    }
-                }
 
-                case undo_stage::New:
-                    stage_    = undo_stage::Rollback;
-                    revision_ = stack_.back().revision;
+                case undo_stage::New: {
+                    --revision_;
+                    update_stage();
                     return;
+                }
             }
 
             CYBERWAY_SESSION_ASSERT(false,
                 "Wrong stage ${stage} of the table ${table} on undoing of changes.",
-                ("table", get_full_table_name(info_))("stage", stage_));
+                ("table", get_full_table_name())("stage", stage_));
+        }
+
+        void commit() {
+            if (!stack_.empty()) {
+                stack_.pop_front();
+                if (stack_.empty()) {
+                    revision_ = impossible_revision;
+                    stage_ = undo_stage::Unknown;
+                }
+            } else {
+                CYBERWAY_SESSION_ASSERT(false,
+                    "Wrong stage ${stage} of the table ${table} on committing of changes.",
+                    ("table", get_full_table_name())("stage", stage_));
+            }
         }
 
         size_t size() const {
@@ -189,94 +190,133 @@ namespace cyberway { namespace chaindb {
             return stack_.empty();
         }
 
-    }; // struct table_undo_stack
-
-    using table_undo_stack_index = bmi::multi_index_container<
-        table_undo_stack,
-        bmi::indexed_by<
-            bmi::ordered_unique<
-                bmi::composite_key<
-                    table_undo_stack,
-                    bmi::member<table_undo_stack, const account_name, &table_undo_stack::code>,
-                    bmi::member<table_undo_stack, const account_name, &table_undo_stack::scope>,
-                    bmi::member<table_undo_stack, const table_name,   &table_undo_stack::table>,
-                    bmi::member<table_undo_stack, const field_name,   &table_undo_stack::pk_field>>>>>;
-
-    struct undo_stack::undo_stack_impl_ final {
-        undo_stack_impl_(driver_interface& driver, cache_map& cache)
-        : driver(driver),
-          cache(cache)
-        { }
-
-        void set_revision(const int64_t value) {
-            CYBERWAY_SESSION_ASSERT(tables.empty(), "Cannot set revision while there is an existing undo stack.");
-            revision = value;
+    private:
+        void update_stage() {
+            if (!empty() && revision_ == stack_.back().revision_) {
+                stage_ = undo_stage::Stack;
+            } else if (revision_ > 0) {
+                stage_ = undo_stage::New;
+            } else {
+                revision_ = impossible_revision;
+                stage_ = undo_stage::Unknown;
+            }
         }
 
-        int64_t start_undo_session(bool enabled) {
+    }; // struct table_undo_stack
+
+    struct undo_stack::undo_stack_impl_ final {
+        undo_stack_impl_(chaindb_controller& controller, driver_interface& driver, journal& jrnl, cache_map& cache)
+        : controller_(controller),
+          driver_(driver),
+          journal_(jrnl),
+          cache_(cache) {
+        }
+
+        void add_abi_tables(eosio::chain::abi_def& abi) {
+            undo_abi_.structs.emplace_back( eosio::chain::struct_def{
+               names::service_field, "",
+               {{names::undo_pk_field,  "uint64"}}
+            });
+
+            undo_abi_.structs.emplace_back( eosio::chain::struct_def{
+                names::undo_table, "",
+                {{names::service_field, names::service_field}}
+            });
+
+            undo_abi_.tables.emplace_back( eosio::chain::table_def {
+                names::undo_table,
+                names::undo_table,
+                {{"primary", 1, true, {{ names::undo_pk_path , names::asc_order}} }},
+            });
+
+            abi.structs.insert(abi.structs.end(), undo_abi_.structs.begin(), undo_abi_.structs.end());
+            abi.tables.emplace_back(undo_abi_.tables.front());
+
+            auto& undo_def = undo_abi_.tables.front();
+
+            auto& pk_order = undo_def.indexes.front().orders.front();
+            pk_order.type = "uint64";
+            pk_order.path = {names::service_field, names::undo_pk_field};
+
+            undo_table_.table = &undo_def;
+            undo_table_.pk_order = &pk_order;
+        }
+
+        void clear() {
+            tables_.clear();
+            revision_ = 0;
+            tail_revision_ = 0;
+        }
+
+        revision_t revision() const {
+            return revision_;
+        }
+
+        void set_revision(const revision_t rev) {
+            CYBERWAY_SESSION_ASSERT(tables_.empty(), "Cannot set revision while there is an existing undo stack.");
+            revision_ = rev;
+            tail_revision_ = rev;
+        }
+
+        revision_t start_undo_session(bool enabled) {
             if (enabled) {
-                ++revision;
-                for (auto& const_table: tables) {
+                ++revision_;
+                for (auto& const_table: tables_) {
                     auto& table = const_cast<table_undo_stack&>(const_table); // not critical
-                    table.start_session(revision);
+                    table.start_session(revision_);
                 }
-                stage = undo_stage::New;
-                return revision;
+                stage_ = undo_stage::Stack;
+                return revision_;
             } else {
                 return -1;
             }
         }
 
         bool enabled() const {
-            switch (stage) {
+            switch (stage_) {
                 case undo_stage::Stack:
                 case undo_stage::New:
                     return true;
 
                 case undo_stage::Unknown:
-                case undo_stage::Rollback:
                     break;
             }
             return false;
         }
 
-        void apply_changes(const int64_t apply_revision) {
-            CYBERWAY_SESSION_ASSERT(apply_revision == revision,
-                "Wrong push revision ${apply_revision} != ${revision}",
-                ("revision", revision)("apply_revision", apply_revision));
-            driver.apply_changes();
+        void apply_changes(const revision_t apply_rev) {
+            CYBERWAY_SESSION_ASSERT(apply_rev == revision_, "Wrong push revision ${apply_revision} != ${revision}",
+                ("revision", revision_)("apply_revision", apply_rev));
+            driver_.apply_all_changes();
         }
 
-        void push(const int64_t push_revision) {
-            CYBERWAY_SESSION_ASSERT(push_revision == revision,
-                "Wrong push revision ${push_revision} != ${revision}",
-                ("revision", revision)("push_revision", push_revision));
-            driver.apply_changes();
-            stage = undo_stage::Unknown;
-        }
-
-        void undo(const int64_t undo_revision) {
+        void undo(const revision_t undo_rev) {
             for_tables([&](auto& table){
-                undo(table, undo_revision, revision);
+                undo(table, undo_rev, revision_);
             });
-            --revision;
-            stage = undo_stage::Rollback;
+            --revision_;
+            if (revision_ == tail_revision_) {
+                stage_ = undo_stage::Unknown;
+            }
         }
 
-        void squash(const int64_t squash_revision) {
+        void squash(const revision_t squash_rev) {
             for_tables([&](auto& table){
-                squash(table, squash_revision, revision);
+                squash(table, squash_rev, revision_);
             });
-            --revision;
-            stage = undo_stage::Unknown;
+            --revision_;
+            if (revision_ == tail_revision_) {
+                stage_ = undo_stage::Unknown;
+            }
         }
 
-        void commit(const int64_t commit_revision) {
+        void commit(const revision_t commit_rev) {
             for_tables([&](auto& table){
-                commit(table, commit_revision);
+                commit(table, commit_rev);
             });
-            if (tables.empty()) {
-                stage = undo_stage::Unknown;
+            tail_revision_ = commit_rev;
+            if (revision_ == tail_revision_) {
+                stage_ = undo_stage::Unknown;
             }
         }
 
@@ -284,82 +324,273 @@ namespace cyberway { namespace chaindb {
             for_tables([&](auto& table) {
                 undo_all(table);
             });
-            stage = undo_stage::Rollback;
+            stage_ = undo_stage::Unknown;
+            revision_ = tail_revision_;
         }
 
-        void update(const table_info& table, const primary_key_t pk, variant value) {
-            CYBERWAY_SESSION_ASSERT(enabled(), "Wrong stage ${stage} on updating of the table ${table}.",
-                ("stage", stage)("table", get_full_table_name(table)));
-            update(get_table(table), pk, std::move(value));
+        void insert(const table_info& table, object_value obj) {
+            obj.set_revision(revision_);
+
+            if (enabled()) {
+                insert(get_table(table), std::move(obj));
+            } else {
+                journal_.write_data(table, write_operation::insert(std::move(obj)));
+            }
         }
 
-        void remove(const table_info& table, const primary_key_t pk, variant value) {
-            CYBERWAY_SESSION_ASSERT(enabled(), "Wrong stage ${stage} on removing from the table ${table}.",
-                ("stage", stage)("table", get_full_table_name(table)));
-            remove(get_table(table), pk, std::move(value));
+        void update(const table_info& table, object_value orig_obj, object_value obj) {
+            obj.set_revision(revision_);
+            orig_obj.set_revision(revision_);
+
+            if (enabled()) {
+                update(get_table(table), std::move(orig_obj), std::move(obj));
+            } else {
+                journal_.write_data(table, write_operation::update(std::move(obj)));
+            }
         }
 
-        void insert(const table_info& table, const primary_key_t pk) {
-            CYBERWAY_SESSION_ASSERT(enabled(), "Wrong stage ${stage} on inserting into the table ${table}.",
-                ("stage", stage)("table", get_full_table_name(table)));
-            insert(get_table(table), pk);
+        void remove(const table_info& table, object_value orig_obj) {
+            orig_obj.set_revision(revision_);
+
+            if (enabled()) {
+                remove(get_table(table), std::move(orig_obj));
+            } else {
+                journal_.write_data(table, write_operation::remove(std::move(orig_obj)));
+            }
         }
 
-        void undo(table_undo_stack& table, const int64_t undo_revision, const int64_t test_revision) {
-            if (undo_revision > table.revision()) return;
+        void restore() { try {
+            CYBERWAY_SESSION_ASSERT(start_revision >= revision_ && start_revision >= tail_revision_,
+                "Wrong state on restore");
 
-            const auto& head = table.head();
+            chainbase::allocator<eosio::chain::account_object>* alloc = nullptr;
+            eosio::chain::account_index account_table(*alloc /*isn't used*/, controller_);
+            auto account_idx = account_table.get<eosio::chain::by_name>();
+            auto& abi_map = controller_.get_abi_map();
 
-            CYBERWAY_SESSION_ASSERT(head.revision == undo_revision && undo_revision == test_revision,
-                "Wrong undo revision ${undo_revision} != (${revision}, ${test_revision})",
-                ("revision", head.revision)("undo_revision", undo_revision)("test_revision", test_revision));
+            auto get_system_table_def = [&](const auto& service) -> table_def {
+                auto itr = abi_map.find(account_name());
+                assert(itr != abi_map.end());
 
-            for (auto& item: head.old_values) try {
-                cache.update(table.info(), item.first, item.second);
-                driver.update(table.info(), item.first, std::move(item.second));
-            } catch (const driver_update_exception&) {
-                CYBERWAY_SESSION_ASSERT(false,
-                    "Could not modify object in the table ${table}", ("table", get_full_table_name(table)));
+                auto def = itr->second.find_table(service.hash);
+                CYBERWAY_SESSION_ASSERT(nullptr != def, "The table ${table} doesn't exist on restore",
+                    ("table", get_full_table_name(service)));
+                return *def;
+            };
+
+            auto get_contract_table_def = [&](const auto& service) -> table_def {
+                auto itr = account_idx.find(service.code);
+                auto abi = itr->get_abi();
+                auto dtr = std::find_if(abi.tables.begin(), abi.tables.end(), [&](auto& def){
+                    return def.name.value == service.hash;
+                });
+                CYBERWAY_SESSION_ASSERT(dtr != abi.tables.end(), "The table ${table} doesn't exist",
+                    ("table", get_full_table_name(service)));
+                return (*dtr);
+            };
+
+            auto get_state = [&](const auto& service) -> undo_state& {
+                auto table = table_info(service.code, service.scope);
+                auto def   = table_def();
+                if (account_name() == service.code) {
+                    def = get_system_table_def(service);
+                } else {
+                    def = get_contract_table_def(service);
+                }
+                table.table = &def;
+                table.pk_order = &get_pk_order(table);
+
+                auto& stack = get_table(table);
+                if (stack.revision() != service.revision) {
+                    stack.start_session(service.revision);
+                }
+                return stack.head();
+            };
+
+            auto index = index_info(undo_table_);
+            index.index = &undo_table_.table->indexes.front();
+
+            auto& cursor = driver_.lower_bound(std::move(index), {});
+            for (; cursor.pk != end_primary_key; driver_.next(cursor)) {
+                auto  obj   = driver_.object_at_cursor(cursor);
+                auto  pk    = obj.pk();
+                auto& state = get_state(obj.service);
+
+                if (obj.undo_pk()  >= undo_pk_      ) undo_pk_       = obj.undo_pk() + 1;
+                if (obj.revision() >  revision_     ) revision_      = obj.revision();
+                if (start_revision >= tail_revision_) tail_revision_ = obj.revision() - 1;
+
+                switch (obj.service.undo_rec) {
+                    case undo_record::NewValue:
+                        state.new_values_.emplace(pk, std::move(obj));
+                        break;
+
+                    case undo_record::OldValue:
+                        state.old_values_.emplace(pk, std::move(obj));
+                        break;
+
+                    case undo_record::RemovedValue:
+                        state.removed_values_.emplace(pk, std::move(obj));
+                        break;
+
+                    case undo_record::NextPk:
+                        state.next_pk_ = obj.value.get_object()[names::next_pk_field].as_uint64();
+                        state.undo_next_pk_ = obj.service.undo_pk;
+                        break;
+
+                    case undo_record::Unknown:
+                    default:
+                        CYBERWAY_SESSION_ASSERT(false, "Unknown undo state on loading from DB");
+                }
             }
 
-            for (auto pk: head.new_ids) try {
-                cache.remove(table.info(), pk);
-                driver.remove(table.info(), pk);
-            } catch (const driver_delete_exception&) {
-                CYBERWAY_SESSION_ASSERT(false,
-                    "Could not remove object from the table ${table}", ("table", get_full_table_name(table)));
+            if (revision_) stage_ = undo_stage::Stack;
+        } catch (const session_exception&) {
+            throw;
+        } catch (const std::exception& e) {
+            CYBERWAY_SESSION_ASSERT(false, e.what());
+        } }
+
+    private:
+        void undo(table_undo_stack& table, const revision_t undo_rev, const revision_t test_rev) {
+            if (undo_rev > table.head_revision()) {
+                table.undo();
+                return;
             }
 
-            for (auto& item: head.removed_values) try {
-                cache.remove(table.info(), item.first);
-                driver.insert(table.info(), item.first, std::move(item.second));
-            } catch (const driver_insert_exception&) {
-                CYBERWAY_SESSION_ASSERT(false,
-                    "Could not insert object into the table ${table}", ("table", get_full_table_name(table)));
+            auto& head = table.head();
+
+            CYBERWAY_SESSION_ASSERT(head.revision_ == undo_rev && undo_rev == test_rev,
+                "Wrong undo revision ${undo_revision} != (${revision}, ${test_revision}) "
+                "for the table ${table} for the scope '${scope}",
+                ("revision", head.revision_)("undo_revision", undo_rev)("test_revision", test_rev)
+                ("table", get_full_table_name(table.info()))("scope", get_scope_name(table.info())));
+
+            auto ctx = journal_.create_ctx(table.info());
+
+            for (auto& obj: head.old_values_) {
+                auto undo_pk = obj.second.clone_service();
+
+                obj.second.set_revision(undo_rev - 1);
+                cache_.emplace(table.info(), obj.second);
+
+                journal_.write(ctx,
+                    write_operation::update(undo_rev, std::move(obj.second)),
+                    write_operation::remove(undo_rev, std::move(undo_pk)));
             }
+
+            for (auto& obj: head.new_values_) {
+                cache_.remove(table.info(), obj.first);
+                journal_.write(ctx,
+                    write_operation::remove(undo_rev, obj.second.clone_service()),
+                    write_operation::remove(undo_rev, obj.second.clone_service()));
+            }
+
+            for (auto& obj: head.removed_values_) {
+                auto undo_pk = obj.second.clone_service();
+
+                obj.second.set_revision(undo_rev - 1);
+                cache_.emplace(table.info(), obj.second);
+
+                journal_.write(ctx,
+                    write_operation::insert(std::move(obj.second)),
+                    write_operation::remove(undo_rev, std::move(undo_pk)));
+            }
+
+            if (unset_primary_key != head.next_pk_) {
+                cache_.set_next_pk(table.info(), head.next_pk_);
+            }
+
+            remove_next_pk(ctx, table, head);
 
             table.undo();
         }
 
-        void squash(table_undo_stack& table, const int64_t squash_revision, const int64_t test_revision) {
-            if (squash_revision > table.revision()) return;
+        template <typename Write>
+        void process_state(undo_state& state, Write&& write) const {
+            const auto rev = state.revision_;
+            for (auto& obj: state.old_values_)     write(true,  obj.second, rev);
+            for (auto& obj: state.new_values_)     write(true,  obj.second, rev);
+            for (auto& obj: state.removed_values_) write(false, obj.second, rev);
+        }
+
+        object_value next_pk_object(
+            const table_undo_stack& table, const undo_state& state, variant val = variant()
+        ) const {
+            const auto upk = state.undo_next_pk_;
+            const auto rev = state.revision_;
+            return object_value{{table.info(), upk, undo_record::NextPk, rev}, std::move(val)};
+        }
+
+        template <typename Ctx>
+        void remove_next_pk(Ctx& ctx, const table_undo_stack& table, undo_state& state) const {
+            if (state.next_pk_ != unset_primary_key) {
+                const auto rev = state.revision_;
+
+                journal_.write_undo(ctx, write_operation::remove(rev, next_pk_object(table, state)));
+
+                state.next_pk_      = unset_primary_key;
+                state.undo_next_pk_ = unset_primary_key;
+            }
+        }
+
+        void remove_state(table_undo_stack& table, undo_state& state) const {
+            auto ctx = journal_.create_ctx(table.info());
+
+            process_state(state, [&](bool has_data, auto& obj, auto& rev) {
+                if (has_data) journal_.write_data(ctx, write_operation::revision(rev, obj.clone_service()));
+                journal_.write_undo(ctx, write_operation::remove(rev, obj.clone_service()));
+             });
+
+            remove_next_pk(ctx, table, state);
+
+            table.undo();
+        }
+
+        void squash_state(table_undo_stack& table, undo_state& state) const {
+            auto ctx = journal_.create_ctx(table.info());
+
+            process_state(state, [&](bool has_data, auto& obj, auto& rev) {
+                if (has_data) journal_.write_data(ctx, write_operation::revision(rev, obj.clone_service()));
+                journal_.write_undo(ctx, write_operation::revision(rev, obj.clone_service()));
+                obj.set_revision(rev - 1);
+            });
+
+            if (state.next_pk_ != unset_primary_key) {
+                journal_.write_undo(ctx, write_operation::revision(state.revision_, next_pk_object(table, state)));
+            }
+
+            table.squash();
+        }
+
+        void squash(table_undo_stack& table, const revision_t squash_rev, const revision_t test_rev) {
+            if (squash_rev > table.head_revision()) {
+                table.squash();
+                return;
+            }
 
             auto& state = table.head();
-            CYBERWAY_SESSION_ASSERT(state.revision == squash_revision && squash_revision == test_revision,
-                "Wrong squash revision ${squash_revision} != (${revision}, ${test_revision})",
-                ("revision", state.revision)("squash_revision", squash_revision)("test_revision", test_revision));
+            CYBERWAY_SESSION_ASSERT(state.revision_ == squash_rev && squash_rev == test_rev,
+                "Wrong squash revision ${squash_revision} != (${revision}, ${test_revision})"
+                "for the table ${table} for the scope '${scope}",
+                ("revision", state.revision_)("squash_revision", squash_rev)("test_revision", test_rev)
+                ("table", get_full_table_name(table.info()))("scope", get_scope_name(table.info())));
 
             // Only one stack item
             if (table.size() == 1) {
-                table.undo();
+                if (state.revision_ > tail_revision_) {
+                    squash_state(table, state);
+                } else {
+                    remove_state(table, state);
+                }
                 return;
             }
 
             auto& prev_state = table.prev_state();
 
             // Two stack items but they are not neighbours
-            if (prev_state.revision != state.revision + 1) {
-                --state.revision;
+            if (prev_state.revision_ != state.revision_ - 1) {
+                squash_state(table, state);
                 return;
             }
 
@@ -405,181 +636,293 @@ namespace cyberway { namespace chaindb {
 
             // We can only be outside type A/AB (the nop path) if B is not nop, so it suffices to iterate through B's three containers.
 
-            for (const auto& item : state.old_values) {
-                // new+upd -> new, type A
-                if (prev_state.new_ids.find(item.first) != prev_state.new_ids.end()) {
-                    continue;
-                }
+            auto ctx = journal_.create_ctx(table.info());
 
-                // upd(was=X) + upd(was=Y) -> upd(was=X), type A
-                if (prev_state.old_values.find(item.first) != prev_state.old_values.end()) {
+            for (auto& obj: state.old_values_) {
+                const auto pk = obj.second.pk();
+
+                // 1. new+upd -> new,                        type A
+                // 2. upd(was=X) + upd(was=Y) -> upd(was=X), type A
+                if (prev_state.old_values_.count(pk) || prev_state.new_values_.count(pk)) {
+                    journal_.write(ctx,
+                        write_operation::revision(state.revision_, obj.second.clone_service()),
+                        write_operation::remove(  state.revision_, obj.second.clone_service()));
+
+                    obj.second.set_revision(prev_state.revision_);
                     continue;
                 }
 
                 // del+upd -> N/A
-                CYBERWAY_SESSION_ASSERT(prev_state.removed_values.find(item.first) == prev_state.removed_values.end(),
+                CYBERWAY_SESSION_ASSERT(!prev_state.removed_values_.count(pk),
                     "UB for the table ${table}: Delete + Update", ("table", get_full_table_name(table.info())));
 
                 // nop+upd(was=Y) -> upd(was=Y), type B
-                prev_state.old_values.emplace(item.first, std::move(item.second));
+
+                journal_.write(ctx,
+                    write_operation::revision(state.revision_, obj.second.clone_service()),
+                    write_operation::revision(state.revision_, obj.second.clone_service()));
+
+                obj.second.set_revision(prev_state.revision_);
+                
+                prev_state.old_values_.emplace(pk, std::move(obj.second));
             }
 
             // *+new, but we assume the N/A cases don't happen, leaving type B nop+new -> new
-            for (auto id : state.new_ids) {
-                prev_state.new_ids.insert(id);
+            for (auto& obj: state.new_values_) {
+                const auto pk = obj.second.pk();
+                
+                journal_.write(ctx,
+                    write_operation::revision(state.revision_, obj.second.clone_service()),
+                    write_operation::revision(state.revision_, obj.second.clone_service()));
+
+                obj.second.set_revision(prev_state.revision_);
+                
+                prev_state.new_values_.emplace(pk, std::move(obj.second));
             }
 
             // *+del
-            for (auto& obj : state.removed_values) {
+            for (auto& obj: state.removed_values_) {
+                const auto pk = obj.second.pk();
+
                 // new + del -> nop (type C)
-                if (prev_state.new_ids.find(obj.first) != prev_state.new_ids.end()) {
-                    prev_state.new_ids.erase(obj.first);
+                auto nitr = prev_state.new_values_.find(pk);
+                if (nitr != prev_state.new_values_.end()) {
+                    prev_state.new_values_.erase(nitr);
+
+                    journal_.write_undo(ctx, write_operation::remove(state.revision_, obj.second.clone_service()));
                     continue;
                 }
 
                 // upd(was=X) + del(was=Y) -> del(was=X)
-                auto it = prev_state.old_values.find(obj.first);
-                if (it != prev_state.old_values.end()) {
-                    prev_state.removed_values.emplace(std::move(*it));
-                    prev_state.old_values.erase(obj.first);
+                auto oitr = prev_state.old_values_.find(pk);
+                if (oitr != prev_state.old_values_.end()) {
+                    prev_state.removed_values_.emplace(std::move(*oitr));
+                    prev_state.old_values_.erase(oitr);
+
+                    journal_.write_undo(ctx, write_operation::remove(state.revision_, obj.second.clone_service()));
                     continue;
                 }
 
                 // del + del -> N/A
-                CYBERWAY_SESSION_ASSERT(prev_state.removed_values.find(obj.first) == prev_state.removed_values.end(),
-                    "UB for the table ${table}: Delete + Delete", ("table", get_full_table_name(table)));
+                CYBERWAY_SESSION_ASSERT(!prev_state.removed_values_.count(pk),
+                    "UB for the table ${table}: Delete + Delete", ("table", get_full_table_name(table.info())));
 
                 // nop + del(was=Y) -> del(was=Y)
-                prev_state.removed_values.emplace(std::move(obj)); //[obj.second->id] = std::move(obj.second);
+
+                journal_.write_undo(ctx, write_operation::revision(state.revision_, obj.second.clone_service()));
+                
+                obj.second.set_revision(prev_state.revision_);
+                
+                prev_state.removed_values_.emplace(std::move(obj));
             }
+
+            remove_next_pk(ctx, table, state);
 
             table.undo();
         }
 
-        void commit(table_undo_stack& table, const int64_t revision) {
-            table.commit(revision);
+        void commit(table_undo_stack& table, const revision_t commit_rev) {
+            CYBERWAY_SESSION_ASSERT(!table.empty(),
+                "Stack of the table ${table} is empty.", ("table", table.get_full_table_name()));
+
+            auto ctx = journal_.create_ctx(table.info());
+
+            while (!table.empty()) {
+                auto& state = table.tail();
+
+                if (state.revision_ > commit_rev) return;
+
+                process_state(state, [&](bool, auto& obj, auto& rev){
+                    journal_.write_undo(ctx, write_operation::remove(rev, obj.clone_service()));
+                });
+                remove_next_pk(ctx, table, state);
+
+                table.commit();
+            }
         }
 
         void undo_all(table_undo_stack& table) {
-            while (!table.empty()) {
+            while (table.size() > 1) {
+                squash(table, table.revision(), table.revision());
+            }
+            if (!table.empty()) {
                 undo(table, table.revision(), table.revision());
             }
         }
 
-        void update(table_undo_stack& table, const primary_key_t pk, variant value) {
+        void insert(table_undo_stack& table, object_value obj) {
+            const auto pk = obj.pk();
             auto& head = table.head();
+            auto ctx = journal_.create_ctx(table.info());
 
-            if (head.new_ids.find(pk) != head.new_ids.end()) {
-                return;
+            obj.set_undo_pk(generate_undo_pk())
+               .set_undo_rec(undo_record::NewValue);
+
+            head.new_values_.emplace(pk, obj.clone_service());
+
+            auto undo_pk = obj.clone_service();
+
+            journal_.write(ctx,
+                write_operation::insert(std::move(obj)),
+                write_operation::insert(std::move(undo_pk)));
+
+            if (unset_primary_key == head.next_pk_) {
+                head.next_pk_      = pk;
+                head.undo_next_pk_ = generate_undo_pk();
+
+                auto val = mutable_variant_object{names::next_pk_field, pk};
+                journal_.write_undo(ctx, write_operation::insert(next_pk_object(table, head, std::move(val))));
             }
-
-            auto itr = head.old_values.find(pk);
-            if (itr != head.old_values.end()) {
-                return;
-            }
-
-            head.old_values.emplace(pk, std::move(value));
         }
 
-        void remove(table_undo_stack& table, const primary_key_t pk, variant value) {
+        void update(table_undo_stack& table, object_value orig_obj, object_value obj) {
+            const auto pk = orig_obj.pk();
             auto& head = table.head();
 
-            if (head.new_ids.count(pk)) {
-                head.new_ids.erase(pk);
+            auto ctx = journal_.create_ctx(table.info());
+
+            if (head.new_values_.count(pk) || head.old_values_.count(pk)) {
+                journal_.write_data(ctx, write_operation::update(std::move(obj)));
                 return;
             }
 
-            auto itr = head.old_values.find(pk);
-            if (itr != head.old_values.end()) {
-                head.removed_values.emplace(std::move(*itr));
-                head.old_values.erase(pk);
-                return;
-            }
+            orig_obj
+                .set_undo_pk(generate_undo_pk())
+                .set_undo_rec(undo_record::OldValue);
 
-            if (head.removed_values.count(pk)) {
-                return;
-            }
+            journal_.write(ctx,
+                write_operation::update(std::move(obj)),
+                write_operation::insert(orig_obj));
 
-            head.removed_values.emplace(pk, std::move(value));
+            head.old_values_.emplace(pk, std::move(orig_obj));
         }
 
-        void insert(table_undo_stack& table, const primary_key_t pk) {
+        void remove(table_undo_stack& table, object_value orig_obj) {
             auto& head = table.head();
-            head.new_ids.insert(pk);
+            const auto pk = orig_obj.pk();
+            auto ctx = journal_.create_ctx(table.info());
+
+            journal_.write_data(ctx, write_operation::remove(orig_obj.clone_service()));
+
+            auto nitr = head.new_values_.find(pk);
+            if (head.new_values_.end() != nitr) {
+                journal_.write_undo(ctx, write_operation::remove(std::move(nitr->second)));
+                head.new_values_.erase(nitr);
+                return;
+            }
+
+            auto oitr = head.old_values_.find(pk);
+            if (oitr != head.old_values_.end()) {
+                oitr->second.set_undo_rec(undo_record::RemovedValue);
+                journal_.write_undo(ctx, write_operation::update(oitr->second));
+                head.removed_values_.emplace(std::move(*oitr));
+                head.old_values_.erase(oitr);
+                return;
+            }
+
+            orig_obj
+                .set_undo_pk(generate_undo_pk())
+                .set_undo_rec(undo_record::RemovedValue);
+
+            journal_.write_undo(ctx, write_operation::insert(orig_obj));
+            head.removed_values_.emplace(pk, std::move(orig_obj));
         }
 
         table_undo_stack& get_table(const table_info& table) {
-            auto itr = tables.find(std::make_tuple(table.code, table.scope, table.table->name, table.pk_order->field));
-            if (tables.end() != itr) return const_cast<table_undo_stack&>(*itr); // not critical
+            auto itr = table_object::find(tables_, table);
+            if (tables_.end() != itr) {
+                return const_cast<table_undo_stack&>(*itr); // not critical
+            }
 
-            auto result = tables.emplace(table, revision);
-            CYBERWAY_SESSION_ASSERT(result.second,
-                "Fail to create stack for the table ${table} with the primary key ${pk}",
-                ("table", get_full_table_name(table))("pk", table.pk_order->field));
-            return const_cast<table_undo_stack&>(*result.first);
+            return table_object::emplace(tables_, table, revision_);
         }
 
         template <typename Lambda>
-        void for_tables(Lambda&& lambda) {
-            for (auto itr = tables.begin(), etr = tables.end(); etr != itr; ) {
+        void for_tables(Lambda&& lambda) { try {
+            for (auto itr = tables_.begin(), etr = tables_.end(); etr != itr; ) {
                 auto& table = const_cast<table_undo_stack&>(*itr);
                 lambda(table);
 
                 if (table.empty()) {
-                    tables.erase(itr++);
+                    tables_.erase(itr++);
                 } else {
                     ++itr;
                 }
             }
+        } FC_LOG_AND_RETHROW() }
+
+        primary_key_t generate_undo_pk() {
+            if (undo_pk_ > 1'000'000'000) {
+                undo_pk_ = 1;
+            }
+            return undo_pk_++;
         }
 
-        undo_stage stage = undo_stage::Unknown;
-        int64_t revision = 0;
-        driver_interface& driver;
-        cache_map& cache;
-        table_undo_stack_index tables;
+
+
+        using index_t_ = table_object::index<table_undo_stack>;
+
+        undo_stage          stage_ = undo_stage::Unknown;
+        revision_t          revision_ = 0;
+        revision_t          tail_revision_ = 0;
+        abi_def             undo_abi_;
+        table_info          undo_table_ = {account_name(), account_name()};
+        primary_key_t       undo_pk_ = 1;
+        chaindb_controller& controller_;
+        driver_interface&   driver_;
+        journal&            journal_;
+        cache_map&          cache_;
+        index_t_            tables_;
     }; // struct undo_stack::undo_stack_impl_
 
-    undo_stack::undo_stack(driver_interface& driver, cache_map& cache)
-    : impl_(new undo_stack_impl_(driver, cache))
-    { }
+    undo_stack::undo_stack(chaindb_controller& controller, driver_interface& driver, journal& jrnl, cache_map& cache)
+    : impl_(new undo_stack_impl_(controller, driver, jrnl, cache)) {
+    }
 
     undo_stack::~undo_stack() = default;
+
+    void undo_stack::add_abi_tables(eosio::chain::abi_def& abi) const {
+        impl_->add_abi_tables(abi);
+    }
+
+    void undo_stack::restore() {
+        impl_->restore();
+    }
+
+    void undo_stack::clear() {
+        impl_->clear();
+    }
 
     chaindb_session undo_stack::start_undo_session(bool enabled) {
         return chaindb_session(*this, impl_->start_undo_session(enabled));
     }
 
-    void undo_stack::set_revision(const int64_t value) {
-        impl_->set_revision(value);
+    void undo_stack::set_revision(const revision_t rev) {
+        impl_->set_revision(rev);
     }
 
-    int64_t undo_stack::revision() const {
-        return impl_->revision;
+    revision_t undo_stack::revision() const {
+        return impl_->revision();
     }
 
     bool undo_stack::enabled() const {
         return impl_->enabled();
     }
 
-    void undo_stack::apply_changes(const int64_t revision) {
-        impl_->apply_changes(revision);
+    void undo_stack::apply_changes(const revision_t rev) {
+        impl_->apply_changes(rev);
     }
 
-    void undo_stack::push(const int64_t push_revision) {
-        impl_->push(push_revision);
+    void undo_stack::undo(const revision_t undo_rev) {
+        impl_->undo(undo_rev);
     }
 
-    void undo_stack::undo(const int64_t undo_revision) {
-        impl_->undo(undo_revision);
+    void undo_stack::squash(const revision_t squash_rev) {
+        impl_->squash(squash_rev);
     }
 
-    void undo_stack::squash(const int64_t squash_revision) {
-        impl_->squash(squash_revision);
-    }
-
-    void undo_stack::commit(const int64_t commit_revision) {
-        impl_->commit(commit_revision);
+    void undo_stack::commit(const revision_t commit_rev) {
+        impl_->commit(commit_rev);
     }
 
     void undo_stack::undo_all() {
@@ -587,28 +930,28 @@ namespace cyberway { namespace chaindb {
     }
 
     void undo_stack::undo() {
-        impl_->undo(impl_->revision);
+        impl_->undo(impl_->revision());
     }
 
-    void undo_stack::update(const table_info& table, const primary_key_t pk, variant value) {
-        impl_->update(table, pk, std::move(value));
+    void undo_stack::insert(const table_info& table, object_value obj) {
+        impl_->insert(table, std::move(obj));
     }
 
-    void undo_stack::remove(const table_info& table, const primary_key_t pk, variant value) {
-        impl_->remove(table, pk, std::move(value));
+    void undo_stack::update(const table_info& table, object_value orig_obj, object_value obj) {
+        impl_->update(table,  std::move(orig_obj), std::move(obj));
     }
 
-    void undo_stack::insert(const table_info& table, const primary_key_t pk) {
-        impl_->insert(table, pk);
+    void undo_stack::remove(const table_info& table, object_value orig_obj) {
+        impl_->remove(table,  std::move(orig_obj));
     }
 
     //------
 
-    chaindb_session::chaindb_session(undo_stack& stack, int64_t revision)
+    chaindb_session::chaindb_session(undo_stack& stack, revision_t rev)
     : stack_(stack),
       apply_(true),
-      revision_(revision) {
-        if (revision == -1) {
+      revision_(rev) {
+        if (rev == -1) {
             apply_ = false;
         }
     }
@@ -628,16 +971,13 @@ namespace cyberway { namespace chaindb {
 
     void chaindb_session::apply_changes() {
         if (apply_) {
-            apply_ = false;
             stack_.apply_changes(revision_);
         }
+        apply_ = false;
     }
 
     void chaindb_session::push() {
-        if (apply_) {
-            apply_ = false;
-            stack_.push(revision_);
-        }
+        apply_ = false;
     }
 
     void chaindb_session::squash() {
@@ -656,4 +996,4 @@ namespace cyberway { namespace chaindb {
 
 } } // namespace cyberway::chaindb
 
-FC_REFLECT_ENUM(cyberway::chaindb::undo_stage, (Unknown)(New)(Stack)(Rollback))
+FC_REFLECT_ENUM(cyberway::chaindb::undo_stage, (Unknown)(New)(Stack))

@@ -14,6 +14,7 @@
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/stacktrace.hpp>
 
 #include <boost/dll/runtime_symbol_info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
@@ -97,6 +98,7 @@ int main(int argc, char** argv)
       // app().register_plugin<history_plugin>(); TODO: CyberWay
 
       auto root = fc::app_path();
+      fc::install_btrace_signal_handler(root / "eosio/nodeos/backtrace.dmp");
       app().set_default_data_dir(root / "eosio/nodeos/data" );
       app().set_default_config_dir(root / "eosio/nodeos/config" );
       http_plugin::set_defaults({

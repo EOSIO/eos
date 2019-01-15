@@ -36,6 +36,7 @@ namespace eosio { namespace chain {
     struct by_delay {};
     struct by_status {};
     struct by_sender_id {};
+    struct by_scope_name {};
 
 } } // namespace eosio::chain
 
@@ -166,7 +167,7 @@ namespace cyberway { namespace chaindb {
        emplace_return_type emplace(Constructor&& constructor, Allocator&&) {
            try {
                auto iter = impl.emplace(std::forward<Constructor>(constructor));
-               return std::make_pair(iter, true);
+               return std::make_pair(std::move(iter), true);
            } catch (const fc::exception& err) {
                return std::make_pair(end(), false);
            }
@@ -199,11 +200,11 @@ namespace cyberway { namespace chaindb {
        }
 
        explicit shared_multi_index_container(allocator_type& al, chaindb_controller& controller)
-       : impl(&al, controller), allocator(al)
+       : impl(al, controller), allocator(al)
        { }
 
    private:
-       allocator_type allocator;
+       allocator_type& allocator;
    };
 
 } } // namespace cyberway::chaindb

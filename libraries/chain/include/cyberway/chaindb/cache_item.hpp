@@ -2,14 +2,10 @@
 
 #include <memory>
 
-#include <fc/variant.hpp>
+#include <cyberway/chaindb/common.hpp>
+#include <cyberway/chaindb/object_value.hpp>
 
 namespace cyberway { namespace chaindb {
-    using fc::variant;
-
-    using primary_key_t = uint64_t;
-    static constexpr primary_key_t unset_primary_key = (-2);
-    static constexpr primary_key_t end_primary_key = (-1);
 
     class cache_item;
     struct cache_item_data;
@@ -26,18 +22,19 @@ namespace cyberway { namespace chaindb {
         cache_converter_interface();
         virtual ~cache_converter_interface();
 
-        virtual cache_item_data_ptr convert_variant(cache_item&, primary_key_t, const variant&) const = 0;
+        virtual cache_item_data_ptr convert_variant(cache_item&, const object_value&) const = 0;
     }; // struct cache_load_interface
 
     class cache_item final {
-        const cache_converter_interface& converter_;
+        hash_t hash_ = 0;
+        object_value object_;
         bool is_deleted_ = false;
 
     public:
-        cache_item(const primary_key_t pk, const cache_converter_interface& converter)
-        : converter_(converter),
-          pk(pk)
-        { }
+        cache_item(object_value obj)
+        : hash_(obj.service.hash),
+          object_(std::move(obj)) {
+        }
 
         ~cache_item() = default;
 
@@ -50,15 +47,23 @@ namespace cyberway { namespace chaindb {
             is_deleted_ = true;
         }
 
-        void convert_variant(const variant& value) {
-            data = converter_.convert_variant(*this, pk, value);
+        bool is_valid_table(const hash_t hash) const {
+            return hash_ == hash;
         }
 
-        bool is_valid_converter(const cache_converter_interface& value) const {
-            return &converter_ == &value;
+        primary_key_t pk() const {
+            return object_.pk();
         }
 
-        const primary_key_t pk;
+        void set_object(object_value obj) {
+            assert(is_valid_table(obj.service.hash));
+            object_ = std::move(obj);
+        }
+
+        const object_value& object() const {
+            return object_;
+        }
+
         cache_item_data_ptr data;
     }; // class cache_item
 

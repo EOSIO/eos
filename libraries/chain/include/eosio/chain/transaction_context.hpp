@@ -78,7 +78,8 @@ namespace eosio { namespace chain {
          controller&                   control;
          const signed_transaction&     trx;
          transaction_id_type           id;
-         optional<chainbase::database::session>  undo_session;
+         // TODO: removed by CyberWay
+         // optional<chainbase::database::session>  undo_session;
          optional<chaindb_session>     chaindb_undo_session;
          transaction_trace_ptr         trace;
          fc::time_point                start;

@@ -124,6 +124,7 @@ namespace eosio { namespace chain {
    using permission_name  = name;
    using table_name       = name;
    using index_name       = name;
+   using event_name       = name;
 
 
    /**
@@ -145,6 +146,7 @@ namespace eosio { namespace chain {
       permission_usage_object_type,
       permission_link_object_type,
       domain_object_type,
+      username_object_type,
       UNUSED_action_code_object_type,
       key_value_object_type,
       index64_object_type,

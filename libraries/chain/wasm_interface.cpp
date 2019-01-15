@@ -899,11 +899,27 @@ class authorization_api : public context_aware_api {
    bool is_account( const account_name& account )const {
       return context.is_account( account );
    }
+};
 
-   bool is_domain(null_terminated_ptr ptr)const {
+class domain_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+   bool is_domain(null_terminated_ptr ptr) const {
       return context.is_domain(std::string(ptr));
    }
-
+   bool is_username(const account_name& scope, null_terminated_ptr ptr) const {
+      return context.is_username(scope, std::string(ptr));
+   }
+   account_name get_domain_owner(null_terminated_ptr ptr) const {
+      return context.get_domain_owner(std::string(ptr));
+   }
+   account_name resolve_domain(null_terminated_ptr ptr) const {
+      return context.resolve_domain(std::string(ptr));
+   }
+   account_name resolve_username(const account_name& scope, null_terminated_ptr ptr) const {
+      return context.resolve_username(scope, std::string(ptr));
+   }
 };
 
 class system_api : public context_aware_api {
@@ -1816,7 +1832,14 @@ REGISTER_INTRINSICS(authorization_api,
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
    (has_authorization,     int(int64_t), "has_auth", bool(authorization_api::*)(const account_name&)const )
    (is_account,            int(int64_t)           )
+);
+
+REGISTER_INTRINSICS(domain_api,
    (is_domain,             int(int)               )
+   (is_username,           int(int64_t,int)       )
+   (get_domain_owner,      int64_t(int)           )
+   (resolve_domain,        int64_t(int)           )
+   (resolve_username,      int64_t(int64_t,int)   )
 );
 
 REGISTER_INTRINSICS(console_api,

@@ -4,13 +4,18 @@
 #include <vector>
 
 #include <bsoncxx/config/prelude.hpp>
-#include <bsoncxx/document/view.hpp>
 
+namespace bsoncxx {
+BSONCXX_INLINE_NAMESPACE_BEGIN
+    namespace document {
+        class view;
+    } // namespace document
+BSONCXX_INLINE_NAMESPACE_END
+} // namespace bsoncxx
 
 namespace fc {
-    struct variant_object;
-    struct variant;
-}
+    class variant;
+} // namespace fc
 
 namespace cyberway { namespace chaindb {
 
@@ -27,6 +32,10 @@ namespace cyberway { namespace chaindb {
         };
 
     public:
+        static const std::string BINARY_FIELD;
+        static const std::string STRING_FIELD;
+
+    public:
         mongo_big_int_converter(const bsoncxx::document::view& document);
         mongo_big_int_converter(const __int128& int128_val);
         mongo_big_int_converter(const unsigned __int128& int128_val);
@@ -34,7 +43,9 @@ namespace cyberway { namespace chaindb {
         bool is_valid_value() const;
 
         fc::variant get_raw_value() const;
-        fc::variant_object as_object_encoded() const;
+
+        std::vector<char> get_blob_value() const;
+        std::string get_string_value() const;
 
     private:
         std::vector<char> get_int128_blob() const;
@@ -43,14 +54,9 @@ namespace cyberway { namespace chaindb {
 
         void parse_binary(const std::vector<char>& bytes);
 
-    public:
-        static const std::string BINARY_FIELD;
-        static const std::string STRING_FIELD;
-
     private:
         type type_;
         raw_value value_;
     };
 
-
-}} // namespace cyberway::chaindb
+} } // namespace cyberway::chaindb

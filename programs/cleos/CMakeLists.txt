@@ -3,6 +3,10 @@ if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
 
+IF(APPLE)
+  ADD_COMPILE_FLAG("-D_GNU_SOURCE")
+endif()
+
 find_package( Gperftools QUIET )
 if( GPERFTOOLS_FOUND )
     message( STATUS "Found gperftools; compiling with TCMalloc")

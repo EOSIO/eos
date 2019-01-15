@@ -84,6 +84,7 @@ Options:
 #include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
+#include <fc/stacktrace.hpp>
 #include <eosio/utilities/key_conversion.hpp>
 
 #include <eosio/chain/name.hpp>
@@ -1496,6 +1497,21 @@ struct canceldelay_subcommand {
    }
 };
 
+void resolve_name(const string& textual_name) {
+    vector<string> names{textual_name};
+    fc::variant json = call(resolve_names_func, names);
+    auto res = json.as<eosio::chain_apis::read_only::resolve_names_results>();
+    auto n = res[0];
+    std::cout << '"' << textual_name << "\" resolves to:" << std::endl;
+    if (n.resolved_domain) {
+        const auto& d = *n.resolved_domain;
+        std::cout << "  Domain:   " << (d != name() ? d.to_string() : "(not linked)") << std::endl;
+    }
+    if (n.resolved_username) {
+        std::cout << "  Username: " << *n.resolved_username << std::endl;
+    }
+}
+
 void get_account( const string& accountName, const string& coresym, bool json_format ) {
    fc::variant json;
    if (coresym.empty()) {
@@ -1778,6 +1794,9 @@ int main( int argc, char** argv ) {
    context = eosio::client::http::create_http_context();
    wallet_url = default_wallet_url;
 
+   auto root = fc::app_path();
+   fc::install_btrace_signal_handler(root / "eosio/cleos/backtrace.dmp");
+
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
    app.add_option( "-H,--host", obsoleted_option_host_port, localized("the host where nodeos is running") )->group("hidden");
@@ -1921,6 +1940,17 @@ int main( int argc, char** argv ) {
       fc::variant unpacked_action_data_json = bin_to_variant(packed_action_data_account_string, packed_action_data_name_string, packed_action_data_blob);
       std::cout << fc::json::to_pretty_string(unpacked_action_data_json) << std::endl;
    });
+
+   // Resolve subcommand
+   auto resolve = app.add_subcommand("resolve", localized("Resolve domain names and usernames to account"), false);
+   resolve->require_subcommand();
+
+   // resolve name
+   string textual_name;
+   auto resolve_name_cmd = resolve->add_subcommand("name", localized("Resolve textual name account_name"), false);
+   resolve_name_cmd->add_option("name", textual_name, localized("The textual name to resolve (\"domain\", \"username@domain\" or \"username@@account\")"))->required();
+   resolve_name_cmd->set_callback([&]() { resolve_name(textual_name); });
+
 
    // Get subcommand
    auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);

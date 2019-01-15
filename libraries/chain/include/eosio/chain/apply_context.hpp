@@ -508,10 +508,6 @@ class apply_context {
       bool is_account(const account_name& account)const;
 
       /**
-       * @return true if domain name exists, false if it does not
-       */
-      bool is_domain(const domain_name& domain) const;
-      /**
        * Requires that the current action be delivered to account
        */
       void require_recipient(account_name account);
@@ -521,6 +517,30 @@ class apply_context {
        * delivered to the specified account.
        */
       bool has_recipient(account_name account)const;
+
+
+   /// Domain methods:
+   public:
+      /**
+       * @return true if domain name exists, false if it does not
+       */
+      bool is_domain(const domain_name& domain) const;
+      /**
+       * @return true if username exists in given scope, false if it does not
+       */
+      bool is_username(const account_name& scope, const username& name) const;
+      /**
+       * @return account currently owning domain name
+       */
+      account_name get_domain_owner(const domain_name& domain) const;
+      /**
+       * @return account linked to domain name (can be 0)
+       */
+      account_name resolve_domain(const domain_name& domain) const;
+      /**
+       * @return account owning username in given scope
+       */
+      account_name resolve_username(const account_name& scope, const username& name) const;
 
    /// Console methods:
    public:
