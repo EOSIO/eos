@@ -1,12 +1,12 @@
 #! /bin/bash
 
-if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [[ $1 == "force" ]]; then # use force for running the script directly
+if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [[ $1 =~ *"force"* ]]; then # use force for running the script directly
    printf "\nEOSIO installation already found...\n"
    printf "Do you wish to remove this install?\n"
    select yn in "Yes" "No"; do
       case $yn in
          [Yy]* )
-            if [ -d "$HOME/opt/eosio" ]; then
+            if [ -d "$HOME/opt/eosio" ] || [[ $1 == "force-new" ]]; then
                if [ $( uname ) == "Darwin" ]; then
                   # gettext and other brew packages are not modified as they can be dependencies for things other than eosio
                   brew uninstall mongo-c-driver mongo-cxx-driver llvm@4 --force
@@ -20,7 +20,7 @@ if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [[ $1 == "fo
                rm -f $HOME/bin/nodeos $HOME/bin/keosd $HOME/bin/cleos $HOME/bin/ctest $HOME/bin/*cmake*
             fi
 
-            if [ -d "/usr/local/include/eosio" ]; then
+            if [ -d "/usr/local/include/eosio" ] || [[ $1 == "force-old" ]]; then
                if [ "$(id -u)" -ne 0 ]; then
                   printf "\nCleanup requires sudo... Please manually run ./scripts/clean_old_install.sh with sudo.\n"
                   exit -1
