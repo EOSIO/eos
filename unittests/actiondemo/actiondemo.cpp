@@ -1,7 +1,7 @@
 #include "actiondemo.hpp"
 #include "../../contracts/eosiolib/print.hpp"
 #include "../../contracts/eosiolib/types.hpp"
-#include "../../contracts/eosiolib/transaction.hpp"
+#include "../../contracts/eosiolib/transaction.h"
 
 namespace spaceaction {
 
@@ -18,6 +18,9 @@ namespace spaceaction {
                 inlineact(unpack_action_data<args_inline>());
             case N(clear):
                 clear();
+                return;
+            case N(hascontract):
+                hascontract(unpack_action_data<args_name>());
                 return;
         }
     }
@@ -41,6 +44,20 @@ namespace spaceaction {
         for( uint32_t i = 0; i < s; ++i )
             (r += to_hex[(c[i]>>4)]) += to_hex[(c[i] &0x0f)];
         return r;
+    }
+
+    void actiondemo::hascontract(const args_name& t){
+        bool r = has_contract(t.name);
+        print_f("% has_contract:%", name{t.name}.to_string(),r);
+
+//        if (r) {
+            checksum256 code;
+            get_contract_code(t.name, &code);
+
+            std::string s = to_hex((char*)&code.hash, 32);
+            print_f("% contract_code:%", name{t.name}.to_string(),s);
+//        }
+
     }
 
     void actiondemo::generate(const args& t){

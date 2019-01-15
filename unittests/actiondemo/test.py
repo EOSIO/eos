@@ -90,7 +90,7 @@ def stepStartWallet():
     importKeys()
     # run('rm -rf  ~/.local/share/eosio/nodeos/data ')
     run("rm -rf  ./data/*")
-    background(args.nodeos + ' -e -p eosio --blocks-dir ./data/block/ --genesis-json %s  --config-dir ./ --data-dir ./data/  --plugin eosio::http_plugin --plugin eosio::chain_api_plugin --plugin eosio::producer_plugin --plugin eosio::history_api_plugin> eos.log 2>&1 &' % args.genesis)
+    background(args.nodeos + ' -e -p eosio --blocks-dir ./data/block/ --genesis-json %s  --config-dir ./ --data-dir ./data/  --plugin eosio::http_plugin --plugin eosio::chain_api_plugin --plugin eosio::producer_plugin --plugin eosio::history_api_plugin  --plugin eosio::history_plugin> eos.log 2>&1 &' % args.genesis)
     run("rm -rf  ./data2/*")
     background(args.nodeos + '  --blocks-dir ./data2/block/ --genesis-json %s  --data-dir ./data2/  --config-dir ./  --p2p-peer-address 127.0.0.1:9876  --http-server-address 0.0.0.0:8001 --p2p-listen-endpoint 0.0.0.0:9001 --plugin eosio::http_plugin --plugin eosio::chain_api_plugin --plugin eosio::producer_plugin --plugin eosio::history_api_plugin > eos2.log 2>&1 &' % args.genesis)
     sleep(30)
@@ -103,6 +103,7 @@ def createAccounts():
     run(args.cleos + 'set contract eosio.msig ' + args.contracts_dir + 'eosio.msig/')
     run(args.cleos + 'push action eosio.token create \'["eosio", "10000000000.0000 %s"]\' -p eosio.token' % (args.symbol))
     run(args.cleos + 'push action eosio.token issue \'["eosio", "%s %s", "memo"]\' -p eosio' % ("1000000.0000", args.symbol))
+    run(args.cleos + 'push action eosio.token issue \'["%s", "%s %s", "memo"]\' -p eosio' % (args.contract, "1000.0000", args.symbol))
     retry(args.cleos + 'set contract eosio ' + args.contracts_dir + 'eosio.system/ -p eosio')
     sleep(1)
     run(args.cleos + 'push action eosio setpriv' + jsonArg(['eosio.msig', 1]) + '-p eosio@active')
@@ -159,6 +160,14 @@ def stepGenerate():
     run(args.cleos + 'get table %s %s seedobjs'  %(args.contract2, args.contract2) )
     print ("sleep 5")
 
+def stepGetCode():
+    print ("===========================    set stepGetCode   ===========================" )
+    run(args.cleos + 'push action %s hascontract \'[{"name":"eosio.token"}]\' -p %s ' %(args.contract,args.contract))
+    run(args.cleos + 'push action %s hascontract \'[{"name":"eosio"}]\' -p %s ' %(args.contract,args.contract))
+    run(args.cleos + 'push action %s hascontract \'[{"name":"eosio.ram"}]\' -p %s ' %(args.contract,args.contract))
+    run(args.cleos + 'push action %s hascontract \'[{"name":"caeeregright"}]\' -p %s ' %(args.contract,args.contract))
+    print ("sleep 5")
+
 
 parser = argparse.ArgumentParser()
 
@@ -169,6 +178,7 @@ commands = [
     ('i', 'init',      stepInitCaee,                      True,         "stepInitCaee"),
     ('c', 'clear',      stepClear,                      True,         "stepInitCaee"),
     ('g', 'generate',      stepGenerate,                True,         "stepInitCaee"),
+    ('d', 'getcode',      stepGetCode,                True,         "stepGetCode"),
 ]
 
 parser.add_argument('--public-key', metavar='', help="EOSIO Public Key", default='EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV', dest="public_key")
@@ -203,7 +213,7 @@ args.contract2 = 'caee2'
 
 
 accnum = 26
-accounts = []
+accounts = ['caeeregright']
 # for i in range(97,97+accnum):
 #     accounts.append("user%c"% chr(i))
 # accounts.append("payman")

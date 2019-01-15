@@ -22,10 +22,22 @@
       "name": "deferfunc",
       "base": "",
       "fields": [{
-          "name": "payload",
-          "type": "uint64"
-        }
-      ]
+         "name": "payload",
+         "type": "uint64"
+      }]
+    },{
+      "name": "inlinecall",
+      "base": "",
+      "fields": [{
+         "name": "contract",
+         "type": "name"
+      },{
+         "name": "authorizer",
+         "type": "name"
+      },{
+         "name": "payload",
+         "type": "uint64"
+      }]
     }
   ],
   "actions": [{
@@ -35,6 +47,10 @@
     },{
       "name": "deferfunc",
       "type": "deferfunc",
+      "ricardian_contract": ""
+    },{
+      "name": "inlinecall",
+      "type": "inlinecall",
       "ricardian_contract": ""
     }
   ],

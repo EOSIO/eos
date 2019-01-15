@@ -16,9 +16,6 @@
 #include <noop/noop.wast.hpp>
 #include <noop/noop.abi.hpp>
 
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
-
 #include <fc/io/fstream.hpp>
 
 #include <Runtime/Runtime.h>
@@ -516,76 +513,6 @@ BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
    check_aligned(aligned_const_ref_wast);
    check_aligned(misaligned_const_ref_wast);
 } FC_LOG_AND_RETHROW()
-
-// test cpu usage
-
-/*  Comment out this test due to not being robust to changes
-BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
-#warning This test does not appear to be very robust.
-   create_accounts( {N(f_tests)} );
-   bool pass = false;
-
-   std::string code = R"=====(
-(module
-  (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
-   (table 0 anyfunc)
-   (memory $0 1)
-   (export "apply" (func $apply))
-   (func $test1 (param $0 i64))
-   (func $test2 (param $0 i64) (result i64) (i64.add (get_local $0) (i64.const 32)))
-   (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
-   )=====";
-   for (int i = 0; i < 1024; ++i) {
-      code += "(call $test1 (call $test2(i64.const 1)))\n";
-   }
-   code += "))";
-
-   produce_blocks(1);
-   set_code(N(f_tests), code.c_str());
-   produce_blocks(10);
-
-   uint32_t start = config::default_per_signature_cpu_usage + config::default_base_per_transaction_cpu_usage;
-   start += 100 * ( config::default_base_per_action_cpu_usage
-                    + config::determine_payers_cpu_overhead_per_authorization
-                    + config::base_check_authorization_cpu_per_authorization );
-   start += config::resource_processing_cpu_overhead_per_billed_account;
-   start /= 1024;
-   start += 3077; // injected checktime amount
-   --start;
-   wdump((start));
-   uint32_t end   = start + 5;
-   uint32_t limit = start;
-   for( limit = start; limit < end; ++limit ) {
-      signed_transaction trx;
-
-      for (int i = 0; i < 100; ++i) {
-         action act;
-         act.account = N(f_tests);
-         act.name = N() + (i * 16);
-         act.authorization = vector<permission_level>{{N(f_tests),config::active_name}};
-         trx.actions.push_back(act);
-      }
-
-      set_transaction_headers(trx);
-      trx.max_cpu_usage_ms = limit++;
-      trx.sign(get_private_key( N(f_tests), "active" ), control->get_chain_id());
-
-      try {
-         push_transaction(trx);
-         produce_blocks(1);
-         BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-         break;
-      } catch (eosio::chain::tx_cpu_usage_exceeded &) {
-      }
-
-      BOOST_REQUIRE_EQUAL(true, validate());
-   }
-   wdump((limit));
-   BOOST_CHECK_EQUAL(true, start < limit && limit < end);
-} FC_LOG_AND_RETHROW()
-*/
-
 
 // test weighted cpu limit
 BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {

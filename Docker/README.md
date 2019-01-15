@@ -17,13 +17,14 @@ Simple and fast setup of BOSCore on Docker is also available.
 ```bash
 git clone https://github.com/boscore/bos.git --recursive  --depth 1
 cd bos/Docker
-docker build . -t boscore/bos
+docker build . -t boscore/bos -s BOS
 ```
 
-The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the v1.0.3 tag, you could do the following:
+The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the v2.0.1 tag, you could do the following:
 
 ```bash
-docker build -t boscore/bos:v1.0.3 --build-arg branch=v1.0.3 .
+docker build -t boscore/bos:v2.0.1 --build-arg branch=v2.0.1 .
+
 ```
 
 By default, the symbol in eosio.system is set to SYS. You can override this using the symbol argument while building the docker image.

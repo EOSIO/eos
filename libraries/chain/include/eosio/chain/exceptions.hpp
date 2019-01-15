@@ -439,8 +439,8 @@ namespace eosio { namespace chain {
                                     3160007, "Invalid contract vm version" )
       FC_DECLARE_DERIVED_EXCEPTION( set_exact_code,          contract_exception,
                                     3160008, "Contract is already running this version of code" )
-      FC_DECLARE_DERIVED_EXCEPTION( wast_file_not_found,          contract_exception,
-                                    3160009, "No wast file found" )
+      FC_DECLARE_DERIVED_EXCEPTION( wasm_file_not_found,          contract_exception,
+                                    3160009, "No wasm file found" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_file_not_found,          contract_exception,
                                     3160010, "No abi file found" )
 

@@ -22,6 +22,12 @@ namespace spaceaction {
         //@abi action
         void clear();
 
+        struct args_name{
+            account_name name;
+        };
+        //@abi action
+        void hascontract(const args_name& t);
+
 
         struct args_inline{
             account_name payer;
