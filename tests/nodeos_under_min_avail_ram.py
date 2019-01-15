@@ -135,7 +135,7 @@ try:
     nodes[0].transferFunds(cluster.eosioAccount, contractAccount, transferAmount, "test transfer")
     trans=nodes[0].delegatebw(contractAccount, 1000000.0000, 88000000.0000, waitForTransBlock=True, exitOnError=True)
 
-    contractDir="test-contracts/integration_test"
+    contractDir="unittests/test-contracts/integration_test"
     wasmFile="integration_test.wasm"
     abiFile="integration_test.abi"
     Print("Publish contract")
