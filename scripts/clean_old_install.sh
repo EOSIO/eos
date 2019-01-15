@@ -17,7 +17,7 @@ if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [[ $1 =~ for
                rm -f $HOME/opt/boost
                rm -rf $HOME/src/boost_*
                rm -rf $HOME/src/cmake-*
-               rm -f $HOME/bin/nodeos $HOME/bin/keosd $HOME/bin/cleos $HOME/bin/ctest $HOME/bin/*cmake*
+               rm -f $HOME/bin/nodeos $HOME/bin/keosd $HOME/bin/cleos $HOME/bin/ctest $HOME/bin/*cmake* $HOME/bin/cpack
             fi
 
             if [ -d "/usr/local/include/eosio" ] || [[ $1 == "force-old" ]]; then
