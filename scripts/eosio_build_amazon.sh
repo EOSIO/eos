@@ -199,7 +199,7 @@ fi
 printf "Checking MongoDB C++ driver installation...\\n"
 if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C++ driver...\\n"
-	git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/v$MONGO_CXX_DRIVER_VERSION --depth 1 mongo-cxx-driver-$MONGO_CXX_DRIVER_VERSION \
+	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-$MONGO_CXX_DRIVER_VERSION \
 	&& cd mongo-cxx-driver-$MONGO_CXX_DRIVER_VERSION/build \
 	&& cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
 	&& make -j"${JOBS}" VERBOSE=1 \
