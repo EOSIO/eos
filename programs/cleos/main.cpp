@@ -105,6 +105,7 @@ Options:
 #include <boost/process/spawn.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
+#include <boost/range/adaptor/map.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -422,13 +423,86 @@ auto abi_serializer_resolver = [](const name& account) -> optional<abi_serialize
    return it->second;
 };
 
-bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
+
+struct abi_domain_resolver {
+    std::map<string, optional<name>> names;
+    bool pass2;
+
+    auto name_pack_unpack() {
+        using T = name;
+        return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
+            // unpack is not needed here, skip
+            [](fc::datastream<const char*>&, bool, bool) -> fc::variant {},
+            [&](const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional) {
+                if (is_array) {
+                    fc::raw::pack(ds, var.as<vector<T>>());
+                } else if (is_optional) {
+                    fc::raw::pack(ds, var.as<optional<T>>());
+                } else {
+                    if (var.is_string()) {
+                        auto n = var.as<string>();
+                        // we can't automatically detect, is string like "golos.io" actually domain_name or account_name
+                        // let's mark resolvable names with @: "@domain", "username@domain", "username@@account"
+                        // and normal account names will be "account" as usual (without @)
+                        // TODO: special case: "username@" to get username from the scope of current action's contract
+                        auto at = n.find('@');
+                        if (at != string::npos) {
+                            if (at == 0) {
+                                n = n.substr(1);
+                            }
+                            if (pass2) {
+                                fc::raw::pack(ds, *names[n]);
+                            } else {
+                                names[n];  // default constructor to create record
+                            }
+                            return;
+                        }
+                    }
+                    fc::raw::pack(ds, var.as<T>());
+                }
+            }
+        );
+    }
+
+};
+
+
+bytes variant_to_bin(const account_name& account, const action_name& action, const fc::variant& action_args_var) {
    auto abis = abi_serializer_resolver( account );
-   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+   FC_ASSERT(abis.valid(), "No ABI found for ${contract}", ("contract", account));
 
    auto action_type = abis->get_action_type( action );
-   FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
-   return abis->variant_to_binary( action_type, action_args_var, abi_serializer_max_time );
+   FC_ASSERT(!action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)("contract", account));
+
+    auto domain_abi = abi_domain_resolver();
+    abis->add_specialized_unpack_pack("name", domain_abi.name_pack_unpack());
+    auto bin = abis->variant_to_binary(action_type, action_args_var, abi_serializer_max_time);
+    if (domain_abi.names.size() > 0) {
+        vector<string> names;
+        boost::copy(domain_abi.names | boost::adaptors::map_keys, std::back_inserter(names));
+
+        // process "username@" names. or it's simpler to add postfix at 1st pass of serializer
+        //...
+
+        fc::variant json = call(resolve_names_func, names);
+        auto res = json.as<eosio::chain_apis::read_only::resolve_names_results>();
+        auto p = 0;
+        string n;
+        for (const auto& ni: res) {
+            n = names[p++];
+            if (ni.resolved_username) {
+                domain_abi.names[n] = ni.resolved_username;
+            } else {
+                EOS_ASSERT(ni.resolved_domain, domain_name_type_exception, "SYSTEM: name `${n}` resolved to nothing", ("n",n));
+                EOS_ASSERT(*ni.resolved_domain != name(), domain_name_type_exception,
+                    "Domain ${d} is unlinked, can not use it in action", ("d",n));
+                domain_abi.names[n] = ni.resolved_domain;
+            }
+        }
+        domain_abi.pass2 = true;
+        bin = abis->variant_to_binary(action_type, action_args_var, abi_serializer_max_time);
+    }
+    return bin;
 }
 
 fc::variant bin_to_variant( const account_name& account, const action_name& action, const bytes& action_args) {
