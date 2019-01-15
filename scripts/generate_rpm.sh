@@ -47,5 +47,8 @@ ${DESC}
 %files -f filenames.txt" &> ${PROJECT}.spec
 
 rpmbuild -bb ${PROJECT}.spec
+BUILDSTATUS=$?
 mv ~/rpmbuild/RPMS/x86_64 ./
 rm -r ${PROJECT} ~/rpmbuild/BUILD/filenames.txt ${PROJECT}.spec
+
+exit $BUILDSTATUS

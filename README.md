@@ -39,13 +39,13 @@ $ brew remove eosio
 ```
 #### Ubuntu 18.04 Debian Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.5.3/eosio_1.5.3-1-ubuntu-18.04_amd64.deb
-$ sudo apt install ./eosio_1.5.3-1-ubuntu-18.04_amd64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio_1.6.0-1-ubuntu-18.04_amd64.deb
+$ sudo apt install ./eosio_1.6.0-1-ubuntu-18.04_amd64.deb
 ```
 #### Ubuntu 16.04 Debian Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.5.3/eosio_1.5.3-1-ubuntu-16.04_amd64.deb
-$ sudo apt install ./eosio_1.5.3-1-ubuntu-16.04_amd64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio_1.6.0-1-ubuntu-16.04_amd64.deb
+$ sudo apt install ./eosio_1.6.0-1-ubuntu-16.04_amd64.deb
 ```
 #### Debian Package Uninstall
 ```sh
@@ -53,8 +53,8 @@ $ sudo apt remove eosio
 ```
 #### Centos RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.5.3/eosio-1.5.3-1.el7.x86_64.rpm
-$ sudo yum install ./eosio-1.5.3-1.el7.x86_64.rpm
+$ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio-1.6.0-1.el7.x86_64.rpm
+$ sudo yum install ./eosio-1.6.0-1.el7.x86_64.rpm
 ```
 #### Centos RPM Package Uninstall
 ```sh
@@ -62,8 +62,8 @@ $ sudo yum remove eosio.cdt
 ```
 #### Fedora RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.5.3/eosio-1.5.3-1.fc27.x86_64.rpm
-$ sudo yum install ./eosio-1.5.3-1.fc27.x86_64.rpm
+$ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio-1.6.0-1.fc27.x86_64.rpm
+$ sudo yum install ./eosio-1.6.0-1.fc27.x86_64.rpm
 ```
 #### Fedora RPM Package Uninstall
 ```sh
@@ -92,4 +92,4 @@ EOSIO currently supports the following operating systems:
 
 <a name="gettingstarted"></a>
 ## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in [Getting Started](https://developers.eos.io/eosio-nodeos/docs/overview-1) on the [EOSIO Developer Portal](https://developers.eos.io).
+Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in [Getting Started](https://developers.eos.io/eosio-home/docs) on the [EOSIO Developer Portal](https://developers.eos.io).

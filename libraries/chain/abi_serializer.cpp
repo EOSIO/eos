@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/contract_types.hpp>
