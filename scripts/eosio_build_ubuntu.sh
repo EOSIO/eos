@@ -224,12 +224,11 @@ printf "Checking MongoDB C++ driver installation...\\n"
 if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C++ driver...\\n"
 	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-$MONGO_CXX_DRIVER_VERSION \
-	&& ls -alht \
-	# && cd mongo-cxx-driver-$MONGO_CXX_DRIVER_VERSION/build \
-	# && cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
-	# && make -j"${JOBS}" VERBOSE=1 \
-	# && make install \
-	# && cd ../.. \
+	&& cd mongo-cxx-driver-$MONGO_CXX_DRIVER_VERSION/build \
+	&& cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
+	&& make -j"${JOBS}" VERBOSE=1 \
+	&& make install \
+	&& cd ../.. \
 	|| exit 1
 	printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
 else
