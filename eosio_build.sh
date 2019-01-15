@@ -72,6 +72,8 @@ export BOOST_LINK_LOCATION=${OPT_LOCATION}/boost
 export LLVM_VERSION=release_40
 export LLVM_ROOT=${OPT_LOCATION}/llvm
 export LLVM_DIR=${LLVM_ROOT}/lib/cmake/llvm
+export DOXYGEN_VERSION=1_8_14
+export DOXYGEN_ROOT=${SRC_LOCATION}/doxygen-${DOXYGEN_VERSION}
 export TINI_VERSION=0.18.0
 
 export PATH=$HOME/bin:$PATH:$HOME/opt/llvm/bin

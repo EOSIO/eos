@@ -244,7 +244,7 @@ printf "Checking MongoDB C driver installation...\\n"
 if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C driver...\\n"
 	curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-	&& tar -xf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+	&& tar -xzvf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
 	&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 	&& mkdir -p cmake-build \
 	&& cd cmake-build \
@@ -262,7 +262,7 @@ printf "Checking MongoDB C++ driver installation...\\n"
 if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C++ driver...\\n"
 	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-$MONGO_CXX_DRIVER_VERSION.tar.gz \
-	&& tar -xf mongo-cxx-driver-${MONGO_CXX_DRIVER_VERSION}.tar.gz \
+	&& tar -xzvf mongo-cxx-driver-${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 	&& cd mongo-cxx-driver-$MONGO_CXX_DRIVER_VERSION/build \
 	&& cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
 	&& make -j"${JOBS}" VERBOSE=1 \
@@ -295,6 +295,25 @@ else
 	printf " - WASM found @ ${LLVM_ROOT}.\\n"
 fi
 
+
+printf "\\n"
+
+
+printf "Checking Doxygen installation...\\n"
+if [ ! -d $DOXYGEN_ROOT ]; then
+	printf "Installing Doxygen...\\n"
+	curl -L https://github.com/doxygen/doxygen/archive/Release_$DOXYGEN_VERSION.tar.gz -o doxygen_$DOXYGEN_VERSION.tar.gz \
+	&& tar -xzvf DOXYGEN_$DOXYGEN_VERSION.tar.gz \
+	&& mkdir build && cd build \
+	&& cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$HOME .. \
+	&& make -j"${JOBS}" \
+	&& make install \
+	&& cd ../.. \
+	|| exit 1
+	printf " - Doxygen successfully installed @ ${DOXYGEN_ROOT}.\\n"
+else
+	printf " - Doxygen found with correct version @ ${DOXYGEN_ROOT}.\\n"
+fi
 
 cd ..
 printf "\\n"
