@@ -12,8 +12,12 @@ DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
 DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
 DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
 
-DEP_ARRAY=( git sudo python3 procps-ng which gcc.x86_64 autoconf automake libtool make cmake.x86_64 bzip2-devel.x86_64 wget bzip2 compat-openssl10 graphviz.x86_64 doxygen.x86_64 \
-			openssl-devel.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 python2-devel.x86_64 python3-devel.x86_64 libedit.x86_64 ncurses-devel.x86_64 swig.x86_64 )
+DEP_ARRAY=( 
+	git sudo python3 procps-ng which gcc.x86_64 autoconf automake libtool make \
+	bzip2-devel.x86_64 wget bzip2 compat-openssl10 graphviz.x86_64 doxygen.x86_64 \
+	openssl-devel.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 python2-devel.x86_64 python3-devel.x86_64 \
+	libedit.x86_64 ncurses-devel.x86_64 swig.x86_64 
+)
 COUNT=1
 DISPLAY=""
 DEP=""
