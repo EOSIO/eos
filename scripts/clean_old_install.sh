@@ -12,6 +12,7 @@ if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [[ $1 =~ for
                   brew uninstall mongo-c-driver mongo-cxx-driver llvm@4 --force
                fi
                rm -rf $HOME/opt/eosio
+               rm -f $HOME/bin/eosio-launcher
                rm -rf $HOME/lib/cmake/eosio
                rm -f $HOME/opt/llvm
                rm -f $HOME/opt/boost
