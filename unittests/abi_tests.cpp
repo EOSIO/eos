@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <algorithm>
 #include <vector>
@@ -1475,7 +1475,7 @@ public_key_type  get_public_key( name keyname, string role ) {
 BOOST_AUTO_TEST_CASE(packed_transaction)
 { try {
 
-   chain::transaction txn;
+   chain::signed_transaction txn;
    txn.ref_block_num = 1;
    txn.ref_block_prefix = 2;
    txn.expiration.from_iso_string("2021-12-20T15:30");

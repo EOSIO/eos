@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/authority_checker.hpp>
@@ -590,11 +590,9 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(1, trx.signatures.size());
    trx.validate();
 
-   packed_transaction pkt;
-   pkt.set_transaction(trx, packed_transaction::none);
+   packed_transaction pkt(trx, packed_transaction::none);
 
-   packed_transaction pkt2;
-   pkt2.set_transaction(trx, packed_transaction::zlib);
+   packed_transaction pkt2(trx, packed_transaction::zlib);
 
    BOOST_CHECK_EQUAL(true, trx.expiration ==  pkt.expiration());
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt2.expiration());
