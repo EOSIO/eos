@@ -20,7 +20,6 @@
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
-#include <fc/fileno.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 
@@ -317,22 +316,13 @@ struct controller_impl {
             ("s", start_block_num)("n", blog_head->block_num()) );
 
       auto start = fc::time_point::now();
-      bool cerr_is_tty = isatty(fileno_hack(std::cerr));
-      auto lineending = "\n";
-      if(cerr_is_tty)
-         lineending = "\r";
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
          replay_push_block( next, controller::block_status::irreversible );
          if( next->block_num() % 100 == 0 ) {
-            if(cerr_is_tty)
-               std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() << lineending;
-            else
-               ilog( "${n} of ${head}", ("n", next->block_num())("head", blog_head->block_num()) );
+            ilog( "${n} of ${head}", ("n", next->block_num())("head", blog_head->block_num()) );
             if( shutdown() ) break;
          }
       }
-      if(cerr_is_tty)
-         std::cerr<< "\n";
       ilog( "${n} blocks replayed", ("n", head->block_num - start_block_num) );
 
       // if the irreversible log is played without undo sessions enabled, we need to sync the
