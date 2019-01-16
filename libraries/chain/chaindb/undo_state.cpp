@@ -722,8 +722,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void commit(table_undo_stack& table, const revision_t commit_rev) {
-            CYBERWAY_SESSION_ASSERT(!table.empty(),
-                "Stack of the table ${table} is empty.", ("table", table.get_full_table_name()));
+            if (table.empty()) return;
 
             auto ctx = journal_.create_ctx(table.info());
 
