@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <appbase/application.hpp>
@@ -41,9 +41,6 @@ namespace eosio {
    using api_description = std::map<string, url_handler>;
 
    struct http_plugin_defaults {
-      //If not empty, this string is prepended on to the various configuration
-      // items for setting listen addresses
-      string address_config_prefix;
       //If empty, unix socket support will be completely disabled. If not empty,
       // unix socket support is enabled with the given default path (treated relative
       // to the datadir)
@@ -96,6 +93,12 @@ namespace eosio {
         bool is_secure() const;
 
         bool verbose_errors()const;
+
+        struct get_supported_apis_result {
+           vector<string> apis;
+        };
+
+        get_supported_apis_result get_supported_apis()const;
 
       private:
         std::unique_ptr<class http_plugin_impl> my;
@@ -152,3 +155,4 @@ namespace eosio {
 FC_REFLECT(eosio::error_results::error_info::error_detail, (message)(file)(line_number)(method))
 FC_REFLECT(eosio::error_results::error_info, (code)(name)(what)(details))
 FC_REFLECT(eosio::error_results, (code)(message)(error))
+FC_REFLECT(eosio::http_plugin::get_supported_apis_result, (apis))

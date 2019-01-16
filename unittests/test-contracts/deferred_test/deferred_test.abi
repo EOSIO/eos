@@ -1,0 +1,78 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri Dec  7 11:56:43 2018",
+    "version": "eosio::abi/1.1",
+    "structs": [
+        {
+            "name": "defercall",
+            "base": "",
+            "fields": [
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "sender_id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
+                },
+                {
+                    "name": "payload",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "deferfunc",
+            "base": "",
+            "fields": [
+                {
+                    "name": "payload",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "inlinecall",
+            "base": "",
+            "fields": [
+                {
+                    "name": "contract",
+                    "type": "name"
+                },
+                {
+                    "name": "authorizer",
+                    "type": "name"
+                },
+                {
+                    "name": "payload",
+                    "type": "uint64"
+                }
+            ]
+        }
+    ],
+    "types": [],
+    "actions": [
+        {
+            "name": "defercall",
+            "type": "defercall",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "deferfunc",
+            "type": "deferfunc",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "inlinecall",
+            "type": "inlinecall",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": [],
+    "abi_extensions": []
+}

@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <eosio/chain/name.hpp>
@@ -103,7 +103,22 @@ namespace eosio { namespace chain {
     */
    class shared_blob : public shared_string {
       public:
-         shared_blob() = default;
+         shared_blob() = delete;
+         shared_blob(shared_blob&&) = default;
+
+         shared_blob(const shared_blob& s)
+         :shared_string(s.get_allocator())
+         {
+            assign(s.c_str(), s.size());
+         }
+
+
+         shared_blob& operator=(const shared_blob& s) {
+            assign(s.c_str(), s.size());
+            return *this;
+         }
+
+         shared_blob& operator=(shared_blob&& ) = default;
 
          template <typename InputIterator>
          shared_blob(InputIterator f, InputIterator l, const allocator_type& a)

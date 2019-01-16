@@ -3,10 +3,9 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/eosio_contract.hpp>
-
-#include <eosio.bios/eosio.bios.wast.hpp>
-#include <eosio.bios/eosio.bios.abi.hpp>
 #include <fstream>
+
+#include <contracts.hpp>
 
 eosio::chain::asset core_from_string(const std::string& s) {
   return eosio::chain::asset::from_string(s + " " CORE_SYMBOL_NAME);
@@ -333,7 +332,7 @@ namespace eosio { namespace testing {
    { try {
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
-      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx), deadline, billed_cpu_time_us );
+      auto r = control->push_transaction( std::make_shared<transaction_metadata>(std::make_shared<packed_transaction>(trx)), deadline, billed_cpu_time_us );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
       return r;
@@ -813,10 +812,8 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::push_genesis_block() {
-      set_code(config::system_account_name, eosio_bios_wast);
-
-      set_abi(config::system_account_name, eosio_bios_abi);
-      //produce_block();
+      set_code(config::system_account_name, contracts::eosio_bios_wasm());
+      set_abi(config::system_account_name, contracts::eosio_bios_abi().data());
    }
 
    vector<producer_key> base_tester::get_producer_keys( const vector<account_name>& producer_names )const {

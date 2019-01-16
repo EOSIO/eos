@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/mongo_db_plugin/mongo_db_plugin.hpp>
 #include <eosio/chain/eosio_contract.hpp>
@@ -570,6 +570,15 @@ void handle_mongo_exception( const std::string& desc, int line_num ) {
    }
 }
 
+// custom oid to avoid monotonic throttling
+// https://docs.mongodb.com/master/core/bulk-write-operations/#avoid-monotonic-throttling
+bsoncxx::oid make_custom_oid() {
+   bsoncxx::oid x = bsoncxx::oid();
+   const char* p = x.bytes();
+   std::swap((short&)p[0], (short&)p[10]);
+   return x;
+}
+
 } // anonymous namespace
 
 void mongo_db_plugin_impl::purge_abi_cache() {
@@ -640,6 +649,18 @@ optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name 
                                        }
                                  ) );
                         }
+                     }
+                  }
+               }
+               // mongo does not like empty json keys
+               // make abi_serializer use empty_name instead of "" for the action data
+               for( auto& s : abi.structs ) {
+                  if( s.name.empty() ) {
+                     s.name = "empty_struct_name";
+                  }
+                  for( auto& f : s.fields ) {
+                     if( f.name.empty() ) {
+                        f.name = "empty_field_name";
                      }
                   }
                }
@@ -725,7 +746,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    using bsoncxx::builder::basic::make_array;
    namespace bbb = bsoncxx::builder::basic;
 
-   const auto& trx = t->trx;
+   const signed_transaction& trx = t->packed_trx->get_signed_transaction();
 
    if( !filter_include( trx ) ) return;
    
@@ -761,9 +782,10 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    if( t->signing_keys.valid() ) {
       signing_keys_json = fc::json::to_string( t->signing_keys->second );
    } else {
-      auto signing_keys = trx.get_signature_keys( *chain_id, false, false );
-      if( !signing_keys.empty() ) {
-         signing_keys_json = fc::json::to_string( signing_keys );
+      flat_set<public_key_type> keys;
+      trx.get_signature_keys( *chain_id, fc::time_point::maximum(), keys, false );
+      if( !keys.empty() ) {
+         signing_keys_json = fc::json::to_string( keys );
       }
    }
 
@@ -817,6 +839,9 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
    if( start_block_reached && store_action_traces && in_filter ) {
       auto action_traces_doc = bsoncxx::builder::basic::document{};
       const chain::base_action_trace& base = atrace; // without inline action traces
+
+      // improve data distributivity when using mongodb sharding
+      action_traces_doc.append( kvp( "_id", make_custom_oid() ) );
 
       auto v = to_variant_with_abi( base );
       string json = fc::json::to_string( v );
@@ -1082,11 +1107,8 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
          string trx_id_str;
          if( receipt.trx.contains<packed_transaction>() ) {
             const auto& pt = receipt.trx.get<packed_transaction>();
-            // get id via get_raw_transaction() as packed_transaction.id() mutates internal transaction state
-            const auto& raw = pt.get_raw_transaction();
-            const auto& trx = fc::raw::unpack<transaction>( raw );
-            if( !filter_include( trx ) ) continue;
-            const auto& id = trx.id();
+            if( !filter_include( pt.get_signed_transaction() ) ) continue;
+            const auto& id = pt.id();
             trx_id_str = id.str();
          } else {
             const auto& id = receipt.trx.get<transaction_id_type>();
@@ -1426,7 +1448,7 @@ void mongo_db_plugin_impl::init() {
 
             // action traces indexes
             auto action_traces = mongo_conn[db_name][action_traces_col];
-            action_traces.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
+            action_traces.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
 
             // pub_keys indexes
             auto pub_keys = mongo_conn[db_name][pub_keys_col];

@@ -1,22 +1,15 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 
-#include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
-
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
-
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
-
-#include <eosio.msig/eosio.msig.wast.hpp>
-#include <eosio.msig/eosio.msig.abi.hpp>
+#include <eosio/testing/tester.hpp>
 
 #include <fc/variant_object.hpp>
+
+#include <contracts.hpp>
 
 using namespace eosio::chain;
 using namespace eosio::testing;
@@ -49,11 +42,10 @@ public:
       create_accounts({ N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake),
                N(eosio.bpay), N(eosio.vpay), N(eosio.saving), N(eosio.names) });
 
-
       produce_blocks( 100 );
 
-      set_code( N(eosio.token), eosio_token_wast );
-      set_abi( N(eosio.token), eosio_token_abi );
+      set_code( N(eosio.token), contracts::eosio_token_wasm() );
+      set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
 
       {
          const auto& accnt = control->db().get<account_object,by_name>( N(eosio.token) );
@@ -66,8 +58,13 @@ public:
       issue(config::system_account_name,      core_from_string("1000000000.0000"));
       BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance( "eosio" ) );
 
-      set_code( config::system_account_name, eosio_system_wast );
-      set_abi( config::system_account_name, eosio_system_abi );
+      set_code( config::system_account_name, contracts::eosio_system_wasm() );
+      set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
+
+      base_tester::push_action(config::system_account_name, N(init),
+                            config::system_account_name,  mutable_variant_object()
+                            ("version", 0)
+                            ("core", CORE_SYM_STR));
 
       {
          const auto& accnt = control->db().get<account_object,by_name>( config::system_account_name );
@@ -85,6 +82,15 @@ public:
       BOOST_REQUIRE_EQUAL( core_from_string("1000000000.0000"), get_balance("eosio")  + get_balance("eosio.ramfee") + get_balance("eosio.stake") + get_balance("eosio.ram") );
    }
 
+   action_result open( account_name  owner,
+                       const string& symbolname,
+                       account_name  ram_payer    ) {
+      return push_action( ram_payer, N(open), mvo()
+                          ( "owner", owner )
+                          ( "symbol", symbolname )
+                          ( "ram_payer", ram_payer )
+         );
+   }
 
    void create_accounts_with_resources( vector<account_name> accounts, account_name creator = config::system_account_name ) {
       for( auto a : accounts ) {
@@ -417,8 +423,8 @@ public:
                                                ("is_priv", 1)
          );
 
-         set_code( N(eosio.msig), eosio_msig_wast );
-         set_abi( N(eosio.msig), eosio_msig_abi );
+         set_code( N(eosio.msig), contracts::eosio_msig_wasm() );
+         set_abi( N(eosio.msig), contracts::eosio_msig_abi().data() );
 
          produce_blocks();
          const auto& accnt = control->db().get<account_object,by_name>( N(eosio.msig) );
@@ -535,7 +541,6 @@ inline fc::mutable_variant_object voter( account_name acct ) {
       ("proxy", name(0).to_string())
       ("producers", variants() )
       ("staked", int64_t(0))
-      //("last_vote_weight", double(0))
       ("proxied_vote_weight", double(0))
       ("is_proxy", 0)
       ;

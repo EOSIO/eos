@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -22,8 +22,9 @@
 #include <WASM/WASM.h>
 #include <Runtime/Runtime.h>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
+#include <contracts.hpp>
+
+using namespace eosio::testing;
 
 namespace eosio { namespace detail {
   struct txn_test_gen_empty {};
@@ -87,19 +88,38 @@ using namespace eosio::chain;
    api_handle->call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), result_handler);
 
 struct txn_test_gen_plugin_impl {
-   static void push_next_transaction(const std::shared_ptr<std::vector<signed_transaction>>& trxs, size_t index, const std::function<void(const fc::exception_ptr&)>& next ) {
+
+   uint64_t _total_us = 0;
+   uint64_t _txcount = 0;
+
+   int _remain = 0;
+
+   void push_next_transaction(const std::shared_ptr<std::vector<signed_transaction>>& trxs, size_t index, const std::function<void(const fc::exception_ptr&)>& next ) {
       chain_plugin& cp = app().get_plugin<chain_plugin>();
-      cp.accept_transaction( packed_transaction(trxs->at(index)), [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
-         if (result.contains<fc::exception_ptr>()) {
-            next(result.get<fc::exception_ptr>());
-         } else {
-            if (index + 1 < trxs->size()) {
-               push_next_transaction(trxs, index + 1, next);
+
+      const int overlap = 20;
+      int end = std::min(index + overlap, trxs->size());
+      _remain = end - index;
+      for (int i = index; i < end; ++i) {
+         cp.accept_transaction( packed_transaction(trxs->at(i)), [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
+            if (result.contains<fc::exception_ptr>()) {
+               next(result.get<fc::exception_ptr>());
             } else {
-               next(nullptr);
+               if (result.contains<transaction_trace_ptr>() && result.get<transaction_trace_ptr>()->receipt) {
+                  _total_us += result.get<transaction_trace_ptr>()->receipt->cpu_usage_us;
+                  ++_txcount;
+               }
+               --_remain;
+               if (_remain == 0 ) {
+                  if (end < trxs->size()) {
+                     push_next_transaction(trxs, index + overlap, next);
+                  } else {
+                     next(nullptr);
+                  }
+               }
             }
-         }
-      });
+         });
+      }
    }
 
    void push_transactions( std::vector<signed_transaction>&& trxs, const std::function<void(fc::exception_ptr)>& next ) {
@@ -117,13 +137,13 @@ struct txn_test_gen_plugin_impl {
          name newaccountC("txn.test.t");
          name creator(init_name);
 
-         abi_def currency_abi_def = fc::json::from_string(eosio_token_abi).as<abi_def>();
+         abi_def currency_abi_def = fc::json::from_string(contracts::eosio_token_abi().data()).as<abi_def>();
 
          controller& cc = app().get_plugin<chain_plugin>().chain();
          auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
          auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
 
-         abi_serializer eosio_token_serializer{fc::json::from_string(eosio_token_abi).as<abi_def>(), abi_serializer_max_time};
+         abi_serializer eosio_token_serializer{fc::json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer_max_time};
 
          fc::crypto::private_key txn_test_receiver_A_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
          fc::crypto::private_key txn_test_receiver_B_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
@@ -169,7 +189,7 @@ struct txn_test_gen_plugin_impl {
          {
             signed_transaction trx;
 
-            vector<uint8_t> wasm = wast_to_wasm(std::string(eosio_token_wast));
+            vector<uint8_t> wasm = contracts::eosio_token_wasm();
 
             setcode handler;
             handler.account = newaccountC;
@@ -180,7 +200,7 @@ struct txn_test_gen_plugin_impl {
             {
                setabi handler;
                handler.account = newaccountC;
-               handler.abi = fc::raw::pack(json::from_string(eosio_token_abi).as<abi_def>());
+               handler.abi = fc::raw::pack(json::from_string(contracts::eosio_token_abi().data()).as<abi_def>());
                trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
             }
 
@@ -245,7 +265,7 @@ struct txn_test_gen_plugin_impl {
 
       controller& cc = app().get_plugin<chain_plugin>().chain();
       auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
-      abi_serializer eosio_token_serializer{fc::json::from_string(eosio_token_abi).as<abi_def>(), abi_serializer_max_time};
+      abi_serializer eosio_token_serializer{fc::json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer_max_time};
       //create the actions here
       act_a_to_b.account = N(txn.test.t);
       act_a_to_b.name = N(transfer);
@@ -295,13 +315,11 @@ struct txn_test_gen_plugin_impl {
       try {
          controller& cc = app().get_plugin<chain_plugin>().chain();
          auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
-         auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
 
-         fc::crypto::private_key a_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
-         fc::crypto::private_key b_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
+         static fc::crypto::private_key a_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
+         static fc::crypto::private_key b_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
 
          static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
-         abi_serializer eosio_serializer(cc.db().find<account_object, by_name>(config::system_account_name)->get_abi(), abi_serializer_max_time);
 
          uint32_t reference_block_num = cc.last_irreversible_block_num();
          if (txn_reference_block_lag >= 0) {
@@ -351,6 +369,11 @@ struct txn_test_gen_plugin_impl {
       timer.cancel();
       running = false;
       ilog("Stopping transaction generation test");
+
+      if (_txcount) {
+         ilog("${d} transactions executed, ${t}us / transaction", ("d", _txcount)("t", _total_us / (double)_txcount));
+         _txcount = _total_us = 0;
+      }
    }
 
    boost::asio::high_resolution_timer timer{app().get_io_service()};

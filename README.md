@@ -11,7 +11,7 @@ Some of the groundbreaking features of EOSIO include:
 1. Low Latency Block confirmation (0.5 seconds)
 1. Low-overhead Byzantine Fault Tolerant Finality
 1. Designed for optional high-overhead, low-latency BFT finality 
-1. Smart contract platform powered by Web Assembly
+1. Smart contract platform powered by WebAssembly
 1. Designed for Sparse Header Light Client Validation
 1. Scheduled Recurring Transactions 
 1. Time Delay Security
@@ -39,13 +39,13 @@ $ brew remove eosio
 ```
 #### Ubuntu 18.04 Debian Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio_1.6.0-develop-ubuntu-18.04_amd64.deb
-$ sudo apt install ./eosio_1.6.0-develop-ubuntu-18.04_amd64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio_1.7.0-develop-ubuntu-18.04_amd64.deb
+$ sudo apt install ./eosio_1.7.0-develop-ubuntu-18.04_amd64.deb
 ```
 #### Ubuntu 16.04 Debian Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio_1.6.0-develop-ubuntu-16.04_amd64.deb
-$ sudo apt install ./eosio_1.6.0-develop-ubuntu-16.04_amd64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio_1.7.0-develop-ubuntu-16.04_amd64.deb
+$ sudo apt install ./eosio_1.7.0-develop-ubuntu-16.04_amd64.deb
 ```
 #### Debian Package Uninstall
 ```sh
@@ -53,8 +53,8 @@ $ sudo apt remove eosio
 ```
 #### Centos RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio-1.6.0-develop.el7.x86_64.rpm
-$ sudo yum install ./eosio-1.6.0-develop.el7.x86_64.rpm
+$ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio-1.7.0-develop.el7.x86_64.rpm
+$ sudo yum install ./eosio-1.7.0-develop.el7.x86_64.rpm
 ```
 #### Centos RPM Package Uninstall
 ```sh
@@ -62,8 +62,8 @@ $ sudo yum remove eosio.cdt
 ```
 #### Fedora RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio-1.6.0-develop.fc27.x86_64.rpm
-$ sudo yum install ./eosio-1.6.0-develop.fc27.x86_64.rpm
+$ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio-1.7.0-develop.fc27.x86_64.rpm
+$ sudo yum install ./eosio-1.7.0-develop.fc27.x86_64.rpm
 ```
 #### Fedora RPM Package Uninstall
 ```sh

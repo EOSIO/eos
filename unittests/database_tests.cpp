@@ -1,10 +1,10 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
-
-#include <eosio/testing/tester.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/testing/tester.hpp>
+
 #include <fc/crypto/digest.hpp>
 
 #include <boost/test/unit_test.hpp>
@@ -14,7 +14,6 @@
 #else
 #define TESTER validating_tester
 #endif
-
 
 using namespace eosio::chain;
 using namespace eosio::testing;
@@ -99,6 +98,5 @@ BOOST_AUTO_TEST_SUITE(database_tests)
                     test.control->head_block_id());
       } FC_LOG_AND_RETHROW()
    }
-
 
 BOOST_AUTO_TEST_SUITE_END()

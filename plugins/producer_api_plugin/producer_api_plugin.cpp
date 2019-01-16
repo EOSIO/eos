@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/producer_api_plugin/producer_api_plugin.hpp>
 #include <eosio/chain/exceptions.hpp>

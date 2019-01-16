@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <algorithm>
 #include <vector>
@@ -1475,7 +1475,7 @@ public_key_type  get_public_key( name keyname, string role ) {
 BOOST_AUTO_TEST_CASE(packed_transaction)
 { try {
 
-   chain::transaction txn;
+   chain::signed_transaction txn;
    txn.ref_block_num = 1;
    txn.ref_block_prefix = 2;
    txn.expiration.from_iso_string("2021-12-20T15:30");
@@ -2456,6 +2456,30 @@ BOOST_AUTO_TEST_CASE(abi_serialize_json_mismatching_type)
                              pack_exception, fc_exception_message_is("Unexpected input encountered while processing struct 's2.f0'") );
 
       verify_round_trip_conversion(abis, "s2", R"({"f0":{"i0":1},"i1":2})", "0102");
+
+   } FC_LOG_AND_RETHROW()
+}
+
+// it is a bit odd to have an empty name for a field, but json seems to allow it
+BOOST_AUTO_TEST_CASE(abi_serialize_json_empty_name)
+{
+   using eosio::testing::fc_exception_message_is;
+
+   auto abi = R"({
+      "version": "eosio::abi/1.0",
+      "structs": [
+         {"name": "s1", "base": "", "fields": [
+            {"name": "", "type": "int8"},
+         ]}
+      ],
+   })";
+
+   try {
+      abi_serializer abis( fc::json::from_string(abi).as<abi_def>(), max_serialization_time );
+
+      auto bin = abis.variant_to_binary("s1", fc::json::from_string(R"({"":1})"), max_serialization_time);
+
+      verify_round_trip_conversion(abis, "s1", R"({"":1})", "01");
 
    } FC_LOG_AND_RETHROW()
 }

@@ -1,0 +1,6 @@
+if( ${eosio.cdt_FOUND} )
+  add_contract( integration_test integration_test integration_test.cpp )
+else()
+  configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/integration_test.wasm ${CMAKE_CURRENT_BINARY_DIR}/integration_test.wasm COPYONLY )
+  configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/integration_test.abi ${CMAKE_CURRENT_BINARY_DIR}/integration_test.abi COPYONLY )
+endif()

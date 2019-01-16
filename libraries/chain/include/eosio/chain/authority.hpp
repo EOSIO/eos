@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <chainbase/chainbase.hpp>
@@ -59,6 +59,15 @@ namespace config {
 struct authority {
    authority( public_key_type k, uint32_t delay_sec = 0 )
    :threshold(1),keys({{k,1}})
+   {
+      if( delay_sec > 0 ) {
+         threshold = 2;
+         waits.push_back(wait_weight{delay_sec, 1});
+      }
+   }
+
+   authority( permission_level p, uint32_t delay_sec = 0 )
+   :threshold(1),accounts({{p,1}})
    {
       if( delay_sec > 0 ) {
          threshold = 2;

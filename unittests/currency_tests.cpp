@@ -1,3 +1,7 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #include <boost/test/unit_test.hpp>
@@ -7,16 +11,12 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
-
-#include <proxy/proxy.wast.hpp>
-#include <proxy/proxy.abi.hpp>
-
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
+
+#include <contracts.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -75,10 +75,10 @@ class currency_tester : public TESTER {
       }
 
       currency_tester()
-      :TESTER(),abi_ser(json::from_string(eosio_token_abi).as<abi_def>(), abi_serializer_max_time)
+         :TESTER(),abi_ser(json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer_max_time)
       {
          create_account( N(eosio.token));
-         set_code( N(eosio.token), eosio_token_wast );
+         set_code( N(eosio.token), contracts::eosio_token_wasm() );
 
          auto result = push_action(N(eosio.token), N(create), mutable_variant_object()
                  ("issuer",       eosio_token)
@@ -406,10 +406,10 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    create_accounts( {N(alice), N(proxy)} );
    produce_block();
 
-   set_code(N(proxy), proxy_wast);
+   set_code(N(proxy), contracts::proxy_wasm());
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>(), abi_serializer_max_time);
+   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer_max_time);
 
    // set up proxy owner
    {
@@ -424,7 +424,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
          abi_serializer_max_time
       );
       trx.actions.emplace_back(std::move(setowner_act));
-
+      
       set_transaction_headers(trx);
       trx.sign(get_private_key(N(alice), "active"), control->get_chain_id());
       push_transaction(trx);
@@ -461,11 +461,11 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    create_accounts( {N(alice), N(bob), N(proxy)} );
    produce_block();
 
-   set_code(N(proxy), proxy_wast);
-   set_code(N(bob), proxy_wast);
+   set_code(N(proxy), contracts::proxy_wasm());
+   set_code(N(bob), contracts::proxy_wasm());
    produce_blocks(1);
 
-   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>(), abi_serializer_max_time);
+   abi_serializer proxy_abi_ser(json::from_string(contracts::proxy_abi().data()).as<abi_def>(), abi_serializer_max_time);
 
    // set up proxy owner
    {
@@ -580,7 +580,6 @@ BOOST_FIXTURE_TEST_CASE( test_input_quantity, currency_tester ) try {
       BOOST_CHECK_EQUAL(asset::from_string( "100.0000 CUR"), get_balance(N(alice)));
       BOOST_CHECK_EQUAL(1000000, get_balance(N(alice)).get_amount());
    }
-
 
    // transfer using different symbol name fails
    {

@@ -1,25 +1,23 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <algorithm>
-#include <vector>
 #include <iterator>
-#include <boost/test/unit_test.hpp>
+#include <vector>
 
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
-
 #include <eosio/testing/tester.hpp>
 
 #include <fc/crypto/digest.hpp>
 
-#include <boost/test/unit_test.hpp>
 #include <boost/range/algorithm/find.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/permutation.hpp>
+#include <boost/test/unit_test.hpp>
 
 using namespace eosio;
 using namespace chain;

@@ -1,18 +1,16 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
-
-#include <boost/test/unit_test.hpp>
-#include <boost/mpl/list.hpp>
-#include <eosio/testing/tester.hpp>
+#include <sstream>
 
 #include <eosio/chain/snapshot.hpp>
+#include <eosio/testing/tester.hpp>
 
-#include <snapshot_test/snapshot_test.wast.hpp>
-#include <snapshot_test/snapshot_test.abi.hpp>
+#include <boost/mpl/list.hpp>
+#include <boost/test/unit_test.hpp>
 
-#include <sstream>
+#include <contracts.hpp>
 
 using namespace eosio;
 using namespace testing;
@@ -159,8 +157,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_exhaustive_snapshot, SNAPSHOT_SUITE, snapshot
 
    chain.create_account(N(snapshot));
    chain.produce_blocks(1);
-   chain.set_code(N(snapshot), snapshot_test_wast);
-   chain.set_abi(N(snapshot), snapshot_test_abi);
+   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
+   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
    chain.control->abort_block();
 
@@ -203,8 +201,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
 
    chain.create_account(N(snapshot));
    chain.produce_blocks(1);
-   chain.set_code(N(snapshot), snapshot_test_wast);
-   chain.set_abi(N(snapshot), snapshot_test_abi);
+   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
+   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
    chain.control->abort_block();
 
