@@ -228,6 +228,7 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth",""} );
    eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth",""} );
    eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth",""} );
+   eos_abi.actions.push_back( action_def{name("providebw"), "providebw",""} );
    eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay",""} );
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror",""} );
    eos_abi.actions.push_back( action_def{name("onblock"), "onblock",""} );
