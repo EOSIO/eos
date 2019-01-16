@@ -232,6 +232,7 @@ if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 	&& make -j"${JOBS}" VERBOSE=1 \
 	&& make install \
 	&& cd ../.. \
+	&& rm -f mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
 	|| exit 1
 	printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
 else
