@@ -349,7 +349,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    if( !bandwidth_provider.empty() ) {
       auto providers = get_bandwidth_providers({bandwidth_provider});
       for (const auto& prov: providers) {
-         trx.actions.emplace_back(vector<chain::permission_level>{prov.second}, providebw{prov.first, prov.second.actor} );
+         trx.actions.emplace_back(vector<chain::permission_level>{prov.second}, providebw{prov.second.actor, prov.first} );
       }
    }
 
