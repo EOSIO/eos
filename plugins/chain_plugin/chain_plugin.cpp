@@ -673,7 +673,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       my->accepted_block_header_connection = my->chain->accepted_block_header.connect(
             [this]( const block_state_ptr& blk ) {
-               my->accepted_block_header_channel.publish( priority::medium, blk );
+               my->accepted_block_header_channel.publish( priority::high, blk );
             } );
 
       my->accepted_block_connection = my->chain->accepted_block.connect( [this]( const block_state_ptr& blk ) {
