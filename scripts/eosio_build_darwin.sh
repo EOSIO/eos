@@ -128,7 +128,7 @@ while read -r name tester testee brewname uri; do
 	if [ "${brewname}" = "gettext" ]; then
 		PERMISSION_GETTEXT=1
 	fi
-	DEPS=$DEPS"${brewname} "
+	DEPS=$DEPS"${brewname},"
 	DISPLAY="${DISPLAY}${COUNT}. ${name}\\n"
 	printf " - %s ${bldred}NOT${txtrst} found.\\n" "${name}"
 	(( COUNT++ ))
@@ -181,13 +181,17 @@ if [ $COUNT -gt 1 ]; then
 				# Ignore cmake so we don't install a newer version.
 				# Build from source to use local cmake
 				# DON'T INSTALL llvm@4 WITH --force!
+				OIFS="$IFS"
+				IFS=$','
 				for DEP in $DEPS; do
-					if ! $BREW install $DEP $FLAGS; then
+					# Eval to support string/arguments with $DEP
+					if ! eval $BREW install $DEP; then
 						printf "Homebrew exited with the above errors.\\n"
 						printf "Exiting now.\\n\\n"
 						exit 1;
 					fi
 				done
+				IFS="$OIFS"
 			break;;
 			[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
 			* ) echo "Please type 1 for yes or 2 for no.";;
