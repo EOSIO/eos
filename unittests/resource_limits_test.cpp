@@ -216,7 +216,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       const uint64_t increment = 1000;
       const uint64_t expected_iterations = config::default_max_block_cpu_usage / increment;
 
-      for (int idx = 0; idx < expected_iterations; idx++) {
+      for (unsigned int idx = 0; idx < expected_iterations; idx++) {
          add_transaction_usage({account}, increment, 0, 0);
       }
 
@@ -233,7 +233,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       const uint64_t increment = 1000;
       const uint64_t expected_iterations = config::default_max_block_net_usage / increment;
 
-      for (int idx = 0; idx < expected_iterations; idx++) {
+      for (unsigned int idx = 0; idx < expected_iterations; idx++) {
          add_transaction_usage({account}, 0, increment, 0);
       }
 
@@ -252,7 +252,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       set_account_limits(account, limit, -1, -1 );
       process_account_limit_updates();
 
-      for (int idx = 0; idx < expected_iterations - 1; idx++) {
+      for (unsigned int idx = 0; idx < expected_iterations - 1; idx++) {
          add_pending_ram_usage(account, increment);
          verify_account_ram_usage(account);
       }

@@ -227,7 +227,7 @@ BOOST_AUTO_TEST_CASE(message_buffer_write_ptr_to_end)
       BOOST_CHECK_EQUAL(mb.write_index().second, 0);
 
       char* write_ptr = mb.write_ptr();
-      for (char ind = 0; ind < small; ind++) {
+      for (unsigned char ind = 0; ind < small; ind++) {
         *write_ptr = ind;
         write_ptr++;
       }

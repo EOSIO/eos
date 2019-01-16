@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
       BOOST_TEST_CONTEXT("Testing Fork: " << i) {
          const auto& fork = forks.at(i);
          // push the fork to the original node
-         for (int fidx = 0; fidx < fork.blocks.size() - 1; fidx++) {
+         for (unsigned int fidx = 0; fidx < fork.blocks.size() - 1; fidx++) {
             const auto& b = fork.blocks.at(fidx);
             // push the block only if its not known already
             if (!bios.control->fetch_block_by_id(b->id())) {
@@ -342,7 +342,7 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
    BOOST_REQUIRE_EQUAL(73, c2.control->head_block_num());
    
    // push fork from c2 => c
-   int p = fork_num;
+   unsigned int p = fork_num;
    while ( p < c2.control->head_block_num()) {
       auto fb = c2.control->fetch_block_by_number(++p);
       c.push_block(fb);

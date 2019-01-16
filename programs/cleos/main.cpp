@@ -1850,7 +1850,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
             auto& prods = obj["producers"].get_array();
             std::cout << "producers:";
             if ( !prods.empty() ) {
-               for ( int i = 0; i < prods.size(); ++i ) {
+               for ( unsigned int i = 0; i < prods.size(); ++i ) {
                   if ( i%3 == 0 ) {
                      std::cout << std::endl << indent;
                   }

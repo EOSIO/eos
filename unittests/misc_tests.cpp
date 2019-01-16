@@ -542,7 +542,7 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
     tmp.push_back(str);
   }
 
-  for(int i = 0; i < words.size(); ++i ) {
+  for(unsigned int i = 0; i < words.size(); ++i ) {
     BOOST_TEST(tmp[i] == words[i]);
   }
 
