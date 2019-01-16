@@ -167,7 +167,7 @@ namespace eosio {
       template<typename VerifierFunc>
       void send_transaction_to_all( const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify );
 
-      void accepted_block(const block_state_ptr&);
+      void accepted_block_header(const block_state_ptr&);
       void transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>&);
 
       bool is_valid( const handshake_message &msg);
@@ -2561,7 +2561,7 @@ namespace eosio {
       c->close();
    }
 
-   void net_plugin_impl::accepted_block(const block_state_ptr& block) {
+   void net_plugin_impl::accepted_block_header(const block_state_ptr& block) {
       fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
       dispatcher->bcast_block(block);
    }
@@ -2871,7 +2871,7 @@ namespace eosio {
       }
       chain::controller&cc = my->chain_plug->chain();
       {
-         cc.accepted_block.connect(  boost::bind(&net_plugin_impl::accepted_block, my.get(), _1));
+         cc.accepted_block_header.connect( boost::bind(&net_plugin_impl::accepted_block_header, my.get(), _1) );
       }
 
       my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
