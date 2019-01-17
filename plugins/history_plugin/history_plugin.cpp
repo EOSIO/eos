@@ -493,16 +493,10 @@ namespace eosio {
               ++itr;
             }
 
-
-            const vector<transaction_receipt>* receipts = nullptr;
             auto blk = chain.fetch_block_by_number( result.block_num );
-            if( blk ) {
-               receipts = &blk->transactions;
-            } else if( chain.is_building_block() ) { // still in pending
-               receipts = &chain.get_pending_trx_receipts();
-            }
-            if( receipts ) {
-                for (const auto &receipt: *receipts) {
+            if( blk || chain.is_building_block() ) {
+               const vector<transaction_receipt>& receipts = blk ? blk->transactions : chain.get_pending_trx_receipts();
+               for (const auto &receipt: receipts) {
                     if (receipt.trx.contains<packed_transaction>()) {
                         auto &pt = receipt.trx.get<packed_transaction>();
                         if (pt.id() == result.id) {
@@ -519,7 +513,7 @@ namespace eosio {
                             break;
                         }
                     }
-                }
+               }
             }
          } else {
             auto blk = chain.fetch_block_by_number(*p.block_num_hint);
