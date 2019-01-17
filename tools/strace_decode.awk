@@ -13,12 +13,8 @@
 # ' | awk -f strace_decode.awk
 {
 	if (match($2, /0x.*/)) { 
-		cmd = "addr2line -Cfipe " $4 " " $2;
-		s = $1;
-		while ( (cmd | getline result) > 0) {
-			s = s " " result;
-		}
-		print s;
+		"addr2line -Cfipe " $4 " " $2 | getline result;
+		print $1 " " result;
 	} else {
 		print $0;
         }
