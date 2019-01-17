@@ -109,13 +109,11 @@ namespace eosio { namespace chain {
       result.dpos_irreversible_blocknum            = calc_dpos_last_irreversible( prokey.producer_name );
 
       result.prev_pending_schedule                 = pending_schedule;
-      result.prev_pending_schedule_lib_num         = pending_schedule_lib_num;
-      result.prev_pending_schedule_hash            = pending_schedule_hash;
 
-      if( pending_schedule.producers.size() &&
-          result.dpos_irreversible_blocknum >= pending_schedule_lib_num )
+      if( pending_schedule.schedule.producers.size() &&
+          result.dpos_irreversible_blocknum >= pending_schedule.schedule_lib_num )
       {
-         result.active_schedule = pending_schedule;
+         result.active_schedule = pending_schedule.schedule;
 
          flat_map<account_name,uint32_t> new_producer_to_last_produced;
 
@@ -194,39 +192,30 @@ namespace eosio { namespace chain {
       if( h.new_producers ) {
          EOS_ASSERT( !was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
          EOS_ASSERT( h.new_producers->version == active_schedule.version + 1, producer_schedule_exception, "wrong producer schedule version specified" );
-         EOS_ASSERT( prev_pending_schedule.producers.size() == 0, producer_schedule_exception,
+         EOS_ASSERT( prev_pending_schedule.schedule.producers.size() == 0, producer_schedule_exception,
                     "cannot set new pending producers until last pending is confirmed" );
       }
 
-      block_header_state result;
+      auto block_number = block_num;
 
-      result.id        = h.id();
-      result.block_num = block_num;
-      result.header    = h;
+      block_header_state result( std::move( *static_cast<detail::block_header_state_common*>(this) ) );
 
-      result.dpos_proposed_irreversible_blocknum = dpos_proposed_irreversible_blocknum;
-      result.dpos_irreversible_blocknum          = dpos_irreversible_blocknum;
+      result.id      = h.id();
+      result.header  = h;
 
       if( h.new_producers ) {
-         result.pending_schedule         = *h.new_producers;
-         result.pending_schedule_hash    = digest_type::hash( result.pending_schedule );
-         result.pending_schedule_lib_num = block_num;
+         result.pending_schedule.schedule            = *h.new_producers;
+         result.pending_schedule.schedule_hash       = digest_type::hash( result.pending_schedule );
+         result.pending_schedule.schedule_lib_num    = block_number;
       } else {
          if( was_pending_promoted ) {
-            result.pending_schedule.version = prev_pending_schedule.version;
+            result.pending_schedule.schedule.version = prev_pending_schedule.schedule.version;
          } else {
-            result.pending_schedule         = prev_pending_schedule;
+            result.pending_schedule.schedule         = std::move( prev_pending_schedule.schedule );
          }
-         result.pending_schedule_hash    = std::move(prev_pending_schedule_hash);
-         result.pending_schedule_lib_num = prev_pending_schedule_lib_num;
+         result.pending_schedule.schedule_hash       = std::move( prev_pending_schedule.schedule_hash );
+         result.pending_schedule.schedule_lib_num    = prev_pending_schedule.schedule_lib_num;
       }
-
-      result.active_schedule                     = std::move(active_schedule);
-      result.blockroot_merkle                    = std::move(blockroot_merkle);
-      result.producer_to_last_produced           = std::move(producer_to_last_produced);
-      result.producer_to_last_implied_irb        = std::move(producer_to_last_implied_irb);
-      result.block_signing_key                   = std::move(block_signing_key);
-      result.confirm_count                       = std::move(confirm_count);
 
       return result;
    }
@@ -267,7 +256,7 @@ namespace eosio { namespace chain {
 
   digest_type   block_header_state::sig_digest()const {
      auto header_bmroot = digest_type::hash( std::make_pair( header.digest(), blockroot_merkle.get_root() ) );
-     return digest_type::hash( std::make_pair(header_bmroot, pending_schedule_hash) );
+     return digest_type::hash( std::make_pair(header_bmroot, pending_schedule.schedule_hash) );
   }
 
   void block_header_state::sign( const std::function<signature_type(const digest_type&)>& signer ) {
