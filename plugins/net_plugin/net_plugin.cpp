@@ -283,6 +283,7 @@ namespace eosio {
     */
    constexpr auto     def_send_buffer_size_mb = 4;
    constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
+   constexpr auto     def_max_write_queue_size = def_send_buffer_size*10;
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_max_nodes_per_host = 1;
    constexpr auto     def_conn_retry_wait = 30;
@@ -402,6 +403,7 @@ namespace eosio {
          std::function<void(boost::system::error_code, std::size_t)> callback;
       };
       deque<queued_write>     write_queue;
+      uint32_t                write_queue_size;
       deque<queued_write>     out_queue;
       fc::sha256              node_id;
       handshake_message       last_handshake_recv;
@@ -700,6 +702,7 @@ namespace eosio {
 
    void connection::flush_queues() {
       write_queue.clear();
+      write_queue_size = 0;
    }
 
    void connection::close() {
@@ -891,11 +894,13 @@ namespace eosio {
                                 int priority,
                                 std::function<void(boost::system::error_code, std::size_t)> callback) {
       write_queue.push_back({buff, callback});
+      write_queue_size += buff->size();
       if(out_queue.empty() && trigger_send)
          do_queue_write( priority );
    }
 
    void connection::do_queue_write(int priority) {
+      // if out_queue is not empty then async_write is in progress
       if(write_queue.empty() || !out_queue.empty())
          return;
       connection_wptr c(shared_from_this());
@@ -908,7 +913,8 @@ namespace eosio {
       while (write_queue.size() > 0) {
          auto& m = write_queue.front();
          bufs.push_back(boost::asio::buffer(*m.buff));
-         out_queue.push_back(m);
+         write_queue_size -= m.buff->size();
+         out_queue.emplace_back(m);
          write_queue.pop_front();
       }
       boost::asio::async_write(*socket, bufs,
@@ -934,6 +940,8 @@ namespace eosio {
                   return;
                }
                while (conn->out_queue.size() > 0) {
+                  auto& m = conn->out_queue.front();
+                  conn->write_queue_size -= m.buff->size();
                   conn->out_queue.pop_front();
                }
                conn->enqueue_sync_block();
@@ -958,8 +966,8 @@ namespace eosio {
    }
 
    void connection::cancel_sync(go_away_reason reason) {
-      fc_dlog(logger,"cancel sync reason = ${m}, write queue size ${o} peer ${p}",
-              ("m",reason_str(reason)) ("o", write_queue.size())("p", peer_name()));
+      fc_dlog(logger,"cancel sync reason = ${m}, write queue size ${o} bytes peer ${p}",
+              ("m",reason_str(reason)) ("o", write_queue_size)("p", peer_name()));
       cancel_wait();
       flush_queues();
       switch (reason) {
@@ -1941,9 +1949,14 @@ namespace eosio {
             }
          };
 
+         int priority = priority::medium;
+         if( conn->write_queue_size > def_max_write_queue_size ) {
+            priority = priority::low; // place near end of queue
+         }
+
          boost::asio::async_read(*conn->socket,
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
-            app().get_priority_queue().wrap( priority::medium,
+            app().get_priority_queue().wrap( priority,
             [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
                auto conn = weak_conn.lock();
                if (!conn) {
