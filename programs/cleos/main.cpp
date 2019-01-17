@@ -524,11 +524,15 @@ authority parse_json_authority(const std::string& authorityJsonOrFile) {
    } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON '${data}'", ("data",authorityJsonOrFile))
 }
 
-authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
+authority parse_json_authority_or_key(const std::string& authorityJsonOrFile, vector<permission_level> checklist = {}) {
    // if authority is given by permission level, '@' should appear within first 13 characters.
    if (authorityJsonOrFile.substr(0, 13).find('@') != string::npos) {
       try {
-         return authority(to_permission_level(authorityJsonOrFile));
+         auto permission = to_permission_level(authorityJsonOrFile);
+         for( auto p : checklist ) {
+            EOS_ASSERT(permission != p, authority_type_exception, "Setting authority by itself will lock up account permanently");
+         }
+         return authority(permission);
       } EOS_RETHROW_EXCEPTIONS(explained_exception, "Invalid permission level: ${permission}", ("permission", authorityJsonOrFile))
    } else if (boost::istarts_with(authorityJsonOrFile, "EOS") || boost::istarts_with(authorityJsonOrFile, "PUB_R1")) {
       try {
@@ -542,14 +546,14 @@ authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
 }
 
 chain::action create_newaccount(const name& creator, const name& newaccount, const string& owner_str, const string& active_str) {
-   auto owner = parse_json_authority_or_key( owner_str );
+   auto owner = parse_json_authority_or_key( owner_str, {{newaccount, config::owner_name}, {newaccount, config::active_name}} );
    return action {
       get_account_permissions(tx_permission, {creator,config::active_name}),
       eosio::chain::newaccount{
          .creator      = creator,
          .name         = newaccount,
          .owner        = owner,
-         .active       = active_str.empty() ? owner : parse_json_authority_or_key( active_str )
+         .active       = active_str.empty() ? owner : parse_json_authority_or_key( active_str, {{newaccount, config::active_name}} )
       }
    };
 }
@@ -706,6 +710,7 @@ struct set_account_permission_subcommand {
    name parent;
    bool add_code;
    bool remove_code;
+   bool force;
 
    set_account_permission_subcommand(CLI::App* accountCmd) {
       auto permissions = accountCmd->add_subcommand("permission", localized("set parameters dealing with account permissions"));
@@ -715,6 +720,7 @@ struct set_account_permission_subcommand {
       permissions->add_option("parent", parent, localized("[create] The permission name of this parents permission, defaults to 'active'"));
       permissions->add_flag("--add-code", add_code, localized("[code] add '${code}' permission to specified permission authority", ("code", name(config::eosio_code_name))));
       permissions->add_flag("--remove-code", remove_code, localized("[code] remove '${code}' permission from specified permission authority", ("code", name(config::eosio_code_name))));
+      permissions->add_flag("--force", force, localized("Enable user to set authority by itself which can cause locking-up account"));
 
       add_standard_transaction_options(permissions, "account@active");
 
@@ -822,7 +828,11 @@ struct set_account_permission_subcommand {
          }
 
          if ( !need_auth ) {
-            auth = parse_json_authority_or_key(authority_json_or_file);
+            if (force) {
+               auth = parse_json_authority_or_key(authority_json_or_file);
+            } else {
+               auth = parse_json_authority_or_key(authority_json_or_file, {{account, permission}});
+            }
          }
 
          send_actions( { create_updateauth(account, permission, parent, auth) } );
