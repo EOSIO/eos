@@ -1632,7 +1632,7 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
 
    if( accnt.code.size() ) {
       result.wasm = string(accnt.code.begin(), accnt.code.end());
-      result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+      result.code_hash = accnt.code_version;
    }
 
    abi_def abi;
@@ -1650,7 +1650,7 @@ read_only::get_code_hash_results read_only::get_code_hash( const get_code_hash_p
    const auto& accnt  = d.get<account_object,by_name>( params.account_name );
 
    if( accnt.code.size() ) {
-      result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+      result.code_hash = accnt.code_version;
    }
 
    return result;
@@ -1675,7 +1675,7 @@ read_only::get_raw_abi_results read_only::get_raw_abi( const get_raw_abi_params&
    const auto& d = db.db();
    const auto& accnt = d.get<account_object,by_name>(params.account_name);
    result.abi_hash = fc::sha256::hash( accnt.abi.data(), accnt.abi.size() );
-   result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+   result.code_hash = accnt.code_version;
    if( !params.abi_hash || *params.abi_hash != result.abi_hash )
       result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
 
