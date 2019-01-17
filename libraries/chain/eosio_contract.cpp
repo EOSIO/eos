@@ -372,6 +372,11 @@ void apply_eosio_providebw(apply_context& context) {
    context.require_authorization(args.provider);
 }
 
+void apply_eosio_requestbw(apply_context& context) {
+   auto args = context.act.data_as<requestbw>();
+   context.require_authorization(args.account);
+}
+
 void apply_eosio_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
    context.require_authorization(cancel.canceling_auth.actor); // only here to mark the single authority on this action as used

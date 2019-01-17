@@ -156,6 +156,24 @@ struct providebw {
     }
 };
 
+struct requestbw {
+    account_name    provider;
+    account_name    account;
+
+    requestbw() = default;
+    requestbw(const account_name& provider, const account_name& account)
+    : provider(provider), account(account)
+    {}
+
+    static account_name get_account() {
+        return config::system_account_name;
+    }
+
+    static action_name get_name() {
+        return N(requestbw);
+    }
+};
+
 // it's ugly, but removes boilerplate. TODO: write better
 #define SYS_ACTION_STRUCT(NAME) struct NAME { \
     NAME() = default; \
@@ -211,6 +229,23 @@ struct onerror {
    }
 };
 
+struct approvebw {
+    account_name    account;
+
+    approvebw() = default;
+    approvebw(const account_name& account)
+    : account(account)
+    {}
+
+    static account_name get_account() {
+       return config::system_account_name;
+    }
+
+    static action_name get_name() {
+        return N(approvebw);
+    }
+};
+
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::newaccount                       , (creator)(name)(owner)(active) )
@@ -221,6 +256,8 @@ FC_REFLECT( eosio::chain::deleteauth                       , (account)(permissio
 FC_REFLECT( eosio::chain::linkauth                         , (account)(code)(type)(requirement) )
 FC_REFLECT( eosio::chain::unlinkauth                       , (account)(code)(type) )
 FC_REFLECT( eosio::chain::providebw                        , (provider)(account) )
+FC_REFLECT( eosio::chain::requestbw                        , (provider)(account) )
+FC_REFLECT( eosio::chain::approvebw                        , (account) )
 FC_REFLECT( eosio::chain::canceldelay                      , (canceling_auth)(trx_id) )
 FC_REFLECT( eosio::chain::onerror                          , (sender_id)(sent_trx) )
 
