@@ -134,7 +134,6 @@ using namespace eosio::client::http;
 using namespace eosio::client::localize;
 using namespace eosio::client::config;
 using namespace boost::filesystem;
-using auth_type = fc::static_variant<public_key_type, permission_level>;
 
 FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
 FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
@@ -519,14 +518,38 @@ chain::permission_level to_permission_level(const std::string& s) {
    return permission_level { s.substr(0, at_pos), s.substr(at_pos + 1) };
 }
 
-chain::action create_newaccount(const name& creator, const name& newaccount, auth_type owner, auth_type active) {
+authority parse_json_authority(const std::string& authorityJsonOrFile) {
+   try {
+      return json_from_file_or_string(authorityJsonOrFile).as<authority>();
+   } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON '${data}'", ("data",authorityJsonOrFile))
+}
+
+authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
+   // if authority is given by permission level, '@' should appear within first 13 characters.
+   if (authorityJsonOrFile.substr(0, 13).find('@') != string::npos) {
+      try {
+         return authority(to_permission_level(authorityJsonOrFile));
+      } EOS_RETHROW_EXCEPTIONS(explained_exception, "Invalid permission level: ${permission}", ("permission", authorityJsonOrFile))
+   } else if (boost::istarts_with(authorityJsonOrFile, "EOS") || boost::istarts_with(authorityJsonOrFile, "PUB_R1")) {
+      try {
+         return authority(public_key_type(authorityJsonOrFile));
+      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
+   } else {
+      auto result = parse_json_authority(authorityJsonOrFile);
+      EOS_ASSERT( eosio::chain::validate(result), authority_type_exception, "Authority failed validation! ensure that keys, accounts, and waits are sorted and that the threshold is valid and satisfiable!");
+      return result;
+   }
+}
+
+chain::action create_newaccount(const name& creator, const name& newaccount, const string& owner_str, const string& active_str) {
+   auto owner = parse_json_authority_or_key( owner_str );
    return action {
       get_account_permissions(tx_permission, {creator,config::active_name}),
       eosio::chain::newaccount{
          .creator      = creator,
          .name         = newaccount,
-         .owner        = owner.contains<public_key_type>() ? authority(owner.get<public_key_type>()) : authority(owner.get<permission_level>()),
-         .active       = active.contains<public_key_type>() ? authority(active.get<public_key_type>()) : authority(active.get<permission_level>())
+         .owner        = owner,
+         .active       = active_str.empty() ? owner : parse_json_authority_or_key( active_str )
       }
    };
 }
@@ -640,24 +663,6 @@ chain::action create_unlinkauth(const name& account, const name& code, const nam
                    unlinkauth{account, code, type}};
 }
 
-authority parse_json_authority(const std::string& authorityJsonOrFile) {
-   try {
-      return json_from_file_or_string(authorityJsonOrFile).as<authority>();
-   } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON '${data}'", ("data",authorityJsonOrFile))
-}
-
-authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
-   if (boost::istarts_with(authorityJsonOrFile, "EOS") || boost::istarts_with(authorityJsonOrFile, "PUB_R1")) {
-      try {
-         return authority(public_key_type(authorityJsonOrFile));
-      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
-   } else {
-      auto result = parse_json_authority(authorityJsonOrFile);
-      EOS_ASSERT( eosio::chain::validate(result), authority_type_exception, "Authority failed validation! ensure that keys, accounts, and waits are sorted and that the threshold is valid and satisfiable!");
-      return result;
-   }
-}
-
 asset to_asset( account_name code, const string& s ) {
    static map< pair<account_name, eosio::chain::symbol_code>, eosio::chain::symbol> cache;
    auto a = asset::from_string( s );
@@ -706,7 +711,7 @@ struct set_account_permission_subcommand {
       auto permissions = accountCmd->add_subcommand("permission", localized("set parameters dealing with account permissions"));
       permissions->add_option("account", account, localized("The account to set/delete a permission authority for"))->required();
       permissions->add_option("permission", permission, localized("The permission name to set/delete an authority for"))->required();
-      permissions->add_option("authority", authority_json_or_file, localized("[delete] NULL, [create/update] public key, JSON string or filename defining the authority, [code] contract name"));
+      permissions->add_option("authority", authority_json_or_file, localized("[delete] NULL, [create/update] public key, permission level, JSON string or filename defining the authority, [code] contract name"));
       permissions->add_option("parent", parent, localized("[create] The permission name of this parents permission, defaults to 'active'"));
       permissions->add_flag("--add-code", add_code, localized("[code] add '${code}' permission to specified permission authority", ("code", name(config::eosio_code_name))));
       permissions->add_flag("--remove-code", remove_code, localized("[code] remove '${code}' permission from specified permission authority", ("code", name(config::eosio_code_name))));
@@ -994,8 +999,8 @@ struct create_account_subcommand {
       );
       createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
       createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
-      createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key or permission level for the new account"))->required();
-      createAccount->add_option("ActiveKey", active_key_str, localized("The active public key or permission level for the new account"));
+      createAccount->add_option("OwnerAuthority", owner_key_str, localized("The owner public key, permission level, JSON string or filename for the new account"))->required();
+      createAccount->add_option("ActiveAuthority", active_key_str, localized("The active public key, permission level, JSON string or filename for the new account"));
 
       if (!simple) {
          createAccount->add_option("--stake-net", stake_net,
@@ -1015,31 +1020,7 @@ struct create_account_subcommand {
       add_standard_transaction_options(createAccount, "creator@active");
 
       createAccount->set_callback([this] {
-            auth_type owner, active;
-
-            if( owner_key_str.find('@') != string::npos ) {
-               try {
-                  owner = to_permission_level(owner_key_str);
-               } EOS_RETHROW_EXCEPTIONS( explained_exception, "Invalid owner permission level: ${permission}", ("permission", owner_key_str) )
-            } else {
-               try {
-                  owner = public_key_type(owner_key_str);
-               } EOS_RETHROW_EXCEPTIONS( public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str) );
-            }
-
-            if( active_key_str.empty() ) {
-               active = owner;
-            } else if( active_key_str.find('@') != string::npos ) {
-               try {
-                  active = to_permission_level(active_key_str);
-               } EOS_RETHROW_EXCEPTIONS( explained_exception, "Invalid active permission level: ${permission}", ("permission", active_key_str) )
-            } else {
-               try {
-                  active = public_key_type(active_key_str);
-               } EOS_RETHROW_EXCEPTIONS( public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str) );
-            }
-
-            auto create = create_newaccount(creator, account_name, owner, active);
+            auto create = create_newaccount(creator, account_name, owner_key_str, active_key_str);
             if (!simple) {
                EOSC_ASSERT( buy_ram_eos.size() || buy_ram_bytes_in_kbytes || buy_ram_bytes, "ERROR: One of --buy-ram, --buy-ram-kbytes or --buy-ram-bytes should have non-zero value" );
                EOSC_ASSERT( !buy_ram_bytes_in_kbytes || !buy_ram_bytes, "ERROR: --buy-ram-kbytes and --buy-ram-bytes cannot be set at the same time" );
