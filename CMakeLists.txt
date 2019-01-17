@@ -113,7 +113,6 @@ FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
     filesystem
     system
     program_options
-    signals
     serialization
     chrono
     unit_test_framework
