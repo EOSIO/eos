@@ -13,7 +13,7 @@ if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [[ $1 =~ for
                fi
                rm -rf $HOME/opt/eosio
                rm -f $HOME/bin/eosio-launcher
-               rm -rf $HOME/lib/cmake/eosio
+               rm -rf $HOME/lib/cmake/eosios
                rm -f $HOME/opt/llvm
                rm -f $HOME/opt/boost
                rm -rf $HOME/src/boost_*
@@ -22,6 +22,7 @@ if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [[ $1 =~ for
                rm -rf $HOME/share/aclocal/cmake*
                rm -rf $HOME/doc/cmake*
                rm -f $HOME/bin/nodeos $HOME/bin/keosd $HOME/bin/cleos $HOME/bin/ctest $HOME/bin/*cmake* $HOME/bin/cpack
+               
             fi
 
             if [ -d "/usr/local/include/eosio" ] || [[ $1 == "force-old" ]]; then
