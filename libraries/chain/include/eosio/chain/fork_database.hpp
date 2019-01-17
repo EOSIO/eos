@@ -75,7 +75,10 @@ namespace eosio { namespace chain {
 
          void mark_valid( const block_state_ptr& h );
 
-         static const uint32_t supported_version;
+         static const uint32_t magic_number;
+
+         static const uint32_t min_supported_version;
+         static const uint32_t max_supported_version;
 
       private:
          unique_ptr<fork_database_impl> my;
