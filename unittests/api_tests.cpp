@@ -1,6 +1,6 @@
 /**
  *  @file api_tests.cpp
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <algorithm>
 #include <random>
@@ -149,7 +149,8 @@ transaction_trace_ptr CallAction(TESTER& test, T ac, const vector<account_name>&
 
    test.set_transaction_headers(trx);
    auto sigs = trx.sign(test.get_private_key(scope[0], "active"), test.control->get_chain_id());
-   trx.get_signature_keys(test.control->get_chain_id());
+   flat_set<public_key_type> keys;
+   trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
    auto res = test.push_transaction(trx);
    BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    test.produce_block();
@@ -173,7 +174,8 @@ transaction_trace_ptr CallFunction(TESTER& test, T ac, const vector<char>& data,
 
       test.set_transaction_headers(trx, test.DEFAULT_EXPIRATION_DELTA);
       auto sigs = trx.sign(test.get_private_key(scope[0], "active"), test.control->get_chain_id());
-      trx.get_signature_keys(test.control->get_chain_id() );
+      flat_set<public_key_type> keys;
+      trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
       auto res = test.push_transaction(trx);
       BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
       test.produce_block();
@@ -266,7 +268,8 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
       trx.actions.push_back(act);
       this->set_transaction_headers(trx, this->DEFAULT_EXPIRATION_DELTA);
       trx.sign(this->get_private_key(config::system_account_name, "active"), control->get_chain_id());
-      trx.get_signature_keys(control->get_chain_id() );
+      flat_set<public_key_type> keys;
+      trx.get_signature_keys(control->get_chain_id(), fc::time_point::maximum(), keys);
       auto res = this->push_transaction(trx);
       BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
       this->produce_block();
@@ -745,7 +748,8 @@ void call_test(TESTER& test, T ac, uint32_t billed_cpu_time_us , uint32_t max_cp
    test.set_transaction_headers(trx);
    //trx.max_cpu_usage_ms = max_cpu_usage_ms;
    auto sigs = trx.sign(test.get_private_key(N(testapi), "active"), test.control->get_chain_id());
-   trx.get_signature_keys(test.control->get_chain_id() );
+   flat_set<public_key_type> keys;
+   trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
    auto res = test.push_transaction( trx, fc::time_point::now() + fc::milliseconds(max_cpu_usage_ms), billed_cpu_time_us );
    BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    test.produce_block();
@@ -1728,14 +1732,23 @@ BOOST_FIXTURE_TEST_CASE(print_tests, TESTER) { try {
    BOOST_CHECK_EQUAL( tx9_act_cnsl.substr(start, end-start), "6.666666666666666e-07" );
 
    // test printqf
+#ifdef __x86_64__
+   std::string expect1 = "5.000000000000000000e-01";
+   std::string expect2 = "-3.750000000000000000e+00";
+   std::string expect3 = "6.666666666666666667e-07";
+#else
+   std::string expect1 = "5.000000000000000e-01";
+   std::string expect2 = "-3.750000000000000e+00";
+   std::string expect3 = "6.666666666666667e-07";
+#endif
    auto tx10_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printqf", {} );
    auto tx10_act_cnsl = tx10_trace->action_traces.front().console;
    start = 0; end = tx10_act_cnsl.find('\n', start);
-   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "5.000000000000000000e-01" );
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), expect1 );
    start = end + 1; end = tx10_act_cnsl.find('\n', start);
-   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "-3.750000000000000000e+00" );
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), expect2 );
    start = end + 1; end = tx10_act_cnsl.find('\n', start);
-   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), "6.666666666666666667e-07" );
+   BOOST_CHECK_EQUAL( tx10_act_cnsl.substr(start, end-start), expect3 );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }

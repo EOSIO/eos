@@ -441,7 +441,7 @@ namespace eosio {
            if( itr != _transaction_status.end() ) {
               if( !itr->known_by_peer() ) {
                  _transaction_status.modify( itr, [&]( auto& stat ) {
-                    stat.expired = std::min<fc::time_point>( fc::time_point::now() + fc::seconds(5), t->trx.expiration );
+                    stat.expired = std::min<fc::time_point>( fc::time_point::now() + fc::seconds(5), t->packed_trx->expiration() );
                  });
               }
               return;
@@ -555,8 +555,7 @@ namespace eosio {
            for( const auto& receipt : s->block->transactions ) {
               if( receipt.trx.which() == 1 ) {
                  const auto& pt = receipt.trx.get<packed_transaction>();
-                 // get id via get_uncached_id() as packed_transaction.id() mutates internal transaction state
-                 const auto& tid = pt.get_uncached_id();
+                 const auto& tid = pt.id();
                  auto itr = _transaction_status.find( tid );
                  if( itr != _transaction_status.end() )
                     _transaction_status.erase(itr);
@@ -765,7 +764,7 @@ namespace eosio {
               return false;
 
 
-           auto ptrx_ptr = std::make_shared<packed_transaction>( start->trx->packed_trx );
+           auto ptrx_ptr = start->trx->packed_trx;
 
            idx.modify( start, [&]( auto& stat ) {
               stat.mark_known_by_peer();
@@ -1014,8 +1013,7 @@ namespace eosio {
            for( const auto& receipt : b->transactions ) {
               if( receipt.trx.which() == 1 ) {
                  const auto& pt = receipt.trx.get<packed_transaction>();
-                 // get id via get_uncached_id() as packed_transaction.id() mutates internal transaction state
-                 const auto& id = pt.get_uncached_id();
+                 const auto& id = pt.id();
                  mark_transaction_known_by_peer(id);
               }
            }
@@ -1552,12 +1550,13 @@ namespace eosio {
       // ilog( "recv trx ${n}", ("n", id) );
       if( p->expiration() < fc::time_point::now() ) return;
 
-      // get id via get_uncached_id() as packed_transaction.id() mutates internal transaction state
-      const auto& id = p->get_uncached_id();
+      const auto& id = p->id();
 
       if( mark_transaction_known_by_peer( id ) )
         return;
 
-      app().get_channel<incoming::channels::transaction>().publish(p);
+      auto ptr = std::make_shared<transaction_metadata>(p);
+
+      app().get_channel<incoming::channels::transaction>().publish(ptr);
    }
 } /// namespace eosio

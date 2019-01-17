@@ -284,7 +284,6 @@ namespace bacc = boost::accumulators;
 
    void transaction_context::init_for_input_trx( uint64_t packed_trx_unprunable_size,
                                                  uint64_t packed_trx_prunable_size,
-                                                 uint32_t num_signatures,
                                                  bool skip_recording )
    {
       const auto& cfg = control.get_global_properties().configuration;

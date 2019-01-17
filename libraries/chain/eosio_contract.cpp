@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
@@ -155,10 +155,11 @@ void apply_eosio_setcode(apply_context& context) {
       // TODO: update setcode message to include the hash, then validate it in validate
       a.last_code_update = context.control.pending_block_time();
       a.code_version = code_id;
-      a.code.resize( code_size );
-      if( code_size > 0 )
-         memcpy( a.code.data(), act.code.data(), code_size );
-
+      if ( code_size > 0 ) {
+         a.code.assign(act.code.data(), code_size);
+      } else {
+         a.code.resize(0);
+      }
    });
 
    const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
@@ -185,9 +186,11 @@ void apply_eosio_setabi(apply_context& context) {
    int64_t new_size = abi_size;
 
    db.modify( account, [&]( auto& a ) {
-      a.abi.resize( abi_size );
-      if( abi_size > 0 )
-         memcpy( a.abi.data(), act.abi.data(), abi_size );
+      if (abi_size > 0) {
+         a.abi.assign(act.abi.data(), abi_size);
+      } else {
+         a.abi.resize(0);
+      }
    });
 
    const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
