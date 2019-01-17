@@ -51,7 +51,6 @@ struct block_header_state {
     signed_block_header               header;
     uint32_t                          dpos_proposed_irreversible_blocknum = 0;
     uint32_t                          dpos_irreversible_blocknum = 0;
-    uint32_t                          bft_irreversible_blocknum = 0;
     uint32_t                          pending_schedule_lib_num = 0; /// last irr block num
     digest_type                       pending_schedule_hash;
     producer_schedule_type            pending_schedule;
@@ -67,22 +66,9 @@ struct block_header_state {
 
    block_header_state   next( const signed_block_header& h, bool skip_validate_signee = false )const;
 
-    //void set_new_producers( producer_schedule_type next_pending );
-    //void set_confirmed( uint16_t num_prev_blocks );
-    //void add_confirmation( const header_confirmation& c );
-    //bool maybe_promote_pending();
-
-
     bool                 has_pending_producers()const { return pending_schedule.producers.size(); }
     uint32_t             calc_dpos_last_irreversible( account_name producer_of_next_block )const;
     bool                 is_active_producer( account_name n )const;
-
-    /*
-    block_timestamp_type get_slot_time( uint32_t slot_num )const;
-    uint32_t             get_slot_at_time( block_timestamp_type t )const;
-    producer_key         get_scheduled_producer( uint32_t slot_num )const;
-    uint32_t             producer_participation_rate()const;
-    */
 
     producer_key         get_scheduled_producer( block_timestamp_type t )const;
     const block_id_type& prev()const { return header.previous; }
@@ -92,13 +78,12 @@ struct block_header_state {
     void                 verify_signee(const public_key_type& signee)const;
 };
 
-
+using block_header_state_ptr = std::shared_ptr<block_header_state>;
 
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::block_header_state,
-            (id)(block_num)(header)(dpos_proposed_irreversible_blocknum)(dpos_irreversible_blocknum)(bft_irreversible_blocknum)
-            (pending_schedule_lib_num)(pending_schedule_hash)
+            (id)(block_num)(header)(dpos_proposed_irreversible_blocknum)(dpos_irreversible_blocknum)         (pending_schedule_lib_num)(pending_schedule_hash)
             (pending_schedule)(active_schedule)(blockroot_merkle)
             (producer_to_last_produced)(producer_to_last_implied_irb)(block_signing_key)
             (confirm_count)(confirmations) )

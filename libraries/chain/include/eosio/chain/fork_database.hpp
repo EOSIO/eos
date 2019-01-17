@@ -27,26 +27,49 @@ namespace eosio { namespace chain {
 
          void close();
 
-         block_state_ptr  get_block(const block_id_type& id)const;
-         block_state_ptr  get_block_in_current_chain_by_num( uint32_t n )const;
-//         vector<block_state_ptr>    get_blocks_by_number(uint32_t n)const;
+         block_header_state_ptr  get_block_header( const block_id_type& id )const;
+         block_state_ptr         get_block( const block_id_type& id )const;
 
          /**
-          *  Provides a "valid" blockstate upon which other forks may build.
+          *  Purges any existing blocks from the fork database and resets the root block_header_state to the provided value.
+          *  The head will also be reset to point to the root.
           */
-         void            set( block_state_ptr s );
+         void            reset( const block_header_state& root_bhs );
 
-         /** this method will attempt to append the block to an existing
-          * block_state and will return a pointer to the new block state or
-          * throw on error.
+         /**
+          *  Advance root block forward to some other block in the tree.
           */
-         block_state_ptr add( signed_block_ptr b, bool skip_validate_signee );
-         block_state_ptr add( const block_state_ptr& next_block, bool skip_validate_previous );
-         void            remove( const block_id_type& id );
+         void            advance_root( const block_id_type& id );
+
+         /**
+          *  Retreat head from the current head to some ancestor block within the tree.
+          *  Also remove all blocks building off of the new head.
+          */
+         //void           retreat_head( const block_id_type& id );
+
+         /**
+          *  Add block state to fork database.
+          *  Must link to existing block in fork database or the root.
+          */
+         void            add( block_state_ptr next_block );
 
          //void            add( const header_confirmation& c );
 
+         void            remove( const block_id_type& id );
+
+         const block_state_ptr& root()const;
          const block_state_ptr& head()const;
+         block_state_ptr        pending_head()const;
+
+         /**
+          *  Returns the sequence of block states resulting from trimming the branch from the
+          *  root block (exclusive) to the block with an id of `h` (inclusive) by removing any
+          *  block states corresponding to block numbers greater than `trim_after_block_num`.
+          *
+          *  The order of the sequence is in descending block number order.
+          *  A block with an id of `h` must exist in the fork database otherwise this method will throw an exception.
+          */
+         branch_type     fetch_branch( const block_id_type& h, uint32_t trim_after_block_num = std::numeric_limits<uint32_t>::max() )const;
 
          /**
           *  Given two head blocks, return two branches of the fork graph that
@@ -56,19 +79,9 @@ namespace eosio { namespace chain {
                                                               const block_id_type& second )const;
 
 
-         /**
-          * If the block is invalid, it will be removed. If it is valid, then blocks older
-          * than the LIB are pruned after emitting irreversible signal.
-          */
-         void set_validity( const block_state_ptr& h, bool valid );
-         void mark_in_current_chain( const block_state_ptr& h, bool in_current_chain );
-         void prune( const block_state_ptr& h );
+         void mark_valid( const block_state_ptr& h );
 
-         /**
-          * This signal is emited when a block state becomes irreversible, once irreversible
-          * it is removed unless it is the head block.
-          */
-         signal<void(block_state_ptr)> irreversible;
+         static const uint32_t supported_version;
 
       private:
          //void set_bft_irreversible( block_id_type id );

@@ -1032,12 +1032,12 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    return {
       itoh(static_cast<uint32_t>(app().version())),
       db.get_chain_id(),
-      db.fork_db_head_block_num(),
+      db.fork_db_pending_head_block_num(),
       db.last_irreversible_block_num(),
       db.last_irreversible_block_id(),
-      db.fork_db_head_block_id(),
-      db.fork_db_head_block_time(),
-      db.fork_db_head_block_producer(),
+      db.fork_db_pending_head_block_id(),
+      db.fork_db_pending_head_block_time(),
+      db.fork_db_pending_head_block_producer(),
       rm.get_virtual_block_cpu_limit(),
       rm.get_virtual_block_net_limit(),
       rm.get_block_cpu_limit(),
@@ -1099,7 +1099,7 @@ uint64_t convert_to_type(const string& str, const string& desc) {
    try {
       return boost::lexical_cast<uint64_t>(str.c_str(), str.size());
    } catch( ... ) { }
-   
+
    try {
       auto trimmed_str = str;
       boost::trim(trimmed_str);
@@ -1113,7 +1113,7 @@ uint64_t convert_to_type(const string& str, const string& desc) {
          return symb.value();
       } catch( ... ) { }
    }
-   
+
    try {
       return ( eosio::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
    } catch( ... ) {

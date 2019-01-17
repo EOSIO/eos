@@ -22,8 +22,8 @@ public_key_type  get_public_key( name keyname, string role ){
 }
 
 void push_blocks( tester& from, tester& to ) {
-   while( to.control->fork_db_head_block_num() < from.control->fork_db_head_block_num() ) {
-      auto fb = from.control->fetch_block_by_number( to.control->fork_db_head_block_num()+1 );
+   while( to.control->fork_db_pending_head_block_num() < from.control->fork_db_pending_head_block_num() ) {
+      auto fb = from.control->fetch_block_by_number( to.control->fork_db_pending_head_block_num()+1 );
       to.push_block( fb );
    }
 }
@@ -356,21 +356,23 @@ BOOST_AUTO_TEST_CASE( read_modes ) try {
    auto res = c.set_producers( {N(dan),N(sam),N(pam)} );
    c.produce_blocks(200);
    auto head_block_num = c.control->head_block_num();
+   auto last_irreversible_block_num = c.control->last_irreversible_block_num();
 
    tester head(true, db_read_mode::HEAD);
    push_blocks(c, head);
-   BOOST_REQUIRE_EQUAL(head_block_num, head.control->fork_db_head_block_num());
-   BOOST_REQUIRE_EQUAL(head_block_num, head.control->head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, head.control->fork_db_head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, head.control->head_block_num());
 
    tester read_only(false, db_read_mode::READ_ONLY);
    push_blocks(c, read_only);
-   BOOST_REQUIRE_EQUAL(head_block_num, read_only.control->fork_db_head_block_num());
-   BOOST_REQUIRE_EQUAL(head_block_num, read_only.control->head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, read_only.control->fork_db_head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, read_only.control->head_block_num());
 
    tester irreversible(true, db_read_mode::IRREVERSIBLE);
    push_blocks(c, irreversible);
-   BOOST_REQUIRE_EQUAL(head_block_num, irreversible.control->fork_db_head_block_num());
-   BOOST_REQUIRE_EQUAL(head_block_num - 49, irreversible.control->head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, irreversible.control->fork_db_pending_head_block_num());
+   BOOST_CHECK_EQUAL(last_irreversible_block_num, irreversible.control->fork_db_head_block_num());
+   BOOST_CHECK_EQUAL(last_irreversible_block_num, irreversible.control->head_block_num());
 
 } FC_LOG_AND_RETHROW()
 

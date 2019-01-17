@@ -247,6 +247,9 @@ namespace eosio { namespace chain {
 
       if (first_block) {
          append(first_block);
+      } else {
+         my->head.reset();
+         my->head_id = {};
       }
 
       auto pos = my->block_stream.tellp();
