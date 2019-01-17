@@ -42,12 +42,6 @@ namespace eosio { namespace chain {
          void            advance_root( const block_id_type& id );
 
          /**
-          *  Retreat head from the current head to some ancestor block within the tree.
-          *  Also remove all blocks building off of the new head.
-          */
-         //void           retreat_head( const block_id_type& id );
-
-         /**
           *  Add block state to fork database.
           *  Must link to existing block in fork database or the root.
           */
@@ -84,7 +78,6 @@ namespace eosio { namespace chain {
          static const uint32_t supported_version;
 
       private:
-         //void set_bft_irreversible( block_id_type id );
          unique_ptr<fork_database_impl> my;
    };
 

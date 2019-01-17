@@ -215,41 +215,12 @@ namespace eosio { namespace chain {
          remove( block_id );
       }
 
-      new_root->block.reset(); // This would be clearing out the block pointer in the head block state iff id == my->head->id
-      new_root->trxs.clear();
+      // Even though fork database no longer needs block or trxs when a block state becomes a root of the tree,
+      // avoid mutating the block state at all, for example clearing the block shared pointer, because other
+      // parts of the code which run asynchronously (e.g. mongo_db_plugin) may later expect it remain unmodified.
+
       my->root = new_root;
    }
-
-   /*
-   void fork_database::retreat_head( const block_id_type& id ) {
-      if( my->head->id == id ) return;
-
-      EOS_ASSERT( my->head->id != my->root->id, fork_database_exception,
-                 "invalid id to retreat head to", ("id", string(id)) );
-
-      if( my->root->id == id ) {
-         my->index.clear();
-         my->head = my->root;
-         return;
-      }
-
-      vector<block_id_type> blocks_to_remove;
-
-      auto s = my->head;
-      for( ; s && s->id == id; s = get_block( s->header.previous ) ) {
-         blocks_to_remove.push_back( s->id );
-      }
-      EOS_ASSERT( s, fork_database_exception,
-                  "invalid id to retreat head to", ("id", string(id)) );
-
-      my->head = s;
-
-      for( const auto& block_id : blocks_to_remove ) {
-         remove( block_id );
-      }
-
-   }
-   */
 
    block_header_state_ptr fork_database::get_block_header( const block_id_type& id )const {
       const auto& by_id_idx = my->index.get<by_block_id>();
