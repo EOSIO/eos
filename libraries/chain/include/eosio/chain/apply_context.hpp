@@ -513,6 +513,11 @@ class apply_context {
        */
       bool has_recipient(account_name account)const;
 
+      /**
+       * Return code_id of the specified account
+       */
+      checksum256_type get_code_id(const account_name& code)const;
+
    /// Console methods:
    public:
 

@@ -885,6 +885,9 @@ class authorization_api : public context_aware_api {
       return context.is_account( account );
    }
 
+   void get_code_id( const account_name& account, fc::sha256& code_id )const {
+      code_id = context.get_code_id( account );
+   }
 };
 
 class system_api : public context_aware_api {
@@ -1789,6 +1792,7 @@ REGISTER_INTRINSICS(authorization_api,
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
    (has_authorization,     int(int64_t), "has_auth", bool(authorization_api::*)(const account_name&)const )
    (is_account,            int(int64_t)           )
+   (get_code_id,           void(int64_t, int)     )
 );
 
 REGISTER_INTRINSICS(console_api,

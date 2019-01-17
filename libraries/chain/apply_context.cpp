@@ -184,6 +184,10 @@ void apply_context::require_recipient( account_name recipient ) {
    }
 }
 
+checksum256_type apply_context::get_code_id( const account_name& code )const {
+   const auto& account = db.get<account_object,by_name>(code);
+   return account.code_version;
+}
 
 /**
  *  This will execute an action after checking the authorization. Inline transactions are
