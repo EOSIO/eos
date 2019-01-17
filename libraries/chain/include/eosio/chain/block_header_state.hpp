@@ -61,28 +61,14 @@ struct block_header_state {
     flat_map<account_name,uint32_t>   producer_to_last_implied_irb;
     public_key_type                   block_signing_key;
     vector<uint8_t>                   confirm_count;
-    vector<header_confirmation>       confirmations;
 
    pending_block_header_state  next( block_timestamp_type when, uint16_t num_prev_blocks_to_confirm )const;
 
    block_header_state   next( const signed_block_header& h, bool skip_validate_signee = false )const;
 
-    //void set_new_producers( producer_schedule_type next_pending );
-    //void set_confirmed( uint16_t num_prev_blocks );
-    //void add_confirmation( const header_confirmation& c );
-    //bool maybe_promote_pending();
-
-
     bool                 has_pending_producers()const { return pending_schedule.producers.size(); }
     uint32_t             calc_dpos_last_irreversible( account_name producer_of_next_block )const;
     bool                 is_active_producer( account_name n )const;
-
-    /*
-    block_timestamp_type get_slot_time( uint32_t slot_num )const;
-    uint32_t             get_slot_at_time( block_timestamp_type t )const;
-    producer_key         get_scheduled_producer( uint32_t slot_num )const;
-    uint32_t             producer_participation_rate()const;
-    */
 
     producer_key         get_scheduled_producer( block_timestamp_type t )const;
     const block_id_type& prev()const { return header.previous; }
@@ -101,4 +87,4 @@ FC_REFLECT( eosio::chain::block_header_state,
             (pending_schedule_lib_num)(pending_schedule_hash)
             (pending_schedule)(active_schedule)(blockroot_merkle)
             (producer_to_last_produced)(producer_to_last_implied_irb)(block_signing_key)
-            (confirm_count)(confirmations) )
+            (confirm_count) )

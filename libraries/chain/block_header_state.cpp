@@ -253,18 +253,6 @@ namespace eosio { namespace chain {
       return result;
    }
 
-   /*
-  void block_header_state::set_new_producers( producer_schedule_type pending ) {
-      EOS_ASSERT( pending.version == active_schedule.version + 1, producer_schedule_exception, "wrong producer schedule version specified" );
-      EOS_ASSERT( pending_schedule.producers.size() == 0, producer_schedule_exception,
-                 "cannot set new pending producers until last pending is confirmed" );
-      header.new_producers     = move(pending);
-      pending_schedule_hash    = digest_type::hash( *header.new_producers );
-      pending_schedule         = *header.new_producers;
-      pending_schedule_lib_num = block_num;
-  }
-   */
-
    /**
     *  Transitions the current header state into the next header state given the supplied signed block header.
     *
@@ -296,19 +284,5 @@ namespace eosio { namespace chain {
      EOS_ASSERT( block_signing_key == signee, wrong_signing_key, "block not signed by expected key",
                  ("block_signing_key", block_signing_key)( "signee", signee ) );
   }
-
-  /*
-  void block_header_state::add_confirmation( const header_confirmation& conf ) {
-     for( const auto& c : confirmations )
-        EOS_ASSERT( c.producer != conf.producer, producer_double_confirm, "block already confirmed by this producer" );
-
-     auto key = active_schedule.get_producer_key( conf.producer );
-     EOS_ASSERT( key != public_key_type(), producer_not_in_schedule, "producer not in current schedule" );
-     auto signer = fc::crypto::public_key( conf.producer_signature, sig_digest(), true );
-     EOS_ASSERT( signer == key, wrong_signing_key, "confirmation not signed by expected key" );
-
-     confirmations.emplace_back( conf );
-  }
-  */
 
 } } /// namespace eosio::chain
