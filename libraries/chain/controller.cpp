@@ -365,13 +365,13 @@ struct controller_impl {
       producer_schedule_type initial_schedule{ 0, {{config::system_account_name, conf.genesis.initial_key}} };
 
       block_header_state genheader;
-      genheader.active_schedule       = initial_schedule;
-      genheader.pending_schedule      = initial_schedule;
-      genheader.pending_schedule_hash = fc::sha256::hash(initial_schedule);
-      genheader.header.timestamp      = conf.genesis.initial_timestamp;
-      genheader.header.action_mroot   = conf.genesis.compute_chain_id();
-      genheader.id                    = genheader.header.id();
-      genheader.block_num             = genheader.header.block_num();
+      genheader.active_schedule                = initial_schedule;
+      genheader.pending_schedule.schedule      = initial_schedule;
+      genheader.pending_schedule.schedule_hash = fc::sha256::hash(initial_schedule);
+      genheader.header.timestamp               = conf.genesis.initial_timestamp;
+      genheader.header.action_mroot            = conf.genesis.compute_chain_id();
+      genheader.id                             = genheader.header.id();
+      genheader.block_num                      = genheader.header.block_num();
 
       head = std::make_shared<block_state>();
       static_cast<block_header_state&>(*head) = genheader;
@@ -1187,7 +1187,7 @@ struct controller_impl {
          const auto& gpo = db.get<global_property_object>();
          if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
              ( *gpo.proposed_schedule_block_num <= pbhs.dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
-             pbhs.prev_pending_schedule.producers.size() == 0 // ... and there was room for a new pending schedule prior to any possible promotion
+             pbhs.prev_pending_schedule.schedule.producers.size() == 0 // ... and there was room for a new pending schedule prior to any possible promotion
          )
          {
             // Promote proposed schedule to pending schedule.
@@ -2075,7 +2075,7 @@ const vector<transaction_receipt>& controller::get_pending_trx_receipts()const {
 }
 
 uint32_t controller::last_irreversible_block_num() const {
-   return std::max(my->head->dpos_irreversible_blocknum, my->snapshot_head_block);
+   return std::max( my->head->dpos_irreversible_blocknum, my->snapshot_head_block );
 }
 
 block_id_type controller::last_irreversible_block_id() const {
@@ -2225,10 +2225,10 @@ const producer_schedule_type&    controller::active_producers()const {
 
 const producer_schedule_type&    controller::pending_producers()const {
    if( !(my->pending) )
-      return  my->head->pending_schedule;
+      return  my->head->pending_schedule.schedule;
 
    if( my->pending->_block_stage.contains<completed_block>() )
-      return my->pending->_block_stage.get<completed_block>()._block_state->pending_schedule;
+      return my->pending->_block_stage.get<completed_block>()._block_state->pending_schedule.schedule;
 
    if( my->pending->_block_stage.contains<assembled_block>() ) {
       const auto& np = my->pending->_block_stage.get<assembled_block>()._unsigned_block->new_producers;
@@ -2241,7 +2241,7 @@ const producer_schedule_type&    controller::pending_producers()const {
    if( bb._new_pending_producer_schedule )
       return *bb._new_pending_producer_schedule;
 
-   return bb._pending_block_header_state.prev_pending_schedule;
+   return bb._pending_block_header_state.prev_pending_schedule.schedule;
 }
 
 optional<producer_schedule_type> controller::proposed_producers()const {

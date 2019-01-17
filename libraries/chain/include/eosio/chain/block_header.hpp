@@ -49,12 +49,6 @@ namespace eosio { namespace chain {
       signature_type    producer_signature;
    };
 
-   struct header_confirmation {
-      block_id_type   block_id;
-      account_name    producer;
-      signature_type  producer_signature;
-   };
-
 } } /// namespace eosio::chain
 
 FC_REFLECT(eosio::chain::block_header,
@@ -63,4 +57,3 @@ FC_REFLECT(eosio::chain::block_header,
            (schedule_version)(new_producers)(header_extensions))
 
 FC_REFLECT_DERIVED(eosio::chain::signed_block_header, (eosio::chain::block_header), (producer_signature))
-FC_REFLECT(eosio::chain::header_confirmation,  (block_id)(producer)(producer_signature) )

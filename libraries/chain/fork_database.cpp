@@ -34,10 +34,10 @@ namespace eosio { namespace chain {
          ordered_non_unique< tag<by_prev>, const_mem_fun<block_header_state, const block_id_type&, &block_header_state::prev> >,
          ordered_unique< tag<by_lib_block_num>,
             composite_key< block_state,
-               member<block_state,        bool,          &block_state::validated>,
-               member<block_header_state, uint32_t,      &block_header_state::dpos_irreversible_blocknum>,
-               member<block_header_state, uint32_t,      &block_header_state::block_num>,
-               member<block_header_state, block_id_type, &block_header_state::id>
+               member<block_state,                        bool,          &block_state::validated>,
+               member<detail::block_header_state_common, uint32_t,      &detail::block_header_state_common::dpos_irreversible_blocknum>,
+               member<detail::block_header_state_common, uint32_t,      &detail::block_header_state_common::block_num>,
+               member<block_header_state,                block_id_type, &block_header_state::id>
             >,
             composite_key_compare<
                std::greater<bool>,

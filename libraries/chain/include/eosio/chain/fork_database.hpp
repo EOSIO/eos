@@ -47,8 +47,6 @@ namespace eosio { namespace chain {
           */
          void            add( block_state_ptr next_block );
 
-         //void            add( const header_confirmation& c );
-
          void            remove( const block_id_type& id );
 
          const block_state_ptr& root()const;

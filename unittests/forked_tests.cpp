@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
 
             // re-sign the block
             auto header_bmroot = digest_type::hash( std::make_pair( copy_b->digest(), fork.block_merkle.get_root() ) );
-            auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule_hash) );
+            auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
             copy_b->producer_signature = remote.get_private_key(N(b), "active").sign(sig_digest);
 
             // add this new block to our corrupted block merkle
