@@ -442,41 +442,41 @@ steps:
       - "build/config.ini"
     timeout: 60
 
-  # - command: |
-  #       echo "--- :arrow_down: Downloading build directory" && \
-  #       buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build" && \
-  #       tar -zxf build.tar.gz && \
-  #       echo "--- :m: Starting MongoDB" && \
-  #       $( command -v mongod ) --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-  #       echo "+++ :microscope: Running tests" && \
-  #       ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
-  #   label: ":darwin: Mojave Tests"
-  #   agents:
-  #     - "role=tester-v2"
-  #     - "os=mojave"
-  #   artifact_paths:
-  #     - "mongod.log"
-  #     - "build/genesis.json"
-  #     - "build/config.ini"
-  #   timeout: 60
+  - command: |
+        echo "--- :arrow_down: Downloading build directory" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build" && \
+        tar -zxf build.tar.gz && \
+        echo "--- :m: Starting MongoDB" && \
+        $( command -v mongod ) --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        echo "+++ :microscope: Running tests" && \
+        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+    label: ":darwin: Mojave Tests"
+    agents:
+      - "role=tester-v2"
+      - "os=mojave"
+    artifact_paths:
+      - "mongod.log"
+      - "build/genesis.json"
+      - "build/config.ini"
+    timeout: 60
 
-  # - command: |
-  #       echo "--- :arrow_down: Downloading build directory" && \
-  #       buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build" && \
-  #       tar -zxf build.tar.gz && \
-  #       echo "--- :m: Starting MongoDB" && \
-  #       $( command -v mongod ) --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-  #       echo "+++ :microscope: Running tests" && \
-  #       ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
-  #   label: ":darwin: Mojave NP Tests"
-  #   agents:
-  #     - "role=tester-v2"
-  #     - "os=mojave"
-  #   artifact_paths:
-  #     - "mongod.log"
-  #     - "build/genesis.json"
-  #     - "build/config.ini"
-  #   timeout: 60
+  - command: |
+        echo "--- :arrow_down: Downloading build directory" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build" && \
+        tar -zxf build.tar.gz && \
+        echo "--- :m: Starting MongoDB" && \
+        $( command -v mongod ) --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        echo "+++ :microscope: Running tests" && \
+        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+    label: ":darwin: Mojave NP Tests"
+    agents:
+      - "role=tester-v2"
+      - "os=mojave"
+    artifact_paths:
+      - "mongod.log"
+      - "build/genesis.json"
+      - "build/config.ini"
+    timeout: 60
     
 
 
