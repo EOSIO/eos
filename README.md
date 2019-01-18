@@ -45,7 +45,9 @@ p2p-peer-address = node-3.uos.network:9876
 p2p-peer-address = node-4.uos.network:9876
 p2p-peer-address = node-5.uos.network:9876
 ```
+
 See also:
 
 * [CONTRIBUTING](../../../uos.docs/blob/master/CONTRIBUTING.md) for detailed project information.
 * [Spinning up a Node](../../../uos.docs/blob/master/uosBPubuntu.md) for a detailed node setup walkthrough on U°OS testnet.
+

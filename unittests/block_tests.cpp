@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 
 #include <boost/test/unit_test.hpp>
@@ -21,7 +21,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
    auto b = main.produce_block();
 
    // Make a copy of the valid block and corrupt the transaction
-   auto copy_b = std::make_shared<signed_block>(*b);
+   auto copy_b = std::make_shared<signed_block>(std::move(*b));
    auto signed_tx = copy_b->transactions.back().trx.get<packed_transaction>().get_signed_transaction();
    auto& act = signed_tx.actions.back();
    auto act_data = act.data_as<newaccount>();
@@ -57,14 +57,15 @@ std::pair<signed_block_ptr, signed_block_ptr> corrupt_trx_in_block(validating_te
    signed_block_ptr b = main.produce_block_no_validation();
 
    // Make a copy of the valid block and corrupt the transaction
-   auto copy_b = std::make_shared<signed_block>(*b);
-   auto signed_tx = copy_b->transactions.back().trx.get<packed_transaction>().get_signed_transaction();
+   auto copy_b = std::make_shared<signed_block>(b->clone());
+   const auto& packed_trx = copy_b->transactions.back().trx.get<packed_transaction>();
+   auto signed_tx = packed_trx.get_signed_transaction();
    // Corrupt one signature
    signed_tx.signatures.clear();
    signed_tx.sign(main.get_private_key(act_name, "active"), main.control->get_chain_id());
 
    // Replace the valid transaction with the invalid transaction
-   auto invalid_packed_tx = packed_transaction(signed_tx);
+   auto invalid_packed_tx = packed_transaction(signed_tx, packed_trx.get_compression());
    copy_b->transactions.back().trx = invalid_packed_tx;
 
    // Re-calculate the transaction merkle
