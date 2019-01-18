@@ -197,6 +197,8 @@ public:
 
 chain_plugin::chain_plugin()
 :my(new chain_plugin_impl()) {
+   app().register_config_type<eosio::chain::db_read_mode>();
+   app().register_config_type<eosio::chain::validation_mode>();
 }
 
 chain_plugin::~chain_plugin(){}
@@ -668,30 +670,30 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             );
          }
 
-         my->pre_accepted_block_channel.publish(blk);
+         my->pre_accepted_block_channel.publish(priority::medium, blk);
       });
 
       my->accepted_block_header_connection = my->chain->accepted_block_header.connect(
             [this]( const block_state_ptr& blk ) {
-               my->accepted_block_header_channel.publish( blk );
+               my->accepted_block_header_channel.publish( priority::medium, blk );
             } );
 
       my->accepted_block_connection = my->chain->accepted_block.connect( [this]( const block_state_ptr& blk ) {
-         my->accepted_block_channel.publish( blk );
+         my->accepted_block_channel.publish( priority::high, blk );
       } );
 
       my->irreversible_block_connection = my->chain->irreversible_block.connect( [this]( const block_state_ptr& blk ) {
-         my->irreversible_block_channel.publish( blk );
+         my->irreversible_block_channel.publish( priority::low, blk );
       } );
 
       my->accepted_transaction_connection = my->chain->accepted_transaction.connect(
             [this]( const transaction_metadata_ptr& meta ) {
-               my->accepted_transaction_channel.publish( meta );
+               my->accepted_transaction_channel.publish( priority::low, meta );
             } );
 
       my->applied_transaction_connection = my->chain->applied_transaction.connect(
             [this]( const transaction_trace_ptr& trace ) {
-               my->applied_transaction_channel.publish( trace );
+               my->applied_transaction_channel.publish( priority::low, trace );
             } );
 
       my->chain->add_indices();
@@ -1632,7 +1634,7 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
 
    if( accnt.code.size() ) {
       result.wasm = string(accnt.code.begin(), accnt.code.end());
-      result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+      result.code_hash = accnt.code_version;
    }
 
    abi_def abi;
@@ -1650,7 +1652,7 @@ read_only::get_code_hash_results read_only::get_code_hash( const get_code_hash_p
    const auto& accnt  = d.get<account_object,by_name>( params.account_name );
 
    if( accnt.code.size() ) {
-      result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+      result.code_hash = accnt.code_version;
    }
 
    return result;
@@ -1675,7 +1677,7 @@ read_only::get_raw_abi_results read_only::get_raw_abi( const get_raw_abi_params&
    const auto& d = db.db();
    const auto& accnt = d.get<account_object,by_name>(params.account_name);
    result.abi_hash = fc::sha256::hash( accnt.abi.data(), accnt.abi.size() );
-   result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+   result.code_hash = accnt.code_version;
    if( !params.abi_hash || *params.abi_hash != result.abi_hash )
       result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
 

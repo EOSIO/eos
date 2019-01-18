@@ -1,0 +1,1833 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Thu Dec 13 12:22:07 2018",
+    "version": "eosio::abi/1.0",
+    "structs": [
+        {
+            "name": "abi_hash",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "hash",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
+            "name": "authority",
+            "base": "",
+            "fields": [
+                {
+                    "name": "threshold",
+                    "type": "uint32"
+                },
+                {
+                    "name": "keys",
+                    "type": "key_weight[]"
+                },
+                {
+                    "name": "accounts",
+                    "type": "permission_level_weight[]"
+                },
+                {
+                    "name": "waits",
+                    "type": "wait_weight[]"
+                }
+            ]
+        },
+        {
+            "name": "bid_refund",
+            "base": "",
+            "fields": [
+                {
+                    "name": "bidder",
+                    "type": "name"
+                },
+                {
+                    "name": "amount",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "bidname",
+            "base": "",
+            "fields": [
+                {
+                    "name": "bidder",
+                    "type": "name"
+                },
+                {
+                    "name": "newname",
+                    "type": "name"
+                },
+                {
+                    "name": "bid",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "bidrefund",
+            "base": "",
+            "fields": [
+                {
+                    "name": "bidder",
+                    "type": "name"
+                },
+                {
+                    "name": "newname",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "block_header",
+            "base": "",
+            "fields": [
+                {
+                    "name": "timestamp",
+                    "type": "uint32"
+                },
+                {
+                    "name": "producer",
+                    "type": "name"
+                },
+                {
+                    "name": "confirmed",
+                    "type": "uint16"
+                },
+                {
+                    "name": "previous",
+                    "type": "checksum256"
+                },
+                {
+                    "name": "transaction_mroot",
+                    "type": "checksum256"
+                },
+                {
+                    "name": "action_mroot",
+                    "type": "checksum256"
+                },
+                {
+                    "name": "schedule_version",
+                    "type": "uint32"
+                },
+                {
+                    "name": "new_producers",
+                    "type": "producer_schedule?"
+                }
+            ]
+        },
+        {
+            "name": "blockchain_parameters",
+            "base": "",
+            "fields": [
+                {
+                    "name": "max_block_net_usage",
+                    "type": "uint64"
+                },
+                {
+                    "name": "target_block_net_usage_pct",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_transaction_net_usage",
+                    "type": "uint32"
+                },
+                {
+                    "name": "base_per_transaction_net_usage",
+                    "type": "uint32"
+                },
+                {
+                    "name": "net_usage_leeway",
+                    "type": "uint32"
+                },
+                {
+                    "name": "context_free_discount_net_usage_num",
+                    "type": "uint32"
+                },
+                {
+                    "name": "context_free_discount_net_usage_den",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_block_cpu_usage",
+                    "type": "uint32"
+                },
+                {
+                    "name": "target_block_cpu_usage_pct",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_transaction_cpu_usage",
+                    "type": "uint32"
+                },
+                {
+                    "name": "min_transaction_cpu_usage",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_transaction_lifetime",
+                    "type": "uint32"
+                },
+                {
+                    "name": "deferred_trx_expiration_window",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_transaction_delay",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_inline_action_size",
+                    "type": "uint32"
+                },
+                {
+                    "name": "max_inline_action_depth",
+                    "type": "uint16"
+                },
+                {
+                    "name": "max_authority_depth",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "buyram",
+            "base": "",
+            "fields": [
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "receiver",
+                    "type": "name"
+                },
+                {
+                    "name": "quant",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "buyrambytes",
+            "base": "",
+            "fields": [
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "receiver",
+                    "type": "name"
+                },
+                {
+                    "name": "bytes",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "buyrex",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "amount",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "canceldelay",
+            "base": "",
+            "fields": [
+                {
+                    "name": "canceling_auth",
+                    "type": "permission_level"
+                },
+                {
+                    "name": "trx_id",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
+            "name": "claimrewards",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "closerex",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "cnclrexorder",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "connector",
+            "base": "",
+            "fields": [
+                {
+                    "name": "balance",
+                    "type": "asset"
+                },
+                {
+                    "name": "weight",
+                    "type": "float64"
+                }
+            ]
+        },
+        {
+            "name": "consolidate",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "defcpuloan",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "loan_num",
+                    "type": "uint64"
+                },
+                {
+                    "name": "amount",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "defnetloan",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "loan_num",
+                    "type": "uint64"
+                },
+                {
+                    "name": "amount",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "delegatebw",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "receiver",
+                    "type": "name"
+                },
+                {
+                    "name": "stake_net_quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "stake_cpu_quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "transfer",
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "name": "delegated_bandwidth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "net_weight",
+                    "type": "asset"
+                },
+                {
+                    "name": "cpu_weight",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "deleteauth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "permission",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "deposit",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "amount",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "eosio_global_state",
+            "base": "blockchain_parameters",
+            "fields": [
+                {
+                    "name": "max_ram_size",
+                    "type": "uint64"
+                },
+                {
+                    "name": "total_ram_bytes_reserved",
+                    "type": "uint64"
+                },
+                {
+                    "name": "total_ram_stake",
+                    "type": "int64"
+                },
+                {
+                    "name": "last_producer_schedule_update",
+                    "type": "block_timestamp_type"
+                },
+                {
+                    "name": "last_pervote_bucket_fill",
+                    "type": "time_point"
+                },
+                {
+                    "name": "pervote_bucket",
+                    "type": "int64"
+                },
+                {
+                    "name": "perblock_bucket",
+                    "type": "int64"
+                },
+                {
+                    "name": "total_unpaid_blocks",
+                    "type": "uint32"
+                },
+                {
+                    "name": "total_activated_stake",
+                    "type": "int64"
+                },
+                {
+                    "name": "thresh_activated_stake_time",
+                    "type": "time_point"
+                },
+                {
+                    "name": "last_producer_schedule_size",
+                    "type": "uint16"
+                },
+                {
+                    "name": "total_producer_vote_weight",
+                    "type": "float64"
+                },
+                {
+                    "name": "last_name_close",
+                    "type": "block_timestamp_type"
+                }
+            ]
+        },
+        {
+            "name": "eosio_global_state2",
+            "base": "",
+            "fields": [
+                {
+                    "name": "new_ram_per_block",
+                    "type": "uint16"
+                },
+                {
+                    "name": "last_ram_increase",
+                    "type": "block_timestamp_type"
+                },
+                {
+                    "name": "last_block_num",
+                    "type": "block_timestamp_type"
+                },
+                {
+                    "name": "total_producer_votepay_share",
+                    "type": "float64"
+                },
+                {
+                    "name": "revision",
+                    "type": "uint8"
+                }
+            ]
+        },
+        {
+            "name": "eosio_global_state3",
+            "base": "",
+            "fields": [
+                {
+                    "name": "last_vpay_state_update",
+                    "type": "time_point"
+                },
+                {
+                    "name": "total_vpay_share_change_rate",
+                    "type": "float64"
+                }
+            ]
+        },
+        {
+            "name": "exchange_state",
+            "base": "",
+            "fields": [
+                {
+                    "name": "supply",
+                    "type": "asset"
+                },
+                {
+                    "name": "base",
+                    "type": "connector"
+                },
+                {
+                    "name": "quote",
+                    "type": "connector"
+                }
+            ]
+        },
+        {
+            "name": "fundcpuloan",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "loan_num",
+                    "type": "uint64"
+                },
+                {
+                    "name": "payment",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "fundnetloan",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "loan_num",
+                    "type": "uint64"
+                },
+                {
+                    "name": "payment",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "init",
+            "base": "",
+            "fields": [
+                {
+                    "name": "version",
+                    "type": "varuint32"
+                },
+                {
+                    "name": "core",
+                    "type": "symbol"
+                }
+            ]
+        },
+        {
+            "name": "key_weight",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "public_key"
+                },
+                {
+                    "name": "weight",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "linkauth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "code",
+                    "type": "name"
+                },
+                {
+                    "name": "type",
+                    "type": "name"
+                },
+                {
+                    "name": "requirement",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "name_bid",
+            "base": "",
+            "fields": [
+                {
+                    "name": "newname",
+                    "type": "name"
+                },
+                {
+                    "name": "high_bidder",
+                    "type": "name"
+                },
+                {
+                    "name": "high_bid",
+                    "type": "int64"
+                },
+                {
+                    "name": "last_bid_time",
+                    "type": "time_point"
+                }
+            ]
+        },
+        {
+            "name": "newaccount",
+            "base": "",
+            "fields": [
+                {
+                    "name": "creator",
+                    "type": "name"
+                },
+                {
+                    "name": "name",
+                    "type": "name"
+                },
+                {
+                    "name": "owner",
+                    "type": "authority"
+                },
+                {
+                    "name": "active",
+                    "type": "authority"
+                }
+            ]
+        },
+        {
+            "name": "onblock",
+            "base": "",
+            "fields": [
+                {
+                    "name": "header",
+                    "type": "block_header"
+                }
+            ]
+        },
+        {
+            "name": "onerror",
+            "base": "",
+            "fields": [
+                {
+                    "name": "sender_id",
+                    "type": "uint128"
+                },
+                {
+                    "name": "sent_trx",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "pair_time_point_sec_int64",
+            "base": "",
+            "fields": [
+                {
+                    "name": "first",
+                    "type": "time_point_sec"
+                },
+                {
+                    "name": "second",
+                    "type": "int64"
+                }
+            ]
+        },
+        {
+            "name": "permission_level",
+            "base": "",
+            "fields": [
+                {
+                    "name": "actor",
+                    "type": "name"
+                },
+                {
+                    "name": "permission",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "permission_level_weight",
+            "base": "",
+            "fields": [
+                {
+                    "name": "permission",
+                    "type": "permission_level"
+                },
+                {
+                    "name": "weight",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "producer_info",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "total_votes",
+                    "type": "float64"
+                },
+                {
+                    "name": "producer_key",
+                    "type": "public_key"
+                },
+                {
+                    "name": "is_active",
+                    "type": "bool"
+                },
+                {
+                    "name": "url",
+                    "type": "string"
+                },
+                {
+                    "name": "unpaid_blocks",
+                    "type": "uint32"
+                },
+                {
+                    "name": "last_claim_time",
+                    "type": "time_point"
+                },
+                {
+                    "name": "location",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "producer_info2",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "votepay_share",
+                    "type": "float64"
+                },
+                {
+                    "name": "last_votepay_share_update",
+                    "type": "time_point"
+                }
+            ]
+        },
+        {
+            "name": "producer_key",
+            "base": "",
+            "fields": [
+                {
+                    "name": "producer_name",
+                    "type": "name"
+                },
+                {
+                    "name": "block_signing_key",
+                    "type": "public_key"
+                }
+            ]
+        },
+        {
+            "name": "producer_schedule",
+            "base": "",
+            "fields": [
+                {
+                    "name": "version",
+                    "type": "uint32"
+                },
+                {
+                    "name": "producers",
+                    "type": "producer_key[]"
+                }
+            ]
+        },
+        {
+            "name": "refund",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "refund_request",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "request_time",
+                    "type": "time_point_sec"
+                },
+                {
+                    "name": "net_amount",
+                    "type": "asset"
+                },
+                {
+                    "name": "cpu_amount",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "regproducer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "producer",
+                    "type": "name"
+                },
+                {
+                    "name": "producer_key",
+                    "type": "public_key"
+                },
+                {
+                    "name": "url",
+                    "type": "string"
+                },
+                {
+                    "name": "location",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "regproxy",
+            "base": "",
+            "fields": [
+                {
+                    "name": "proxy",
+                    "type": "name"
+                },
+                {
+                    "name": "isproxy",
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "name": "rentcpu",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "receiver",
+                    "type": "name"
+                },
+                {
+                    "name": "loan_payment",
+                    "type": "asset"
+                },
+                {
+                    "name": "loan_fund",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "rentnet",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "receiver",
+                    "type": "name"
+                },
+                {
+                    "name": "loan_payment",
+                    "type": "asset"
+                },
+                {
+                    "name": "loan_fund",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "rex_balance",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "vote_stake",
+                    "type": "asset"
+                },
+                {
+                    "name": "rex_balance",
+                    "type": "asset"
+                },
+                {
+                    "name": "matured_rex",
+                    "type": "int64"
+                },
+                {
+                    "name": "rex_maturities",
+                    "type": "pair_time_point_sec_int64[]"
+                }
+            ]
+        },
+        {
+            "name": "rex_fund",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "balance",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "rex_loan",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "receiver",
+                    "type": "name"
+                },
+                {
+                    "name": "payment",
+                    "type": "asset"
+                },
+                {
+                    "name": "balance",
+                    "type": "asset"
+                },
+                {
+                    "name": "total_staked",
+                    "type": "asset"
+                },
+                {
+                    "name": "loan_num",
+                    "type": "uint64"
+                },
+                {
+                    "name": "expiration",
+                    "type": "time_point"
+                }
+            ]
+        },
+        {
+            "name": "rex_order",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "rex_requested",
+                    "type": "asset"
+                },
+                {
+                    "name": "proceeds",
+                    "type": "asset"
+                },
+                {
+                    "name": "stake_change",
+                    "type": "asset"
+                },
+                {
+                    "name": "order_time",
+                    "type": "time_point"
+                },
+                {
+                    "name": "is_open",
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "name": "rex_pool",
+            "base": "",
+            "fields": [
+                {
+                    "name": "total_lent",
+                    "type": "asset"
+                },
+                {
+                    "name": "total_unlent",
+                    "type": "asset"
+                },
+                {
+                    "name": "total_rent",
+                    "type": "asset"
+                },
+                {
+                    "name": "total_lendable",
+                    "type": "asset"
+                },
+                {
+                    "name": "total_rex",
+                    "type": "asset"
+                },
+                {
+                    "name": "namebid_proceeds",
+                    "type": "asset"
+                },
+                {
+                    "name": "loan_num",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "rexexec",
+            "base": "",
+            "fields": [
+                {
+                    "name": "user",
+                    "type": "name"
+                },
+                {
+                    "name": "max",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "rmvproducer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "producer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "sellram",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "bytes",
+                    "type": "int64"
+                }
+            ]
+        },
+        {
+            "name": "sellrex",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "rex",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "setabi",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "abi",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "setalimits",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "ram_bytes",
+                    "type": "int64"
+                },
+                {
+                    "name": "net_weight",
+                    "type": "int64"
+                },
+                {
+                    "name": "cpu_weight",
+                    "type": "int64"
+                }
+            ]
+        },
+        {
+            "name": "setcode",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "vmtype",
+                    "type": "uint8"
+                },
+                {
+                    "name": "vmversion",
+                    "type": "uint8"
+                },
+                {
+                    "name": "code",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "setparams",
+            "base": "",
+            "fields": [
+                {
+                    "name": "params",
+                    "type": "blockchain_parameters"
+                }
+            ]
+        },
+        {
+            "name": "setpriv",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "is_priv",
+                    "type": "uint8"
+                }
+            ]
+        },
+        {
+            "name": "setram",
+            "base": "",
+            "fields": [
+                {
+                    "name": "max_ram_size",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "setramrate",
+            "base": "",
+            "fields": [
+                {
+                    "name": "bytes_per_block",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "undelegatebw",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "receiver",
+                    "type": "name"
+                },
+                {
+                    "name": "unstake_net_quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "unstake_cpu_quantity",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "unlinkauth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "code",
+                    "type": "name"
+                },
+                {
+                    "name": "type",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "unregprod",
+            "base": "",
+            "fields": [
+                {
+                    "name": "producer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "unstaketorex",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "receiver",
+                    "type": "name"
+                },
+                {
+                    "name": "from_net",
+                    "type": "asset"
+                },
+                {
+                    "name": "from_cpu",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "updateauth",
+            "base": "",
+            "fields": [
+                {
+                    "name": "account",
+                    "type": "name"
+                },
+                {
+                    "name": "permission",
+                    "type": "name"
+                },
+                {
+                    "name": "parent",
+                    "type": "name"
+                },
+                {
+                    "name": "auth",
+                    "type": "authority"
+                }
+            ]
+        },
+        {
+            "name": "updaterex",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "updtrevision",
+            "base": "",
+            "fields": [
+                {
+                    "name": "revision",
+                    "type": "uint8"
+                }
+            ]
+        },
+        {
+            "name": "user_resources",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "net_weight",
+                    "type": "asset"
+                },
+                {
+                    "name": "cpu_weight",
+                    "type": "asset"
+                },
+                {
+                    "name": "ram_bytes",
+                    "type": "int64"
+                }
+            ]
+        },
+        {
+            "name": "voteproducer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "voter",
+                    "type": "name"
+                },
+                {
+                    "name": "proxy",
+                    "type": "name"
+                },
+                {
+                    "name": "producers",
+                    "type": "name[]"
+                }
+            ]
+        },
+        {
+            "name": "voter_info",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "proxy",
+                    "type": "name"
+                },
+                {
+                    "name": "producers",
+                    "type": "name[]"
+                },
+                {
+                    "name": "staked",
+                    "type": "int64"
+                },
+                {
+                    "name": "last_vote_weight",
+                    "type": "float64"
+                },
+                {
+                    "name": "proxied_vote_weight",
+                    "type": "float64"
+                },
+                {
+                    "name": "is_proxy",
+                    "type": "bool"
+                },
+                {
+                    "name": "reserved1",
+                    "type": "uint32"
+                },
+                {
+                    "name": "reserved2",
+                    "type": "uint32"
+                },
+                {
+                    "name": "reserved3",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "wait_weight",
+            "base": "",
+            "fields": [
+                {
+                    "name": "wait_sec",
+                    "type": "uint32"
+                },
+                {
+                    "name": "weight",
+                    "type": "uint16"
+                }
+            ]
+        },
+        {
+            "name": "withdraw",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "amount",
+                    "type": "asset"
+                }
+            ]
+        }
+    ],
+    "types": [],
+    "actions": [
+        {
+            "name": "bidname",
+            "type": "bidname",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "bidrefund",
+            "type": "bidrefund",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "buyram",
+            "type": "buyram",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "buyrambytes",
+            "type": "buyrambytes",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "buyrex",
+            "type": "buyrex",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "canceldelay",
+            "type": "canceldelay",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "claimrewards",
+            "type": "claimrewards",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "closerex",
+            "type": "closerex",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "cnclrexorder",
+            "type": "cnclrexorder",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "consolidate",
+            "type": "consolidate",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "defcpuloan",
+            "type": "defcpuloan",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "defnetloan",
+            "type": "defnetloan",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "delegatebw",
+            "type": "delegatebw",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "deleteauth",
+            "type": "deleteauth",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "deposit",
+            "type": "deposit",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "fundcpuloan",
+            "type": "fundcpuloan",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "fundnetloan",
+            "type": "fundnetloan",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "init",
+            "type": "init",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "linkauth",
+            "type": "linkauth",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "newaccount",
+            "type": "newaccount",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "onblock",
+            "type": "onblock",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "onerror",
+            "type": "onerror",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "refund",
+            "type": "refund",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "regproducer",
+            "type": "regproducer",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "regproxy",
+            "type": "regproxy",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "rentcpu",
+            "type": "rentcpu",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "rentnet",
+            "type": "rentnet",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "rexexec",
+            "type": "rexexec",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "rmvproducer",
+            "type": "rmvproducer",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "sellram",
+            "type": "sellram",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "sellrex",
+            "type": "sellrex",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setabi",
+            "type": "setabi",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setalimits",
+            "type": "setalimits",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setcode",
+            "type": "setcode",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setparams",
+            "type": "setparams",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setpriv",
+            "type": "setpriv",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setram",
+            "type": "setram",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setramrate",
+            "type": "setramrate",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "undelegatebw",
+            "type": "undelegatebw",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "unlinkauth",
+            "type": "unlinkauth",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "unregprod",
+            "type": "unregprod",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "unstaketorex",
+            "type": "unstaketorex",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "updateauth",
+            "type": "updateauth",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "updaterex",
+            "type": "updaterex",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "updtrevision",
+            "type": "updtrevision",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "voteproducer",
+            "type": "voteproducer",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "withdraw",
+            "type": "withdraw",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "abihash",
+            "type": "abi_hash",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "bidrefunds",
+            "type": "bid_refund",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "cpuloan",
+            "type": "rex_loan",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "delband",
+            "type": "delegated_bandwidth",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "global",
+            "type": "eosio_global_state",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "global2",
+            "type": "eosio_global_state2",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "global3",
+            "type": "eosio_global_state3",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "namebids",
+            "type": "name_bid",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "netloan",
+            "type": "rex_loan",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "producers",
+            "type": "producer_info",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "producers2",
+            "type": "producer_info2",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "rammarket",
+            "type": "exchange_state",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "refunds",
+            "type": "refund_request",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "rexbal",
+            "type": "rex_balance",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "rexfund",
+            "type": "rex_fund",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "rexpool",
+            "type": "rex_pool",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "rexqueue",
+            "type": "rex_order",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "userres",
+            "type": "user_resources",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "voters",
+            "type": "voter_info",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "ricardian_clauses": [],
+    "abi_extensions": []
+}

@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE
  */
 #pragma once
+#include <eosio/chain/config.hpp>
 #include <eosio/chain/database_utils.hpp>
 
 #include <eosio/chain/transaction.hpp>

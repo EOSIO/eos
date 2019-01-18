@@ -2,7 +2,6 @@
  *  @file
  *  @copyright defined in eos/LICENSE
  */
-
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 

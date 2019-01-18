@@ -150,10 +150,6 @@ namespace eosio {
          bool                     validate_host;
          set<string>              valid_hosts;
 
-         string                   unix_socket_path_option_name     = "unix-socket-path";
-         string                   http_server_address_option_name  = "http-server-address";
-         string                   https_server_address_option_name = "https-server-address";
-
          bool host_port_is_valid( const std::string& header_host_port, const string& endpoint_local_host_port ) {
             return !validate_host || header_host_port == endpoint_local_host_port || valid_hosts.find(header_host_port) != valid_hosts.end();
          }
@@ -286,10 +282,16 @@ namespace eosio {
                auto handler_itr = url_handlers.find( resource );
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
-                  handler_itr->second( resource, body, [con]( auto code, auto&& body ) {
-                     con->set_body( std::move( body ));
-                     con->set_status( websocketpp::http::status_code::value( code ));
-                     con->send_http_response();
+                  app().post( appbase::priority::low, [handler_itr, resource, body, con]() {
+                     try {
+                        handler_itr->second( resource, body, [con]( auto code, auto&& body ) {
+                           con->set_body( std::move( body ) );
+                           con->set_status( websocketpp::http::status_code::value( code ) );
+                           con->send_http_response();
+                        } );
+                     } catch( ... ) {
+                        handle_exception<T>( con );
+                     }
                   } );
 
                } else {
@@ -328,14 +330,6 @@ namespace eosio {
             valid_hosts.emplace(host + ":" + port);
             valid_hosts.emplace(host + ":" + resolved_port_str);
          }
-
-         void mangle_option_names() {
-            if(current_http_plugin_defaults.address_config_prefix.empty())
-               return;
-            unix_socket_path_option_name.insert(0, current_http_plugin_defaults.address_config_prefix+"-");
-            http_server_address_option_name.insert(0, current_http_plugin_defaults.address_config_prefix+"-");
-            https_server_address_option_name.insert(0, current_http_plugin_defaults.address_config_prefix+"-");
-         }
    };
 
    template<>
@@ -347,23 +341,22 @@ namespace eosio {
    http_plugin::~http_plugin(){}
 
    void http_plugin::set_program_options(options_description&, options_description& cfg) {
-      my->mangle_option_names();
       if(current_http_plugin_defaults.default_unix_socket_path.length())
          cfg.add_options()
-            (my->unix_socket_path_option_name.c_str(), bpo::value<string>()->default_value(current_http_plugin_defaults.default_unix_socket_path),
+            ("unix-socket-path", bpo::value<string>()->default_value(current_http_plugin_defaults.default_unix_socket_path),
              "The filename (relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.");
 
       if(current_http_plugin_defaults.default_http_port)
          cfg.add_options()
-            (my->http_server_address_option_name.c_str(), bpo::value<string>()->default_value("127.0.0.1:" + std::to_string(current_http_plugin_defaults.default_http_port)),
+            ("http-server-address", bpo::value<string>()->default_value("127.0.0.1:" + std::to_string(current_http_plugin_defaults.default_http_port)),
              "The local IP and port to listen for incoming http connections; set blank to disable.");
       else
          cfg.add_options()
-            (my->http_server_address_option_name.c_str(), bpo::value<string>(),
+            ("http-server-address", bpo::value<string>(),
              "The local IP and port to listen for incoming http connections; leave blank to disable.");
 
       cfg.add_options()
-            (my->https_server_address_option_name.c_str(), bpo::value<string>(),
+            ("https-server-address", bpo::value<string>(),
              "The local IP and port to listen for incoming https connections; leave blank to disable.")
 
             ("https-certificate-chain-file", bpo::value<string>(),
@@ -412,8 +405,8 @@ namespace eosio {
          }
 
          tcp::resolver resolver( app().get_io_service());
-         if( options.count( my->http_server_address_option_name ) && options.at( my->http_server_address_option_name ).as<string>().length()) {
-            string lipstr = options.at( my->http_server_address_option_name ).as<string>();
+         if( options.count( "http-server-address" ) && options.at( "http-server-address" ).as<string>().length()) {
+            string lipstr = options.at( "http-server-address" ).as<string>();
             string host = lipstr.substr( 0, lipstr.find( ':' ));
             string port = lipstr.substr( host.size() + 1, lipstr.size());
             tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
@@ -431,14 +424,14 @@ namespace eosio {
             }
          }
 
-         if( options.count( my->unix_socket_path_option_name ) && !options.at( my->unix_socket_path_option_name ).as<string>().empty()) {
-            boost::filesystem::path sock_path = options.at(my->unix_socket_path_option_name).as<string>();
+         if( options.count( "unix-socket-path" ) && !options.at( "unix-socket-path" ).as<string>().empty()) {
+            boost::filesystem::path sock_path = options.at("unix-socket-path").as<string>();
             if (sock_path.is_relative())
                sock_path = app().data_dir() / sock_path;
             my->unix_endpoint = asio::local::stream_protocol::endpoint(sock_path.string());
          }
 
-         if( options.count( my->https_server_address_option_name ) && options.at( my->https_server_address_option_name ).as<string>().length()) {
+         if( options.count( "https-server-address" ) && options.at( "https-server-address" ).as<string>().length()) {
             if( !options.count( "https-certificate-chain-file" ) ||
                 options.at( "https-certificate-chain-file" ).as<string>().empty()) {
                elog( "https-certificate-chain-file is required for HTTPS" );
@@ -450,7 +443,7 @@ namespace eosio {
                return;
             }
 
-            string lipstr = options.at( my->https_server_address_option_name ).as<string>();
+            string lipstr = options.at( "https-server-address" ).as<string>();
             string host = lipstr.substr( 0, lipstr.find( ':' ));
             string port = lipstr.substr( host.size() + 1, lipstr.size());
             tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
@@ -541,6 +534,19 @@ namespace eosio {
             throw;
          }
       }
+
+      add_api({{
+         std::string("/v1/node/get_supported_apis"),
+         [&](string, string body, url_response_callback cb) mutable {
+            try {
+               if (body.empty()) body = "{}";
+               auto result = (*this).get_supported_apis();
+               cb(200, fc::json::to_string(result));
+            } catch (...) {
+               handle_exception("node", "get_supported_apis", body, cb);
+            }
+         }
+      }});
    }
 
    void http_plugin::plugin_shutdown() {
@@ -554,7 +560,7 @@ namespace eosio {
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {
       ilog( "add api url: ${c}", ("c",url) );
-      app().get_io_service().post([=](){
+      app().post(priority::low, [=](){
         my->url_handlers.insert(std::make_pair(url,handler));
       });
    }
@@ -615,4 +621,14 @@ namespace eosio {
       return verbose_http_errors;
    }
 
+   http_plugin::get_supported_apis_result http_plugin::get_supported_apis()const {
+      get_supported_apis_result result;
+
+      for (const auto& handler : my->url_handlers) {
+         if (handler.first != "/v1/node/get_supported_apis")
+            result.apis.emplace_back(handler.first);
+      }
+
+      return result;
+   }
 }

@@ -20,9 +20,9 @@ target_link_libraries( plugin_test eosio_testing eosio_chain chainbase chain_plu
 
 target_include_directories( plugin_test PUBLIC
                             ${CMAKE_SOURCE_DIR}/plugins/net_plugin/include
-                            ${CMAKE_SOURCE_DIR}/plugins/chain_plugin/include )
-
-#
+                            ${CMAKE_SOURCE_DIR}/plugins/chain_plugin/include
+                            ${CMAKE_BINARY_DIR}/unittests/include/ )
+                            
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/core_symbol.py.in ${CMAKE_CURRENT_BINARY_DIR}/core_symbol.py)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_DIR}/testUtils.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/WalletMgr.py ${CMAKE_CURRENT_BINARY_DIR}/WalletMgr.py COPYONLY)

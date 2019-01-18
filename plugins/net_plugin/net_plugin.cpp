@@ -165,7 +165,7 @@ namespace eosio {
       size_t count_open_sockets() const;
 
       template<typename VerifierFunc>
-      void send_all( const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify );
+      void send_transaction_to_all( const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify );
 
       void accepted_block(const block_state_ptr&);
       void transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>&);
@@ -341,16 +341,7 @@ namespace eosio {
    struct peer_block_state {
       block_id_type id;
       uint32_t      block_num;
-      bool          is_known;
-      bool          is_noticed;
-      time_point    requested_time;
    };
-
-   struct update_request_time {
-      void operator() (struct eosio::peer_block_state &bs) {
-         bs.requested_time = time_point::now();
-      }
-   } set_request_time;
 
    typedef multi_index_container<
       eosio::peer_block_state,
@@ -361,13 +352,6 @@ namespace eosio {
       > peer_block_state_index;
 
 
-   struct update_known_by_peer {
-      void operator() (eosio::peer_block_state& bs) {
-         bs.is_known = true;
-      }
-   } set_is_known;
-
-
    struct update_block_num {
       uint32_t new_bnum;
       update_block_num(uint32_t bnum) : new_bnum(bnum) {}
@@ -376,9 +360,6 @@ namespace eosio {
       }
       void operator() (transaction_state& ts) {
          ts.block_num = new_bnum;
-      }
-      void operator() (peer_block_state& pbs) {
-         pbs.block_num = new_bnum;
       }
    };
 
@@ -502,7 +483,8 @@ namespace eosio {
 
       void enqueue( const net_message &msg, bool trigger_send = true );
       void enqueue_block( const signed_block_ptr& sb, bool trigger_send = true );
-      void enqueue_buffer( const std::shared_ptr<std::vector<char>>& send_buffer, bool trigger_send, go_away_reason close_after_send );
+      void enqueue_buffer( const std::shared_ptr<std::vector<char>>& send_buffer,
+                           bool trigger_send, int priority, go_away_reason close_after_send );
       void cancel_sync(go_away_reason);
       void flush_queues();
       bool enqueue_sync_block();
@@ -516,8 +498,9 @@ namespace eosio {
 
       void queue_write(const std::shared_ptr<vector<char>>& buff,
                        bool trigger_send,
+                       int priority,
                        std::function<void(boost::system::error_code, std::size_t)> callback);
-      void do_queue_write();
+      void do_queue_write(int priority);
 
       /** \brief Process the next message from the pending message buffer
        *
@@ -530,7 +513,7 @@ namespace eosio {
        */
       bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
 
-      bool add_peer_block(const peer_block_state &pbs);
+      void add_peer_block(const peer_block_state& pbs);
 
       fc::optional<fc::variant_object> _logger_variant;
       const fc::variant_object& get_logger_variant()  {
@@ -748,7 +731,7 @@ namespace eosio {
       for(auto tx = my_impl->local_txns.begin(); tx != my_impl->local_txns.end(); ++tx ){
          const bool found = known_ids.find( tx->id ) != known_ids.cend();
          if( !found ) {
-            queue_write( tx->serialized_txn, true, []( boost::system::error_code ec, std::size_t ) {} );
+            queue_write( tx->serialized_txn, true, priority::low, []( boost::system::error_code ec, std::size_t ) {} );
          }
       }
    }
@@ -757,7 +740,7 @@ namespace eosio {
       for(const auto& t : ids) {
          auto tx = my_impl->local_txns.get<by_id>().find(t);
          if( tx != my_impl->local_txns.end() ) {
-            queue_write( tx->serialized_txn, true, []( boost::system::error_code ec, std::size_t ) {} );
+            queue_write( tx->serialized_txn, true, priority::low, []( boost::system::error_code ec, std::size_t ) {} );
          }
       }
    }
@@ -905,13 +888,14 @@ namespace eosio {
 
    void connection::queue_write(const std::shared_ptr<vector<char>>& buff,
                                 bool trigger_send,
+                                int priority,
                                 std::function<void(boost::system::error_code, std::size_t)> callback) {
       write_queue.push_back({buff, callback});
       if(out_queue.empty() && trigger_send)
-         do_queue_write();
+         do_queue_write( priority );
    }
 
-   void connection::do_queue_write() {
+   void connection::do_queue_write(int priority) {
       if(write_queue.empty() || !out_queue.empty())
          return;
       connection_wptr c(shared_from_this());
@@ -927,7 +911,8 @@ namespace eosio {
          out_queue.push_back(m);
          write_queue.pop_front();
       }
-      boost::asio::async_write(*socket, bufs, [c](boost::system::error_code ec, std::size_t w) {
+      boost::asio::async_write(*socket, bufs,
+         app().get_priority_queue().wrap(priority, [c, priority](boost::system::error_code ec, std::size_t w) {
             try {
                auto conn = c.lock();
                if(!conn)
@@ -952,7 +937,7 @@ namespace eosio {
                   conn->out_queue.pop_front();
                }
                conn->enqueue_sync_block();
-               conn->do_queue_write();
+               conn->do_queue_write( priority );
             }
             catch(const std::exception &ex) {
                auto conn = c.lock();
@@ -969,7 +954,7 @@ namespace eosio {
                string pname = conn ? conn->peer_name() : "no connection name";
                elog("Exception in do_queue_write to ${p}", ("p",pname) );
             }
-         });
+         }));
    }
 
    void connection::cancel_sync(go_away_reason reason) {
@@ -1028,10 +1013,10 @@ namespace eosio {
       ds.write( header, header_size );
       fc::raw::pack( ds, m );
 
-      enqueue_buffer( send_buffer, trigger_send, close_after_send );
+      enqueue_buffer( send_buffer, trigger_send, priority::low, close_after_send );
    }
 
-   void connection::enqueue_block( const signed_block_ptr& sb, bool trigger_send ) {
+   static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_ptr& sb ) {
       // this implementation is to avoid copy of signed_block to net_message
       int which = 7; // matches which of net_message for signed_block
 
@@ -1048,12 +1033,18 @@ namespace eosio {
       fc::raw::pack( ds, unsigned_int( which ));
       fc::raw::pack( ds, *sb );
 
-      enqueue_buffer( send_buffer, trigger_send, no_reason );
+      return send_buffer;
    }
 
-   void connection::enqueue_buffer( const std::shared_ptr<std::vector<char>>& send_buffer, bool trigger_send, go_away_reason close_after_send ) {
+   void connection::enqueue_block( const signed_block_ptr& sb, bool trigger_send ) {
+      enqueue_buffer( create_send_buffer( sb ), trigger_send, priority::low, no_reason );
+   }
+
+   void connection::enqueue_buffer( const std::shared_ptr<std::vector<char>>& send_buffer,
+                                    bool trigger_send, int priority, go_away_reason close_after_send )
+   {
       connection_wptr weak_this = shared_from_this();
-      queue_write(send_buffer,trigger_send,
+      queue_write(send_buffer,trigger_send, priority,
                   [weak_this, close_after_send](boost::system::error_code ec, std::size_t ) {
                      connection_ptr conn = weak_this.lock();
                      if (conn) {
@@ -1076,7 +1067,7 @@ namespace eosio {
    void connection::sync_wait() {
       response_expected->expires_from_now( my_impl->resp_expected_period);
       connection_wptr c(shared_from_this());
-      response_expected->async_wait( [c]( boost::system::error_code ec){
+      response_expected->async_wait( app().get_priority_queue().wrap(priority::low, [c]( boost::system::error_code ec){
             connection_ptr conn = c.lock();
             if (!conn) {
                // connection was destroyed before this lambda was delivered
@@ -1084,13 +1075,13 @@ namespace eosio {
             }
 
             conn->sync_timeout(ec);
-         } );
+         } ) );
    }
 
    void connection::fetch_wait() {
       response_expected->expires_from_now( my_impl->resp_expected_period);
       connection_wptr c(shared_from_this());
-      response_expected->async_wait( [c]( boost::system::error_code ec){
+      response_expected->async_wait( app().get_priority_queue().wrap(priority::low, [c]( boost::system::error_code ec){
             connection_ptr conn = c.lock();
             if (!conn) {
                // connection was destroyed before this lambda was delivered
@@ -1098,7 +1089,7 @@ namespace eosio {
             }
 
             conn->fetch_timeout(ec);
-         } );
+         } ) );
    }
 
    void connection::sync_timeout( boost::system::error_code ec ) {
@@ -1165,22 +1156,17 @@ namespace eosio {
       return true;
    }
 
-   bool connection::add_peer_block(const peer_block_state &entry) {
+   void connection::add_peer_block(const peer_block_state& entry) {
       auto bptr = blk_state.get<by_id>().find(entry.id);
       bool added = (bptr == blk_state.end());
       if (added){
          blk_state.insert(entry);
+      } else {
+         blk_state.modify(bptr, [&entry](auto& e){
+            e.id = entry.id;
+            e.block_num = entry.block_num;
+         });
       }
-      else {
-         blk_state.modify(bptr,set_is_known);
-         if (entry.block_num == 0) {
-            blk_state.modify(bptr,update_block_num(entry.block_num));
-         }
-         else {
-            blk_state.modify(bptr,set_request_time);
-         }
-      }
-      return added;
    }
 
    //-----------------------------------------------------------
@@ -1387,8 +1373,8 @@ namespace eosio {
       // 1. my head block num < peer lib - start sync locally
       // 2. my lib > peer head num - send an last_irr_catch_up notice if not the first generation
       //
-      // 3  my head block num <= peer head block num - update sync state and send a catchup request
-      // 4  my head block num > peer block num send a notice catchup if this is not the first generation
+      // 3  my head block num < peer head block num - update sync state and send a catchup request
+      // 4  my head block num >= peer block num send a notice catchup if this is not the first generation
       //
       //-----------------------------
 
@@ -1426,7 +1412,7 @@ namespace eosio {
          return;
       }
 
-      if (head <= msg.head_num ) {
+      if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
          verify_catchup(c, msg.head_num, msg.head_id);
          return;
@@ -1556,11 +1542,10 @@ namespace eosio {
       }
       received_blocks.erase(range.first, range.second);
 
-      block_id_type bid = bs->id;
       uint32_t bnum = bs->block_num;
-      peer_block_state pbstate = {bid, bnum, false, true, time_point()};
+      peer_block_state pbstate{bs->id, bnum};
 
-      pbstate.is_known = true;
+      std::shared_ptr<std::vector<char>> send_buffer;
       for( auto& cp : my_impl->connections ) {
          if( skips.find( cp ) != skips.end() || !cp->current() ) {
             continue;
@@ -1569,7 +1554,10 @@ namespace eosio {
          if( !has_block ) {
             fc_dlog(logger, "bcast block ${b} to ${p}", ("b", bnum)("p", cp->peer_name()));
             cp->add_peer_block( pbstate );
-            cp->enqueue_block( bs->block );
+            if( !send_buffer ) {
+               send_buffer = create_send_buffer( bs->block );
+            }
+            cp->enqueue_buffer( send_buffer, true, priority::high, no_reason );
          }
       }
 
@@ -1584,7 +1572,6 @@ namespace eosio {
           c->last_req->req_blocks.ids.back() == id) {
          c->last_req.reset();
       }
-      c->add_peer_block({id, bnum, false,true,time_point()});
 
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
       c->cancel_wait();
@@ -1633,7 +1620,7 @@ namespace eosio {
       node_transaction_state nts = {id, trx_expiration, 0, buff};
       my_impl->local_txns.insert(std::move(nts));
 
-      my_impl->send_all( buff, [&id, &skips, trx_expiration](const connection_ptr& c) -> bool {
+      my_impl->send_transaction_to_all( buff, [&id, &skips, trx_expiration](const connection_ptr& c) -> bool {
          if( skips.find(c) != skips.end() || c->syncing ) {
             return false;
           }
@@ -1687,11 +1674,11 @@ namespace eosio {
          controller& cc = my_impl->chain_plug->chain();
          for( const auto& blkid : msg.known_blocks.ids) {
             signed_block_ptr b;
-            peer_block_state entry = {blkid,0,true,true,fc::time_point()};
             try {
                b = cc.fetch_block_by_id(blkid);
-               if(b)
-                  entry.block_num = b->block_num();
+               if(b) {
+                  c->add_peer_block({blkid, b->block_num()});
+               }
             } catch (const assert_exception &ex) {
                ilog( "caught assert on fetch_block_by_id, ${ex}",("ex",ex.what()));
                // keep going, client can ask another peer
@@ -1701,9 +1688,7 @@ namespace eosio {
             if (!b) {
                send_req = true;
                req.req_blocks.ids.push_back( blkid );
-               entry.requested_time = fc::time_point::now();
             }
-            c->add_peer_block(entry);
          }
       }
       else if (msg.known_blocks.mode != none) {
@@ -1749,7 +1734,7 @@ namespace eosio {
          }
          else {
             auto blk = conn->blk_state.get<by_id>().find(bid);
-            sendit = blk != conn->blk_state.end() && blk->is_known;
+            sendit = blk != conn->blk_state.end();
          }
          if (sendit) {
             conn->enqueue(*c->last_req);
@@ -1797,6 +1782,7 @@ namespace eosio {
       // Note: need to add support for IPv6 too
 
       resolver->async_resolve( query,
+                               app().get_priority_queue().wrap( priority::low,
                                [weak_conn, this]( const boost::system::error_code& err,
                                           tcp::resolver::iterator endpoint_itr ){
                                   auto c = weak_conn.lock();
@@ -1807,7 +1793,7 @@ namespace eosio {
                                      elog( "Unable to resolve ${peer_addr}: ${error}",
                                            (  "peer_addr", c->peer_name() )("error", err.message() ) );
                                   }
-                               });
+                               }));
    }
 
    void net_plugin_impl::connect(const connection_ptr& c, tcp::resolver::iterator endpoint_itr) {
@@ -1819,7 +1805,9 @@ namespace eosio {
       ++endpoint_itr;
       c->connecting = true;
       connection_wptr weak_conn = c;
-      c->socket->async_connect( current_endpoint, [weak_conn, endpoint_itr, this] ( const boost::system::error_code& err ) {
+      c->socket->async_connect( current_endpoint,
+         app().get_priority_queue().wrap( priority::low,
+            [weak_conn, endpoint_itr, this] ( const boost::system::error_code& err ) {
             auto c = weak_conn.lock();
             if (!c) return;
             if( !err && c->socket->is_open() ) {
@@ -1838,7 +1826,7 @@ namespace eosio {
                   my_impl->close(c);
                }
             }
-         } );
+         }));
    }
 
    bool net_plugin_impl::start_session(const connection_ptr& con) {
@@ -1865,7 +1853,8 @@ namespace eosio {
 
    void net_plugin_impl::start_listen_loop() {
       auto socket = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
-      acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
+      acceptor->async_accept( *socket,
+            app().get_priority_queue().wrap(priority::low, [socket,this]( boost::system::error_code ec ) {
             if( !ec ) {
                uint32_t visitors = 0;
                uint32_t from_addr = 0;
@@ -1924,7 +1913,7 @@ namespace eosio {
                }
             }
             start_listen_loop();
-         });
+         }));
    }
 
    void net_plugin_impl::start_read_message(const connection_ptr& conn) {
@@ -1954,6 +1943,7 @@ namespace eosio {
 
          boost::asio::async_read(*conn->socket,
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
+            app().get_priority_queue().wrap( priority::medium,
             [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
                auto conn = weak_conn.lock();
                if (!conn) {
@@ -2033,7 +2023,7 @@ namespace eosio {
                   elog( "Undefined exception hanlding the read data from connection ${p}",( "p",pname));
                   close( conn );
                }
-            } );
+            }));
       } catch (...) {
          string pname = conn ? conn->peer_name() : "no connection name";
          elog( "Undefined exception handling reading ${p}",("p",pname) );
@@ -2053,10 +2043,10 @@ namespace eosio {
 
 
    template<typename VerifierFunc>
-   void net_plugin_impl::send_all(const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify) {
+   void net_plugin_impl::send_transaction_to_all(const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify) {
       for( auto &c : connections) {
          if( c->current() && verify( c )) {
-            c->enqueue_buffer( send_buffer, true, no_reason );
+            c->enqueue_buffer( send_buffer, true, priority::low, no_reason );
          }
       }
    }
@@ -2363,7 +2353,6 @@ namespace eosio {
       auto ptrx = std::make_shared<transaction_metadata>( trx );
       const auto& tid = ptrx->id;
 
-      c->cancel_wait();
       if(local_txns.get<by_id>().find(tid) != local_txns.end()) {
          fc_dlog(logger, "got a duplicate transaction - dropping");
          return;
@@ -2454,7 +2443,7 @@ namespace eosio {
 
    void net_plugin_impl::start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection) {
       connector_check->expires_from_now( du);
-      connector_check->async_wait( [this, from_connection](boost::system::error_code ec) {
+      connector_check->async_wait(app().get_priority_queue().wrap(priority::low, [this, from_connection](boost::system::error_code ec) {
             if( !ec) {
                connection_monitor(from_connection);
             }
@@ -2462,12 +2451,13 @@ namespace eosio {
                elog( "Error from connection check monitor: ${m}",( "m", ec.message()));
                start_conn_timer( connector_period, std::weak_ptr<connection>());
             }
-         });
+         }));
    }
 
    void net_plugin_impl::start_txn_timer() {
       transaction_check->expires_from_now( txn_exp_period);
-      transaction_check->async_wait( [this](boost::system::error_code ec) {
+      int lower_than_low = priority::low - 1;
+      transaction_check->async_wait(app().get_priority_queue().wrap(lower_than_low, [this](boost::system::error_code ec) {
             if( !ec) {
                expire_txns();
             }
@@ -2475,12 +2465,12 @@ namespace eosio {
                elog( "Error from transaction check monitor: ${m}",( "m", ec.message()));
                start_txn_timer();
             }
-         });
+         }));
    }
 
    void net_plugin_impl::ticker() {
       keepalive_timer->expires_from_now(keepalive_interval);
-      keepalive_timer->async_wait([this](boost::system::error_code ec) {
+      keepalive_timer->async_wait(app().get_priority_queue().wrap(priority::low, [this](boost::system::error_code ec) {
             ticker();
             if (ec) {
                wlog("Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()));
@@ -2490,7 +2480,7 @@ namespace eosio {
                   c->send_time();
                }
             }
-         });
+         }));
    }
 
    void net_plugin_impl::start_monitors() {
