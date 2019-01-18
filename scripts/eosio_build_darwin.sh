@@ -136,7 +136,7 @@ done < "${CURRENT_DIR}/scripts/eosio_build_darwin_deps"
 IFS="${var_ifs}"
 
 if [ ! -d /usr/local/Frameworks ]; then
-	printf "\\n${bldred}/usr/local/Framworks is necessary to brew install python@3. Run the following commands as sudo and try again:${txtrst}\\n"
+	printf "\\n${bldred}/usr/local/Frameworks is necessary to brew install python@3. Run the following commands as sudo and try again:${txtrst}\\n"
 	printf "sudo mkdir /usr/local/Frameworks && sudo chown $(whoami):admin /usr/local/Frameworks\\n\\n"
 	exit 1;
 fi
