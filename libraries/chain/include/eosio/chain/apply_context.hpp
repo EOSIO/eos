@@ -489,6 +489,10 @@ class apply_context {
    public:
       void lazy_init_chaindb_abi(account_name code);
 
+   /// Event methods:
+   public:
+      void push_event( event&& evt );
+
    /// Authorization methods:
    public:
 
@@ -639,6 +643,7 @@ class apply_context {
       iterator_cache<key_value_object>    keyval_cache;
       vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
       vector<action>                      _inline_actions; ///< queued inline messages
+      vector<event>                       _events; ///< generated events
       vector<action>                      _cfa_inline_actions; ///< queued inline messages
       std::ostringstream                  _pending_console_output;
       flat_set<account_delta>             _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
