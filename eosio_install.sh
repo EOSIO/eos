@@ -30,87 +30,89 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE.txt
 ##########################################################################
 
-if [ "$(id -u)" -ne 0 ]; then
-        printf "\n\tThis requires sudo. Please run with sudo.\n\n"
-        exit -1
-fi   
+CWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+if [ "${CWD}" != "${PWD}" ]; then
+   printf "\\nPlease cd into directory %s to run this script.\\n Exiting now.\\n\\n" "${CWD}"
+   exit 1
+fi
 
-   CWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-   if [ "${CWD}" != "${PWD}" ]; then
-      printf "\\n\\tPlease cd into directory %s to run this script.\\n \\tExiting now.\\n\\n" "${CWD}"
-      exit 1
-   fi
+OPT_LOCATION=$HOME/opt
+BIN_LOCATION=$HOME/bin
+LIB_LOCATION=$HOME/lib
+mkdir -p $LIB_LOCATION
 
-   BUILD_DIR="${PWD}/build"
-   CMAKE_BUILD_TYPE=Release
-   TIME_BEGIN=$( date -u +%s )
-   INSTALL_PREFIX="/usr/local/eosio"
-   VERSION=1.2
+BUILD_DIR="${PWD}/build"
+CMAKE_BUILD_TYPE=Release
+TIME_BEGIN=$( date -u +%s )
+INSTALL_PREFIX=$OPT_LOCATION/eosio
+VERSION=1.2
 
-   txtbld=$(tput bold)
-   bldred=${txtbld}$(tput setaf 1)
-   txtrst=$(tput sgr0)
+txtbld=$(tput bold)
+bldred=${txtbld}$(tput setaf 1)
+txtrst=$(tput sgr0)
 
-   create_symlink() {
-      pushd /usr/local/bin &> /dev/null
-      ln -sf ../eosio/bin/$1 $1
-      popd &> /dev/null
-   }
+create_symlink() {
+   pushd $BIN_LOCATION &> /dev/null
+   printf " ln -sf ${OPT_LOCATION}/eosio/bin/${1} ${BIN_LOCATION}/${1}\\n"
+   ln -sf $OPT_LOCATION/eosio/bin/$1 ${BIN_LOCATION}/${1}
+   popd &> /dev/null
+}
 
-   create_cmake_symlink() {
-      mkdir -p /usr/local/lib/cmake/eosio
-      pushd /usr/local/lib/cmake/eosio &> /dev/null
-      ln -sf ../../../eosio/lib/cmake/eosio/$1 $1
-      popd &> /dev/null
-   }
+create_cmake_symlink() {
+   mkdir -p $LIB_LOCATION/cmake/eosio
+   pushd $LIB_LOCATION/cmake/eosio &> /dev/null
+   ln -sf ../../../eosio/lib/cmake/eosio/$1 $1
+   popd &> /dev/null
+}
 
-   install_symlinks() {
-      printf "\\n\\tInstalling EOSIO Binary Symlinks\\n\\n"
-      create_symlink "cleos"
-      create_symlink "eosio-launcher"
-      create_symlink "keosd"
-      create_symlink "nodeos"
-   }
+install_symlinks() {
+   printf "\\nInstalling EOSIO Binary Symlinks...\\n"
+   create_symlink "cleos"
+   create_symlink "eosio-launcher"
+   create_symlink "keosd"
+   create_symlink "nodeos"
+   printf " - Installed binaries into ${BIN_LOCATION}!"
+}
 
-   if [ ! -d "${BUILD_DIR}" ]; then
-      printf "\\n\\tError, eosio_build.sh has not ran.  Please run ./eosio_build.sh first!\\n\\n"
-      exit -1
-   fi
+if [ ! -d $BUILD_DIR ]; then
+   printf "\\nError, eosio_build.sh has not ran.  Please run ./eosio_build.sh first!\\n\\n"
+   exit -1
+fi
 
-   ${PWD}/scripts/clean_old_install.sh
-   if [ $? -ne 0 ]; then
-      printf "\\n\\tError occurred while trying to remove old installation!\\n\\n"
-      exit -1
-   fi
+if ! pushd "${BUILD_DIR}"
+then
+   printf "Unable to enter build directory %s.\\n Exiting now.\\n" "${BUILD_DIR}"
+   exit 1;
+fi
 
-   if ! pushd "${BUILD_DIR}"
-   then
-      printf "Unable to enter build directory %s.\\n Exiting now.\\n" "${BUILD_DIR}"
-      exit 1;
-   fi
-   
-   if ! make install
-   then
-      printf "\\n\\t>>>>>>>>>>>>>>>>>>>> MAKE installing EOSIO has exited with the above error.\\n\\n"
-      exit -1
-   fi
-   popd &> /dev/null 
+if ! make install
+then
+   printf "\\n>>>>>>>>>>>>>>>>>>>> MAKE installing EOSIO has exited with the above error.\\n\\n"
+   exit -1
+fi
+popd &> /dev/null 
 
-   install_symlinks   
-   create_cmake_symlink "eosio-config.cmake"
+install_symlinks   
+create_cmake_symlink "eosio-config.cmake"
 
-   printf "\n\n${bldred}\t _______  _______  _______ _________ _______\n"
-   printf '\t(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
-   printf "\t| (    \/| (   ) || (    \/   ) (   | (   ) |\n"
-   printf "\t| (__    | |   | || (_____    | |   | |   | |\n"
-   printf "\t|  __)   | |   | |(_____  )   | |   | |   | |\n"
-   printf "\t| (      | |   | |      ) |   | |   | |   | |\n"
-   printf "\t| (____/\| (___) |/\____) |___) (___| (___) |\n"
-   printf "\t(_______/(_______)\_______)\_______/(_______)\n${txtrst}"
+printf "\n _______  _______  _______ _________ _______\n"
+printf '(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
+printf "| (    \/| (   ) || (    \/   ) (   | (   ) |\n"
+printf "| (__    | |   | || (_____    | |   | |   | |\n"
+printf "|  __)   | |   | |(_____  )   | |   | |   | |\n"
+printf "| (      | |   | |      ) |   | |   | |   | |\n"
+printf "| (____/\| (___) |/\____) |___) (___| (___) |\n"
+printf "(_______/(_______)\_______)\_______/(_______)\n\n"
 
-   printf "\\tFor more information:\\n"
-   printf "\\tEOSIO website: https://eos.io\\n"
-   printf "\\tEOSIO Telegram channel @ https://t.me/EOSProject\\n"
-   printf "\\tEOSIO resources: https://eos.io/resources/\\n"
-   printf "\\tEOSIO Stack Exchange: https://eosio.stackexchange.com\\n"
-   printf "\\tEOSIO wiki: https://github.com/EOSIO/eos/wiki\\n\\n\\n"
+printf "==============================================================================================\\n"
+printf "Please execute (and append to .bash_profile) the following:\\n"
+printf "${bldred}${txtbld}export LD_LIBRARY_PATH=\"${LIB_LOCATION}:$\LD_LIBRARY_PATH\"\\n"
+printf "export PATH=$BIN_LOCATION:\$PATH${txtrst}\\n"
+printf "==============================================================================================\\n\\n"
+
+printf "For more information:\\n"
+printf "EOSIO website: https://eos.io\\n"
+printf "EOSIO Telegram channel @ https://t.me/EOSProject\\n"
+printf "EOSIO resources: https://eos.io/resources/\\n"
+printf "EOSIO Stack Exchange: https://eosio.stackexchange.com\\n"
+printf "EOSIO wiki: https://github.com/EOSIO/eos/wiki\\n\\n\\n"

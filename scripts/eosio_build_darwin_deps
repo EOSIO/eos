@@ -1,0 +1,10 @@
+automake,-x,/usr/local/bin/automake,automake,http://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz
+Libtool,-x,/usr/local/bin/glibtool,libtool,http://gnu.askapache.com/libtool/libtool-2.4.6.tar.gz
+OpenSSL,-f,/usr/local/opt/openssl/lib/libssl.a,openssl,https://www.openssl.org/source/openssl-1.0.2n.tar.gz
+wget,-x,/usr/local/bin/wget,wget,https://ftp.gnu.org/gnu/wget/wget-1.19.2.tar.gz
+GMP,-f,/usr/local/opt/gmp/include/gmpxx.h,gmp,https://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.bz2
+gettext,-x,/usr/local/opt/gettext/bin/gettext,gettext,https://ftp.gnu.org/pub/gnu/gettext/gettext-latest.tar.gz
+llvm,-x,/usr/local/opt/llvm@4/bin/clang-4.0,llvm@4,http://releases.llvm.org/5.0.1/llvm-5.0.1.src.tar.xz
+mongo-c-driver,-d,/usr/local/Cellar/mongo-c-driver/1.13.0,eosio/eosio/mongo-c-driver --build-from-source,https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz
+mongo-cxx-driver,-d,/usr/local/Cellar/mongo-cxx-driver/3.4.0,eosio/eosio/mongo-cxx-driver --build-from-source,https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz
+doxygen,-x,/usr/local/bin/doxygen,eosio/eosio/doxygen --with-graphviz --build-from-source,http://ftp.stack.nl/pub/users/dimitri/doxygen-1.8.14.src.tar.gz
