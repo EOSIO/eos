@@ -1300,7 +1300,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                      --orig_pending_txn_size;
                      _incoming_trx_weight -= 1.0;
                      process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
-                     if (block_time <= fc::time_point::now()) break;
                   }
 
                   if (scheduled_trx_deadline <= fc::time_point::now()) {
