@@ -1634,8 +1634,8 @@ read_only::get_raw_code_and_abi_results read_only::get_raw_code_and_abi( const g
 
    const auto& d = db.db();
    const auto& accnt = d.get<account_object,by_name>(params.account_name);
-   result.wasm = blob{{accnt.code.begin(), accnt.code.end()}};
-   result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
+   result.wasm = fc::base64_encode({accnt.code.begin(), accnt.code.end()});
+   result.abi = fc::base64_encode({accnt.abi.begin(), accnt.abi.end()});
 
    return result;
 }
@@ -1649,7 +1649,7 @@ read_only::get_raw_abi_results read_only::get_raw_abi( const get_raw_abi_params&
    result.abi_hash = fc::sha256::hash( accnt.abi.data(), accnt.abi.size() );
    result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
    if( !params.abi_hash || *params.abi_hash != result.abi_hash )
-      result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
+      result.abi = fc::base64_encode({accnt.abi.begin(), accnt.abi.end()});
 
    return result;
 }
