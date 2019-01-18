@@ -44,7 +44,7 @@
    else
       BUILD_DIR="${PWD}"
    fi
-   CMAKE_BUILD_TYPE=Release
+   CMAKE_BUILD_TYPE=RelWithDebInfo
    DISK_MIN=20
    DOXYGEN=false
    ENABLE_COVERAGE_TESTING=false
