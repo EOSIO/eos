@@ -7,6 +7,7 @@ namespace eosio { namespace chain {
  * @brief defines event from smart-contract
  */
 struct event {
+    account_name   account;
     event_name     name;
     bytes          data;
 
@@ -15,4 +16,4 @@ struct event {
 
 } } // namespace eosio::chain
 
-FC_REFLECT( eosio::chain::event, (name)(data))
+FC_REFLECT( eosio::chain::event, (account)(name)(data))
