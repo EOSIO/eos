@@ -197,6 +197,8 @@ public:
 
 chain_plugin::chain_plugin()
 :my(new chain_plugin_impl()) {
+   app().register_config_type<eosio::chain::db_read_mode>();
+   app().register_config_type<eosio::chain::validation_mode>();
 }
 
 chain_plugin::~chain_plugin(){}
