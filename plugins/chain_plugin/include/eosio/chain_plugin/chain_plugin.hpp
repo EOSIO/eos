@@ -177,8 +177,8 @@ public:
 
    struct get_raw_code_and_abi_results {
       name                   account_name;
-      chain::blob            wasm;
-      chain::blob            abi;
+      string                 wasm;
+      string                 abi;
    };
 
    struct get_raw_code_and_abi_params {
@@ -194,7 +194,7 @@ public:
       name                   account_name;
       fc::sha256             code_hash;
       fc::sha256             abi_hash;
-      optional<chain::blob>  abi;
+      optional<string>       abi;
    };
 
 
