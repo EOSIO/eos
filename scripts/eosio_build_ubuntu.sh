@@ -243,7 +243,7 @@ fi
 printf "\\n"
 
 
-printf "Checking LLVM with WASM support...\\n"
+printf "Checking LLVM 4 support...\\n"
 if [ ! -d $LLVM_ROOT ]; then
 	ln -s /usr/lib/llvm-4.0 $LLVM_ROOT \
 	|| exit 1

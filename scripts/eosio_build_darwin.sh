@@ -246,7 +246,7 @@ else
 fi
 
 # We install llvm into /usr/local/opt using brew install llvm@4
-printf "\\nChecking LLVM with WASM support...\\n"
+printf "\\nChecking LLVM 4 support...\\n"
 if [ ! -d $LLVM_ROOT ]; then
 	ln -s /usr/local/opt/llvm@4 $LLVM_ROOT \
 	|| exit 1

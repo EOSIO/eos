@@ -217,9 +217,9 @@ fi
 printf "\\n"
 
 
-printf "Checking LLVM with WASM support...\\n"
+printf "Checking LLVM 4 support...\\n"
 if [ ! -d $LLVM_ROOT ]; then
-	printf "Installing LLVM with WASM...\\n"
+	printf "Installing LLVM 4...\\n"
 	cd ../opt \
 	&& git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \
 	&& mkdir build \
