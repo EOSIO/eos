@@ -2075,7 +2075,10 @@ const vector<transaction_receipt>& controller::get_pending_trx_receipts()const {
 }
 
 uint32_t controller::last_irreversible_block_num() const {
-   return std::max( my->head->dpos_irreversible_blocknum, my->snapshot_head_block );
+   uint32_t lib_num = (my->read_mode == db_read_mode::IRREVERSIBLE)
+                        ? my->fork_db.pending_head()->dpos_irreversible_blocknum
+                        : my->head->dpos_irreversible_blocknum;
+   return std::max( lib_num, my->snapshot_head_block );
 }
 
 block_id_type controller::last_irreversible_block_id() const {
@@ -2085,8 +2088,12 @@ block_id_type controller::last_irreversible_block_id() const {
    if( block_header::num_from_id(tapos_block_summary.block_id) == lib_num )
       return tapos_block_summary.block_id;
 
-   return fetch_block_by_number(lib_num)->id();
+   auto signed_blk = my->blog.read_block_by_num( lib_num );
 
+   EOS_ASSERT( BOOST_LIKELY( signed_blk != nullptr ), unknown_block_exception,
+               "Could not find block: ${block}", ("block", lib_num) );
+
+   return signed_blk->id();
 }
 
 const dynamic_global_property_object& controller::get_dynamic_global_properties()const {
@@ -2122,8 +2129,13 @@ block_state_ptr controller::fetch_block_state_by_number( uint32_t block_num )con
    const auto& rev_blocks = my->reversible_blocks.get_index<reversible_block_index,by_num>();
    auto objitr = rev_blocks.find(block_num);
 
-   if( objitr == rev_blocks.end() )
-      return block_state_ptr();
+   if( objitr == rev_blocks.end() ) {
+      if( my->read_mode == db_read_mode::IRREVERSIBLE ) {
+         return my->fork_db.search_on_branch( my->fork_db.pending_head()->id, block_num );
+      } else {
+         return block_state_ptr();
+      }
+   }
 
    fc::datastream<const char*> ds( objitr->packedblock.data(), objitr->packedblock.size() );
    block_header h;
@@ -2135,14 +2147,25 @@ block_state_ptr controller::fetch_block_state_by_number( uint32_t block_num )con
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try {
-   const auto& rev_blocks = my->reversible_blocks.get_index<reversible_block_index,by_num>();
-   auto objitr = rev_blocks.find(block_num);
+   const auto& blog_head = my->blog.head();
 
-   if( objitr != rev_blocks.end() ) {
-      fc::datastream<const char*> ds( objitr->packedblock.data(), objitr->packedblock.size() );
-      block_header h;
-      fc::raw::unpack( ds, h );
-      return h.id();
+   bool find_in_blog = (blog_head && block_num <= blog_head->block_num());
+
+   if( !find_in_blog ) {
+      if( my->read_mode != db_read_mode::IRREVERSIBLE ) {
+         const auto& rev_blocks = my->reversible_blocks.get_index<reversible_block_index,by_num>();
+         auto objitr = rev_blocks.find(block_num);
+         if( objitr != rev_blocks.end() ) {
+            fc::datastream<const char*> ds( objitr->packedblock.data(), objitr->packedblock.size() );
+            block_header h;
+            fc::raw::unpack( ds, h );
+            return h.id();
+         }
+      } else {
+         auto bsp = my->fork_db.search_on_branch( my->fork_db.pending_head()->id, block_num );
+
+         if( bsp ) return bsp->id;
+      }
    }
 
    auto signed_blk = my->blog.read_block_by_num(block_num);

@@ -305,6 +305,15 @@ namespace eosio { namespace chain {
       return result;
    }
 
+   block_state_ptr fork_database::search_on_branch( const block_id_type& h, uint32_t block_num )const {
+      for( auto s = get_block(h); s; s = get_block( s->header.previous ) ) {
+         if( s->block_num == block_num )
+             return s;
+      }
+
+      return {};
+   }
+
    /**
     *  Given two head blocks, return two branches of the fork graph that
     *  end with a common ancestor (same prior block)

@@ -63,6 +63,13 @@ namespace eosio { namespace chain {
           */
          branch_type     fetch_branch( const block_id_type& h, uint32_t trim_after_block_num = std::numeric_limits<uint32_t>::max() )const;
 
+
+         /**
+          *  Returns the block state with a block number of `block_num` that is on the branch that
+          *  contains a block with an id of`h`, or the empty shared pointer if no such block can be found.
+          */
+         block_state_ptr search_on_branch( const block_id_type& h, uint32_t block_num )const;
+
          /**
           *  Given two head blocks, return two branches of the fork graph that
           *  end with a common ancestor (same prior block)

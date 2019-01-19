@@ -237,12 +237,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("sender-bypass-whiteblacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "Deferred transactions sent by accounts in this list do not have any of the subjective whitelist/blacklist checks applied to them (may specify multiple times)")
          ("read-mode", boost::program_options::value<eosio::chain::db_read_mode>()->default_value(eosio::chain::db_read_mode::SPECULATIVE),
-          "Database read mode (\"speculative\", \"head\", or \"read-only\").\n"// or \"irreversible\").\n"
+          "Database read mode (\"speculative\", \"head\", \"read-only\", \"irreversible\").\n"
           "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
           "In \"head\" mode database contains changes done up to the current head block.\n"
-          "In \"read-only\" mode database contains incoming block changes but no speculative transaction processing.\n"
+          "In \"read-only\" mode database contains changes done up to the current head block and transactions cannot be pushed to the chain API.\n"
+          "In \"irreversible\" mode database contains changes done up to the last irreversible block and transactions cannot be pushed to the chain API.\n"
           )
-          //"In \"irreversible\" mode database contains changes done up the current irreversible block.\n")
          ("validation-mode", boost::program_options::value<eosio::chain::validation_mode>()->default_value(eosio::chain::validation_mode::FULL),
           "Chain validation mode (\"full\" or \"light\").\n"
           "In \"full\" mode all incoming blocks will be fully validated.\n"
@@ -629,7 +629,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if ( options.count("read-mode") ) {
          my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
-         EOS_ASSERT( my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported." );
       }
 
       if ( options.count("validation-mode") ) {
@@ -1024,12 +1023,12 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    return {
       itoh(static_cast<uint32_t>(app().version())),
       db.get_chain_id(),
-      db.fork_db_pending_head_block_num(),
+      db.head_block_num(),
       db.last_irreversible_block_num(),
       db.last_irreversible_block_id(),
-      db.fork_db_pending_head_block_id(),
-      db.fork_db_pending_head_block_time(),
-      db.fork_db_pending_head_block_producer(),
+      db.head_block_id(),
+      db.head_block_time(),
+      db.head_block_producer(),
       rm.get_virtual_block_cpu_limit(),
       rm.get_virtual_block_net_limit(),
       rm.get_block_cpu_limit(),
@@ -1037,6 +1036,8 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       //std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string(),
       //__builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0,
       app().version_string(),
+      db.fork_db_pending_head_block_num(),
+      db.fork_db_pending_head_block_id()
    };
 }
 
