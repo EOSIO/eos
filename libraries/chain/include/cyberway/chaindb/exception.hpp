@@ -86,6 +86,9 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(invalid_index_description_exception, chaindb_abi_exception,
                                      3720005, "Invalid index description")
 
+        FC_DECLARE_DERIVED_EXCEPTION(no_abi_exception, chaindb_abi_exception,
+                                     3720006, "Account doesn't have an ABI description")
+
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_contract_exception, chaindb_exception,
                                  3730000, "ChainDB contract exception")
 
