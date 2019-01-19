@@ -532,7 +532,6 @@ namespace cyberway { namespace chaindb {
             for (auto& index: indexes) {
                 bool was_pk = false;
                 document doc;
-                doc.append(kvp(names::scope_path, 1));
                 for (auto& o: index.orders) {
                     auto field = o.field;
                     // ui128 || i128
@@ -546,6 +545,7 @@ namespace cyberway { namespace chaindb {
                     }
                     was_pk |= (&o == table.pk_order);
                 }
+                doc.append(kvp(names::scope_path, 1));
                 if (!was_pk && !index.unique) {
                     doc.append(kvp(table.pk_order->field, 1));
                 }
@@ -589,19 +589,22 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t available_pk(const table_info& table) {
             apply_table_changes(table);
+            primary_key_t pk = 0;
 
-            auto cursor = get_db_table(table).find(
-                make_document(kvp(names::scope_path, get_scope_name(table))),
-                options::find()
-                    .sort(make_document(kvp(table.pk_order->field, -1)))
-                    .limit(1));
+            _detail::auto_reconnect([&] {
+                auto cursor = get_db_table(table).find(
+                    make_document(),
+                    options::find()
+                        .sort(make_document(kvp(table.pk_order->field, -1)))
+                        .limit(1));
 
-            auto itr = cursor.begin();
-            if (cursor.end() != itr) {
-                return chaindb::get_pk_value(table, *itr) + 1;
-            }
+                auto itr = cursor.begin();
+                if (cursor.end() != itr) {
+                    pk = chaindb::get_pk_value(table, *itr) + 1;
+                }
+            });
 
-            return 0;
+            return pk;
         }
 
         object_value object_by_pk(const table_info& table, const primary_key_t pk) {
