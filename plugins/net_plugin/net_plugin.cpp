@@ -284,6 +284,7 @@ namespace eosio {
    constexpr auto     def_send_buffer_size_mb = 4;
    constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
    constexpr auto     def_max_write_queue_size = def_send_buffer_size*10;
+   constexpr boost::asio::chrono::milliseconds def_read_delay_for_full_write_queue{100};
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_max_nodes_per_host = 1;
    constexpr auto     def_conn_retry_wait = 30;
@@ -403,7 +404,7 @@ namespace eosio {
          std::function<void(boost::system::error_code, std::size_t)> callback;
       };
       deque<queued_write>     write_queue;
-      uint32_t                write_queue_size;
+      uint32_t                write_queue_size = 0;
       deque<queued_write>     out_queue;
       fc::sha256              node_id;
       handshake_message       last_handshake_recv;
@@ -414,6 +415,7 @@ namespace eosio {
       uint16_t                protocol_version  = 0;
       string                  peer_addr;
       unique_ptr<boost::asio::steady_timer> response_expected;
+      unique_ptr<boost::asio::steady_timer> read_delay_timer;
       optional<request_message> pending_fetch;
       go_away_reason         no_retry = no_reason;
       block_id_type          fork_head;
@@ -644,6 +646,7 @@ namespace eosio {
         protocol_version(0),
         peer_addr(endpoint),
         response_expected(),
+        read_delay_timer(),
         pending_fetch(),
         no_retry(no_reason),
         fork_head(),
@@ -668,6 +671,7 @@ namespace eosio {
         protocol_version(0),
         peer_addr(),
         response_expected(),
+        read_delay_timer(),
         pending_fetch(),
         no_retry(no_reason),
         fork_head(),
@@ -684,6 +688,7 @@ namespace eosio {
       auto *rnd = node_id.data();
       rnd[0] = 0;
       response_expected.reset(new boost::asio::steady_timer(app().get_io_service()));
+      read_delay_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
    }
 
    bool connection::connected() {
@@ -725,6 +730,7 @@ namespace eosio {
       my_impl->sync_master->reset_lib_num(shared_from_this());
       fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
       cancel_wait();
+      if( read_delay_timer ) read_delay_timer->cancel();
       pending_message_buffer.reset();
    }
 
@@ -940,8 +946,6 @@ namespace eosio {
                   return;
                }
                while (conn->out_queue.size() > 0) {
-                  auto& m = conn->out_queue.front();
-                  conn->write_queue_size -= m.buff->size();
                   conn->out_queue.pop_front();
                }
                conn->enqueue_sync_block();
@@ -1949,14 +1953,23 @@ namespace eosio {
             }
          };
 
-         int priority = priority::medium;
          if( conn->write_queue_size > def_max_write_queue_size ) {
-            priority = priority::low; // place near end of queue
+            // too much queued up, reschedule
+            peer_dlog( conn, "write_queue full ${s} bytes", ("s", conn->write_queue_size) );
+            if( !conn->read_delay_timer ) return;
+            conn->read_delay_timer->expires_from_now( def_read_delay_for_full_write_queue );
+            conn->read_delay_timer->async_wait(
+                  app().get_priority_queue().wrap( priority::low, [this, weak_conn]( boost::system::error_code ) {
+               auto conn = weak_conn.lock();
+               if( !conn ) return;
+               start_read_message( conn );
+            } ) );
+            return;
          }
 
          boost::asio::async_read(*conn->socket,
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
-            app().get_priority_queue().wrap( priority,
+            app().get_priority_queue().wrap( priority::medium,
             [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
                auto conn = weak_conn.lock();
                if (!conn) {
