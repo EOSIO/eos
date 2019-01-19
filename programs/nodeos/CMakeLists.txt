@@ -51,6 +51,7 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}
         PRIVATE appbase
         PRIVATE -Wl,${whole_archive_flag} login_plugin               -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} history_plugin             -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} state_history_plugin       -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} bnet_plugin                -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} history_api_plugin         -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} chain_api_plugin           -Wl,${no_whole_archive_flag}

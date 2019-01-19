@@ -11,7 +11,9 @@
 namespace chainbase {
    class database;
 }
-
+namespace boost { namespace asio {
+   class thread_pool;
+}}
 
 namespace eosio { namespace chain {
 
@@ -50,6 +52,7 @@ namespace eosio { namespace chain {
       public:
 
          struct config {
+            flat_set<account_name>   sender_bypass_whiteblacklist;
             flat_set<account_name>   actor_whitelist;
             flat_set<account_name>   actor_blacklist;
             flat_set<account_name>   contract_whitelist;
@@ -62,6 +65,8 @@ namespace eosio { namespace chain {
             uint64_t                 state_guard_size       =  chain::config::default_state_guard_size;
             uint64_t                 reversible_cache_size  =  chain::config::default_reversible_cache_size;
             uint64_t                 reversible_guard_size  =  chain::config::default_reversible_guard_size;
+            uint32_t                 sig_cpu_bill_pct       =  chain::config::default_sig_cpu_bill_pct;
+            uint16_t                 thread_pool_size       =  chain::config::default_controller_thread_pool_size;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
             bool                     disable_replay_opts    =  false;
@@ -85,11 +90,11 @@ namespace eosio { namespace chain {
             incomplete  = 3, ///< this is an incomplete block (either being produced by a producer or speculatively produced by a node)
          };
 
-         controller( const config& cfg );
+         explicit controller( const config& cfg );
          ~controller();
 
          void add_indices();
-         void startup( const snapshot_reader_ptr& snapshot = nullptr );
+         void startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot = nullptr );
 
          /**
           * Starts a new pending block session upon which new transactions can
@@ -139,13 +144,10 @@ namespace eosio { namespace chain {
          void commit_block();
          void pop_block();
 
-         void push_block( const signed_block_ptr& b, block_status s = block_status::complete );
+         std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b );
+         void push_block( std::future<block_state_ptr>& block_state_future );
 
-         /**
-          * Call this method when a producer confirmation is received, this might update
-          * the last bft irreversible block and/or cause a switch of forks
-          */
-         void push_confirmation( const header_confirmation& c );
+         boost::asio::thread_pool& get_thread_pool();
 
          const chainbase::database& db()const;
 
@@ -207,6 +209,8 @@ namespace eosio { namespace chain {
          sha256 calculate_integrity_hash()const;
          void write_snapshot( const snapshot_writer_ptr& snapshot )const;
 
+         bool sender_avoids_whitelist_blacklist_enforcement( account_name sender )const;
+         void check_actor_list( const flat_set<account_name>& actors )const;
          void check_contract_list( account_name code )const;
          void check_action_list( account_name code, action_name action )const;
          void check_key_list( const public_key_type& key )const;
@@ -219,7 +223,6 @@ namespace eosio { namespace chain {
          bool is_resource_greylisted(const account_name &name) const;
          const flat_set<account_name> &get_resource_greylist() const;
 
-         void validate_referenced_accounts( const transaction& t )const;
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
          void validate_db_available_size() const;
