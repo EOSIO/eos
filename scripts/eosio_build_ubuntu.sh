@@ -303,43 +303,43 @@ mongodconf
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 https://github.com/mongodb/mongo-c-driver/releases/download/1.10.2/mongo-c-driver-1.10.2.tar.gz )
+		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 https://github.com/coodi/mongo-c-driver/archive/debian/1.13.0-1-UOS.tar.gz )
 		if [ "${STATUS}" -ne 200 ]; then
-			if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.10.2.tar.gz"
+			if ! rm -f "${TEMP_DIR}/1.13.0-1-UOS.tar.gz"
 			then
-				printf "\\tUnable to remove file %s/mongo-c-driver-1.10.2.tar.gz.\\n" "${TEMP_DIR}"
+				printf "\\tUnable to remove file %s/1.13.0-1-UOS.tar.gz.\\n" "${TEMP_DIR}"
 			fi
 			printf "\\tUnable to download MongoDB C driver at this time.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! tar xf mongo-c-driver-1.10.2.tar.gz
+		if ! tar xf 1.13.0-1-UOS.tar.gz
 		then
-			printf "\\tUnable to unarchive file %s/mongo-c-driver-1.10.2.tar.gz.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to unarchive file %s/1.13.0-1-UOS.tar.gz\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.10.2.tar.gz"
+		if ! rm -f "${TEMP_DIR}/1.13.0-1-UOS.tar.gz"
 		then
-			printf "\\tUnable to remove file mongo-c-driver-1.10.2.tar.gz.\\n"
+			printf "\\tUnable to remove file 1.13.0-1-UOS.tar.gz.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! cd "${TEMP_DIR}"/mongo-c-driver-1.10.2
+		if ! cd "${TEMP_DIR}"/mongo-c-driver-debian-1.13.0-1-UOS
 		then
-			printf "\\tUnable to cd into directory %s/mongo-c-driver-1.10.2.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to cd into directory %s/mongo-c-driver-debian-1.13.0-1-UOS.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! mkdir cmake-build
 		then
-			printf "\\tUnable to create directory %s/mongo-c-driver-1.10.2/cmake-build.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to create directory %s/mongo-c-driver-debian-1.13.0-1-UOS/cmake-build.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! cd cmake-build
 		then
-			printf "\\tUnable to enter directory %s/mongo-c-driver-1.10.2/cmake-build.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to enter directory %s/mongo-c-driver-debian-1.13.0-1-UOS/cmake-build.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
@@ -368,9 +368,9 @@ mongodconf
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! rm -rf "${TEMP_DIR}/mongo-c-driver-1.10.2"
+		if ! rm -rf "${TEMP_DIR}/mongo-c-driver-debian-1.13.0-1-UOS"
 		then
-			printf "\\tUnable to remove directory %s/mongo-c-driver-1.10.2.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to remove directory %s/mongo-c-driver-debian-1.13.0-1-UOS.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
