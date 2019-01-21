@@ -161,6 +161,7 @@ namespace bacc = boost::accumulators;
    ,start(s)
    ,net_usage(trace->net_usage)
    ,pseudo_start(s)
+   ,provided_bandwith_(get_provided_bandwith())
    {
       if (!c.skip_db_sessions()) {
          // TODO: removed by CyberWay
@@ -557,6 +558,11 @@ namespace bacc = boost::accumulators;
       billed_cpu_time_us = std::max( (now - pseudo_start).count(), static_cast<int64_t>(cfg.min_transaction_cpu_usage) );
 
       return static_cast<uint32_t>(billed_cpu_time_us);
+   }
+
+   provided_bandwith transaction_context::get_provided_bandwith() const {
+        const auto max_bandwith = max_bandwidth_billed_accounts_can_pay();
+        return {static_cast<uint64_t>(std::get<0>(max_bandwith)), static_cast<uint64_t>(std::get<1>(max_bandwith))};
    }
 
    std::tuple<int64_t, int64_t, bool, bool> transaction_context::max_bandwidth_billed_accounts_can_pay( bool force_elastic_limits ) const{
