@@ -105,7 +105,7 @@ namespace eosio {
 
 } // namespace eosio
 
-FC_REFLECT(eosio::EventData, (code)(event)(data))
+FC_REFLECT(eosio::EventData, (code)(event)(data)(args))
 FC_REFLECT(eosio::ActionData, (code)(action)(events))
 FC_REFLECT(eosio::TrxMetadata, (id)(accepted)(implicit)(scheduled))
 

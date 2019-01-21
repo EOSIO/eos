@@ -1364,6 +1364,17 @@ class transaction_api : public context_aware_api {
       }
 };
 
+class event_api : public context_aware_api {
+    public:
+        using context_aware_api::context_aware_api;
+
+        void send_event( array_ptr<char> data, size_t data_len ) {
+            event evt;
+            fc::raw::unpack<event>(data, data_len, evt);
+            context.push_event(std::move(evt));
+        }
+};
+
 
 class context_free_transaction_api : public context_aware_api {
    public:
@@ -1870,6 +1881,10 @@ REGISTER_INTRINSICS(transaction_api,
    (send_context_free_inline,  void(int, int)               )
    (send_deferred,             void(int, int64_t, int, int, int32_t) )
    (cancel_deferred,           int(int)                     )
+);
+
+REGISTER_INTRINSICS(event_api,
+   (send_event,                void(int, int)               )
 );
 
 REGISTER_INTRINSICS(context_free_api,

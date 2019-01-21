@@ -50,6 +50,7 @@ struct abi_serializer {
    const struct_def& get_struct(const type_name& type)const;
 
    type_name get_action_type(name action)const;
+   type_name get_event_type(name action)const;
    type_name get_table_type(name action)const;
 
    optional<string>  get_error_message( uint64_t error_code )const;
@@ -95,6 +96,7 @@ private:
    map<type_name, type_name>     typedefs;
    map<type_name, struct_def>    structs;
    map<name,type_name>           actions;
+   map<name,type_name>           events;
    map<name,type_name>           tables;
    map<uint64_t, string>         error_messages;
    map<type_name, variant_def>   variants;
@@ -364,6 +366,46 @@ namespace impl {
       }
 
       /**
+       * overload of to_variant_object for events
+       * @tparam Resolver
+       * @param evt
+       * @param resolver
+       * @return
+       */
+      template<typename Resolver>
+      static void add( mutable_variant_object &out, const char* name, const event& evt, Resolver resolver, abi_traverse_context& ctx )
+      {
+         auto h = ctx.enter_scope();
+         mutable_variant_object mvo;
+         mvo("name", evt.name);
+
+         try {
+            auto abi = resolver(evt.account);
+            if (abi.valid()) {
+               auto type = abi->get_event_type(evt.name);
+               if (!type.empty()) {
+                  try {
+                     binary_to_variant_context _ctx(*abi, ctx, type);
+                     _ctx.short_path = true; // Just to be safe while avoiding the complexity of threading an override boolean all over the place
+                     mvo( "data", abi->_binary_to_variant( type, evt.data, _ctx ));
+                     mvo("hex_data", evt.data);
+                  } catch(...) {
+                     // any failure to serialize data, then leave as not serailzed
+                     mvo("data", evt.data);
+                  }
+               } else {
+                  mvo("data", evt.data);
+               }
+            } else {
+               mvo("data", evt.data);
+            }
+         } catch(...) {
+            mvo("data", evt.data);
+         }
+         out(name, std::move(mvo));
+      }
+
+      /**
        * overload of to_variant_object for actions
        * @tparam Resolver
        * @param act
@@ -517,6 +559,54 @@ namespace impl {
          M obj;
          extract(vo, obj, resolver, ctx);
          o = std::make_shared<M>(obj);
+      }
+
+      /**
+       * Non templated overload that has priority for the event structure
+       * this type has members which must be directly translated by the ABI so it is
+       * exploded and processed explicitly
+       */
+      template<typename Resolver>
+      static void extract( const variant& v, event& evt, Resolver resolver, abi_traverse_context& ctx )
+      {
+         auto h = ctx.enter_scope();
+         const variant_object& vo = v.get_object();
+         EOS_ASSERT(vo.contains("account"), packed_transaction_type_exception, "Missing account");
+         EOS_ASSERT(vo.contains("name"), packed_transaction_type_exception, "Missing name");
+         from_variant(vo["account"], evt.account);
+         from_variant(vo["name"], evt.name);
+
+         bool valid_empty_data = false;
+         if( vo.contains( "data" ) ) {
+            const auto& data = vo["data"];
+            if( data.is_string() ) {
+               from_variant(data, evt.data);
+               valid_empty_data = evt.data.empty();
+            } else if ( data.is_object() ) {
+               auto abi = resolver(evt.account);
+               if (abi.valid()) {
+                  auto type = abi->get_event_type(evt.name);
+                  if (!type.empty()) {
+                     variant_to_binary_context _ctx(*abi, ctx, type);
+                     _ctx.short_path = true; // Just to be safe while avoiding the complexity of threading an override boolean all over the place
+                     evt.data = std::move( abi->_variant_to_binary( type, data, _ctx ));
+                     valid_empty_data = evt.data.empty();
+                  }
+               }
+            }
+         }
+
+         if( !valid_empty_data && evt.data.empty() ) {
+            if( vo.contains( "hex_data" ) ) {
+               const auto& data = vo["hex_data"];
+               if( data.is_string() ) {
+                  from_variant(data, evt.data);
+               }
+            }
+         }
+
+         EOS_ASSERT(valid_empty_data || !evt.data.empty(), packed_transaction_type_exception,
+                    "Failed to deserialize data for ${account}:${name}", ("account", evt.account)("name", evt.name));
       }
 
       /**
