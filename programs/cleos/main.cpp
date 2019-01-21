@@ -105,6 +105,7 @@ Options:
 #include <boost/process/spawn.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
+#include <boost/range/adaptor/map.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -136,6 +137,9 @@ using namespace eosio::client::http;
 using namespace eosio::client::localize;
 using namespace eosio::client::config;
 using namespace boost::filesystem;
+
+static const auto domain_contract = N(cyber.domain);
+static const auto declare_names_action = N(declarenames);
 
 FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
 FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
@@ -186,13 +190,64 @@ bool   no_auto_keosd = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
+uint32_t delaysec = 0;
+
 vector<string> bandwidth_provider;
 
-uint32_t delaysec = 0;
+struct resolved_name_info {
+    string domain;
+    name account;
+    vector<string> users;
+};
+FC_REFLECT(resolved_name_info, (domain)(account)(users))
+
+vector<resolved_name_info> tx_resolved_names;
+bool tx_dont_declare_names = false;    // it's better to have tx_declare_names, but flag option requires default=false
 
 vector<string> tx_permission;
 
 eosio::client::http::http_context context;
+
+bool have_domain_contract();
+bytes variant_to_bin(const account_name& account, const action_name& action, const fc::variant& action_args_var);
+
+void add_name_to_declare(const string& textual_name, const chain_apis::read_only::resolve_names_item& i) {
+    vector<string> parts;
+    split(parts, textual_name, boost::algorithm::is_any_of("@"));
+    auto user = parts[0];
+    auto domain_acc = i.resolved_domain ? *i.resolved_domain : name(parts[2]); // either domain resolved or user@@acc
+
+    auto insert_or_modify = [&](auto&& find_domain_record, auto&& get_default_value) {
+        auto itr = find_if(tx_resolved_names.begin(), tx_resolved_names.end(), find_domain_record);
+        if (itr == tx_resolved_names.end()) {
+            tx_resolved_names.emplace_back(get_default_value());
+        } else {
+            const auto& etr = itr->users.end();
+            if (i.resolved_username && etr == find(itr->users.begin(), etr, user)) {
+                itr->users.emplace_back(user);
+            }
+        }
+    };
+
+    if (i.resolved_domain) {
+        auto domain = parts.size() < 2 ? user : parts[1];   // ? @domain : user@domain
+        insert_or_modify([&](auto const& info) {
+            return info.domain == domain;
+        }, [&]() -> resolved_name_info {
+            vector<string> users;
+            if (i.resolved_username) {
+                users.emplace_back(user);
+            }
+            return {domain, domain_acc, users};
+        });
+    } else {
+        insert_or_modify([&](auto const& info) {
+            return info.account == domain_acc;  // can find some existing domain instead of empty, but it's ok
+        }, [&]() -> resolved_name_info {
+            return {"", domain_acc, {user}};
+        });
+    }
+}
 
 void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
    CLI::callback_t parse_expiration = [](CLI::results_t res) -> bool {
@@ -214,7 +269,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
 
    string msg = "An account and permission level to authorize, as in 'account@permission'";
-   if(!default_permission.empty())
+   if (!default_permission.empty())
       msg += " (defaults to '" + default_permission + "')";
    cmd->add_option("-p,--permission", tx_permission, localized(msg.c_str()));
 
@@ -224,6 +279,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("--delay-sec", delaysec, localized("set the delay_sec seconds, defaults to 0s"));
 
    cmd->add_option("--bandwidth-provider", bandwidth_provider, localized("set an account which provide own bandwidth for transaction"));
+   cmd->add_flag("--dont-declare-names", tx_dont_declare_names, localized("don't add `declarenames` action for resolved account names"));
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
@@ -343,13 +399,24 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
       trx.max_cpu_usage_ms = tx_max_cpu_usage;
       trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
       trx.delay_sec = delaysec;
-   }
 
-   if( !bandwidth_provider.empty() ) {
-      auto providers = get_bandwidth_providers({bandwidth_provider});
-      for (const auto& prov: providers) {
-         trx.actions.emplace_back(vector<chain::permission_level>{prov.second}, providebw{prov.first, prov.second.actor} );
+      if (!bandwidth_provider.empty()) {
+         auto providers = get_bandwidth_providers({bandwidth_provider});
+         for (const auto& prov: providers) {
+            trx.actions.emplace_back(vector<chain::permission_level>{prov.second}, providebw{prov.second.actor, prov.first} );
+         }
       }
+
+        bool declare_names = !tx_dont_declare_names && tx_resolved_names.size() > 0 && have_domain_contract();
+        if (declare_names) {
+            std::sort(tx_resolved_names.begin(), tx_resolved_names.end(), [](const auto& a, const auto& b) {
+                return a.domain < b.domain || (a.domain == b.domain && a.account < b.account);
+            });
+            fc::variant v = fc::mutable_variant_object()("domains", tx_resolved_names);
+            auto declare_names = action{{}, domain_contract, declare_names_action,
+                variant_to_bin(domain_contract, declare_names_action, v)};
+            trx.actions.emplace_back(declare_names);
+        }
    }
 
    if (!tx_skip_sign) {
@@ -422,13 +489,111 @@ auto abi_serializer_resolver = [](const name& account) -> optional<abi_serialize
    return it->second;
 };
 
-bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
-   auto abis = abi_serializer_resolver( account );
-   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+bool have_domain_contract() {
+    auto abi = abi_serializer_resolver(domain_contract);
+    return abi && !abi->get_action_type(declare_names_action).empty();
+}
 
-   auto action_type = abis->get_action_type( action );
-   FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
-   return abis->variant_to_binary( action_type, action_args_var, abi_serializer_max_time );
+template<typename T>
+inline fc::variant variant_from_stream(fc::datastream<const char*>& stream) {
+   T temp;
+   fc::raw::unpack(stream, temp);
+   return fc::variant(temp);
+}
+
+struct abi_domain_resolver {
+    std::map<string, optional<name>>& names;
+    bool resolved = true;
+
+    abi_domain_resolver(std::map<string, optional<name>>& names): names(names) {
+    }
+
+    auto name_pack_unpack() {
+        using T = name;
+        return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
+            [](fc::datastream<const char*>& s, bool is_array, bool is_optional) -> fc::variant {
+                return is_array
+                    ? variant_from_stream<vector<T>>(s)
+                    : is_optional
+                        ? variant_from_stream<optional<T>>(s)
+                        : variant_from_stream<T>(s);
+            },
+            [&](const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional) {
+                if (is_array) {
+                    fc::raw::pack(ds, var.as<vector<T>>());
+                } else if (is_optional) {
+                    fc::raw::pack(ds, var.as<optional<T>>());
+                } else {
+                    if (var.is_string()) {
+                        auto n = var.as<string>();
+                        // we can't automatically detect, is string like "golos.io" actually domain_name or account_name
+                        // let's mark resolvable names with @: "@domain", "username@domain", "username@@account"
+                        // and normal account names will be "account" as usual (without @)
+                        // TODO: special case: "username@" to get username from the scope of current action's contract
+                        auto at = n.find('@');
+                        if (at != string::npos) {
+                            if (at == 0) {
+                                n = n.substr(1);
+                            }
+                            if (names[n]) {  // also stores value in map if not there
+                                fc::raw::pack(ds, *names[n]);
+                            } else {
+                                resolved = false;
+                            }
+                            return;
+                        }
+                    }
+                    fc::raw::pack(ds, var.as<T>());
+                }
+            }
+        );
+    }
+};
+
+
+bytes variant_to_bin(const account_name& account, const action_name& action, const fc::variant& action_args_var) {
+   auto abis = abi_serializer_resolver(account);
+   FC_ASSERT(abis.valid(), "No ABI found for ${contract}", ("contract", account));
+
+   auto action_type = abis->get_action_type(action);
+   FC_ASSERT(!action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)("contract", account));
+
+    static std::map<string, optional<name>> resolved_names;
+    auto domain_abi = abi_domain_resolver(resolved_names);
+    abis->add_specialized_unpack_pack("name", domain_abi.name_pack_unpack());
+    auto bin = abis->variant_to_binary(action_type, action_args_var, abi_serializer_max_time);
+    while (!domain_abi.resolved) {
+        vector<string> names;
+        for (const auto& n: domain_abi.names) {
+            if (!n.second) {
+                names.emplace_back(n.first);
+            }
+        }
+        FC_ASSERT(names.size(), "SYSTEM: can't find unresolved names");
+
+        // process "username@" names. or it's simpler to add postfix at 1st pass of serializer
+        //...
+
+        fc::variant json = call(resolve_names_func, names);
+        auto res = json.as<eosio::chain_apis::read_only::resolve_names_results>();
+        auto p = 0;
+        string n;
+        for (const auto& ni: res) {
+            n = names[p++];
+            if (ni.resolved_username) {
+                domain_abi.names[n] = ni.resolved_username;
+            } else {
+                EOS_ASSERT(ni.resolved_domain, domain_name_type_exception, "SYSTEM: name `${n}` resolved to nothing", ("n",n));
+                EOS_ASSERT(*ni.resolved_domain != name(), domain_name_type_exception,
+                    "Domain ${d} is unlinked, can not use it in action", ("d",n));
+                domain_abi.names[n] = ni.resolved_domain;
+            }
+            add_name_to_declare(n, ni);
+        }
+        domain_abi.resolved = true;
+        bin = abis->variant_to_binary(action_type, action_args_var, abi_serializer_max_time);
+    }
+    return bin;
 }
 
 fc::variant bin_to_variant( const account_name& account, const action_name& action, const bytes& action_args) {
