@@ -14,9 +14,41 @@
 namespace eosio {
    static appbase::abstract_plugin& _event_engine_plugin = app().register_plugin<event_engine_plugin>();
 
+class abi_info final {
+public:
+    abi_info() = default;
+    abi_info(const account_name& code, abi_def abi, const chain::microseconds& max_time)
+    : code_(code) {
+        serializer_.set_abi(abi, max_time);
+        for(auto& evt: abi.events) {
+            events_.emplace(evt.name, evt.type);
+        }
+    }
+
+    std::string get_event_type(const chain::event_name& n) const {
+        auto itr = events_.find(n);
+        return (itr != events_.end()) ? itr->second : std::string();
+    }
+
+    fc::variant to_object(
+        const string& type, const void* data, const size_t size, const chain::microseconds& max_time
+    ) const {
+        if (nullptr == data || 0 == size) return fc::variant();
+
+        fc::datastream<const char*> ds(static_cast<const char*>(data), size);
+        auto value = serializer_.binary_to_variant(type, ds, max_time);
+
+        return value;
+    }
+private:
+    const account_name code_;
+    eosio::chain::abi_serializer serializer_;
+    fc::flat_map<chain::event_name,chain::type_name> events_;
+};
+
 class event_engine_plugin_impl {
 public:
-    event_engine_plugin_impl();
+    event_engine_plugin_impl(controller &db, fc::microseconds abi_serializer_max_time);
     ~event_engine_plugin_impl();
 
     fc::optional<boost::signals2::scoped_connection> accepted_block_connection;
@@ -26,6 +58,10 @@ public:
 
     std::fstream dumpstream;
     bool dumpstream_opened;
+
+    std::map<chain::name,abi_info> abi_map;
+    controller &db;
+    fc::microseconds abi_serializer_max_time;
 
     void accepted_block( const chain::block_state_ptr& );
     void irreversible_block(const chain::block_state_ptr&);
@@ -39,9 +75,51 @@ public:
             dumpstream.flush();
         }
     }
+
+    fc::variant unpack_event_data(const chain::event &evt) {
+        auto itr = abi_map.find(evt.account);
+        if(itr == abi_map.end()) {
+            try {
+                const auto& a = db.get_account(evt.account);
+                if(a.abi.size() > 0) {
+                    abi_info info(evt.account, a.get_abi(), abi_serializer_max_time);
+                    itr = abi_map.emplace(evt.account, std::move(info)).first;
+                }
+            } catch(const fc::exception &err) {
+                ilog("Can't process ABI for ${account}: ${err}",
+                        ("account", evt.account)("err", err.to_string()));
+                return fc::variant();
+            }
+        }
+
+        if(itr == abi_map.end()) {
+            ilog("Missing ABI-description for ${account}", ("account", evt.account));
+            return fc::variant();
+        }
+
+        const auto &info = itr->second;
+
+        auto event_type = info.get_event_type(evt.name);
+        if(event_type == std::string()) {
+            ilog("Missing ABI-description for event ${account}:${event}",
+                    ("account", evt.account)("event", evt.name));
+            return fc::variant();
+        }
+
+        try {
+            auto result = info.to_object(event_type, evt.data.data(), evt.data.size(), abi_serializer_max_time);
+            return result;
+        } catch (const fc::exception &err) {
+            ilog("Can't unpack arguments for ${account}:${event}: ${err}",
+                    ("account", evt.account)("event", evt.name)("err", err.to_string()));
+            return fc::variant();
+        }
+    }
 };
 
-event_engine_plugin_impl::event_engine_plugin_impl() {
+event_engine_plugin_impl::event_engine_plugin_impl(controller &db, fc::microseconds abi_serializer_max_time) 
+: db(db), abi_serializer_max_time(abi_serializer_max_time)
+{
 }
 
 event_engine_plugin_impl::~event_engine_plugin_impl() {
@@ -83,7 +161,10 @@ void event_engine_plugin_impl::applied_transaction(const chain::transaction_trac
             EventData evData;
             evData.code = trace.act.account;
             evData.event = event.name;
-            evData.data = event.data;
+            evData.args = unpack_event_data(event);
+            if(evData.args.is_null()) {
+                evData.data = event.data;
+            }
             actData.events.push_back(evData);
         }
         msg.actions.push_back(actData);
@@ -102,7 +183,7 @@ void event_engine_plugin_impl::applied_transaction(const chain::transaction_trac
 
 
 
-event_engine_plugin::event_engine_plugin():my(new event_engine_plugin_impl()){}
+event_engine_plugin::event_engine_plugin(){}
 event_engine_plugin::~event_engine_plugin(){}
 
 void event_engine_plugin::set_program_options(options_description&, options_description& cfg) {
@@ -113,6 +194,12 @@ void event_engine_plugin::set_program_options(options_description&, options_desc
 
 void event_engine_plugin::plugin_initialize(const variables_map& options) {
     try {
+        chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
+        EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, "" );
+        auto& chain = chain_plug->chain();
+
+        my.reset(new event_engine_plugin_impl(chain, chain_plug->get_abi_serializer_max_time()));
+
         std::string dump_filename = options.at("event-engine-dumpfile").as<string>();
         if(dump_filename != "") {
             ilog("Openning dumpfile \"${filename}\"", ("filename", dump_filename));
@@ -120,10 +207,6 @@ void event_engine_plugin::plugin_initialize(const variables_map& options) {
             EOS_ASSERT(!my->dumpstream.fail(), chain::plugin_config_exception, "Can't open event-engine-dumpfile");
             my->dumpstream_opened = true;
         }
-
-        chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
-        EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, ""  );
-        auto& chain = chain_plug->chain();
 
         my->accepted_block_connection.emplace( 
                 chain.accepted_block.connect( [&]( const chain::block_state_ptr& bs ) {
