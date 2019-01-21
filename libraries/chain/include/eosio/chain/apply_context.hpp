@@ -491,7 +491,7 @@ class apply_context {
 
    /// Event methods:
    public:
-      void push_event( event&& evt );
+      void push_event( event evt );
 
    /// Authorization methods:
    public:

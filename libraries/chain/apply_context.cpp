@@ -373,8 +373,8 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
    return gto;
 }
 
-void apply_context::push_event( event&& evt ) {
-   _events.emplace_back(evt);
+void apply_context::push_event( event evt ) {
+   _events.emplace_back(std::move(evt));
 }
 
 const table_id_object* apply_context::find_table( name code, name scope, name table ) {
