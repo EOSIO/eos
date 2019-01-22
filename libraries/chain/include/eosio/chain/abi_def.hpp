@@ -102,6 +102,7 @@ struct table_def {
 
    table_name         name;        // the name of the table
    hash_type          hash = 0;
+   int64_t            row_count = 0;
    type_name          type;        // type of binary data stored in this table
    vector<index_def>  indexes;     //
 };

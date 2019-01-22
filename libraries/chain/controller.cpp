@@ -202,7 +202,7 @@ struct controller_impl {
 
    controller_impl( const controller::config& cfg, controller& s  )
    :self(s),
-    chaindb(cfg.abi_serializer_max_time_ms, cfg.chaindb_address_type, cfg.chaindb_address),
+    chaindb(cfg.chaindb_address_type, cfg.chaindb_address),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.state_size ),

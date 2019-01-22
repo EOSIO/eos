@@ -523,44 +523,105 @@ namespace cyberway { namespace chaindb {
             return add_cursor(loc.code_itr_, request.code, std::move(cloned_cursor));
         }
 
-        void verify_table_structure(const table_info& table, const microseconds& max_time) {
-            auto db_table = get_db_table(table);
-            auto& indexes = table.table->indexes;
+        std::vector<index_def> get_db_indexes(collection& db_table) const {
+            std::vector<index_def> result;
+            auto indexes = db_table.list_indexes();
 
-            // TODO: add removing of old indexes
+            result.reserve(32);
+            for (auto& info: indexes) {
+                index_def index;
 
-            for (auto& index: indexes) {
-                bool was_pk = false;
-                document doc;
-                for (auto& o: index.orders) {
-                    auto field = o.field;
-                    // ui128 || i128
-                    if (o.type.back() == '8' && (o.type.front() == 'i' || o.type.front() == 'u')) {
-                        field.append(".").append(mongo_big_int_converter::BINARY_FIELD);
-                    }
-                    if (_detail::is_asc_order(o.order)) {
-                        doc.append(kvp(field, 1));
-                    } else {
-                        doc.append(kvp(field, -1));
-                    }
-                    was_pk |= (&o == table.pk_order);
-                }
-                doc.append(kvp(names::scope_path, 1));
-                if (!was_pk && !index.unique) {
-                    doc.append(kvp(table.pk_order->field, 1));
+                auto iname = info["name"].get_utf8().value;
+                try {
+                    index.name = index_name(iname.data());
+                } catch (const eosio::chain::name_type_exception&) {
+                    // MongoDB primary key specific
+                    if (iname.compare("_id_")) db_table.indexes().drop_one(iname);
+                    continue;
                 }
 
-                auto db_index_name = get_index_name(index);
-                _detail::auto_reconnect([&]() {
-                    try {
-                        db_table.create_index(doc.view(), options::index().name(db_index_name).unique(index.unique));
-                    } catch (const mongocxx::operation_exception& e) {
-                        wlog("Error on create index: ${code}, ${what}", ("what", e.what())("code", e.code().value()));
-                        db_table.indexes().drop_one(db_index_name);
-                        db_table.create_index(doc.view(), options::index().name(db_index_name).unique(index.unique));
-                    }
-                });
+                index.unique = info["unique"].get_bool().value;
+                auto fields = info["key"].get_document().value;
+                for (auto& field: fields) {
+                    order_def order;
+
+                    order.field = field.key().to_string();
+                    // skip all fields after _SERVICE_.scope (see create_index)
+                    if (order.field == names::scope_path) break;
+
+                    order.order = field.get_int32().value == 1 ? names::asc_order : names::desc_order;
+                    index.orders.emplace_back(std::move(order));
+                }
+                result.emplace_back(std::move(index));
             }
+            return result;
+        }
+
+        std::vector<table_def> db_tables(const account_name& code) const {
+            static constexpr std::chrono::milliseconds max_time(10);
+            std::vector<table_def> tables;
+
+            tables.reserve(128);
+            _detail::auto_reconnect([&]() {
+                tables.clear();
+                auto db = mongo_conn_.database(get_code_name(code));
+                auto names = db.list_collection_names();
+                for (auto& tname: names) {
+                    table_def table;
+
+                    try {
+                        table.name = table_name(tname);
+                    } catch (const eosio::chain::name_type_exception&) {
+                        if (tname != "system.indexes") db.collection(tname).drop();
+                        continue;
+                    }
+                    auto db_table = db.collection(tname);
+                    table.row_count = db_table.estimated_document_count(
+                        options::estimated_document_count().max_time(max_time));
+                    table.indexes = get_db_indexes(db_table);
+
+                    tables.emplace_back(std::move(table));
+                }
+            });
+
+            return tables;
+        }
+
+        void drop_index(const index_info& info) const {
+            get_db_table(info).indexes().drop_one(get_index_name(info));
+        }
+
+        void drop_table(const table_info& info) const {
+            get_db_table(info).drop();
+        }
+
+        void create_index(const index_info& info) const {
+            document idx_doc;
+            bool was_pk = false;
+            auto& index = *info.index;
+
+            for (auto& order: index.orders) {
+                auto field = order.field;
+                // ui128 || i128
+                if (order.type.back() == '8' && (order.type.front() == 'i' || order.type.front() == 'u')) {
+                    field.append(".").append(mongo_big_int_converter::BINARY_FIELD);
+                }
+                if (_detail::is_asc_order(order.order)) {
+                    idx_doc.append(kvp(field, 1));
+                } else {
+                    idx_doc.append(kvp(field, -1));
+                }
+                was_pk |= (&order == info.pk_order);
+            }
+
+            idx_doc.append(kvp(names::scope_path, 1));
+            if (!was_pk && !index.unique) {
+                // when index is not unique, we add unique pk for deterministic order of records
+                idx_doc.append(kvp(info.pk_order->field, 1));
+            }
+
+            auto index_name = get_index_name(info);
+            get_db_table(info).create_index(idx_doc.view(), options::index().name(index_name).unique(index.unique));
         }
 
         mongodb_cursor_info& create_cursor(index_info index) {
@@ -637,11 +698,11 @@ namespace cyberway { namespace chaindb {
             return instance;
         }
 
-        collection get_db_table(const table_info& table) {
+        collection get_db_table(const table_info& table) const {
             return mongo_conn_.database(get_code_name(table)).collection(get_table_name(table));
         }
 
-        collection get_undo_db_table() {
+        collection get_undo_db_table() const {
             return mongo_conn_.database(names::system_code).collection(names::undo_table);
         }
 
@@ -822,6 +883,22 @@ namespace cyberway { namespace chaindb {
 
     mongodb_driver::~mongodb_driver() = default;
 
+    std::vector<table_def> mongodb_driver::db_tables(const account_name& code) const {
+        return impl_->db_tables(code);
+    }
+
+    void mongodb_driver::create_index(const index_info& index) const {
+        impl_->create_index(index);
+    }
+
+    void mongodb_driver::drop_index(const index_info& index) const {
+        impl_->drop_index(index);
+    }
+
+    void mongodb_driver::drop_table(const table_info& table) const {
+        impl_->drop_table(table);
+    }
+
     void mongodb_driver::drop_db() {
         impl_->drop_db();
     }
@@ -844,10 +921,6 @@ namespace cyberway { namespace chaindb {
 
     void mongodb_driver::apply_all_changes() {
         impl_->apply_all_changes();
-    }
-
-    void mongodb_driver::verify_table_structure(const table_info& table, const microseconds& max_time) {
-        impl_->verify_table_structure(table, max_time);
     }
 
     const cursor_info& mongodb_driver::lower_bound(index_info index, variant key) {
