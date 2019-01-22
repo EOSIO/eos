@@ -168,8 +168,8 @@ if [ ! -d $BOOST_ROOT ]; then
 	printf "Installing Boost library...\\n"
 	curl -LO https://dl.bintray.com/boostorg/release/${BOOST_VERSION_MAJOR}.${BOOST_VERSION_MINOR}.${BOOST_VERSION_PATCH}/source/boost_$BOOST_VERSION.tar.bz2 \
 	&& tar -xvjf boost_$BOOST_VERSION.tar.bz2 \
-	&& cd boost_$BOOST_VERSION/ \
-	&& ./bootstrap.sh "--prefix=${BOOST_ROOT}" \
+	&& cd $BOOST_ROOT \
+	&& ./bootstrap.sh --prefix=$BOOST_ROOT \
 	&& ./b2 -q -j"${JOBS}" install \
 	&& cd .. \
 	&& rm -f boost_$BOOST_VERSION.tar.bz2 \

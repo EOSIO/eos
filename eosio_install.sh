@@ -53,15 +53,15 @@ txtrst=$(tput sgr0)
 
 create_symlink() {
    pushd $BIN_LOCATION &> /dev/null
-   printf " ln -sf ${OPT_LOCATION}/eosio/bin/${1} ${BIN_LOCATION}/${1}\\n"
-   ln -sf $OPT_LOCATION/eosio/bin/$1 ${BIN_LOCATION}/${1}
+   printf "ln -sf ${OPT_LOCATION}/eosio/bin/${1} ${BIN_LOCATION}/${1}\\n"
+   ln -sf $OPT_LOCATION/eosio/bin/$1 $1
    popd &> /dev/null
 }
 
 create_cmake_symlink() {
    mkdir -p $LIB_LOCATION/cmake/eosio
    pushd $LIB_LOCATION/cmake/eosio &> /dev/null
-   ln -sf ../../../eosio/lib/cmake/eosio/$1 $1
+   ln -sf $OPT_LOCATION/eosio/lib/cmake/eosio/$1 $1
    popd &> /dev/null
 }
 
