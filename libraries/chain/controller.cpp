@@ -231,6 +231,7 @@ struct controller_impl {
    SET_APP_HANDLER( eosio, eosio, unlinkauth );
 
    SET_APP_HANDLER( eosio, eosio, providebw );
+   SET_APP_HANDLER( eosio, eosio, requestbw );
 /*
    SET_APP_HANDLER( eosio, eosio, postrecovery );
    SET_APP_HANDLER( eosio, eosio, passrecovery );
@@ -1009,8 +1010,40 @@ struct controller_impl {
       return push_scheduled_transaction( *itr, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
    }
 
+
+    void call_approvebw_action(const action& action,  fc::time_point deadline) {
+        const auto request_bw = action.data_as<requestbw>();
+
+        signed_transaction call_provide_trx;
+        call_provide_trx.actions.emplace_back(vector<permission_level>{{request_bw.provider, config::active_name}}, request_bw.provider, N(approvebw), fc::raw::pack(approvebw( request_bw.account)));
+        call_provide_trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
+        call_provide_trx.set_reference_block( self.head_block_id() );
+        transaction_context trx_context( self, call_provide_trx, call_provide_trx.id());
+        trx_context.deadline = deadline;
+        transaction_trace_ptr trace = trx_context.trace;
+
+        trx_context.init_for_implicit_trx();
+        trx_context.trace->action_traces.emplace_back();
+        trx_context.dispatch_action( trx_context.trace->action_traces.back(), call_provide_trx.actions.back(), request_bw.provider );
+        trx_context.finalize();
+
+        auto restore = make_block_restore_point();
+        fc::move_append( pending->_actions, move(trx_context.executed) );
+        trx_context.squash();
+        restore.cancel();
+    }
+
+    void verify_approvebw_required(const vector<action>& actions, fc::time_point deadline)  {
+       for (const auto& action : actions) {
+            if (action.account == N(eosio) && action.name == N(requestbw)) {
+                call_approvebw_action(action, deadline);
+            }
+        }
+
+    }
+
    transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false )
-   { try {
+   try {
       maybe_session undo_session;
       if ( !self.skip_db_sessions() )
          undo_session = maybe_session(db, chaindb);
@@ -1065,6 +1098,8 @@ struct controller_impl {
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       trace = trx_context.trace;
       try {
+         verify_approvebw_required(trx->trx.actions, deadline);
+
          trx_context.init_for_deferred_trx( gtrx.published );
          trx_context.exec();
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
@@ -1151,7 +1186,7 @@ struct controller_impl {
       }
 
       return trace;
-   } FC_CAPTURE_AND_RETHROW() } /// push_scheduled_transaction
+   } FC_CAPTURE_AND_RETHROW() /// push_scheduled_transaction
 
 
    /**
@@ -1193,6 +1228,8 @@ struct controller_impl {
          trx_context.billed_cpu_time_us = billed_cpu_time_us;
          trace = trx_context.trace;
          try {
+            verify_approvebw_required(trx->trx.actions, deadline);
+
             if( trx->implicit ) {
                trx_context.init_for_implicit_trx();
                trx_context.can_subjectively_fail = false;
@@ -1851,7 +1888,7 @@ void controller::push_confirmation( const header_confirmation& c ) {
    my->push_confirmation( c );
 }
 
-transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
+transaction_trace_ptr controller::push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
    validate_db_available_size();
    EOS_ASSERT( get_read_mode() != chain::db_read_mode::READ_ONLY, transaction_type_exception, "push transaction not allowed in read-only mode" );
    EOS_ASSERT( trx && !trx->implicit && !trx->scheduled, transaction_type_exception, "Implicit/Scheduled transaction not allowed" );
