@@ -236,6 +236,13 @@ struct controller_impl {
 
    SET_APP_HANDLER( eosio, eosio, providebw );
    SET_APP_HANDLER( eosio, eosio, requestbw );
+
+    // TODO: at least `newdomain` must be in cyber.domain contract, add macro for it
+    SET_APP_HANDLER(eosio, eosio, newusername);
+    SET_APP_HANDLER(eosio, eosio, newdomain);
+    SET_APP_HANDLER(eosio, eosio, passdomain);
+    SET_APP_HANDLER(eosio, eosio, linkdomain);
+    SET_APP_HANDLER(eosio, eosio, unlinkdomain);
 /*
    SET_APP_HANDLER( eosio, eosio, postrecovery );
    SET_APP_HANDLER( eosio, eosio, passrecovery );
@@ -657,7 +664,7 @@ struct controller_impl {
         "username",
         {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {"scopename", cyberway::chaindb::tag<by_scope_name>::get_code(), true, {{"scope", "asc"},{"name", "asc"}}},
-         {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}}
+         {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner","asc"},{"scope","asc"},{"name","asc"}}}}
       });
 
    }
@@ -2230,7 +2237,7 @@ const username_object& controller::get_username(account_name scope, const userna
     const auto* user = my->db.find<username_object, by_scope_name>(boost::make_tuple(scope,name));
     EOS_ASSERT(user != nullptr, username_query_exception,
         "username `${name}` not found in scope `${scope}`", ("name",name)("scope",scope));
-   return *user;
+    return *user;
 } FC_CAPTURE_AND_RETHROW((scope)(name)) }
 
 vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {

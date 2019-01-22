@@ -28,7 +28,7 @@ namespace eosio { namespace chain {
    void apply_eosio_newdomain(apply_context&);
    void apply_eosio_passdomain(apply_context&);
    void apply_eosio_linkdomain(apply_context&);
-   void apply_eosio_freedomain(apply_context&);
+   void apply_eosio_unlinkdomain(apply_context&);
    void apply_eosio_newusername(apply_context&);
 
    /*

@@ -200,6 +200,40 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
+   eos_abi.structs.emplace_back(struct_def {
+      "newusername", "", {
+         {"creator", "account_name"},
+         {"owner",   "account_name"},
+         {"name",    "string"},
+      }
+   });
+   eos_abi.structs.emplace_back(struct_def {
+      "newdomain", "", {
+         {"creator", "account_name"},
+         {"name",    "string"},
+      }
+   });
+   eos_abi.structs.emplace_back(struct_def {
+      "passdomain", "", {
+         {"from", "account_name"},
+         {"to",   "account_name"},
+         {"name", "string"},
+      }
+   });
+   eos_abi.structs.emplace_back(struct_def {
+      "linkdomain", "", {
+         {"owner", "account_name"},
+         {"to",    "account_name"},
+         {"name",  "string"},
+      }
+   });
+   eos_abi.structs.emplace_back(struct_def {
+      "unlinkdomain", "", {
+         {"owner", "account_name"},
+         {"name",  "string"},
+      }
+   });
+
    eos_abi.structs.emplace_back( struct_def {
       "requestbw", "", {
          {"provider", "account_name"},
@@ -240,6 +274,12 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay",""} );
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror",""} );
    eos_abi.actions.push_back( action_def{name("onblock"), "onblock",""} );
+
+    eos_abi.actions.push_back(action_def{name("newusername"), "newusername",""});
+    eos_abi.actions.push_back(action_def{name("newdomain"), "newdomain",""});
+    eos_abi.actions.push_back(action_def{name("passdomain"), "passdomain",""});
+    eos_abi.actions.push_back(action_def{name("linkdomain"), "linkdomain",""});
+    eos_abi.actions.push_back(action_def{name("unlinkdomain"), "unlinkdomain",""});
 
    return eos_abi;
 }
