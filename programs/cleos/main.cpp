@@ -138,6 +138,9 @@ using namespace eosio::client::localize;
 using namespace eosio::client::config;
 using namespace boost::filesystem;
 
+static const auto wrap_contract = N(cyber.wrap);
+static const auto msig_contract = N(cyber.msig);
+static const auto token_contract = N(cyber.token);
 static const auto domain_contract = N(cyber.domain);
 static const auto declare_names_action = N(declarenames);
 
@@ -208,9 +211,6 @@ vector<string> tx_permission;
 
 eosio::client::http::http_context context;
 
-static const auto token_contract = name("cyber.token");
-static const auto wrap_contract = name("cyber.wrap");
-static const auto msig_contract = name("cyber.msig");
 
 bool have_domain_contract();
 bytes variant_to_bin(const account_name& account, const action_name& action, const fc::variant& action_args_var);
@@ -411,8 +411,11 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
          }
       }
 
-        bool declare_names = !tx_dont_declare_names && tx_resolved_names.size() > 0 && have_domain_contract();
+        bool declare_names = !tx_dont_declare_names && tx_resolved_names.size() > 0;
         if (declare_names) {
+            FC_ASSERT(have_domain_contract(),
+                "Can't declare resolved names. Either install ${c} contract, or use --dont-declare-names option",
+                ("c", domain_contract));
             std::sort(tx_resolved_names.begin(), tx_resolved_names.end(), [](const auto& a, const auto& b) {
                 return a.domain < b.domain || (a.domain == b.domain && a.account < b.account);
             });
@@ -2699,7 +2702,7 @@ int main( int argc, char** argv ) {
    auto setActionPermission = set_action_permission_subcommand(setAction);
 
    // Transfer subcommand
-   string con = token_contract.to_string();
+   string con = name(token_contract).to_string();
    string sender;
    string recipient;
    string amount;
@@ -3299,7 +3302,7 @@ int main( int argc, char** argv ) {
    wrap->require_subcommand();
 
    // wrap exec
-   string wrap_con = wrap_contract.to_string();
+   string wrap_con = name(wrap_contract).to_string();
    executer = "";
    string trx_to_exec;
    auto wrap_exec = wrap->add_subcommand("exec", localized("Execute a transaction while bypassing authorization checks"));
