@@ -23,11 +23,19 @@ public:
         for(auto& evt: abi.events) {
             events_.emplace(evt.name, evt.type);
         }
+        for(auto& act: abi.actions) {
+            actions_.emplace(act.name, act.type);
+        }
     }
 
     std::string get_event_type(const chain::event_name& n) const {
         auto itr = events_.find(n);
         return (itr != events_.end()) ? itr->second : std::string();
+    }
+
+    std::string get_action_type(const chain::event_name& n) const {
+        auto itr = actions_.find(n);
+        return (itr != actions_.end()) ? itr->second : std::string();
     }
 
     fc::variant to_object(
@@ -44,6 +52,7 @@ private:
     const account_name code_;
     eosio::chain::abi_serializer serializer_;
     fc::flat_map<chain::event_name,chain::type_name> events_;
+    fc::flat_map<chain::action_name,chain::type_name> actions_;
 };
 
 class event_engine_plugin_impl {
@@ -78,30 +87,60 @@ public:
         }
     }
 
-    fc::variant unpack_event_data(const chain::event &evt) {
-        auto itr = abi_map.find(evt.account);
+    const abi_info *get_account_abi(name account) {
+        auto itr = abi_map.find(account);
         if(itr == abi_map.end()) {
             try {
-                const auto& a = db.get_account(evt.account);
+                const auto& a = db.get_account(account);
                 if(a.abi.size() > 0) {
-                    abi_info info(evt.account, a.get_abi(), abi_serializer_max_time);
-                    itr = abi_map.emplace(evt.account, std::move(info)).first;
+                    abi_info info(account, a.get_abi(), abi_serializer_max_time);
+                    itr = abi_map.emplace(account, std::move(info)).first;
                 }
             } catch(const fc::exception &err) {
                 ilog("Can't process ABI for ${account}: ${err}",
-                        ("account", evt.account)("err", err.to_string()));
-                return fc::variant();
+                        ("account", account)("err", err.to_string()));
+                return nullptr;
             }
         }
 
         if(itr == abi_map.end()) {
-            ilog("Missing ABI-description for ${account}", ("account", evt.account));
+            ilog("Missing ABI-description for ${account}", ("account", account));
+            return nullptr;
+        }
+
+        return &itr->second;
+    }
+
+    fc::variant unpack_action_data(const chain::action &act) {
+        const auto *abi = get_account_abi(act.account);
+        if(abi == nullptr) {
             return fc::variant();
         }
 
-        const auto &info = itr->second;
+        auto action_type = abi->get_action_type(act.name);
+        if(action_type == std::string()) {
+            ilog("Missing ABI-description for action ${account}:${action}",
+                    ("account", act.account)("event", act.name));
+            return fc::variant();
+        }
 
-        auto event_type = info.get_event_type(evt.name);
+        try {
+            auto result = abi->to_object(action_type, act.data.data(), act.data.size(), abi_serializer_max_time);
+            return result;
+        } catch (const fc::exception &err) {
+            ilog("Can't unpack arguments for action ${account}:${action}: ${err}",
+                    ("account", act.account)("event", act.name)("err", err.to_string()));
+            return fc::variant();
+        }
+    }
+
+    fc::variant unpack_event_data(const chain::event &evt) {
+        const auto *abi = get_account_abi(evt.account);
+        if(abi == nullptr) {
+            return fc::variant();
+        }
+
+        auto event_type = abi->get_event_type(evt.name);
         if(event_type == std::string()) {
             ilog("Missing ABI-description for event ${account}:${event}",
                     ("account", evt.account)("event", evt.name));
@@ -109,10 +148,10 @@ public:
         }
 
         try {
-            auto result = info.to_object(event_type, evt.data.data(), evt.data.size(), abi_serializer_max_time);
+            auto result = abi->to_object(event_type, evt.data.data(), evt.data.size(), abi_serializer_max_time);
             return result;
         } catch (const fc::exception &err) {
-            ilog("Can't unpack arguments for ${account}:${event}: ${err}",
+            ilog("Can't unpack arguments for event ${account}:${event}: ${err}",
                     ("account", evt.account)("event", evt.name)("err", err.to_string()));
             return fc::variant();
         }
@@ -171,6 +210,10 @@ void event_engine_plugin_impl::applied_transaction(const chain::transaction_trac
         ActionData actData;
         actData.code = trace.act.account;
         actData.action = trace.act.name;
+        actData.args = unpack_action_data(trace.act);
+        if(actData.args.is_null()) {
+            actData.data = trace.act.data;
+        }
 
         std::vector<chain::name> events;
         for(auto &event: trace.events) {
