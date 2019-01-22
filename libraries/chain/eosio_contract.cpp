@@ -197,8 +197,7 @@ void apply_eosio_setabi(apply_context& context) {
       aso.abi_sequence += 1;
    });
 
-   // context.chaindb.remove_abi(act.account);
-   context.chaindb.add_abi(act.account, account.get_abi());
+   context.control.set_abi(act.account, account.get_abi());
 
    if (new_size != old_size) {
       context.add_ram_usage( act.account, new_size - old_size );

@@ -269,6 +269,8 @@ namespace eosio { namespace chain {
          signal<void(const header_confirmation&)>      accepted_confirmation;
          signal<void(const int&)>                      bad_alloc;
 
+         signal<void(const std::tuple<name,const abi_def&>&)> setabi;
+
          /*
          signal<void()>                                  pre_apply_block;
          signal<void()>                                  post_apply_block;
@@ -279,6 +281,7 @@ namespace eosio { namespace chain {
          signal<void(const transaction_trace_ptr&)>  post_apply_action;
          */
 
+         void set_abi(name account, const abi_def& abi);
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
          wasm_interface& get_wasm_interface();
 

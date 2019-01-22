@@ -55,6 +55,7 @@ public:
     fc::optional<boost::signals2::scoped_connection> irreversible_block_connection;
     fc::optional<boost::signals2::scoped_connection> accepted_transaction_connection;
     fc::optional<boost::signals2::scoped_connection> applied_transaction_connection;
+    fc::optional<boost::signals2::scoped_connection> setabi_connection;
 
     std::fstream dumpstream;
     bool dumpstream_opened;
@@ -63,6 +64,7 @@ public:
     controller &db;
     fc::microseconds abi_serializer_max_time;
 
+    void set_abi(name account, const abi_def& abi);
     void accepted_block( const chain::block_state_ptr& );
     void irreversible_block(const chain::block_state_ptr&);
     void accepted_transaction(const chain::transaction_metadata_ptr&);
@@ -123,6 +125,21 @@ event_engine_plugin_impl::event_engine_plugin_impl(controller &db, fc::microseco
 }
 
 event_engine_plugin_impl::~event_engine_plugin_impl() {
+}
+
+void event_engine_plugin_impl::set_abi(name account, const abi_def& abi) {
+    auto itr = abi_map.find(account);
+    if(itr != abi_map.end()) {
+        try {
+            abi_map.erase(itr);
+            abi_info info(account, abi, abi_serializer_max_time);
+            abi_map.emplace(account, std::move(info));
+            ilog("ABI updated for ${account}", ("account", account));
+        } catch(const fc::exception &err) {
+            ilog("Can't process ABI for ${account}: ${err}",
+                    ("account", account)("err", err.to_string()));
+        }
+    }
 }
 
 void event_engine_plugin_impl::accepted_block( const chain::block_state_ptr& state) {
@@ -223,6 +240,10 @@ void event_engine_plugin::plugin_initialize(const variables_map& options) {
         my->applied_transaction_connection.emplace(
                 chain.applied_transaction.connect( [&]( const chain::transaction_trace_ptr& t ) {
                     my->applied_transaction( t );
+                } ));
+        my->setabi_connection.emplace(
+                chain.setabi.connect( [&]( const std::tuple<chain::name,const chain::abi_def&> arg) {
+                    my->set_abi( std::get<0>(arg), std::get<1>(arg) );
                 } ));
 
         ilog("event_engine initialized");
