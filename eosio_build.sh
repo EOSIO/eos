@@ -262,8 +262,9 @@ fi
 (. ${CURRENT_DIR}/scripts/clean_old_install.sh)
 if [ $? -ne 0 ]; then exit -1; fi # Stop if exit from script is not 0
 
-cd $SRC_LOCATION
+pushd $SRC_LOCATION &> /dev/null
 . "$FILE" # Execute OS specific build file
+popd &> /dev/null
 
 printf "\\n========================================================================\\n"
 printf "======================= Starting EOSIO Build =======================\\n"
