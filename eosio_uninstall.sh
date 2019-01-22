@@ -13,12 +13,12 @@ binaries=(cleos
           eosio-applesdemo)
 
 if [ -d $OPT_LOCATION/eosio ]; then
-   printf "\tDo you wish to remove this install? (requires sudo)\n"
+   printf "Do you wish to remove this install? (requires sudo)\n"
    select yn in "Yes" "No"; do
       case $yn in
          [Yy]* )
             if [ "$(id -u)" -ne 0 ]; then
-               printf "\n\tThis requires sudo, please run ./eosio_uninstall.sh with sudo\n\n"
+               printf "\nThis requires sudo, please run ./eosio_uninstall.sh with sudo\n\n"
                exit -1
             fi
 
@@ -42,7 +42,7 @@ if [ -d $OPT_LOCATION/eosio ]; then
 
             break;;
          [Nn]* )
-            printf "\tAborting uninstall\n\n"
+            printf "Aborting uninstall\n\n"
             exit -1;;
       esac
    done
