@@ -612,7 +612,7 @@ fc::variant bin_to_variant( const account_name& account, const action_name& acti
    return abis->binary_to_variant( action_type, action_args, abi_serializer_max_time );
 }
 
-fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::legacy_parser)
+fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::default_parser)
 {
    regex r("^[ \t]*[\{\[]");
    if ( !regex_search(file_or_str, r) && fc::is_regular_file(file_or_str) ) {
