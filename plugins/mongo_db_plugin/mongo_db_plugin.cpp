@@ -228,31 +228,18 @@ bool mongo_db_plugin_impl::filter_include( const account_name& receiver, const a
    if( filter_on_star ) {
       include = true;
    } else {
-      auto itr = std::find_if( filter_on.cbegin(), filter_on.cend(), [&receiver, &act_name]( const auto& filter ) {
-         return filter.match( receiver, act_name, 0 );
-      } );
-      if( itr != filter_on.cend() ) {
-         include = true;
-      } else {
-         for( const auto& a : authorization ) {
-            auto itr = std::find_if( filter_on.cbegin(), filter_on.cend(), [&receiver, &act_name, &a]( const auto& filter ) {
-               return filter.match( receiver, act_name, a.actor );
-            } );
-            if( itr != filter_on.cend() ) {
-               include = true;
-               break;
-            }
+      for( const auto& a : authorization ) {
+         auto itr = std::find_if( filter_on.cbegin(), filter_on.cend(), [&receiver, &act_name, &a]( const auto& filter ) {
+            return filter.match( receiver, act_name, a.actor );
+         } );
+         if( itr != filter_on.cend() ) {
+            include = true;
+            break;
          }
       }
    }
 
    if( !include ) { return false; }
-   if( filter_out.empty() ) { return true; }
-
-   auto itr = std::find_if( filter_out.cbegin(), filter_out.cend(), [&receiver, &act_name]( const auto& filter ) {
-      return filter.match( receiver, act_name, 0 );
-   } );
-   if( itr != filter_out.cend() ) { return false; }
 
    for( const auto& a : authorization ) {
       auto itr = std::find_if( filter_out.cbegin(), filter_out.cend(), [&receiver, &act_name, &a]( const auto& filter ) {
