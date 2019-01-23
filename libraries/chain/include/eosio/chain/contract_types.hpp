@@ -198,14 +198,14 @@ SYS_ACTION_STRUCT(linkdomain)
    domain_name name;
 SYS_ACTION_STRUCT_END;
 
-SYS_ACTION_STRUCT(unlnkdomain)
+SYS_ACTION_STRUCT(unlinkdomain)
    account_name owner;
    domain_name name;
 SYS_ACTION_STRUCT_END;
 
 SYS_ACTION_STRUCT(newusername)
+   account_name creator;
    account_name owner;
-   account_name scope;
    username name;
 SYS_ACTION_STRUCT_END;
 
@@ -264,5 +264,5 @@ FC_REFLECT( eosio::chain::onerror                          , (sender_id)(sent_tr
 FC_REFLECT(eosio::chain::newdomain,    (creator)(name))
 FC_REFLECT(eosio::chain::passdomain,   (from)(to)(name))
 FC_REFLECT(eosio::chain::linkdomain,   (owner)(to)(name))
-FC_REFLECT(eosio::chain::unlnkdomain,  (owner)(name))
-FC_REFLECT(eosio::chain::newusername,  (owner)(scope)(name))
+FC_REFLECT(eosio::chain::unlinkdomain, (owner)(name))
+FC_REFLECT(eosio::chain::newusername,  (creator)(owner)(name))
