@@ -103,7 +103,7 @@ void blocklog::read_log() {
                  (pretty_output.get_object());
       fc::variant v(std::move(enhanced_object));
        if (no_pretty_print)
-          fc::json::to_stream(*out, v, fc::json::stringify_large_ints_and_doubles);
+          fc::json::to_stream(*out, v, fc::json::default_generator);
        else
           *out << fc::json::to_pretty_string(v) << "\n";
    };
