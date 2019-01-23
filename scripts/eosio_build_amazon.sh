@@ -61,7 +61,7 @@ select yn in "Yes" "No"; do
 	case $yn in
 		[Yy]* ) 
 			printf "\\n\\nUpdating...\\n\\n"
-			if ! sudo "${YUM}" -y update; then
+			if ! "${YUM}" -y update; then
 				printf "\\nYUM update failed.\\n"
 				printf "\\nExiting now.\\n\\n"
 				exit 1;
@@ -96,7 +96,7 @@ if [ "${COUNT}" -gt 1 ]; then
 		case $yn in
 			[Yy]* )
 				printf "Installing dependencies\\n\\n"
-				if ! sudo "${YUM}" -y install ${DEP}; then
+				if ! "${YUM}" -y install ${DEP}; then
 					printf "!! YUM dependency installation failed !!\\n"
 					printf "Exiting now.\\n"
 					exit 1;

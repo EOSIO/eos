@@ -84,7 +84,7 @@ select yn in "Yes" "No"; do
 	case $yn in
 		[Yy]* ) 
 			printf "\\n\\nUpdating...\\n\\n"
-			if ! sudo apt-get update; then
+			if ! apt-get update; then
 				printf "\\nAPT update failed.\\n"
 				printf "\\nExiting now.\\n\\n"
 				exit 1;
@@ -121,7 +121,7 @@ if [ "${COUNT}" -gt 1 ]; then
 		case $yn in
 			[Yy]* ) 
 				printf "\\n\\nInstalling dependencies\\n\\n"
-				if ! sudo apt-get -y install ${DEP}
+				if ! apt-get -y install ${DEP}
 				then
 					printf "\\nDPKG dependency failed.\\n"
 					printf "\\nExiting now.\\n"
