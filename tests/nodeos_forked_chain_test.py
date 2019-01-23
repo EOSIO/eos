@@ -320,6 +320,7 @@ try:
     nextProdChange=False
     #identify the earliest LIB to start identify the earliest block to check if divergent branches eventually reach concensus
     (headBlockNum, libNumAroundDivergence)=getMinHeadAndLib(prodNodes)
+    Print("Tracking block producers from %d till divergence or %d. Head block is %d and lowest LIB is %d" % (preKillBlockNum, lastBlockNum, headBlockNum, libNumAroundDivergence))
     for blockNum in range(preKillBlockNum,lastBlockNum):
         #avoiding getting LIB until my current block passes the head from the last time I checked
         if blockNum>headBlockNum:
@@ -353,7 +354,7 @@ try:
     if nonProdNode.verifyAlive():
         Utils.errorExit("Expected the non-producing node to have shutdown.")
 
-    Print("Analyzing the producers leading up to the block after killing the non-producing node")
+    Print("Analyzing the producers leading up to the block after killing the non-producing node, expecting divergence at %d" % (blockNum))
 
     firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=True)
     # Nodes should not have diverged till the last block
@@ -363,13 +364,14 @@ try:
     blockProducers1=[]
 
     for prodNode in prodNodes:
-        prodNode.getInfo()
-
-
-    Print("Tracking the blocks from the divergence till there are 10*12 blocks on one chain and 10*12+1 on the other")
+        info=prodNode.getInfo()
+        Print("node info: %s" % (info))
 
     killBlockNum=blockNum
     lastBlockNum=killBlockNum+(maxActiveProducers - 1)*inRowCountPerProducer+1  # allow 1st testnet group to produce just 1 more block than the 2nd
+
+    Print("Tracking the blocks from the divergence till there are 10*12 blocks on one chain and 10*12+1 on the other, from block %d to %d" % (killBlockNum, lastBlockNum))
+
     for blockNum in range(killBlockNum,lastBlockNum):
         blockProducer0=prodNodes[0].getBlockProducerByNum(blockNum)
         blockProducer1=prodNodes[1].getBlockProducerByNum(blockNum)
@@ -377,7 +379,7 @@ try:
         blockProducers1.append({"blockNum":blockNum, "prod":blockProducer1})
 
 
-    Print("Analyzing the producers from the divergence to the lastBlockNum and verify they stay diverged")
+    Print("Analyzing the producers from the divergence to the lastBlockNum and verify they stay diverged, expecting divergence at block %d" % (killBlockNum))
 
     firstDivergence=analyzeBPs(blockProducers0, blockProducers1, expectDivergence=True)
     if firstDivergence!=killBlockNum:
@@ -385,6 +387,9 @@ try:
     blockProducers0=[]
     blockProducers1=[]
 
+    for prodNode in prodNodes:
+        info=prodNode.getInfo()
+        Print("node info: %s" % (info))
 
     Print("Relaunching the non-producing bridge node to connect the producing nodes again")
 
@@ -392,13 +397,23 @@ try:
         errorExit("Failure - (non-production) node %d should have restarted" % (nonProdNode.nodeNum))
 
 
-    Print("Identifying the producers from the saved LIB to the current highest head")
+    Print("Waiting to allow forks to resolve")
+
+    for prodNode in prodNodes:
+        info=prodNode.getInfo()
+        Print("node info: %s" % (info))
 
     #ensure that the nodes have enough time to get in concensus, so wait for 3 producers to produce their complete round
     time.sleep(inRowCountPerProducer * 3 / 2)
 
+    for prodNode in prodNodes:
+        info=prodNode.getInfo()
+        Print("node info: %s" % (info))
+
     # ensure all blocks from the lib before divergence till the current head are now in consensus
     endBlockNum=max(prodNodes[0].getBlockNum(), prodNodes[1].getBlockNum())
+
+    Print("Identifying the producers from the saved LIB to the current highest head, from block %d to %d" % (libNumAroundDivergence, endBlockNum))
 
     for blockNum in range(libNumAroundDivergence,endBlockNum):
         blockProducer0=prodNodes[0].getBlockProducerByNum(blockNum)
