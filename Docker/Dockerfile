@@ -1,4 +1,5 @@
-FROM cyberway/builder:latest as builder
+ARG builder=master
+FROM cyberway/builder:$builder as builder
 ARG branch=master
 ARG symbol=CYBER
 
@@ -22,7 +23,7 @@ RUN cd cyberway \
 FROM ubuntu:18.04
 
 RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl ca-certificates \
+    && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl ca-certificates libicu60 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/lib/* /usr/local/lib/

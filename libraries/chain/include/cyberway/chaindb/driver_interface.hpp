@@ -24,6 +24,11 @@ namespace cyberway { namespace chaindb {
 
         virtual void drop_db() = 0;
 
+        virtual std::vector<table_def> db_tables(const account_name& code) const = 0;
+        virtual void create_index(const index_info&) const = 0;
+        virtual void drop_index(const index_info&) const = 0;
+        virtual void drop_table(const table_info&) const = 0;
+
         virtual const cursor_info& clone(const cursor_request&) = 0;
 
         virtual void close(const cursor_request&) = 0;
@@ -31,8 +36,6 @@ namespace cyberway { namespace chaindb {
 
         virtual void apply_all_changes() = 0;
         virtual void apply_code_changes(const account_name& code) = 0;
-
-        virtual void verify_table_structure(const table_info&, const microseconds&) = 0;
 
         virtual const cursor_info& lower_bound(index_info, variant key) = 0;
         virtual const cursor_info& upper_bound(index_info, variant key) = 0;

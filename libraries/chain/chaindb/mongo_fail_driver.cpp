@@ -13,6 +13,22 @@ namespace cyberway { namespace chaindb {
 
     mongodb_driver::~mongodb_driver() = default;
 
+    std::vector<table_def> mongodb_driver::db_tables(const account_name&) const {
+        NOT_SUPPORTED;
+    }
+
+    void mongodb_driver::create_index(const index_info&) const {
+        NOT_SUPPORTED;
+    }
+
+    void mongodb_driver::drop_index(const index_info&) const {
+        NOT_SUPPORTED;
+    }
+
+    void mongodb_driver::drop_table(const table_info&) const {
+        NOT_SUPPORTED;
+    }
+
     const cursor_info& mongodb_driver::clone(const cursor_request&) {
         NOT_SUPPORTED;
     }
@@ -26,10 +42,6 @@ namespace cyberway { namespace chaindb {
     }
 
     void mongodb_driver::apply_changes() {
-        NOT_SUPPORTED;
-    }
-
-    void mongodb_driver::verify_table_structure(const table_info&, const microseconds&) {
         NOT_SUPPORTED;
     }
 
