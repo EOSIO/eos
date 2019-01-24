@@ -275,48 +275,48 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 https://github.com/mongodb/mongo-c-driver/releases/download/1.10.2/mongo-c-driver-1.10.2.tar.gz )
+		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz )
 		if [ "${STATUS}" -ne 200 ]; then
-			if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.10.2.tar.gz"
+			if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.13.0.tar.gz"
 			then
-				printf "\\tUnable to remove file %s/mongo-c-driver-1.10.2.tar.gz.\\n" "${TEMP_DIR}"
+				printf "\\tUnable to remove file %s/mongo-c-driver-1.13.0.tar.gz.\\n" "${TEMP_DIR}"
 			fi
 			printf "\\tUnable to download MongoDB C driver at this time.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! tar xf mongo-c-driver-1.10.2.tar.gz
+		if ! tar xf mongo-c-driver-1.13.0.tar.gz
 		then
-			printf "\\tUnable to unarchive file %s/mongo-c-driver-1.10.2.tar.gz.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to unarchive file %s/mongo-c-driver-1.13.0.tar.gz.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.10.2.tar.gz"
+		if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.13.0.tar.gz"
 		then
-			printf "\\tUnable to remove file mongo-c-driver-1.10.2.tar.gz.\\n"
+			printf "\\tUnable to remove file mongo-c-driver-1.13.0.tar.gz.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! cd "${TEMP_DIR}"/mongo-c-driver-1.10.2
+		if ! cd "${TEMP_DIR}"/mongo-c-driver-1.13.0
 		then
-			printf "\\tUnable to cd into directory %s/mongo-c-driver-1.10.2.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to cd into directory %s/mongo-c-driver-1.13.0.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! mkdir cmake-build
 		then
-			printf "\\tUnable to create directory %s/mongo-c-driver-1.10.2/cmake-build.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to create directory %s/mongo-c-driver-1.13.0/cmake-build.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! cd cmake-build
 		then
-			printf "\\tUnable to enter directory %s/mongo-c-driver-1.10.2/cmake-build.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to enter directory %s/mongo-c-driver-1.13.0/cmake-build.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_BSON=ON \
-		-DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON ..
+		-DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF ..
 		then
 			printf "\\tConfiguring MongoDB C driver has encountered the errors above.\\n"
 			printf "\\tExiting now.\\n\\n"
@@ -340,13 +340,13 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! rm -rf "${TEMP_DIR}/mongo-c-driver-1.10.2"
+		if ! rm -rf "${TEMP_DIR}/mongo-c-driver-1.13.0"
 		then
-			printf "\\tUnable to remove directory %s/mongo-c-driver-1.10.2.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to remove directory %s/mongo-c-driver-1.13.0.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/v3.3 --depth 1
+		if ! git clone https://github.com/mongodb/mongo-cxx-driver.git --branch r3.4.0 --depth 1
 		then
 			printf "\\tUnable to clone MongoDB C++ driver at this time.\\n"
 			printf "\\tExiting now.\\n\\n"
