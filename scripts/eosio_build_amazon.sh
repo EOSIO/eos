@@ -137,6 +137,7 @@ fi
 
 printf "\\n"
 
+
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
 if [ ! -d $BOOST_ROOT ]; then
 	printf "Installing Boost library...\\n"

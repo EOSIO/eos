@@ -201,10 +201,9 @@ else
 	printf "No required Home Brew dependencies to install.\\n"
 fi
 
-# Failed to find Gettext libintl (missing: Intl_INCLUDE_DIR); known bug
-brew unlink gettext 2> /dev/null && brew link --force gettext
 
 printf "\\n"
+
 
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
 if [ ! -d $BOOST_ROOT ]; then
@@ -223,6 +222,9 @@ if [ ! -d $BOOST_ROOT ]; then
 else
 	printf " - Boost library found with correct version @ ${BOOST_ROOT}.\\n"
 fi
+
+
+printf "\\n"
 
 
 printf "\\nChecking MongoDB installation...\\n"
