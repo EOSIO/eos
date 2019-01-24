@@ -52,14 +52,13 @@ bldred=${txtbld}$(tput setaf 1)
 txtrst=$(tput sgr0)
 
 create_symlink() {
-   pushd $BIN_LOCATION &> /dev/null
-   printf "ln -sf ${OPT_LOCATION}/eosio/bin/${1} ${BIN_LOCATION}/${1}\\n"
-   ln -sf $OPT_LOCATION/eosio/bin/$1 $1
-   popd &> /dev/null
+   printf " ln -sf ${OPT_LOCATION}/eosio/bin/${1} ${BIN_LOCATION}/${1}\\n"
+   ln -sf $OPT_LOCATION/eosio/bin/$1 $BIN_LOCATION/$1
 }
 
 create_cmake_symlink() {
    mkdir -p $LIB_LOCATION/cmake/eosio
+   printf " ln -sf ${OPT_LOCATION}/eosio.cdt/lib/cmake/eosio/${1} ${LIB_LOCATION}/cmake/eosio/${1}\\n"
    ln -sf $OPT_LOCATION/eosio/lib/cmake/eosio/$1 $LIB_LOCATION/cmake/eosio/$1
 }
 
@@ -69,7 +68,7 @@ install_symlinks() {
    create_symlink "eosio-launcher"
    create_symlink "keosd"
    create_symlink "nodeos"
-   printf " - Installed binaries into ${BIN_LOCATION}!"
+   printf "Installed binaries into ${BIN_LOCATION}!"
 }
 
 if [ ! -d $BUILD_DIR ]; then
@@ -77,30 +76,33 @@ if [ ! -d $BUILD_DIR ]; then
    exit -1
 fi
 
-if ! pushd "${BUILD_DIR}"
-then
+if ! pushd "${BUILD_DIR}" &> /dev/null;then
    printf "Unable to enter build directory %s.\\n Exiting now.\\n" "${BUILD_DIR}"
    exit 1;
 fi
 
-if ! make install
-then
+if ! make install; then
    printf "\\n>>>>>>>>>>>>>>>>>>>> MAKE installing EOSIO has exited with the above error.\\n\\n"
    exit -1
 fi
 popd &> /dev/null 
 
-install_symlinks   
+install_symlinks
+printf "\\n\\nInstalling EOSIO.CDT CMAKE file Symlinks...\\n"
 create_cmake_symlink "eosio-config.cmake"
+printf "Installed CMAKE files into ${LIB_LOCATION}/cmake/eosio!\\n"
 
-printf "\n _______  _______  _______ _________ _______\n"
-printf '(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
-printf "| (    \/| (   ) || (    \/   ) (   | (   ) |\n"
-printf "| (__    | |   | || (_____    | |   | |   | |\n"
-printf "|  __)   | |   | |(_____  )   | |   | |   | |\n"
-printf "| (      | |   | |      ) |   | |   | |   | |\n"
-printf "| (____/\| (___) |/\____) |___) (___| (___) |\n"
-printf "(_______/(_______)\_______)\_______/(_______)\n\n"
+printf "\n${bldred}      ___           ___           ___                       ___\n"
+printf "     /  /\\         /  /\\         /  /\\        ___          /  /\\ \n"
+printf "    /  /:/_       /  /::\\       /  /:/_      /  /\\        /  /::\\ \n"
+printf "   /  /:/ /\\     /  /:/\\:\\     /  /:/ /\\    /  /:/       /  /:/\\:\\ \n"
+printf "  /  /:/ /:/_   /  /:/  \\:\\   /  /:/ /::\\  /__/::\\      /  /:/  \\:\\ \n"
+printf " /__/:/ /:/ /\\ /__/:/ \\__\\:\\ /__/:/ /:/\\:\\ \\__\\/\\:\\__  /__/:/ \\__\\:\\ \n"
+printf " \\  \\:\\/:/ /:/ \\  \\:\\ /  /:/ \\  \\:\\/:/~/:/    \\  \\:\\/\\ \\  \\:\\ /  /:/ \n"
+printf "  \\  \\::/ /:/   \\  \\:\\  /:/   \\  \\::/ /:/      \\__\\::/  \\  \\:\\  /:/ \n"
+printf "   \\  \\:\\/:/     \\  \\:\\/:/     \\__\\/ /:/       /__/:/    \\  \\:\\/:/ \n"
+printf "    \\  \\::/       \\  \\::/        /__/:/        \\__\\/      \\  \\::/ \n"
+printf "     \\__\\/         \\__\\/         \\__\\/                     \\__\\/ \n\n${txtrst}"
 
 printf "==============================================================================================\\n"
 printf "Please execute (and append to .bash_profile) the following:\\n"
@@ -108,9 +110,6 @@ printf "${bldred}${txtbld}export LD_LIBRARY_PATH=\"${LIB_LOCATION}:$\LD_LIBRARY_
 printf "export PATH=$BIN_LOCATION:\$PATH${txtrst}\\n"
 printf "==============================================================================================\\n\\n"
 
-printf "For more information:\\n"
 printf "EOSIO website: https://eos.io\\n"
-printf "EOSIO Telegram channel @ https://t.me/EOSProject\\n"
 printf "EOSIO resources: https://eos.io/resources/\\n"
 printf "EOSIO Stack Exchange: https://eosio.stackexchange.com\\n"
-printf "EOSIO wiki: https://github.com/EOSIO/eos/wiki\\n\\n\\n"
