@@ -60,9 +60,7 @@ create_symlink() {
 
 create_cmake_symlink() {
    mkdir -p $LIB_LOCATION/cmake/eosio
-   pushd $LIB_LOCATION/cmake/eosio &> /dev/null
-   ln -sf $OPT_LOCATION/eosio/lib/cmake/eosio/$1 $1
-   popd &> /dev/null
+   ln -sf $OPT_LOCATION/eosio/lib/cmake/eosio/$1 $LIB_LOCATION/cmake/eosio/$1
 }
 
 install_symlinks() {
