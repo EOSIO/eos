@@ -120,7 +120,7 @@ public:
         auto action_type = abi->get_action_type(act.name);
         if(action_type == std::string()) {
             ilog("Missing ABI-description for action ${account}:${action}",
-                    ("account", act.account)("event", act.name));
+                    ("account", act.account)("action", act.name));
             return fc::variant();
         }
 
@@ -205,9 +205,10 @@ void event_engine_plugin_impl::accepted_transaction(const chain::transaction_met
 void event_engine_plugin_impl::applied_transaction(const chain::transaction_trace_ptr& trx_trace) {
     ilog("Applied trx: ${block_num}, ${id}", ("block_num", trx_trace->block_num)("id", trx_trace->id));
 
-    std::function<void(ApplyTrxMessage &msg, const chain::action_trace&)> process_action_trace = 
-    [&](ApplyTrxMessage &msg, const chain::action_trace& trace) {
+    std::function<void(std::vector<ActionData> &msg, const chain::action_trace&)> process_action_trace = 
+    [&](std::vector<ActionData> &msg, const chain::action_trace& trace) {
         ActionData actData;
+        actData.receiver = trace.receipt.receiver;
         actData.code = trace.act.account;
         actData.action = trace.act.name;
         actData.args = unpack_action_data(trace.act);
@@ -227,16 +228,16 @@ void event_engine_plugin_impl::applied_transaction(const chain::transaction_trac
             }
             actData.events.push_back(evData);
         }
-        msg.actions.push_back(actData);
         ilog("  action: ${contract}:${action} ${events}", ("contract", trace.act.account)("action", trace.act.name)("events", events));
         for(auto &inline_trace: trace.inline_traces) {
-            process_action_trace(msg, inline_trace);
+            process_action_trace(actData.inlines, inline_trace);
         }
+        msg.push_back(std::move(actData));
     };
 
     ApplyTrxMessage msg(BaseMessage::ApplyTrx, trx_trace);
     for(auto &trace: trx_trace->action_traces) {
-        process_action_trace(msg, trace);
+        process_action_trace(msg.actions, trace);
     }
     send_message(msg);
 }

@@ -15,11 +15,13 @@ namespace eosio {
    };
 
    struct ActionData {
+       chain::account_name receiver;
        chain::account_name code;
        chain::action_name  action;
        fc::variant         args;
        chain::bytes        data;
        std::vector<EventData> events;
+       std::vector<ActionData> inlines;
    };
 
    struct TrxMetadata {
@@ -108,7 +110,7 @@ namespace eosio {
 } // namespace eosio
 
 FC_REFLECT(eosio::EventData, (code)(event)(data)(args))
-FC_REFLECT(eosio::ActionData, (code)(action)(data)(args)(events))
+FC_REFLECT(eosio::ActionData, (receiver)(code)(action)(data)(args)(events)(inlines))
 FC_REFLECT(eosio::TrxMetadata, (id)(accepted)(implicit)(scheduled))
 
 FC_REFLECT_ENUM(eosio::BaseMessage::MsgType, (Unknown)(AcceptBlock)(CommitBlock)(AcceptTrx)(ApplyTrx))
