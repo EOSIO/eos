@@ -1128,6 +1128,21 @@ class console_api : public context_aware_api {
       bool ignore;
 };
 
+
+class bandwith_api : public context_aware_api {
+    public:
+        bandwith_api( apply_context& ctx )
+        : context_aware_api(ctx,true) {}
+
+        int64_t get_bw_cpu_limit() const {
+            return context.trx_context.get_provided_cpu_limit();
+        }
+
+        int64_t get_bw_net_limit() const {
+            return context.trx_context.get_provided_net_limit();
+        }
+};
+
 #define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
          return context.IDX.store( scope, table, payer, id, secondary );\
@@ -1866,6 +1881,13 @@ REGISTER_INTRINSICS(console_api,
    (printn,                void(int64_t)  )
    (printhex,              void(int, int) )
 );
+
+
+REGISTER_INTRINSICS(bandwith_api,
+    (get_bw_cpu_limit, int64_t())
+    (get_bw_net_limit, int64_t())
+);
+
 
 REGISTER_INTRINSICS(context_free_transaction_api,
    (read_transaction,       int(int, int)            )
