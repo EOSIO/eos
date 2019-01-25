@@ -524,13 +524,13 @@ authority parse_json_authority(const std::string& authorityJsonOrFile) {
    } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON '${data}'", ("data",authorityJsonOrFile))
 }
 
-authority parse_json_authority_or_key(const std::string& authorityJsonOrFile, vector<permission_level> checklist = {}) {
+authority parse_json_authority_or_key(const std::string& authorityJsonOrFile, vector<permission_level> unsatisfiable_permissions = {}) {
    // if authority is given by permission level, '@' should appear within first 13 characters.
    if (authorityJsonOrFile.substr(0, 13).find('@') != string::npos) {
       try {
          auto permission = to_permission_level(authorityJsonOrFile);
-         for( auto p : checklist ) {
-            EOS_ASSERT(permission != p, authority_type_exception, "Setting authority by itself will lock up account permanently");
+         for( auto p : unsatisfiable_permissions ) {
+            EOS_ASSERT(permission != p, authority_type_exception, "Setting authority by the given one might lock up account permanently");
          }
          return authority(permission);
       } EOS_RETHROW_EXCEPTIONS(explained_exception, "Invalid permission level: ${permission}", ("permission", authorityJsonOrFile))
