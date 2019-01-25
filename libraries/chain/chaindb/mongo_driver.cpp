@@ -551,9 +551,18 @@ namespace cyberway { namespace chaindb {
                     for (auto& field: fields) {
                         order_def order;
 
-                        order.field = field.key().to_string();
+                        auto key = field.key();
                         // skip all fields after _SERVICE_.scope (see create_index)
-                        if (order.field == names::scope_path) break;
+                        if (!key.compare(names::scope_path)) break;
+
+                        order.field = key.to_string();
+
+                        // <FIELD_NAME>.binary - we should remove ".binary"
+                        if (order.field.size() > mongo_big_int_converter::BINARY_FIELD.size() &&
+                            key.ends_with(mongo_big_int_converter::BINARY_FIELD)
+                        ) {
+                            order.field.erase(order.field.size() - 1 - mongo_big_int_converter::BINARY_FIELD.size());
+                        }
 
                         order.order = field.get_int32().value == 1 ? names::asc_order : names::desc_order;
                         index.orders.emplace_back(std::move(order));
