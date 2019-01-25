@@ -1326,7 +1326,7 @@ fc::variant get_global_row( const database& db, const abi_def& abi, const abi_se
    return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_ms, shorten_abi_errors );
 }
 
-read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
+read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const try {
    const abi_def abi = eosio::chain_apis::get_abi(db, config::system_account_name);
    const auto table_type = get_table_type(abi, N(producers));
    const abi_serializer abis{ abi, abi_serializer_max_time };
@@ -1374,6 +1374,20 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    }
 
    result.total_producer_vote_weight = get_global_row(d, abi, abis, abi_serializer_max_time, shorten_abi_errors)["total_producer_vote_weight"].as_double();
+   return result;
+} catch (...) {
+   read_only::get_producers_result result;
+
+   for (auto p : db.active_producers().producers) {
+      fc::variant row = fc::mutable_variant_object()
+         ("owner", p.producer_name)
+         ("producer_key", p.block_signing_key)
+         ("url", "")
+         ("total_votes", 0.0f);
+
+      result.rows.push_back(row);
+   }
+
    return result;
 }
 
