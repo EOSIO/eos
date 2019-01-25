@@ -531,7 +531,9 @@ namespace cyberway { namespace chaindb {
             for (auto& info: indexes) {
                 index_def index;
 
-                auto iname = info["name"].get_utf8().value;
+                auto itr = info.find("name");
+                if (info.end() == itr) continue;
+                auto iname = itr->get_utf8().value;
                 try {
                     index.name = index_name(iname.data());
                 } catch (const eosio::chain::name_type_exception&) {
@@ -540,17 +542,22 @@ namespace cyberway { namespace chaindb {
                     continue;
                 }
 
-                index.unique = info["unique"].get_bool().value;
-                auto fields = info["key"].get_document().value;
-                for (auto& field: fields) {
-                    order_def order;
+                itr = info.find("unique");
+                if (info.end() != itr) index.unique = itr->get_bool().value;
 
-                    order.field = field.key().to_string();
-                    // skip all fields after _SERVICE_.scope (see create_index)
-                    if (order.field == names::scope_path) break;
+                itr = info.find("key");
+                if (info.end() != itr) {
+                    auto fields = itr->get_document().value;
+                    for (auto& field: fields) {
+                        order_def order;
 
-                    order.order = field.get_int32().value == 1 ? names::asc_order : names::desc_order;
-                    index.orders.emplace_back(std::move(order));
+                        order.field = field.key().to_string();
+                        // skip all fields after _SERVICE_.scope (see create_index)
+                        if (order.field == names::scope_path) break;
+
+                        order.order = field.get_int32().value == 1 ? names::asc_order : names::desc_order;
+                        index.orders.emplace_back(std::move(order));
+                    }
                 }
                 result.emplace_back(std::move(index));
             }
