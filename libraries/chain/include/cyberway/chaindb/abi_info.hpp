@@ -72,12 +72,15 @@ namespace cyberway { namespace chaindb {
             return code_;
         }
 
+        static const size_t max_table_cnt;
+        static const size_t max_index_cnt;
+
     private:
         const account_name code_;
         eosio::chain::abi_serializer serializer_;
         std::map<hash_t, table_def> table_map_;
         bool is_removed_ = false;
-        static fc::microseconds max_abi_time_;
+        static const fc::microseconds max_abi_time_;
 
         template<typename Type>
         variant to_object_(

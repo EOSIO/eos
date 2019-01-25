@@ -188,20 +188,20 @@ namespace cyberway { namespace chaindb {
         }
     }; // struct index_builder
 
-    fc::microseconds abi_info::max_abi_time_ = fc::seconds(60);
+    const fc::microseconds abi_info::max_abi_time_ = fc::seconds(60);
+    const size_t abi_info::max_table_cnt = 64;
+    const size_t abi_info::max_index_cnt = 16;
 
     abi_info::abi_info(const account_name& code, abi_def abi)
     : code_(code) {
         serializer_.set_abi(abi, max_abi_time_);
 
-        static constexpr size_t max_table_cnt = 64;
         CYBERWAY_ASSERT(abi.tables.size() <= max_table_cnt, max_table_count_exception,
             "The account '${code}' can't create more than ${max} tables",
             ("code", get_code_name(code_))("max", max_table_cnt));
 
 
         for (auto& table: abi.tables) {
-            static constexpr size_t max_index_cnt = 16;
             CYBERWAY_ASSERT(table.indexes.size() <= max_index_cnt, max_index_count_exception,
                 "The table '${table}' can't has more than ${max} indexes",
                 ("table", get_full_table_name(code_, table))("max", max_index_cnt));

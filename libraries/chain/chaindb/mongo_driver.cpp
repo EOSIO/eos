@@ -17,6 +17,7 @@
 #include <mongocxx/exception/bulk_write_exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
 #include <mongocxx/exception/query_exception.hpp>
+#include <cyberway/chaindb/abi_info.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -60,6 +61,9 @@ namespace cyberway { namespace chaindb {
     };
 
     namespace { namespace _detail {
+        static const string pk_index_postfix = "_pk";
+        static const string mongodb_id_index = "_id_";
+        static const string mongodb_indexes  = "system.indexes";
 
         template <typename Exception>
         mongo_code get_mongo_code(const Exception& e) {
@@ -527,7 +531,7 @@ namespace cyberway { namespace chaindb {
             std::vector<index_def> result;
             auto indexes = db_table.list_indexes();
 
-            result.reserve(32);
+            result.reserve(abi_info::max_index_cnt * 2);
             for (auto& info: indexes) {
                 index_def index;
 
@@ -537,8 +541,8 @@ namespace cyberway { namespace chaindb {
                 try {
                     index.name = index_name(iname.data());
                 } catch (const eosio::chain::name_type_exception&) {
-                    // MongoDB primary key specific
-                    if (iname.compare("_id_")) db_table.indexes().drop_one(iname);
+                    if (iname.ends_with(_detail::pk_index_postfix)) continue;
+                    if (iname.compare(  _detail::mongodb_id_index)) db_table.indexes().drop_one(iname);
                     continue;
                 }
 
@@ -552,8 +556,7 @@ namespace cyberway { namespace chaindb {
                         order_def order;
 
                         auto key = field.key();
-                        // skip all fields after _SERVICE_.scope (see create_index)
-                        if (!key.compare(names::scope_path)) break;
+                        if (!key.compare(names::scope_path)) continue;
 
                         order.field = key.to_string();
 
@@ -567,6 +570,9 @@ namespace cyberway { namespace chaindb {
                         order.order = field.get_int32().value == 1 ? names::asc_order : names::desc_order;
                         index.orders.emplace_back(std::move(order));
                     }
+
+                    // see create_index()
+                    if (!index.unique) index.orders.pop_back();
                 }
                 result.emplace_back(std::move(index));
             }
@@ -577,7 +583,7 @@ namespace cyberway { namespace chaindb {
             static constexpr std::chrono::milliseconds max_time(10);
             std::vector<table_def> tables;
 
-            tables.reserve(128);
+            tables.reserve(abi_info::max_table_cnt * 2);
             _detail::auto_reconnect([&]() {
                 tables.clear();
                 auto db = mongo_conn_.database(get_code_name(code));
@@ -588,7 +594,7 @@ namespace cyberway { namespace chaindb {
                     try {
                         table.name = table_name(tname);
                     } catch (const eosio::chain::name_type_exception&) {
-                        if (tname != "system.indexes") db.collection(tname).drop();
+                        if (tname != _detail::mongodb_indexes) db.collection(tname).drop();
                         continue;
                     }
                     auto db_table = db.collection(tname);
@@ -616,6 +622,7 @@ namespace cyberway { namespace chaindb {
             bool was_pk = false;
             auto& index = *info.index;
 
+            idx_doc.append(kvp(names::scope_path, 1));
             for (auto& order: index.orders) {
                 auto field = order.field;
                 // ui128 || i128
@@ -630,14 +637,22 @@ namespace cyberway { namespace chaindb {
                 was_pk |= (&order == info.pk_order);
             }
 
-            idx_doc.append(kvp(names::scope_path, 1));
             if (!was_pk && !index.unique) {
                 // when index is not unique, we add unique pk for deterministic order of records
                 idx_doc.append(kvp(info.pk_order->field, 1));
             }
 
-            auto index_name = get_index_name(info);
-            get_db_table(info).create_index(idx_doc.view(), options::index().name(index_name).unique(index.unique));
+            auto idx_name = get_index_name(info);
+            auto db_table = get_db_table(info);
+            db_table.create_index(idx_doc.view(), options::index().name(idx_name).unique(index.unique));
+
+            // for available primary key
+            if (info.pk_order == &index.orders.front()) {
+                document id_doc;
+                idx_name.append(_detail::pk_index_postfix);
+                id_doc.append(kvp(info.pk_order->field, 1));
+                db_table.create_index(id_doc.view(), options::index().name(idx_name));
+            }
         }
 
         mongodb_cursor_info& create_cursor(index_info index) {
