@@ -1,4 +1,5 @@
-FROM cyberway/builder:latest as builder
+ARG builder=master
+FROM cyberway/builder:$builder as builder
 ARG branch=master
 ARG symbol=CYBER
 

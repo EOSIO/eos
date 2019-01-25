@@ -125,6 +125,9 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
    reset_console();
 
    trace.elapsed = fc::time_point::now() - start;
+
+   trace.events = _events;
+   _events.clear();
 }
 
 void apply_context::exec( action_trace& trace )
@@ -368,6 +371,10 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
       generated_transaction_idx.remove(*gto);
    }
    return gto;
+}
+
+void apply_context::push_event( event evt ) {
+   _events.emplace_back(std::move(evt));
 }
 
 const table_id_object* apply_context::find_table( name code, name scope, name table ) {

@@ -501,8 +501,8 @@ mongodconf
 			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		MONGODRIVERTGZ="mongo-c-driver-1.10.2.tar.gz"
-		MONGODRIVERURL="https://github.com/mongodb/mongo-c-driver/releases/download/1.10.2/${MONGODRIVERTGZ}"
+		MONGODRIVERTGZ="mongo-c-driver-1.13.0.tar.gz"
+		MONGODRIVERURL="https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/${MONGODRIVERTGZ}"
 		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 "${MONGODRIVERURL}" )
 		if [ "${STATUS}" -ne 200 ]; then
 			if ! rm -f "${TEMP_DIR}/${MONGODRIVERTGZ}"; then
@@ -539,7 +539,7 @@ mongodconf
 			exit 1;
 		fi
 		if ! "${CMAKE}" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_BSON=ON \
-		-DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON ..;then
+		-DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF ..;then
 			printf "\\t!! Configuring MongoDB C driver has encountered the errors above !!\\n"
 			printf "\\tExiting now.\\n"
 			exit 1;
@@ -564,7 +564,7 @@ mongodconf
 			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		if ! git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/v3.3 --depth 1; then
+		if ! git clone https://github.com/mongodb/mongo-cxx-driver.git --branch r3.4.0 --depth 1; then
 			printf "\\t!! Unable to clone MongoDB C++ driver at this time. !!\\n"
 			printf "\\tExiting now.\\n"
 			exit 1;

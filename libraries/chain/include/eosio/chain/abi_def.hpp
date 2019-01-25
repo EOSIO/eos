@@ -62,6 +62,16 @@ struct action_def {
    string      ricardian_contract;
 };
 
+struct event_def {
+    event_def() = default;
+    event_def(const event_name& name, const type_name& type)
+        :name(name), type(type)
+    {}
+
+    event_name name;
+    type_name   type;
+};
+
 struct order_def {
    order_def() = default;
    order_def(const field_name& field, const type_name& order)
@@ -102,6 +112,7 @@ struct table_def {
 
    table_name         name;        // the name of the table
    hash_type          hash = 0;
+   int64_t            row_count = 0;
    type_name          type;        // type of binary data stored in this table
    vector<index_def>  indexes;     //
 };
@@ -138,19 +149,21 @@ struct may_not_exist {
 
 struct abi_def {
    abi_def() = default;
-   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<clause_pair>& clauses, const vector<error_message>& error_msgs)
+   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<event_def>& events, const vector<table_def>& tables, const vector<clause_pair>& clauses, const vector<error_message>& error_msgs)
    :types(types)
    ,structs(structs)
    ,actions(actions)
+   ,events(events)
    ,tables(tables)
    ,ricardian_clauses(clauses)
    ,error_messages(error_msgs)
    {}
 
-   string                              version = "cyberway::abi/1.0";
+   string                              version = "cyberway::abi/1.1";
    vector<type_def>                    types;
    vector<struct_def>                  structs;
    vector<action_def>                  actions;
+   vector<event_def>                   events;
    vector<table_def>                   tables;
    vector<clause_pair>                 ricardian_clauses;
    vector<error_message>               error_messages;
@@ -194,11 +207,12 @@ FC_REFLECT( eosio::chain::type_def                         , (new_type_name)(typ
 FC_REFLECT( eosio::chain::field_def                        , (name)(type) )
 FC_REFLECT( eosio::chain::struct_def                       , (name)(base)(fields) )
 FC_REFLECT( eosio::chain::action_def                       , (name)(type)(ricardian_contract) )
+FC_REFLECT( eosio::chain::event_def                        , (name)(type) )
 FC_REFLECT( eosio::chain::order_def                        , (field)(order) )
 FC_REFLECT( eosio::chain::index_def                        , (name)(unique)(orders) )
 FC_REFLECT( eosio::chain::table_def                        , (name)(type)(indexes) )
 FC_REFLECT( eosio::chain::clause_pair                      , (id)(body) )
 FC_REFLECT( eosio::chain::error_message                    , (error_code)(error_msg) )
 FC_REFLECT( eosio::chain::variant_def                      , (name)(types) )
-FC_REFLECT( eosio::chain::abi_def                          , (version)(types)(structs)(actions)(tables)
+FC_REFLECT( eosio::chain::abi_def                          , (version)(types)(structs)(actions)(events)(tables)
                                                              (ricardian_clauses)(error_messages)(abi_extensions)(variants) )

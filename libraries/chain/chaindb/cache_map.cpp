@@ -48,6 +48,13 @@ namespace cyberway { namespace chaindb {
             return nullptr;
         }
 
+        table_cache_object* find_without_scope(const table_info& table) {
+            auto itr = table_object::find_without_scope(index_, table);
+            if (index_.end() != itr) return &const_cast<table_cache_object&>(*itr);
+
+            return nullptr;
+        }
+
         void set_converter(const table_info& table, const cache_converter_interface& converter) {
             auto cache = find(table);
             if (cache) return;
@@ -75,16 +82,19 @@ namespace cyberway { namespace chaindb {
 
     cache_item_ptr cache_map::create(const table_info& table) const {
         cache_item_ptr item;
-        auto cache = impl_->find(table);
-        if (BOOST_LIKELY(cache && cache->next_pk != unset_primary_key)) {
-            const auto pk = cache->next_pk++;
-            return cache->emplace({{table, pk}, {}});
+        auto cache_pk = impl_->find_without_scope(table);
+        if (BOOST_LIKELY(cache_pk && cache_pk->next_pk != unset_primary_key)) {
+            const auto pk = cache_pk->next_pk++;
+            auto cache_value = impl_->find(table);
+            if (cache_value) {
+                return cache_value->emplace({{table, pk}, {}});
+            }
         }
         return cache_item_ptr();
     }
 
     void cache_map::set_next_pk(const table_info& table, const primary_key_t pk) const {
-        auto cache = impl_->find(table);
+        auto cache = impl_->find_without_scope(table);
         if (!cache) return;
 
         cache->next_pk = pk;

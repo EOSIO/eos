@@ -63,7 +63,7 @@ namespace cyberway { namespace chaindb {
         chaindb_controller() = delete;
         chaindb_controller(const chaindb_controller&) = delete;
 
-        chaindb_controller(const microseconds& max_abi_time, chaindb_type, string);
+        chaindb_controller(chaindb_type, string);
         ~chaindb_controller();
 
         void restore_db();

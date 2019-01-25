@@ -17,6 +17,7 @@
 #include <mongocxx/exception/bulk_write_exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
 #include <mongocxx/exception/query_exception.hpp>
+#include <cyberway/chaindb/abi_info.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -60,6 +61,9 @@ namespace cyberway { namespace chaindb {
     };
 
     namespace { namespace _detail {
+        static const string pk_index_postfix = "_pk";
+        static const string mongodb_id_index = "_id_";
+        static const string mongodb_indexes  = "system.indexes";
 
         template <typename Exception>
         mongo_code get_mongo_code(const Exception& e) {
@@ -523,43 +527,131 @@ namespace cyberway { namespace chaindb {
             return add_cursor(loc.code_itr_, request.code, std::move(cloned_cursor));
         }
 
-        void verify_table_structure(const table_info& table, const microseconds& max_time) {
-            auto db_table = get_db_table(table);
-            auto& indexes = table.table->indexes;
+        std::vector<index_def> get_db_indexes(collection& db_table) const {
+            std::vector<index_def> result;
+            auto indexes = db_table.list_indexes();
 
-            // TODO: add removing of old indexes
+            result.reserve(abi_info::max_index_cnt * 2);
+            for (auto& info: indexes) {
+                index_def index;
 
-            for (auto& index: indexes) {
-                bool was_pk = false;
-                document doc;
-                doc.append(kvp(names::scope_path, 1));
-                for (auto& o: index.orders) {
-                    auto field = o.field;
-                    // ui128 || i128
-                    if (o.type.back() == '8' && (o.type.front() == 'i' || o.type.front() == 'u')) {
-                        field.append(".").append(mongo_big_int_converter::BINARY_FIELD);
-                    }
-                    if (_detail::is_asc_order(o.order)) {
-                        doc.append(kvp(field, 1));
-                    } else {
-                        doc.append(kvp(field, -1));
-                    }
-                    was_pk |= (&o == table.pk_order);
-                }
-                if (!was_pk && !index.unique) {
-                    doc.append(kvp(table.pk_order->field, 1));
+                auto itr = info.find("name");
+                if (info.end() == itr) continue;
+                auto iname = itr->get_utf8().value;
+                try {
+                    index.name = index_name(iname.data());
+                } catch (const eosio::chain::name_type_exception&) {
+                    if (iname.ends_with(_detail::pk_index_postfix)) continue;
+                    if (iname.compare(  _detail::mongodb_id_index)) db_table.indexes().drop_one(iname);
+                    continue;
                 }
 
-                auto db_index_name = get_index_name(index);
-                _detail::auto_reconnect([&]() {
+                itr = info.find("unique");
+                if (info.end() != itr) index.unique = itr->get_bool().value;
+
+                itr = info.find("key");
+                if (info.end() != itr) {
+                    auto fields = itr->get_document().value;
+                    for (auto& field: fields) {
+                        order_def order;
+
+                        auto key = field.key();
+                        if (!key.compare(names::scope_path)) continue;
+
+                        order.field = key.to_string();
+
+                        // <FIELD_NAME>.binary - we should remove ".binary"
+                        if (order.field.size() > mongo_big_int_converter::BINARY_FIELD.size() &&
+                            key.ends_with(mongo_big_int_converter::BINARY_FIELD)
+                        ) {
+                            order.field.erase(order.field.size() - 1 - mongo_big_int_converter::BINARY_FIELD.size());
+                        }
+
+                        order.order = field.get_int32().value == 1 ? names::asc_order : names::desc_order;
+                        index.orders.emplace_back(std::move(order));
+                    }
+
+                    // see create_index()
+                    if (!index.unique) index.orders.pop_back();
+                }
+                result.emplace_back(std::move(index));
+            }
+            return result;
+        }
+
+        std::vector<table_def> db_tables(const account_name& code) const {
+            static constexpr std::chrono::milliseconds max_time(10);
+            std::vector<table_def> tables;
+
+            tables.reserve(abi_info::max_table_cnt * 2);
+            _detail::auto_reconnect([&]() {
+                tables.clear();
+                auto db = mongo_conn_.database(get_code_name(code));
+                auto names = db.list_collection_names();
+                for (auto& tname: names) {
+                    table_def table;
+
                     try {
-                        db_table.create_index(doc.view(), options::index().name(db_index_name).unique(index.unique));
-                    } catch (const mongocxx::operation_exception& e) {
-                        wlog("Error on create index: ${code}, ${what}", ("what", e.what())("code", e.code().value()));
-                        db_table.indexes().drop_one(db_index_name);
-                        db_table.create_index(doc.view(), options::index().name(db_index_name).unique(index.unique));
+                        table.name = table_name(tname);
+                    } catch (const eosio::chain::name_type_exception&) {
+                        if (tname != _detail::mongodb_indexes) db.collection(tname).drop();
+                        continue;
                     }
-                });
+                    auto db_table = db.collection(tname);
+                    table.row_count = db_table.estimated_document_count(
+                        options::estimated_document_count().max_time(max_time));
+                    table.indexes = get_db_indexes(db_table);
+
+                    tables.emplace_back(std::move(table));
+                }
+            });
+
+            return tables;
+        }
+
+        void drop_index(const index_info& info) const {
+            get_db_table(info).indexes().drop_one(get_index_name(info));
+        }
+
+        void drop_table(const table_info& info) const {
+            get_db_table(info).drop();
+        }
+
+        void create_index(const index_info& info) const {
+            document idx_doc;
+            bool was_pk = false;
+            auto& index = *info.index;
+
+            idx_doc.append(kvp(names::scope_path, 1));
+            for (auto& order: index.orders) {
+                auto field = order.field;
+                // ui128 || i128
+                if (order.type.back() == '8' && (order.type.front() == 'i' || order.type.front() == 'u')) {
+                    field.append(".").append(mongo_big_int_converter::BINARY_FIELD);
+                }
+                if (_detail::is_asc_order(order.order)) {
+                    idx_doc.append(kvp(field, 1));
+                } else {
+                    idx_doc.append(kvp(field, -1));
+                }
+                was_pk |= (&order == info.pk_order);
+            }
+
+            if (!was_pk && !index.unique) {
+                // when index is not unique, we add unique pk for deterministic order of records
+                idx_doc.append(kvp(info.pk_order->field, 1));
+            }
+
+            auto idx_name = get_index_name(info);
+            auto db_table = get_db_table(info);
+            db_table.create_index(idx_doc.view(), options::index().name(idx_name).unique(index.unique));
+
+            // for available primary key
+            if (info.pk_order == &index.orders.front()) {
+                document id_doc;
+                idx_name.append(_detail::pk_index_postfix);
+                id_doc.append(kvp(info.pk_order->field, 1));
+                db_table.create_index(id_doc.view(), options::index().name(idx_name));
             }
         }
 
@@ -589,19 +681,22 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t available_pk(const table_info& table) {
             apply_table_changes(table);
+            primary_key_t pk = 0;
 
-            auto cursor = get_db_table(table).find(
-                make_document(kvp(names::scope_path, get_scope_name(table))),
-                options::find()
-                    .sort(make_document(kvp(table.pk_order->field, -1)))
-                    .limit(1));
+            _detail::auto_reconnect([&] {
+                auto cursor = get_db_table(table).find(
+                    make_document(),
+                    options::find()
+                        .sort(make_document(kvp(table.pk_order->field, -1)))
+                        .limit(1));
 
-            auto itr = cursor.begin();
-            if (cursor.end() != itr) {
-                return chaindb::get_pk_value(table, *itr) + 1;
-            }
+                auto itr = cursor.begin();
+                if (cursor.end() != itr) {
+                    pk = chaindb::get_pk_value(table, *itr) + 1;
+                }
+            });
 
-            return 0;
+            return pk;
         }
 
         object_value object_by_pk(const table_info& table, const primary_key_t pk) {
@@ -634,11 +729,11 @@ namespace cyberway { namespace chaindb {
             return instance;
         }
 
-        collection get_db_table(const table_info& table) {
+        collection get_db_table(const table_info& table) const {
             return mongo_conn_.database(get_code_name(table)).collection(get_table_name(table));
         }
 
-        collection get_undo_db_table() {
+        collection get_undo_db_table() const {
             return mongo_conn_.database(names::system_code).collection(names::undo_table);
         }
 
@@ -819,6 +914,22 @@ namespace cyberway { namespace chaindb {
 
     mongodb_driver::~mongodb_driver() = default;
 
+    std::vector<table_def> mongodb_driver::db_tables(const account_name& code) const {
+        return impl_->db_tables(code);
+    }
+
+    void mongodb_driver::create_index(const index_info& index) const {
+        impl_->create_index(index);
+    }
+
+    void mongodb_driver::drop_index(const index_info& index) const {
+        impl_->drop_index(index);
+    }
+
+    void mongodb_driver::drop_table(const table_info& table) const {
+        impl_->drop_table(table);
+    }
+
     void mongodb_driver::drop_db() {
         impl_->drop_db();
     }
@@ -841,10 +952,6 @@ namespace cyberway { namespace chaindb {
 
     void mongodb_driver::apply_all_changes() {
         impl_->apply_all_changes();
-    }
-
-    void mongodb_driver::verify_table_structure(const table_info& table, const microseconds& max_time) {
-        impl_->verify_table_structure(table, max_time);
     }
 
     const cursor_info& mongodb_driver::lower_bound(index_info index, variant key) {

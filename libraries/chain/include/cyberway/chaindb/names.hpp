@@ -108,6 +108,11 @@ namespace cyberway { namespace chaindb {
         return get_code_name(info).append(".").append(get_table_name(info));
     }
 
+    template<typename Code, typename Table>
+    inline string get_full_table_name(const Code& code, const Table& table) {
+        return get_code_name(code).append(".").append(get_table_name(table));
+    }
+
     ///-----
 
     inline string get_index_name(const index_name& index) {
@@ -121,11 +126,6 @@ namespace cyberway { namespace chaindb {
         return get_index_name(eosio::chain::index_name(index));
     }
 
-    template <typename Info>
-    inline string get_index_name(const Info& info) {
-        return get_index_name(info.index);
-    }
-
     inline string get_index_name(const index_def& index) {
         return get_index_name(index.name);
     }
@@ -137,8 +137,24 @@ namespace cyberway { namespace chaindb {
         return names::unknown;
     }
 
+    template <typename Info>
+    inline string get_index_name(const Info& info) {
+        return get_index_name(info.index);
+    }
+
     template<typename Info>
     inline string get_full_index_name(const Info& info) {
         return get_full_table_name(info).append(".").append(get_index_name(info.index));
     }
+
+    template<typename Table, typename Index>
+    inline string get_full_index_name(const Table& table, const Index& index) {
+        return get_full_table_name(table).append(".").append(get_index_name(index));
+    }
+
+    template<typename Code, typename Table, typename Index>
+    inline string get_full_index_name(const Code& code, const Table& table, const Index& index) {
+        return get_full_table_name(code, table).append(".").append(get_index_name(index));
+    }
+
 } } // namespace cyberway::chaindb

@@ -13,6 +13,11 @@ namespace cyberway { namespace chaindb {
         mongodb_driver(journal&, const std::string&);
         ~mongodb_driver();
 
+        std::vector<table_def> db_tables(const account_name& code) const override;
+        void create_index(const index_info&) const override;
+        void drop_index(const index_info&) const override;
+        void drop_table(const table_info&) const override;
+
         void drop_db() override;
 
         const cursor_info& clone(const cursor_request&) override;
@@ -22,8 +27,6 @@ namespace cyberway { namespace chaindb {
 
         void apply_code_changes(const account_name& code) override;
         void apply_all_changes() override;
-
-        void verify_table_structure(const table_info&, const microseconds&) override;
 
         const cursor_info& lower_bound(index_info, variant key) override;
         const cursor_info& upper_bound(index_info, variant key) override;

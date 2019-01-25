@@ -89,6 +89,24 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(no_abi_exception, chaindb_abi_exception,
                                      3720006, "Account doesn't have an ABI description")
 
+        FC_DECLARE_DERIVED_EXCEPTION(table_has_rows_exception, chaindb_abi_exception,
+                                     3720007, "Table has rows, it can't be changed")
+
+        FC_DECLARE_DERIVED_EXCEPTION(max_table_count_exception, chaindb_abi_exception,
+                                     3720008, "Maximum number of tables is exceeded")
+
+        FC_DECLARE_DERIVED_EXCEPTION(max_index_count_exception, chaindb_abi_exception,
+                                     3720009, "Maximum number of indexes per table is exceeded")
+
+        FC_DECLARE_DERIVED_EXCEPTION(unique_table_name_exception, chaindb_abi_exception,
+                                     3720010, "Table name should be unique")
+
+        FC_DECLARE_DERIVED_EXCEPTION(unique_index_name_exception, chaindb_abi_exception,
+                                     3720011, "Index name in table scope should be unique")
+
+        FC_DECLARE_DERIVED_EXCEPTION(unique_field_name_exception, chaindb_abi_exception,
+                                     3720012, "Field name in index scope should be unique")
+
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_contract_exception, chaindb_exception,
                                  3730000, "ChainDB contract exception")
 

@@ -33,30 +33,24 @@ namespace cyberway { namespace chaindb {
     class abi_info final {
     public:
         abi_info() = default;
-        abi_info(const account_name& code, abi_def, const time_point& deadline, const microseconds& max_time);
+        abi_info(const account_name& code, abi_def);
 
-        void verify_tables_structure(driver_interface&, const time_point& deadline, const microseconds& max_time) const;
+        void verify_tables_structure(driver_interface&) const;
 
-        variant to_object(
-            const table_info& info, const void* data, const size_t size, const microseconds& max_time
-        ) const {
+        variant to_object(const table_info& info, const void* data, const size_t size) const {
             CYBERWAY_ASSERT(info.table, unknown_table_exception, "NULL table");
-            return to_object_("table", [&]{return get_full_table_name(info);}, info.table->type, data, size, max_time);
+            return to_object_("table", [&]{return get_full_table_name(info);}, info.table->type, data, size);
         }
 
-        variant to_object(
-            const index_info& info, const void* data, const size_t size, const microseconds& max_time
-        ) const {
+        variant to_object(const index_info& info, const void* data, const size_t size) const {
             CYBERWAY_ASSERT(info.index, unknown_index_exception, "NULL index");
             auto type = get_full_index_name(info);
-            return to_object_("index", [&](){return type;}, type, data, size, max_time);
+            return to_object_("index", [&](){return type;}, type, data, size);
         }
 
-        bytes to_bytes(
-            const table_info& info, const variant& value, const microseconds& max_time
-        ) const {
+        bytes to_bytes(const table_info& info, const variant& value) const {
             CYBERWAY_ASSERT(info.table, unknown_table_exception, "NULL table");
-            return to_bytes_("table", [&]{return get_full_table_name(info);}, info.table->type, value, max_time);
+            return to_bytes_("table", [&]{return get_full_table_name(info);}, info.table->type, value);
         }
 
         void mark_removed() {
@@ -74,22 +68,29 @@ namespace cyberway { namespace chaindb {
             return nullptr;
         }
 
+        const account_name& code() const {
+            return code_;
+        }
+
+        static const size_t max_table_cnt;
+        static const size_t max_index_cnt;
+
     private:
         const account_name code_;
         eosio::chain::abi_serializer serializer_;
-        fc::flat_map<hash_t, table_def> table_map_;
+        std::map<hash_t, table_def> table_map_;
         bool is_removed_ = false;
+        static const fc::microseconds max_abi_time_;
 
         template<typename Type>
         variant to_object_(
-            const char* value_type, Type&& db_type,
-            const string& type, const void* data, const size_t size, const microseconds& max_time
+            const char* value_type, Type&& db_type, const string& type, const void* data, const size_t size
         ) const {
             // begin()
             if (nullptr == data || 0 == size) return fc::variant_object();
 
             fc::datastream<const char*> ds(static_cast<const char*>(data), size);
-            auto value = serializer_.binary_to_variant(type, ds, max_time);
+            auto value = serializer_.binary_to_variant(type, ds, max_abi_time_);
 
 //            dlog(
 //                "The ${value_type} '${type}': ${value}",
@@ -103,10 +104,7 @@ namespace cyberway { namespace chaindb {
         }
 
         template<typename Type>
-        bytes to_bytes_(
-            const char* value_type, Type&& db_type,
-            const string& type, const variant& value, const microseconds& max_time
-        ) const {
+        bytes to_bytes_(const char* value_type, Type&& db_type, const string& type, const variant& value) const {
 
 //            dlog(
 //                "The ${value_type} '${type}': ${value}",
@@ -116,7 +114,7 @@ namespace cyberway { namespace chaindb {
                 "ABI serializer receive wrong type for the ${value_type} for '${type}': ${value}",
                 ("value_type", value_type)("type", db_type())("value", value));
 
-            return serializer_.variant_to_binary(type, value, max_time);
+            return serializer_.variant_to_binary(type, value, max_abi_time_);
         }
     }; // struct abi_info
 

@@ -100,16 +100,14 @@ namespace cyberway { namespace chaindb {
     } } // namespace _detail
 
     struct chaindb_controller::controller_impl_ final {
-        const microseconds max_abi_time_;
         journal journal_;
         std::unique_ptr<driver_interface> driver_ptr_;
         driver_interface& driver_;
         cache_map cache_;
         undo_stack undo_;
 
-        controller_impl_(chaindb_controller& controller, const microseconds& max_abi_time, const chaindb_type t, string p)
-        : max_abi_time_(max_abi_time),
-          driver_ptr_(_detail::create_driver(t, journal_, std::move(p))),
+        controller_impl_(chaindb_controller& controller, const chaindb_type t, string p)
+        : driver_ptr_(_detail::create_driver(t, journal_, std::move(p))),
           driver_(*driver_ptr_.get()),
           undo_(controller, driver_, journal_, cache_) {
         }
@@ -130,16 +128,15 @@ namespace cyberway { namespace chaindb {
             journal_.clear(); // remove all pending changes
             driver_.drop_db(); // drop database
             abi_map_.clear(); // clear ABIes
-            set_abi(0, std::move(system_abi), time_point::now() + max_abi_time_);
+            set_abi(0, std::move(system_abi));
         }
 
         void set_abi(const account_name& code, abi_def abi) {
             if (code.empty()) {
                 undo_.add_abi_tables(abi);
             }
-            time_point deadline = time_point::now() + max_abi_time_;
-            abi_info info(code, std::move(abi), deadline, max_abi_time_);
-            set_abi(code, std::move(info), deadline);
+            abi_info info(code, std::move(abi));
+            set_abi(code, std::move(info));
         }
 
         void remove_abi(const account_name& code) {
@@ -162,19 +159,19 @@ namespace cyberway { namespace chaindb {
 
         const cursor_info& lower_bound(const index_request& request, const char* key, const size_t size) const {
             auto index = get_index(request);
-            auto value = index.abi->to_object(index, key, size, max_abi_time_);
+            auto value = index.abi->to_object(index, key, size);
             return driver_.lower_bound(std::move(index), std::move(value));
         }
 
         const cursor_info& upper_bound(const index_request& request, const char* key, const size_t size) const {
             auto index = get_index(request);
-            auto value = index.abi->to_object(index, key, size, max_abi_time_);
+            auto value = index.abi->to_object(index, key, size);
             return driver_.upper_bound(std::move(index), std::move(value));
         }
 
         const cursor_info& find(const index_request& request, primary_key_t pk, const char* key, size_t size) const {
             auto index = get_index(request);
-            auto value = index.abi->to_object(index, key, size, max_abi_time_);
+            auto value = index.abi->to_object(index, key, size);
             return driver_.find(std::move(index), pk, std::move(value));
         }
 
@@ -250,7 +247,7 @@ namespace cyberway { namespace chaindb {
             const primary_key_t pk, const char* data, const size_t size
         ) {
             auto table = get_table(request);
-            auto value = table.abi->to_object(table, data, size, max_abi_time_);
+            auto value = table.abi->to_object(table, data, size);
             auto obj = object_value{{table, pk, payer, size}, std::move(value)};
 
             auto inserted_pk = insert(table, obj);
@@ -276,7 +273,7 @@ namespace cyberway { namespace chaindb {
             const primary_key_t pk, const char* data, const size_t size
         ) {
             auto table = get_table(request);
-            auto value = table.abi->to_object(table, data, size, max_abi_time_);
+            auto value = table.abi->to_object(table, data, size);
             auto obj = object_value{{table, pk, payer, size}, std::move(value)};
 
             auto updated_pk = update(table, obj);
@@ -403,7 +400,7 @@ namespace cyberway { namespace chaindb {
             auto& obj = driver_.object_at_cursor(cursor);
             validate_object(cursor.index, obj, cursor.pk);
 
-            auto buffer = cursor.index.abi->to_bytes(cursor.index, obj.value, max_abi_time_);
+            auto buffer = cursor.index.abi->to_bytes(cursor.index, obj.value);
             driver_.set_blob(cursor, std::move(buffer));
         }
 
@@ -505,10 +502,10 @@ namespace cyberway { namespace chaindb {
             validate_pk_field(table, obj.value, pk);
         }
 
-        void set_abi(const account_name& code, abi_info&& info, time_point deadline) {
-            info.verify_tables_structure(driver_, deadline, max_abi_time_);
+        void set_abi(const account_name& code, abi_info info) {
+            info.verify_tables_structure(driver_);
             abi_map_.erase(code);
-            abi_map_.emplace(code, std::forward<abi_info>(info));
+            abi_map_.emplace(code, std::move(info));
         }
 
         primary_key_t insert(const table_info& table, object_value& obj) {
@@ -537,8 +534,8 @@ namespace cyberway { namespace chaindb {
         }
     }; // class chaindb_controller::controller_impl_
 
-    chaindb_controller::chaindb_controller(const microseconds& max_abi_time, const chaindb_type t, string p)
-    : impl_(new controller_impl_(*this, max_abi_time, t, std::move(p))) {
+    chaindb_controller::chaindb_controller(const chaindb_type t, string p)
+    : impl_(new controller_impl_(*this, t, std::move(p))) {
     }
 
     chaindb_controller::~chaindb_controller() = default;

@@ -1128,6 +1128,21 @@ class console_api : public context_aware_api {
       bool ignore;
 };
 
+
+class bandwith_api : public context_aware_api {
+    public:
+        bandwith_api( apply_context& ctx )
+        : context_aware_api(ctx,true) {}
+
+        int64_t get_bw_cpu_limit() const {
+            return context.trx_context.get_provided_cpu_limit();
+        }
+
+        int64_t get_bw_net_limit() const {
+            return context.trx_context.get_provided_net_limit();
+        }
+};
+
 #define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
          return context.IDX.store( scope, table, payer, id, secondary );\
@@ -1362,6 +1377,17 @@ class transaction_api : public context_aware_api {
          fc::uint128_t sender_id(val>>64, uint64_t(val) );
          return context.cancel_deferred_transaction( (unsigned __int128)sender_id );
       }
+};
+
+class event_api : public context_aware_api {
+    public:
+        using context_aware_api::context_aware_api;
+
+        void send_event( array_ptr<char> data, size_t data_len ) {
+            event evt;
+            fc::raw::unpack<event>(data, data_len, evt);
+            context.push_event(std::move(evt));
+        }
 };
 
 
@@ -1856,6 +1882,13 @@ REGISTER_INTRINSICS(console_api,
    (printhex,              void(int, int) )
 );
 
+
+REGISTER_INTRINSICS(bandwith_api,
+    (get_bw_cpu_limit, int64_t())
+    (get_bw_net_limit, int64_t())
+);
+
+
 REGISTER_INTRINSICS(context_free_transaction_api,
    (read_transaction,       int(int, int)            )
    (transaction_size,       int()                    )
@@ -1870,6 +1903,10 @@ REGISTER_INTRINSICS(transaction_api,
    (send_context_free_inline,  void(int, int)               )
    (send_deferred,             void(int, int64_t, int, int, int32_t) )
    (cancel_deferred,           int(int)                     )
+);
+
+REGISTER_INTRINSICS(event_api,
+   (send_event,                void(int, int)               )
 );
 
 REGISTER_INTRINSICS(context_free_api,

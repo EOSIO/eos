@@ -35,10 +35,43 @@ namespace cyberway { namespace chaindb {
 
             return types;
         }
+
+        void validate_unique_field_names(const abi_info& abi, const table_def& table, const index_def& index) {
+            std::set<field_name> fields;
+            for (auto& order: index.orders) fields.emplace(order.field);
+            CYBERWAY_ASSERT(fields.size() == index.orders.size(), unique_field_name_exception,
+                "The index '${index}' should has unique field names",
+                ("index", get_full_index_name(abi.code(), table, index)));
+        }
+
+        table_info generate_table_info(const abi_info& abi, const table_def& table) {
+            table_info info(abi.code(), abi.code());
+            info.table = &table;
+            info.abi = &abi;
+            return info;
+        }
+
+        index_info generate_index_info(const abi_info& abi, const table_def& table, const index_def& index) {
+            index_info info(abi.code(), abi.code());
+            info.table = &table;
+            info.index = &index;
+            info.abi = &abi;
+            info.pk_order = &get_pk_order(info);
+            return info;
+        }
+
+        bool is_equal_index(const index_def& l, const index_def& r) {
+            if (l.unique != r.unique) return false;
+            if (l.orders.size() != r.orders.size()) return false;
+
+            return std::equal(l.orders.begin(), l.orders.end(), r.orders.begin(), [](auto& l, auto& r){
+                return l.field == r.field && l.order.size() == r.order.size();
+            });
+        }
     } }
 
     class index_builder final {
-        using table_map_type = fc::flat_map<hash_t, table_def>;
+        using table_map_type = std::map<hash_t, table_def>;
         index_info info_;
         abi_serializer& serializer_;
         table_map_type& table_map_;
@@ -50,25 +83,21 @@ namespace cyberway { namespace chaindb {
           table_map_(table_map) {
         }
 
-        void build_indexes(const time_point& deadline, const microseconds& max_time) {
-            for (auto& t: table_map_) { try {
-// TODO: Limitation by timeout
-//                    CYBERWAY_ASSERT(time_point::now() < deadline, abi_serialization_deadline_exception,
-//                        "serialization time limit ${t}us exceeded", ("t", max_time));
+        void build_indexes() {
+            for (auto& t: table_map_) try {
+                // if abi was loaded instead of declared
+                auto& table = t.second;
+                auto& table_struct = serializer_.get_struct(serializer_.resolve_type(table.type));
 
+                for (auto& index: table.indexes) {
                     // if abi was loaded instead of declared
-                    auto& table = t.second;
-                    auto& table_struct = serializer_.get_struct(serializer_.resolve_type(table.type));
+                    if (!index.hash) index.hash = index.name.value;
 
-                    for (auto& index: table.indexes) {
-                        // if abi was loaded instead of declared
-                        if (!index.hash) index.hash = index.name.value;
+                    build_index(table, index, table_struct);
+                }
+                validate_pk_index(table);
 
-                        build_index(table, index, table_struct);
-                    }
-                    validate_pk_index(table);
-
-                } FC_CAPTURE_AND_RETHROW((t.second)) }
+            } FC_CAPTURE_AND_RETHROW((t.second))
         }
 
     private:
@@ -159,30 +188,97 @@ namespace cyberway { namespace chaindb {
         }
     }; // struct index_builder
 
-    abi_info::abi_info(const account_name& code, abi_def abi, const time_point& deadline, const microseconds& max_time)
+    const fc::microseconds abi_info::max_abi_time_ = fc::seconds(60);
+    const size_t abi_info::max_table_cnt = 64;
+    const size_t abi_info::max_index_cnt = 16;
+
+    abi_info::abi_info(const account_name& code, abi_def abi)
     : code_(code) {
-        serializer_.set_abi(abi, max_time);
+        serializer_.set_abi(abi, max_abi_time_);
+
+        CYBERWAY_ASSERT(abi.tables.size() <= max_table_cnt, max_table_count_exception,
+            "The account '${code}' can't create more than ${max} tables",
+            ("code", get_code_name(code_))("max", max_table_cnt));
+
 
         for (auto& table: abi.tables) {
+            CYBERWAY_ASSERT(table.indexes.size() <= max_index_cnt, max_index_count_exception,
+                "The table '${table}' can't has more than ${max} indexes",
+                ("table", get_full_table_name(code_, table))("max", max_index_cnt));
             if (!table.hash) table.hash = table.name.value;
             table_map_.emplace(table.hash, std::move(table));
         }
 
-        index_builder builder(code, serializer_, table_map_);
-        builder.build_indexes(deadline, max_time);
+        CYBERWAY_ASSERT(table_map_.size() == abi.tables.size(), unique_table_name_exception,
+            "The account '${code} should has unique table names", ("code", get_code_name(code_)));
+
+        index_builder builder(code_, serializer_, table_map_);
+        builder.build_indexes();
     }
 
-    void abi_info::verify_tables_structure(
-        driver_interface& driver, const time_point& deadline, const microseconds& max_time
-    ) const {
-        for (auto& t: table_map_) {
-            table_info info(code_, code_);
-            info.table = &t.second;
-            info.abi = this;
-            info.pk_order = &get_pk_order(info);
+    void abi_info::verify_tables_structure(driver_interface& driver) const {
+        std::deque<table_info> drop_tables;
+        std::deque<index_info> drop_indexes;
+        std::deque<index_info> create_indexes;
 
-            driver.verify_table_structure(info, max_time);
+        std::map<table_name, const table_def*> tables;
+        for (auto& table: table_map_) tables.emplace(table.second.name, &table.second);
+        CYBERWAY_ASSERT(table_map_.size() == tables.size(), unique_table_name_exception,
+            "The account '${code} should has unique table names", ("code", get_code_name(code_)));
+
+        auto db_tables = driver.db_tables(code_);
+        for (auto& db_table: db_tables) {
+            auto ttr = tables.find(db_table.name);
+            auto table = _detail::generate_table_info(*this, db_table);
+            if (tables.end() == ttr) {
+                CYBERWAY_ASSERT(db_table.row_count == 0, table_has_rows_exception,
+                    "Can't drop the table '${table}', because it has ${row_cnt} rows",
+                    ("table", get_full_table_name(table))("row_cnt", db_table.row_count));
+
+                drop_tables.emplace_back(std::move(table));
+                continue;
+            }
+
+            std::map<index_name, const index_def*> indexes;
+            for (auto& index: ttr->second->indexes) indexes.emplace(index.name, &index);
+            CYBERWAY_ASSERT(ttr->second->indexes.size() == indexes.size(), unique_table_name_exception,
+                "The account '${table} should has unique index names", ("table", get_full_table_name(table)));
+
+            for (auto& db_index: db_table.indexes) {
+                auto itr = indexes.find(db_index.name);
+                auto index = _detail::generate_index_info(*this, db_table, db_index);
+                if (indexes.end() == itr || !_detail::is_equal_index(*itr->second, db_index)) {
+                    CYBERWAY_ASSERT(db_table.row_count == 0, table_has_rows_exception,
+                        "Can't drop the index '${index}', because the table '${table}' has ${row_cnt} rows",
+                        ("index", get_full_index_name(table, db_index))
+                        ("table", get_full_table_name(table))("row_cnt", db_table.row_count));
+                    drop_indexes.emplace_back(std::move(index));
+                    continue;
+                }
+                indexes.erase(itr);
+            }
+
+            for (auto& index: indexes) {
+                CYBERWAY_ASSERT(db_table.row_count == 0, table_has_rows_exception,
+                    "Can't create the index '${index}', because the table '${table}' has ${row_cnt} rows",
+                    ("index", get_full_index_name(table, index.second))
+                    ("table", get_full_table_name(table))("row_cnt", db_table.row_count));
+                _detail::validate_unique_field_names(*this, *ttr->second, *index.second);
+                create_indexes.emplace_back(_detail::generate_index_info(*this, *ttr->second, *index.second));
+            }
+
+            tables.erase(ttr);
         }
+
+        for (auto& table: tables) for (auto& index: table.second->indexes) {
+            _detail::validate_unique_field_names(*this, *table.second, index);
+            create_indexes.emplace_back(_detail::generate_index_info(*this, *table.second, index));
+        }
+
+        for (auto& table: drop_tables)    driver.drop_table(  table);
+        for (auto& index: drop_indexes)   driver.drop_index(  index);
+        for (auto& index: create_indexes) driver.create_index(index);
+
     }
 
 } } // namespace cyberway::chaindb
