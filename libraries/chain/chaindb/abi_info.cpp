@@ -56,6 +56,7 @@ namespace cyberway { namespace chaindb {
             info.table = &table;
             info.index = &index;
             info.abi = &abi;
+            info.pk_order = &get_pk_order(info);
             return info;
         }
 
