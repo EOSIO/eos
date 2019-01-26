@@ -43,7 +43,7 @@ namespace eosio { namespace chain {
                std::greater<bool>,
                std::greater<uint32_t>,
                std::greater<uint32_t>,
-               std::less<block_id_type>
+               sha256_less
             >
          >
       >
@@ -80,8 +80,10 @@ namespace eosio { namespace chain {
             uint32_t totem = 0;
             fc::raw::unpack( ds, totem );
             EOS_ASSERT( totem == magic_number, fork_database_exception,
-                        "Fork database file '${filename}' has unexpected magic number!",
+                        "Fork database file '${filename}' has unexpected magic number: ${actual_totem}. Expected ${expected_totem}",
                         ("filename", fork_db_dat.generic_string())
+                        ("actual_totem", totem)
+                        ("expected_totem", magic_number)
             );
 
             // validate version
@@ -107,7 +109,7 @@ namespace eosio { namespace chain {
                fc::raw::unpack( ds, s );
                for( const auto& receipt : s.block->transactions ) {
                   if( receipt.trx.contains<packed_transaction>() ) {
-                     auto& pt = receipt.trx.get<packed_transaction>();
+                     const auto& pt = receipt.trx.get<packed_transaction>();
                      s.trxs.push_back( std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>(pt) ) );
                   }
                }
@@ -154,7 +156,7 @@ namespace eosio { namespace chain {
 
       std::ofstream out( fork_db_dat.generic_string().c_str(), std::ios::out | std::ios::binary | std::ofstream::trunc );
       fc::raw::pack( out, magic_number );
-      fc::raw::pack( out, max_supported_version );
+      fc::raw::pack( out, max_supported_version ); // write out current version which is always max_supported_version
       fc::raw::pack( out, *static_cast<block_header_state*>(&*my->root) );
       uint32_t num_blocks_in_fork_db = my->index.size();
       fc::raw::pack( out, unsigned_int{num_blocks_in_fork_db} );
@@ -263,15 +265,15 @@ namespace eosio { namespace chain {
       return block_header_state_ptr();
    }
 
-   void fork_database::add( block_state_ptr n ) {
+   void fork_database::add( const block_state_ptr& n ) {
       EOS_ASSERT( my->root, fork_database_exception, "root not yet set" );
       EOS_ASSERT( n, fork_database_exception, "attempt to add null block state" );
 
       EOS_ASSERT( get_block_header( n->header.previous ), unlinkable_block_exception,
-                  "unlinkable block", ("id", string(n->id))("previous", string(n->header.previous)) );
+                  "unlinkable block", ("id", n->id)("previous", n->header.previous) );
 
       auto inserted = my->index.insert(n);
-      EOS_ASSERT( inserted.second, fork_database_exception, "duplicate block added" );
+      EOS_ASSERT( inserted.second, fork_database_exception, "duplicate block added", ("id", n->id) );
 
       auto candidate = my->index.get<by_lib_block_num>().begin();
       if( (*candidate)->is_valid() ) {
@@ -328,14 +330,18 @@ namespace eosio { namespace chain {
       {
          result.first.push_back(first_branch);
          first_branch = get_block( first_branch->header.previous );
-         EOS_ASSERT( first_branch, fork_db_block_not_found, "block ${id} does not exist", ("id", string(first_branch->header.previous)) );
+         EOS_ASSERT( first_branch, fork_db_block_not_found,
+                     "block ${id} does not exist",
+                     ("id", first_branch->header.previous) );
       }
 
       while( second_branch->block_num > first_branch->block_num )
       {
          result.second.push_back( second_branch );
          second_branch = get_block( second_branch->header.previous );
-         EOS_ASSERT( second_branch, fork_db_block_not_found, "block ${id} does not exist", ("id", string(second_branch->header.previous)) );
+         EOS_ASSERT( second_branch, fork_db_block_not_found,
+                     "block ${id} does not exist",
+                     ("id", second_branch->header.previous) );
       }
 
       while( first_branch->header.previous != second_branch->header.previous )
@@ -346,7 +352,9 @@ namespace eosio { namespace chain {
          second_branch = get_block( second_branch->header.previous );
          EOS_ASSERT( first_branch && second_branch, fork_db_block_not_found,
                      "either block ${fid} or ${sid} does not exist",
-                     ("fid", string(first_branch->header.previous))("sid", string(second_branch->header.previous)) );
+                     ("fid", first_branch->header.previous)
+                     ("sid", second_branch->header.previous)
+         );
       }
 
       if( first_branch && second_branch )
@@ -360,7 +368,7 @@ namespace eosio { namespace chain {
    /// remove all of the invalid forks built off of this id including this id
    void fork_database::remove( const block_id_type& id ) {
       vector<block_id_type> remove_queue{id};
-      auto& previdx = my->index.get<by_prev>();
+      const auto& previdx = my->index.get<by_prev>();
       const auto head_id = my->head->id;
 
       for( uint32_t i = 0; i < remove_queue.size(); ++i ) {

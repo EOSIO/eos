@@ -22,7 +22,7 @@ namespace eosio { namespace chain {
    class fork_database {
       public:
 
-         fork_database( const fc::path& data_dir );
+         explicit fork_database( const fc::path& data_dir );
          ~fork_database();
 
          void close();
@@ -45,7 +45,7 @@ namespace eosio { namespace chain {
           *  Add block state to fork database.
           *  Must link to existing block in fork database or the root.
           */
-         void            add( block_state_ptr next_block );
+         void            add( const block_state_ptr& next_block );
 
          void            remove( const block_id_type& id );
 

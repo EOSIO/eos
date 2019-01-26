@@ -107,6 +107,7 @@ struct building_block {
 };
 
 struct assembled_block {
+   block_id_type                     _id;
    pending_block_header_state        _pending_block_header_state;
    vector<transaction_metadata_ptr>  _trx_metas;
    signed_block_ptr                  _unsigned_block;
@@ -1232,7 +1233,7 @@ struct controller_impl {
       guard_pending.cancel();
    } /// start_block
 
-   signed_block_ptr finalize_block()
+   void finalize_block()
    {
       EOS_ASSERT( pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
       EOS_ASSERT( pending->_block_stage.contains<building_block>(), block_validate_exception, "already called finalize_block");
@@ -1263,13 +1264,15 @@ struct controller_impl {
 
       block_ptr->transactions = std::move( bb._pending_trx_receipts );
 
+      auto id = block_ptr->id();
+
       // Update TaPoS table:
-      create_block_summary( block_ptr->id() );
+      create_block_summary( id );
 
       /*
       ilog( "finalized block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
             ("n",pbhs.block_num)
-            ("id",block_ptr->id())
+            ("id",id)
             ("t",pbhs.timestamp)
             ("p",pbhs.producer)
             ("signing_key", pbhs.block_signing_key)
@@ -1281,12 +1284,11 @@ struct controller_impl {
       */
 
       pending->_block_stage = assembled_block{
+                                 id,
                                  std::move( bb._pending_block_header_state ),
                                  std::move( bb._pending_trx_metas ),
-                                 block_ptr
+                                 std::move( block_ptr )
                               };
-
-      return block_ptr;
    } FC_CAPTURE_AND_RETHROW() } /// finalize_block
 
    /**
@@ -1388,18 +1390,17 @@ struct controller_impl {
                         ("producer_receipt", receipt)("validator_receipt", trx_receipts.back()) );
          }
 
-         auto block_ptr = finalize_block();
+         finalize_block();
+
+         auto& ab = pending->_block_stage.get<assembled_block>();
 
          // this implicitly asserts that all header fields (less the signature) are identical
-         auto id = block_ptr->id();
-         EOS_ASSERT( producer_block_id == id, block_validate_exception, "Block ID does not match",
-                     ("producer_block_id",producer_block_id)("validator_block_id",id) );
-
-         auto&& ab = pending->_block_stage.get<assembled_block>();
+         EOS_ASSERT( producer_block_id == ab._id, block_validate_exception, "Block ID does not match",
+                     ("producer_block_id",producer_block_id)("validator_block_id",ab._id) );
 
          auto bsp = std::make_shared<block_state>(
                         std::move( ab._pending_block_header_state ),
-                        b,
+                        std::move( ab._unsigned_block ),
                         std::move( ab._trx_metas ),
                         true // signature should have already been verified (assuming untrusted) prior to apply_block
                     );
@@ -1442,16 +1443,10 @@ struct controller_impl {
          trusted_producer_light_validation = old_value;
       });
       try {
-         block_state_ptr new_header_state = block_state_future.get();
-         auto& b = new_header_state->block;
+         block_state_ptr bsp = block_state_future.get();
+         const auto& b = bsp->block;
+
          emit( self.pre_accepted_block, b );
-
-         block_state_ptr bsp;
-
-         auto prior = fork_db.get_block_header( b->previous );
-         EOS_ASSERT( prior, unlinkable_block_exception,
-                     "unlinkable block", ("id", string(b->id()))("previous", string(b->previous)) );
-         bsp = std::make_shared<block_state>( *prior, b, false );
 
          fork_db.add( bsp );
 
@@ -1891,13 +1886,13 @@ void controller::start_block( block_timestamp_type when, uint16_t confirm_block_
 block_state_ptr controller::finalize_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
    validate_db_available_size();
 
-   auto block_ptr = my->finalize_block();
+   my->finalize_block();
 
    auto& ab = my->pending->_block_stage.get<assembled_block>();
 
    auto bsp = std::make_shared<block_state>(
                   std::move( ab._pending_block_header_state ),
-                  std::move( block_ptr ),
+                  std::move( ab._unsigned_block ),
                   std::move( ab._trx_metas ),
                   signer_callback
               );
@@ -2227,7 +2222,7 @@ int64_t controller::set_proposed_producers( vector<producer_key> producers ) {
 
    int64_t version = sch.version;
 
-   wlog( "proposed producer schedule with version ${v}", ("v", version) );
+   ilog( "proposed producer schedule with version ${v}", ("v", version) );
 
    my->db.modify( gpo, [&]( auto& gp ) {
       gp.proposed_schedule_block_num = cur_block_num;

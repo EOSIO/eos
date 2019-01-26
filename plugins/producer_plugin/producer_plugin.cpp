@@ -1444,7 +1444,7 @@ void producer_plugin_impl::schedule_production_loop() {
                }
             } ) );
    } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && !production_disabled_by_policy()){
-      fc_dlog(_log, "Specualtive Block Created; Scheduling Speculative/Production Change");
+      fc_dlog(_log, "Speculative Block Created; Scheduling Speculative/Production Change");
       EOS_ASSERT( chain.is_building_block(), missing_pending_block_state, "speculating without pending_block_state" );
       schedule_delayed_production_loop(weak_this, chain.pending_block_time());
    } else {

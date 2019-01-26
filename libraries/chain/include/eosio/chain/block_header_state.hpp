@@ -61,7 +61,7 @@ struct block_header_state : public detail::block_header_state_common {
 
    block_header_state() = default;
 
-   block_header_state( detail::block_header_state_common&& base )
+   explicit block_header_state( detail::block_header_state_common&& base )
    :detail::block_header_state_common( std::move(base) )
    {}
 

@@ -104,8 +104,8 @@ public:
       //string                  recent_slots;
       //double                  participation_rate = 0;
       optional<string>        server_version_string;
-      uint32_t                fork_db_head_block_num = 0;
-      chain::block_id_type    fork_db_head_block_id;
+      optional<uint32_t>              fork_db_head_block_num = 0;
+      optional<chain::block_id_type>  fork_db_head_block_id;
    };
    get_info_results get_info(const get_info_params&) const;
 
