@@ -177,7 +177,7 @@ struct requestbw {
 // it's ugly, but removes boilerplate. TODO: write better
 #define SYS_ACTION_STRUCT(NAME) struct NAME { \
     NAME() = default; \
-    static account_name get_account() { return config::system_account_name; } \
+    static account_name get_account() { return config::domain_account_name; } \
     static action_name get_name()     { return N(NAME); }
 #define SYS_ACTION_STRUCT_END };
 

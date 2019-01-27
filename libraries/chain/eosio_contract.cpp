@@ -386,7 +386,7 @@ void apply_eosio_canceldelay(apply_context& context) {
 }
 
 
-void apply_eosio_newdomain(apply_context& context) {
+void apply_cyber_domain_newdomain(apply_context& context) {
    auto op = context.act.data_as<newdomain>();
    try {
       context.require_authorization(op.creator);
@@ -400,7 +400,7 @@ void apply_eosio_newdomain(apply_context& context) {
       context.add_ram_usage(op.creator, sizeof(domain_object) + op.name.size());    // TODO: fix
 } FC_CAPTURE_AND_RETHROW((op)) }
 
-void apply_eosio_passdomain(apply_context& context) {
+void apply_cyber_domain_passdomain(apply_context& context) {
    auto op = context.act.data_as<passdomain>();
    try {
       context.require_authorization(op.from);   // TODO: special case if nobody owns domain
@@ -414,7 +414,7 @@ void apply_eosio_passdomain(apply_context& context) {
       // TODO: move ram usage to new owner
 } FC_CAPTURE_AND_RETHROW((op)) }
 
-void apply_eosio_linkdomain(apply_context& context) {
+void apply_cyber_domain_linkdomain(apply_context& context) {
    auto op = context.act.data_as<linkdomain>();
    try {
       context.require_authorization(op.owner);
@@ -429,7 +429,7 @@ void apply_eosio_linkdomain(apply_context& context) {
       // ram usage unchanged
 } FC_CAPTURE_AND_RETHROW((op)) }
 
-void apply_eosio_unlinkdomain(apply_context& context) {
+void apply_cyber_domain_unlinkdomain(apply_context& context) {
    auto op = context.act.data_as<unlinkdomain>();
    try {
       context.require_authorization(op.owner);
@@ -444,7 +444,7 @@ void apply_eosio_unlinkdomain(apply_context& context) {
       // ram usage unchanged
 } FC_CAPTURE_AND_RETHROW((op)) }
 
-void apply_eosio_newusername(apply_context& context) {
+void apply_cyber_domain_newusername(apply_context& context) {
    auto op = context.act.data_as<newusername>();
    try {
       context.require_authorization(op.creator);

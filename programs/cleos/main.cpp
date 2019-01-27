@@ -141,7 +141,7 @@ using namespace boost::filesystem;
 static const auto wrap_contract = N(cyber.wrap);
 static const auto msig_contract = N(cyber.msig);
 static const auto token_contract = N(cyber.token);
-static const auto domain_contract = N(cyber.domain);
+static const auto domain_contract = config::domain_account_name;
 static const auto declare_names_action = N(declarenames);
 
 FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
@@ -415,7 +415,7 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
         if (declare_names) {
             FC_ASSERT(have_domain_contract(),
                 "Can't declare resolved names. Either install ${c} contract, or use --dont-declare-names option",
-                ("c", domain_contract));
+                ("c", name{domain_contract}.to_string()));
             std::sort(tx_resolved_names.begin(), tx_resolved_names.end(), [](const auto& a, const auto& b) {
                 return a.domain < b.domain || (a.domain == b.domain && a.account < b.account);
             });
