@@ -392,6 +392,9 @@ void apply_cyber_domain_newdomain(apply_context& context) {
       context.require_authorization(op.creator);
       validate_domain_name(op.name);             // TODO: can move validation to domain_name deserializer
       auto& db = context.db;
+      auto exists = db.find<domain_object, by_name>(op.name);
+      EOS_ASSERT(exists == nullptr, domain_exists_exception,
+         "Cannot create domain named ${n}, as that name is already taken", ("n", op.name));
       db.create<domain_object>([&](auto& d) {
          d.owner = op.creator;
          d.creation_date = context.control.pending_block_time();
@@ -406,7 +409,7 @@ void apply_cyber_domain_passdomain(apply_context& context) {
       context.require_authorization(op.from);   // TODO: special case if nobody owns domain
       validate_domain_name(op.name);
       const auto& domain = context.control.get_domain(op.name);
-      EOS_ASSERT(op.from == domain.owner, action_validate_exception, "Domain pass `from` must be domain owner");
+      EOS_ASSERT(op.from == domain.owner, action_validate_exception, "Only owner can pass domain name");
       auto& db = context.db;
       db.modify(domain, [&](auto& d) {
          d.owner = op.to;
@@ -450,6 +453,9 @@ void apply_cyber_domain_newusername(apply_context& context) {
       context.require_authorization(op.creator);
       validate_username(op.name);               // TODO: can move validation to username deserializer
       auto& db = context.db;
+      auto exists = db.find<username_object, by_scope_name>(boost::make_tuple(op.creator, op.name));
+      EOS_ASSERT(exists == nullptr, username_exists_exception,
+         "Cannot create username ${n} in scope ${s}, as it's already taken", ("n", op.name)("s", op.creator));
       auto owner = db.find<account_object, by_name>(op.owner);
       EOS_ASSERT(owner, account_name_exists_exception, "Username owner (${o}) must exist", ("o", op.owner));
       db.create<username_object>([&](auto& d) {

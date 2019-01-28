@@ -652,7 +652,7 @@ struct controller_impl {
         "domain",
         {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {"name", cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}},
-         {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}}
+         {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"},{"name", "asc"}}}}
       });
 
       abi.structs.emplace_back(eosio::chain::struct_def{
