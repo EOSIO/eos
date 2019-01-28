@@ -294,6 +294,20 @@ mongodconf
 		elif [ "${maj}" -eq 3 ] && [ "${min}" -lt 3 ]; then
 			MONGO_INSTALL=true
 		fi
+
+		if ! version=$( grep "Version:" /usr/local/lib/pkgconfig/libmongoc-static-1.0.pc | tr -s ' ' | awk '{print $2}' )
+		then
+			printf "\\tUnable to determine mongodb-c-driver version.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		maj=$( echo "${version}" | cut -d'.' -f1 )
+		min=$( echo "${version}" | cut -d'.' -f2 )
+		if [ "${maj}" -gt 1 ]; then
+			MONGO_INSTALL=true
+		elif [ "${maj}" -eq 1 ] && [ "${min}" -lt 13 ]; then
+			MONGO_INSTALL=true
+		fi
 	fi
 
     if [ $MONGO_INSTALL == "true" ]; then
