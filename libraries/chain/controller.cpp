@@ -193,7 +193,7 @@ struct controller_impl {
     *  are removed from this list if they are re-applied in other blocks. Producers
     *  can query this list when scheduling new transactions into blocks.
     */
-   map<digest_type, transaction_metadata_ptr>     unapplied_transactions;
+   map<digest_type, transaction_metadata_ptr, sha256_less>     unapplied_transactions;
 
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
