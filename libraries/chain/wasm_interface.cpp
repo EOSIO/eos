@@ -1063,12 +1063,16 @@ class console_api : public context_aware_api {
             auto& console = context.get_console_stream();
             auto orig_prec = console.precision();
 
+#ifdef __x86_64__
             console.precision( std::numeric_limits<long double>::digits10 );
-
             extFloat80_t val_approx;
             f128M_to_extF80M(&val, &val_approx);
             context.console_append( *(long double*)(&val_approx) );
-
+#else
+            console.precision( std::numeric_limits<double>::digits10 );
+            double val_approx = from_softfloat64( f128M_to_f64(&val) );
+            context.console_append(val_approx);
+#endif
             console.precision( orig_prec );
          }
       }

@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/fork_database.hpp>
@@ -218,6 +218,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the chain state database drops below this size (in MiB).")
          ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024  * 1024)), "Maximum size (in MiB) of the reversible blocks database")
          ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_guard_size / (1024  * 1024)), "Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
+         ("signature-cpu-billable-pct", bpo::value<uint32_t>()->default_value(config::default_sig_cpu_bill_pct / config::percent_1),
+          "Percentage of actual signature recovery cpu to bill. Whole number percentages, e.g. 50 for 50%")
          ("chain-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
           "Number of worker threads in controller thread pool")
          ("contracts-console", bpo::bool_switch()->default_value(false),
@@ -425,6 +427,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          EOS_ASSERT( my->chain_config->thread_pool_size > 0, plugin_config_exception,
                      "chain-threads ${num} must be greater than 0", ("num", my->chain_config->thread_pool_size) );
       }
+
+      my->chain_config->sig_cpu_bill_pct = options.at("signature-cpu-billable-pct").as<uint32_t>();
+      EOS_ASSERT( my->chain_config->sig_cpu_bill_pct >= 0 && my->chain_config->sig_cpu_bill_pct <= 100, plugin_config_exception,
+                  "signature-cpu-billable-pct must be 0 - 100, ${pct}", ("pct", my->chain_config->sig_cpu_bill_pct) );
+      my->chain_config->sig_cpu_bill_pct *= config::percent_1;
 
       if( my->wasm_runtime )
          my->chain_config->wasm_runtime = *my->wasm_runtime;
@@ -738,6 +745,8 @@ void chain_plugin::plugin_shutdown() {
    my->accepted_transaction_connection.reset();
    my->applied_transaction_connection.reset();
    my->accepted_confirmation_connection.reset();
+   my->chain->get_thread_pool().stop();
+   my->chain->get_thread_pool().join();
    my->chain.reset();
 }
 
@@ -756,7 +765,11 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
 }
 
 void chain_plugin::accept_transaction(const chain::packed_transaction& trx, next_function<chain::transaction_trace_ptr> next) {
-   my->incoming_transaction_async_method(std::make_shared<packed_transaction>(trx), false, std::forward<decltype(next)>(next));
+   my->incoming_transaction_async_method(std::make_shared<transaction_metadata>(std::make_shared<packed_transaction>(trx)), false, std::forward<decltype(next)>(next));
+}
+
+void chain_plugin::accept_transaction(const chain::transaction_metadata_ptr& trx, next_function<chain::transaction_trace_ptr> next) {
+   my->incoming_transaction_async_method(trx, false, std::forward<decltype(next)>(next));
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
@@ -901,7 +914,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
 
          new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
             ubo.blocknum = num;
-            ubo.set_block( std::make_shared<signed_block>(tmp) );
+            ubo.set_block( std::make_shared<signed_block>(std::move(tmp)) );
          });
          end = num;
       }
@@ -1526,9 +1539,9 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
    return vo;
 }
 
-void read_write::push_block(const read_write::push_block_params& params, next_function<read_write::push_block_results> next) {
+void read_write::push_block(read_write::push_block_params&& params, next_function<read_write::push_block_results> next) {
    try {
-      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(params));
+      app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(std::move(params)));
       next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
@@ -1540,18 +1553,19 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
    try {
       auto pretty_input = std::make_shared<packed_transaction>();
       auto resolver = make_resolver(this, abi_serializer_max_time);
+      transaction_metadata_ptr ptrx;
       try {
          abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
+         ptrx = std::make_shared<transaction_metadata>( pretty_input );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      app().get_method<incoming::methods::transaction_async>()(pretty_input, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void{
+      app().get_method<incoming::methods::transaction_async>()(ptrx, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void{
          if (result.contains<fc::exception_ptr>()) {
             next(result.get<fc::exception_ptr>());
          } else {
             auto trx_trace_ptr = result.get<transaction_trace_ptr>();
 
             try {
-               chain::transaction_id_type id = trx_trace_ptr->id;
                fc::variant output;
                try {
                   output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer_max_time );
@@ -1559,6 +1573,7 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
                   output = *trx_trace_ptr;
                }
 
+               const chain::transaction_id_type& id = trx_trace_ptr->id;
                next(read_write::push_transaction_results{id, output});
             } CATCH_AND_CALL(next);
          }

@@ -33,7 +33,6 @@ namespace eosio { namespace chain {
 
          void init_for_input_trx( uint64_t packed_trx_unprunable_size,
                                   uint64_t packed_trx_prunable_size,
-                                  uint32_t num_signatures,
                                   bool skip_recording);
 
          void init_for_deferred_trx( fc::time_point published );

@@ -19,22 +19,22 @@ namespace eosio { namespace chain {
       };
 
       transaction_receipt_header():status(hard_fail){}
-      transaction_receipt_header( status_enum s ):status(s){}
+      explicit transaction_receipt_header( status_enum s ):status(s){}
 
       friend inline bool operator ==( const transaction_receipt_header& lhs, const transaction_receipt_header& rhs ) {
          return std::tie(lhs.status, lhs.cpu_usage_us, lhs.net_usage_words) == std::tie(rhs.status, rhs.cpu_usage_us, rhs.net_usage_words);
       }
 
       fc::enum_type<uint8_t,status_enum>   status;
-      uint32_t                             cpu_usage_us; ///< total billed CPU usage (microseconds)
+      uint32_t                             cpu_usage_us = 0; ///< total billed CPU usage (microseconds)
       fc::unsigned_int                     net_usage_words; ///<  total billed NET usage, so we can reconstruct resource state when skipping context free data... hard failures...
    };
 
    struct transaction_receipt : public transaction_receipt_header {
 
       transaction_receipt():transaction_receipt_header(){}
-      transaction_receipt( transaction_id_type tid ):transaction_receipt_header(executed),trx(tid){}
-      transaction_receipt( packed_transaction ptrx ):transaction_receipt_header(executed),trx(ptrx){}
+      explicit transaction_receipt( const transaction_id_type& tid ):transaction_receipt_header(executed),trx(tid){}
+      explicit transaction_receipt( const packed_transaction& ptrx ):transaction_receipt_header(executed),trx(ptrx){}
 
       fc::static_variant<transaction_id_type, packed_transaction> trx;
 
@@ -55,9 +55,14 @@ namespace eosio { namespace chain {
    /**
     */
    struct signed_block : public signed_block_header {
-      using signed_block_header::signed_block_header;
+    private:
+      signed_block( const signed_block& ) = default;
+    public:
       signed_block() = default;
-      signed_block( const signed_block_header& h ):signed_block_header(h){}
+      explicit signed_block( const signed_block_header& h ):signed_block_header(h){}
+      signed_block( signed_block&& ) = default;
+      signed_block& operator=(const signed_block&) = delete;
+      signed_block clone() const { return *this; }
 
       vector<transaction_receipt>   transactions; /// new or generated transactions
       extensions_type               block_extensions;

@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
          auto& fork = forks.at(j);
 
          if (j <= i) {
-            auto copy_b = std::make_shared<signed_block>(*b);
+            auto copy_b = std::make_shared<signed_block>(b->clone());
             if (j == i) {
                // corrupt this block
                fork.block_merkle = remote.control->head_block_state()->blockroot_merkle;
@@ -277,9 +277,9 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    }
    wlog( "end push c2 blocks to c1" );
    wlog( "now push dan's block to c1 but first corrupt it so it is a bad block" );
-   auto bad_block = *b;
+   signed_block bad_block = std::move(*b);
    bad_block.transaction_mroot = bad_block.previous;
-   auto bad_block_bs = c.control->create_block_state_future( std::make_shared<signed_block>(bad_block) );
+   auto bad_block_bs = c.control->create_block_state_future( std::make_shared<signed_block>(std::move(bad_block)) );
    c.control->abort_block();
    BOOST_REQUIRE_EXCEPTION(c.control->push_block( bad_block_bs ), fc::exception,
       [] (const fc::exception &ex)->bool {
