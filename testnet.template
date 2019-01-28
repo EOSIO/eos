@@ -75,7 +75,7 @@ wcmd create --to-console -n ignition
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
 
-ecmd set contract eosio contracts/eosio.bios eosio.bios.wasm eosio.bios.abi
+ecmd set contract eosio unittests/contracts/eosio.bios eosio.bios.wasm eosio.bios.abi
 
 # Create required system accounts
 ecmd create key --to-console
@@ -92,11 +92,11 @@ ecmd create account eosio eosio.saving $pubsyskey $pubsyskey
 ecmd create account eosio eosio.stake $pubsyskey $pubsyskey
 ecmd create account eosio eosio.token $pubsyskey $pubsyskey
 ecmd create account eosio eosio.vpay $pubsyskey $pubsyskey
-ecmd create account eosio eosio.sudo $pubsyskey $pubsyskey
+ecmd create account eosio eosio.wrap $pubsyskey $pubsyskey
 
-ecmd set contract eosio.token contracts/eosio.token eosio.token.wasm eosio.token.abi
-ecmd set contract eosio.msig contracts/eosio.msig eosio.msig.wasm eosio.msig.abi
-ecmd set contract eosio.sudo contracts/eosio.sudo eosio.sudo.wasm eosio.sudo.abi
+ecmd set contract eosio.token unittests/contracts/eosio.token eosio.token.wasm eosio.token.abi
+ecmd set contract eosio.msig unittests/contracts/eosio.msig eosio.msig.wasm eosio.msig.abi
+ecmd set contract eosio.wrap unittests/contracts/eosio.wrap eosio.wrap.wasm eosio.wrap.abi
 
 echo ===== Start: $step ============ >> $logfile
 echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 SYS" ]' -p eosio.token | tee -a $logfile
@@ -107,7 +107,8 @@ programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push a
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-ecmd set contract eosio contracts/eosio.system eosio.system.wasm eosio.system.abi
+ecmd set contract eosio unittests/contracts/eosio.system eosio.system.wasm eosio.system.abi
+programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio init '[0, "4,SYS"]' -p eosio >> $logfile 2>&1
 
 # Manual deployers, add a series of lines below this block that looks like:
 #    cacmd $PRODNAME[0] $OWNERKEY[0] $ACTIVEKEY[0]

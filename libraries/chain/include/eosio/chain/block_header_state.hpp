@@ -61,7 +61,7 @@ struct block_header_state : public detail::block_header_state_common {
 
    block_header_state() = default;
 
-   block_header_state( detail::block_header_state_common&& base )
+   explicit block_header_state( detail::block_header_state_common&& base )
    :detail::block_header_state_common( std::move(base) )
    {}
 
@@ -81,7 +81,7 @@ struct block_header_state : public detail::block_header_state_common {
    void                 verify_signee(const public_key_type& signee)const;
 };
 
-
+using block_header_state_ptr = std::shared_ptr<block_header_state>;
 
 } } /// namespace eosio::chain
 

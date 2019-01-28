@@ -1,14 +1,20 @@
-#include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/fork_database.hpp>
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/testing/tester.hpp>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
+#include <eosio/chain/fork_database.hpp>
 
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
+
+#include <boost/test/unit_test.hpp>
+
+#include <contracts.hpp>
 
 using namespace eosio::chain;
 using namespace eosio::testing;
@@ -21,11 +27,33 @@ public_key_type  get_public_key( name keyname, string role ){
    return get_private_key( keyname, role ).get_public_key();
 }
 
-void push_blocks( tester& from, tester& to ) {
-   while( to.control->fork_db_head_block_num() < from.control->fork_db_head_block_num() ) {
-      auto fb = from.control->fetch_block_by_number( to.control->fork_db_head_block_num()+1 );
+void push_blocks( tester& from, tester& to, uint32_t block_num_limit = std::numeric_limits<uint32_t>::max() ) {
+   while( to.control->fork_db_pending_head_block_num()
+            < std::min( from.control->fork_db_pending_head_block_num(), block_num_limit ) )
+   {
+      auto fb = from.control->fetch_block_by_number( to.control->fork_db_pending_head_block_num()+1 );
       to.push_block( fb );
    }
+}
+
+bool produce_empty_blocks_until( tester& t,
+                                 account_name last_producer,
+                                 account_name next_producer,
+                                 uint32_t max_num_blocks_to_produce = std::numeric_limits<uint32_t>::max() )
+{
+   auto condition_satisfied = [&t, last_producer, next_producer]() {
+      return t.control->pending_block_producer() == next_producer && t.control->head_block_producer() == last_producer;
+   };
+
+   for( uint32_t blocks_produced = 0;
+        blocks_produced < max_num_blocks_to_produce;
+        t.produce_block(), ++blocks_produced )
+   {
+      if( condition_satisfied() )
+         return true;
+   }
+
+   return condition_satisfied();
 }
 
 BOOST_AUTO_TEST_SUITE(forked_tests)
@@ -60,9 +88,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
    auto res = bios.set_producers( {N(a),N(b),N(c),N(d),N(e)} );
 
    // run until the producers are installed and its the start of "a's" round
-   while( bios.control->pending_block_producer().to_string() != "a" || bios.control->head_block_state()->header.producer.to_string() != "e") {
-      bios.produce_block();
-   }
+   BOOST_REQUIRE( produce_empty_blocks_until( bios, N(e), N(a) ) );
 
    // sync remote node
    tester remote;
@@ -158,8 +184,8 @@ BOOST_AUTO_TEST_CASE( forking ) try {
 
    auto r2 = c.create_accounts( {N(eosio.token)} );
    wdump((fc::json::to_pretty_string(r2)));
-   c.set_code( N(eosio.token), eosio_token_wast );
-   c.set_abi( N(eosio.token), eosio_token_abi );
+   c.set_code( N(eosio.token), contracts::eosio_token_wasm() );
+   c.set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
    c.produce_blocks(10);
 
 
@@ -356,21 +382,133 @@ BOOST_AUTO_TEST_CASE( read_modes ) try {
    auto res = c.set_producers( {N(dan),N(sam),N(pam)} );
    c.produce_blocks(200);
    auto head_block_num = c.control->head_block_num();
+   auto last_irreversible_block_num = c.control->last_irreversible_block_num();
 
    tester head(true, db_read_mode::HEAD);
    push_blocks(c, head);
-   BOOST_REQUIRE_EQUAL(head_block_num, head.control->fork_db_head_block_num());
-   BOOST_REQUIRE_EQUAL(head_block_num, head.control->head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, head.control->fork_db_head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, head.control->head_block_num());
 
    tester read_only(false, db_read_mode::READ_ONLY);
    push_blocks(c, read_only);
-   BOOST_REQUIRE_EQUAL(head_block_num, read_only.control->fork_db_head_block_num());
-   BOOST_REQUIRE_EQUAL(head_block_num, read_only.control->head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, read_only.control->fork_db_head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, read_only.control->head_block_num());
 
    tester irreversible(true, db_read_mode::IRREVERSIBLE);
    push_blocks(c, irreversible);
-   BOOST_REQUIRE_EQUAL(head_block_num, irreversible.control->fork_db_head_block_num());
-   BOOST_REQUIRE_EQUAL(head_block_num - 49, irreversible.control->head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, irreversible.control->fork_db_pending_head_block_num());
+   BOOST_CHECK_EQUAL(last_irreversible_block_num, irreversible.control->fork_db_head_block_num());
+   BOOST_CHECK_EQUAL(last_irreversible_block_num, irreversible.control->head_block_num());
+
+} FC_LOG_AND_RETHROW()
+
+
+BOOST_AUTO_TEST_CASE( irreversible_mode ) try {
+   auto does_account_exist = []( const tester& t, account_name n ) {
+      const auto& db = t.control->db();
+      return (db.find<account_object, by_name>( n ) != nullptr);
+   };
+
+   tester main;
+
+   main.create_accounts( {N(producer1), N(producer2)} );
+   main.produce_block();
+   main.set_producers( {N(producer1), N(producer2)} );
+   main.produce_block();
+   BOOST_REQUIRE( produce_empty_blocks_until( main, N(producer1), N(producer2), 26) );
+
+   main.create_accounts( {N(alice)} );
+   main.produce_block();
+   auto hbn1 = main.control->head_block_num();
+   auto lib1 = main.control->last_irreversible_block_num();
+
+   BOOST_REQUIRE( produce_empty_blocks_until( main, N(producer2), N(producer1), 11) );
+
+   auto hbn2 = main.control->head_block_num();
+   auto lib2 = main.control->last_irreversible_block_num();
+
+   BOOST_REQUIRE( lib2 < hbn1 );
+
+   tester other;
+
+   push_blocks( main, other );
+   BOOST_CHECK_EQUAL( other.control->head_block_num(), hbn2 );
+
+   BOOST_REQUIRE( produce_empty_blocks_until( main, N(producer1), N(producer2), 12) );
+   BOOST_REQUIRE( produce_empty_blocks_until( main, N(producer2), N(producer1), 12) );
+
+   auto hbn3 = main.control->head_block_num();
+   auto lib3 = main.control->last_irreversible_block_num();
+
+   BOOST_REQUIRE( lib3 >= hbn1 );
+
+   BOOST_CHECK_EQUAL( does_account_exist( main, N(alice) ), true );
+
+   // other forks away from main after hbn2
+   BOOST_REQUIRE_EQUAL( other.control->head_block_producer().to_string(), "producer2" );
+
+   other.produce_block( fc::milliseconds( 13 * config::block_interval_ms ) ); // skip over producer1's round
+   BOOST_REQUIRE_EQUAL( other.control->head_block_producer().to_string(), "producer2" );
+   auto fork_first_block_id = other.control->head_block_id();
+   wlog( "{w}", ("w", fork_first_block_id));
+
+   BOOST_REQUIRE( produce_empty_blocks_until( other, N(producer2), N(producer1), 11) ); // finish producer2's round
+   BOOST_REQUIRE_EQUAL( other.control->pending_block_producer().to_string(), "producer1" );
+
+   // Repeat two more times to ensure other has a longer chain than main
+   other.produce_block( fc::milliseconds( 13 * config::block_interval_ms ) ); // skip over producer1's round
+   BOOST_REQUIRE( produce_empty_blocks_until( other, N(producer2), N(producer1), 11) ); // finish producer2's round
+
+   other.produce_block( fc::milliseconds( 13 * config::block_interval_ms ) ); // skip over producer1's round
+   BOOST_REQUIRE( produce_empty_blocks_until( other, N(producer2), N(producer1), 11) ); // finish producer2's round
+
+   auto hbn4 = other.control->head_block_num();
+   auto lib4 = other.control->last_irreversible_block_num();
+
+   BOOST_REQUIRE( hbn4 > hbn3 );
+   BOOST_REQUIRE( lib4 < hbn1 );
+
+   tester irreversible(false, db_read_mode::IRREVERSIBLE);
+
+   push_blocks( main, irreversible, hbn1 );
+
+   BOOST_CHECK_EQUAL( irreversible.control->fork_db_pending_head_block_num(), hbn1 );
+   BOOST_CHECK_EQUAL( irreversible.control->head_block_num(), lib1 );
+   BOOST_CHECK_EQUAL( does_account_exist( irreversible, N(alice) ), false );
+
+   push_blocks( other, irreversible, hbn4 );
+
+   BOOST_CHECK_EQUAL( irreversible.control->fork_db_pending_head_block_num(), hbn4 );
+   BOOST_CHECK_EQUAL( irreversible.control->head_block_num(), lib4 );
+   BOOST_CHECK_EQUAL( does_account_exist( irreversible, N(alice) ), false );
+
+   // force push blocks from main to irreversible creating a new branch in irreversible's fork database
+   for( uint32_t n = hbn2 + 1; n <= hbn3; ++n ) {
+      auto fb = main.control->fetch_block_by_number( n );
+      irreversible.push_block( fb );
+   }
+
+   BOOST_CHECK_EQUAL( irreversible.control->fork_db_pending_head_block_num(), hbn3 );
+   BOOST_CHECK_EQUAL( irreversible.control->head_block_num(), lib3 );
+   BOOST_CHECK_EQUAL( does_account_exist( irreversible, N(alice) ), true );
+
+   {
+      auto bs = irreversible.control->fetch_block_state_by_id( fork_first_block_id );
+      BOOST_REQUIRE( bs && bs->id == fork_first_block_id );
+   }
+
+   main.produce_block();
+   auto hbn5 = main.control->head_block_num();
+   auto lib5 = main.control->last_irreversible_block_num();
+
+   BOOST_REQUIRE( lib5 > lib3 );
+
+   push_blocks( main, irreversible, hbn5 );
+
+   {
+      auto bs = irreversible.control->fetch_block_state_by_id( fork_first_block_id );
+      BOOST_REQUIRE( !bs );
+   }
 
 } FC_LOG_AND_RETHROW()
 

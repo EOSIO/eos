@@ -11,7 +11,7 @@ Some of the groundbreaking features of EOSIO include:
 1. Low Latency Block confirmation (0.5 seconds)
 1. Low-overhead Byzantine Fault Tolerant Finality
 1. Designed for optional high-overhead, low-latency BFT finality 
-1. Smart contract platform powered by Web Assembly
+1. Smart contract platform powered by WebAssembly
 1. Designed for Sparse Header Light Client Validation
 1. Scheduled Recurring Transactions 
 1. Time Delay Security
@@ -92,4 +92,4 @@ EOSIO currently supports the following operating systems:
 
 <a name="gettingstarted"></a>
 ## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in [Getting Started](https://developers.eos.io/eosio-nodeos/docs/overview-1) on the [EOSIO Developer Portal](https://developers.eos.io).
+Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in [Getting Started](https://developers.eos.io/eosio-home/docs) on the [EOSIO Developer Portal](https://developers.eos.io).

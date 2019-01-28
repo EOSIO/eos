@@ -1,0 +1,5 @@
+if( ${eosio.cdt_FOUND} )
+  add_executable( test_api test_api.cpp )
+else()
+  configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/test_api.wasm ${CMAKE_CURRENT_BINARY_DIR}/test_api.wasm COPYONLY )
+endif()

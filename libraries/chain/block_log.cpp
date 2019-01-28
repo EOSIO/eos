@@ -247,6 +247,9 @@ namespace eosio { namespace chain {
 
       if (first_block) {
          append(first_block);
+      } else {
+         my->head.reset();
+         my->head_id = {};
       }
 
       auto pos = my->block_stream.tellp();
@@ -360,6 +363,8 @@ namespace eosio { namespace chain {
       while( pos < end_pos ) {
          fc::raw::unpack(my->block_stream, tmp);
          my->block_stream.read((char*)&pos, sizeof(pos));
+         if(tmp.block_num() % 1000 == 0)
+            ilog( "Block log index reconstructed for block ${n}", ("n", tmp.block_num()));
          my->index_stream.write((char*)&pos, sizeof(pos));
       }
    } // construct_index
@@ -481,6 +486,8 @@ namespace eosio { namespace chain {
          new_block_stream.write( data.data(), data.size() );
          new_block_stream.write( reinterpret_cast<char*>(&pos), sizeof(pos) );
          block_num = tmp.block_num();
+         if(block_num % 1000 == 0)
+            ilog( "Recovered block ${num}", ("num", block_num) );
          pos = new_block_stream.tellp();
          if( block_num == truncate_at_block )
             break;

@@ -31,10 +31,11 @@ namespace eosio { namespace chain {
 
       block_state() = default;
 
-      /// weak_ptr prev_block_state....
+      bool is_valid()const { return validated; }
+
+
       signed_block_ptr                                    block;
       bool                                                validated = false;
-      bool                                                in_current_chain = false;
 
       /// this data is redundant with the data stored in block, but facilitates
       /// recapturing transactions when we pop a block
@@ -45,4 +46,4 @@ namespace eosio { namespace chain {
 
 } } /// namespace eosio::chain
 
-FC_REFLECT_DERIVED( eosio::chain::block_state, (eosio::chain::block_header_state), (block)(validated)(in_current_chain) )
+FC_REFLECT_DERIVED( eosio::chain::block_state, (eosio::chain::block_header_state), (block)(validated) )

@@ -2460,6 +2460,30 @@ BOOST_AUTO_TEST_CASE(abi_serialize_json_mismatching_type)
    } FC_LOG_AND_RETHROW()
 }
 
+// it is a bit odd to have an empty name for a field, but json seems to allow it
+BOOST_AUTO_TEST_CASE(abi_serialize_json_empty_name)
+{
+   using eosio::testing::fc_exception_message_is;
+
+   auto abi = R"({
+      "version": "eosio::abi/1.0",
+      "structs": [
+         {"name": "s1", "base": "", "fields": [
+            {"name": "", "type": "int8"},
+         ]}
+      ],
+   })";
+
+   try {
+      abi_serializer abis( fc::json::from_string(abi).as<abi_def>(), max_serialization_time );
+
+      auto bin = abis.variant_to_binary("s1", fc::json::from_string(R"({"":1})"), max_serialization_time);
+
+      verify_round_trip_conversion(abis, "s1", R"({"":1})", "01");
+
+   } FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE(abi_serialize_detailed_error_messages)
 {
    using eosio::testing::fc_exception_message_is;
