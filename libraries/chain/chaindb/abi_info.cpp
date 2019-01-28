@@ -9,7 +9,7 @@ namespace cyberway { namespace chaindb {
 
     namespace { namespace _detail {
 
-        using struct_def_map_type = fc::flat_map<type_name, struct_def>;
+        using struct_def_map_type = std::map<type_name, struct_def>;
 
         const struct_def_map_type& get_system_types() {
             static auto types = [](){
@@ -135,6 +135,9 @@ namespace cyberway { namespace chaindb {
                 for (auto& key: order.path) {
                     for (auto& src_field: src_struct->fields) {
                         if (src_field.name != key) continue;
+                        CYBERWAY_ASSERT(!serializer_.is_array(src_field.type), array_field_exception,
+                            "The field ${path} can't be used for the index ${index}",
+                            ("path", order.field)("index", root_struct.name));
 
                         --size;
                         if (!size) {
@@ -206,9 +209,6 @@ namespace cyberway { namespace chaindb {
             table_map_.emplace(id, std::move(table));
         }
 
-        CYBERWAY_ASSERT(table_map_.size() == abi.tables.size(), unique_table_name_exception,
-            "The account '${code} should has unique table names", ("code", get_code_name(code_)));
-
         index_builder builder(code_, serializer_, table_map_);
         builder.build_indexes();
     }
@@ -220,8 +220,6 @@ namespace cyberway { namespace chaindb {
 
         std::map<table_name, const table_def*> tables;
         for (auto& table: table_map_) tables.emplace(table.second.name, &table.second);
-        CYBERWAY_ASSERT(table_map_.size() == tables.size(), unique_table_name_exception,
-            "The account '${code} should has unique table names", ("code", get_code_name(code_)));
 
         auto db_tables = driver.db_tables(code_);
         for (auto& db_table: db_tables) {
@@ -238,7 +236,7 @@ namespace cyberway { namespace chaindb {
 
             std::map<index_name, const index_def*> indexes;
             for (auto& index: ttr->second->indexes) indexes.emplace(index.name, &index);
-            CYBERWAY_ASSERT(ttr->second->indexes.size() == indexes.size(), unique_table_name_exception,
+            CYBERWAY_ASSERT(ttr->second->indexes.size() == indexes.size(), unique_index_name_exception,
                 "The account '${table} should has unique index names", ("table", get_full_table_name(table)));
 
             for (auto& db_index: db_table.indexes) {
