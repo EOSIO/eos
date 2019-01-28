@@ -239,7 +239,7 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    produce_blocks(23); // Alice produces the last block of her first round.
                     // Bob's first block (which advances LIB to Alice's last block) is started but not finalized.
    BOOST_REQUIRE_EQUAL( control->head_block_producer(), N(alice) );
-   BOOST_REQUIRE_EQUAL( control->pending_block_state()->header.producer, N(bob) );
+   BOOST_REQUIRE_EQUAL( control->pending_block_producer(), N(bob) );
    BOOST_CHECK_EQUAL( control->pending_producers().version, 2 );
 
    produce_blocks(12); // Bob produces his first 11 blocks
@@ -247,7 +247,7 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    produce_blocks(12); // Bob produces his 12th block.
                     // Alice's first block of the second round is started but not finalized (which advances LIB to Bob's last block).
    BOOST_REQUIRE_EQUAL( control->head_block_producer(), N(alice) );
-   BOOST_REQUIRE_EQUAL( control->pending_block_state()->header.producer, N(bob) );
+   BOOST_REQUIRE_EQUAL( control->pending_block_producer(), N(bob) );
    BOOST_CHECK_EQUAL( control->active_producers().version, 2 );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
 
@@ -299,7 +299,7 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
 
    produce_blocks(48);
    BOOST_REQUIRE_EQUAL( control->head_block_producer(), N(bob) );
-   BOOST_REQUIRE_EQUAL( control->pending_block_state()->header.producer, N(carol) );
+   BOOST_REQUIRE_EQUAL( control->pending_block_producer(), N(carol) );
    BOOST_CHECK_EQUAL( control->pending_producers().version, 2 );
 
    produce_blocks(47);
@@ -307,7 +307,7 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
    produce_blocks(1);
 
    BOOST_REQUIRE_EQUAL( control->head_block_producer(), N(carol) );
-   BOOST_REQUIRE_EQUAL( control->pending_block_state()->header.producer, N(alice) );
+   BOOST_REQUIRE_EQUAL( control->pending_block_producer(), N(alice) );
    BOOST_CHECK_EQUAL( control->active_producers().version, 2 );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
 

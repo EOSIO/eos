@@ -94,19 +94,69 @@ class maybe_session {
       optional<database::session>     _session;
 };
 
+struct building_block {
+   building_block( const block_header_state& prev, block_timestamp_type when, uint16_t num_prev_blocks_to_confirm )
+   :_pending_block_header_state( prev.next( when, num_prev_blocks_to_confirm ) )
+   {}
+
+   pending_block_header_state         _pending_block_header_state;
+   optional<producer_schedule_type>   _new_pending_producer_schedule;
+   vector<transaction_metadata_ptr>   _pending_trx_metas;
+   vector<transaction_receipt>        _pending_trx_receipts;
+   vector<action_receipt>             _actions;
+};
+
+struct assembled_block {
+   pending_block_header_state        _pending_block_header_state;
+   vector<transaction_metadata_ptr>  _trx_metas;
+   signed_block_ptr                  _unsigned_block;
+};
+
+struct completed_block {
+   block_state_ptr                   _block_state;
+};
+
+using block_stage_type = fc::static_variant<building_block, assembled_block, completed_block>;
+
 struct pending_state {
-   pending_state( maybe_session&& s )
-   :_db_session( move(s) ){}
+   pending_state( maybe_session&& s, const block_header_state& prev,
+                  block_timestamp_type when, uint16_t num_prev_blocks_to_confirm )
+   :_db_session( move(s) )
+   ,_block_stage( building_block( prev, when, num_prev_blocks_to_confirm ) )
+   {}
 
    maybe_session                      _db_session;
-
-   block_state_ptr                    _pending_block_state;
-
-   vector<action_receipt>             _actions;
-
+   block_stage_type                   _block_stage;
    controller::block_status           _block_status = controller::block_status::incomplete;
-
    optional<block_id_type>            _producer_block_id;
+
+   /** @pre _block_stage cannot hold completed_block alternative */
+   const pending_block_header_state& get_pending_block_header_state()const {
+      if( _block_stage.contains<building_block>() )
+         return _block_stage.get<building_block>()._pending_block_header_state;
+
+      return _block_stage.get<assembled_block>()._pending_block_header_state;
+   }
+
+   const vector<transaction_receipt>& get_trx_receipts()const {
+      if( _block_stage.contains<building_block>() )
+         return _block_stage.get<building_block>()._pending_trx_receipts;
+
+      if( _block_stage.contains<assembled_block>() )
+         return _block_stage.get<assembled_block>()._unsigned_block->transactions;
+
+      return _block_stage.get<completed_block>()._block_state->block->transactions;
+   }
+
+   const vector<transaction_metadata_ptr>& get_trx_metas()const {
+      if( _block_stage.contains<building_block>() )
+         return _block_stage.get<building_block>()._pending_trx_metas;
+
+      if( _block_stage.contains<assembled_block>() )
+         return _block_stage.get<assembled_block>()._trx_metas;
+
+      return _block_stage.get<completed_block>()._block_state->trxs;
+   }
 
    void push() {
       _db_session.push();
@@ -534,7 +584,8 @@ struct controller_impl {
          block_header_state head_header_state;
          section.read_row(head_header_state, db);
 
-         auto head_state = std::make_shared<block_state>(head_header_state);
+         auto head_state = std::make_shared<block_state>();
+         static_cast<block_header_state&>(*head_state) = head_header_state;
          fork_db.set(head_state);
          fork_db.set_validity(head_state, true);
          fork_db.mark_in_current_chain(head_state, true);
@@ -586,15 +637,16 @@ struct controller_impl {
       producer_schedule_type initial_schedule{ 0, {{config::system_account_name, conf.genesis.initial_key}} };
 
       block_header_state genheader;
-      genheader.active_schedule       = initial_schedule;
-      genheader.pending_schedule      = initial_schedule;
-      genheader.pending_schedule_hash = fc::sha256::hash(initial_schedule);
-      genheader.header.timestamp      = conf.genesis.initial_timestamp;
-      genheader.header.action_mroot   = conf.genesis.compute_chain_id();
-      genheader.id                    = genheader.header.id();
-      genheader.block_num             = genheader.header.block_num();
+      genheader.active_schedule                = initial_schedule;
+      genheader.pending_schedule.schedule      = initial_schedule;
+      genheader.pending_schedule.schedule_hash = fc::sha256::hash(initial_schedule);
+      genheader.header.timestamp               = conf.genesis.initial_timestamp;
+      genheader.header.action_mroot            = conf.genesis.compute_chain_id();
+      genheader.id                             = genheader.header.id();
+      genheader.block_num                      = genheader.header.block_num();
 
-      head = std::make_shared<block_state>( genheader );
+      head = std::make_shared<block_state>();
+      static_cast<block_header_state&>(*head) = genheader;
       head->block = std::make_shared<signed_block>(genheader.header);
       fork_db.set( head );
       db.set_revision( head->block_num );
@@ -673,58 +725,22 @@ struct controller_impl {
                                                                              conf.genesis.initial_timestamp );
    }
 
-
-
-   /**
-    * @post regardless of the success of commit block there is no active pending block
-    */
-   void commit_block( bool add_to_fork_db ) {
-      auto reset_pending_on_exit = fc::make_scoped_exit([this]{
-         pending.reset();
-      });
-
-      try {
-         if (add_to_fork_db) {
-            pending->_pending_block_state->validated = true;
-            auto new_bsp = fork_db.add(pending->_pending_block_state, true);
-            emit(self.accepted_block_header, pending->_pending_block_state);
-            head = fork_db.head();
-            EOS_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
-         }
-
-         if( !replaying ) {
-            reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
-               ubo.blocknum = pending->_pending_block_state->block_num;
-               ubo.set_block( pending->_pending_block_state->block );
-            });
-         }
-
-         emit( self.accepted_block, pending->_pending_block_state );
-      } catch (...) {
-         // dont bother resetting pending, instead abort the block
-         reset_pending_on_exit.cancel();
-         abort_block();
-         throw;
-      }
-
-      // push the state for pending.
-      pending->push();
-   }
-
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
    fc::scoped_exit<std::function<void()>> make_block_restore_point() {
-      auto orig_block_transactions_size = pending->_pending_block_state->block->transactions.size();
-      auto orig_state_transactions_size = pending->_pending_block_state->trxs.size();
-      auto orig_state_actions_size      = pending->_actions.size();
+      auto& bb = pending->_block_stage.get<building_block>();
+      auto orig_block_transactions_size = bb._pending_trx_receipts.size();
+      auto orig_state_transactions_size = bb._pending_trx_metas.size();
+      auto orig_state_actions_size      = bb._actions.size();
 
       std::function<void()> callback = [this,
                                         orig_block_transactions_size,
                                         orig_state_transactions_size,
                                         orig_state_actions_size]()
       {
-         pending->_pending_block_state->block->transactions.resize(orig_block_transactions_size);
-         pending->_pending_block_state->trxs.resize(orig_state_transactions_size);
-         pending->_actions.resize(orig_state_actions_size);
+         auto& bb = pending->_block_stage.get<building_block>();
+         bb._pending_trx_receipts.resize(orig_block_transactions_size);
+         bb._pending_trx_metas.resize(orig_state_transactions_size);
+         bb._actions.resize(orig_state_actions_size);
       };
 
       return fc::make_scoped_exit( std::move(callback) );
@@ -762,7 +778,7 @@ struct controller_impl {
          auto restore = make_block_restore_point();
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::soft_fail,
                                         trx_context.billed_cpu_time_us, trace->net_usage );
-         fc::move_append( pending->_actions, move(trx_context.executed) );
+         fc::move_append( pending->_block_stage.get<building_block>()._actions, move(trx_context.executed) );
 
          trx_context.squash();
          restore.cancel();
@@ -846,7 +862,7 @@ struct controller_impl {
       if( gtrx.expiration < self.pending_block_time() ) {
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
-         trace->block_num = self.pending_block_state()->block_num;
+         trace->block_num = self.head_block_num() + 1;
          trace->block_time = self.pending_block_time();
          trace->producer_block_id = self.pending_producer_block_id();
          trace->scheduled = true;
@@ -888,7 +904,7 @@ struct controller_impl {
                                         trx_context.billed_cpu_time_us,
                                         trace->net_usage );
 
-         fc::move_append( pending->_actions, move(trx_context.executed) );
+         fc::move_append( pending->_block_stage.get<building_block>()._actions, move(trx_context.executed) );
 
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
@@ -976,8 +992,9 @@ struct controller_impl {
                                             uint64_t cpu_usage_us, uint64_t net_usage ) {
       uint64_t net_usage_words = net_usage / 8;
       EOS_ASSERT( net_usage_words*8 == net_usage, transaction_exception, "net_usage is not divisible by 8" );
-      pending->_pending_block_state->block->transactions.emplace_back( trx );
-      transaction_receipt& r = pending->_pending_block_state->block->transactions.back();
+      auto& receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
+      receipts.emplace_back( trx );
+      transaction_receipt& r = receipts.back();
       r.cpu_usage_us         = cpu_usage_us;
       r.net_usage_words      = net_usage_words;
       r.status               = status;
@@ -1053,7 +1070,7 @@ struct controller_impl {
                                                     ? transaction_receipt::executed
                                                     : transaction_receipt::delayed;
                trace->receipt = push_receipt(*trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage);
-               pending->_pending_block_state->trxs.emplace_back(trx);
+               pending->_block_stage.get<building_block>()._pending_trx_metas.emplace_back(trx);
             } else {
                transaction_receipt_header r;
                r.status = transaction_receipt::executed;
@@ -1062,7 +1079,7 @@ struct controller_impl {
                trace->receipt = r;
             }
 
-            fc::move_append(pending->_actions, move(trx_context.executed));
+            fc::move_append(pending->_block_stage.get<building_block>()._actions, move(trx_context.executed));
 
             // call the accept signal but only once for this transaction
             if (!trx->accepted) {
@@ -1115,43 +1132,42 @@ struct controller_impl {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-         pending.emplace(maybe_session(db));
+         pending.emplace( maybe_session(db), *head, when, confirm_block_count );
       } else {
-         pending.emplace(maybe_session());
+         pending.emplace( maybe_session(), *head, when, confirm_block_count );
       }
 
       pending->_block_status = s;
       pending->_producer_block_id = producer_block_id;
-      pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
-      pending->_pending_block_state->in_current_chain = true;
 
-      pending->_pending_block_state->set_confirmed(confirm_block_count);
-
-      auto was_pending_promoted = pending->_pending_block_state->maybe_promote_pending();
+      const auto& pbhs = pending->get_pending_block_header_state();
 
       //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
-      if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
-
+      if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete )
+      {
          const auto& gpo = db.get<global_property_object>();
          if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
-             ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
-             pending->_pending_block_state->pending_schedule.producers.size() == 0 && // ... and there is room for a new pending schedule ...
-             !was_pending_promoted // ... and not just because it was promoted to active at the start of this block, then:
+             ( *gpo.proposed_schedule_block_num <= pbhs.dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
+             pbhs.prev_pending_schedule.schedule.producers.size() == 0 // ... and there was room for a new pending schedule prior to any possible promotion
          )
-            {
-               // Promote proposed schedule to pending schedule.
-               if( !replaying ) {
-                  ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
-                        ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
-                        ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)
-                        ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
-               }
-               pending->_pending_block_state->set_new_producers( gpo.proposed_schedule );
-               db.modify( gpo, [&]( auto& gp ) {
-                     gp.proposed_schedule_block_num = optional<block_num_type>();
-                     gp.proposed_schedule.clear();
-                  });
+         {
+            // Promote proposed schedule to pending schedule.
+            if( !replaying ) {
+               ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+                     ("proposed_num", *gpo.proposed_schedule_block_num)("n", pbhs.block_num)
+                     ("lib", pbhs.dpos_irreversible_blocknum)
+                     ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
             }
+
+            EOS_ASSERT( gpo.proposed_schedule.version == pbhs.active_schedule_version + 1,
+                        producer_schedule_exception, "wrong producer schedule version specified" );
+
+            pending->_block_stage.get<building_block>()._new_pending_producer_schedule = gpo.proposed_schedule;
+            db.modify( gpo, [&]( auto& gp ) {
+                  gp.proposed_schedule_block_num = optional<block_num_type>();
+                  gp.proposed_schedule.clear();
+            });
+         }
 
          try {
             auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
@@ -1175,17 +1191,106 @@ struct controller_impl {
       }
 
       guard_pending.cancel();
-   } // start_block
+   } /// start_block
 
+   signed_block_ptr finalize_block()
+   {
+      EOS_ASSERT( pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
+      EOS_ASSERT( pending->_block_stage.contains<building_block>(), block_validate_exception, "already called finalize_block");
 
+      try {
 
-   void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback  ) {
-      auto p = pending->_pending_block_state;
+      auto& pbhs = pending->get_pending_block_header_state();
 
-      p->sign( signer_callback );
+      // Update resource limits:
+      resource_limits.process_account_limit_updates();
+      const auto& chain_config = self.get_global_properties().configuration;
+      uint32_t max_virtual_mult = 1000;
+      uint64_t CPU_TARGET = EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct);
+      resource_limits.set_block_parameters(
+         { CPU_TARGET, chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}},
+         {EOS_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}}
+      );
+      resource_limits.process_block_usage(pbhs.block_num);
 
-      static_cast<signed_block_header&>(*p->block) = p->header;
-   } /// sign_block
+      auto& bb = pending->_block_stage.get<building_block>();
+
+      // Create (unsigned) block:
+      auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
+         calculate_trx_merkle(),
+         calculate_action_merkle(),
+         std::move( bb._new_pending_producer_schedule )
+      ) );
+
+      block_ptr->transactions = std::move( bb._pending_trx_receipts );
+
+      // Update TaPoS table:
+      create_block_summary( block_ptr->id() );
+
+      /*
+      ilog( "finalized block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
+            ("n",pbhs.block_num)
+            ("id",block_ptr->id())
+            ("t",pbhs.timestamp)
+            ("p",pbhs.producer)
+            ("signing_key", pbhs.block_signing_key)
+            ("v",pbhs.active_schedule_version)
+            ("lib",pbhs.dpos_irreversible_blocknum)
+            ("ndtrxs",db.get_index<generated_transaction_multi_index,by_trx_id>().size())
+            ("np",block_ptr->new_producers)
+      );
+      */
+
+      pending->_block_stage = assembled_block{
+                                 std::move( bb._pending_block_header_state ),
+                                 std::move( bb._pending_trx_metas ),
+                                 block_ptr
+                              };
+
+      return block_ptr;
+   } FC_CAPTURE_AND_RETHROW() } /// finalize_block
+
+   /**
+    * @post regardless of the success of commit block there is no active pending block
+    */
+   void commit_block( bool add_to_fork_db ) {
+      auto reset_pending_on_exit = fc::make_scoped_exit([this]{
+         pending.reset();
+      });
+
+      try {
+         EOS_ASSERT( pending->_block_stage.contains<completed_block>(), block_validate_exception,
+                     "cannot call commit_block until pending block is completed" );
+
+         auto bsp = pending->_block_stage.get<completed_block>()._block_state;
+
+         if (add_to_fork_db) {
+            bsp->in_current_chain = true;
+            bsp->validated = true;
+            auto new_bsp = fork_db.add(bsp, true);
+            emit(self.accepted_block_header, bsp);
+            head = fork_db.head();
+            EOS_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
+         }
+
+         if( !replaying ) {
+            reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
+               ubo.blocknum = bsp->block_num;
+               ubo.set_block( bsp->block );
+            });
+         }
+
+         emit( self.accepted_block, bsp );
+      } catch (...) {
+         // dont bother resetting pending, instead abort the block
+         reset_pending_on_exit.cancel();
+         abort_block();
+         throw;
+      }
+
+      // push the state for pending.
+      pending->push();
+   }
 
    void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
       try {
@@ -1210,7 +1315,8 @@ struct controller_impl {
 
          size_t packed_idx = 0;
          for( const auto& receipt : b->transactions ) {
-            auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
+            const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
+            auto num_pending_receipts = trx_receipts.size();
             if( receipt.trx.contains<packed_transaction>() ) {
                trace = push_transaction( packed_transactions.at(packed_idx++), fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else if( receipt.trx.contains<transaction_id_type>() ) {
@@ -1226,36 +1332,37 @@ struct controller_impl {
                throw *trace->except;
             }
 
-            EOS_ASSERT( pending->_pending_block_state->block->transactions.size() > 0,
+            EOS_ASSERT( trx_receipts.size() > 0,
                         block_validate_exception, "expected a receipt",
                         ("block", *b)("expected_receipt", receipt)
                       );
-            EOS_ASSERT( pending->_pending_block_state->block->transactions.size() == num_pending_receipts + 1,
+            EOS_ASSERT( trx_receipts.size() == num_pending_receipts + 1,
                         block_validate_exception, "expected receipt was not added",
                         ("block", *b)("expected_receipt", receipt)
                       );
-            const transaction_receipt_header& r = pending->_pending_block_state->block->transactions.back();
+            const transaction_receipt_header& r = trx_receipts.back();
             EOS_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
                         block_validate_exception, "receipt does not match",
-                        ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back()) );
+                        ("producer_receipt", receipt)("validator_receipt", trx_receipts.back()) );
          }
 
-         finalize_block();
+         auto block_ptr = finalize_block();
 
          // this implicitly asserts that all header fields (less the signature) are identical
-         EOS_ASSERT(producer_block_id == pending->_pending_block_state->header.id(),
-                   block_validate_exception, "Block ID does not match",
-                   ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id()));
+         auto id = block_ptr->id();
+         EOS_ASSERT( producer_block_id == id, block_validate_exception, "Block ID does not match",
+                     ("producer_block_id",producer_block_id)("validator_block_id",id) );
 
-         // We need to fill out the pending block state's block because that gets serialized in the reversible block log
-         // in the future we can optimize this by serializing the original and not the copy
+         auto&& ab = pending->_block_stage.get<assembled_block>();
 
-         // we can always trust this signature because,
-         //   - prior to apply_block, we call fork_db.add which does a signature check IFF the block is untrusted
-         //   - OTHERWISE the block is trusted and therefore we trust that the signature is valid
-         // Also, as ::sign_block does not lazily calculate the digest of the block, we can just short-circuit to save cycles
-         pending->_pending_block_state->header.producer_signature = b->producer_signature;
-         static_cast<signed_block_header&>(*pending->_pending_block_state->block) =  pending->_pending_block_state->header;
+         auto bsp = std::make_shared<block_state>(
+                        std::move( ab._pending_block_header_state ),
+                        b,
+                        std::move( ab._trx_metas ),
+                        true // signature should have already been verified (assuming untrusted) prior to apply_block
+                    );
+
+         pending->_block_stage = completed_block{ bsp };
 
          commit_block(false);
          return;
@@ -1404,7 +1511,7 @@ struct controller_impl {
    void abort_block() {
       if( pending ) {
          if ( read_mode == db_read_mode::SPECULATIVE ) {
-            for( const auto& t : pending->_pending_block_state->trxs )
+            for( const auto& t : pending->get_trx_metas() )
                unapplied_transactions[t->signed_id] = t;
          }
          pending.reset();
@@ -1416,69 +1523,28 @@ struct controller_impl {
       return false;
    }
 
-   void set_action_merkle() {
+   checksum256_type calculate_action_merkle() {
       vector<digest_type> action_digests;
-      action_digests.reserve( pending->_actions.size() );
-      for( const auto& a : pending->_actions )
+      const auto& actions = pending->_block_stage.get<building_block>()._actions;
+      action_digests.reserve( actions.size() );
+      for( const auto& a : actions )
          action_digests.emplace_back( a.digest() );
 
-      pending->_pending_block_state->header.action_mroot = merkle( move(action_digests) );
+      return merkle( move(action_digests) );
    }
 
-   void set_trx_merkle() {
+   checksum256_type calculate_trx_merkle() {
       vector<digest_type> trx_digests;
-      const auto& trxs = pending->_pending_block_state->block->transactions;
+      const auto& trxs = pending->_block_stage.get<building_block>()._pending_trx_receipts;
       trx_digests.reserve( trxs.size() );
       for( const auto& a : trxs )
          trx_digests.emplace_back( a.digest() );
 
-      pending->_pending_block_state->header.transaction_mroot = merkle( move(trx_digests) );
+      return merkle( move(trx_digests) );
    }
 
-
-   void finalize_block()
-   {
-      EOS_ASSERT(pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
-      try {
-
-
-      /*
-      ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
-            ("n",pending->_pending_block_state->block_num)
-            ("id",pending->_pending_block_state->header.id())
-            ("t",pending->_pending_block_state->header.timestamp)
-            ("p",pending->_pending_block_state->header.producer)
-            ("signing_key", pending->_pending_block_state->block_signing_key)
-            ("v",pending->_pending_block_state->header.schedule_version)
-            ("lib",pending->_pending_block_state->dpos_irreversible_blocknum)
-            ("ndtrxs",db.get_index<generated_transaction_multi_index,by_trx_id>().size())
-            ("np",pending->_pending_block_state->header.new_producers)
-            );
-      */
-
-      // Update resource limits:
-      resource_limits.process_account_limit_updates();
-      const auto& chain_config = self.get_global_properties().configuration;
-      uint32_t max_virtual_mult = 1000;
-      uint64_t CPU_TARGET = EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct);
-      resource_limits.set_block_parameters(
-         { CPU_TARGET, chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}},
-         {EOS_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}}
-      );
-      resource_limits.process_block_usage(pending->_pending_block_state->block_num);
-
-      set_action_merkle();
-      set_trx_merkle();
-
-      auto p = pending->_pending_block_state;
-      p->id = p->header.id();
-
-      create_block_summary(p->id);
-
-   } FC_CAPTURE_AND_RETHROW() }
-
    void update_producers_authority() {
-      const auto& producers = pending->_pending_block_state->active_schedule.producers;
+      const auto& producers = pending->get_pending_block_header_state().active_schedule.producers;
 
       auto update_permission = [&]( auto& permission, auto threshold ) {
          auto auth = authority( threshold, {}, {});
@@ -1753,13 +1819,23 @@ void controller::start_block( block_timestamp_type when, uint16_t confirm_block_
    my->start_block(when, confirm_block_count, block_status::incomplete, optional<block_id_type>() );
 }
 
-void controller::finalize_block() {
+block_state_ptr controller::finalize_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
    validate_db_available_size();
-   my->finalize_block();
-}
 
-void controller::sign_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
-   my->sign_block( signer_callback );
+   auto block_ptr = my->finalize_block();
+
+   auto& ab = my->pending->_block_stage.get<assembled_block>();
+
+   auto bsp = std::make_shared<block_state>(
+                  std::move( ab._pending_block_header_state ),
+                  std::move( block_ptr ),
+                  std::move( ab._trx_metas ),
+                  signer_callback
+              );
+
+   my->pending->_block_stage = completed_block{ bsp };
+
+   return bsp;
 }
 
 void controller::commit_block() {
@@ -1876,13 +1952,31 @@ account_name  controller::fork_db_head_block_producer()const {
    return my->fork_db.head()->header.producer;
 }
 
-block_state_ptr controller::pending_block_state()const {
-   if( my->pending ) return my->pending->_pending_block_state;
-   return block_state_ptr();
-}
 time_point controller::pending_block_time()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
-   return my->pending->_pending_block_state->header.timestamp;
+
+   if( my->pending->_block_stage.contains<completed_block>() )
+      return my->pending->_block_stage.get<completed_block>()._block_state->header.timestamp;
+
+   return my->pending->get_pending_block_header_state().timestamp;
+}
+
+account_name controller::pending_block_producer()const {
+   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+
+   if( my->pending->_block_stage.contains<completed_block>() )
+      return my->pending->_block_stage.get<completed_block>()._block_state->header.producer;
+
+   return my->pending->get_pending_block_header_state().producer;
+}
+
+public_key_type controller::pending_block_signing_key()const {
+   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+
+   if( my->pending->_block_stage.contains<completed_block>() )
+      return my->pending->_block_stage.get<completed_block>()._block_state->block_signing_key;
+
+   return my->pending->get_pending_block_header_state().block_signing_key;
 }
 
 optional<block_id_type> controller::pending_producer_block_id()const {
@@ -1890,8 +1984,13 @@ optional<block_id_type> controller::pending_producer_block_id()const {
    return my->pending->_producer_block_id;
 }
 
+const vector<transaction_receipt>& controller::get_pending_trx_receipts()const {
+   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+   return my->pending->get_trx_receipts();
+}
+
 uint32_t controller::last_irreversible_block_num() const {
-   return std::max(std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum), my->snapshot_head_block);
+   return std::max( my->head->dpos_irreversible_blocknum, my->snapshot_head_block);
 }
 
 block_id_type controller::last_irreversible_block_id() const {
@@ -1984,13 +2083,14 @@ int64_t controller::set_proposed_producers( vector<producer_key> producers ) {
    decltype(sch.producers.cend()) end;
    decltype(end)                  begin;
 
-   if( my->pending->_pending_block_state->pending_schedule.producers.size() == 0 ) {
-      const auto& active_sch = my->pending->_pending_block_state->active_schedule;
+   const auto& pending_sch = pending_producers();
+
+   if( pending_sch.producers.size() == 0 ) {
+      const auto& active_sch = active_producers();
       begin = active_sch.producers.begin();
       end   = active_sch.producers.end();
       sch.version = active_sch.version + 1;
    } else {
-      const auto& pending_sch = my->pending->_pending_block_state->pending_schedule;
       begin = pending_sch.producers.begin();
       end   = pending_sch.producers.end();
       sch.version = pending_sch.version + 1;
@@ -2003,6 +2103,8 @@ int64_t controller::set_proposed_producers( vector<producer_key> producers ) {
 
    int64_t version = sch.version;
 
+   wlog( "proposed producer schedule with version ${v}", ("v", version) );
+
    my->db.modify( gpo, [&]( auto& gp ) {
       gp.proposed_schedule_block_num = cur_block_num;
       gp.proposed_schedule = std::move(sch);
@@ -2011,15 +2113,34 @@ int64_t controller::set_proposed_producers( vector<producer_key> producers ) {
 }
 
 const producer_schedule_type&    controller::active_producers()const {
-   if ( !(my->pending) )
+   if( !(my->pending) )
       return  my->head->active_schedule;
-   return my->pending->_pending_block_state->active_schedule;
+
+   if( my->pending->_block_stage.contains<completed_block>() )
+      return my->pending->_block_stage.get<completed_block>()._block_state->active_schedule;
+
+   return my->pending->get_pending_block_header_state().active_schedule;
 }
 
 const producer_schedule_type&    controller::pending_producers()const {
-   if ( !(my->pending) )
-      return  my->head->pending_schedule;
-   return my->pending->_pending_block_state->pending_schedule;
+   if( !(my->pending) )
+      return  my->head->pending_schedule.schedule;
+
+   if( my->pending->_block_stage.contains<completed_block>() )
+      return my->pending->_block_stage.get<completed_block>()._block_state->pending_schedule.schedule;
+
+   if( my->pending->_block_stage.contains<assembled_block>() ) {
+      const auto& np = my->pending->_block_stage.get<assembled_block>()._unsigned_block->new_producers;
+      if( np )
+         return *np;
+   }
+
+   const auto& bb = my->pending->_block_stage.get<building_block>();
+
+   if( bb._new_pending_producer_schedule )
+      return *bb._new_pending_producer_schedule;
+
+   return bb._pending_block_header_state.prev_pending_schedule.schedule;
 }
 
 optional<producer_schedule_type> controller::proposed_producers()const {
@@ -2161,6 +2282,10 @@ void controller::check_action_list( account_name code, action_name action )const
 
 void controller::check_key_list( const public_key_type& key )const {
    my->check_key_list( key );
+}
+
+bool controller::is_building_block()const {
+   return my->pending.valid();
 }
 
 bool controller::is_producing_block()const {

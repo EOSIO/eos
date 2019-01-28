@@ -43,7 +43,7 @@ BOOST_AUTO_TEST_CASE( irrblock ) try {
    wlog("set producer schedule to [dan,sam,pam]");
    c.produce_blocks(50);
 
-} FC_LOG_AND_RETHROW() 
+} FC_LOG_AND_RETHROW()
 
 struct fork_tracker {
    vector<signed_block_ptr> blocks;
@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
    auto res = bios.set_producers( {N(a),N(b),N(c),N(d),N(e)} );
 
    // run until the producers are installed and its the start of "a's" round
-   while( bios.control->pending_block_state()->header.producer.to_string() != "a" || bios.control->head_block_state()->header.producer.to_string() != "e") {
+   while( bios.control->pending_block_producer().to_string() != "a" || bios.control->head_block_state()->header.producer.to_string() != "e") {
       bios.produce_block();
    }
 
@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
 
             // re-sign the block
             auto header_bmroot = digest_type::hash( std::make_pair( copy_b->digest(), fork.block_merkle.get_root() ) );
-            auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule_hash) );
+            auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
             copy_b->producer_signature = remote.get_private_key(N(b), "active").sign(sig_digest);
 
             // add this new block to our corrupted block merkle
@@ -313,7 +313,7 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
    auto nextproducer = [](tester &c, int skip_interval) ->account_name {
       auto head_time = c.control->head_block_time();
       auto next_time = head_time + fc::milliseconds(config::block_interval_ms * skip_interval);
-      return c.control->head_block_state()->get_scheduled_producer(next_time).producer_name;   
+      return c.control->head_block_state()->get_scheduled_producer(next_time).producer_name;
    };
 
    // fork c: 2 producers: dan, sam
@@ -323,18 +323,18 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
       account_name next1 = nextproducer(c, skip1);
       if (next1 == N(dan) || next1 == N(sam)) {
          c.produce_block(fc::milliseconds(config::block_interval_ms * skip1)); skip1 = 1;
-      } 
+      }
       else ++skip1;
       account_name next2 = nextproducer(c2, skip2);
       if (next2 == N(scott)) {
          c2.produce_block(fc::milliseconds(config::block_interval_ms * skip2)); skip2 = 1;
-      } 
+      }
       else ++skip2;
    }
 
    BOOST_REQUIRE_EQUAL(87, c.control->head_block_num());
    BOOST_REQUIRE_EQUAL(73, c2.control->head_block_num());
-   
+
    // push fork from c2 => c
    int p = fork_num;
    while ( p < c2.control->head_block_num()) {
@@ -344,7 +344,7 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
 
    BOOST_REQUIRE_EQUAL(73, c.control->head_block_num());
 
-} FC_LOG_AND_RETHROW() 
+} FC_LOG_AND_RETHROW()
 
 
 BOOST_AUTO_TEST_CASE( read_modes ) try {

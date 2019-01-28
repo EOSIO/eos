@@ -264,7 +264,7 @@ namespace eosio {
                   datastream<char*> ds( aho.packed_action_trace.data(), ps );
                   fc::raw::pack( ds, at );
                   aho.action_sequence_num = at.receipt.global_sequence;
-                  aho.block_num = chain.pending_block_state()->block_num;
+                  aho.block_num = chain.head_block_num() + 1;
                   aho.block_time = chain.pending_block_time();
                   aho.trx_id     = at.trx_id;
                });
@@ -348,7 +348,7 @@ namespace eosio {
          auto& chain = my->chain_plug->chain();
 
          chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
-         // TODO: Use separate chainbase database for managing the state of the history_plugin (or remove deprecated history_plugin entirely) 
+         // TODO: Use separate chainbase database for managing the state of the history_plugin (or remove deprecated history_plugin entirely)
          db.add_index<account_history_index>();
          db.add_index<action_history_index>();
          db.add_index<account_control_history_multi_index>();
@@ -494,14 +494,9 @@ namespace eosio {
             }
 
             auto blk = chain.fetch_block_by_number( result.block_num );
-            if( blk == nullptr ) { // still in pending
-                auto blk_state = chain.pending_block_state();
-                if( blk_state != nullptr ) {
-                    blk = blk_state->block;
-                }
-            }
-            if( blk != nullptr ) {
-                for (const auto &receipt: blk->transactions) {
+            if( blk || chain.is_building_block() ) {
+               const vector<transaction_receipt>& receipts = blk ? blk->transactions : chain.get_pending_trx_receipts();
+               for (const auto &receipt: receipts) {
                     if (receipt.trx.contains<packed_transaction>()) {
                         auto &pt = receipt.trx.get<packed_transaction>();
                         if (pt.id() == result.id) {
@@ -518,7 +513,7 @@ namespace eosio {
                             break;
                         }
                     }
-                }
+               }
             }
          } else {
             auto blk = chain.fetch_block_by_number(*p.block_num_hint);

@@ -158,7 +158,7 @@ namespace eosio { namespace testing {
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
 
-      if( !control->pending_block_state() || control->pending_block_state()->header.timestamp != next_time ) {
+      if( !control->is_building_block() || control->pending_block_time() != next_time ) {
          _start_block( next_time );
       }
 
@@ -203,7 +203,7 @@ namespace eosio { namespace testing {
    }
 
    signed_block_ptr base_tester::_finish_block() {
-      FC_ASSERT( control->pending_block_state(), "must first start a block before it can be finished" );
+      FC_ASSERT( control->is_building_block(), "must first start a block before it can be finished" );
 
       auto producer = control->head_block_state()->get_scheduled_producer( control->pending_block_time() );
       private_key_type priv_key;
@@ -216,10 +216,9 @@ namespace eosio { namespace testing {
          priv_key = private_key_itr->second;
       }
 
-      control->finalize_block();
-      control->sign_block( [&]( digest_type d ) {
+      control->finalize_block( [&]( digest_type d ) {
                     return priv_key.sign(d);
-                    });
+      } );
 
       control->commit_block();
       last_produced_block[control->head_block_state()->header.producer] = control->head_block_state()->id;
@@ -331,7 +330,7 @@ namespace eosio { namespace testing {
                                                         uint32_t billed_cpu_time_us
                                                       )
    { try {
-      if( !control->pending_block_state() )
+      if( !control->is_building_block() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto r = control->push_transaction( std::make_shared<transaction_metadata>(std::make_shared<packed_transaction>(trx)), deadline, billed_cpu_time_us );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
@@ -344,7 +343,7 @@ namespace eosio { namespace testing {
                                                         uint32_t billed_cpu_time_us
                                                       )
    { try {
-      if( !control->pending_block_state() )
+      if( !control->is_building_block() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto c = packed_transaction::none;
 

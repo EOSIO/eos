@@ -10,15 +10,15 @@ namespace eosio { namespace chain {
       account_name                     producer;
 
       /**
-       *  By signing this block this producer is confirming blocks [block_num() - confirmed, blocknum()) 
+       *  By signing this block this producer is confirming blocks [block_num() - confirmed, blocknum())
        *  as being the best blocks for that range and that he has not signed any other
-       *  statements that would contradict.  
+       *  statements that would contradict.
        *
        *  No producer should sign a block with overlapping ranges or it is proof of byzantine
        *  behavior. When producing a block a producer is always confirming at least the block he
        *  is building off of.  A producer cannot confirm "this" block, only prior blocks.
        */
-      uint16_t                         confirmed = 1;  
+      uint16_t                         confirmed = 1;
 
       block_id_type                    previous;
 
@@ -35,6 +35,8 @@ namespace eosio { namespace chain {
       extensions_type                   header_extensions;
 
 
+      block_header() = default;
+
       digest_type       digest()const;
       block_id_type     id() const;
       uint32_t          block_num() const { return num_from_id(previous) + 1; }
@@ -47,18 +49,11 @@ namespace eosio { namespace chain {
       signature_type    producer_signature;
    };
 
-   struct header_confirmation {
-      block_id_type   block_id;
-      account_name    producer;
-      signature_type  producer_signature;
-   };
-
 } } /// namespace eosio::chain
 
-FC_REFLECT(eosio::chain::block_header, 
+FC_REFLECT(eosio::chain::block_header,
            (timestamp)(producer)(confirmed)(previous)
            (transaction_mroot)(action_mroot)
            (schedule_version)(new_producers)(header_extensions))
 
 FC_REFLECT_DERIVED(eosio::chain::signed_block_header, (eosio::chain::block_header), (producer_signature))
-FC_REFLECT(eosio::chain::header_confirmation,  (block_id)(producer)(producer_signature) )

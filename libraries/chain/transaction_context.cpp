@@ -162,7 +162,7 @@ namespace bacc = boost::accumulators;
          undo_session = c.mutable_db().start_undo_session(true);
       }
       trace->id = id;
-      trace->block_num = c.pending_block_state()->block_num;
+      trace->block_num = c.head_block_num() + 1;
       trace->block_time = c.pending_block_time();
       trace->producer_block_id = c.pending_producer_block_id();
       executed.reserve( trx.total_actions() );

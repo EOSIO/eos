@@ -139,7 +139,7 @@ namespace eosio { namespace chain {
           */
          transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
 
-         void finalize_block();
+         block_state_ptr finalize_block( const std::function<signature_type( const digest_type& )>& signer_callback );
          void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
          void commit_block();
          void pop_block();
@@ -188,8 +188,11 @@ namespace eosio { namespace chain {
          account_name         fork_db_head_block_producer()const;
 
          time_point              pending_block_time()const;
-         block_state_ptr         pending_block_state()const;
+         account_name            pending_block_producer()const;
+         public_key_type         pending_block_signing_key()const;
          optional<block_id_type> pending_producer_block_id()const;
+
+         const vector<transaction_receipt>& get_pending_trx_receipts()const;
 
          const producer_schedule_type&    active_producers()const;
          const producer_schedule_type&    pending_producers()const;
@@ -214,6 +217,7 @@ namespace eosio { namespace chain {
          void check_contract_list( account_name code )const;
          void check_action_list( account_name code, action_name action )const;
          void check_key_list( const public_key_type& key )const;
+         bool is_building_block()const;
          bool is_producing_block()const;
 
          bool is_ram_billing_in_notify_allowed()const;
@@ -253,7 +257,6 @@ namespace eosio { namespace chain {
          signal<void(const block_state_ptr&)>          irreversible_block;
          signal<void(const transaction_metadata_ptr&)> accepted_transaction;
          signal<void(const transaction_trace_ptr&)>    applied_transaction;
-         signal<void(const header_confirmation&)>      accepted_confirmation;
          signal<void(const int&)>                      bad_alloc;
 
          /*
