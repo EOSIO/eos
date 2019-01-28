@@ -196,6 +196,8 @@ namespace eosio { namespace chain {
                                     3040013, "Transaction is too big" )
       FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_compression, transaction_exception,
                                     3040014, "Unknown transaction compression" )
+      FC_DECLARE_DERIVED_EXCEPTION( bandwith_already_confirmed, transaction_exception,
+                                    3040015, "Bandwith has been already confirmed" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
@@ -256,7 +258,6 @@ namespace eosio { namespace chain {
                                     3070004, "memcpy with overlapping memory" )
       FC_DECLARE_DERIVED_EXCEPTION( binaryen_exception, wasm_exception,
                                     3070005, "binaryen exception" )
-
 
    FC_DECLARE_DERIVED_EXCEPTION( resource_exhausted_exception, chain_exception,
                                  3080000, "Resource exhausted exception" )

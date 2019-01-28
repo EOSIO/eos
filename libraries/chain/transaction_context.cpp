@@ -85,6 +85,26 @@ namespace bacc = boost::accumulators;
    volatile sig_atomic_t deadline_timer_verify::hit;
    static deadline_timer_verify deadline_timer_verification;
 
+   void provided_bandwith::confirm(account_name provider) {
+       verify_limits_not_confirmed();
+       confirmed_ = true;
+       provider_ = provider;
+   }
+
+   void provided_bandwith::set_net_limit(int64_t net_limit) {
+       verify_limits_not_confirmed();
+       this->net_limit_ = net_limit;
+   }
+
+   void provided_bandwith::set_cpu_limit(int64_t cpu_limit) {
+       verify_limits_not_confirmed();
+       this->cpu_limit_ = cpu_limit;
+   }
+
+   void provided_bandwith::verify_limits_not_confirmed() {
+        EOS_ASSERT(!confirmed_,  bandwith_already_confirmed, "Bandwith has been already confirmed. No changes could be done");
+   }
+
    deadline_timer::deadline_timer() {
       if(initialized)
          return;
@@ -161,7 +181,6 @@ namespace bacc = boost::accumulators;
    ,start(s)
    ,net_usage(trace->net_usage)
    ,pseudo_start(s)
-   ,provided_bandwith_(get_provided_bandwith())
    {
       if (!c.skip_db_sessions()) {
          // TODO: removed by CyberWay
@@ -185,8 +204,8 @@ namespace bacc = boost::accumulators;
       auto& rl = control.get_mutable_resource_limits_manager();
 
       net_limit = rl.get_block_net_limit();
-
       objective_duration_limit = fc::microseconds( rl.get_block_cpu_limit() );
+
       _deadline = start + objective_duration_limit;
 
       // Possibly lower net_limit to the maximum net usage a transaction is allowed to be billed
@@ -232,7 +251,12 @@ namespace bacc = boost::accumulators;
             provided_accounts.insert(args.account);
          }
          for( const auto& auth : act.authorization ) {
-            bill_to_accounts.insert( auth.actor );
+             const auto provided_bw_it = provided_bandwith_.find(auth.actor);
+             if(provided_bw_it != provided_bandwith_.end()) {
+                 bill_to_accounts.insert( provided_bw_it->second.get_provider() );
+             } else {
+                 bill_to_accounts.insert( auth.actor );
+             }
          }
       }
       validate_ram_usage.reserve( bill_to_accounts.size() );
@@ -366,58 +390,62 @@ namespace bacc = boost::accumulators;
    }
 
    void transaction_context::finalize() {
-      EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
+        validate_bw_usage();
 
-      if( is_input ) {
-         auto& am = control.get_mutable_authorization_manager();
-         for( const auto& act : trx.actions ) {
-            for( const auto& auth : act.authorization ) {
-               am.update_permission_usage( am.get_permission(auth) );
-            }
-         }
-      }
-
-      auto& rl = control.get_mutable_resource_limits_manager();
-      for( auto a : validate_ram_usage ) {
-         rl.verify_account_ram_usage( a );
-      }
-
-      // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
-      int64_t account_net_limit = 0;
-      int64_t account_cpu_limit = 0;
-      bool greylisted_net = false, greylisted_cpu = false;
-      std::tie( account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu) = max_bandwidth_billed_accounts_can_pay();
-      net_limit_due_to_greylist |= greylisted_net;
-      cpu_limit_due_to_greylist |= greylisted_cpu;
-
-      // Possibly lower net_limit to what the billed accounts can pay
-      if( static_cast<uint64_t>(account_net_limit) <= net_limit ) {
-         // NOTE: net_limit may possibly not be objective anymore due to net greylisting, but it should still be no greater than the truly objective net_limit
-         net_limit = static_cast<uint64_t>(account_net_limit);
-         net_limit_due_to_block = false;
-      }
-
-      // Possibly lower objective_duration_limit to what the billed accounts can pay
-      if( account_cpu_limit <= objective_duration_limit.count() ) {
-         // NOTE: objective_duration_limit may possibly not be objective anymore due to cpu greylisting, but it should still be no greater than the truly objective objective_duration_limit
-         objective_duration_limit = fc::microseconds(account_cpu_limit);
-         billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
-      }
-
-      net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
-
-      eager_net_limit = net_limit;
-      check_net_usage();
-
-      auto now = fc::time_point::now();
-      trace->elapsed = now - start;
-
-      update_billed_cpu_time( now );
-
-      validate_cpu_usage_to_bill( billed_cpu_time_us );
-
-      rl.add_transaction_usage( bill_to_accounts, static_cast<uint64_t>(billed_cpu_time_us), net_usage,
+        control.get_mutable_resource_limits_manager().add_transaction_usage( bill_to_accounts, static_cast<uint64_t>(billed_cpu_time_us), net_usage,
                                 block_timestamp_type(control.pending_block_time()).slot ); // Should never fail
+   }
+
+   void transaction_context::validate_bw_usage() {
+       EOS_ASSERT( is_initialized, transaction_exception, "must first initialize" );
+
+       if( is_input ) {
+          auto& am = control.get_mutable_authorization_manager();
+          for( const auto& act : trx.actions ) {
+             for( const auto& auth : act.authorization ) {
+                am.update_permission_usage( am.get_permission(auth) );
+             }
+          }
+       }
+
+       auto& rl = control.get_mutable_resource_limits_manager();
+       for( auto a : validate_ram_usage ) {
+          rl.verify_account_ram_usage( a );
+       }
+
+       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
+       int64_t account_net_limit = 0;
+       int64_t account_cpu_limit = 0;
+       bool greylisted_net = false, greylisted_cpu = false;
+       std::tie( account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu) = max_bandwidth_billed_accounts_can_pay();
+       net_limit_due_to_greylist |= greylisted_net;
+       cpu_limit_due_to_greylist |= greylisted_cpu;
+
+       // Possibly lower net_limit to what the billed accounts can pay
+       if( static_cast<uint64_t>(account_net_limit) <= net_limit ) {
+          // NOTE: net_limit may possibly not be objective anymore due to net greylisting, but it should still be no greater than the truly objective net_limit
+          net_limit = static_cast<uint64_t>(account_net_limit);
+          net_limit_due_to_block = false;
+       }
+
+       // Possibly lower objective_duration_limit to what the billed accounts can pay
+       if( account_cpu_limit <= objective_duration_limit.count() ) {
+          // NOTE: objective_duration_limit may possibly not be objective anymore due to cpu greylisting, but it should still be no greater than the truly objective objective_duration_limit
+          objective_duration_limit = fc::microseconds(account_cpu_limit);
+          billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
+       }
+
+       net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
+
+       eager_net_limit = net_limit;
+       check_net_usage();
+
+       auto now = fc::time_point::now();
+       trace->elapsed = now - start;
+
+       update_billed_cpu_time( now );
+
+       validate_cpu_usage_to_bill( billed_cpu_time_us );
    }
 
    void transaction_context::squash() {
@@ -560,11 +588,6 @@ namespace bacc = boost::accumulators;
       return static_cast<uint32_t>(billed_cpu_time_us);
    }
 
-   provided_bandwith transaction_context::get_provided_bandwith() const {
-        const auto max_bandwith = max_bandwidth_billed_accounts_can_pay();
-        return {static_cast<uint64_t>(std::get<0>(max_bandwith)), static_cast<uint64_t>(std::get<1>(max_bandwith))};
-   }
-
    std::tuple<int64_t, int64_t, bool, bool> transaction_context::max_bandwidth_billed_accounts_can_pay( bool force_elastic_limits ) const{
       // Assumes rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot ) was already called prior
 
@@ -577,12 +600,14 @@ namespace bacc = boost::accumulators;
       bool greylisted_cpu = false;
       for( const auto& a : bill_to_accounts ) {
          bool elastic = force_elastic_limits || !(control.is_producing_block() && control.is_resource_greylisted(a));
-         auto net_limit = rl.get_account_net_limit(a, elastic);
+         const auto provided_bw_it = provided_bandwith_.find(a);
+         const auto is_bw_provided = provided_bw_it != provided_bandwith_.end() && provided_bw_it->second.is_confirmed();
+         auto net_limit = is_bw_provided ? provided_bw_it->second.get_net_limit() : rl.get_account_net_limit(a, elastic);
          if( net_limit >= 0 ) {
             account_net_limit = std::min( account_net_limit, net_limit );
             if (!elastic) greylisted_net = true;
          }
-         auto cpu_limit = rl.get_account_cpu_limit(a, elastic);
+         auto cpu_limit = is_bw_provided ? provided_bw_it->second.get_cpu_limit() : rl.get_account_cpu_limit(a, elastic);
          if( cpu_limit >= 0 ) {
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
             if (!elastic) greylisted_cpu = true;
@@ -590,6 +615,49 @@ namespace bacc = boost::accumulators;
       }
 
       return std::make_tuple(account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu);
+   }
+
+   uint64_t transaction_context::get_provided_net_limit(account_name account) const {
+       const auto provided_bw_it = provided_bandwith_.find(account);
+
+       if (provided_bw_it == provided_bandwith_.end()) {
+           return 0;
+       }
+
+       return provided_bw_it->second.get_net_limit();
+   }
+
+   uint64_t transaction_context::get_provided_cpu_limit(account_name account) const {
+       const auto provided_bw_it = provided_bandwith_.find(account);
+
+       if (provided_bw_it == provided_bandwith_.end()) {
+           return 0;
+       }
+
+       return provided_bw_it->second.get_cpu_limit();
+   }
+
+   bool transaction_context::is_provided_bandwith_confirmed(account_name account) const {
+       const auto provided_bw_it = provided_bandwith_.find(account);
+
+       if (provided_bw_it == provided_bandwith_.end()) {
+           return 0;
+       }
+
+       return provided_bw_it->second.is_confirmed();
+   }
+
+   void transaction_context::set_provided_bandwith(std::map<account_name, provided_bandwith>&& bandwith) {
+       provided_bandwith_ = std::move(bandwith);
+   }
+
+   void transaction_context::set_provided_bandwith_limits(account_name account, uint64_t net_limit, uint64_t cpu_limit) {
+        provided_bandwith_[account].set_net_limit(net_limit);
+        provided_bandwith_[account].set_cpu_limit(cpu_limit);
+   }
+
+   void transaction_context::confirm_provided_bandwith_limits(account_name account, account_name provider) {
+        provided_bandwith_[account].confirm(provider);
    }
 
    void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
@@ -634,7 +702,7 @@ namespace bacc = boost::accumulators;
          transaction.trx_id     = id;
          transaction.expiration = expire;
       });
-   } /// record_transaction
+   }
 
-
+   /// record_transaction
 } } /// eosio::chain

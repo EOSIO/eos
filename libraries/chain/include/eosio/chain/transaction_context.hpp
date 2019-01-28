@@ -6,12 +6,35 @@
 namespace eosio { namespace chain {
 
    struct provided_bandwith {
-       provided_bandwith(uint64_t net_limit, uint64_t cpu_limit)
-           : net_limit(net_limit),
-             cpu_limit(cpu_limit) {}
+       provided_bandwith() = default;
 
-       uint64_t net_limit;
-       uint64_t cpu_limit;
+       void confirm(account_name provider);
+
+       bool is_confirmed() const {return confirmed_;}
+
+       int64_t get_net_limit() const {return net_limit_;}
+       int64_t get_cpu_limit() const {return cpu_limit_;}
+
+       void set_net_limit(int64_t net_limit);
+       void set_cpu_limit(int64_t cpu_limit);
+
+       account_name get_provider() const {return provider_;}
+
+   private:
+       
+       void verify_limits_not_confirmed();
+
+       int64_t net_limit_ = 0;
+       int64_t cpu_limit_ = 0;
+       bool confirmed_ = false;
+       account_name provider_;
+   };
+
+
+   struct bandwith_request_result {
+       std::map<account_name, provided_bandwith> bandwith;
+       uint64_t used_net;
+       uint64_t used_cpu;
    };
 
    struct deadline_timer {
@@ -51,8 +74,13 @@ namespace eosio { namespace chain {
          void finalize();
          void squash();
          void undo();
+         void validate_bw_usage();
 
          inline void add_net_usage( uint64_t u ) { net_usage += u; check_net_usage(); }
+         inline void add_cpu_usage( uint64_t u ) { billed_cpu_time_us += u;}
+
+         uint64_t get_net_usage() const {return net_usage;}
+         uint64_t get_cpu_usage() const {return billed_cpu_time_us;}
 
          void check_net_usage()const;
 
@@ -65,9 +93,19 @@ namespace eosio { namespace chain {
 
          std::tuple<int64_t, int64_t, bool, bool> max_bandwidth_billed_accounts_can_pay( bool force_elastic_limits = false )const;
 
-         uint64_t get_provided_net_limit() const {return provided_bandwith_.net_limit;}
+         uint64_t get_provided_net_limit(account_name account) const;
 
-         uint64_t get_provided_cpu_limit() const {return provided_bandwith_.cpu_limit;}
+         uint64_t get_provided_cpu_limit(account_name account) const;
+
+         std::map<account_name, provided_bandwith> get_provided_bandwith() const {return provided_bandwith_;}
+
+         bool is_provided_bandwith_confirmed(account_name account) const;
+
+         void set_provided_bandwith(std::map<account_name, provided_bandwith>&& bandwith);
+
+         void set_provided_bandwith_limits(account_name account, uint64_t net_limit, uint64_t cpu_limit);
+
+         void confirm_provided_bandwith_limits(account_name account, account_name provider);
 
       private:
 
@@ -85,7 +123,6 @@ namespace eosio { namespace chain {
 
          void validate_cpu_usage_to_bill( int64_t u, bool check_minimum = true )const;
 
-         provided_bandwith get_provided_bandwith() const;
       /// Fields:
       public:
 
@@ -141,7 +178,7 @@ namespace eosio { namespace chain {
 
          deadline_timer                _deadline_timer;
 
-         provided_bandwith             provided_bandwith_;
+         std::map<account_name, provided_bandwith> provided_bandwith_;
    };
 
 } }

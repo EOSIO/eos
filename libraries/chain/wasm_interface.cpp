@@ -1134,12 +1134,24 @@ class bandwith_api : public context_aware_api {
         bandwith_api( apply_context& ctx )
         : context_aware_api(ctx,true) {}
 
-        int64_t get_bw_cpu_limit() const {
-            return context.trx_context.get_provided_cpu_limit();
+        int64_t get_bw_cpu_limit(account_name account) const {
+            return context.trx_context.get_provided_cpu_limit(account);
         }
 
-        int64_t get_bw_net_limit() const {
-            return context.trx_context.get_provided_net_limit();
+        int64_t get_bw_net_limit(account_name account) const {
+            return context.trx_context.get_provided_net_limit(account);
+        }
+
+        bool is_provided_bw_confirmed(account_name account) const {
+            return context.trx_context.is_provided_bandwith_confirmed(account);
+        }
+
+        void set_bw_limits(account_name account, int64_t net_limit, int64_t cpu_limit) {
+            context.trx_context.set_provided_bandwith_limits(account, net_limit, cpu_limit);
+        }
+
+        void confirm_bw_limits(account_name account) {
+            context.trx_context.confirm_provided_bandwith_limits(account, context.receiver);
         }
 };
 
@@ -1884,8 +1896,11 @@ REGISTER_INTRINSICS(console_api,
 
 
 REGISTER_INTRINSICS(bandwith_api,
-    (get_bw_cpu_limit, int64_t())
-    (get_bw_net_limit, int64_t())
+    (get_bw_cpu_limit, int64_t(int64_t))
+    (get_bw_net_limit, int64_t(int64_t ))
+    (is_provided_bw_confirmed, int(int64_t))
+    (set_bw_limits, void(int64_t, int64_t, int64_t))
+    (confirm_bw_limits, void(int64_t))
 );
 
 
