@@ -64,7 +64,7 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}
         PRIVATE -Wl,${whole_archive_flag} test_control_plugin        -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} test_control_api_plugin    -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} uos_rates                  -Wl,${no_whole_archive_flag}
-        PRIVATE -Wl,${whole_archive_flag} uos_blocks_exporter                  -Wl,${no_whole_archive_flag}
+#        PRIVATE -Wl,${whole_archive_flag} uos_blocks_exporter                  -Wl,${no_whole_archive_flag}
 
 
         PRIVATE -Wl,${build_id_flag}
@@ -73,6 +73,8 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}
 
 if(BUILD_MONGO_DB_PLUGIN)
   target_link_libraries( ${NODE_EXECUTABLE_NAME} PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
+  else()
+  target_link_libraries (${NODE_EXECUTABLE_NAME} PRIVATE -Wl,${whole_archive_flag} uos_blocks_exporter -Wl,${no_whole_archive_flag})
 endif()
 
 include(additionalPlugins)
