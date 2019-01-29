@@ -168,12 +168,16 @@ if [ "${COUNT}" -gt 1 ]; then
 else
 	printf " - No required YUM dependencies to install.\\n"
 fi
+
+printf "\\n"
+
 printf "Enabling python33...\\n"
 scl enable python33 bash
 printf " - python33 successfully enabled!\\n"
 
-printf "\\n"
+gcc --version
 
+printf "\\n"
 
 printf "Checking CMAKE installation...\\n"
 CMAKE=$(command -v cmake 2>/dev/null)
