@@ -33,14 +33,14 @@ fi
 
 mkdir -p ${PROJECT}/DEBIAN
 chmod 0755 ${PROJECT}/DEBIAN
-echo "Package: ${PROJECT} 
+echo "Package: ${PROJECT}
 Version: ${VERSION_NO_SUFFIX}-${RELEASE}
 Section: devel
 Priority: optional
 Depends: libc6, libgcc1, ${LIBSSL}, libstdc++6, libtinfo5, zlib1g
 Architecture: amd64
-Homepage: ${URL} 
-Maintainer: ${EMAIL} 
+Homepage: ${URL}
+Maintainer: ${EMAIL}
 Description: ${DESC}" &> ${PROJECT}/DEBIAN/control
 
 export PREFIX
@@ -50,8 +50,8 @@ export SSUBPREFIX
 
 bash generate_tarball.sh ${NAME}.tar.gz
 
-tar -xvzf ${NAME}.tar.gz -C ${PROJECT} 
-dpkg-deb --build ${PROJECT} 
+tar -xvzf ${NAME}.tar.gz -C ${PROJECT}
+dpkg-deb --build ${PROJECT}
 BUILDSTATUS=$?
 mv ${PROJECT}.deb ${NAME}.deb
 rm -r ${PROJECT}
