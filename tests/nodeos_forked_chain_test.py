@@ -30,7 +30,12 @@ def analyzeBPs(bps0, bps1, expectDivergence):
     length=len(bps0)
     firstDivergence=None
     errorInDivergence=False
+    analysysPass=0
+    bpsStr=None
+    bpsStr0=None
+    bpsStr1=None
     while start < length:
+        analysysPass+=1
         bpsStr=None
         for i in range(start,length):
             bp0=bps0[i]

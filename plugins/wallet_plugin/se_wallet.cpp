@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/wallet_plugin/se_wallet.hpp>
 #include <eosio/wallet_plugin/macos_user_auth.h>
@@ -304,6 +304,14 @@ se_wallet::se_wallet() : my(new detail::se_wallet_impl()) {
             my->populate_existing_keys();
             return;
          }
+      }
+      if(sscanf(model, "Macmini%u", &major) == 1 && major >= 8) {
+         my->populate_existing_keys();
+         return;
+      }
+      if(sscanf(model, "MacBookAir%u", &major) == 1 && major >= 8) {
+         my->populate_existing_keys();
+         return;
       }
    }
 

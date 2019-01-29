@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <algorithm>
 #include <vector>
@@ -13,8 +13,6 @@
 #include <eosio/chain/global_property_object.hpp>
 
 #include <eosio/testing/tester.hpp>
-
-#include <eosio/utilities/tempdir.hpp>
 
 #include <fc/crypto/digest.hpp>
 

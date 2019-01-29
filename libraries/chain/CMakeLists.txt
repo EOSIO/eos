@@ -59,11 +59,11 @@ add_library( eosio_chain
 #             contracts/chain_initializer.cpp
 
 
-#             transaction_metadata.cpp
+             transaction_metadata.cpp
              ${HEADERS}
              )
 
-target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime
+target_link_libraries( eosio_chain fc chainbase Logging IR WAST WASM Runtime
                        softfloat builtins wabt
                        ${CHAINDB_LIBS})
 target_include_directories( eosio_chain
