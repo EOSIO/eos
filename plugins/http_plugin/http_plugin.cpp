@@ -123,6 +123,7 @@ namespace eosio {
    using websocket_local_server_type = websocketpp::server<detail::asio_local_with_stub_log>;
    using websocket_server_tls_type =  websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>;
    using ssl_context_ptr =  websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
+   using io_work_t = asio::executor_work_guard<asio::io_context::executor_type>;
 
    static bool verbose_http_errors = false;
 
@@ -153,6 +154,10 @@ namespace eosio {
          string                   unix_socket_path_option_name     = "unix-socket-path";
          string                   http_server_address_option_name  = "http-server-address";
          string                   https_server_address_option_name = "https-server-address";
+
+         std::shared_ptr<asio::io_context>                _ws_serv_ioc;
+         std::unique_ptr<io_work_t>                       _ws_serv_work;
+         std::unique_ptr<std::thread>                     _ws_serv_thread;
 
          bool host_port_is_valid( const std::string& header_host_port, const string& endpoint_local_host_port ) {
             return !validate_host || header_host_port == endpoint_local_host_port || valid_hosts.find(header_host_port) != valid_hosts.end();
@@ -284,13 +289,18 @@ namespace eosio {
                auto body = con->get_request_body();
                auto resource = con->get_uri()->get_resource();
                auto handler_itr = url_handlers.find( resource );
+               auto ws_serv_ioc = _ws_serv_ioc;
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
-                  handler_itr->second( resource, body, [con]( auto code, auto&& body ) {
-                     con->set_body( std::move( body ));
-                     con->set_status( websocketpp::http::status_code::value( code ));
-                     con->send_http_response();
-                  } );
+                  asio::post( app().get_io_service(), [handler_itr, resource, body, con, ws_serv_ioc]() {
+                     handler_itr->second( resource, body, [con, ws_serv_ioc]( auto code, auto&& body ) {
+                        asio::post( *ws_serv_ioc, [body, con, code]() {
+                           con->set_body( std::move( body ));
+                           con->set_status( websocketpp::http::status_code::value( code ));
+                           con->send_http_response();
+                        });
+                     });
+                  });
 
                } else {
                   dlog( "404 - not found: ${ep}", ("ep", resource));
@@ -308,7 +318,7 @@ namespace eosio {
          void create_server_for_endpoint(const tcp::endpoint& ep, websocketpp::server<detail::asio_with_stub_log<T>>& ws) {
             try {
                ws.clear_access_channels(websocketpp::log::alevel::all);
-               ws.init_asio(&app().get_io_service());
+               ws.init_asio(&(*_ws_serv_ioc));
                ws.set_reuse_addr(true);
                ws.set_max_http_body_size(max_body_size);
                ws.set_http_handler([&](connection_hdl hdl) {
@@ -479,6 +489,15 @@ namespace eosio {
    }
 
    void http_plugin::plugin_startup() {
+      my->_ws_serv_ioc.reset( new asio::io_context );
+      auto& ws_serv_ioc = *my->_ws_serv_ioc;
+      my->_ws_serv_work.reset( new io_work_t(asio::make_work_guard(ws_serv_ioc)) );
+      my->_ws_serv_thread.reset( new std::thread( [&ws_serv_ioc]{
+         wlog( "start websocket server thread" );
+         ws_serv_ioc.run(); 
+         wlog( "end websocket server thread" ); 
+      }));
+
       if(my->listen_endpoint) {
          try {
             my->create_server_for_endpoint(*my->listen_endpoint, my->server);
@@ -550,6 +569,10 @@ namespace eosio {
          my->https_server.stop_listening();
       if(my->unix_server.is_listening())
          my->unix_server.stop_listening();
+
+      my->_ws_serv_work->reset();
+      my->_ws_serv_ioc->stop();
+      my->_ws_serv_thread->join();
    }
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {
