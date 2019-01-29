@@ -108,7 +108,7 @@ if [ -z "${DEVTOOLSET}" ]; then
 						printf "Exiting now.\\n"
 						exit 1;
 				else
-						printf "Centos devtoolset installed successfully.\\n"
+						printf " - Centos devtoolset installed successfully!\\n"
 				fi
 			break;;
 			[Nn]* ) echo "User aborting installation of devtoolset-7. Exiting now."; exit;;
@@ -119,12 +119,8 @@ else
 	printf " - ${DEVTOOLSET} found.\\n"
 fi
 printf "Enabling Centos devtoolset-7...\\n"
-if ! source "/opt/rh/devtoolset-7/enable" 2>/dev/null; then
-	printf "!! Unable to enable Centos devtoolset-7 at this time !!\\n"
-	printf "Exiting now.\\n\\n"
-	exit 1;
-fi
-printf "Centos devtoolset-7 successfully enabled.\\n"
+scl enable devtoolset-7 bash
+printf "- Centos devtoolset-7 successfully enabled!\\n"
 
 printf "\\n"
 
@@ -172,7 +168,9 @@ if [ "${COUNT}" -gt 1 ]; then
 else
 	printf " - No required YUM dependencies to install.\\n"
 fi
-
+printf "Enabling python33...\\n"
+scl enable python33 bash
+printf "- Centos devtoolset-7 successfully enabled!\\n"
 
 printf "\\n"
 
@@ -307,7 +305,6 @@ function print_instructions()
 	printf "export PATH=\$HOME/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
 	printf "export LD_LIBRARY_PATH=\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n"
 	printf "$( command -v mongod ) --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
-	printf "source /opt/rh/python33/enable"
 	printf "cd ${BUILD_DIR} && make test\\n"
 	return 0
 }
