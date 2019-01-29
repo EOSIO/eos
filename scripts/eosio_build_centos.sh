@@ -120,7 +120,7 @@ else
 fi
 printf "Enabling Centos devtoolset-7...\\n"
 scl enable devtoolset-7 bash
-printf "- Centos devtoolset-7 successfully enabled!\\n"
+printf " - Centos devtoolset-7 successfully enabled!\\n"
 
 printf "\\n"
 
@@ -170,7 +170,7 @@ else
 fi
 printf "Enabling python33...\\n"
 scl enable python33 bash
-printf "- Centos devtoolset-7 successfully enabled!\\n"
+printf " - python33 successfully enabled!\\n"
 
 printf "\\n"
 
