@@ -73,7 +73,7 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}
 
 if(BUILD_MONGO_DB_PLUGIN)
   target_link_libraries( ${NODE_EXECUTABLE_NAME} PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
-  else()
+elseif(BUILD_UOS_BLOCKS_EXPORTER)
   target_link_libraries (${NODE_EXECUTABLE_NAME} PRIVATE -Wl,${whole_archive_flag} uos_blocks_exporter -Wl,${no_whole_archive_flag})
 endif()
 
