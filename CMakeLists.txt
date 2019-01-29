@@ -19,11 +19,10 @@ if (UNIX)
       execute_process(COMMAND xcrun --show-sdk-path
                       OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
                       OUTPUT_STRIP_TRAILING_WHITESPACE)
-      if (LLVM_DIR STREQUAL "" OR NOT LLVM_DIR)
-         set(LLVM_DIR "$ENV{HOME}/opt/llvm/lib/cmake/llvm")
-      endif()
    endif()
 endif()
+
+set(LLVM_DIR "$ENV{HOME}/opt/llvm/lib/cmake/llvm")
 
 include( GNUInstallDirs )
 include( VersionMacros )
