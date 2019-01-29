@@ -16,6 +16,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 if (UNIX)
    if (APPLE)
+      execute_process(COMMAND xcrun --show-sdk-path
+                      OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
+                      OUTPUT_STRIP_TRAILING_WHITESPACE)
       if (LLVM_DIR STREQUAL "" OR NOT LLVM_DIR)
          set(LLVM_DIR "$ENV{HOME}/opt/llvm/lib/cmake/llvm")
       endif()
@@ -113,7 +116,6 @@ FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
     filesystem
     system
     program_options
-    signals
     serialization
     chrono
     unit_test_framework

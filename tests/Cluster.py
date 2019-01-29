@@ -1258,14 +1258,14 @@ class Cluster(object):
         time.sleep(1) # Give processes time to stand down
         return True
 
-    def relaunchEosInstances(self):
+    def relaunchEosInstances(self, cachePopen=False):
 
         chainArg=self.__chainSyncStrategy.arg
 
         newChain= False if self.__chainSyncStrategy.name in [Utils.SyncHardReplayTag, Utils.SyncNoneTag] else True
         for i in range(0, len(self.nodes)):
             node=self.nodes[i]
-            if node.killed and not node.relaunch(i, chainArg, newChain=newChain):
+            if node.killed and not node.relaunch(i, chainArg, newChain=newChain, cachePopen=cachePopen):
                 return False
 
         return True
@@ -1280,20 +1280,43 @@ class Cluster(object):
         else:
             Utils.Print("File %s not found." % (fileName))
 
-    def dumpErrorDetails(self):
-        fileName=Cluster.__configDir + Cluster.nodeExtensionToName("bios") + "/config.ini"
+    @staticmethod
+    def __findFiles(path):
+        files=[]
+        it=os.scandir(path)
+        for entry in it:
+            if entry.is_file(follow_symlinks=False):
+                match=re.match("stderr\..+\.txt", entry.name)
+                if match:
+                    files.append(os.path.join(path, entry.name))
+        return files
+
+    def dumpErrorDetails(self, allStderrFiles=False):
+        fileName=os.path.join(Cluster.__configDir + Cluster.nodeExtensionToName("bios"), "config.ini")
         Cluster.dumpErrorDetailImpl(fileName)
-        fileName=Cluster.__dataDir + Cluster.nodeExtensionToName("bios") + "/stderr.txt"
-        Cluster.dumpErrorDetailImpl(fileName)
+        path=Cluster.__dataDir + Cluster.nodeExtensionToName("bios")
+        if not allStderrFiles:
+            fileName=os.path.join(path, "stderr.txt")
+            Cluster.dumpErrorDetailImpl(fileName)
+        else:
+            fileNames=Cluster.__findFiles(path)
+            for fileName in fileNames:
+                Cluster.dumpErrorDetailImpl(fileName)
 
         for i in range(0, len(self.nodes)):
-            configLocation=Cluster.__configDir + Cluster.nodeExtensionToName(i) + "/"
-            fileName=configLocation + "config.ini"
+            configLocation=Cluster.__configDir + Cluster.nodeExtensionToName(i)
+            fileName=os.path.join(configLocation, "config.ini")
             Cluster.dumpErrorDetailImpl(fileName)
-            fileName=configLocation + "genesis.json"
+            fileName=os.path.join(configLocation, "genesis.json")
             Cluster.dumpErrorDetailImpl(fileName)
-            fileName=Cluster.__dataDir + Cluster.nodeExtensionToName(i) + "/stderr.txt"
-            Cluster.dumpErrorDetailImpl(fileName)
+            path=Cluster.__dataDir + Cluster.nodeExtensionToName(i)
+            if not allStderrFiles:
+                fileName=os.path.join(path, "stderr.txt")
+                Cluster.dumpErrorDetailImpl(fileName)
+            else:
+                fileNames=Cluster.__findFiles(path)
+                for fileName in fileNames:
+                    Cluster.dumpErrorDetailImpl(fileName)
 
         if self.useBiosBootFile:
             Cluster.dumpErrorDetailImpl(Cluster.__bootlog)

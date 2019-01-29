@@ -125,7 +125,7 @@ class TestHelper(object):
     
     @staticmethod
     # pylint: disable=too-many-arguments
-    def shutdown(cluster, walletMgr, testSuccessful=True, killEosInstances=True, killWallet=True, keepLogs=False, cleanRun=True, dumpErrorDetails=False):
+    def shutdown(cluster, walletMgr, testSuccessful=True, killEosInstances=True, killWallet=True, keepLogs=False, cleanRun=True, dumpErrorDetails=False, allStderrFiles=False):
         """Cluster and WalletMgr shutdown and cleanup."""
         assert(cluster)
         assert(isinstance(cluster, Cluster))
@@ -145,7 +145,7 @@ class TestHelper(object):
             Utils.Print("Test failed.")
         if not testSuccessful and dumpErrorDetails:
             cluster.reportStatus()
-            cluster.dumpErrorDetails()
+            cluster.dumpErrorDetails(allStderrFiles=allStderrFiles)
             if walletMgr:
                 walletMgr.dumpErrorDetails()
             cluster.printBlockLogIfNeeded()
