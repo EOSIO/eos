@@ -16,6 +16,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 if (UNIX)
    if (APPLE)
+      execute_process(COMMAND xcrun --show-sdk-path
+                      OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
+                      OUTPUT_STRIP_TRAILING_WHITESPACE)
       if (LLVM_DIR STREQUAL "" OR NOT LLVM_DIR)
          set(LLVM_DIR "/usr/local/Cellar/llvm@4/4.0.1/lib/cmake/llvm")
       endif()
