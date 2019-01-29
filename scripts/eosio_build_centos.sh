@@ -307,6 +307,7 @@ function print_instructions()
 	printf "export PATH=\$HOME/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
 	printf "export LD_LIBRARY_PATH=\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n"
 	printf "$( command -v mongod ) --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
+	printf "source /opt/rh/python33/enable"
 	printf "cd ${BUILD_DIR} && make test\\n"
 	return 0
 }
