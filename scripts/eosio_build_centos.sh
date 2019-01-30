@@ -103,7 +103,7 @@ if [ -z "${DEVTOOLSET}" ]; then
 		case $yn in
 			[Yy]* )
 				printf "Installing devtoolset-7...\\n"
-				if ! "${YUM}" install -y devtoolset-7 2>/dev/null; then
+				if ! "${YUM}" install -y devtoolset-7; then
 						printf "!! Centos devtoolset-7 installation failed !!\\n"
 						printf "Exiting now.\\n"
 						exit 1;
@@ -119,7 +119,7 @@ else
 	printf " - ${DEVTOOLSET} found.\\n"
 fi
 printf "Enabling Centos devtoolset-7...\\n"
-scl enable devtoolset-7 bash
+source /opt/rh/devtoolset-7/enable || exit 1
 printf " - Centos devtoolset-7 successfully enabled!\\n"
 
 printf "\\n"
@@ -172,10 +172,8 @@ fi
 printf "\\n"
 
 printf "Enabling python33...\\n"
-scl enable python33 bash
+source /opt/rh/python33/enable || exit 1
 printf " - python33 successfully enabled!\\n"
-
-gcc --version
 
 printf "\\n"
 
