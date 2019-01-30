@@ -238,13 +238,6 @@ struct controller_impl {
 
    SET_APP_HANDLER( eosio, eosio, providebw );
    SET_APP_HANDLER( eosio, eosio, requestbw );
-
-    // TODO: at least `newdomain` must be in cyber.domain contract, add macro for it
-    SET_APP_HANDLER(eosio, eosio, newusername);
-    SET_APP_HANDLER(eosio, eosio, newdomain);
-    SET_APP_HANDLER(eosio, eosio, passdomain);
-    SET_APP_HANDLER(eosio, eosio, linkdomain);
-    SET_APP_HANDLER(eosio, eosio, unlinkdomain);
 /*
    SET_APP_HANDLER( eosio, eosio, postrecovery );
    SET_APP_HANDLER( eosio, eosio, passrecovery );
@@ -252,6 +245,17 @@ struct controller_impl {
 */
 
    SET_APP_HANDLER( eosio, eosio, canceldelay );
+
+#define SET_CONTRACT_HANDLER(contract, action, function) set_apply_handler(contract, contract, #action, function);
+#define SET_DOTCONTRACT_HANDLER(base, sub, action) SET_CONTRACT_HANDLER(#base "." #sub, action, \
+    &BOOST_PP_CAT(apply_, BOOST_PP_CAT(base, BOOST_PP_CAT(_, BOOST_PP_CAT(sub, BOOST_PP_CAT(_,action))))))
+#define SET_CYBER_DOMAIN_HANDLER(action) SET_DOTCONTRACT_HANDLER(cyber, domain, action)
+
+    SET_CYBER_DOMAIN_HANDLER(newusername);
+    SET_CYBER_DOMAIN_HANDLER(newdomain);
+    SET_CYBER_DOMAIN_HANDLER(passdomain);
+    SET_CYBER_DOMAIN_HANDLER(linkdomain);
+    SET_CYBER_DOMAIN_HANDLER(unlinkdomain);
 
    fork_db.irreversible.connect( [&]( auto b ) {
                                  on_irreversible(b);
@@ -659,7 +663,7 @@ struct controller_impl {
         "domain",
         {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {"name", cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}},
-         {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}}
+         {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"},{"name", "asc"}}}}
       });
 
       abi.structs.emplace_back(eosio::chain::struct_def{
@@ -825,8 +829,10 @@ struct controller_impl {
          a.creation_date = conf.genesis.initial_timestamp;
          a.privileged = is_privileged;
 
-         if( name == config::system_account_name ) {
+         if (name == config::system_account_name) {
             a.set_abi(eosio_contract_abi(abi_def()));
+         } else if (name == config::domain_account_name ) {
+            a.set_abi(domain_contract_abi(abi_def()));
          }
       });
       db.create<account_sequence_object>([&](auto & a) {
@@ -876,6 +882,7 @@ struct controller_impl {
 
       authority system_auth(conf.genesis.initial_key);
       create_native_account( config::system_account_name, system_auth, system_auth, true );
+      create_native_account(config::domain_account_name, system_auth, system_auth);
 
       auto empty_authority = authority(1, {}, {});
       auto active_producers_authority = authority(1, {}, {});

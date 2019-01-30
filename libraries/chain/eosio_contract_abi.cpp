@@ -200,40 +200,6 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back(struct_def {
-      "newusername", "", {
-         {"creator", "account_name"},
-         {"owner",   "account_name"},
-         {"name",    "string"},
-      }
-   });
-   eos_abi.structs.emplace_back(struct_def {
-      "newdomain", "", {
-         {"creator", "account_name"},
-         {"name",    "string"},
-      }
-   });
-   eos_abi.structs.emplace_back(struct_def {
-      "passdomain", "", {
-         {"from", "account_name"},
-         {"to",   "account_name"},
-         {"name", "string"},
-      }
-   });
-   eos_abi.structs.emplace_back(struct_def {
-      "linkdomain", "", {
-         {"owner", "account_name"},
-         {"to",    "account_name"},
-         {"name",  "string"},
-      }
-   });
-   eos_abi.structs.emplace_back(struct_def {
-      "unlinkdomain", "", {
-         {"owner", "account_name"},
-         {"name",  "string"},
-      }
-   });
-
    eos_abi.structs.emplace_back( struct_def {
       "requestbw", "", {
          {"provider", "account_name"},
@@ -275,13 +241,49 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror",""} );
    eos_abi.actions.push_back( action_def{name("onblock"), "onblock",""} );
 
-    eos_abi.actions.push_back(action_def{name("newusername"), "newusername",""});
-    eos_abi.actions.push_back(action_def{name("newdomain"), "newdomain",""});
-    eos_abi.actions.push_back(action_def{name("passdomain"), "passdomain",""});
-    eos_abi.actions.push_back(action_def{name("linkdomain"), "linkdomain",""});
-    eos_abi.actions.push_back(action_def{name("unlinkdomain"), "unlinkdomain",""});
-
    return eos_abi;
+}
+
+
+abi_def domain_contract_abi(const abi_def& cyber_domain_abi) {
+    abi_def abi(cyber_domain_abi);
+    if (abi.version.size() == 0) {
+        abi.version = "cyberway::abi/1.0";
+    }
+    fc::move_append(abi.types, common_type_defs());
+
+    abi.structs.emplace_back(struct_def {"newusername", "", {
+        {"creator", "name"},
+        {"owner",   "name"},
+        {"name",    "string"}}
+    });
+    abi.structs.emplace_back(struct_def {"newdomain", "", {
+        {"creator", "name"},
+        {"name",    "string"}}
+    });
+    abi.structs.emplace_back(struct_def {"passdomain", "", {
+        {"from", "name"},
+        {"to",   "account_name"},
+        {"name", "string"}}
+    });
+    abi.structs.emplace_back(struct_def {"linkdomain", "", {
+        {"owner", "name"},
+        {"to",    "name"},
+        {"name",  "string"}}
+    });
+    abi.structs.emplace_back(struct_def {"unlinkdomain", "", {
+        {"owner", "name"},
+        {"name",  "string"}}
+    });
+
+    // TODO add ricardian contracts
+    abi.actions.push_back(action_def{name("newusername"), "newusername",""});
+    abi.actions.push_back(action_def{name("newdomain"), "newdomain",""});
+    abi.actions.push_back(action_def{name("passdomain"), "passdomain",""});
+    abi.actions.push_back(action_def{name("linkdomain"), "linkdomain",""});
+    abi.actions.push_back(action_def{name("unlinkdomain"), "unlinkdomain",""});
+
+    return abi;
 }
 
 } } /// eosio::chain

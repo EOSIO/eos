@@ -25,11 +25,11 @@ namespace eosio { namespace chain {
 
    void apply_eosio_requestbw(apply_context&);
 
-   void apply_eosio_newdomain(apply_context&);
-   void apply_eosio_passdomain(apply_context&);
-   void apply_eosio_linkdomain(apply_context&);
-   void apply_eosio_unlinkdomain(apply_context&);
-   void apply_eosio_newusername(apply_context&);
+   void apply_cyber_domain_newdomain(apply_context&);
+   void apply_cyber_domain_passdomain(apply_context&);
+   void apply_cyber_domain_linkdomain(apply_context&);
+   void apply_cyber_domain_unlinkdomain(apply_context&);
+   void apply_cyber_domain_newusername(apply_context&);
 
    /*
    void apply_eosio_postrecovery(apply_context&);

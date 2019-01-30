@@ -235,7 +235,9 @@ namespace eosio { namespace chain {
                                     3060004, "Contract Query Exception" )
 
         FC_DECLARE_DERIVED_EXCEPTION(domain_query_exception,   database_exception, 3060005, "Domain Query Exception")
-        FC_DECLARE_DERIVED_EXCEPTION(username_query_exception, database_exception, 3060006, "Username Query Exception")
+        FC_DECLARE_DERIVED_EXCEPTION(domain_exists_exception,  database_exception, 3060006, "Domain name already exists")
+        FC_DECLARE_DERIVED_EXCEPTION(username_query_exception, database_exception, 3060007, "Username Query Exception")
+        FC_DECLARE_DERIVED_EXCEPTION(username_exists_exception,database_exception, 3060008, "Username already exists")
 
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
