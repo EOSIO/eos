@@ -61,8 +61,8 @@ namespace cyberway { namespace chaindb {
             return is_removed_;
         }
 
-        const table_def* find_table(hash_t hash) const {
-            auto itr = table_map_.find(hash);
+        const table_def* find_table(table_name_t table) const {
+            auto itr = table_map_.find(table);
             if (table_map_.end() != itr) return &itr->second;
 
             return nullptr;
@@ -78,7 +78,7 @@ namespace cyberway { namespace chaindb {
     private:
         const account_name code_;
         eosio::chain::abi_serializer serializer_;
-        std::map<hash_t, table_def> table_map_;
+        std::map<table_name_t, table_def> table_map_;
         bool is_removed_ = false;
         static const fc::microseconds max_abi_time_;
 

@@ -72,7 +72,9 @@ using username_index = cyberway::chaindb::shared_multi_index_container<
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::domain_object, eosio::chain::domain_index)
+CHAINDB_TAG(eosio::chain::domain_object, domain)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::username_object, eosio::chain::username_index)
+CHAINDB_TAG(eosio::chain::username_object, username)
 
 FC_REFLECT(eosio::chain::domain_object, (id)(owner)(linked_to)(creation_date)(name))
 FC_REFLECT(eosio::chain::username_object, (id)(owner)(scope)(name))

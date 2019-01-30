@@ -44,9 +44,23 @@ namespace eosio { namespace chain { namespace resource_limits {
 
     struct by_owner {};
 
-} } } // namespace eosio::chain::resource_limits;
+} } } // namespace eosio::chain::resource_limits
+
+CHAINDB_TAG(by_id, primary) // "primary" for compatibility with contracts
+CHAINDB_TAG(eosio::chain::by_parent, parent)
+CHAINDB_TAG(eosio::chain::by_owner, owner)
+CHAINDB_TAG(eosio::chain::by_name, name)
+CHAINDB_TAG(eosio::chain::by_action_name, action)
+CHAINDB_TAG(eosio::chain::by_permission_name, permission)
+CHAINDB_TAG(eosio::chain::by_trx_id, trxid)
+CHAINDB_TAG(eosio::chain::by_expiration, expiration)
+CHAINDB_TAG(eosio::chain::by_delay, delay)
+CHAINDB_TAG(eosio::chain::by_sender_id, sender)
+CHAINDB_TAG(eosio::chain::by_scope_name, scope)
+CHAINDB_TAG(eosio::chain::resource_limits::by_owner, owner)
 
 namespace cyberway { namespace chaindb {
+
     template<typename A>
     struct get_result_type {
         using type = typename A::result_type;

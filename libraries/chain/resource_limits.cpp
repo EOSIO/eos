@@ -63,11 +63,10 @@ void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
    });
 
    abi.tables.emplace_back( eosio::chain::table_def {
-     "reslimit",
      cyberway::chaindb::tag<resource_limits_object>::get_code(),
      "resource_limit",
-     {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-      {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"pending","asc"}, {"owner","asc"}}}}
+     {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+      {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"pending","asc"}, {"owner","asc"}}}}
    });
 
    abi.structs.emplace_back( eosio::chain::struct_def{
@@ -87,11 +86,10 @@ void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
    });
 
    abi.tables.emplace_back( eosio::chain::table_def {
-     "resusage",
      cyberway::chaindb::tag<resource_usage_object>::get_code(),
      "resource_usage",
-     {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-      {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}}
+     {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+      {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}}
    });
 
    abi.structs.emplace_back( eosio::chain::struct_def{
@@ -120,10 +118,9 @@ void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
    });
 
    abi.tables.emplace_back( eosio::chain::table_def {
-     "resconfig",
      cyberway::chaindb::tag<resource_limits_config_object>::get_code(),
      "resource_limits_config",
-     {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
+     {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
    });
 
    abi.structs.emplace_back( eosio::chain::struct_def{
@@ -141,10 +138,9 @@ void resource_limits_manager::add_abi_tables(eosio::chain::abi_def &abi) {
    });
 
    abi.tables.emplace_back( eosio::chain::table_def {
-     "resstate",
      cyberway::chaindb::tag<resource_limits_state_object>::get_code(),
      "resource_limits_state",
-     {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
+     {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
    });
 }
 

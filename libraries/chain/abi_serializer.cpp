@@ -115,37 +115,42 @@ namespace eosio { namespace chain {
       error_messages.clear();
       variants.clear();
 
-      for( const auto& st : abi.structs )
-         structs[st.name] = st;
-
-      for( const auto& td : abi.types ) {
-         EOS_ASSERT(_is_type(td.type, ctx), invalid_type_inside_abi, "invalid type ${type}", ("type",td.type));
-         EOS_ASSERT(!_is_type(td.new_type_name, ctx), duplicate_abi_type_def_exception, "type already exists", ("new_type_name",td.new_type_name));
-         typedefs[td.new_type_name] = td.type;
+      for( const auto& st : abi.structs ) {
+         auto res = structs.insert(std::make_pair(st.name, st));
+         EOS_ASSERT(res.second, duplicate_abi_struct_def_exception,
+            "duplicate struct definition ${struct} detected", ("struct", st.name));
       }
 
-      for( const auto& a : abi.actions )
-         actions[a.name] = a.type;
+      for( const auto& td : abi.types ) {
+         EOS_ASSERT(_is_type(td.type, ctx), invalid_type_inside_abi, "invalid type ${type}", ("type", td.type));
+         EOS_ASSERT(!_is_type(td.new_type_name, ctx), duplicate_abi_type_def_exception,
+            "type ${new_type_name} already exists", ("new_type_name", td.new_type_name));
+         typedefs.insert(std::make_pair(td.new_type_name, td.type));
+      }
 
-      for( const auto& t : abi.tables )
-         tables[t.name] = t.type;
+      for( const auto& a : abi.actions ) {
+         auto res = actions.insert(std::make_pair(a.name, a.type));
+         EOS_ASSERT(res.second, duplicate_abi_action_def_exception,
+            "duplicate action definition ${action} detected", ("action", a.name));
+      }
 
-      for( const auto& e : abi.error_messages )
-         error_messages[e.error_code] = e.error_msg;
+      for( const auto& t : abi.tables ) {
+         auto res = tables.insert(std::make_pair(t.name, t.type));
+         EOS_ASSERT(res.second, duplicate_abi_table_def_exception,
+            "duplicate table definition ${table} detected", ("table", t.name));
+      }
 
-      for( const auto& v : abi.variants.value )
-         variants[v.name] = v;
+      for( const auto& e : abi.error_messages ) {
+         auto res = error_messages.insert(std::make_pair(e.error_code, e.error_msg));
+         EOS_ASSERT(res.second, duplicate_abi_err_msg_def_exception,
+            "duplicate error message definition ${error} detected", ("error", e.error_code));
+      }
 
-      /**
-       *  The ABI vector may contain duplicates which would make it
-       *  an invalid ABI
-       */
-      EOS_ASSERT( typedefs.size() == abi.types.size(), duplicate_abi_type_def_exception, "duplicate type definition detected" );
-      EOS_ASSERT( structs.size() == abi.structs.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected" );
-      EOS_ASSERT( actions.size() == abi.actions.size(), duplicate_abi_action_def_exception, "duplicate action definition detected" );
-      EOS_ASSERT( tables.size() == abi.tables.size(), duplicate_abi_table_def_exception, "duplicate table definition detected" );
-      EOS_ASSERT( error_messages.size() == abi.error_messages.size(), duplicate_abi_err_msg_def_exception, "duplicate error message definition detected" );
-      EOS_ASSERT( variants.size() == abi.variants.value.size(), duplicate_abi_variant_def_exception, "duplicate variant definition detected" );
+      for( const auto& v : abi.variants.value ) {
+         auto res = variants.insert(std::make_pair(v.name, v));
+         EOS_ASSERT(res.second, duplicate_abi_variant_def_exception,
+            "duplicate variant definition ${variant} detected", ("variant", v.name));
+      }
 
       validate(ctx);
    }
