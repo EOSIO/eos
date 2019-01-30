@@ -481,8 +481,7 @@ struct controller_impl {
    void add_indices() {
       eosio::chain::abi_def abi;
       add_abi_tables(abi);
-      authorization.add_abi_tables(abi);
-      resource_limits.add_abi_tables(abi);
+      add_domain_abi_tables(abi);
       chaindb.add_abi(0, abi);
 
       reversible_blocks.add_index<reversible_block_index>();
@@ -493,7 +492,7 @@ struct controller_impl {
       resource_limits.add_indices();
    }
 
-   void add_abi_tables(eosio::chain::abi_def &abi) {
+   void add_abi_tables(eosio::chain::abi_def& abi) {
       abi.structs.emplace_back( eosio::chain::struct_def{
         "account", "",
         {{"id", "uint64"},
@@ -641,38 +640,42 @@ struct controller_impl {
          {cyberway::chaindb::tag<by_sender_id>::get_code(), true, {{"sender", "asc"}, {"sender_id", "asc"}}}}
       });
 
-      // domain names
-      abi.structs.emplace_back(eosio::chain::struct_def{
-        "domain", "",
-        {{"id", "uint64"},
-         {"owner", "name"},
-         {"linked_to", "name"},
-         {"creation_date", "block_timestamp_type"},
-         {"name", "string"}}
-      });
-      abi.tables.emplace_back(eosio::chain::table_def{
-        cyberway::chaindb::tag<domain_object>::get_code(),
-        "domain",
-        {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}},
-         {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"},{"name", "asc"}}}}
-      });
+      authorization.add_abi_tables(abi);
+      resource_limits.add_abi_tables(abi);
+   }
 
-      abi.structs.emplace_back(eosio::chain::struct_def{
-        "username", "",
-        {{"id", "uint64"},
-         {"owner", "name"},
-         {"scope", "name"},
-         {"name", "string"}}
-      });
-      abi.tables.emplace_back(eosio::chain::table_def{
-        cyberway::chaindb::tag<username_object>::get_code(),
-        "username",
-        {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {cyberway::chaindb::tag<by_scope_name>::get_code(), true, {{"scope", "asc"},{"name", "asc"}}},
-         {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner","asc"},{"scope","asc"},{"name","asc"}}}}
-      });
+   void add_domain_abi_tables(eosio::chain::abi_def &abi) {
+       // domain names
+       abi.structs.emplace_back(eosio::chain::struct_def{
+           "domain", "",
+           {{"id", "uint64"},
+            {"owner", "name"},
+            {"linked_to", "name"},
+            {"creation_date", "block_timestamp_type"},
+            {"name", "string"}}
+       });
+       abi.tables.emplace_back(eosio::chain::table_def{
+           cyberway::chaindb::tag<domain_object>::get_code(),
+           "domain",
+           {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+            {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}},
+            {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"},{"name", "asc"}}}}
+       });
 
+       abi.structs.emplace_back(eosio::chain::struct_def{
+           "username", "",
+           {{"id", "uint64"},
+            {"owner", "name"},
+            {"scope", "name"},
+            {"name", "string"}}
+       });
+       abi.tables.emplace_back(eosio::chain::table_def{
+           cyberway::chaindb::tag<username_object>::get_code(),
+           "username",
+           {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+            {cyberway::chaindb::tag<by_scope_name>::get_code(), true, {{"scope", "asc"},{"name", "asc"}}},
+            {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner","asc"},{"scope","asc"},{"name","asc"}}}}
+       });
    }
 
    void clear_all_undo() {
@@ -821,9 +824,13 @@ struct controller_impl {
          a.privileged = is_privileged;
 
          if (name == config::system_account_name) {
-            a.set_abi(eosio_contract_abi(abi_def()));
+            auto abi = eosio_contract_abi();
+            add_abi_tables(abi);
+            a.set_abi(abi);
          } else if (name == config::domain_account_name ) {
-            a.set_abi(domain_contract_abi(abi_def()));
+            auto abi = domain_contract_abi();
+            add_domain_abi_tables(abi);
+            a.set_abi(abi);
          }
       });
       db.create<account_sequence_object>([&](auto & a) {

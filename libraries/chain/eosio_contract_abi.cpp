@@ -17,9 +17,9 @@ vector<type_def> common_type_defs() {
    return types;
 }
 
-abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
+abi_def eosio_contract_abi()
 {
-   abi_def eos_abi(eosio_system_abi);
+   abi_def eos_abi;
 
    if( eos_abi.version.size() == 0 ) {
       eos_abi.version = "cyberway::abi/1.0";
@@ -245,8 +245,8 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
 }
 
 
-abi_def domain_contract_abi(const abi_def& cyber_domain_abi) {
-    abi_def abi(cyber_domain_abi);
+abi_def domain_contract_abi() {
+    abi_def abi;
     if (abi.version.size() == 0) {
         abi.version = "cyberway::abi/1.0";
     }

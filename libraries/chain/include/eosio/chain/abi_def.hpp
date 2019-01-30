@@ -160,8 +160,8 @@ struct abi_def {
    may_not_exist<vector<variant_def>>  variants;
 };
 
-abi_def eosio_contract_abi(const abi_def& eosio_system_abi);
-abi_def domain_contract_abi(const abi_def& eosio_system_abi);
+abi_def eosio_contract_abi();
+abi_def domain_contract_abi();
 vector<type_def> common_type_defs();
 
 } } /// namespace eosio::chain
