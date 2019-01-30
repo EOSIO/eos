@@ -14,7 +14,6 @@ namespace cyberway { namespace chaindb {
 
     const string names::code_field      = "code";
     const string names::table_field     = "table";
-    const string names::hash_field      = "hash";
     const string names::scope_field     = "scope";
     const string names::pk_field        = "pk";
 

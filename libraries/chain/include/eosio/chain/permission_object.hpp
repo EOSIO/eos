@@ -121,7 +121,9 @@ namespace eosio { namespace chain {
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_object, eosio::chain::permission_index)
+CHAINDB_TAG(eosio::chain::permission_object, permission)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_usage_object, eosio::chain::permission_usage_index)
+CHAINDB_TAG(eosio::chain::permission_usage_object, permusage)
 
 FC_REFLECT(eosio::chain::permission_object, (id)(usage_id)(parent)(owner)(name)(last_updated)(auth))
 

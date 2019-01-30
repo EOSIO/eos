@@ -293,11 +293,10 @@ namespace cyberway { namespace chaindb {
                 pk = object_.service.pk;
             }
 
-            if (!object_.service.hash) {
+            if (!object_.service.table) {
                 object_.service.code  = index.code;
                 object_.service.scope = index.scope;
                 object_.service.table = index.table->name;
-                object_.service.hash  = index.table->hash;
             }
 
             return object_;

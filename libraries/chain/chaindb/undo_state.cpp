@@ -226,7 +226,7 @@ namespace cyberway { namespace chaindb {
             undo_abi_.tables.emplace_back( eosio::chain::table_def {
                 names::undo_table,
                 names::undo_table,
-                {{"primary", 1, true, {{ names::undo_pk_path , names::asc_order}} }},
+                {{"primary", true, {{ names::undo_pk_path , names::asc_order}} }},
             });
 
             abi.structs.insert(abi.structs.end(), undo_abi_.structs.begin(), undo_abi_.structs.end());
@@ -372,7 +372,7 @@ namespace cyberway { namespace chaindb {
                 auto itr = abi_map.find(account_name());
                 assert(itr != abi_map.end());
 
-                auto def = itr->second.find_table(service.hash);
+                auto def = itr->second.find_table(service.table);
                 CYBERWAY_SESSION_ASSERT(nullptr != def, "The table ${table} doesn't exist on restore",
                     ("table", get_full_table_name(service)));
                 return *def;
@@ -382,7 +382,7 @@ namespace cyberway { namespace chaindb {
                 auto itr = account_idx.find(service.code);
                 auto abi = itr->get_abi();
                 auto dtr = std::find_if(abi.tables.begin(), abi.tables.end(), [&](auto& def){
-                    return def.name.value == service.hash;
+                    return def.name == service.table;
                 });
                 CYBERWAY_SESSION_ASSERT(dtr != abi.tables.end(), "The table ${table} doesn't exist",
                     ("table", get_full_table_name(service)));

@@ -20,23 +20,21 @@ namespace cyberway { namespace chaindb {
         account_name  code;
         account_name  scope;
         table_name    table;
-        hash_t        hash     = 0;
 
         primary_key_t undo_pk  = unset_primary_key;
         undo_record   undo_rec = undo_record::Unknown;
         revision_t    revision = impossible_revision;
 
         service_state(const table_info& table, primary_key_t pk)
-        : pk(pk), code(table.code), scope(table.scope), table(table.table->name), hash(table.table->hash) {
+        : pk(pk), code(table.code), scope(table.scope), table(table.table->name) {
         }
 
         service_state(const table_info& table, primary_key_t pk, const account_name& payer, size_t size)
-        : pk(pk), payer(payer), size(size), code(table.code), scope(table.scope),
-          table(table.table->name), hash(table.table->hash) {
+        : pk(pk), payer(payer), size(size), code(table.code), scope(table.scope), table(table.table->name) {
         }
 
         service_state(const table_info& table, primary_key_t undo_pk, undo_record rec, revision_t rev)
-        : code(table.code), scope(table.scope), table(table.table->name), hash(table.table->hash),
+        : code(table.code), scope(table.scope), table(table.table->name),
           undo_pk(undo_pk), undo_rec(rec), revision(rev) {
         }
 

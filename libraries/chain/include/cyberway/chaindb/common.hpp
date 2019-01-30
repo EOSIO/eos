@@ -28,7 +28,6 @@ namespace cyberway { namespace chaindb {
     using table_name_t = table_name::value_type;
     using index_name_t = index_name::value_type;
     using account_name_t = account_name::value_type;
-    using hash_t = eosio::chain::hash_type;
 
     enum class chaindb_type {
         MongoDB,

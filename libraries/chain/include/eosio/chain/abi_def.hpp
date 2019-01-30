@@ -10,7 +10,6 @@ namespace eosio { namespace chain {
 
 using type_name      = string;
 using field_name     = string;
-using hash_type      = uint64_t;
 
 struct type_def {
    type_def() = default;
@@ -90,12 +89,7 @@ struct index_def {
    : name(name), unique(unique), orders(orders)
    { }
 
-   index_def(const index_name& name, const hash_type hash, const bool unique, const vector<order_def>& orders)
-   : name(name), hash(hash), unique(unique), orders(orders)
-   { }
-
    index_name         name;
-   hash_type          hash = 0;
    bool               unique = false;
    vector<order_def>  orders;
 };
@@ -106,12 +100,7 @@ struct table_def {
    :name(name), type(type), indexes(indexes)
    {}
 
-   table_def(const table_name& name, const hash_type hash, const type_name& type, const vector<index_def>& indexes)
-   :name(name), hash(hash), type(type), indexes(indexes)
-   {}
-
    table_name         name;        // the name of the table
-   hash_type          hash = 0;
    int64_t            row_count = 0;
    type_name          type;        // type of binary data stored in this table
    vector<index_def>  indexes;     //

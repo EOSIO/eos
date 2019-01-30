@@ -115,6 +115,6 @@ namespace eosio { namespace chain {
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_multi_index)
-
+CHAINDB_TAG(eosio::chain::generated_transaction_object, gtransaction)
 FC_REFLECT(eosio::chain::generated_transaction_object, (id)(trx_id)(sender)(sender_id)(payer)(delay_until)(expiration)(published)(packed_trx))
 
