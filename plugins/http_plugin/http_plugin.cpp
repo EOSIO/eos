@@ -560,9 +560,7 @@ namespace eosio {
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {
       ilog( "add api url: ${c}", ("c",url) );
-      app().post(priority::low, [=](){
-        my->url_handlers.insert(std::make_pair(url,handler));
-      });
+      my->url_handlers.insert(std::make_pair(url,handler));
    }
 
    void http_plugin::handle_exception( const char *api_name, const char *call_name, const string& body, url_response_callback cb ) {
