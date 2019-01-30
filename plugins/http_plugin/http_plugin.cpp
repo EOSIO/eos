@@ -137,6 +137,7 @@ namespace eosio {
          size_t                   max_body_size;
 
          websocket_server_type    server;
+         fc::optional<boost::asio::thread_pool>  thread_pool;
 
          optional<tcp::endpoint>  https_listen_endpoint;
          string                   https_cert_chain;
@@ -282,13 +283,16 @@ namespace eosio {
                auto handler_itr = url_handlers.find( resource );
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
-                  app().post( appbase::priority::low, [handler_itr, resource, body, con]() {
+                  auto& tp = *thread_pool;
+                  app().post( appbase::priority::low, [&tp, handler_itr, resource, body, con]() {
                      try {
-                        handler_itr->second( resource, body, [con]( auto code, auto&& body ) {
-                           con->set_body( std::move( body ) );
-                           con->set_status( websocketpp::http::status_code::value( code ) );
-                           con->send_http_response();
-                        } );
+                        handler_itr->second( resource, body, [&tp, con]( auto code, auto&& body ) {
+                           boost::asio::post( tp, [body, con, code]() {
+                              con->set_body( std::move( body ) );
+                              con->set_status( websocketpp::http::status_code::value( code ) );
+                              con->send_http_response();
+                           } );
+                        });
                      } catch( ... ) {
                         handle_exception<T>( con );
                      }
@@ -389,10 +393,16 @@ namespace eosio {
                 if (v) ilog("configured http with Access-Control-Allow-Credentials: true");
              })->default_value(false),
              "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
-            ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024), "The maximum body size in bytes allowed for incoming RPC requests")
-            ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
-            ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
-            ("http-alias", bpo::value<std::vector<string>>()->composing(), "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
+            ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024),
+             "The maximum body size in bytes allowed for incoming RPC requests")
+            ("verbose-http-errors", bpo::bool_switch()->default_value(false),
+             "Append the error log to HTTP responses")
+            ("http-validate-host", boost::program_options::value<bool>()->default_value(true),
+             "If set to false, then any incoming \"Host\" header is considered valid")
+            ("http-alias", bpo::value<std::vector<string>>()->composing(),
+             "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
+            ("http-threads", bpo::value<uint16_t>()->default_value(1),
+             "Number of worker threads in http thread pool")
             ;
    }
 
@@ -466,6 +476,11 @@ namespace eosio {
 
          my->max_body_size = options.at( "max-body-size" ).as<uint32_t>();
          verbose_http_errors = options.at( "verbose-http-errors" ).as<bool>();
+
+         auto thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
+         EOS_ASSERT( thread_pool_size > 0, chain::plugin_config_exception,
+                     "http-threads ${num} must be greater than 0", ("num", thread_pool_size));
+         my->thread_pool.emplace( thread_pool_size );
 
          //watch out for the returns above when adding new code here
       } FC_LOG_AND_RETHROW()
@@ -556,6 +571,11 @@ namespace eosio {
          my->https_server.stop_listening();
       if(my->unix_server.is_listening())
          my->unix_server.stop_listening();
+
+      if( my->thread_pool ) {
+         my->thread_pool->join();
+         my->thread_pool->stop();
+      }
    }
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {
