@@ -317,30 +317,29 @@ mongodconf
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 https://github.com/coodi/mongo-c-driver/archive/debian/1.13.0-1-UOS.tar.gz )
+		MONGODRIVERTGZ="1.13.0-1-UOS.tar.gz"
+		MONGODRIVERURL="https://github.com/coodi/mongo-c-driver/archive/debian/${MONGODRIVERTGZ}"
+		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 "${MONGODRIVERURL}" )
 		if [ "${STATUS}" -ne 200 ]; then
-			if ! rm -f "${TEMP_DIR}/1.13.0-1-UOS.tar.gz"
-			then
-				printf "\\tUnable to remove file %s/1.13.0-1-UOS.tar.gz.\\n" "${TEMP_DIR}"
+			if ! rm -f "${TEMP_DIR}/${MONGODRIVERTGZ}"; then
+				printf "\\t!! Unable to remove file %s/${MONGODRIVERTGZ} !!\\n" "${TEMP_DIR}"
 			fi
-			printf "\\tUnable to download MongoDB C driver at this time.\\n"
-			printf "\\tExiting now.\\n\\n"
+			printf "\\t!! Unable to download MongoDB C driver at this time !!\\n"
+			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		if ! tar xf 1.13.0-1-UOS.tar.gz
-		then
-			printf "\\tUnable to unarchive file %s/1.13.0-1-UOS.tar.gz\\n" "${TEMP_DIR}"
-			printf "\\tExiting now.\\n\\n"
+		if ! tar xf "${MONGODRIVERTGZ}"; then
+			printf "\\t!! Unable to unarchive file %s/${MONGODRIVERTGZ} !!\\n" "${TEMP_DIR}"
+			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		if ! rm -f "${TEMP_DIR}/1.13.0-1-UOS.tar.gz"
-		then
-			printf "\\tUnable to remove file 1.13.0-1-UOS.tar.gz.\\n"
-			printf "\\tExiting now.\\n\\n"
+		if ! rm -f "${TEMP_DIR}/${MONGODRIVERTGZ}"; then
+			printf "\\t!! Unable to remove file ${MONGODRIVERTGZ} !!\\n"
+			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		if ! cd "${TEMP_DIR}"/mongo-c-driver-debian-1.13.0-1-UOS
-		then
+		MONGODRIVERFOLDER="mongo-c-driver-debian-1.13.0-1-UOS"
+		if ! cd "${TEMP_DIR}/${MONGODRIVERFOLDER}"; then
 			printf "\\tUnable to cd into directory %s/mongo-c-driver-debian-1.13.0-1-UOS.\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;

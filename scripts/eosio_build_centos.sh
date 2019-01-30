@@ -493,6 +493,20 @@ mongodconf
 				MONGO_INSTALL=true
 			fi
 		fi
+
+		if ! version=$( grep "Version:" /usr/local/lib64/pkgconfig/libmongoc-static-1.0.pc | tr -s ' ' | awk '{print $2}' )
+		then
+			printf "\\tUnable to determine mongodb-c-driver version.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		maj=$( echo "${version}" | cut -d'.' -f1 )
+		min=$( echo "${version}" | cut -d'.' -f2 )
+		if [ "${maj}" -gt 1 ]; then
+			MONGO_INSTALL=true
+		elif [ "${maj}" -eq 1 ] && [ "${min}" -lt 13 ]; then
+			MONGO_INSTALL=true
+		fi
 	fi
 
 	if [ $MONGO_INSTALL == "true" ]; then
@@ -501,8 +515,8 @@ mongodconf
 			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		MONGODRIVERTGZ="mongo-c-driver-1.10.2.tar.gz"
-		MONGODRIVERURL="https://github.com/mongodb/mongo-c-driver/releases/download/1.10.2/${MONGODRIVERTGZ}"
+		MONGODRIVERTGZ="1.13.0-1-UOS.tar.gz"
+		MONGODRIVERURL="https://github.com/coodi/mongo-c-driver/archive/debian/${MONGODRIVERTGZ}"
 		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 "${MONGODRIVERURL}" )
 		if [ "${STATUS}" -ne 200 ]; then
 			if ! rm -f "${TEMP_DIR}/${MONGODRIVERTGZ}"; then
