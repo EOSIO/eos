@@ -278,7 +278,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $( command -v mongod ) --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        source /opt/rh/python33/enable && cd /data/job/build && ctest -j1 -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
     label: ":centos: 7 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
