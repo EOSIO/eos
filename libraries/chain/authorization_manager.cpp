@@ -45,30 +45,6 @@ namespace eosio { namespace chain {
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
-        "permission_level", "",
-        {{"actor", "name"},
-         {"permission", "name"}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "key_weight", "",
-        {{"key", "public_key"},
-         {"weight", "uint16"}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "permission_level_weight", "",
-        {{"permission", "permission_level"},
-         {"weight", "uint16"}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "wait_weight", "",
-        {{"wait_sec", "uint32"},
-         {"weight", "uint16"}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
         "permission", "",
         {{"id", "uint64"},
          {"usage_id", "uint64"},

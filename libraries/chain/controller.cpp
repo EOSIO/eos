@@ -479,9 +479,8 @@ struct controller_impl {
    }
 
    void add_indices() {
-      eosio::chain::abi_def abi;
+      auto abi = eosio_contract_abi();
       add_abi_tables(abi);
-      add_domain_abi_tables(abi);
       chaindb.add_abi(0, abi);
 
       reversible_blocks.add_index<reversible_block_index>();
@@ -529,18 +528,6 @@ struct controller_impl {
         "accountseq",
         {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "producer_key", "",
-        {{"name", "name"},
-         {"key", "public_key"}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "producer_schedule", "",
-        {{"version","uint32"},
-         {"producers", "producer_key[]"}}
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
@@ -603,7 +590,7 @@ struct controller_impl {
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
-        "transaction", "",
+        "transaction_info", "",
         {{"id", "uint64"},
          {"expiration", "time_point_sec"},
          {"trx_id", "checksum256"}}
@@ -611,14 +598,14 @@ struct controller_impl {
 
       abi.tables.emplace_back( eosio::chain::table_def {
         cyberway::chaindb::tag<transaction_object>::get_code(),
-        "transaction",
+        "transaction_info",
         {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {cyberway::chaindb::tag<by_trx_id>::get_code(), true, {{"trx_id", "asc"}}},
          {cyberway::chaindb::tag<by_expiration>::get_code(), true, {{"expiration","asc"}, {"id","asc"}}}}
       });
 
       abi.structs.emplace_back( eosio::chain::struct_def{
-        "gtransaction", "",
+        "generated_transaction", "",
         {{"id", "uint64"},
          {"trx_id", "checksum256"},
          {"sender", "name"},
@@ -632,7 +619,7 @@ struct controller_impl {
 
       abi.tables.emplace_back( eosio::chain::table_def {
         cyberway::chaindb::tag<generated_transaction_object>::get_code(),
-        "gtransaction",
+        "generated_transaction",
         {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {cyberway::chaindb::tag<by_trx_id>::get_code(), true, {{"trx_id", "asc"}}},
          {cyberway::chaindb::tag<by_expiration>::get_code(), true, {{"expiration","asc"}, {"id","asc"}}},
@@ -642,6 +629,8 @@ struct controller_impl {
 
       authorization.add_abi_tables(abi);
       resource_limits.add_abi_tables(abi);
+
+      add_domain_abi_tables(abi);
    }
 
    void add_domain_abi_tables(eosio::chain::abi_def &abi) {
@@ -828,9 +817,7 @@ struct controller_impl {
             add_abi_tables(abi);
             a.set_abi(abi);
          } else if (name == config::domain_account_name ) {
-            auto abi = domain_contract_abi();
-            add_domain_abi_tables(abi);
-            a.set_abi(abi);
+            a.set_abi(domain_contract_abi());
          }
       });
       db.create<account_sequence_object>([&](auto & a) {
