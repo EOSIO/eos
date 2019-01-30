@@ -1,8 +1,60 @@
 #pragma once
 #include <eosio/chain/block_timestamp.hpp>
 #include <eosio/chain/producer_schedule.hpp>
+#include <eosio/chain/protocol_feature_activation.hpp>
+
+#include <type_traits>
 
 namespace eosio { namespace chain {
+
+   namespace detail {
+      struct extract_match {
+         bool enforce_unique = false;
+      };
+
+      template<typename... Ts>
+      struct decompose;
+
+      template<>
+      struct decompose<> {
+         template<typename ResultVariant>
+         static auto extract( uint16_t id, const vector<char>& data, ResultVariant& result )
+         -> fc::optional<extract_match>
+         {
+            return {};
+         }
+      };
+
+      template<typename T, typename... Rest>
+      struct decompose<T, Rest...> {
+         using head_t = T;
+         using tail_t = decompose< Rest... >;
+
+         template<typename ResultVariant>
+         static auto extract( uint16_t id, const vector<char>& data, ResultVariant& result )
+         -> fc::optional<extract_match>
+         {
+            if( id == head_t::extension_id() ) {
+               result = fc::raw::unpack<head_t>( data );
+               return { extract_match{ head_t::enforce_unique() } };
+            }
+
+            return tail_t::template extract<ResultVariant>( id, data, result );
+         }
+      };
+
+      template<typename... Ts>
+      struct block_header_extension_types {
+         using block_header_extensions_t = fc::static_variant< Ts... >;
+         using decompose_t = decompose< Ts... >;
+      };
+   }
+
+   using block_header_extension_types = detail::block_header_extension_types<
+      protocol_feature_activation
+   >;
+
+   using block_header_extensions = block_header_extension_types::block_header_extensions_t;
 
    struct block_header
    {
@@ -41,6 +93,8 @@ namespace eosio { namespace chain {
       block_id_type     id() const;
       uint32_t          block_num() const { return num_from_id(previous) + 1; }
       static uint32_t   num_from_id(const block_id_type& id);
+
+      vector<block_header_extensions> validate_and_extract_header_extensions()const;
    };
 
 

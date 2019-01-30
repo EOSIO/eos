@@ -158,7 +158,10 @@ namespace eosio { namespace chain {
                                     3030008, "Block is not signed with expected key" )
       FC_DECLARE_DERIVED_EXCEPTION( wrong_producer,              block_validate_exception,
                                     3030009, "Block is not signed by expected producer" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( invalid_block_header_extension, block_validate_exception,
+                                    3030010, "Invalid block header extension" )
+      FC_DECLARE_DERIVED_EXCEPTION( ill_formed_protocol_feature_activation, block_validate_exception,
+                                    3030011, "Block includes an ill-formed protocol feature activation extension" )
 
 
 
@@ -519,4 +522,9 @@ namespace eosio { namespace chain {
                                  3240000, "Snapshot exception" )
       FC_DECLARE_DERIVED_EXCEPTION( snapshot_validation_exception,   snapshot_exception,
                                     3240001, "Snapshot Validation Exception" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_exception,    chain_exception,
+                                 3250000, "Protocol feature exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_validation_exception, snapshot_exception,
+                                    3250001, "Protocol feature validation exception" )
 } } // eosio::chain

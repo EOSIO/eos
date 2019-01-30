@@ -1,0 +1,237 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE
+ */
+
+#include <eosio/chain/protocol_feature_manager.hpp>
+#include <eosio/chain/exceptions.hpp>
+
+#include <algorithm>
+#include <boost/assign/list_of.hpp>
+
+namespace eosio { namespace chain {
+
+   const std::unordered_map<builtin_protocol_feature_t, const char*> builtin_codenames = boost::assign::map_list_of
+      (builtin_protocol_feature_t::preactivate_feature, "PREACTIVATE_FEATURE");
+
+   protocol_feature_base::protocol_feature_base( protocol_feature_t feature_type,
+                                                 const protocol_feature_subjective_restrictions& restrictions )
+   :subjective_restrictions( restrictions )
+   ,_type( feature_type )
+   {
+      switch( feature_type ) {
+         case protocol_feature_t::builtin:
+            protocol_feature_type = builtin_protocol_feature::feature_type_string;
+         break;
+         default:
+         {
+            EOS_THROW( protocol_feature_validation_exception,
+                       "Unsupported protocol_feature_t passed to constructor: ${type}",
+                       ("type", static_cast<uint32_t>(feature_type)) );
+         }
+         break;
+      }
+   }
+
+   void protocol_feature_base::reflector_init() {
+      static_assert( fc::raw::has_feature_reflector_init_on_unpacked_reflected_types,
+                     "protocol_feature_activation expects FC to support reflector_init" );
+
+      if( protocol_feature_type == builtin_protocol_feature::feature_type_string ) {
+         _type = protocol_feature_t::builtin;
+      } else {
+         EOS_THROW( protocol_feature_validation_exception,
+                    "Unsupported protocol feature type: ${type}", ("type", protocol_feature_type) );
+      }
+   }
+
+   builtin_protocol_feature::builtin_protocol_feature( builtin_protocol_feature_t codename,
+                                                       const protocol_feature_subjective_restrictions& restrictions )
+   :protocol_feature_base( protocol_feature_t::builtin, restrictions )
+   ,_codename(codename)
+   {
+      auto itr = builtin_codenames.find( codename );
+      EOS_ASSERT( itr != builtin_codenames.end(), protocol_feature_validation_exception,
+                  "Unsupported builtin_protocol_feature_t passed to constructor: ${codename}",
+                  ("codename", static_cast<uint32_t>(codename)) );
+
+      builtin_feature_codename = itr->second;
+   }
+
+   void builtin_protocol_feature::reflector_init() {
+      protocol_feature_base::reflector_init();
+
+      for( const auto& p : builtin_codenames ) {
+         if( builtin_feature_codename.compare( p.second ) == 0 ) {
+            _codename = p.first;
+            return;
+         }
+      }
+
+      EOS_THROW( protocol_feature_validation_exception,
+                  "Unsupported protocol feature type: ${type}", ("type", protocol_feature_type) );
+   }
+
+
+   digest_type builtin_protocol_feature::digest()const {
+      digest_type::encoder enc;
+      fc::raw::pack( enc, _type );
+      fc::raw::pack( enc, description_digest  );
+      fc::raw::pack( enc, _codename );
+
+      return enc.result();
+   }
+
+   protocol_feature_manager::protocol_feature_manager() {
+      _builtin_protocol_features.reserve( builtin_codenames.size() );
+   }
+
+   protocol_feature_manager::recognized_t
+   protocol_feature_manager::is_recognized( const digest_type& feature_digest, time_point now )const {
+      auto itr = _recognized_protocol_features.find( feature_digest );
+
+      if( itr == _recognized_protocol_features.end() )
+         return recognized_t::unrecognized;
+
+      if( !itr->enabled )
+         return recognized_t::disabled;
+
+      if( itr->earliest_allowed_activation_time > now )
+         return recognized_t::too_early;
+
+      if( itr->preactivation_required )
+         return recognized_t::ready_if_preactivated;
+
+      return recognized_t::ready;
+   }
+
+   const protocol_feature_manager::protocol_feature&
+   protocol_feature_manager::get_protocol_feature( const digest_type& feature_digest )const {
+      auto itr = _recognized_protocol_features.find( feature_digest );
+
+      EOS_ASSERT( itr != _recognized_protocol_features.end(), protocol_feature_exception,
+                  "unrecognized protocol feature with digest: ${digest}",
+                  ("digest", feature_digest)
+      );
+
+      return *itr;
+   }
+
+   bool protocol_feature_manager::is_builtin_activated( builtin_protocol_feature_t feature_codename,
+                                                        uint32_t current_block_num )const
+   {
+      uint32_t indx = static_cast<uint32_t>( feature_codename );
+
+      if( indx >= _builtin_protocol_features.size() ) return false;
+
+      return (_builtin_protocol_features[indx].activation_block_num <= current_block_num);
+   }
+
+   bool protocol_feature_manager::validate_dependencies(
+                                    const digest_type& feature_digest,
+                                    const std::function<bool(const digest_type&)>& validator
+   )const {
+      auto itr = _recognized_protocol_features.find( feature_digest );
+
+      if( itr == _recognized_protocol_features.end() ) return false;
+
+      for( const auto& d : itr->dependencies ) {
+         if( !validator(d) ) return false;
+      }
+
+      return true;
+   }
+
+   void protocol_feature_manager::add_feature( const builtin_protocol_feature& f ) {
+      EOS_ASSERT( _head_of_builtin_activation_list == builtin_protocol_feature_entry::no_previous,
+                  protocol_feature_exception,
+                  "new builtin protocol features cannot be added after a protocol feature has already been activated" );
+
+      uint32_t indx = static_cast<uint32_t>( f._codename );
+
+      if( indx < _builtin_protocol_features.size() ) {
+         EOS_ASSERT( _builtin_protocol_features[indx].iterator_to_protocol_feature == _recognized_protocol_features.end(),
+                     protocol_feature_exception,
+                     "builtin protocol feature with codename '${codename}' already added",
+                     ("codename", f.builtin_feature_codename) );
+      }
+
+      auto feature_digest = f.digest();
+
+      auto res = _recognized_protocol_features.insert( protocol_feature{
+         feature_digest,
+         f.dependencies,
+         f.subjective_restrictions.earliest_allowed_activation_time,
+         f.subjective_restrictions.preactivation_required,
+         f.subjective_restrictions.enabled,
+         f._codename
+      } );
+
+      EOS_ASSERT( res.second, protocol_feature_exception,
+                  "builtin protocol feature with codename '${codename}' has a digest of ${digest} but another protocol feature with the same digest has already been added",
+                  ("codename", f.builtin_feature_codename)("digest", feature_digest) );
+
+      if( indx < _builtin_protocol_features.size() ) {
+         for( auto i =_builtin_protocol_features.size(); i <= indx; ++i ) {
+            _builtin_protocol_features.push_back( builtin_protocol_feature_entry{
+                                                   _recognized_protocol_features.end(),
+                                                   builtin_protocol_feature_entry::not_active
+                                                  } );
+         }
+      }
+
+      _builtin_protocol_features[indx].iterator_to_protocol_feature = res.first;
+   }
+
+   void protocol_feature_manager::activate_feature( const digest_type& feature_digest,
+                                                    uint32_t current_block_num )
+   {
+      auto itr = _recognized_protocol_features.find( feature_digest );
+
+      EOS_ASSERT( itr != _recognized_protocol_features.end(), protocol_feature_exception,
+                  "unrecognized protocol feature digest: ${digest}", ("digest", feature_digest) );
+
+      if( itr->builtin_feature ) {
+         if( _head_of_builtin_activation_list != builtin_protocol_feature_entry::no_previous ) {
+            auto largest_block_num_of_activated_builtins = _builtin_protocol_features[_head_of_builtin_activation_list].activation_block_num;
+            EOS_ASSERT( largest_block_num_of_activated_builtins <= current_block_num,
+                        protocol_feature_exception,
+                        "trying to activate a builtin protocol feature with a current block number of "
+                        "${current_block_num} when the largest activation block number of all activated builtin "
+                        "protocol features is ${largest_block_num_of_activated_builtins}",
+                        ("current_block_num", current_block_num)
+                        ("largest_block_num_of_activated_builtins", largest_block_num_of_activated_builtins)
+            );
+         }
+
+         uint32_t indx = static_cast<uint32_t>( *itr->builtin_feature );
+
+         EOS_ASSERT( indx < _builtin_protocol_features.size() &&
+                     _builtin_protocol_features[indx].iterator_to_protocol_feature != _recognized_protocol_features.end(),
+                     protocol_feature_exception,
+                     "invariant failure: problem with activating builtin protocol feature with digest: ${digest}",
+                     ("digest", feature_digest) );
+
+         EOS_ASSERT( _builtin_protocol_features[indx].activation_block_num == builtin_protocol_feature_entry::not_active,
+                     protocol_feature_exception,
+                     "cannot activate already activated builtin feature with digest: ${digest}",
+                     ("digest", feature_digest) );
+
+         _builtin_protocol_features[indx].activation_block_num = current_block_num;
+         _builtin_protocol_features[indx].previous = _head_of_builtin_activation_list;
+         _head_of_builtin_activation_list = indx;
+      }
+   }
+
+   void protocol_feature_manager::popped_blocks_to( uint32_t block_num ) {
+      while( _head_of_builtin_activation_list != builtin_protocol_feature_entry::no_previous ) {
+         auto& e = _builtin_protocol_features[_head_of_builtin_activation_list];
+         if( e.activation_block_num <= block_num ) break;
+
+         _head_of_builtin_activation_list = e.previous;
+         e.activation_block_num = builtin_protocol_feature_entry::not_active;
+         e.previous = builtin_protocol_feature_entry::no_previous;
+      }
+   }
+
+} }  // eosio::chain
