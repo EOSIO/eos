@@ -71,24 +71,6 @@ namespace cyberway { namespace chaindb {
         static constexpr cursor_t find_by_pk = -3;
     }
 
-//inline uint64_t hash_64_fnv1a(const void* key, const uint64_t len) {
-//    const uint8_t* data = reinterpret_cast<const uint8_t*>(key);
-//    uint64_t hash = 0xcbf29ce484222325;
-//    uint64_t prime = 0x100000001b3;
-//
-//    for(uint64_t i = 0; i < len; ++i) {
-//        uint8_t value = data[i];
-//        hash = hash ^ value;
-//        hash *= prime;
-//    }
-//
-//    return hash;
-//
-//} //hash_64_fnv1a
-//inline uint64_t hash_64_fnv1a(const std::string& value) {
-//    return hash_64_fnv1a(value.c_str(), value.length());
-//} // hash_64_fnv1a
-
 template<typename O>
 void pack_object(const O& o, char* data, const size_t size) {
     fc::datastream<char*> ds(data, size);
@@ -128,15 +110,6 @@ void safe_allocate(const Size size, const char* error_msg, Lambda&& callback) {
 }
 
 using boost::multi_index::const_mem_fun;
-
-//template<class C> struct tag {
-//    using type = C;
-//
-//    static uint64_t get_code() {
-//        static uint64_t code = hash_64_fnv1a(boost::core::demangle(typeid(C).name()));
-//        return code;
-//    }
-//}; // struct tag
 
 namespace _detail {
     template <typename T> constexpr T& min(T& a, T& b) {
