@@ -46,7 +46,7 @@ namespace eosio { namespace chain { namespace resource_limits {
 
 } } } // namespace eosio::chain::resource_limits
 
-CHAINDB_TAG(by_id, id)
+CHAINDB_TAG(by_id, primary) // "primary" for compatibility with contracts
 CHAINDB_TAG(eosio::chain::by_parent, parent)
 CHAINDB_TAG(eosio::chain::by_owner, owner)
 CHAINDB_TAG(eosio::chain::by_name, name)
