@@ -897,13 +897,13 @@ BOOST_AUTO_TEST_CASE(updateauth_test)
    BOOST_TEST("updauth.prnt" == updauth.parent);
    BOOST_TEST(2147483145u == updauth.auth.threshold);
 
-   BOOST_TEST_REQUIRE(2 == updauth.auth.keys.size());
+   BOOST_TEST_REQUIRE(2u == updauth.auth.keys.size());
    BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)updauth.auth.keys[0].key);
    BOOST_TEST(57005u == updauth.auth.keys[0].weight);
    BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == (std::string)updauth.auth.keys[1].key);
    BOOST_TEST(57605u == updauth.auth.keys[1].weight);
 
-   BOOST_TEST_REQUIRE(2 == updauth.auth.accounts.size());
+   BOOST_TEST_REQUIRE(2u == updauth.auth.accounts.size());
    BOOST_TEST("prm.acct1" == updauth.auth.accounts[0].permission.actor);
    BOOST_TEST("prm.prm1" == updauth.auth.accounts[0].permission.permission);
    BOOST_TEST(53005u == updauth.auth.accounts[0].weight);
@@ -1001,13 +1001,13 @@ BOOST_AUTO_TEST_CASE(newaccount_test)
 
    BOOST_TEST(2147483145u == newacct.owner.threshold);
 
-   BOOST_TEST_REQUIRE(2 == newacct.owner.keys.size());
+   BOOST_TEST_REQUIRE(2u == newacct.owner.keys.size());
    BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)newacct.owner.keys[0].key);
    BOOST_TEST(57005u == newacct.owner.keys[0].weight);
    BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == (std::string)newacct.owner.keys[1].key);
    BOOST_TEST(57605u == newacct.owner.keys[1].weight);
 
-   BOOST_TEST_REQUIRE(2 == newacct.owner.accounts.size());
+   BOOST_TEST_REQUIRE(2u == newacct.owner.accounts.size());
    BOOST_TEST("prm.acct1" == newacct.owner.accounts[0].permission.actor);
    BOOST_TEST("prm.prm1" == newacct.owner.accounts[0].permission.permission);
    BOOST_TEST(53005u == newacct.owner.accounts[0].weight);
@@ -1017,13 +1017,13 @@ BOOST_AUTO_TEST_CASE(newaccount_test)
 
    BOOST_TEST(2146483145u == newacct.active.threshold);
 
-   BOOST_TEST_REQUIRE(2 == newacct.active.keys.size());
+   BOOST_TEST_REQUIRE(2u == newacct.active.keys.size());
    BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)newacct.active.keys[0].key);
    BOOST_TEST(57005u == newacct.active.keys[0].weight);
    BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == (std::string)newacct.active.keys[1].key);
    BOOST_TEST(57605u == newacct.active.keys[1].weight);
 
-   BOOST_TEST_REQUIRE(2 == newacct.active.accounts.size());
+   BOOST_TEST_REQUIRE(2u == newacct.active.accounts.size());
    BOOST_TEST("prm.acct1" == newacct.active.accounts[0].permission.actor);
    BOOST_TEST("prm.prm1" == newacct.active.accounts[0].permission.permission);
    BOOST_TEST(53005u == newacct.active.accounts[0].weight);
@@ -1305,22 +1305,22 @@ BOOST_AUTO_TEST_CASE(setabi_test)
    auto var = fc::json::from_string(abi_string);
    auto abi = var.as<abi_def>();
 
-   BOOST_TEST_REQUIRE(1 == abi.types.size());
+   BOOST_TEST_REQUIRE(1u == abi.types.size());
 
    BOOST_TEST("account_name" == abi.types[0].new_type_name);
    BOOST_TEST("name" == abi.types[0].type);
 
-   BOOST_TEST_REQUIRE(3 == abi.structs.size());
+   BOOST_TEST_REQUIRE(3u == abi.structs.size());
 
    BOOST_TEST("transfer_base" == abi.structs[0].name);
    BOOST_TEST("" == abi.structs[0].base);
-   BOOST_TEST_REQUIRE(1 == abi.structs[0].fields.size());
+   BOOST_TEST_REQUIRE(1u == abi.structs[0].fields.size());
    BOOST_TEST("memo" == abi.structs[0].fields[0].name);
    BOOST_TEST("string" == abi.structs[0].fields[0].type);
 
    BOOST_TEST("transfer" == abi.structs[1].name);
    BOOST_TEST("transfer_base" == abi.structs[1].base);
-   BOOST_TEST_REQUIRE(3 == abi.structs[1].fields.size());
+   BOOST_TEST_REQUIRE(3u == abi.structs[1].fields.size());
    BOOST_TEST("from" == abi.structs[1].fields[0].name);
    BOOST_TEST("account_name" == abi.structs[1].fields[0].type);
    BOOST_TEST("to" == abi.structs[1].fields[1].name);
@@ -1330,23 +1330,23 @@ BOOST_AUTO_TEST_CASE(setabi_test)
 
    BOOST_TEST("account" == abi.structs[2].name);
    BOOST_TEST("" == abi.structs[2].base);
-   BOOST_TEST_REQUIRE(2 == abi.structs[2].fields.size());
+   BOOST_TEST_REQUIRE(2u == abi.structs[2].fields.size());
    BOOST_TEST("account" == abi.structs[2].fields[0].name);
    BOOST_TEST("name" == abi.structs[2].fields[0].type);
    BOOST_TEST("balance" == abi.structs[2].fields[1].name);
    BOOST_TEST("uint64" == abi.structs[2].fields[1].type);
 
-   BOOST_TEST_REQUIRE(1 == abi.actions.size());
+   BOOST_TEST_REQUIRE(1u == abi.actions.size());
    BOOST_TEST("transfer" == abi.actions[0].name);
    BOOST_TEST("transfer" == abi.actions[0].type);
 
-   BOOST_TEST_REQUIRE(1 == abi.tables.size());
+   BOOST_TEST_REQUIRE(1u == abi.tables.size());
    BOOST_TEST("account" == abi.tables[0].name);
    BOOST_TEST("account" == abi.tables[0].type);
    BOOST_TEST("i64" == abi.tables[0].index_type);
-   BOOST_TEST_REQUIRE(1 == abi.tables[0].key_names.size());
+   BOOST_TEST_REQUIRE(1u == abi.tables[0].key_names.size());
    BOOST_TEST("account" == abi.tables[0].key_names[0]);
-   BOOST_TEST_REQUIRE(1 == abi.tables[0].key_types.size());
+   BOOST_TEST_REQUIRE(1u == abi.tables[0].key_types.size());
    BOOST_TEST("name" == abi.tables[0].key_types[0]);
 
    auto var2 = verify_byte_round_trip_conversion( abis, "abi_def", var );

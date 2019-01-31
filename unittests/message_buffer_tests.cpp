@@ -29,8 +29,8 @@ void* mb_data(boost::asio::mutable_buffer& mb) {
 
 BOOST_AUTO_TEST_SUITE(message_buffer_tests)
 
-constexpr auto     def_buffer_size_mb = 4;
-constexpr auto     def_buffer_size = 1024*1024*def_buffer_size_mb;
+constexpr size_t     def_buffer_size_mb = 4;
+constexpr size_t     def_buffer_size = 1024*1024*def_buffer_size_mb;
 
 /// Test default construction and buffer sequence generation
 BOOST_AUTO_TEST_CASE(message_buffer_construction)
@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(message_buffer_construction)
     fc::message_buffer<def_buffer_size> mb;
     BOOST_CHECK_EQUAL(mb.total_bytes(), def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), def_buffer_size);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0u);
     BOOST_CHECK_EQUAL(mb.read_ptr(), mb.write_ptr());
 
     auto mbs = mb.get_buffer_sequence_for_boost_async_read();
@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE(message_buffer_growth)
     mb.add_buffer_to_chain();
     BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), 2 * def_buffer_size);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0u);
     BOOST_CHECK_EQUAL(mb.read_ptr(), mb.write_ptr());
 
     {
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(message_buffer_growth)
     mb.advance_write_ptr(100);
     BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), 2 * def_buffer_size - 100);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 100);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 100u);
     BOOST_CHECK_NE(mb.read_ptr(), nullptr);
     BOOST_CHECK_NE(mb.write_ptr(), nullptr);
     BOOST_CHECK_EQUAL((mb.read_ptr() + 100), mb.write_ptr());
@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE(message_buffer_growth)
     mb.advance_read_ptr(50);
     BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), 2 * def_buffer_size - 100);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 50);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 50u);
 
     mb.advance_write_ptr(def_buffer_size);
     BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * def_buffer_size);
@@ -111,29 +111,29 @@ BOOST_AUTO_TEST_CASE(message_buffer_growth)
     mb.advance_read_ptr(def_buffer_size);
     BOOST_CHECK_EQUAL(mb.total_bytes(), def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), def_buffer_size - 100);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 50);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 50u);
 
     // Moving read_ptr to write_ptr should shrink chain and reset ptrs
     mb.advance_read_ptr(50);
     BOOST_CHECK_EQUAL(mb.total_bytes(), def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), def_buffer_size);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0u);
 
     mb.add_buffer_to_chain();
     BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), 2 * def_buffer_size);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0u);
 
     mb.advance_write_ptr(50);
     BOOST_CHECK_EQUAL(mb.total_bytes(), 2 * def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), 2 * def_buffer_size - 50);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 50);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 50u);
 
     // Moving read_ptr to write_ptr should shrink chain and reset ptrs
     mb.advance_read_ptr(50);
     BOOST_CHECK_EQUAL(mb.total_bytes(), def_buffer_size);
     BOOST_CHECK_EQUAL(mb.bytes_to_write(), def_buffer_size);
-    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0);
+    BOOST_CHECK_EQUAL(mb.bytes_to_read(), 0u);
   }
   FC_LOG_AND_RETHROW()
 }
