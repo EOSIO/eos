@@ -118,16 +118,20 @@ if [ -z "${DEVTOOLSET}" ]; then
 else
 	printf " - ${DEVTOOLSET} found.\\n"
 fi
-printf "Enabling Centos devtoolset-7...\\n"
-source /opt/rh/devtoolset-7/enable || exit 1
-printf " - Centos devtoolset-7 successfully enabled!\\n"
+if [ -d /opt/rh/devtoolset-7 ]; then
+	printf "Enabling Centos devtoolset-7...\\n"
+	source /opt/rh/devtoolset-7/enable || exit 1
+	printf " - Centos devtoolset-7 successfully enabled!\\n"
+fi
 
 printf "\\n"
 
-DEP_ARRAY=( git autoconf automake libtool make bzip2 doxygen graphviz \
-				bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 \
-				ocaml.x86_64 libicu-devel.x86_64 python33.x86_64 python-devel.x86_64 \
-				gettext-devel.x86_64 file sudo )
+DEP_ARRAY=( 
+	git autoconf automake libtool make bzip2 doxygen graphviz \
+				bzip2-devel openssl-devel gmp-devel \
+				ocaml libicu-devel python-devel \
+				gettext-devel file sudo
+ )
 COUNT=1
 DISPLAY=""
 DEP=""
@@ -168,12 +172,6 @@ if [ "${COUNT}" -gt 1 ]; then
 else
 	printf " - No required YUM dependencies to install.\\n"
 fi
-
-printf "\\n"
-
-printf "Enabling python33...\\n"
-source /opt/rh/python33/enable || exit 1
-printf " - python33 successfully enabled!\\n"
 
 printf "\\n"
 
