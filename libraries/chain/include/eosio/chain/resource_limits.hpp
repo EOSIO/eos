@@ -48,7 +48,6 @@ namespace eosio { namespace chain { namespace resource_limits {
          }
 
          void add_indices();
-         void add_abi_tables(eosio::chain::abi_def &abi);
          void initialize_database();
          void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const;
          void read_from_snapshot( const snapshot_reader_ptr& snapshot );

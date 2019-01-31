@@ -479,9 +479,7 @@ struct controller_impl {
    }
 
    void add_indices() {
-      auto abi = eosio_contract_abi();
-      add_abi_tables(abi);
-      chaindb.add_abi(0, abi);
+      chaindb.add_abi(0, eosio_contract_abi());
 
       reversible_blocks.add_index<reversible_block_index>();
 
@@ -489,182 +487,6 @@ struct controller_impl {
 
       authorization.add_indices();
       resource_limits.add_indices();
-   }
-
-   void add_abi_tables(eosio::chain::abi_def& abi) {
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "account", "",
-        {{"id", "uint64"},
-         {"name", "name"},
-         {"vm_type", "uint8"},
-         {"vm_version", "uint8"},
-         {"privileged", "bool"},
-         {"last_code_update", "time_point"},
-         {"code_version", "checksum256"},
-         {"creation_date", "block_timestamp_type"},
-         {"code", "string"},
-         {"abi", "bytes"}}
-      });
-
-      abi.tables.emplace_back( eosio::chain::table_def {
-        cyberway::chaindb::tag<account_object>::get_code(),
-        "account",
-        {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "accountseq", "",
-        {{"id", "uint64"},
-         {"name", "name"},
-         {"recv", "uint64"},
-         {"auth", "uint64"},
-         {"code", "uint64"},
-         {"abi", "uint64"}}
-      });
-
-      abi.tables.emplace_back( eosio::chain::table_def {
-        cyberway::chaindb::tag<account_sequence_object>::get_code(),
-        "accountseq",
-        {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "chain_config", "",
-        {{"max_block_net_usage", "uint64"},
-         {"target_block_net_usage_pct", "uint32"},
-         {"max_transaction_net_usage", "uint32"},
-         {"base_per_transaction_net_usage", "uint32"},
-         {"net_usage_leeway", "uint32"},
-         {"context_free_discount_net_usage_num", "uint32"},
-         {"context_free_discount_net_usage_den", "uint32"},
-         {"max_block_cpu_usage", "uint32"},
-         {"target_block_cpu_usage_pct", "uint32"},
-         {"max_transaction_cpu_usage", "uint32"},
-         {"min_transaction_cpu_usage", "uint32"},
-         {"max_transaction_lifetime", "uint32"},
-         {"deferred_trx_expiration_window", "uint32"},
-         {"max_transaction_delay", "uint32"},
-         {"max_inline_action_size", "uint32"},
-         {"max_inline_action_depth", "uint16"},
-         {"max_authority_depth", "uint16"}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "global_property", "",
-        {{"id", "uint64"},
-         {"proposed_schedule_block_num", "uint32?"},
-         {"proposed_schedule", "producer_schedule"},
-         {"configuration", "chain_config"}}
-      });
-
-      abi.tables.emplace_back( eosio::chain::table_def {
-        cyberway::chaindb::tag<global_property_object>::get_code(),
-        "global_property",
-        {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "dynamic_global_property", "",
-        {{"id", "uint64"},
-         {"global_action_seq", "uint64"}}
-      });
-
-      abi.tables.emplace_back( eosio::chain::table_def {
-        cyberway::chaindb::tag<dynamic_global_property_object>::get_code(),
-        "dynamic_global_property",
-        {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "block_summary", "",
-        {{"id", "uint64"},
-         {"block_id", "checksum256"}}
-      });
-
-      abi.tables.emplace_back( eosio::chain::table_def {
-        cyberway::chaindb::tag<block_summary_object>::get_code(),
-        "block_summary",
-        {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "transaction_info", "",
-        {{"id", "uint64"},
-         {"expiration", "time_point_sec"},
-         {"trx_id", "checksum256"}}
-      });
-
-      abi.tables.emplace_back( eosio::chain::table_def {
-        cyberway::chaindb::tag<transaction_object>::get_code(),
-        "transaction_info",
-        {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {cyberway::chaindb::tag<by_trx_id>::get_code(), true, {{"trx_id", "asc"}}},
-         {cyberway::chaindb::tag<by_expiration>::get_code(), true, {{"expiration","asc"}, {"id","asc"}}}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "generated_transaction", "",
-        {{"id", "uint64"},
-         {"trx_id", "checksum256"},
-         {"sender", "name"},
-         {"sender_id", "uint128"},
-         {"payer", "name"},
-         {"delay_until", "time_point"},
-         {"expiration", "time_point"},
-         {"published", "time_point"},
-         {"packed_trx", "string"}}
-      });
-
-      abi.tables.emplace_back( eosio::chain::table_def {
-        cyberway::chaindb::tag<generated_transaction_object>::get_code(),
-        "generated_transaction",
-        {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {cyberway::chaindb::tag<by_trx_id>::get_code(), true, {{"trx_id", "asc"}}},
-         {cyberway::chaindb::tag<by_expiration>::get_code(), true, {{"expiration","asc"}, {"id","asc"}}},
-         {cyberway::chaindb::tag<by_delay>::get_code(), true, {{"delay_until", "asc"}, {"id", "asc"}}},
-         {cyberway::chaindb::tag<by_sender_id>::get_code(), true, {{"sender", "asc"}, {"sender_id", "asc"}}}}
-      });
-
-      authorization.add_abi_tables(abi);
-      resource_limits.add_abi_tables(abi);
-
-      add_domain_abi_tables(abi);
-   }
-
-   void add_domain_abi_tables(eosio::chain::abi_def &abi) {
-       // domain names
-       abi.structs.emplace_back(eosio::chain::struct_def{
-           "domain", "",
-           {{"id", "uint64"},
-            {"owner", "name"},
-            {"linked_to", "name"},
-            {"creation_date", "block_timestamp_type"},
-            {"name", "string"}}
-       });
-       abi.tables.emplace_back(eosio::chain::table_def{
-           cyberway::chaindb::tag<domain_object>::get_code(),
-           "domain",
-           {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-            {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}},
-            {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"},{"name", "asc"}}}}
-       });
-
-       abi.structs.emplace_back(eosio::chain::struct_def{
-           "username", "",
-           {{"id", "uint64"},
-            {"owner", "name"},
-            {"scope", "name"},
-            {"name", "string"}}
-       });
-       abi.tables.emplace_back(eosio::chain::table_def{
-           cyberway::chaindb::tag<username_object>::get_code(),
-           "username",
-           {{cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-            {cyberway::chaindb::tag<by_scope_name>::get_code(), true, {{"scope", "asc"},{"name", "asc"}}},
-            {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner","asc"},{"scope","asc"},{"name","asc"}}}}
-       });
    }
 
    void clear_all_undo() {
@@ -813,9 +635,7 @@ struct controller_impl {
          a.privileged = is_privileged;
 
          if (name == config::system_account_name) {
-            auto abi = eosio_contract_abi();
-            add_abi_tables(abi);
-            a.set_abi(abi);
+            a.set_abi(eosio_contract_abi());
          } else if (name == config::domain_account_name ) {
             a.set_abi(domain_contract_abi());
          }
