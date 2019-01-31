@@ -536,7 +536,7 @@ mongodconf
 			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		MONGODRIVERFOLDER=$(echo $MONGODRIVERTGZ | sed 's/.tar.gz//g')
+		MONGODRIVERFOLDER="mongo-c-driver-debian-1.13.0-1-UOS"
 		if ! cd "${TEMP_DIR}/${MONGODRIVERFOLDER}"; then
 			printf "\\t!! Unable to cd into directory %s/${MONGODRIVERFOLDER} !!\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n"

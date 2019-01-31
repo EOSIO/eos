@@ -266,6 +266,20 @@
 				MONGO_INSTALL=true
 			fi
 		fi
+		
+		if ! version=$( grep "Version:" /usr/local/lib64/pkgconfig/libmongoc-static-1.0.pc | tr -s ' ' | awk '{print $2}' )
+		then
+			printf "\\tUnable to determine mongodb-c-driver version.\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		maj=$( echo "${version}" | cut -d'.' -f1 )
+		min=$( echo "${version}" | cut -d'.' -f2 )
+		if [ "${maj}" -gt 1 ]; then
+			MONGO_INSTALL=true
+		elif [ "${maj}" -eq 1 ] && [ "${min}" -lt 13 ]; then
+			MONGO_INSTALL=true
+		fi
 	fi
 
     if [ $MONGO_INSTALL == "true" ]; then
@@ -275,43 +289,42 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 https://github.com/mongodb/mongo-c-driver/releases/download/1.10.2/mongo-c-driver-1.10.2.tar.gz )
+		MONGODRIVERTGZ="1.13.0-1-UOS.tar.gz"
+		MONGODRIVERURL="https://github.com/coodi/mongo-c-driver/archive/debian/${MONGODRIVERTGZ}"
+		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 "${MONGODRIVERURL}" )
 		if [ "${STATUS}" -ne 200 ]; then
-			if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.10.2.tar.gz"
-			then
-				printf "\\tUnable to remove file %s/mongo-c-driver-1.10.2.tar.gz.\\n" "${TEMP_DIR}"
+			if ! rm -f "${TEMP_DIR}/${MONGODRIVERTGZ}"; then
+				printf "\\tUnable to remove file %s/${MONGODRIVERTGZ} !!\\n" "${TEMP_DIR}"
 			fi
 			printf "\\tUnable to download MongoDB C driver at this time.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! tar xf mongo-c-driver-1.10.2.tar.gz
-		then
-			printf "\\tUnable to unarchive file %s/mongo-c-driver-1.10.2.tar.gz.\\n" "${TEMP_DIR}"
+		if ! tar xf "${MONGODRIVERTGZ}"; then
+			printf "\\tUnable to unarchive file %s/${MONGODRIVERTGZ} !!\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.10.2.tar.gz"
-		then
-			printf "\\tUnable to remove file mongo-c-driver-1.10.2.tar.gz.\\n"
+		if ! rm -f "${TEMP_DIR}/${MONGODRIVERTGZ}"; then
+			printf "\\tUnable to remove file ${MONGODRIVERTGZ} !!\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! cd "${TEMP_DIR}"/mongo-c-driver-1.10.2
-		then
-			printf "\\tUnable to cd into directory %s/mongo-c-driver-1.10.2.\\n" "${TEMP_DIR}"
+		MONGODRIVERFOLDER="mongo-c-driver-debian-1.13.0-1-UOS"
+		if ! cd "${TEMP_DIR}/${MONGODRIVERFOLDER}"; then
+			printf "\\tUnable to cd into directory %s/${MONGODRIVERFOLDER} !!\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! mkdir cmake-build
 		then
-			printf "\\tUnable to create directory %s/mongo-c-driver-1.10.2/cmake-build.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to create directory %s/${MONGODRIVERFOLDER}/cmake-build !!\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
 		if ! cd cmake-build
 		then
-			printf "\\tUnable to enter directory %s/mongo-c-driver-1.10.2/cmake-build.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to enter directory %s/${MONGODRIVERFOLDER}/cmake-build !!\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
@@ -340,9 +353,9 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! rm -rf "${TEMP_DIR}/mongo-c-driver-1.10.2"
+		if ! rm -rf "${TEMP_DIR}/${MONGODRIVERFOLDER}"
 		then
-			printf "\\tUnable to remove directory %s/mongo-c-driver-1.10.2.\\n" "${TEMP_DIR}"
+			printf "\\tUnable to remove directory %s/${MONGODRIVERFOLDER} !!\\n" "${TEMP_DIR}"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
