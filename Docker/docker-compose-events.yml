@@ -1,0 +1,102 @@
+version: "2.1"
+
+services:
+  nats:
+    container_name: nats-streaming
+    image: nats-streaming:0.11.2-linux
+    restart: always
+    entrypoint: /nats-streaming-server -p 4222 -m 8222 --cluster_id=cyberway --user=${EXPORTER_USER} --pass=${EXPORTER_PASS}
+    ports:
+      - 0.0.0.0:4222:4222
+      - 127.0.0.1:8222:8222
+    networks:
+      - nats-net
+
+  cyberway-notifier:
+    container_name: cyberway-notifier
+    image: cyberway/cyberway-notifier:latest
+    restart: always
+    command: bash -c "/opt/cyberway/bin/cyber-notifier </queue/msg.pipe -s nats://${EXPORTER_USER}:${EXPORTER_PASS}@nats-streaming:4222"
+    volumes:
+      - cyberway-queue:/queue:ro
+    networks:
+      - nats-net
+
+  nats-exporter:
+    container_name: nats-exporter
+    image: cyberway/nats-exporter:latest
+    restart: always
+    command: -varz -http_pass=${EXPORTER_PASS} -http_user=${EXPORTER_USER} "http://nats-streaming:8222"
+    ports:
+      - 7777:7777
+    networks:
+      - nats-net
+
+  mongo:
+    container_name: mongo
+    image: mongo
+    restart: always
+    healthcheck:
+       test: mongo --eval 'db.getCollectionNames()'
+       interval: 2s
+       timeout: 2s
+       retries: 10
+    volumes:
+      - cyberway-mongodb-data:/data/db
+    ports:
+      - 127.0.0.1:27018:27017
+    networks:
+      - cyberway-net
+
+  nodeosd:
+    container_name: nodeosd
+    image: cyberway/cyberway:latest
+    depends_on:
+      mongo:
+        condition: service_healthy
+    command: bash -c "mkfifo /queue/msg.pipe; /opt/cyberway/bin/nodeosd.sh --data-dir /opt/cyberway/bin/data-dir -e --http-alias=nodeosd:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888 --plugin eosio::event_engine_plugin --event-engine-dumpfile /queue/msg.pipe"
+    hostname: nodeosd
+    ports:
+      - 8888:8888
+      - 9876:9876
+    expose:
+      - "8888"
+    volumes:
+      - cyberway-nodeos-data:/opt/cyberway/bin/data-dir
+      - /etc/cyberway/config.ini:/opt/cyberway/bin/data-dir/config.ini
+      - /home/deploy/deploy/golos-smart:/opt/cyberway/bin/data-dir/golos-smart  
+      - cyberway-queue:/queue
+    cap_add:
+      - IPC_LOCK
+    stop_grace_period: 10m
+    networks:
+      - cyberway-net
+
+  keosd:
+    container_name: keosd
+    image: cyberway/cyberway:latest
+    command: /opt/cyberway/bin/keosd --unlock-timeout 999999999 --wallet-dir /opt/cyberway/bin/data-dir --http-server-address=127.0.0.1:8900 --http-alias=keosd:8900 --http-alias=localhost:8900
+    hostname: keosd
+    links:
+      - nodeosd
+    volumes:
+      - cyberway-keosd-data:/opt/cyberway/bin/data-dir
+      - /home/deploy/deploy/golos-smart:/opt/cyberway/bin/data-dir/golos-smart  
+      - /home/deploy/deploy/golos-smart/build:/opt/cyberway/bin/data-dir/contracts
+    stop_grace_period: 10m
+    networks:
+      - cyberway-net
+
+volumes:
+ cyberway-mongodb-data:
+   external: true
+ cyberway-nodeos-data:
+   external: true
+ cyberway-keosd-data:
+   external: true
+ cyberway-queue:
+   external: true
+
+networks:
+  cyberway-net:
+  nats-net:
