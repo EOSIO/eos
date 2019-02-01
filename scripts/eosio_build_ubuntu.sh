@@ -84,12 +84,11 @@ fi
 if [ $1 == 0 ]; then read -p "Do you wish to update repositories with apt-get update? (y/n)?\\n" answer; fi
 case ${answer} in
 	1 | [Yy]* )
-			if ! apt-get update; then
-				printf " - APT update failed.\\n"
-				exit 1;
-			else
-				printf " - APT update complete.\\n"
-			fi
+		if ! apt-get update; then
+			printf " - APT update failed.\\n"
+			exit 1;
+		else
+			printf " - APT update complete.\\n"
 		fi
 	;;
 	[Nn]* ) echo "Proceeding without update!";;
@@ -115,8 +114,7 @@ if [ "${COUNT}" -gt 1 ]; then
 	if [ $1 == 0 ]; then read -p "Do you wish to install these packages? (y/n)?\\n" answer; fi
 	case ${answer} in
 		1 | [Yy]* )
-			if ! apt-get -y install ${DEP}
-			then
+			if ! apt-get -y install ${DEP}; then
 				printf " - APT dependency failed.\\n"
 				exit 1
 			else
