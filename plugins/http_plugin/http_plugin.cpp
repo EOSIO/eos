@@ -139,7 +139,7 @@ namespace eosio {
 
          websocket_server_type    server;
 
-         uint16_t                                    thread_pool_size;
+         uint16_t                                    thread_pool_size = 2;
          optional<boost::asio::thread_pool>          thread_pool;
          std::shared_ptr<boost::asio::io_context>    server_ioc;
          optional<io_work_t>                         server_ioc_work;
@@ -406,7 +406,7 @@ namespace eosio {
              "If set to false, then any incoming \"Host\" header is considered valid")
             ("http-alias", bpo::value<std::vector<string>>()->composing(),
              "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
-            ("http-threads", bpo::value<uint16_t>()->default_value(2),
+            ("http-threads", bpo::value<uint16_t>()->default_value( my->thread_pool_size ),
              "Number of worker threads in http thread pool")
             ;
    }
@@ -483,8 +483,8 @@ namespace eosio {
          verbose_http_errors = options.at( "verbose-http-errors" ).as<bool>();
 
          my->thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
-         EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
-                     "http-threads ${num} must be greater than 0", ("num", my->thread_pool_size));
+         EOS_ASSERT( my->thread_pool_size > 1, chain::plugin_config_exception,
+                     "http-threads ${num} must be greater than 1", ("num", my->thread_pool_size));
 
          //watch out for the returns above when adding new code here
       } FC_LOG_AND_RETHROW()
