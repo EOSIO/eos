@@ -30,6 +30,12 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
 
+if [[ $1 == "noninteractive" ]]; then
+  NONINTERACTIVE=1
+else
+  NONINTERACTIVE=0
+fi
+
 VERSION=2.0 # Build script version
 CMAKE_BUILD_TYPE=Release
 export DISK_MIN=20
@@ -263,7 +269,7 @@ fi
 if [ $? -ne 0 ]; then exit -1; fi # Stop if exit from script is not 0
 
 pushd $SRC_LOCATION &> /dev/null
-. "$FILE" # Execute OS specific build file
+. "$FILE" $NONINTERACTIVE # Execute OS specific build file
 popd &> /dev/null
 
 printf "\\n========================================================================\\n"

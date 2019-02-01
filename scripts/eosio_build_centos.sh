@@ -51,46 +51,40 @@ if ! YUM=$( command -v yum 2>/dev/null ); then
 fi
 printf " - Yum installation found at %s.\\n" "${YUM}"
 
-printf "\\nDo you wish to update YUM repositories?\\n\\n"
-select yn in "Yes" "No"; do
-	case $yn in
-		[Yy]* ) 
-			printf "\\n\\nUpdating...\\n\\n"
-			if ! "${YUM}" -y update; then
-				printf "\\nYUM update failed.\\n"
-				printf "\\nExiting now.\\n\\n"
-				exit 1;
-			else
-				printf "\\nYUM update complete.\\n"
-			fi
-		break;;
-		[Nn]* ) 
-			echo "Proceeding without update!"
-		break;;
-		* ) echo "Please type 1 for yes or 2 for no.";;
-	esac
-done
+if [ $1 == 0 ]; then read -p "Do you wish to update YUM repositories? (y/n)? " answer; fi
+case ${answer} in
+	1 | [Yy]* ) 
+		printf "\\n\\nUpdating...\\n\\n"
+		if ! "${YUM}" -y update; then
+			printf "\\nYUM update failed.\\n"
+			printf "\\nExiting now.\\n\\n"
+			exit 1;
+		else
+			printf "\\nYUM update complete.\\n"
+		fi
+	;;
+	[Nn]* ) echo "Proceeding without update!";
+	* ) echo "Please type 1 for yes or 2 for no.";;
+esac
 
 printf "Checking installation of Centos Software Collections Repository...\\n"
 SCL=$( rpm -qa | grep -E 'centos-release-scl-[0-9].*' )
 if [ -z "${SCL}" ]; then
-	printf " - Do you wish to install and enable this repository?\\n"
-	select yn in "Yes" "No"; do
-		case $yn in
-			[Yy]* )
-				printf "Installing SCL...\\n"
-				if ! "${YUM}" -y --enablerepo=extras install centos-release-scl 2>/dev/null; then
-					printf "!! Centos Software Collections Repository installation failed !!\\n"
-					printf "Exiting now.\\n\\n"
-					exit 1;
-				else
-					printf "Centos Software Collections Repository installed successfully.\\n"
-				fi
-			break;;
-			[Nn]* ) echo "User aborting installation of required Centos Software Collections Repository, Exiting now."; exit;;
-			* ) echo "Please type 1 for yes or 2 for no.";;
-		esac
-	done
+	if [ $1 == 0 ]; then read -p "Do you wish to install and enable this repository? (y/n)? " answer; fi
+	case ${answer} in
+		1 | [Yy]* )
+			printf "Installing SCL...\\n"
+			if ! "${YUM}" -y --enablerepo=extras install centos-release-scl 2>/dev/null; then
+				printf "!! Centos Software Collections Repository installation failed !!\\n"
+				printf "Exiting now.\\n\\n"
+				exit 1;
+			else
+				printf "Centos Software Collections Repository installed successfully.\\n"
+			fi
+		break;;
+		[Nn]* ) echo "User aborting installation of required Centos Software Collections Repository, Exiting now."; exit;;
+		* ) echo "Please type 1 for yes or 2 for no.";;
+	esac
 else
 	printf " - ${SCL} found.\\n"
 fi
@@ -98,28 +92,26 @@ fi
 printf "Checking installation of devtoolset-7...\\n"
 DEVTOOLSET=$( rpm -qa | grep -E 'devtoolset-7-[0-9].*' )
 if [ -z "${DEVTOOLSET}" ]; then
-	printf "Do you wish to install devtoolset-7?\\n"
-	select yn in "Yes" "No"; do
-		case $yn in
-			[Yy]* )
-				printf "Installing devtoolset-7...\\n"
-				if ! "${YUM}" install -y devtoolset-7; then
-						printf "!! Centos devtoolset-7 installation failed !!\\n"
-						printf "Exiting now.\\n"
-						exit 1;
-				else
-						printf " - Centos devtoolset installed successfully!\\n"
-				fi
-			break;;
-			[Nn]* ) echo "User aborting installation of devtoolset-7. Exiting now."; exit;;
-			* ) echo "Please type 1 for yes or 2 for no.";;
-		esac
-	done
+	if [ $1 == 0 ]; then read -p "Do you wish to install devtoolset-7? (y/n)? " answer; fi
+	case ${answer} in
+		1 | [Yy]* )
+			printf "Installing devtoolset-7...\\n"
+			if ! "${YUM}" install -y devtoolset-7; then
+					printf "!! Centos devtoolset-7 installation failed !!\\n"
+					printf "Exiting now.\\n"
+					exit 1;
+			else
+					printf " - Centos devtoolset installed successfully!\\n"
+			fi
+		break;;
+		[Nn]* ) echo "User aborting installation of devtoolset-7. Exiting now."; exit;;
+		* ) echo "Please type 1 for yes or 2 for no.";;
+	esac
 else
 	printf " - ${DEVTOOLSET} found.\\n"
 fi
 if [ -d /opt/rh/devtoolset-7 ]; then
-	printf "Enabling Centos devtoolset-7...\\n"
+	printf "Enabling Centos devtoolset-7 so we can use GCC 7...\\n"
 	source /opt/rh/devtoolset-7/enable || exit 1
 	printf " - Centos devtoolset-7 successfully enabled!\\n"
 fi
@@ -152,23 +144,21 @@ printf "\\n"
 if [ "${COUNT}" -gt 1 ]; then
 	printf "The following dependencies are required to install EOSIO.\\n"
 	printf "${DISPLAY}\\n\\n"
-	printf "Do you wish to install these dependencies?\\n"
-	select yn in "Yes" "No"; do
-		case $yn in
-			[Yy]* )
-				printf "Installing dependencies\\n\\n"
-				if ! "${YUM}" -y install ${DEP}; then
-					printf "!! YUM dependency installation failed !!\\n"
-					printf "Exiting now.\\n"
-					exit 1;
-				else
-					printf "YUM dependencies installed successfully.\\n"
-				fi
-			break;;
-			[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
-			* ) echo "Please type 1 for yes or 2 for no.";;
-		esac
-	done
+	if [ $1 == 0 ]; then read -p "Do you wish to install these dependencies? (y/n)? " answer; fi
+	case ${answer} in
+		1 | [Yy]* )
+			printf "Installing dependencies\\n\\n"
+			if ! "${YUM}" -y install ${DEP}; then
+				printf "!! YUM dependency installation failed !!\\n"
+				printf "Exiting now.\\n"
+				exit 1;
+			else
+				printf "YUM dependencies installed successfully.\\n"
+			fi
+		break;;
+		[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
+		* ) echo "Please type 1 for yes or 2 for no.";;
+	esac
 else
 	printf " - No required YUM dependencies to install.\\n"
 fi
@@ -302,7 +292,6 @@ function print_instructions()
 	printf "Please ensure the following \$PATH and \$LD_LIBRARY_PATH stucture in the order specified, as well as scl enable commands within your ~/.bash_profile/rc file:\\n"
 	# HOME/bin first to load proper cmake version over the one in /usr/bin.
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang + We don't symlink into $HOME/bin
-	printf "scl enable python33 bash"
 	printf "scl enable devtoolset-7 bash"
 	printf "export PATH=\$HOME/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
 	printf "export LD_LIBRARY_PATH=\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n"
