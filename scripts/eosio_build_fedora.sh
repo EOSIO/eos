@@ -2,8 +2,6 @@ if [ $1 == 1 ]; then answer=1; fi # NONINTERACTIVE
 
 CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 CPU_CORE=$( nproc )
-MEM_GIG=$(( ((MEM_MEG / 1000) / 2) ))
-export JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
 
 OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' )
 if [ "${OS_VER}" -lt 25 ]; then
@@ -20,6 +18,8 @@ if [ "${MEM_MEG}" -lt 7000 ]; then
 	printf "Exiting now.\\n"
 	exit 1;
 fi
+MEM_GIG=$(( ((MEM_MEG / 1000) / 2) ))
+export JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
 
 DISK_INSTALL=$( df -h . | tail -1 | tr -s ' ' | cut -d\\ -f1 )
 DISK_TOTAL_KB=$( df . | tail -1 | awk '{print $2}' )
