@@ -72,6 +72,7 @@ class apply_context {
                EOS_ASSERT( iterator != -1, invalid_table_iterator, "invalid iterator" );
                EOS_ASSERT( iterator >= 0, table_operation_not_permitted, "cannot call remove on end iterators" );
                EOS_ASSERT( (size_t)iterator < _iterator_to_object.size(), invalid_table_iterator, "iterator out of range" );
+
                auto obj_ptr = _iterator_to_object[iterator];
                if( !obj_ptr ) return;
                _iterator_to_object[iterator] = nullptr;

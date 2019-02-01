@@ -1148,7 +1148,8 @@ string get_table_type( const abi_def& abi, const name& table_name ) {
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
    const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
    bool primary = false;
    auto table_with_index = get_table_index_name( p, primary );
    if( primary ) {
@@ -1203,6 +1204,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
       }
       EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: ${t}", ("t", p.key_type));
    }
+#pragma GCC diagnostic pop
 }
 
 read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_only::get_table_by_scope_params& p )const {
@@ -1302,12 +1304,6 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    });
 
    return results;
-}
-
-// TODO: move this and similar functions to a header. Copied from wasm_interface.cpp.
-// TODO: fix strict aliasing violation
-static float64_t to_softfloat64( double d ) {
-   return *reinterpret_cast<float64_t*>(&d);
 }
 
 fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms, bool shorten_abi_errors ) {

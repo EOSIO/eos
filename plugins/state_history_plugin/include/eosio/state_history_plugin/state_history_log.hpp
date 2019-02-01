@@ -208,7 +208,7 @@ class state_history_log {
    void open_index() {
       index.open(index_filename, std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app);
       index.seekg(0, std::ios_base::end);
-      if (index.tellg() == (_end_block - _begin_block) * sizeof(state_history_summary))
+      if (index.tellg() == (static_cast<int>(_end_block) - _begin_block) * sizeof(state_history_summary))
          return;
       ilog("Regenerate ${name}.index", ("name", name));
       index.close();
