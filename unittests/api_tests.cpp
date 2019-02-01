@@ -234,10 +234,10 @@ transaction_trace_ptr CallFunction(TESTER& test, T ac, const vector<char>& data,
 
       test.set_transaction_headers(trx, test.DEFAULT_EXPIRATION_DELTA);
       auto sigs = trx.sign(test.get_private_key(scope[0], "active"), test.control->get_chain_id());
-      
+
       flat_set<public_key_type> keys;
       trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
-      
+
       auto res = test.push_transaction(trx);
       BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
       test.produce_block();
@@ -414,7 +414,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
       auto res = test.push_transaction(trx);
       BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
    };
-   
+
    BOOST_CHECK_EXCEPTION(test_require_notice(*this, raw_bytes, scope), unsatisfied_authorization,
          [](const unsatisfied_authorization& e) {
             return expect_assert_message(e, "transaction declares authority");
@@ -478,15 +478,15 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
    produce_block();
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_current_time", fc::raw::pack(now) ),
                           eosio_assert_message_exception, eosio_assert_message_is("tmp == current_time()")     );
-   
+
    // test test_current_receiver
    CALL_TEST_FUNCTION( *this, "test_action", "test_current_receiver", fc::raw::pack(N(testapi)));
-   
+
    // test send_action_sender
    CALL_TEST_FUNCTION( *this, "test_transaction", "send_action_sender", fc::raw::pack(N(testapi)));
-   
+
    produce_block();
-  
+
    // test_publication_time
    uint64_t pub_time = static_cast<uint64_t>( control->head_block_time().time_since_epoch().count() );
    pub_time += config::block_interval_us;
@@ -568,13 +568,13 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
                                return expect_assert_message(e, "transaction must have at least one authorization");
                             }
       );
-      
+
       action act({}, cfa);
       trx.context_free_actions.push_back(act);
       trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
       trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
       set_transaction_headers(trx);
-      
+
       BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_no_auths,
                             [](const fc::exception& e) {
                                return expect_assert_message(e, "transaction must have at least one authorization");
@@ -1561,7 +1561,7 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, TESTER) { try {
                              crypto_api_exception, fc_exception_message_is("Error expected key different than recovered key") );
 	}
 
-        
+
 
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha1", {} );
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha256", {} );
@@ -1574,7 +1574,7 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, TESTER) { try {
 
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_crypto", "assert_sha256_false", {},
                                            crypto_api_exception, "hash mismatch" );
-   
+
    CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha256_true", {} );
 
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_crypto", "assert_sha1_false", {},
@@ -1595,7 +1595,7 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, TESTER) { try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
-
+#if 0
 /*************************************************************************************
  * memory_tests test cases
  *************************************************************************************/
@@ -1605,7 +1605,7 @@ BOOST_FIXTURE_TEST_CASE(memory_tests, TESTER) { try {
    produce_blocks(1000);
    set_code(N(testapi), contracts::test_api_mem_wasm() );
    produce_blocks(1000);
-   
+
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memory_allocs", {} );
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memory_hunk", {} );
@@ -1707,6 +1707,8 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_negative_bytes, TESTER)
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
+#endif
+
 /*************************************************************************************
  * print_tests test case
  *************************************************************************************/
@@ -1747,22 +1749,22 @@ BOOST_FIXTURE_TEST_CASE(print_tests, TESTER) { try {
    // test printn
    auto tx5_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printn", {} );
    auto tx5_act_cnsl = tx5_trace->action_traces.front().console;
-   
+
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,1), "1" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(1,1), "5" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(2,1), "a" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(3,1), "z" );
-   
+
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(4,3), "abc" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(7,3), "123" );
-   
+
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(10,7), "abc.123" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(17,7), "123.abc" );
-   
+
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(24,13), "12345abcdefgj" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(37,13), "ijklmnopqrstj" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(50,13), "vwxyz.12345aj" );
-   
+
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(63, 13), "111111111111j" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(76, 13), "555555555555j" );
    BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(89, 13), "aaaaaaaaaaaaj" );
@@ -1941,7 +1943,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
       })
    );
    BOOST_CHECK_EQUAL( int64_t(0), get_result_int64() );
-   
+
 } FC_LOG_AND_RETHROW() }
 
 #if 0
@@ -2019,45 +2021,6 @@ BOOST_FIXTURE_TEST_CASE(datastream_tests, TESTER) { try {
    produce_blocks(1000);
 
    CALL_TEST_FUNCTION( *this, "test_datastream", "test_basic", {} );
-
-   BOOST_REQUIRE_EQUAL( validate(), true );
-} FC_LOG_AND_RETHROW() }
-
-/*************************************************************************************
- * new api feature test
- *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(new_api_feature_tests, TESTER) { try {
-
-   produce_blocks(1);
-   create_account(N(testapi) );
-   produce_blocks(1);
-   set_code(N(testapi), contracts::test_api_wasm() );
-   produce_blocks(1);
-
-   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "new_feature", {} ),
-      unaccessible_api,
-      [](const fc::exception& e) {
-         return expect_assert_message(e, "testapi does not have permission to call this API");
-      });
-
-   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "active_new_feature", {} ),
-      unaccessible_api,
-      [](const fc::exception& e) {
-         return expect_assert_message(e, "testapi does not have permission to call this API");
-      });
-
-   // change privilege
-   push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
-                                                       ("account", "testapi")
-                                                       ("is_priv", 1));
-
-   CALL_TEST_FUNCTION( *this, "test_transaction", "new_feature", {} );
-
-   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_transaction", "active_new_feature", {} ),
-      unsupported_feature,
-      [](const fc::exception& e) {
-         return expect_assert_message(e, "Unsupported Hardfork Detected");
-      });
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }

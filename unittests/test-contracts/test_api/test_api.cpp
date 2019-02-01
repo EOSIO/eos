@@ -147,8 +147,6 @@ extern "C" {
       WASM_TEST_HANDLER   ( test_transaction, send_cf_action_fail                    );
       WASM_TEST_HANDLER   ( test_transaction, stateful_api                           );
       WASM_TEST_HANDLER   ( test_transaction, context_free_api                       );
-      WASM_TEST_HANDLER   ( test_transaction, new_feature                            );
-      WASM_TEST_HANDLER   ( test_transaction, active_new_feature                     );
       WASM_TEST_HANDLER_EX( test_transaction, repeat_deferred_transaction            );
 
       //test chain

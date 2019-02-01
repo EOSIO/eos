@@ -6,7 +6,6 @@
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/db.h>
 #include <eosiolib/fixed_key.hpp>
-#include <eosiolib/memory.hpp>
 #include <eosiolib/transaction.hpp>
 #include <eosiolib/types.h>
 
@@ -426,7 +425,7 @@ void test_db::idx64_upperbound( uint64_t receiver, uint64_t code, uint64_t actio
       eosio_assert( ub_prim == bob_ssn && ub_sec == "bob"_n.value, "" );
       eosio_assert( ub == db_idx64_find_primary(receiver, receiver, table, &ub_sec, bob_ssn), err.c_str() );
    }
-   { 
+   {
       secondary_type ub_sec = "joe"_n.value;
       uint64_t ub_prim = 0;
       int ub = db_idx64_upperbound( receiver, receiver, table, &ub_sec, &ub_prim );
