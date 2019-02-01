@@ -322,7 +322,8 @@ namespace eosio {
                ws.init_asio(&(*server_ioc));
                ws.set_reuse_addr(true);
                ws.set_max_http_body_size(max_body_size);
-               ws.set_http_handler([&](connection_hdl hdl) {
+               auto ioc = server_ioc; // capture server_ioc shared_ptr in http handler to keep it alive while in use
+               ws.set_http_handler([&, ioc](connection_hdl hdl) {
                   handle_http_request<detail::asio_with_stub_log<T>>(ws.get_con_from_hdl(hdl));
                });
             } catch ( const fc::exception& e ){
