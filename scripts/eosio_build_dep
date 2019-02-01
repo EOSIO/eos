@@ -10,3 +10,5 @@ MongoDB,-x,/usr/local/opt/mongodb/bin/mongod,mongodb,https://fastdl.mongodb.org/
 Doxygen,-x,/usr/local/bin/doxygen,doxygen,http://ftp.stack.nl/pub/users/dimitri/doxygen-1.8.14.src.tar.gz
 Graphviz,-x,/usr/local/bin/dot,graphviz,https://graphviz.gitlab.io/pub/graphviz/stable/SOURCES/graphviz.tar.gz
 LCOV,-f,/usr/local/bin/lcov,lcov,http://downloads.sourceforge.net/ltp/lcov-1.13.tar.gz
+libusb,-f,/usr/local/lib/libusb-1.0.0.dylib,libusb,https://github.com/libusb/libusb/releases/download/v1.0.22/libusb-1.0.22.tar.bz2
+pkgconfig,-x,/usr/local/bin/pkg-config,pkgconfig,https://pkg-config.freedesktop.org/releases/pkg-config-0.29.2.tar.gz

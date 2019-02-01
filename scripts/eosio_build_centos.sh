@@ -143,7 +143,7 @@
 
 	DEP_ARRAY=( git autoconf automake bzip2 libtool ocaml.x86_64 doxygen graphviz-devel.x86_64 \
 	libicu-devel.x86_64 bzip2.x86_64 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 \
-	python-devel.x86_64 gettext-devel.x86_64)
+	python-devel.x86_64 gettext-devel.x86_64 libusbx-devel libcurl-devel)
 	COUNT=1
 	DISPLAY=""
 	DEP=""

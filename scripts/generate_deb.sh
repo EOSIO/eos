@@ -37,7 +37,7 @@ echo "Package: ${PROJECT}
 Version: ${VERSION_NO_SUFFIX}-${RELEASE}
 Section: devel
 Priority: optional
-Depends: libc6, libgcc1, ${LIBSSL}, libstdc++6, libtinfo5, zlib1g
+Depends: libc6, libgcc1, ${LIBSSL}, libstdc++6, libtinfo5, zlib1g, libusb-1.0, libcurl3-gnutls
 Architecture: amd64
 Homepage: ${URL}
 Maintainer: ${EMAIL}
