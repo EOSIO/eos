@@ -1,28 +1,9 @@
 if [ $1 == 1 ]; then answer=1; fi # NONINTERACTIVE
 
-OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' )
-
-MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 )
 CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 CPU_CORE=$( nproc )
 MEM_GIG=$(( ((MEM_MEG / 1000) / 2) ))
 export JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
-
-DISK_INSTALL=$( df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 )
-DISK_TOTAL_KB=$( df . | tail -1 | awk '{print $2}' )
-DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
-DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
-DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
-
-DEP_ARRAY=( 
-	git sudo python3 procps-ng which gcc.x86_64 autoconf automake libtool make \
-	bzip2-devel.x86_64 wget bzip2 compat-openssl10 graphviz.x86_64 doxygen.x86_64 \
-	openssl-devel.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 python2-devel.x86_64 python3-devel.x86_64 \
-	libedit.x86_64 ncurses-devel.x86_64 swig.x86_64 
-)
-COUNT=1
-DISPLAY=""
-DEP=""
 
 printf "\\nOS name: ${OS_NAME}\\n"
 printf "OS Version: ${OS_VER}\\n"
@@ -33,23 +14,34 @@ printf "Disk install: ${DISK_INSTALL}\\n"
 printf "Disk space total: ${DISK_TOTAL%.*}G\\n"
 printf "Disk space available: ${DISK_AVAIL%.*}G\\n"
 
-if [ "${MEM_MEG}" -lt 7000 ]; then
-	printf "Your system must have 7 or more Gigabytes of physical memory installed.\\n"
-	printf "Exiting now.\\n"
-	exit 1;
-fi
-
+OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' )
 if [ "${OS_VER}" -lt 25 ]; then
 	printf "You must be running Fedora 25 or higher to install EOSIO.\\n"
 	printf "Exiting now.\\n"
 	exit 1;
 fi
 
+DISK_INSTALL=$( df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 )
+DISK_TOTAL_KB=$( df . | tail -1 | awk '{print $2}' )
+DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
+DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
+DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
 if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
 	printf "You must have at least %sGB of available storage to install EOSIO.\\n" "${DISK_MIN}"
 	printf "Exiting now.\\n"
 	exit 1;
 fi
+
+
+DEP_ARRAY=( 
+	git sudo python3 procps-ng which gcc.x86_64 autoconf automake libtool make \
+	bzip2-devel.x86_64 wget bzip2 compat-openssl10 graphviz.x86_64 doxygen.x86_64 \
+	openssl-devel.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 python2-devel.x86_64 python3-devel.x86_64 \
+	libedit.x86_64 ncurses-devel.x86_64 swig.x86_64 
+)
+COUNT=1
+DISPLAY=""
+DEP=""
 
 printf "\\nChecking Yum installation...\\n"
 if ! YUM=$( command -v yum 2>/dev/null ); then
@@ -107,6 +99,13 @@ else
 	printf " - No required YUM dependencies to install.\\n"
 fi
 
+# procps-ng includes free command
+MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 )
+if [ "${MEM_MEG}" -lt 7000 ]; then
+	printf "Your system must have 7 or more Gigabytes of physical memory installed.\\n"
+	printf "Exiting now.\\n"
+	exit 1;
+fi
 
 printf "\\n"
 
