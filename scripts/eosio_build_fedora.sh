@@ -5,18 +5,18 @@ CPU_CORE=$( nproc )
 MEM_GIG=$(( ((MEM_MEG / 1000) / 2) ))
 export JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
 
-printf "\\nOS name: ${OS_NAME}\\n"
-printf "OS Version: ${OS_VER}\\n"
-printf "CPU speed: ${CPU_SPEED}Mhz\\n"
-printf "CPU cores: %s\\n" "${CPU_CORE}"
-printf "Physical Memory: ${MEM_MEG} Mgb\\n"
-printf "Disk install: ${DISK_INSTALL}\\n"
-printf "Disk space total: ${DISK_TOTAL%.*}G\\n"
-printf "Disk space available: ${DISK_AVAIL%.*}G\\n"
-
 OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' )
 if [ "${OS_VER}" -lt 25 ]; then
 	printf "You must be running Fedora 25 or higher to install EOSIO.\\n"
+	printf "Exiting now.\\n"
+	exit 1;
+fi
+
+# procps-ng includes free command
+if [[ -z "$( rpm -qi "procps-ng" 2>/dev/null | grep Name )" ]]; then yum install -y procps-ng; fi
+MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 )
+if [ "${MEM_MEG}" -lt 7000 ]; then
+	printf "Your system must have 7 or more Gigabytes of physical memory installed.\\n"
 	printf "Exiting now.\\n"
 	exit 1;
 fi
@@ -31,6 +31,15 @@ if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
 	printf "Exiting now.\\n"
 	exit 1;
 fi
+
+printf "\\nOS name: ${OS_NAME}\\n"
+printf "OS Version: ${OS_VER}\\n"
+printf "CPU speed: ${CPU_SPEED}Mhz\\n"
+printf "CPU cores: %s\\n" "${CPU_CORE}"
+printf "Physical Memory: ${MEM_MEG} Mgb\\n"
+printf "Disk install: ${DISK_INSTALL}\\n"
+printf "Disk space total: ${DISK_TOTAL%.*}G\\n"
+printf "Disk space available: ${DISK_AVAIL%.*}G\\n"
 
 
 DEP_ARRAY=( 
@@ -97,14 +106,6 @@ if [ "${COUNT}" -gt 1 ]; then
 	esac
 else
 	printf " - No required YUM dependencies to install.\\n"
-fi
-
-# procps-ng includes free command
-MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 )
-if [ "${MEM_MEG}" -lt 7000 ]; then
-	printf "Your system must have 7 or more Gigabytes of physical memory installed.\\n"
-	printf "Exiting now.\\n"
-	exit 1;
 fi
 
 printf "\\n"
