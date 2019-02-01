@@ -30,12 +30,6 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
 
-if [[ $1 == "noninteractive" ]]; then
-  NONINTERACTIVE=1
-else
-  NONINTERACTIVE=0
-fi
-
 VERSION=2.0 # Build script version
 CMAKE_BUILD_TYPE=Release
 export DISK_MIN=20
@@ -82,8 +76,6 @@ export DOXYGEN_VERSION=1_8_14
 export DOXYGEN_ROOT=${SRC_LOCATION}/doxygen-${DOXYGEN_VERSION}
 export TINI_VERSION=0.18.0
 
-export PATH=$HOME/bin:$PATH:$HOME/opt/llvm/bin
-
 # Setup directories
 mkdir -p $SRC_LOCATION
 mkdir -p $OPT_LOCATION
@@ -115,6 +107,12 @@ function usage()
    printf "Usage: %s \\n[Build Option -o <Debug|Release|RelWithDebInfo|MinSizeRel>] \\n[CodeCoverage -c] \\n[Doxygen -d] \\n[CoreSymbolName -s <1-7 characters>] \\n[Avoid Compiling -a]\\n\\n" "$0" 1>&2
    exit 1
 }
+
+if [[ $1 == "noninteractive" ]]; then
+  NONINTERACTIVE=1
+else
+  NONINTERACTIVE=0
+fi
 
 if [ $# -ne 0 ]; then
    while getopts ":cdo:s:ah" opt; do
@@ -197,6 +195,9 @@ printf "\\nARCHITECTURE: %s\\n" "${ARCH}"
 popd &> /dev/null
 
 if [ "$ARCH" == "Linux" ]; then
+   export PATH=$HOME/bin:$PATH:$HOME/opt/mongodb/bin:$HOME/opt/llvm/bin
+   export LD_LIBRARY_PATH=$HOME/lib:$HOME/lib64:$HOME/opt/llvm/lib:$LD_LIBRARY_PATH
+   export CPATH=$HOME/include:$CPATH
    export OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
    OPENSSL_ROOT_DIR=/usr/include/openssl
    if [ ! -e /etc/os-release ]; then
@@ -256,8 +257,9 @@ if [ "$ARCH" == "Darwin" ]; then
    export OS_NAME=MacOSX
 	# HOME/bin first to load proper cmake version over the one in /usr/bin.
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang
-   export PATH=$HOME/bin:$PATH:/usr/local/opt/gettext/bin:$HOME/opt/llvm/bin
-   export LD_LIBRARY_PATH=$HOME/opt/llvm/lib:$LD_LIBRARY_PATH
+   export PATH=$HOME/bin:$PATH:$HOME/opt/mongodb/bin:/usr/local/opt/gettext/bin:$HOME/opt/llvm/bin
+   export LD_LIBRARY_PATH=$HOME/lib:$HOME/lib64:$HOME/opt/llvm/lib:$LD_LIBRARY_PATH
+   export CPATH=$HOME/include:$CPATH
    FILE="${CURRENT_DIR}/scripts/eosio_build_darwin.sh"
    CXX_COMPILER=clang++
    C_COMPILER=clang

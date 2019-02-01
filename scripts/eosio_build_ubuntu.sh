@@ -1,3 +1,5 @@
+if [ $1 == 1 ]; then answer=1; fi # NONINTERACTIVE
+
 OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' )
 OS_MAJ=$(echo "${OS_VER}" | cut -d'.' -f1)
 OS_MIN=$(echo "${OS_VER}" | cut -d'.' -f2)
@@ -79,63 +81,54 @@ if [[ "${ENABLE_CODE_COVERAGE}" == true ]]; then
 	DEP_ARRAY+=(lcov)
 fi
 
-printf "Do you wish to update repositories with apt-get update?\\n\\n"
-select yn in "Yes" "No"; do
-	case $yn in
-		[Yy]* ) 
-			printf "\\n\\nUpdating...\\n\\n"
+if [ $1 == 0 ]; then read -p "Do you wish to update repositories with apt-get update? (y/n)?\\n" answer; fi
+echo $answer
+exit
+case ${answer} in
+	1 | [Yy]* )
 			if ! apt-get update; then
-				printf "\\nAPT update failed.\\n"
-				printf "\\nExiting now.\\n\\n"
+				printf " - APT update failed.\\n"
 				exit 1;
 			else
-				printf "\\nAPT update complete.\\n"
-			fi
-		break;;
-		[Nn]* ) echo "Proceeding without update!";;
-		* ) echo "Please type 1 for yes or 2 for no.";;
-	esac
-done
+			printf " - APT update complete.\\n"
+		fi
+	;;
+	[Nn]* ) echo "Proceeding without update!";;
+	* ) echo "Please type 'y' for yes or 'n' for no.";;
+esac
 
-printf "\\nChecking for installed dependencies.\\n\\n"
-
-for (( i=0; i<${#DEP_ARRAY[@]}; i++ ));
-do
+printf "\\nChecking for installed dependencies...\\n"
+for (( i=0; i<${#DEP_ARRAY[@]}; i++ )); do
 	pkg=$( dpkg -s "${DEP_ARRAY[$i]}" 2>/dev/null | grep Status | tr -s ' ' | cut -d\  -f4 )
 	if [ -z "$pkg" ]; then
 		DEP=$DEP" ${DEP_ARRAY[$i]} "
 		DISPLAY="${DISPLAY}${COUNT}. ${DEP_ARRAY[$i]}\\n"
-		printf "Package %s ${bldred} NOT ${txtrst} found.\\n" "${DEP_ARRAY[$i]}"
+		printf " - Package %s${bldred} NOT${txtrst} found!\\n" "${DEP_ARRAY[$i]}"
 		(( COUNT++ ))
 	else
-		printf "Package %s found.\\n" "${DEP_ARRAY[$i]}"
+		printf " - Package %s found.\\n" "${DEP_ARRAY[$i]}"
 		continue
 	fi
-done		
-
+done
 if [ "${COUNT}" -gt 1 ]; then
-	printf "\\nThe following dependencies are required to install EOSIO.\\n"
-	printf "\\n${DISPLAY}\\n\\n" 
-	printf "Do you wish to install these packages?\\n"
-	select yn in "Yes" "No"; do
-		case $yn in
-			[Yy]* ) 
-				printf "\\n\\nInstalling dependencies\\n\\n"
-				if ! apt-get -y install ${DEP}
-				then
-					printf "\\nDPKG dependency failed.\\n"
-					printf "\\nExiting now.\\n"
-					exit 1
-				else
-					printf "\\nDPKG dependencies installed successfully.\\n"
-				fi
-			break;;
-			[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
-			* ) echo "Please type 1 for yes or 2 for no.";;
-		esac
-	done
+	printf "\\nThe following dependencies are required to install EOSIO:\\n"
+	printf "${DISPLAY}\\n\\n" 
+	if [ $1 == 0 ]; then read -p "Do you wish to install these packages? (y/n)?\\n" answer; fi
+	case ${answer} in
+		1 | [Yy]* )
+			if ! apt-get -y install ${DEP}
+			then
+				printf " - APT dependency failed.\\n"
+				exit 1
+			else
+				printf " - APT dependencies installed successfully.\\n"
+			fi
+		;;
+		[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
+		* ) echo "Please type 'y' for yes or 'n' for no.";;
+	esac
 else 
-	printf "\\nNo required dpkg dependencies to install."
+	printf " - No required APT dependencies to install."
 fi
 
 

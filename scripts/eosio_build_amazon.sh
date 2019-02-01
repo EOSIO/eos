@@ -1,3 +1,5 @@
+if [ $1 == 1 ]; then answer=1; fi # NONINTERACTIVE
+
 OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' | cut -d'.' -f1 )
 
 MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 )
@@ -56,23 +58,19 @@ then
 fi
 printf "Yum installation found at ${YUM}.\\n"
 
-printf "\\nDo you wish to update YUM repositories?\\n\\n"
-select yn in "Yes" "No"; do
-	case $yn in
-		[Yy]* ) 
-			printf "\\n\\nUpdating...\\n\\n"
-			if ! "${YUM}" -y update; then
-				printf "\\nYUM update failed.\\n"
-				printf "\\nExiting now.\\n\\n"
-				exit 1;
-			else
-				printf "\\nYUM update complete.\\n"
-			fi
-		break;;
-		[Nn]* ) echo "Proceeding without update!";;
-		* ) echo "Please type 1 for yes or 2 for no.";;
-	esac
-done
+if [ $1 == 0 ]; then read -p "Do you wish to update YUM repositories? (y/n)?\\n" answer; fi
+case ${answer} in
+	1 | [Yy]* )
+		if ! "${YUM}" -y update; then
+			printf " - YUM update failed.\\n"
+			exit 1;
+		else
+			printf " - YUM update complete.\\n"
+		fi
+	;;
+	[Nn]* ) echo " - Proceeding without update!";;
+	* ) echo "Please type 'y' for yes or 'n' for no.";;
+esac
 
 printf "Checking RPM for installed dependencies...\\n"
 for (( i=0; i<${#DEP_ARRAY[@]}; i++ )); do
@@ -80,34 +78,29 @@ for (( i=0; i<${#DEP_ARRAY[@]}; i++ )); do
 	if [[ -z $pkg ]]; then
 		DEP=$DEP" ${DEP_ARRAY[$i]} "
 		DISPLAY="${DISPLAY}${COUNT}. ${DEP_ARRAY[$i]}\\n"
-		printf "!! Package %s ${bldred} NOT ${txtrst} found !!\\n" "${DEP_ARRAY[$i]}"
+		printf " - Package %s ${bldred} NOT ${txtrst} found!\\n" "${DEP_ARRAY[$i]}"
 		(( COUNT++ ))
 	else
 		printf " - Package %s found.\\n" "${DEP_ARRAY[$i]}"
 		continue
 	fi
 done
-printf "\\n"
 if [ "${COUNT}" -gt 1 ]; then
-	printf "The following dependencies are required to install EOSIO.\\n"
+	printf "\\nThe following dependencies are required to install EOSIO:\\n"
 	printf "${DISPLAY}\\n\\n"
-	printf "Do you wish to install these dependencies?\\n"
-	select yn in "Yes" "No"; do
-		case $yn in
-			[Yy]* )
-				printf "Installing dependencies\\n\\n"
-				if ! "${YUM}" -y install ${DEP}; then
-					printf "!! YUM dependency installation failed !!\\n"
-					printf "Exiting now.\\n"
-					exit 1;
-				else
-					printf "YUM dependencies installed successfully.\\n"
-				fi
-			break;;
-			[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
-			* ) echo "Please type 1 for yes or 2 for no.";;
-		esac
-	done
+	if [ $1 == 0 ]; then read -p "Do you wish to install these dependencies? (y/n)?\\n" answer; fi
+	case ${answer} in
+		1 | [Yy]* )
+			if ! "${YUM}" -y install ${DEP}; then
+				printf " - YUM dependency installation failed!\\n"
+				exit 1;
+			else
+				printf " - YUM dependencies installed successfully.\\n"
+			fi
+		;;
+		[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
+		* ) echo "Please type 'y' for yes or 'n' for no.";;
+	esac
 else
 	printf " - No required YUM dependencies to install.\\n"
 fi

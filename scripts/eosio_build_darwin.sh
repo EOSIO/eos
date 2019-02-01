@@ -1,3 +1,5 @@
+if [ $1 == 1 ]; then answer=1; fi # NONINTERACTIVE
+
 OS_VER=$(sw_vers -productVersion)
 OS_MAJ=$(echo "${OS_VER}" | cut -d'.' -f1)
 OS_MIN=$(echo "${OS_VER}" | cut -d'.' -f2)
@@ -49,23 +51,23 @@ if [ "${DISK_AVAIL}" -lt "$DISK_MIN" ]; then
 	exit 1
 fi
 
-printf "Checking xcode-select installation\\n"
+printf "\\n"
+
+printf "Checking xcode-select installation...\\n"
 if ! XCODESELECT=$( command -v xcode-select)
 then
-	printf "\\nXCode must be installed in order to proceed.\\n\\n"
-	printf "Exiting now.\\n"
+	printf " - XCode must be installed in order to proceed!\\n\\n"
 	exit 1
 fi
-printf "xcode-select installation found @ ${XCODESELECT}\\n"
+printf " - XCode installation found @ ${XCODESELECT}\\n"
 
-printf "Checking Ruby installation.\\n"
+printf "Checking Ruby installation...\\n"
 if ! RUBY=$( command -v ruby)
 then
-	printf "\\nRuby must be installed in order to proceed.\\n\\n"
-	printf "Exiting now.\\n"
+	printf " - Ruby must be installed in order to proceed!\\n"
 	exit 1
 fi
-printf "Ruby installation found @ ${RUBY}\\n"
+printf " - Ruby installation found @ ${RUBY}\\n"
 
 printf "Checking CMAKE installation...\\n"
 CMAKE=$(command -v cmake 2>/dev/null)
@@ -85,30 +87,27 @@ else
 	printf " - CMAKE found @ ${CMAKE}.\\n"
 fi
 
-printf "Checking Home Brew installation\\n"
+printf "Checking Home Brew installation...\\n"
 if ! BREW=$( command -v brew )
 then
-	printf "Homebrew must be installed to compile EOS.IO\\n\\n"
-	printf "Do you wish to install Home Brew?\\n"
-	select yn in "Yes" "No"; do
-		case "${yn}" in
-			[Yy]* )
+	printf "Homebrew must be installed to compile EOS.IO!\\n"
+	if [ $1 == 0 ]; then read -p "Do you wish to install HomeBrew? (y/n)?\\n" answer; fi
+	case ${answer} in
+		1 | [Yy]* )
 			"${XCODESELECT}" --install 2>/dev/null;
-			if ! "${RUBY}" -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-			then
-				echo "Unable to install homebrew at this time. Exiting now."
+			if ! "${RUBY}" -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"; then
+				echo " - Unable to install homebrew at this time."
 				exit 1;
 			else
 				BREW=$( command -v brew )
 			fi
-			break;;
-			[Nn]* ) echo "User aborted homebrew installation. Exiting now.";
-					exit 1;;
-			* ) echo "Please enter 1 for yes or 2 for no.";;
-		esac
-	done
+		;;
+		[Nn]* ) echo "User aborted homebrew installation. Exiting now."; exit 1;;
+		* ) echo "Please type 'y' for yes or 'n' for no.";;
+	esac
+
 fi
-printf "Home Brew installation found @ ${BREW}\\n"
+printf " - Home Brew installation found @ ${BREW}\\n"
 
 printf "\\nChecking dependencies...\\n"
 var_ifs="${IFS}"
@@ -140,6 +139,7 @@ if [ ! -d /usr/local/Frameworks ]; then
 	printf "sudo mkdir /usr/local/Frameworks && sudo chown $(whoami):admin /usr/local/Frameworks\\n\\n"
 	exit 1;
 fi
+
 if [  -z "$( python3 -c 'import sys; print(sys.version_info.major)' 2>/dev/null )" ]; then
 	DEPS=$DEPS"python@3 "
 	DISPLAY="${DISPLAY}${COUNT}. Python 3\\n"
@@ -150,55 +150,46 @@ else
 fi
 
 if [ $COUNT -gt 1 ]; then
-	printf "\\nThe following dependencies are required to install EOSIO.\\n"
-	printf "\\n${DISPLAY}\\n"
-	echo "Do you wish to install these packages?"
-	select yn in "Yes" "No"; do
-		case $yn in
-			[Yy]* )
-				"${XCODESELECT}" --install 2>/dev/null;
-				printf "\\nDo you wish to update homebrew packages first?\\n"
-				select yn in "Yes" "No"; do
-					case $yn in
-						[Yy]* ) 
-							printf "\\n\\nUpdating...\\n\\n"
-							if ! brew update; then
-								printf "\\nbrew update failed.\\n"
-								printf "\\nExiting now.\\n\\n"
-								exit 1;
-							else
-								printf "\\brew update complete.\\n"
-							fi
-						break;;
-						[Nn]* ) echo "Proceeding without update!"
-						break;;
-						* ) echo "Please type 1 for yes or 2 for no.";;
-					esac
-				done
-
-				brew tap eosio/eosio # Required to install mongo-cxx-driver with static library
-				printf "\\nInstalling Dependencies.\\n"
-				# Ignore cmake so we don't install a newer version.
-				# Build from source to use local cmake
-				# DON'T INSTALL llvm@4 WITH --force!
-				OIFS="$IFS"
-				IFS=$','
-				for DEP in $DEPS; do
-					# Eval to support string/arguments with $DEP
-					if ! eval $BREW install $DEP; then
-						printf "Homebrew exited with the above errors.\\n"
-						printf "Exiting now.\\n\\n"
+	printf "\\nThe following dependencies are required to install EOSIO:\\n"
+	printf "${DISPLAY}\\n\\n"
+	if [ $1 == 0 ]; then read -p "Do you wish to install these packages? (y/n)?\\n" answer; fi
+	case ${answer} in
+		1 | [Yy]* )
+			"${XCODESELECT}" --install 2>/dev/null;
+			if [ $1 == 0 ]; then read -p "Do you wish to update homebrew packages first? (y/n)?\\n" answer; fi
+			case ${answer} in
+				1 | [Yy]* )
+					if ! brew update; then
+						printf " - Brew update failed.\\n"
 						exit 1;
+					else
+						printf " - Brew update complete.\\n"
 					fi
-				done
-				IFS="$OIFS"
-			break;;
-			[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
-			* ) echo "Please type 1 for yes or 2 for no.";;
-		esac
-	done
+				;;
+				[Nn]* ) echo "Proceeding without update!";;
+				* ) echo "Please type 'y' for yes or 'n' for no.";;
+			esac
+			brew tap eosio/eosio # Required to install mongo-cxx-driver with static library
+			printf "\\nInstalling Dependencies...\\n"
+			# Ignore cmake so we don't install a newer version.
+			# Build from source to use local cmake; see homebrew-eosio repo for examples
+			# DON'T INSTALL llvm@4 WITH --force!
+			OIFS="$IFS"
+			IFS=$','
+			for DEP in $DEPS; do
+				# Eval to support string/arguments with $DEP
+				if ! eval $BREW install $DEP; then
+					printf " - Homebrew exited with the above errors!\\n"
+					exit 1;
+				fi
+			done
+			IFS="$OIFS"
+		;;
+		[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
+		* ) echo "Please type 'y' for yes or 'n' for no.";;
+	esac
 else
-	printf "No required Home Brew dependencies to install.\\n"
+	printf "\\n - No required Home Brew dependencies to install.\\n"
 fi
 
 

@@ -53,20 +53,18 @@ if ! YUM=$( command -v yum 2>/dev/null ); then
 fi
 printf " - Yum installation found at %s.\\n" "${YUM}"
 
-if [ $1 == 0 ]; then read -p "Do you wish to update YUM repositories? (y/n)? " answer; fi
+if [ $1 == 0 ]; then read -p "Do you wish to update YUM repositories? (y/n)?\\n" answer; fi
 case ${answer} in
-	1 | [Yy]* ) 
-		printf "\\n\\nUpdating...\\n\\n"
+	1 | [Yy]* )
 		if ! "${YUM}" -y update; then
-			printf "\\nYUM update failed.\\n"
-			printf "\\nExiting now.\\n\\n"
+			printf " - YUM update failed.\\n"
 			exit 1;
 		else
-			printf "\\nYUM update complete.\\n"
+			printf " - YUM update complete.\\n"
 		fi
 	;;
-	[Nn]* ) echo "Proceeding without update!";;
-	* ) echo "Please type 1 for yes or 2 for no.";;
+	[Nn]* ) echo " - Proceeding without update!";;
+	* ) echo "Please type 'y' for yes or 'n' for no.";;
 esac
 
 printf "Checking installation of Centos Software Collections Repository...\\n"
@@ -135,27 +133,24 @@ for (( i=0; i<${#DEP_ARRAY[@]}; i++ )); do
 	if [[ -z $pkg ]]; then
 		DEP=$DEP" ${DEP_ARRAY[$i]} "
 		DISPLAY="${DISPLAY}${COUNT}. ${DEP_ARRAY[$i]}\\n"
-		printf "!! Package %s ${bldred} NOT ${txtrst} found !!\\n" "${DEP_ARRAY[$i]}"
+		printf " - Package %s ${bldred} NOT ${txtrst} found!\\n" "${DEP_ARRAY[$i]}"
 		(( COUNT++ ))
 	else
 		printf " - Package %s found.\\n" "${DEP_ARRAY[$i]}"
 		continue
 	fi
 done
-printf "\\n"
 if [ "${COUNT}" -gt 1 ]; then
-	printf "The following dependencies are required to install EOSIO.\\n"
+	printf "\\nThe following dependencies are required to install EOSIO:\\n"
 	printf "${DISPLAY}\\n\\n"
-	if [ $1 == 0 ]; then read -p "Do you wish to install these dependencies? (y/n)? " answer; fi
+	if [ $1 == 0 ]; then read -p "Do you wish to install these dependencies? (y/n)?\\n" answer; fi
 	case ${answer} in
 		1 | [Yy]* )
-			printf "Installing dependencies\\n\\n"
 			if ! "${YUM}" -y install ${DEP}; then
-				printf "!! YUM dependency installation failed !!\\n"
-				printf "Exiting now.\\n"
+				printf " - YUM dependency installation failed!\\n"
 				exit 1;
 			else
-				printf "YUM dependencies installed successfully.\\n"
+				printf " - YUM dependencies installed successfully.\\n"
 			fi
 		;;
 		[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
@@ -292,11 +287,12 @@ printf "\\n"
 function print_instructions()
 {
 	printf "Please ensure the following \$PATH and \$LD_LIBRARY_PATH stucture in the order specified, as well as scl enable commands within your ~/.bash_profile/rc file:\\n"
-	# HOME/bin first to load proper cmake version over the one in /usr/bin.
-	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang + We don't symlink into $HOME/bin
 	printf "scl enable devtoolset-7 bash"
+	# HOME/bin first to load proper cmake version over the one in /usr/bin.
+	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang (We don't symlink into $HOME/bin)
 	printf "export PATH=\$HOME/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
-	printf "export LD_LIBRARY_PATH=\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n"
+	printf "export LD_LIBRARY_PATH=\$HOME/lib:\$HOME/lib64:\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n" # libmongoc is installed into $HOME/lib64
+	printf "export CPATH=\$HOME/include:\$CPLUS_INCLUDE_PATH" # libmongoc is installed into $HOME/include
 	printf "$( command -v mongod ) --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
 	printf "cd ${BUILD_DIR} && make test\\n"
 	return 0
