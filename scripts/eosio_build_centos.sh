@@ -121,7 +121,7 @@ printf "\\n"
 DEP_ARRAY=( 
 	git autoconf automake libtool make bzip2 doxygen graphviz \
 				bzip2-devel openssl-devel gmp-devel \
-				ocaml libicu-devel python-devel \
+				ocaml libicu-devel python python-devel python33 python33-devel \
 				gettext-devel file sudo
  )
 COUNT=1
@@ -158,6 +158,12 @@ if [ "${COUNT}" -gt 1 ]; then
 	esac
 else
 	printf " - No required YUM dependencies to install.\\n"
+fi
+
+if [ -d /opt/rh/python33 ]; then
+	printf "Enabling python33...\\n"
+	source /opt/rh/python33/enable || exit 1
+	printf " - Python33 successfully enabled!\\n"
 fi
 
 printf "\\n"
@@ -287,7 +293,8 @@ printf "\\n"
 function print_instructions()
 {
 	printf "Please ensure the following \$PATH and \$LD_LIBRARY_PATH stucture in the order specified, as well as scl enable commands within your ~/.bash_profile/rc file:\\n"
-	printf "scl enable devtoolset-7 bash"
+	printf "source /opt/rh/python33/enable"
+	printf "source /opt/rh/devtoolset-7/enable"
 	# HOME/bin first to load proper cmake version over the one in /usr/bin.
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang (We don't symlink into $HOME/bin)
 	printf "export PATH=\$HOME/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"

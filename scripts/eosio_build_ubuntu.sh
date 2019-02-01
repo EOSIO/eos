@@ -70,7 +70,7 @@ fi
 # llvm-4.0 is installed into /usr/lib/llvm-4.0
 DEP_ARRAY=(
 	git llvm-4.0 clang-4.0 libclang-4.0-dev make automake libbz2-dev libssl-dev doxygen graphviz \
-	libgmp3-dev autotools-dev build-essential libicu-dev python2.7-dev python3-dev \
+	libgmp3-dev autotools-dev build-essential libicu-dev python2.7 python2.7-dev python3 python3-dev \
 	autoconf libtool curl zlib1g-dev sudo ruby
 )
 COUNT=1
@@ -81,7 +81,7 @@ if [[ "${ENABLE_CODE_COVERAGE}" == true ]]; then
 	DEP_ARRAY+=(lcov)
 fi
 
-if [ $1 == 0 ]; then read -p "Do you wish to update repositories with apt-get update? (y/n)?\\n" answer; fi
+if [ $1 == 0 ]; then read -p "Do you wish to update repositories with apt-get update? (y/n) " answer; fi
 case ${answer} in
 	1 | [Yy]* )
 		if ! apt-get update; then
@@ -111,7 +111,7 @@ done
 if [ "${COUNT}" -gt 1 ]; then
 	printf "\\nThe following dependencies are required to install EOSIO:\\n"
 	printf "${DISPLAY}\\n\\n" 
-	if [ $1 == 0 ]; then read -p "Do you wish to install these packages? (y/n)?\\n" answer; fi
+	if [ $1 == 0 ]; then read -p "Do you wish to install these packages? (y/n) " answer; fi
 	case ${answer} in
 		1 | [Yy]* )
 			if ! apt-get -y install ${DEP}; then

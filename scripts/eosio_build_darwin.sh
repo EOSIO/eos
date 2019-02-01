@@ -140,15 +140,6 @@ if [ ! -d /usr/local/Frameworks ]; then
 	exit 1;
 fi
 
-if [  -z "$( python3 -c 'import sys; print(sys.version_info.major)' 2>/dev/null )" ]; then
-	DEPS=$DEPS"python@3 "
-	DISPLAY="${DISPLAY}${COUNT}. Python 3\\n"
-	printf " - python3 ${bldred}NOT${txtrst} found.\\n"
-	(( COUNT++ ))
-else
-	printf " - Python3 found\\n"
-fi
-
 if [ $COUNT -gt 1 ]; then
 	printf "\\nThe following dependencies are required to install EOSIO:\\n"
 	printf "${DISPLAY}\\n\\n"
