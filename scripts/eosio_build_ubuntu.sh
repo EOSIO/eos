@@ -82,15 +82,14 @@ if [[ "${ENABLE_CODE_COVERAGE}" == true ]]; then
 fi
 
 if [ $1 == 0 ]; then read -p "Do you wish to update repositories with apt-get update? (y/n)?\\n" answer; fi
-echo $answer
-exit
 case ${answer} in
 	1 | [Yy]* )
 			if ! apt-get update; then
 				printf " - APT update failed.\\n"
 				exit 1;
 			else
-			printf " - APT update complete.\\n"
+				printf " - APT update complete.\\n"
+			fi
 		fi
 	;;
 	[Nn]* ) echo "Proceeding without update!";;
