@@ -63,7 +63,7 @@ case ${answer} in
 			printf "\\nYUM update complete.\\n"
 		fi
 	;;
-	[Nn]* ) echo "Proceeding without update!";
+	[Nn]* ) echo "Proceeding without update!";;
 	* ) echo "Please type 1 for yes or 2 for no.";;
 esac
 
@@ -81,9 +81,9 @@ if [ -z "${SCL}" ]; then
 			else
 				printf "Centos Software Collections Repository installed successfully.\\n"
 			fi
-		break;;
+		;;
 		[Nn]* ) echo "User aborting installation of required Centos Software Collections Repository, Exiting now."; exit;;
-		* ) echo "Please type 1 for yes or 2 for no.";;
+		* ) echo "Please type 'y' for yes or 'n' for no.";;
 	esac
 else
 	printf " - ${SCL} found.\\n"
@@ -103,9 +103,9 @@ if [ -z "${DEVTOOLSET}" ]; then
 			else
 					printf " - Centos devtoolset installed successfully!\\n"
 			fi
-		break;;
+		;;
 		[Nn]* ) echo "User aborting installation of devtoolset-7. Exiting now."; exit;;
-		* ) echo "Please type 1 for yes or 2 for no.";;
+		* ) echo "Please type 'y' for yes or 'n' for no.";;
 	esac
 else
 	printf " - ${DEVTOOLSET} found.\\n"
@@ -155,9 +155,9 @@ if [ "${COUNT}" -gt 1 ]; then
 			else
 				printf "YUM dependencies installed successfully.\\n"
 			fi
-		break;;
+		;;
 		[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
-		* ) echo "Please type 1 for yes or 2 for no.";;
+		* ) echo "Please type 'y' for yes or 'n' for no.";;
 	esac
 else
 	printf " - No required YUM dependencies to install.\\n"
