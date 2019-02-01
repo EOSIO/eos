@@ -280,44 +280,41 @@
 				exit 1;
 			fi
 		fi
-		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 https://github.com/mongodb/mongo-c-driver/releases/download/1.10.2/mongo-c-driver-1.10.2.tar.gz )
+		MONGODRIVERTGZ="1.13.0-1-UOS.tar.gz"
+		MONGODRIVERURL="https://github.com/coodi/mongo-c-driver/archive/debian/${MONGODRIVERTGZ}"
+		STATUS=$( curl -LO -w '%{http_code}' --connect-timeout 30 "${MONGODRIVERURL}" )
 		if [ "${STATUS}" -ne 200 ]; then
-			if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.10.2.tar.gz"
-			then
-				printf "\\tUnable to remove file %s/mongo-c-driver-1.10.2.tar.gz.\\n" "${TEMP_DIR}"
+			if ! rm -f "${TEMP_DIR}/${MONGODRIVERTGZ}"; then
+				printf "\\t!! Unable to remove file %s/${MONGODRIVERTGZ} !!\\n" "${TEMP_DIR}"
 			fi
-			printf "\\tUnable to download MongoDB C driver at this time.\\n"
-			printf "\\tExiting now.\\n\\n"
+			printf "\\t!! Unable to download MongoDB C driver at this time !!\\n"
+			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		if ! tar xf mongo-c-driver-1.10.2.tar.gz
-		then
-			printf "\\tUnable to unarchive file %s/mongo-c-driver-1.10.2.tar.gz.\\n" "${TEMP_DIR}"
-			printf "\\tExiting now.\\n\\n"
+		if ! tar xf "${MONGODRIVERTGZ}"; then
+			printf "\\t!! Unable to unarchive file %s/${MONGODRIVERTGZ} !!\\n" "${TEMP_DIR}"
+			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		if ! rm -f "${TEMP_DIR}/mongo-c-driver-1.10.2.tar.gz"
-		then
-			printf "\\tUnable to remove file mongo-c-driver-1.10.2.tar.gz.\\n"
-			printf "\\tExiting now.\\n\\n"
+		if ! rm -f "${TEMP_DIR}/${MONGODRIVERTGZ}"; then
+			printf "\\t!! Unable to remove file ${MONGODRIVERTGZ} !!\\n"
+			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		if ! cd "${TEMP_DIR}"/mongo-c-driver-1.10.2
-		then
-			printf "\\tUnable to cd into directory %s/mongo-c-driver-1.10.2.\\n" "${TEMP_DIR}"
-			printf "\\tExiting now.\\n\\n"
+		MONGODRIVERFOLDER="mongo-c-driver-debian-1.13.0-1-UOS"
+		if ! cd "${TEMP_DIR}/${MONGODRIVERFOLDER}"; then
+			printf "\\t!! Unable to cd into directory %s/${MONGODRIVERFOLDER} !!\\n" "${TEMP_DIR}"
+			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		if ! mkdir cmake-build
-		then
-			printf "\\tUnable to create directory %s/mongo-c-driver-1.10.2/cmake-build.\\n" "${TEMP_DIR}"
-			printf "\\tExiting now.\\n\\n"
+		if ! mkdir cmake-build; then
+			printf "\\t!! Unable to create directory %s/${MONGODRIVERFOLDER}/cmake-build !!\\n" "${TEMP_DIR}"
+			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		if ! cd cmake-build
-		then
-			printf "\\tUnable to enter directory %s/mongo-c-driver-1.10.2/cmake-build.\\n" "${TEMP_DIR}"
-			printf "\\tExiting now.\\n\\n"
+		if ! cd cmake-build; then
+			printf "\\t!! Unable to enter directory %s/${MONGODRIVERFOLDER}/cmake-build !!\\n" "${TEMP_DIR}"
+			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
 		if ! cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_BSON=ON \
@@ -327,28 +324,24 @@
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! make -j"${CPU_CORE}"
-		then
+		if ! make -j"${CPU_CORE}"; then
 			printf "\\tError compiling MongoDB C driver.\\n"
 			printf "\\tExiting now.\\n\\n"
 			exit 1;
 		fi
-		if ! sudo make install
-		then
-			printf "\\tError installing MongoDB C driver.\\nMake sure you have sudo privileges.\\n"
-			printf "\\tExiting now.\\n\\n"
+		if ! sudo make install; then
+			printf "\\t!! Error installing MongoDB C driver: Make sure you have sudo privileges !!\\n"
+			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		if ! cd "${TEMP_DIR}"
-		then
-			printf "\\tUnable to enter directory %s.\\n" "${TEMP_DIR}"
-			printf "\\tExiting now.\\n\\n"
+		if ! cd "${TEMP_DIR}"; then
+			printf "\\t!! Unable to enter directory %s !!\\n" "${TEMP_DIR}"
+			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
-		if ! rm -rf "${TEMP_DIR}/mongo-c-driver-1.10.2"
-		then
-			printf "\\tUnable to remove directory %s/mongo-c-driver-1.10.2.\\n" "${TEMP_DIR}"
-			printf "\\tExiting now.\\n\\n"
+		if ! rm -rf "${TEMP_DIR}/${MONGODRIVERFOLDER}"; then
+			printf "\\t!! Unable to remove directory %s/${MONGODRIVERFOLDER} !!\\n" "${TEMP_DIR}"
+			printf "\\tExiting now.\\n"
 			exit 1;
 		fi
 		if ! git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/v3.3 --depth 1
