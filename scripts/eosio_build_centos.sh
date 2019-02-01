@@ -1,3 +1,5 @@
+if [ $1 == 1 ]; then answer=1; fi # NONINTERACTIVE
+
 OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' \
 | cut -d'.' -f1 )
 
@@ -50,8 +52,7 @@ if ! YUM=$( command -v yum 2>/dev/null ); then
 		exit 1;
 fi
 printf " - Yum installation found at %s.\\n" "${YUM}"
-echo $1
-exit
+
 if [ $1 == 0 ]; then read -p "Do you wish to update YUM repositories? (y/n)? " answer; fi
 case ${answer} in
 	1 | [Yy]* ) 
