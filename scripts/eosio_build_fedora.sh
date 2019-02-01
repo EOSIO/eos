@@ -60,7 +60,7 @@ fi
 printf " - Yum installation found at %s.\\n" "${YUM}"
 
 
-if [ $1 == 0 ]; then read -p "Do you wish to update YUM repositories? (y/n)?\\n" answer; fi
+if [ $1 == 0 ]; then read -p "Do you wish to update YUM repositories? (y/n) " answer; fi
 case ${answer} in
 	1 | [Yy]* )
 		if ! "${YUM}" -y update; then
@@ -90,7 +90,7 @@ done
 if [ "${COUNT}" -gt 1 ]; then
 	printf "\\nThe following dependencies are required to install EOSIO:\\n"
 	printf "${DISPLAY}\\n\\n"
-	if [ $1 == 0 ]; then read -p "Do you wish to install these dependencies? (y/n)?\\n" answer; fi
+	if [ $1 == 0 ]; then read -p "Do you wish to install these dependencies? (y/n) " answer; fi
 	case ${answer} in
 		1 | [Yy]* )
 			if ! "${YUM}" -y install ${DEP}; then

@@ -91,7 +91,7 @@ printf "Checking Home Brew installation...\\n"
 if ! BREW=$( command -v brew )
 then
 	printf "Homebrew must be installed to compile EOS.IO!\\n"
-	if [ $1 == 0 ]; then read -p "Do you wish to install HomeBrew? (y/n)?\\n" answer; fi
+	if [ $1 == 0 ]; then read -p "Do you wish to install HomeBrew? (y/n)? " answer; fi
 	case ${answer} in
 		1 | [Yy]* )
 			"${XCODESELECT}" --install 2>/dev/null;
@@ -152,11 +152,11 @@ fi
 if [ $COUNT -gt 1 ]; then
 	printf "\\nThe following dependencies are required to install EOSIO:\\n"
 	printf "${DISPLAY}\\n\\n"
-	if [ $1 == 0 ]; then read -p "Do you wish to install these packages? (y/n)?\\n" answer; fi
+	if [ $1 == 0 ]; then read -p "Do you wish to install these packages? (y/n) " answer; fi
 	case ${answer} in
 		1 | [Yy]* )
 			"${XCODESELECT}" --install 2>/dev/null;
-			if [ $1 == 0 ]; then read -p "Do you wish to update homebrew packages first? (y/n)?\\n" answer; fi
+			if [ $1 == 0 ]; then read -p "Do you wish to update homebrew packages first? (y/n) " answer; fi
 			case ${answer} in
 				1 | [Yy]* )
 					if ! brew update; then
