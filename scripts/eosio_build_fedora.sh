@@ -21,7 +21,7 @@ if [ "${OS_VER}" -lt 25 ]; then
 	exit 1;
 fi
 
-DISK_INSTALL=$( df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 )
+DISK_INSTALL=$( df -h . | tail -1 | tr -s ' ' | cut -d\\  -f1 )
 DISK_TOTAL_KB=$( df . | tail -1 | awk '{print $2}' )
 DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
 DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
