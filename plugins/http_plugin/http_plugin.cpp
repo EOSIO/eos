@@ -123,6 +123,7 @@ namespace eosio {
    using websocket_local_server_type = websocketpp::server<detail::asio_local_with_stub_log>;
    using websocket_server_tls_type =  websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>;
    using ssl_context_ptr =  websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
+   using io_work_t = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
    static bool verbose_http_errors = false;
 
@@ -137,7 +138,11 @@ namespace eosio {
          size_t                   max_body_size;
 
          websocket_server_type    server;
-         fc::optional<boost::asio::thread_pool>  thread_pool;
+
+         uint16_t                                    thread_pool_size;
+         optional<boost::asio::thread_pool>          thread_pool;
+         std::shared_ptr<boost::asio::io_context>    server_ioc;
+         optional<io_work_t>                         server_ioc_work;
 
          optional<tcp::endpoint>  https_listen_endpoint;
          string                   https_cert_chain;
@@ -314,7 +319,7 @@ namespace eosio {
          void create_server_for_endpoint(const tcp::endpoint& ep, websocketpp::server<detail::asio_with_stub_log<T>>& ws) {
             try {
                ws.clear_access_channels(websocketpp::log::alevel::all);
-               ws.init_asio(&app().get_io_service());
+               ws.init_asio(&(*server_ioc));
                ws.set_reuse_addr(true);
                ws.set_max_http_body_size(max_body_size);
                ws.set_http_handler([&](connection_hdl hdl) {
@@ -401,7 +406,7 @@ namespace eosio {
              "If set to false, then any incoming \"Host\" header is considered valid")
             ("http-alias", bpo::value<std::vector<string>>()->composing(),
              "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
-            ("http-threads", bpo::value<uint16_t>()->default_value(1),
+            ("http-threads", bpo::value<uint16_t>()->default_value(2),
              "Number of worker threads in http thread pool")
             ;
    }
@@ -477,16 +482,24 @@ namespace eosio {
          my->max_body_size = options.at( "max-body-size" ).as<uint32_t>();
          verbose_http_errors = options.at( "verbose-http-errors" ).as<bool>();
 
-         auto thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
-         EOS_ASSERT( thread_pool_size > 0, chain::plugin_config_exception,
-                     "http-threads ${num} must be greater than 0", ("num", thread_pool_size));
-         my->thread_pool.emplace( thread_pool_size );
+         my->thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
+         EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
+                     "http-threads ${num} must be greater than 0", ("num", my->thread_pool_size));
 
          //watch out for the returns above when adding new code here
       } FC_LOG_AND_RETHROW()
    }
 
    void http_plugin::plugin_startup() {
+
+      my->thread_pool.emplace( my->thread_pool_size );
+      my->server_ioc = std::make_shared<boost::asio::io_context>();
+      my->server_ioc_work.emplace( boost::asio::make_work_guard(*my->server_ioc) );
+      // post to half the threads
+      for( uint16_t i = 0; i < my->thread_pool_size; i += 2 ) {
+         boost::asio::post( *my->thread_pool, [ioc = my->server_ioc]() { ioc->run(); } );
+      }
+
       if(my->listen_endpoint) {
          try {
             my->create_server_for_endpoint(*my->listen_endpoint, my->server);
@@ -572,6 +585,10 @@ namespace eosio {
       if(my->unix_server.is_listening())
          my->unix_server.stop_listening();
 
+      if( my->server_ioc_work )
+         my->server_ioc_work->reset();
+      if( my->server_ioc )
+         my->server_ioc->stop();
       if( my->thread_pool ) {
          my->thread_pool->join();
          my->thread_pool->stop();
