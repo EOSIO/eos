@@ -2,6 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE
  */
+#include <appbase/application.hpp>
 #include <eosio/wallet_plugin/wallet_manager.hpp>
 #include <eosio/wallet_plugin/wallet.hpp>
 #include <eosio/wallet_plugin/se_wallet.hpp>
@@ -275,6 +276,22 @@ void wallet_manager::own_and_use_wallet(const string& name, std::unique_ptr<wall
    wallets.emplace(name, std::move(wallet));
 }
 
+void wallet_manager::start_lock_watch(std::shared_ptr<boost::asio::deadline_timer> t)
+{
+   t->async_wait([t, this](const boost::system::error_code& /*ec*/)
+   {
+      struct stat statbuf;
+      int rc = stat(lock_path.string().c_str(), &statbuf);
+      if(rc == -1) {
+         if(errno == ENOENT) {
+            appbase::app().quit();
+            EOS_THROW(wallet_exception, "Lock file removed while keosd still running.  Terminating.");
+         }
+      }
+      start_lock_watch(t);
+   });
+}
+
 void wallet_manager::initialize_lock() {
    //This is technically somewhat racy in here -- if multiple keosd are in this function at once.
    //I've considered that an acceptable tradeoff to maintain cross-platform boost constructs here
@@ -288,6 +305,8 @@ void wallet_manager::initialize_lock() {
       wallet_dir_lock.reset();
       EOS_THROW(wallet_exception, "Failed to lock access to wallet directory; is another keosd running?");
    }
+   auto timer = std::make_shared<boost::asio::deadline_timer>(appbase::app().get_io_service(), boost::posix_time::seconds(1));
+   start_lock_watch(timer);
 }
 
 } // namespace wallet
