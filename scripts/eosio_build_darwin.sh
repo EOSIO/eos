@@ -186,9 +186,11 @@ fi
 
 printf "\\n"
 
+export CPATH="$HOME/include:$CPATH:${python-config --includes | awk '{print $1}' | cut -dI -f2}" # Boost has trouble finding pyconfig.h
 
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
-if [ ! -d $BOOST_ROOT ]; then
+BOOSTVERSION=$( grep "#define BOOST_VERSION" "$HOME/opt/boost/include/boost/version.hpp" | tail -1 | tr -s ' ' | cut -d\  -f3 )
+if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
 	printf "Installing Boost library...\\n"
 	curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
 	&& tar -xvf boost_$BOOST_VERSION.tar.bz2 \
@@ -244,12 +246,13 @@ printf "\\n"
 
 function print_instructions()
 {
-printf "Please ensure the following \$PATH and \$LD_LIBRARY_PATH stucture, in the order specified, within your ~/.bash_profile/rc file:\\n"
+printf "Please ensure the following in your ~/.bash_profile:\\n"
 	# HOME/bin first to load proper cmake version over the one in /usr/bin.
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang + We don't symlink into $HOME/bin
 	# /usr/local/opt/python/libexec/bin: brew install python installs python3, but doesn't symlink it as python into /usr/local/bin
 	printf "export PATH=\$HOME/bin:/usr/local/opt/python/libexec/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
 	printf "export LD_LIBRARY_PATH=\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n"
+	printf "export CPATH=\$HOME/include:\$CPATH:$(python-config --includes | awk '{print $1}' | cut -dI -f2)\\n"
 	printf "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
 	printf "cd ${BUILD_DIR} && make test\\n"
 	return 0

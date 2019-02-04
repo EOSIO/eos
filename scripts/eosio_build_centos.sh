@@ -294,9 +294,9 @@ printf "\\n"
 
 function print_instructions()
 {
-	printf "Please ensure the following \$PATH and \$LD_LIBRARY_PATH stucture in the order specified, as well as scl enable commands within your ~/.bash_profile/rc file:\\n"
+	printf "Please ensure the following in your ~/.bash_profile:\\n"
 	printf "source /opt/rh/python33/enable\\n"
-	printf "CPATH=\$CPATH:/opt/rh/python33/root/usr/include/python3.3m\\n" # Boost has trouble finding pyconfig.h 
+	printf "CPATH=\$CPATH:/opt/rh/python33/root/usr/include/python3.3m\\n" # Boost has trouble finding pyconfig.h
 	printf "source /opt/rh/devtoolset-7/enable\\n"
 	# HOME/bin first to load proper cmake version over the one in /usr/bin.
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang (We don't symlink into $HOME/bin)

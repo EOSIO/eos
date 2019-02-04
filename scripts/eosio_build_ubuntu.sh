@@ -247,12 +247,12 @@ printf "\\n"
 
 function print_instructions()
 {
-printf "Please ensure the following \$PATH and \$LD_LIBRARY_PATH stucture, in the order specified, within your ~/.bash_profile/rc file:\\n"
+printf "Please ensure the following in your ~/.bash_profile:\\n"
 	# HOME/bin first to load proper cmake version over the one in /usr/bin.
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang + We don't symlink into $HOME/bin
 	printf "export PATH=\$HOME/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
 	printf "export LD_LIBRARY_PATH=\$HOME/lib:\$HOME/lib64:\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n" # libmongoc is installed into $HOME/lib64
-	printf "export CPATH=\$HOME/include:\$CPLUS_INCLUDE_PATH" # libmongoc is installed into $HOME/include
+	printf "export CPATH=\$HOME/include:\$CPLUS_INCLUDE_PATH\\n" # libmongoc is installed into $HOME/include
 	printf "$( command -v mongod ) --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
 	printf "cd ${BUILD_DIR} && make test\\n"
 	return 0
