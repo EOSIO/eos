@@ -53,20 +53,12 @@ void apply_context::exec_one( action_trace& trace )
          privileged = a.privileged;
          auto native = control.find_apply_handler( receiver, act.account, act.name );
          if( native ) {
-            if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
-               control.check_contract_list( receiver );
-               control.check_action_list( act.account, act.name );
-            }
             (*native)( *this );
          }
 
          if( a.code.size() > 0
              && !(act.account == config::system_account_name && act.name == N( setcode ) &&
                   receiver == config::system_account_name) ) {
-            if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
-               control.check_contract_list( receiver );
-               control.check_action_list( act.account, act.name );
-            }
             try {
                cyberway::chaindb::chaindb_guard guard(chaindb, receiver);
                control.get_wasm_interface().apply( a.code_version, a.code, *this );
@@ -240,7 +232,6 @@ void apply_context::execute_inline( action&& a ) {
    EOS_ASSERT( code != nullptr, action_validate_exception,
                "inline action's code account ${account} does not exist", ("account", a.account) );
 
-   bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block();
    flat_set<account_name> actors;
 
    bool disallow_send_to_self_bypass = false; // eventually set to whether the appropriate protocol feature has been activated
@@ -259,16 +250,10 @@ void apply_context::execute_inline( action&& a ) {
       EOS_ASSERT( control.get_authorization_manager().find_permission(auth) != nullptr, action_validate_exception,
                   "inline action's authorizations include a non-existent permission: ${permission}",
                   ("permission", auth) );
-      if( enforce_actor_whitelist_blacklist )
-         actors.insert( auth.actor );
 
       if( inherit_parent_authorizations && std::find(act.authorization.begin(), act.authorization.end(), auth) != act.authorization.end() ) {
          inherited_authorizations.insert( auth );
       }
-   }
-
-   if( enforce_actor_whitelist_blacklist ) {
-      control.check_actor_list( actors );
    }
 
    // No need to check authorization if replaying irreversible blocks or contract is privileged
@@ -326,9 +311,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
 
-   bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block()
-                                             && !control.sender_avoids_whitelist_blacklist_enforcement( receiver );
-   trx_context.validate_referenced_accounts( trx, enforce_actor_whitelist_blacklist );
+   trx_context.validate_referenced_accounts(trx);
 
    // Charge ahead of time for the additional net usage needed to retire the deferred transaction
    // whether that be by successfully executing, soft failure, hard failure, or expiration.

@@ -59,13 +59,6 @@ namespace eosio { namespace chain {
       public:
 
          struct config {
-            flat_set<account_name>   sender_bypass_whiteblacklist;
-            flat_set<account_name>   actor_whitelist;
-            flat_set<account_name>   actor_blacklist;
-            flat_set<account_name>   contract_whitelist;
-            flat_set<account_name>   contract_blacklist;
-            flat_set< pair<account_name, action_name> > action_blacklist;
-            flat_set<public_key_type> key_blacklist;
             path                     blocks_dir             =  chain::config::default_blocks_dir_name;
             path                     state_dir              =  chain::config::default_state_dir_name;
             uint64_t                 state_size             =  chain::config::default_state_size;
@@ -86,7 +79,6 @@ namespace eosio { namespace chain {
             db_read_mode             read_mode              = db_read_mode::SPECULATIVE;
             validation_mode          block_validation_mode  = validation_mode::FULL;
 
-            flat_set<account_name>   resource_greylist;
             flat_set<account_name>   trusted_producers;
 
             fc::microseconds         abi_serializer_max_time_ms{chain::config::default_abi_serializer_max_time_ms * 1000};
@@ -177,20 +169,6 @@ namespace eosio { namespace chain {
          const authorization_manager&          get_authorization_manager()const;
          authorization_manager&                get_mutable_authorization_manager();
 
-         const flat_set<account_name>&   get_actor_whitelist() const;
-         const flat_set<account_name>&   get_actor_blacklist() const;
-         const flat_set<account_name>&   get_contract_whitelist() const;
-         const flat_set<account_name>&   get_contract_blacklist() const;
-         const flat_set< pair<account_name, action_name> >& get_action_blacklist() const;
-         const flat_set<public_key_type>& get_key_blacklist() const;
-
-         void   set_actor_whitelist( const flat_set<account_name>& );
-         void   set_actor_blacklist( const flat_set<account_name>& );
-         void   set_contract_whitelist( const flat_set<account_name>& );
-         void   set_contract_blacklist( const flat_set<account_name>& );
-         void   set_action_blacklist( const flat_set< pair<account_name, action_name> >& );
-         void   set_key_blacklist( const flat_set<public_key_type>& );
-
          uint32_t             head_block_num()const;
          time_point           head_block_time()const;
          block_id_type        head_block_id()const;
@@ -225,7 +203,6 @@ namespace eosio { namespace chain {
          sha256 calculate_integrity_hash()const;
          void write_snapshot( const snapshot_writer_ptr& snapshot )const;
 
-         bool sender_avoids_whitelist_blacklist_enforcement( account_name sender )const;
          void check_actor_list( const flat_set<account_name>& actors )const;
          void check_contract_list( account_name code )const;
          void check_action_list( account_name code, action_name action )const;
@@ -233,11 +210,6 @@ namespace eosio { namespace chain {
          bool is_producing_block()const;
 
          bool is_ram_billing_in_notify_allowed()const;
-
-         void add_resource_greylist(const account_name &name);
-         void remove_resource_greylist(const account_name &name);
-         bool is_resource_greylisted(const account_name &name) const;
-         const flat_set<account_name> &get_resource_greylist() const;
 
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
@@ -323,10 +295,6 @@ namespace eosio { namespace chain {
 } }  /// eosio::chain
 
 FC_REFLECT( eosio::chain::controller::config,
-            (actor_whitelist)
-            (actor_blacklist)
-            (contract_whitelist)
-            (contract_blacklist)
             (blocks_dir)
             (state_dir)
             (state_size)
@@ -337,6 +305,5 @@ FC_REFLECT( eosio::chain::controller::config,
             (contracts_console)
             (genesis)
             (wasm_runtime)
-            (resource_greylist)
             (trusted_producers)
           )

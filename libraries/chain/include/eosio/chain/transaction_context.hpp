@@ -90,7 +90,7 @@ namespace eosio { namespace chain {
 
          uint32_t update_billed_cpu_time( fc::time_point now );
 
-         std::tuple<int64_t, int64_t, bool, bool> max_bandwidth_billed_accounts_can_pay( bool force_elastic_limits = false )const;
+         std::tuple<int64_t, int64_t> max_bandwidth_billed_accounts_can_pay() const;
 
          uint64_t get_provided_net_limit(account_name account) const;
 
@@ -106,7 +106,7 @@ namespace eosio { namespace chain {
 
          void confirm_provided_bandwith_limits(account_name account, account_name provider);
 
-         void validate_referenced_accounts( const transaction& trx, bool enforce_actor_whitelist_blacklist )const;
+         void validate_referenced_accounts(const transaction& trx) const;
 
       private:
 
@@ -149,7 +149,6 @@ namespace eosio { namespace chain {
          fc::microseconds              delay;
          bool                          is_input           = false;
          bool                          apply_context_free = true;
-         bool                          enforce_whiteblacklist = true;
 
          fc::time_point                deadline = fc::time_point::maximum();
          fc::microseconds              leeway = fc::microseconds(3000);
@@ -162,11 +161,8 @@ namespace eosio { namespace chain {
 
          uint64_t                      net_limit = 0;
          bool                          net_limit_due_to_block = true;
-         bool                          net_limit_due_to_greylist = false;
          uint64_t                      eager_net_limit = 0;
          uint64_t&                     net_usage; /// reference to trace->net_usage
-
-         bool                          cpu_limit_due_to_greylist = false;
 
          fc::microseconds              initial_objective_duration_limit;
          fc::microseconds              objective_duration_limit;

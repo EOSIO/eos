@@ -85,7 +85,6 @@ namespace eosio { namespace chain {
     *   |- misc_exception
     *   |- plugin_exception
     *   |- wallet_exception
-    *   |- whitelist_blacklist_exception
     *   |- controller_emit_signal_exception
     *   |- abi_exception
     *   |- contract_exception
@@ -276,10 +275,7 @@ namespace eosio { namespace chain {
                                     3080005, "Transaction CPU usage is too much for the remaining allowable usage of the current block" )
       FC_DECLARE_DERIVED_EXCEPTION( deadline_exception, resource_exhausted_exception,
                                     3080006, "Transaction took too long" )
-      FC_DECLARE_DERIVED_EXCEPTION( greylist_net_usage_exceeded, resource_exhausted_exception,
-                                    3080007, "Transaction exceeded the current greylisted account network usage limit" )
-      FC_DECLARE_DERIVED_EXCEPTION( greylist_cpu_usage_exceeded, resource_exhausted_exception,
-                                    3080008, "Transaction exceeded the current greylisted account CPU usage limit" )
+// CYBERWAY: greylist removed (3080007, 3080008)
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
 
@@ -373,22 +369,7 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( secure_enclave_exception,          wallet_exception,
                                     3120012, "Secure Enclave Exception" )
 
-
-   FC_DECLARE_DERIVED_EXCEPTION( whitelist_blacklist_exception,   chain_exception,
-                                 3130000, "Actor or contract whitelist/blacklist exception" )
-
-      FC_DECLARE_DERIVED_EXCEPTION( actor_whitelist_exception,    whitelist_blacklist_exception,
-                                    3130001, "Authorizing actor of transaction is not on the whitelist" )
-      FC_DECLARE_DERIVED_EXCEPTION( actor_blacklist_exception,    whitelist_blacklist_exception,
-                                    3130002, "Authorizing actor of transaction is on the blacklist" )
-      FC_DECLARE_DERIVED_EXCEPTION( contract_whitelist_exception, whitelist_blacklist_exception,
-                                    3130003, "Contract to execute is not on the whitelist" )
-      FC_DECLARE_DERIVED_EXCEPTION( contract_blacklist_exception, whitelist_blacklist_exception,
-                                    3130004, "Contract to execute is on the blacklist" )
-      FC_DECLARE_DERIVED_EXCEPTION( action_blacklist_exception,   whitelist_blacklist_exception,
-                                    3130005, "Action to execute is on the blacklist" )
-      FC_DECLARE_DERIVED_EXCEPTION( key_blacklist_exception,      whitelist_blacklist_exception,
-                                    3130006, "Public key in authority is on the blacklist" )
+// CYBERWAY: whitelist_blacklist_exception (3130000) removed
 
    FC_DECLARE_DERIVED_EXCEPTION( controller_emit_signal_exception, chain_exception,
                                  3140000, "Exceptions that are allowed to bubble out of emit calls in controller" )

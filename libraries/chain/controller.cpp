@@ -772,8 +772,7 @@ struct controller_impl {
                                         fc::time_point start,
                                         uint32_t& cpu_time_to_bill_us, // only set on failure
                                         uint32_t billed_cpu_time_us,
-                                        bool explicit_billed_cpu_time = false,
-                                        bool enforce_whiteblacklist = true
+                                        bool explicit_billed_cpu_time = false
                                       )
    {
       signed_transaction etrx;
@@ -787,7 +786,6 @@ struct controller_impl {
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
-      trx_context.enforce_whiteblacklist = enforce_whiteblacklist;
       transaction_trace_ptr trace = trx_context.trace;
       try {
          trx_context.init_for_implicit_trx();
@@ -826,17 +824,9 @@ struct controller_impl {
       auto code = e.code();
       return    (code == subjective_block_production_exception::code_value)
              || (code == block_net_usage_exceeded::code_value)
-             || (code == greylist_net_usage_exceeded::code_value)
              || (code == block_cpu_usage_exceeded::code_value)
-             || (code == greylist_cpu_usage_exceeded::code_value)
              || (code == deadline_exception::code_value)
-             || (code == leeway_deadline_exception::code_value)
-             || (code == actor_whitelist_exception::code_value)
-             || (code == actor_blacklist_exception::code_value)
-             || (code == contract_whitelist_exception::code_value)
-             || (code == contract_blacklist_exception::code_value)
-             || (code == action_blacklist_exception::code_value)
-             || (code == key_blacklist_exception::code_value);
+             || (code == leeway_deadline_exception::code_value);
    }
 
    bool scheduled_failure_is_subjective( const fc::exception& e ) const {
@@ -938,7 +928,6 @@ struct controller_impl {
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
-      trx_context.enforce_whiteblacklist = gtrx.sender.empty() ? true : !sender_avoids_whitelist_blacklist_enforcement( gtrx.sender );
       trace = trx_context.trace;
       try {
          auto bandwith_request_result = get_provided_bandwith(dtrx.actions, deadline);
@@ -947,11 +936,6 @@ struct controller_impl {
          trx_context.add_net_usage(bandwith_request_result.used_net);
 
          trx_context.init_for_deferred_trx( gtrx.published );
-
-         if( trx_context.enforce_whiteblacklist && pending->_block_status == controller::block_status::incomplete ) {
-            check_actor_list( trx_context.bill_to_accounts ); // Assumes bill_to_accounts is the set of actors authorizing the transaction
-         }
-
          trx_context.exec();
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
@@ -987,8 +971,7 @@ struct controller_impl {
          // Attempt error handling for the generated transaction.
 
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start,
-                                           cpu_time_to_bill_us, billed_cpu_time_us, explicit_billed_cpu_time,
-                                           trx_context.enforce_whiteblacklist );
+                                           cpu_time_to_bill_us, billed_cpu_time_us, explicit_billed_cpu_time);
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
          if( !trace->except_ptr ) {
@@ -1017,7 +1000,7 @@ struct controller_impl {
             auto& rl = self.get_mutable_resource_limits_manager();
             rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
             int64_t account_cpu_limit = 0;
-            std::tie( std::ignore, account_cpu_limit, std::ignore, std::ignore ) = trx_context.max_bandwidth_billed_accounts_can_pay( true );
+            std::tie(std::ignore, account_cpu_limit) = trx_context.max_bandwidth_billed_accounts_can_pay();
 
             cpu_time_to_bill_us = static_cast<uint32_t>( std::min( std::min( static_cast<int64_t>(cpu_time_to_bill_us),
                                                                              account_cpu_limit                          ),
@@ -1101,7 +1084,6 @@ struct controller_impl {
 
             if( trx->implicit ) {
                trx_context.init_for_implicit_trx();
-               trx_context.enforce_whiteblacklist = false;
             } else {
                bool skip_recording = replay_head_time && (time_point(trn.expiration) <= *replay_head_time);
                trx_context.init_for_input_trx( trx->packed_trx->get_unprunable_size(),
@@ -1612,133 +1594,20 @@ struct controller_impl {
       }
    }
 
-   bool sender_avoids_whitelist_blacklist_enforcement( account_name sender )const {
-      if( conf.sender_bypass_whiteblacklist.size() > 0 &&
-          ( conf.sender_bypass_whiteblacklist.find( sender ) != conf.sender_bypass_whiteblacklist.end() ) )
-      {
-         return true;
-      }
-
-      return false;
-   }
-
    void check_actor_list( const flat_set<account_name>& actors )const {
-      if( actors.size() == 0 ) return;
-
-      if( conf.actor_whitelist.size() > 0 ) {
-         // throw if actors is not a subset of whitelist
-         const auto& whitelist = conf.actor_whitelist;
-         bool is_subset = true;
-
-         // quick extents check, then brute force the check actors
-         if (*actors.cbegin() >= *whitelist.cbegin() && *actors.crbegin() <= *whitelist.crbegin() ) {
-            auto lower_bound = whitelist.cbegin();
-            for (const auto& actor: actors) {
-               lower_bound = std::lower_bound(lower_bound, whitelist.cend(), actor);
-
-               // if the actor is not found, this is not a subset
-               if (lower_bound == whitelist.cend() || *lower_bound != actor ) {
-                  is_subset = false;
-                  break;
-               }
-
-               // if the actor was found, we are guaranteed that other actors are either not present in the whitelist
-               // or will be present in the range defined as [next actor,end)
-               lower_bound = std::next(lower_bound);
-            }
-         } else {
-            is_subset = false;
-         }
-
-         // helper lambda to lazily calculate the actors for error messaging
-         static auto generate_missing_actors = [](const flat_set<account_name>& actors, const flat_set<account_name>& whitelist) -> vector<account_name> {
-            vector<account_name> excluded;
-            excluded.reserve( actors.size() );
-            set_difference( actors.begin(), actors.end(),
-                            whitelist.begin(), whitelist.end(),
-                            std::back_inserter(excluded) );
-            return excluded;
-         };
-
-         EOS_ASSERT( is_subset,  actor_whitelist_exception,
-                     "authorizing actor(s) in transaction are not on the actor whitelist: ${actors}",
-                     ("actors", generate_missing_actors(actors, whitelist))
-                   );
-      } else if( conf.actor_blacklist.size() > 0 ) {
-         // throw if actors intersects blacklist
-         const auto& blacklist = conf.actor_blacklist;
-         bool intersects = false;
-
-         // quick extents check then brute force check actors
-         if( *actors.cbegin() <= *blacklist.crbegin() && *actors.crbegin() >= *blacklist.cbegin() ) {
-            auto lower_bound = blacklist.cbegin();
-            for (const auto& actor: actors) {
-               lower_bound = std::lower_bound(lower_bound, blacklist.cend(), actor);
-
-               // if the lower bound in the blacklist is at the end, all other actors are guaranteed to
-               // not exist in the blacklist
-               if (lower_bound == blacklist.cend()) {
-                  break;
-               }
-
-               // if the lower bound of an actor IS the actor, then we have an intersection
-               if (*lower_bound == actor) {
-                  intersects = true;
-                  break;
-               }
-            }
-         }
-
-         // helper lambda to lazily calculate the actors for error messaging
-         static auto generate_blacklisted_actors = [](const flat_set<account_name>& actors, const flat_set<account_name>& blacklist) -> vector<account_name> {
-            vector<account_name> blacklisted;
-            blacklisted.reserve( actors.size() );
-            set_intersection( actors.begin(), actors.end(),
-                              blacklist.begin(), blacklist.end(),
-                              std::back_inserter(blacklisted)
-                            );
-            return blacklisted;
-         };
-
-         EOS_ASSERT( !intersects, actor_blacklist_exception,
-                     "authorizing actor(s) in transaction are on the actor blacklist: ${actors}",
-                     ("actors", generate_blacklisted_actors(actors, blacklist))
-                   );
-      }
+      // CYBERWAY: whitelist/blacklist removed
    }
 
    void check_contract_list( account_name code )const {
-      if( conf.contract_whitelist.size() > 0 ) {
-         EOS_ASSERT( conf.contract_whitelist.find( code ) != conf.contract_whitelist.end(),
-                     contract_whitelist_exception,
-                     "account '${code}' is not on the contract whitelist", ("code", code)
-                   );
-      } else if( conf.contract_blacklist.size() > 0 ) {
-         EOS_ASSERT( conf.contract_blacklist.find( code ) == conf.contract_blacklist.end(),
-                     contract_blacklist_exception,
-                     "account '${code}' is on the contract blacklist", ("code", code)
-                   );
-      }
+      // CYBERWAY: whitelist/blacklist removed
    }
 
    void check_action_list( account_name code, action_name action )const {
-      if( conf.action_blacklist.size() > 0 ) {
-         EOS_ASSERT( conf.action_blacklist.find( std::make_pair(code, action) ) == conf.action_blacklist.end(),
-                     action_blacklist_exception,
-                     "action '${code}::${action}' is on the action blacklist",
-                     ("code", code)("action", action)
-                   );
-      }
+      // CYBERWAY: blacklist removed
    }
 
    void check_key_list( const public_key_type& key )const {
-      if( conf.key_blacklist.size() > 0 ) {
-         EOS_ASSERT( conf.key_blacklist.find( key ) == conf.key_blacklist.end(),
-                     key_blacklist_exception,
-                     "public key '${key}' is on the key blacklist",
-                     ("key", key)
-                   );
-      }
+      // CYBERWAY: blacklist removed
    }
 
    /*
@@ -1881,47 +1750,6 @@ transaction_trace_ptr controller::push_scheduled_transaction( const transaction_
    return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
 }
 
-const flat_set<account_name>& controller::get_actor_whitelist() const {
-   return my->conf.actor_whitelist;
-}
-const flat_set<account_name>& controller::get_actor_blacklist() const {
-   return my->conf.actor_blacklist;
-}
-const flat_set<account_name>& controller::get_contract_whitelist() const {
-   return my->conf.contract_whitelist;
-}
-const flat_set<account_name>& controller::get_contract_blacklist() const {
-   return my->conf.contract_blacklist;
-}
-const flat_set< pair<account_name, action_name> >& controller::get_action_blacklist() const {
-   return my->conf.action_blacklist;
-}
-const flat_set<public_key_type>& controller::get_key_blacklist() const {
-   return my->conf.key_blacklist;
-}
-
-void controller::set_actor_whitelist( const flat_set<account_name>& new_actor_whitelist ) {
-   my->conf.actor_whitelist = new_actor_whitelist;
-}
-void controller::set_actor_blacklist( const flat_set<account_name>& new_actor_blacklist ) {
-   my->conf.actor_blacklist = new_actor_blacklist;
-}
-void controller::set_contract_whitelist( const flat_set<account_name>& new_contract_whitelist ) {
-   my->conf.contract_whitelist = new_contract_whitelist;
-}
-void controller::set_contract_blacklist( const flat_set<account_name>& new_contract_blacklist ) {
-   my->conf.contract_blacklist = new_contract_blacklist;
-}
-void controller::set_action_blacklist( const flat_set< pair<account_name, action_name> >& new_action_blacklist ) {
-   for (auto& act: new_action_blacklist) {
-      EOS_ASSERT(act.first != account_name(), name_type_exception, "Action blacklist - contract name should not be empty");
-      EOS_ASSERT(act.second != action_name(), action_type_exception, "Action blacklist - action name should not be empty");
-   }
-   my->conf.action_blacklist = new_action_blacklist;
-}
-void controller::set_key_blacklist( const flat_set<public_key_type>& new_key_blacklist ) {
-   my->conf.key_blacklist = new_key_blacklist;
-}
 
 uint32_t controller::head_block_num()const {
    return my->head->block_num;
@@ -2242,10 +2070,6 @@ vector<transaction_id_type> controller::get_scheduled_transactions() const {
    return result;
 }
 
-bool controller::sender_avoids_whitelist_blacklist_enforcement( account_name sender )const {
-   return my->sender_avoids_whitelist_blacklist_enforcement( sender );
-}
-
 void controller::check_actor_list( const flat_set<account_name>& actors )const {
    my->check_actor_list( actors );
 }
@@ -2315,22 +2139,6 @@ bool controller::is_known_unexpired_transaction( const transaction_id_type& id) 
 
 void controller::set_subjective_cpu_leeway(fc::microseconds leeway) {
    my->subjective_cpu_leeway = leeway;
-}
-
-void controller::add_resource_greylist(const account_name &name) {
-   my->conf.resource_greylist.insert(name);
-}
-
-void controller::remove_resource_greylist(const account_name &name) {
-   my->conf.resource_greylist.erase(name);
-}
-
-bool controller::is_resource_greylisted(const account_name &name) const {
-   return my->conf.resource_greylist.find(name) !=  my->conf.resource_greylist.end();
-}
-
-const flat_set<account_name> &controller::get_resource_greylist() const {
-   return  my->conf.resource_greylist;
 }
 
 } } /// eosio::chain
