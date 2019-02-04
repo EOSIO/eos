@@ -55,6 +55,7 @@ namespace eosio {
    using connection_wptr = std::weak_ptr<connection>;
 
    using socket_ptr = std::shared_ptr<tcp::socket>;
+   using io_work_t = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
    struct node_transaction_state {
       transaction_id_type id;
@@ -103,6 +104,7 @@ namespace eosio {
       unique_ptr<tcp::acceptor>        acceptor;
       tcp::endpoint                    listen_endpoint;
       string                           p2p_address;
+      string                           p2p_server_address;
       uint32_t                         max_client_count = 0;
       uint32_t                         max_nodes_per_host = 1;
       uint32_t                         num_clients = 0;
@@ -126,6 +128,11 @@ namespace eosio {
       bool                             done = false;
       unique_ptr< sync_manager >       sync_master;
       unique_ptr< dispatch_manager >   dispatcher;
+
+      uint16_t                                  thread_pool_size = 2;
+      optional<boost::asio::thread_pool>        thread_pool;
+      std::shared_ptr<boost::asio::io_context>  server_ioc;
+      optional<io_work_t>                       server_ioc_work;
 
       unique_ptr<boost::asio::steady_timer> connector_check;
       unique_ptr<boost::asio::steady_timer> transaction_check;
@@ -2840,6 +2847,8 @@ namespace eosio {
          ( "max-cleanup-time-msec", bpo::value<int>()->default_value(10), "max connection cleanup time per cleanup call in millisec")
          ( "network-version-match", bpo::value<bool>()->default_value(false),
            "True to require exact match of peer network version.")
+         ( "net-threads", bpo::value<uint16_t>()->default_value(my->thread_pool_size),
+           "Number of worker threads in net_plugin thread pool" )
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
          ( "use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable expirimental socket read watermark optimization")
          ( "peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
@@ -2881,36 +2890,16 @@ namespace eosio {
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
 
-         my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
          if( options.count( "p2p-listen-endpoint" ) && options.at("p2p-listen-endpoint").as<string>().length()) {
             my->p2p_address = options.at( "p2p-listen-endpoint" ).as<string>();
-            auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
-            auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
-            idump((host)( port ));
-            tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
-            // Note: need to add support for IPv6 too?
-
-            my->listen_endpoint = *my->resolver->resolve( query );
-
-            my->acceptor.reset( new tcp::acceptor( app().get_io_service()));
-
-            if( options.count( "p2p-server-address" )) {
-               my->p2p_address = options.at( "p2p-server-address" ).as<string>();
-            } else {
-               if( my->listen_endpoint.address().to_v4() == address_v4::any()) {
-                  boost::system::error_code ec;
-                  auto host = host_name( ec );
-                  if( ec.value() != boost::system::errc::success ) {
-
-                     FC_THROW_EXCEPTION( fc::invalid_arg_exception,
-                                       "Unable to retrieve host_name. ${msg}", ("msg", ec.message()));
-
-                  }
-                  auto port = my->p2p_address.substr( my->p2p_address.find( ':' ), my->p2p_address.size());
-                  my->p2p_address = host + port;
-               }
-            }
          }
+         if( options.count( "p2p-server-address" ) ) {
+            my->p2p_server_address = options.at( "p2p-server-address" ).as<string>();
+         }
+
+         my->thread_pool_size = options.at( "net-threads" ).as<uint16_t>();
+         EOS_ASSERT( my->thread_pool_size > 1, chain::plugin_config_exception,
+                     "net-threads ${num} must be greater than 1", ("num", my->thread_pool_size) );
 
          if( options.count( "p2p-peer-address" )) {
             my->supplied_peers = options.at( "p2p-peer-address" ).as<vector<string> >();
@@ -2960,13 +2949,44 @@ namespace eosio {
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
          ilog( "my node_id is ${id}", ("id", my->node_id));
 
-         my->keepalive_timer.reset( new boost::asio::steady_timer( app().get_io_service()));
-         my->ticker();
       } FC_LOG_AND_RETHROW()
    }
 
    void net_plugin::plugin_startup() {
       my->producer_plug = app().find_plugin<producer_plugin>();
+
+      my->resolver = std::make_shared<tcp::resolver>( std::ref( app().get_io_service()));
+      if( my->p2p_address.size() > 0 ) {
+         auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
+         auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
+         tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
+         // Note: need to add support for IPv6 too?
+
+         my->listen_endpoint = *my->resolver->resolve( query );
+
+         my->acceptor.reset( new tcp::acceptor( app().get_io_service()));
+
+         if( !my->p2p_server_address.empty() ) {
+            my->p2p_address = my->p2p_server_address;
+         } else {
+            if( my->listen_endpoint.address().to_v4() == address_v4::any()) {
+               boost::system::error_code ec;
+               auto host = host_name( ec );
+               if( ec.value() != boost::system::errc::success ) {
+
+                  FC_THROW_EXCEPTION( fc::invalid_arg_exception,
+                                      "Unable to retrieve host_name. ${msg}", ("msg", ec.message()));
+
+               }
+               auto port = my->p2p_address.substr( my->p2p_address.find( ':' ), my->p2p_address.size());
+               my->p2p_address = host + port;
+            }
+         }
+      }
+
+      my->keepalive_timer.reset( new boost::asio::steady_timer( app().get_io_service()));
+      my->ticker();
+
       if( my->acceptor ) {
          my->acceptor->open(my->listen_endpoint.protocol());
          my->acceptor->set_option(tcp::acceptor::reuse_address(true));
