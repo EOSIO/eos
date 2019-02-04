@@ -272,7 +272,7 @@ wallet_manager::sign_digest(const chain::digest_type& digest, const public_key_t
 
 void wallet_manager::own_and_use_wallet(const string& name, std::unique_ptr<wallet_api>&& wallet) {
    if(wallets.find(name) != wallets.end())
-      FC_THROW("tried to use wallet name the already existed");
+      EOS_THROW(wallet_exception, "Tried to use wallet name that already exists.");
    wallets.emplace(name, std::move(wallet));
 }
 
@@ -280,14 +280,16 @@ void wallet_manager::start_lock_watch(std::shared_ptr<boost::asio::deadline_time
 {
    t->async_wait([t, this](const boost::system::error_code& /*ec*/)
    {
-      struct stat statbuf;
-      int rc = stat(lock_path.string().c_str(), &statbuf);
-      if(rc == -1) {
-         if(errno == ENOENT) {
+      namespace bfs = boost::filesystem;
+      boost::system::error_code ec;
+      auto rc = bfs::status(lock_path, ec);
+      if(ec != boost::system::error_code()) {
+         if(rc.type() == bfs::file_not_found) {
             appbase::app().quit();
             EOS_THROW(wallet_exception, "Lock file removed while keosd still running.  Terminating.");
          }
       }
+      t->expires_from_now(boost::posix_time::seconds(1));
       start_lock_watch(t);
    });
 }
