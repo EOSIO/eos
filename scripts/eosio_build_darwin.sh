@@ -158,7 +158,7 @@ if [ $COUNT -gt 1 ]; then
 					fi
 				;;
 				[Nn]* ) echo "Proceeding without update!";;
-				* ) echo "Please type 'y' for yes or 'n' for no.";;
+				* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 			esac
 			brew tap eosio/eosio # Required to install mongo-cxx-driver with static library
 			printf "\\nInstalling Dependencies...\\n"
@@ -177,7 +177,7 @@ if [ $COUNT -gt 1 ]; then
 			IFS="$OIFS"
 		;;
 		[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
-		* ) echo "Please type 'y' for yes or 'n' for no.";;
+		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
 else
 	printf "\\n - No required Home Brew dependencies to install.\\n"
@@ -247,7 +247,8 @@ function print_instructions()
 printf "Please ensure the following \$PATH and \$LD_LIBRARY_PATH stucture, in the order specified, within your ~/.bash_profile/rc file:\\n"
 	# HOME/bin first to load proper cmake version over the one in /usr/bin.
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang + We don't symlink into $HOME/bin
-	printf "export PATH=\$HOME/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
+	# /usr/local/opt/python/libexec/bin: brew install python installs python3, but doesn't symlink it as python into /usr/local/bin
+	printf "export PATH=\$HOME/bin:/usr/local/opt/python/libexec/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
 	printf "export LD_LIBRARY_PATH=\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n"
 	printf "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
 	printf "cd ${BUILD_DIR} && make test\\n"
