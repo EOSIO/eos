@@ -62,12 +62,15 @@ public:
     std::map<chain::name,abi_info> abi_map;
     controller &db;
     fc::microseconds abi_serializer_max_time;
+    std::set<account_name> receiver_filter;
 
     void set_abi(name account, const abi_def& abi);
     void accepted_block( const chain::block_state_ptr& );
     void irreversible_block(const chain::block_state_ptr&);
     void accepted_transaction(const chain::transaction_metadata_ptr&);
     void applied_transaction(const chain::transaction_trace_ptr&);
+
+    bool is_handled_contract(const account_name n) const;
 
     template<typename Msg>
     void send_message(const Msg& msg) {
@@ -192,34 +195,40 @@ void event_engine_plugin_impl::accepted_transaction(const chain::transaction_met
     send_message(msg);
 }
 
+bool event_engine_plugin_impl::is_handled_contract(const account_name n) const {
+    return receiver_filter.empty() || receiver_filter.find(n) != receiver_filter.end();
+}
+
 void event_engine_plugin_impl::applied_transaction(const chain::transaction_trace_ptr& trx_trace) {
     ilog("Applied trx: ${block_num}, ${id}", ("block_num", trx_trace->block_num)("id", trx_trace->id));
 
     std::function<void(ApplyTrxMessage &msg, const chain::action_trace&)> process_action_trace = 
     [&](ApplyTrxMessage &msg, const chain::action_trace& trace) {
-        ActionData actData;
-        actData.receiver = trace.receipt.receiver;
-        actData.code = trace.act.account;
-        actData.action = trace.act.name;
-        actData.args = unpack_action_data(trace.act);
-        if(actData.args.is_null()) {
-            actData.data = trace.act.data;
-        }
-
-        std::vector<chain::name> events;
-        for(auto &event: trace.events) {
-            events.push_back(event.name);
-            EventData evData;
-            evData.code = trace.act.account;
-            evData.event = event.name;
-            evData.args = unpack_event_data(event);
-            if(evData.args.is_null()) {
-                evData.data = event.data;
+        if (is_handled_contract(trace.receipt.receiver)) {
+            ActionData actData;
+            actData.receiver = trace.receipt.receiver;
+            actData.code = trace.act.account;
+            actData.action = trace.act.name;
+            actData.args = unpack_action_data(trace.act);
+            if(actData.args.is_null()) {
+                actData.data = trace.act.data;
             }
-            actData.events.push_back(evData);
+    
+            std::vector<chain::name> events;
+            for(auto &event: trace.events) {
+                events.push_back(event.name);
+                EventData evData;
+                evData.code = trace.act.account;
+                evData.event = event.name;
+                evData.args = unpack_event_data(event);
+                if(evData.args.is_null()) {
+                    evData.data = event.data;
+                }
+                actData.events.push_back(evData);
+            }
+            msg.actions.push_back(std::move(actData));
+            ilog("  action: ${contract}:${action} ${events}", ("contract", trace.act.account)("action", trace.act.name)("events", events));
         }
-        msg.actions.push_back(std::move(actData));
-        ilog("  action: ${contract}:${action} ${events}", ("contract", trace.act.account)("action", trace.act.name)("events", events));
 
         for(auto &inline_trace: trace.inline_traces) {
             process_action_trace(msg, inline_trace);
@@ -241,7 +250,15 @@ event_engine_plugin::~event_engine_plugin(){}
 void event_engine_plugin::set_program_options(options_description&, options_description& cfg) {
     cfg.add_options()
         ("event-engine-dumpfile", bpo::value<string>()->default_value(""))
+        ("event-engine-contract", bpo::value<vector<string>>()->composing()->multitoken(),
+         "Smart-contracts for which event_engine will handle events (may specify multiple times)")
         ;
+}
+
+#define LOAD_VALUE_SET(options, name, container) \
+if( options.count(name) ) { \
+   const auto& ops = options[name].as<std::vector<std::string>>(); \
+   std::copy(ops.begin(), ops.end(), std::inserter(container, container.end())); \
 }
 
 void event_engine_plugin::plugin_initialize(const variables_map& options) {
@@ -251,6 +268,8 @@ void event_engine_plugin::plugin_initialize(const variables_map& options) {
         auto& chain = chain_plug->chain();
 
         my.reset(new event_engine_plugin_impl(chain, chain_plug->get_abi_serializer_max_time()));
+
+        LOAD_VALUE_SET(options, "event-engine-contract", my->receiver_filter);
 
         std::string dump_filename = options.at("event-engine-dumpfile").as<string>();
         if(dump_filename != "") {
