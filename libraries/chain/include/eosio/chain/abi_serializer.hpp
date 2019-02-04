@@ -50,8 +50,8 @@ struct abi_serializer {
    const struct_def& get_struct(const type_name& type)const;
 
    type_name get_action_type(name action)const;
-   type_name get_event_type(name action)const;
-   type_name get_table_type(name action)const;
+   type_name get_event_type(name event)const;
+   type_name get_table_type(name table)const;
 
    optional<string>  get_error_message( uint64_t error_code )const;
 
