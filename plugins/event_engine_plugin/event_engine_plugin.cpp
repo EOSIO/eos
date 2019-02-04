@@ -20,22 +20,14 @@ public:
     abi_info(const account_name& code, abi_def abi, const chain::microseconds& max_time)
     : code_(code) {
         serializer_.set_abi(abi, max_time);
-        for(auto& evt: abi.events) {
-            events_.emplace(evt.name, evt.type);
-        }
-        for(auto& act: abi.actions) {
-            actions_.emplace(act.name, act.type);
-        }
     }
 
     std::string get_event_type(const chain::event_name& n) const {
-        auto itr = events_.find(n);
-        return (itr != events_.end()) ? itr->second : std::string();
+        return serializer_.get_event_type(n);
     }
 
     std::string get_action_type(const chain::event_name& n) const {
-        auto itr = actions_.find(n);
-        return (itr != actions_.end()) ? itr->second : std::string();
+        return serializer_.get_action_type(n);
     }
 
     fc::variant to_object(
@@ -51,8 +43,6 @@ public:
 private:
     const account_name code_;
     eosio::chain::abi_serializer serializer_;
-    fc::flat_map<chain::event_name,chain::type_name> events_;
-    fc::flat_map<chain::action_name,chain::type_name> actions_;
 };
 
 class event_engine_plugin_impl {

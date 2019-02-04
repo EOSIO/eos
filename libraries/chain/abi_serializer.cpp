@@ -111,6 +111,7 @@ namespace eosio { namespace chain {
       typedefs.clear();
       structs.clear();
       actions.clear();
+      events.clear();
       tables.clear();
       error_messages.clear();
       variants.clear();
@@ -132,6 +133,12 @@ namespace eosio { namespace chain {
          auto res = actions.insert(std::make_pair(a.name, a.type));
          EOS_ASSERT(res.second, duplicate_abi_action_def_exception,
             "duplicate action definition ${action} detected", ("action", a.name));
+      }
+
+      for( const auto& a : abi.events ) {
+         auto res = events.insert(std::make_pair(a.name, a.type));
+         EOS_ASSERT(res.second, duplicate_abi_event_def_exception,
+            "duplicate event definition ${event} detected", ("event", a.name));
       }
 
       for( const auto& t : abi.tables ) {
@@ -271,6 +278,10 @@ namespace eosio { namespace chain {
         ctx.check_deadline();
         EOS_ASSERT(_is_type(a.second, ctx), invalid_type_inside_abi, "${type}", ("type",a.second) );
       } FC_CAPTURE_AND_RETHROW( (a)  ) }
+      for( const auto& s : events ) { try {
+        ctx.check_deadline();
+        EOS_ASSERT(_is_type(s.second, ctx), invalid_type_inside_abi, "${type}", ("type",s.second) );
+      } FC_CAPTURE_AND_RETHROW( (s)  ) }
 
       for( const auto& t : tables ) { try {
         ctx.check_deadline();
@@ -545,8 +556,15 @@ namespace eosio { namespace chain {
       if( itr != actions.end() ) return itr->second;
       return type_name();
    }
-   type_name abi_serializer::get_table_type(name action)const {
-      auto itr = tables.find(action);
+
+   type_name abi_serializer::get_event_type(name event)const {
+      auto itr = events.find(event);
+      if( itr != events.end() ) return itr->second;
+      return type_name();
+   }
+
+   type_name abi_serializer::get_table_type(name table)const {
+      auto itr = tables.find(table);
       if( itr != tables.end() ) return itr->second;
       return type_name();
    }
