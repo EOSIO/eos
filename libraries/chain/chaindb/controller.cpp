@@ -276,6 +276,7 @@ namespace cyberway { namespace chaindb {
             auto value = table.abi->to_object(table, data, size);
             auto obj = object_value{{table, pk, payer, size}, std::move(value)};
 
+            cache_.remove(table, pk);
             auto updated_pk = update(table, obj);
 
             // TODO: update RAM usage
@@ -298,6 +299,8 @@ namespace cyberway { namespace chaindb {
         primary_key_t remove(apply_context&, const table_request& request, const primary_key_t pk) {
             auto table = get_table(request);
             auto obj = object_by_pk(table, pk);
+
+            cache_.remove(table, pk);
             auto removed_pk = remove(table, obj);
 
             // TODO: update RAM usage
