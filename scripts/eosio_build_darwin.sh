@@ -183,7 +183,6 @@ else
 	printf "\\n - No required Home Brew dependencies to install.\\n"
 fi
 
-
 printf "Checking CMAKE installation...\\n"
 CMAKE=$(command -v cmake 2>/dev/null)
 if [ -z $CMAKE ]; then

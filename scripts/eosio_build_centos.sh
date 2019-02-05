@@ -165,8 +165,6 @@ if [ -d /opt/rh/python33 ]; then
 	source /opt/rh/python33/enable || exit 1
 	printf " - Python33 successfully enabled!\\n"
 fi
-export CPATH="$CPATH:/opt/rh/python33/root/usr/include/python3.3m" # m on the end causes problems with boost finding python3
-
 
 printf "\\n"
 
@@ -191,7 +189,7 @@ fi
 
 printf "\\n"
 
-
+export CPATH="$CPATH:/opt/rh/python33/root/usr/include/python3.3m" # m on the end causes problems with boost finding python3
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
 if [ ! -d $BOOST_ROOT ]; then
 	printf "Installing Boost library...\\n"
