@@ -234,10 +234,18 @@ namespace cyberway { namespace chaindb {
                 continue;
             }
 
+            std::string path;
+            std::set<std::string> paths;
             std::map<index_name, const index_def*> indexes;
-            for (auto& index: ttr->second->indexes) indexes.emplace(index.name, &index);
-            CYBERWAY_ASSERT(ttr->second->indexes.size() == indexes.size(), unique_index_name_exception,
-                "The account '${table} should has unique index names", ("table", get_full_table_name(table)));
+            for (auto& index: ttr->second->indexes) {
+                indexes.emplace(index.name, &index);
+                path.clear();
+                for (auto& order: index.orders) path.append(":").append(order.field);
+                paths.insert(path);
+            }
+            CYBERWAY_ASSERT(ttr->second->indexes.size() == indexes.size() && indexes.size() == paths.size(),
+                unique_index_name_exception,
+                "The account '${table} should has unique indexes", ("table", get_full_table_name(table)));
 
             for (auto& db_index: db_table.indexes) {
                 auto itr = indexes.find(db_index.name);
