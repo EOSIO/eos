@@ -105,9 +105,8 @@ printf "    \\  \\::/       \\  \\::/        /__/:/        \\__\\/      \\  \\::
 printf "     \\__\\/         \\__\\/         \\__\\/                     \\__\\/ \n\n${txtrst}"
 
 printf "==============================================================================================\\n"
-printf "Please execute (and append to .bash_profile) the following:\\n"
-printf "${bldred}${txtbld}export LD_LIBRARY_PATH=\"${LIB_LOCATION}:$\LD_LIBRARY_PATH\"\\n"
-printf "export PATH=$BIN_LOCATION:\$PATH${txtrst}\\n"
+printf "EOSIO has been installed into $HOME/bin.\\n"
+printf "If you need to, you can fully uninstall using eosio_uninstall.sh && scripts/clean_old_install.sh.\\n"
 printf "==============================================================================================\\n\\n"
 
 printf "EOSIO website: https://eos.io\\n"
