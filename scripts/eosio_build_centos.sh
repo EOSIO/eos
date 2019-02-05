@@ -120,9 +120,9 @@ printf "\\n"
 
 DEP_ARRAY=( 
 	git autoconf automake libtool make bzip2 doxygen graphviz \
-				bzip2-devel openssl-devel gmp-devel \
-				ocaml libicu-devel python python-devel python33 python33-devel \
-				gettext-devel file sudo
+	bzip2-devel openssl-devel gmp-devel \
+	ocaml libicu-devel python python-devel python33 python33-devel \
+	gettext-devel file sudo
  )
 COUNT=1
 DISPLAY=""
