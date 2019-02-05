@@ -266,8 +266,6 @@ if [ "$ARCH" == "Darwin" ]; then
    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 fi
 
-
-
 # Cleanup old installation
 (. ${CURRENT_DIR}/scripts/clean_old_install.sh)
 if [ $? -ne 0 ]; then exit -1; fi # Stop if exit from script is not 0
