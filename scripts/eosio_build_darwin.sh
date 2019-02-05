@@ -184,10 +184,27 @@ else
 fi
 
 
+printf "Checking CMAKE installation...\\n"
+CMAKE=$(command -v cmake 2>/dev/null)
+if [ -z $CMAKE ]; then
+	printf "Installing CMAKE...\\n"
+	curl -LO https://cmake.org/files/v$CMAKE_VERSION_MAJOR.$CMAKE_VERSION_MINOR/cmake-$CMAKE_VERSION.tar.gz \
+	&& tar xf cmake-$CMAKE_VERSION.tar.gz \
+	&& cd cmake-$CMAKE_VERSION \
+	&& ./bootstrap --prefix=$HOME \
+	&& make -j"${JOBS}" \
+	&& make install \
+	&& cd .. \
+	&& rm -f cmake-$CMAKE_VERSION.tar.gz \
+	|| exit 1
+	printf " - CMAKE successfully installed @ ${HOME}/bin/cmake \\n"
+else
+	printf " - CMAKE found @ ${CMAKE}.\\n"
+fi
+
 printf "\\n"
 
-export CPATH="$HOME/include:$CPATH:${python-config --includes | awk '{print $1}' | cut -dI -f2}" # Boost has trouble finding pyconfig.h
-
+export CPATH="$HOME/include:${python-config --includes | awk '{print $1}' | cut -dI -f2}:$CPATH" # Boost has trouble finding pyconfig.h
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
 BOOSTVERSION=$( grep "#define BOOST_VERSION" "$HOME/opt/boost/include/boost/version.hpp" | tail -1 | tr -s ' ' | cut -d\  -f3 )
 if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
@@ -230,6 +247,40 @@ if [ ! -d $MONGODB_ROOT ]; then
 else
 	printf " - MongoDB found with correct version @ ${MONGODB_ROOT}.\\n"
 fi
+printf "Checking MongoDB C driver installation...\\n"
+if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
+	printf "Installing MongoDB C driver...\\n"
+	curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+	&& tar -xzvf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+	&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
+	&& mkdir -p cmake-build \
+	&& cd cmake-build \
+	&& cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME -DENABLE_BSON=ON -DENABLE_SSL=DARWIN -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
+	&& make -j"${JOBS}" \
+	&& make install \
+	&& cd ../.. \
+	&& rm mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+	|| exit 1
+	printf " - MongoDB C driver successfully installed @ ${MONGO_C_DRIVER_ROOT}.\\n"
+else
+	printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
+fi
+printf "Checking MongoDB C++ driver installation...\\n"
+if [ "$(grep "Version:" $HOME/lib/pkgconfig/libmongocxx-static.pc | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ]; then
+	printf "Installing MongoDB C++ driver...\\n"
+	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+	&& tar -xzvf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
+	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
+	&& cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
+	&& make -j"${JOBS}" VERBOSE=1 \
+	&& make install \
+	&& cd ../.. \
+	&& rm -f mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+	|| exit 1
+	printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+else
+	printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+fi
 
 # We install llvm into /usr/local/opt using brew install llvm@4
 printf "\\nChecking LLVM 4 support...\\n"
@@ -252,7 +303,8 @@ printf "Please ensure the following in your ~/.bash_profile:\\n"
 	# /usr/local/opt/python/libexec/bin: brew install python installs python3, but doesn't symlink it as python into /usr/local/bin
 	printf "export PATH=\$HOME/bin:/usr/local/opt/python/libexec/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
 	printf "export LD_LIBRARY_PATH=\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n"
-	printf "export CPATH=\$HOME/include:\$CPATH:$(python-config --includes | awk '{print $1}' | cut -dI -f2)\\n"
+	printf "export CMAKE_MODULE_PATH=\$HOME/lib/cmake\\n"
+	printf "export CPATH=\$HOME/include:$(python-config --includes | awk '{print $1}' | cut -dI -f2):\$CPATH\\n"
 	printf "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
 	printf "cd ${BUILD_DIR} && make test\\n"
 	return 0

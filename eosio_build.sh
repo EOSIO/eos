@@ -194,10 +194,11 @@ printf "\\nARCHITECTURE: %s\\n" "${ARCH}"
 
 popd &> /dev/null
 
+export CPATH=$HOME/include:$CPATH
+export LD_LIBRARY_PATH=$HOME/lib:$HOME/lib64:$HOME/opt/llvm/lib:$LD_LIBRARY_PATH
+export CMAKE_MODULE_PATH=$HOME/lib/cmake
 if [ "$ARCH" == "Linux" ]; then
    export PATH=$HOME/bin:$PATH:$HOME/opt/mongodb/bin:$HOME/opt/llvm/bin
-   export LD_LIBRARY_PATH=$HOME/lib:$HOME/lib64:$HOME/opt/llvm/lib:$LD_LIBRARY_PATH
-   export CPATH=$HOME/include:$CPATH
    export OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
    OPENSSL_ROOT_DIR=/usr/include/openssl
    if [ ! -e /etc/os-release ]; then
@@ -257,14 +258,14 @@ if [ "$ARCH" == "Darwin" ]; then
    export OS_NAME=MacOSX
 	# HOME/bin first to load proper cmake version over the one in /usr/bin.
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang
-   export PATH=$HOME/bin:$PATH:$HOME/opt/mongodb/bin:/usr/local/opt/gettext/bin:$HOME/opt/llvm/bin
-   export LD_LIBRARY_PATH=$HOME/lib:$HOME/lib64:$HOME/opt/llvm/lib:$LD_LIBRARY_PATH
-   export CPATH=$HOME/include:$CPATH
+   export PATH=$HOME/bin:/usr/local/opt/python/libexec/bin:$PATH:$HOME/opt/mongodb/bin:/usr/local/opt/gettext/bin:$HOME/opt/llvm/bin
    FILE="${CURRENT_DIR}/scripts/eosio_build_darwin.sh"
    CXX_COMPILER=clang++
    C_COMPILER=clang
    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 fi
+
+
 
 # Cleanup old installation
 (. ${CURRENT_DIR}/scripts/clean_old_install.sh)
