@@ -204,7 +204,7 @@ fi
 
 printf "\\n"
 
-export CPATH="$HOME/include:${python-config --includes | awk '{print $1}' | cut -dI -f2}:$CPATH" # Boost has trouble finding pyconfig.h
+export CPATH="$HOME/include:$(python-config --includes | awk '{print $1}' | cut -dI -f2):$CPATH" # Boost has trouble finding pyconfig.h
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
 BOOSTVERSION=$( grep "#define BOOST_VERSION" "$HOME/opt/boost/include/boost/version.hpp" | tail -1 | tr -s ' ' | cut -d\  -f3 )
 if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
