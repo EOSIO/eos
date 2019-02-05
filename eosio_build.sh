@@ -259,7 +259,7 @@ if [ "$ARCH" == "Darwin" ]; then
 	# HOME/bin first to load proper cmake version over the one in /usr/bin.
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang
    export PATH=$HOME/bin:/usr/local/opt/python/libexec/bin:$PATH:$HOME/opt/mongodb/bin:/usr/local/opt/gettext/bin:$HOME/opt/llvm/bin
-   EXTRA_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH=/usr/local/opt/gettext" # cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
+   LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH=/usr/local/opt/gettext ${LOCAL_CMAKE_FLAGS}" # cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
    FILE="${CURRENT_DIR}/scripts/eosio_build_darwin.sh"
    CXX_COMPILER=clang++
    C_COMPILER=clang
@@ -290,7 +290,7 @@ $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMP
    -DCMAKE_C_COMPILER="${C_COMPILER}" -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
    -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
    -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
-   -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio $EXTRA_CMAKE_FLAGS $LOCAL_CMAKE_FLAGS "${CURRENT_DIR}"
+   -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio $LOCAL_CMAKE_FLAGS "${CURRENT_DIR}"
 if [ $? -ne 0 ]; then exit -1; fi
 make -j"${JOBS}"
 if [ $? -ne 0 ]; then exit -1; fi
