@@ -631,6 +631,14 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    uint32_t pack_size = fc::raw::pack_size( pkt );
    vector<char> buf(pack_size);
    fc::datastream<char*> ds(buf.data(), pack_size);
+
+   signed_int si0((1<<30)+2), si1;  //test signed_int pack/unpack works with large ints
+   fc::raw::pack(ds,si0);
+   ds.seekp(0);
+   fc::raw::unpack(ds,si1);
+   ds.seekp(0);
+   BOOST_CHECK_EQUAL(si0,si1);
+
    fc::raw::pack( ds, pkt );
    // unpack
    ds.seekp(0);
