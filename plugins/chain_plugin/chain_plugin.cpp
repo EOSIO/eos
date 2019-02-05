@@ -224,20 +224,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Number of worker threads in controller thread pool")
          ("contracts-console", bpo::bool_switch()->default_value(false),
           "print contract's output to console")
-         ("actor-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Account added to actor whitelist (may specify multiple times)")
-         ("actor-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Account added to actor blacklist (may specify multiple times)")
-         ("contract-whitelist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Contract account added to contract whitelist (may specify multiple times)")
-         ("contract-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Contract account added to contract blacklist (may specify multiple times)")
-         ("action-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Action (in the form code::action) added to action blacklist (may specify multiple times)")
-         ("key-blacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Public key added to blacklist of keys that should not be included in authorities (may specify multiple times)")
-         ("sender-bypass-whiteblacklist", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "Deferred transactions sent by accounts in this list do not have any of the subjective whitelist/blacklist checks applied to them (may specify multiple times)")
          ("read-mode", boost::program_options::value<eosio::chain::db_read_mode>()->default_value(eosio::chain::db_read_mode::SPECULATIVE),
           "Database read mode (\"speculative\", \"head\", or \"read-only\").\n"// or \"irreversible\").\n"
           "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
@@ -349,33 +335,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       my->chain_config = controller::config();
 
-      LOAD_VALUE_SET( options, "sender-bypass-whiteblacklist", my->chain_config->sender_bypass_whiteblacklist );
-      LOAD_VALUE_SET( options, "actor-whitelist", my->chain_config->actor_whitelist );
-      LOAD_VALUE_SET( options, "actor-blacklist", my->chain_config->actor_blacklist );
-      LOAD_VALUE_SET( options, "contract-whitelist", my->chain_config->contract_whitelist );
-      LOAD_VALUE_SET( options, "contract-blacklist", my->chain_config->contract_blacklist );
-
       LOAD_VALUE_SET( options, "trusted-producer", my->chain_config->trusted_producers );
-
-      if( options.count( "action-blacklist" )) {
-         const std::vector<std::string>& acts = options["action-blacklist"].as<std::vector<std::string>>();
-         auto& list = my->chain_config->action_blacklist;
-         for( const auto& a : acts ) {
-            auto pos = a.find( "::" );
-            EOS_ASSERT( pos != std::string::npos, plugin_config_exception, "Invalid entry in action-blacklist: '${a}'", ("a", a));
-            account_name code( a.substr( 0, pos ));
-            action_name act( a.substr( pos + 2 ));
-            list.emplace( code.value, act.value );
-         }
-      }
-
-      if( options.count( "key-blacklist" )) {
-         const std::vector<std::string>& keys = options["key-blacklist"].as<std::vector<std::string>>();
-         auto& list = my->chain_config->key_blacklist;
-         for( const auto& key_str : keys ) {
-            list.emplace( key_str );
-         }
-      }
 
       if( options.count( "blocks-dir" )) {
          auto bld = options.at( "blocks-dir" ).as<bfs::path>();
@@ -1723,9 +1683,8 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.last_code_update = a.last_code_update;
    result.created          = a.creation_date;
 
-   bool grelisted = db.is_resource_greylisted(result.account_name);
-   result.net_limit = rm.get_account_net_limit_ex( result.account_name, !grelisted);
-   result.cpu_limit = rm.get_account_cpu_limit_ex( result.account_name, !grelisted);
+   result.net_limit = rm.get_account_net_limit_ex(result.account_name);
+   result.cpu_limit = rm.get_account_cpu_limit_ex(result.account_name);
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
 
    const auto& permissions = d.get_index<permission_index,by_owner>();

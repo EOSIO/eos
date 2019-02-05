@@ -538,8 +538,6 @@ void producer_plugin::set_program_options(
           "   KEOSD:<data>    \tis the URL where keosd is available and the approptiate wallet(s) are unlocked")
          ("keosd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5),
           "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a keosd provider for signing")
-         ("greylist-account", boost::program_options::value<vector<string>>()->composing()->multitoken(),
-          "account that can not access to extended CPU/NET virtual resources")
          ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
           "offset of non last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
@@ -724,15 +722,6 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       return my->on_incoming_transaction_async(trx, persist_until_expired, next );
    });
 
-   if (options.count("greylist-account")) {
-      std::vector<std::string> greylist = options["greylist-account"].as<std::vector<std::string>>();
-      greylist_params param;
-      for (auto &a : greylist) {
-         param.accounts.push_back(account_name(a));
-      }
-      add_greylist_accounts(param);
-   }
-
 } FC_LOG_AND_RETHROW() }
 
 void producer_plugin::plugin_startup()
@@ -866,53 +855,6 @@ producer_plugin::runtime_options producer_plugin::get_runtime_options() const {
       my->_last_block_time_offset_us,
       my->_max_scheduled_transaction_time_per_block_ms
    };
-}
-
-void producer_plugin::add_greylist_accounts(const greylist_params& params) {
-   chain::controller& chain = my->chain_plug->chain();
-   for (auto &acc : params.accounts) {
-      chain.add_resource_greylist(acc);
-   }
-}
-
-void producer_plugin::remove_greylist_accounts(const greylist_params& params) {
-   chain::controller& chain = my->chain_plug->chain();
-   for (auto &acc : params.accounts) {
-      chain.remove_resource_greylist(acc);
-   }
-}
-
-producer_plugin::greylist_params producer_plugin::get_greylist() const {
-   chain::controller& chain = my->chain_plug->chain();
-   greylist_params result;
-   const auto& list = chain.get_resource_greylist();
-   result.accounts.reserve(list.size());
-   for (auto &acc: list) {
-      result.accounts.push_back(acc);
-   }
-   return result;
-}
-
-producer_plugin::whitelist_blacklist producer_plugin::get_whitelist_blacklist() const {
-   chain::controller& chain = my->chain_plug->chain();
-   return {
-      chain.get_actor_whitelist(),
-      chain.get_actor_blacklist(),
-      chain.get_contract_whitelist(),
-      chain.get_contract_blacklist(),
-      chain.get_action_blacklist(),
-      chain.get_key_blacklist()
-   };
-}
-
-void producer_plugin::set_whitelist_blacklist(const producer_plugin::whitelist_blacklist& params) {
-   chain::controller& chain = my->chain_plug->chain();
-   if(params.actor_whitelist.valid()) chain.set_actor_whitelist(*params.actor_whitelist);
-   if(params.actor_blacklist.valid()) chain.set_actor_blacklist(*params.actor_blacklist);
-   if(params.contract_whitelist.valid()) chain.set_contract_whitelist(*params.contract_whitelist);
-   if(params.contract_blacklist.valid()) chain.set_contract_blacklist(*params.contract_blacklist);
-   if(params.action_blacklist.valid()) chain.set_action_blacklist(*params.action_blacklist);
-   if(params.key_blacklist.valid()) chain.set_key_blacklist(*params.key_blacklist);
 }
 
 producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash() const {
