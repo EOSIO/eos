@@ -23,8 +23,7 @@
   ],
   "actions": [{
       "name": "store",
-      "type": "store",
-      "ricardian_contract": ""
+      "type": "store"
     }
 
   ],
@@ -36,6 +35,5 @@
       "key_types" : ["uint64"]
     }
   ],
-  "ricardian_clauses": [],
   "abi_extensions": []
 }

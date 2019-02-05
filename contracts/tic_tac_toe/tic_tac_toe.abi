@@ -82,20 +82,16 @@
   ],
   "actions": [{
       "name": "create",
-      "type": "create",
-      "ricardian_contract": ""
+      "type": "create"
     },{
       "name": "restart",
-      "type": "restart",
-      "ricardian_contract": ""
+      "type": "restart"
     },{
       "name": "close",
-      "type": "close",
-      "ricardian_contract": ""
+      "type": "close"
     },{
       "name": "move",
-      "type": "move",
-      "ricardian_contract": ""
+      "type": "move"
     }
   ],
   "tables": [{
@@ -110,7 +106,6 @@
       "type": "game"
     }
   ],
-  "ricardian_clauses": [],
   "error_messages": [],
   "abi_extensions": []
 }

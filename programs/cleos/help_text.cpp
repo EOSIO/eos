@@ -157,8 +157,7 @@ const char* error_advice_abi_type_exception =  R"=====(Ensure that your abi JSON
     "key_names":[ "field_name" ],
     "key_types":[ "type_name" ],
     "type":"type_name" "
-  }],
-  "ricardian_clauses": [{ "id": "string", "body": "string" }]
+  }]
 }
 e.g.
 {
@@ -174,8 +173,7 @@ e.g.
     "key_names":[ "by" ],
     "key_types":[ "account_name" ],
     "type":"foobar"
-  }],
-  "ricardian_clauses": [{ "id": "foo", "body": "bar" }]
+  }]
 })=====";
 const char* error_advice_block_id_type_exception =  "Ensure that the block ID is a SHA-256 hexadecimal string!";
 const char* error_advice_transaction_id_type_exception =  "Ensure that the transaction ID is a SHA-256 hexadecimal string!";

@@ -59,16 +59,13 @@
   ],
   "actions": [{
       "name": "setentry",
-      "type": "setentry",
-      "ricardian_contract": ""
+      "type": "setentry"
     },{
       "name": "rmentry",
-      "type": "rmentry",
-      "ricardian_contract": ""
+      "type": "rmentry"
     },{
       "name": "printentry",
-      "type": "printentry",
-      "ricardian_contract": ""
+      "type": "printentry"
     }
   ],
   "tables": [{
@@ -82,6 +79,5 @@
       ],
       "type": "test"
     }
-  ],
-  "ricardian_clauses": []
+  ]
 }

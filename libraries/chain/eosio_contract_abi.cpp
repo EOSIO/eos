@@ -485,8 +485,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
       }
    });
 
-   // TODO add any ricardian_clauses
-   //
    // ACTION PAYLOADS
 
    eos_abi.structs.emplace_back( struct_def {
@@ -581,19 +579,18 @@ abi_def eosio_contract_abi(abi_def eos_abi)
       }
    });
 
-   // TODO add ricardian contracts
-   eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount",""} );
-   eos_abi.actions.push_back( action_def{name("setcode"), "setcode",""} );
-   eos_abi.actions.push_back( action_def{name("setabi"), "setabi",""} );
-   eos_abi.actions.push_back( action_def{name("updateauth"), "updateauth",""} );
-   eos_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth",""} );
-   eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth",""} );
-   eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth",""} );
-   eos_abi.actions.push_back( action_def{name("providebw"), "providebw",""} );
-   eos_abi.actions.push_back( action_def{name("requestbw"), "requestbw",""} );
-   eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay",""} );
-   eos_abi.actions.push_back( action_def{name("onerror"), "onerror",""} );
-   eos_abi.actions.push_back( action_def{name("onblock"), "onblock",""} );
+   eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
+   eos_abi.actions.push_back( action_def{name("setcode"), "setcode"} );
+   eos_abi.actions.push_back( action_def{name("setabi"), "setabi"} );
+   eos_abi.actions.push_back( action_def{name("updateauth"), "updateauth"} );
+   eos_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth"} );
+   eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth"} );
+   eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth"} );
+   eos_abi.actions.push_back( action_def{name("providebw"), "providebw"} );
+   eos_abi.actions.push_back( action_def{name("requestbw"), "requestbw"} );
+   eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
+   eos_abi.actions.push_back( action_def{name("onerror"), "onerror"} );
+   eos_abi.actions.push_back( action_def{name("onblock"), "onblock"} );
 
    return eos_abi;
 }
@@ -629,12 +626,11 @@ abi_def domain_contract_abi(abi_def abi) {
         {"name",  "string"}}
     });
 
-    // TODO add ricardian contracts
-    abi.actions.push_back(action_def{name("newusername"), "newusername",""});
-    abi.actions.push_back(action_def{name("newdomain"), "newdomain",""});
-    abi.actions.push_back(action_def{name("passdomain"), "passdomain",""});
-    abi.actions.push_back(action_def{name("linkdomain"), "linkdomain",""});
-    abi.actions.push_back(action_def{name("unlinkdomain"), "unlinkdomain",""});
+    abi.actions.push_back(action_def{name("newusername"), "newusername"});
+    abi.actions.push_back(action_def{name("newdomain"), "newdomain"});
+    abi.actions.push_back(action_def{name("passdomain"), "passdomain"});
+    abi.actions.push_back(action_def{name("linkdomain"), "linkdomain"});
+    abi.actions.push_back(action_def{name("unlinkdomain"), "unlinkdomain"});
 
     return abi;
 }

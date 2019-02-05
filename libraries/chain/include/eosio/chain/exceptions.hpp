@@ -381,10 +381,9 @@ namespace eosio { namespace chain {
                                  3015000, "ABI exception" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_not_found_exception,              abi_exception,
                                     3015001, "No ABI found" )
-      FC_DECLARE_DERIVED_EXCEPTION( invalid_ricardian_clause_exception,   abi_exception,
-                                    3015002, "Invalid Ricardian Clause" )
-      FC_DECLARE_DERIVED_EXCEPTION( invalid_ricardian_action_exception,   abi_exception,
-                                    3015003, "Invalid Ricardian Action" )
+
+// CYBERWAY: ricardian exceptions (3015002, 3015003) removed
+
       FC_DECLARE_DERIVED_EXCEPTION( invalid_type_inside_abi,           abi_exception,
                                     3015004, "The type defined in the ABI is invalid" ) // Not to be confused with abi_type_exception
       FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_type_def_exception,     abi_exception,

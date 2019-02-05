@@ -63,11 +63,9 @@
   ],
   "actions": [{
       "name": "exec",
-      "type": "exec",
-      "ricardian_contract": ""
+      "type": "exec"
     }
   ],
   "tables": [],
-  "ricardian_clauses": [],
   "abi_extensions": []
 }

@@ -46,16 +46,13 @@
   ],
   "actions": [{
       "name": "transfer",
-      "type": "transfer",
-      "ricardian_contract": ""
+      "type": "transfer"
     },{
       "name": "issue",
-      "type": "issue",
-      "ricardian_contract": ""
+      "type": "issue"
     }, {
       "name": "create",
-      "type": "create",
-      "ricardian_contract": ""
+      "type": "create"
     }
 
   ],
@@ -73,6 +70,5 @@
       "key_types" : ["uint64"]
     }
   ],
-  "ricardian_clauses": [],
   "abi_extensions": []
 }
