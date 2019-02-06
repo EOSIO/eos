@@ -133,6 +133,7 @@ docker volume rm keosd-data-volume
 
 ### Docker Hub
 
+Docker Hub images are now deprecated. New build images were discontinued on January 1st, 2019. The existing old images will be removed on June 1st, 2019.
 
 ### EOSIO Testnet
 
