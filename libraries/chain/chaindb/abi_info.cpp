@@ -148,6 +148,7 @@ namespace cyberway { namespace chaindb {
                         --size;
                         if (!size) {
                             auto field = src_field;
+                            field.index_count++;
                             field.type = serializer_.resolve_type(src_field.type);
                             order.type = field.type;
                             dst_struct->fields.emplace_back(std::move(field));

@@ -157,7 +157,7 @@ namespace eosio { namespace chain {
             "duplicate error message definition ${error} detected", ("error", e.error_code));
       }
 
-      for( const auto& v : abi.variants.value ) {
+      for( const auto& v : abi.variants ) {
          auto res = variants.insert(std::make_pair(v.name, v));
          EOS_ASSERT(res.second, duplicate_abi_variant_def_exception,
             "duplicate variant definition ${variant} detected", ("variant", v.name));

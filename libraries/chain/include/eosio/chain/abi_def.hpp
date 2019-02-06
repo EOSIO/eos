@@ -33,6 +33,9 @@ struct field_def {
    bool operator==(const field_def& other) const {
       return std::tie(name, type) == std::tie(other.name, other.type);
    }
+
+   // The following fields are service and set by chain code
+   uint       index_count = 0;
 };
 
 struct struct_def {
@@ -61,23 +64,25 @@ struct action_def {
 };
 
 struct event_def {
-    event_def() = default;
-    event_def(const event_name& name, const type_name& type)
-        :name(name), type(type)
-    {}
+   event_def() = default;
+   event_def(const event_name& name, const type_name& type)
+   :name(name), type(type)
+   {}
 
-    event_name name;
-    type_name   type;
+   event_name name;
+   type_name  type;
 };
 
 struct order_def {
    order_def() = default;
    order_def(const field_name& field, const type_name& order)
-   : field(field), order(order)
-   { }
+   :field(field), order(order)
+   {}
 
    field_name         field;
    type_name          order; // asc/desc
+
+   // The following fields are service and set by chain code
    vector<field_name> path;
    type_name          type;
 };
@@ -86,7 +91,7 @@ struct index_def {
    index_def() = default;
    index_def(const index_name& name, const bool unique, const vector<order_def>& orders)
    : name(name), unique(unique), orders(orders)
-   { }
+   {}
 
    index_name         name;
    bool               unique = false;
@@ -100,9 +105,11 @@ struct table_def {
    {}
 
    table_name         name;        // the name of the table
-   int64_t            row_count = 0;
    type_name          type;        // type of binary data stored in this table
    vector<index_def>  indexes;     //
+
+   // The following fields are service and set by chain code
+   int64_t            row_count = 0;
 };
 
 struct error_message {
@@ -136,7 +143,7 @@ struct abi_def {
    ,error_messages(error_msgs)
    {}
 
-   string                              version = "cyberway::abi/1.1";
+   string                              version = "cyberway::abi/1.0";
    vector<type_def>                    types;
    vector<struct_def>                  structs;
    vector<action_def>                  actions;
@@ -144,7 +151,7 @@ struct abi_def {
    vector<table_def>                   tables;
    vector<error_message>               error_messages;
    extensions_type                     abi_extensions;
-   may_not_exist<vector<variant_def>>  variants;
+   vector<variant_def>                 variants;
 };
 
 abi_def eosio_contract_abi(abi_def abi = abi_def());
