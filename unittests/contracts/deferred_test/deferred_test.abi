@@ -42,20 +42,16 @@
   ],
   "actions": [{
       "name": "defercall",
-      "type": "defercall",
-      "ricardian_contract": ""
+      "type": "defercall"
     },{
       "name": "deferfunc",
-      "type": "deferfunc",
-      "ricardian_contract": ""
+      "type": "deferfunc"
     },{
       "name": "inlinecall",
-      "type": "inlinecall",
-      "ricardian_contract": ""
+      "type": "inlinecall"
     }
   ],
   "tables": [],
-  "ricardian_clauses": [],
   "error_messages": [],
   "abi_extensions": []
 }

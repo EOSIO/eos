@@ -24,8 +24,7 @@
   ],
   "actions": [{
       "name": "message",
-      "type": "message",
-      "ricardian_contract": ""
+      "type": "message"
     }
   ],
   "tables": [{
@@ -42,6 +41,5 @@
       "key_types" : ["my_account_name"]
     }
   ],
-  "ricardian_clauses": [],
   "abi_extensions": []
 }

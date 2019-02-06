@@ -23,15 +23,12 @@
    "actions": [
       {
          "name": "procassert",
-         "type": "assertdef",
-         "ricardian_contract": ""
+         "type": "assertdef"
       }, {
          "name": "provereset",
-         "type": "nothing",
-         "ricardian_contract": ""
+         "type": "nothing"
       }
    ],
    "tables": [],
-   "ricardian_clauses": [],
    "abi_extensions": []
 }
