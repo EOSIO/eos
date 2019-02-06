@@ -103,6 +103,10 @@ namespace eosio { namespace chain {
       built_in_types.emplace("extended_asset",            pack_unpack<extended_asset>());
    }
 
+   void abi_serializer::disable_check_field_name() {
+       check_field_name_ = false;
+   }
+
    void abi_serializer::set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time) {
       impl::abi_traverse_context ctx(max_serialization_time);
 
@@ -162,8 +166,11 @@ namespace eosio { namespace chain {
       validate(ctx);
    }
 
-   void abi_serializer::add_struct(struct_def st) {
+   void abi_serializer::add_struct(struct_def st, const fc::microseconds& max_serialization_time) {
        EOS_ASSERT(!structs.count(st.name), duplicate_abi_struct_def_exception, "duplicate struct definition detected");
+
+       impl::abi_traverse_context ctx(max_serialization_time);
+       validate(st, ctx);
        auto key = st.name;
        structs.emplace(std::move(key), std::move(st));
    }
@@ -231,10 +238,30 @@ namespace eosio { namespace chain {
       return false;
    }
 
+   bool abi_serializer::_is_good_field_name(const field_name& field, impl::abi_traverse_context& )const {
+      if (!check_field_name_) return true;
+      if (field.empty() || field.size() > 36) return false;
+      if (field.front() == '_') return false;
+      auto itr = std::find_if(field.begin(), field.end(), [&](const auto c){
+          if (c >= 'a' && c <= 'z') return false;
+          if (c == '_') return false;
+          return true;
+      });
+      return field.end() == itr;
+   }
+
    const struct_def& abi_serializer::get_struct(const type_name& type)const {
       auto itr = structs.find(resolve_type(type) );
       EOS_ASSERT( itr != structs.end(), invalid_type_inside_abi, "Unknown struct ${type}", ("type",type) );
       return itr->second;
+   }
+
+   void abi_serializer::validate( const struct_def& s, impl::abi_traverse_context& ctx )const {
+      for( const auto& field : s.fields ) { try {
+         ctx.check_deadline();
+         EOS_ASSERT(_is_type(_remove_bin_extension(field.type), ctx), invalid_type_inside_abi, "${type}", ("type",field.type) );
+         EOS_ASSERT(_is_good_field_name(field.name, ctx), invalid_type_inside_abi, "${type} ${name}", ("type",field.type)("name",field.name) );
+      } FC_CAPTURE_AND_RETHROW( (field) ) }
    }
 
    void abi_serializer::validate( impl::abi_traverse_context& ctx )const {
@@ -263,10 +290,7 @@ namespace eosio { namespace chain {
                current = base;
             }
          }
-         for( const auto& field : s.second.fields ) { try {
-            ctx.check_deadline();
-            EOS_ASSERT(_is_type(_remove_bin_extension(field.type), ctx), invalid_type_inside_abi, "${type}", ("type",field.type) );
-         } FC_CAPTURE_AND_RETHROW( (field) ) }
+         validate(s.second, ctx);
       } FC_CAPTURE_AND_RETHROW( (s) ) }
       for( const auto& s : variants ) { try {
          for( const auto& type : s.second.types ) { try {

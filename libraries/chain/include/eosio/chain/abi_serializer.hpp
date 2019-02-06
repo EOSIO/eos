@@ -34,8 +34,9 @@ namespace impl {
 struct abi_serializer {
    abi_serializer(){ configure_built_in_types(); }
    abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time );
+   void disable_check_field_name();
    void set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time);
-   void add_struct(struct_def st);
+   void add_struct(struct_def st, const fc::microseconds& max_serialization_time);
 
    type_name resolve_type(const type_name& t)const;
    bool      is_array(const type_name& type)const;
@@ -92,6 +93,7 @@ struct abi_serializer {
    static const size_t max_recursion_depth = 32; // arbitrary depth to prevent infinite recursion
 
 private:
+   bool check_field_name_ = true;
 
    map<type_name, type_name>     typedefs;
    map<type_name, struct_def>    structs;
@@ -115,8 +117,10 @@ private:
 
    static type_name _remove_bin_extension(const type_name& type);
    bool _is_type( const type_name& type, impl::abi_traverse_context& ctx )const;
+   bool _is_good_field_name( const field_name&, impl::abi_traverse_context& )const;
 
    void validate( impl::abi_traverse_context& ctx )const;
+   void validate( const struct_def&, impl::abi_traverse_context& ctx )const;
 
    friend struct impl::abi_from_variant;
    friend struct impl::abi_to_variant;

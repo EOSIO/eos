@@ -119,7 +119,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void drop_db() {
-            const auto itr = abi_map_.find(0);
+            const auto itr = abi_map_.find(get_system_code());
 
             assert(itr != abi_map_.end());
 
@@ -128,13 +128,12 @@ namespace cyberway { namespace chaindb {
             journal_.clear(); // remove all pending changes
             driver_.drop_db(); // drop database
             abi_map_.clear(); // clear ABIes
-            set_abi(0, std::move(system_abi));
+            set_abi(get_system_code(), std::move(system_abi));
         }
 
         void set_abi(const account_name& code, abi_def abi) {
-            if (code.empty()) {
-                undo_.add_abi_tables(abi);
-            }
+            if (is_system_code(code)) undo_.add_abi_tables(abi);
+
             abi_info info(code, std::move(abi));
             set_abi(code, std::move(info));
         }
