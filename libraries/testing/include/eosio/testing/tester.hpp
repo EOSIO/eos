@@ -99,6 +99,17 @@ namespace eosio { namespace testing {
          void                 produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(const fc::microseconds target_elapsed_time = fc::microseconds());
          signed_block_ptr     push_block(signed_block_ptr b);
 
+         /**
+          * These transaction IDs represent transactions available in the head chain state as scheduled
+          * or otherwise generated transactions.
+          *
+          * calling push_scheduled_transaction with these IDs will remove the associated transaction from
+          * the chain state IFF it succeeds or objectively fails
+          *
+          * @return
+          */
+         vector<transaction_id_type> get_scheduled_transactions() const;
+
          transaction_trace_ptr    push_transaction( packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
          transaction_trace_ptr    push_transaction( signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
          action_result            push_action(action&& cert_act, uint64_t authorizer); // TODO/QUESTION: Is this needed?
