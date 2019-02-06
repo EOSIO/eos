@@ -1140,6 +1140,18 @@ class bandwith_api : public context_aware_api {
         }
 };
 
+class ram_provide_api : public context_aware_api {
+    public:
+        ram_provide_api( apply_context& ctx )
+        : context_aware_api(ctx,true) {}
+
+        account_name get_ram_provider(account_name user) const {
+            const account_name running_contract = context.receiver;
+            return context.trx_context.get_ram_provider(running_contract, user);
+        }
+};
+
+
 #define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
          return context.IDX.store( scope, table, payer, id, secondary );\
@@ -1888,6 +1900,9 @@ REGISTER_INTRINSICS(bandwith_api,
     (confirm_bw_limits, void(int64_t))
 );
 
+REGISTER_INTRINSICS(ram_provide_api,
+    (get_ram_provider, int64_t(int64_t))
+);
 
 REGISTER_INTRINSICS(context_free_transaction_api,
    (read_transaction,       int(int, int)            )
