@@ -240,7 +240,7 @@ function print_instructions()
 	printf "export LD_LIBRARY_PATH=\$HOME/lib:\$HOME/lib64:\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n" # libmongoc is installed into $HOME/lib64
 	printf "export CMAKE_MODULE_PATH=\$HOME/lib/cmake\\n"
 	printf "export CPATH=\$HOME/include:\$CPLUS_INCLUDE_PATH\\n" # libmongoc is installed into $HOME/include
-	printf "Then, source the file (or restart the terminal) and run:"
+	printf "Then, source the file (or restart the terminal) and run:\\n"
 	printf "$( command -v mongod ) --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
 	printf "cd ${BUILD_DIR} && make test\\n"
 	return 0
