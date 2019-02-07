@@ -139,12 +139,14 @@ namespace cyberway { namespace chaindb {
                 auto src_struct = &table_struct;
                 auto size = order.path.size();
                 for (auto& key: order.path) {
+                    bool was_key = false;
                     for (auto& src_field: src_struct->fields) {
                         if (src_field.name != key) continue;
                         CYBERWAY_ASSERT(!serializer_.is_array(src_field.type), array_field_exception,
                             "The field ${path} can't be used for the index ${index}",
                             ("path", order.field)("index", root_struct.name));
 
+                        was_key = true;
                         --size;
                         if (!size) {
                             auto field = src_field;
@@ -165,6 +167,7 @@ namespace cyberway { namespace chaindb {
                         }
                         break;
                     }
+                    if (!was_key) break;
                 }
                 CYBERWAY_ASSERT(!size && !order.type.empty(), invalid_index_description_exception,
                     "Can't find type for fields of the index ${index}", ("index", root_struct.name));
