@@ -512,16 +512,16 @@ BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
 
 // test weighted cpu limit
 BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
-// TODO Increase the robustness of this test.
+   // TODO Increase the robustness of this test.
    resource_limits_manager mgr = control->get_mutable_resource_limits_manager();
    create_accounts( {N(f_tests)} );
    create_accounts( {N(acc2)} );
    bool pass = false;
 
    std::string code = R"=====(
-(module
-  (import "env" "require_auth" (func $require_auth (param i64)))
-  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+   (module
+   (import "env" "require_auth" (func $require_auth (param i64)))
+   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
    (export "apply" (func $apply))
