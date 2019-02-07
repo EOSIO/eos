@@ -1742,8 +1742,13 @@ void controller::startup( std::function<bool()> shutdown, const snapshot_reader_
       elog( "No head block in fork db, perhaps we need to replay" );
    }
 
-   my->init(shutdown, snapshot);
-
+   try {
+      my->init(shutdown, snapshot);
+   } catch (boost::interprocess::bad_alloc& e) {
+      if ( snapshot )
+         elog( "db storage not configured to have enough storage for the provided snapshot, please increase and retry snapshot" );
+      throw e;
+   }
    if( snapshot ) {
       ilog( "Finished initialization from snapshot" );
    }
