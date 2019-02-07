@@ -1198,7 +1198,7 @@ class Node(object):
                 return True
             return False
 
-        if not Utils.waitForBool(myFunc):
+        if not Utils.waitForBool(myFunc,600):
             Utils.Print("ERROR: Failed to validate node shutdown.")
             return False
 
