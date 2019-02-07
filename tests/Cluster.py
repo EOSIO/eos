@@ -1244,7 +1244,7 @@ class Cluster(object):
         killSignal=signal.SIGKILL
         if killSignalStr == Utils.SigTermTag:
             killSignal=signal.SIGTERM
-        Utils.Print("Kill %d %s instances with signal %s." % (killCount, Utils.EosServerName, killSignal))
+        Utils.Print("Kill %d %s instances with signal: %s." % (killCount, Utils.EosServerName, killSignal))
 
         killedCount=0
         for node in reversed(self.nodes):

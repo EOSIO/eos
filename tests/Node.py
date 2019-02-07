@@ -1198,7 +1198,8 @@ class Node(object):
                 return True
             return False
 
-        if not Utils.waitForBool(myFunc,600):
+        os.system('ps -a | grep node')
+        if not Utils.waitForBool(myFunc):
             Utils.Print("ERROR: Failed to validate node shutdown.")
             return False
 
