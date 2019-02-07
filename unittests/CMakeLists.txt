@@ -1,6 +1,6 @@
 find_package( Gperftools QUIET )
 
-### Build contracts with cdt if available
+### Build contracts with cdt if available ###
 include(ExternalProject)
 # if no cdt root is given use default path
 if(EOSIO_CDT_ROOT STREQUAL "" OR NOT EOSIO_CDT_ROOT)
@@ -40,6 +40,7 @@ add_subdirectory(contracts)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/config.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/include/config.hpp ESCAPE_QUOTES)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/contracts.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/include/contracts.hpp ESCAPE_QUOTES)
 
+### BUILD UNIT TEST EXECUTABLE ###
 file(GLOB UNIT_TESTS "*.cpp") # find all unit test suites
 add_executable( unit_test ${UNIT_TESTS}) # build unit tests as one executable
 target_link_libraries( unit_test eosio_chain chainbase eosio_testing fc ${PLATFORM_SPECIFIC_LIBS} )
@@ -52,15 +53,27 @@ target_include_directories( unit_test PUBLIC
                             ${CMAKE_CURRENT_BINARY_DIR}/contracts
                             ${CMAKE_CURRENT_BINARY_DIR}/include )
 
-#Manually run unit_test for all supported runtimes
-#To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
-add_test(NAME unit_test_wavm COMMAND unit_test
- -t \!wasm_tests/weighted_cpu_limit_tests
- --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
- add_test(NAME unit_test_wabt COMMAND unit_test
- -t \!wasm_tests/weighted_cpu_limit_tests
- --report_level=detailed --color_output -- --wabt)
+### 
+foreach(TEST_SUITE ${UNIT_TESTS}) # create an independent target for each test suite
+  execute_process(COMMAND bash -c "grep 'BOOST_AUTO_TEST_SUITE(' ${TEST_SUITE} | cut -d ')' -f 1 | cut -d '(' -f 2" OUTPUT_VARIABLE SUITE_NAME OUTPUT_STRIP_TRAILING_WHITESPACE) # get the test suite name from the *.cpp file
+  execute_process(COMMAND bash -c "echo ${SUITE_NAME} | sed -e 's/s$//' | sed -e 's/_test$//'" OUTPUT_VARIABLE TRIMMED_SUITE_NAME OUTPUT_STRIP_TRAILING_WHITESPACE) # trim "_test" or "_tests" from the end of ${SUITE_NAME}
+  #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
+  if("wasm" STREQUAL "${TRIMMED_SUITE_NAME}") # edge case: exclude some test cases
+    add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_wavm COMMAND unit_test --run_test=wasm_tests -t \!wasm_tests/weighted_cpu_limit_tests --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
+    add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_wabt COMMAND unit_test --run_test=wasm_tests -t \!wasm_tests/weighted_cpu_limit_tests --report_level=detailed --color_output -- --wabt)
+  else() # run all test cases
+    add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_wavm COMMAND unit_test --run_test=${SUITE_NAME} --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
+    add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_wabt COMMAND unit_test --run_test=${SUITE_NAME} --report_level=detailed --color_output -- --wabt)
+  endif()
+  # build list of tests to run during coverage testing
+  if(${ctest_tests})
+    set(ctest_tests "${ctest_tests},${TRIMMED_SUITE_NAME}_unit_test_wavm,${TRIMMED_SUITE_NAME}_unit_test_wabt")
+  else()
+    set(ctest_tests "${TRIMMED_SUITE_NAME}_unit_test_wavm,${TRIMMED_SUITE_NAME}_unit_test_wabt")
+  endif()
+endforeach(TEST_SUITE)
 
+### COVERAGE TESTING ###
 if(ENABLE_COVERAGE_TESTING)
 
   set(Coverage_NAME ${PROJECT_NAME}_ut_coverage)
@@ -78,7 +91,7 @@ if(ENABLE_COVERAGE_TESTING)
   endif() # NOT GENHTML_PATH
 
   # no spaces allowed within tests list
-  set(ctest_tests 'unit_test_wabt|unit_test_wavm')
+  # set(ctest_tests 'unit_test_wabt|unit_test_wavm')
   set(ctest_exclude_tests '')
 
   # Setup target
