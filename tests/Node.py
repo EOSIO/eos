@@ -1199,7 +1199,7 @@ class Node(object):
             return False
 
         Utils.Print("PID: %s" % self.pid)
-        os.system('ps -a | grep node')
+        os.system('ps auxf')
         if not Utils.waitForBool(myFunc):
             Utils.Print("ERROR: Failed to validate node shutdown.")
             return False
