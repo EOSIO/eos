@@ -1195,10 +1195,11 @@ class Node(object):
             try:
                 os.kill(self.pid, 0) #check if process with pid is running
             except OSError as _:
+                Print("OSERROR: %s" % _)
                 return True
             return False
 
-        if not Utils.waitForBool(myFunc):
+        if not Utils.waitForBool(myFunc,120):
             Utils.Print("ERROR: Failed to validate node shutdown.")
             return False
 
