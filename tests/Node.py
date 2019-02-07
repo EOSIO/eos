@@ -1195,6 +1195,7 @@ class Node(object):
         # wait for kill validation
         def runningPidCheck():        
             try:
+                Utils.Print("RUNNINGPIDCHECK: %s" % os.kill(self.pid, 0))
                 os.kill(self.pid, 0)
             except OSError as err:
                 Utils.Print("%s" % err)

@@ -1247,7 +1247,6 @@ class Cluster(object):
         Utils.Print("Kill %d %s instances with signal %s." % (killCount, Utils.EosServerName, killSignal))
 
         killedCount=0
-        Utils.Print(self.nodes)
         for node in reversed(self.nodes):
             if not node.kill(killSignal):
                 return False
