@@ -44,8 +44,8 @@ printf "Disk space available: ${DISK_AVAIL%.*}G\\n"
 DEP_ARRAY=( 
 	git sudo procps-ng which gcc gcc-c++ autoconf automake libtool make \
 	bzip2-devel wget bzip2 compat-openssl10 graphviz doxygen \
-	openssl-devel gmp-devel libstdc++-devel python2 python2-devel python3 python3-devel \
-	libedit ncurses-devel swig
+	openssl-devel gmp-devel libstdc++-devel python2-devel python3 python3-devel \
+	libedit ncurses-devel swig perl
 )
 COUNT=1
 DISPLAY=""
