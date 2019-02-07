@@ -1182,31 +1182,23 @@ class Node(object):
             unhandledEnumType(blockType)
 
     def kill(self, killSignal):
-        if Utils.Debug: Utils.Print("Killing node: %s // PID: %s" % (self.cmd,self.pid))
-            assert(self.pid is not None)
-            try:
-                timeout = time.time() + 60
-                os.kill(self.pid, killSignal)
-                while os.waitpid(self.pid, os.WNOHANG) == (0,0):
-                    time.sleep(0.1)
-                    if time.time() > timeout:
-                        Utils.Print("Gave up on waitpid for %s" % self.pid)
-                        return False
-            except OSError as ex:
-                Utils.Print("ERROR: Failed to kill node (%d)." % (self.cmd), ex)
-                return False
+        if Utils.Debug: Utils.Print("Killing node: %s" % (self.cmd))
+        assert(self.pid is not None)
+        try:
+            os.kill(self.pid, killSignal)
+        except OSError as ex:
+            Utils.Print("ERROR: Failed to kill node (%d)." % (self.cmd), ex)
+            return False
 
         # wait for kill validation
-        def confirmPidGone():
+        def myFunc():
             try:
                 os.kill(self.pid, 0) #check if process with pid is running
             except OSError as _:
                 return True
             return False
 
-        os.system('ps auxf')
-
-        if not Utils.waitForBool(confirmPidGone()):
+        if not Utils.waitForBool(myFunc):
             Utils.Print("ERROR: Failed to validate node shutdown.")
             return False
 
