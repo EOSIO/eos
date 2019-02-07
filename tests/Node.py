@@ -1195,7 +1195,7 @@ class Node(object):
             try:
                 os.kill(self.pid, 0) #check if process with pid is running
             except OSError as _:
-                Print("OSERROR: %s" % _)
+                Utils.Print("OSERROR: %s" % _)
                 return True
             return False
 
