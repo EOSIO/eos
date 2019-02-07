@@ -1,4 +1,5 @@
 steps:
+  ### BUILDS ###
   - command: |
       echo "--- Creating symbolic link to job directory :file_folder:" && \
       sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job && \
@@ -115,6 +116,7 @@ steps:
         workdir: /data/job
     timeout: 60
 
+  ### TESTS ###
   - wait
 
   - command: |
@@ -124,7 +126,11 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        ln -s "$(pwd)" /data/job && \
+        cd /data/job/build && \
+        CORES=`getconf _NPROCESSORS_ONLN` && \
+        echo "$CORES CPU cores found, testing on all cores" && \
+        ctest -j $CORES -LE _tests --output-on-failure
     label: ":darwin: High Sierra Tests"
     agents:
       - "role=macos-tester"
@@ -142,7 +148,9 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        ln -s "$(pwd)" /data/job && \
+        cd /data/job/build && \
+        ctest -L nonparallelizable_tests --output-on-failure
     label: ":darwin: High Sierra NP Tests"
     agents:
       - "role=macos-tester"
@@ -159,7 +167,11 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        ln -s "$(pwd)" /data/job && \
+        cd /data/job/build && \
+        CORES=`getconf _NPROCESSORS_ONLN` && \
+        echo "$CORES CPU cores found, testing on all cores" && \
+        ctest -j $CORES -LE _tests --output-on-failure
     label: ":darwin: Mojave Tests"
     agents:
       - "role=tester"
@@ -177,7 +189,9 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        ln -s "$(pwd)" /data/job && \
+        cd /data/job/build && \
+        ctest -L nonparallelizable_tests --output-on-failure
     label: ":darwin: Mojave NP Tests"
     agents:
       - "role=tester"
@@ -195,7 +209,10 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && \
+        CORES=`getconf _NPROCESSORS_ONLN` && \
+        echo "$CORES CPU cores found, testing on all cores" && \
+        ctest -j $CORES -LE _tests --output-on-failure
     label: ":ubuntu: Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -216,7 +233,8 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && \
+        ctest -L nonparallelizable_tests --output-on-failure
     label: ":ubuntu: NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -237,7 +255,10 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && \
+        CORES=`getconf _NPROCESSORS_ONLN` && \
+        echo "$CORES CPU cores found, testing on all cores" && \
+        ctest -j $CORES -LE _tests --output-on-failure
     label: ":ubuntu: 18.04 Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -258,7 +279,8 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && \
+        ctest -L nonparallelizable_tests --output-on-failure
     label: ":ubuntu: 18.04 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -279,7 +301,10 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && \
+        CORES=`getconf _NPROCESSORS_ONLN` && \
+        echo "$CORES CPU cores found, testing on all cores" && \
+        ctest -j $CORES -LE _tests --output-on-failure
     label: ":fedora: Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -300,7 +325,8 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && \
+        ctest -L nonparallelizable_tests --output-on-failure
     label: ":fedora: NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -321,7 +347,10 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && \
+        CORES=`getconf _NPROCESSORS_ONLN` && \
+        echo "$CORES CPU cores found, testing on all cores" && \
+        ctest -j $CORES -LE _tests --output-on-failure
     label: ":centos: Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -342,7 +371,8 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && \
+        ctest -L nonparallelizable_tests --output-on-failure
     label: ":centos: NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -363,7 +393,10 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && \
+        CORES=`getconf _NPROCESSORS_ONLN` && \
+        echo "$CORES CPU cores found, testing on all cores" && \
+        ctest -j $CORES -LE _tests --output-on-failure
     label: ":aws: Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -384,7 +417,8 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && \
+        ctest -L nonparallelizable_tests --output-on-failure
     label: ":aws: NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -398,6 +432,7 @@ steps:
         workdir: /data/job
     timeout: 60
 
+  ### PACKAGES ###
   - wait
 
   - command: |
