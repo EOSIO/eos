@@ -1190,16 +1190,18 @@ class Node(object):
             Utils.Print("ERROR: Failed to kill node (%d)." % (self.cmd), ex)
             return False
 
+        Utils.Print("self.pid: %s" % self.pid)
+
         # wait for kill validation
-        def myFunc():
+        def runningPidCheck():        
             try:
-                os.kill(self.pid, 0) #check if process with pid is running
-            except OSError as _:
-                Utils.Print("OSERROR: %s" % _)
+                os.kill(self.pid, 0)
+            except OSError as err:
+                Utils.Print("%s" % err)
                 return True
             return False
 
-        if not Utils.waitForBool(myFunc,120):
+        if not Utils.waitForBool(runningPidCheck,120):
             Utils.Print("ERROR: Failed to validate node shutdown.")
             return False
 
