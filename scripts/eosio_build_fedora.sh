@@ -44,7 +44,7 @@ printf "Disk space available: ${DISK_AVAIL%.*}G\\n"
 DEP_ARRAY=( 
 	git sudo procps-ng which gcc gcc-c++ autoconf automake libtool make \
 	bzip2-devel wget bzip2 compat-openssl10 graphviz doxygen \
-	openssl-devel gmp-devel libstdc++-devel python2-devel python3 python3-devel \
+	openssl-devel gmp-devel libstdc++-devel python2 python2-devel python3 python3-devel \
 	libedit ncurses-devel swig
 )
 COUNT=1
@@ -60,19 +60,19 @@ fi
 printf " - Yum installation found at %s.\\n" "${YUM}"
 
 
-# if [ $1 == 0 ]; then read -p "Do you wish to update YUM repositories? (y/n) " answer; fi
-# case ${answer} in
-# 	1 | [Yy]* )
-# 		if ! "${YUM}" -y update; then
-# 			printf " - YUM update failed.\\n"
-# 			exit 1;
-# 		else
-# 			printf " - YUM update complete.\\n"
-# 		fi
-# 	;;
-# 	[Nn]* ) echo " - Proceeding without update!";;
-# 	* ) echo "Please type 'y' for yes or 'n' for no.";;
-# esac
+if [ $1 == 0 ]; then read -p "Do you wish to update YUM repositories? (y/n) " answer; fi
+case ${answer} in
+	1 | [Yy]* )
+		if ! "${YUM}" -y update; then
+			printf " - YUM update failed.\\n"
+			exit 1;
+		else
+			printf " - YUM update complete.\\n"
+		fi
+	;;
+	[Nn]* ) echo " - Proceeding without update!";;
+	* ) echo "Please type 'y' for yes or 'n' for no.";;
+esac
 
 printf "Checking RPM for installed dependencies...\\n"
 for (( i=0; i<${#DEP_ARRAY[@]}; i++ )); do
