@@ -1735,10 +1735,18 @@ void controller::add_indices() {
 
 void controller::startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot ) {
    my->head = my->fork_db.head();
-   if( !my->head ) {
+   if( snapshot ) {
+      ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
+   }
+   else if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
    }
+
    my->init(shutdown, snapshot);
+
+   if( snapshot ) {
+      ilog( "Finished initialization from snapshot" );
+   }
 }
 
 const chainbase::database& controller::db()const { return my->db; }
