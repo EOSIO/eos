@@ -1200,9 +1200,10 @@ class Node(object):
             except OSError as err:
                 Utils.Print("%s" % err)
                 return True
-            return False
+            else:
+                return False
 
-        if not Utils.waitForBool(runningPidCheck,120):
+        if not Utils.waitForBool(runningPidCheck):
             Utils.Print("ERROR: Failed to validate node shutdown.")
             return False
 
