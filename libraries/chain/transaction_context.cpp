@@ -247,7 +247,7 @@ namespace bacc = boost::accumulators;
       flat_set<account_name> provided_accounts;
 
       for( const auto& act : trx.actions ) {
-         if( act.account == N(eosio) && act.name == N(providebw) ) {
+         if (act.account == config::system_account_name && act.name == config::provide_bw_action) {
             auto args = act.data_as<providebw>();
             provided_accounts.insert(args.account);
          } else if( act.account == N(eosio) && act.name == N(provideram) ) {

@@ -860,9 +860,13 @@ struct controller_impl {
         signed_transaction call_provide_trx;
         transaction_context trx_context( self, call_provide_trx, call_provide_trx.id());
         for (const auto& action : actions) {
-            if (action.account == N(eosio) && action.name == N(requestbw)) {
+            if (action.account == config::system_account_name && action.name == config::request_bw_action) {
                 const auto request_bw = action.data_as<requestbw>();
-                call_provide_trx.actions.emplace_back(vector<permission_level>{{request_bw.provider, config::active_name}}, request_bw.provider, N(approvebw), fc::raw::pack(approvebw( request_bw.account)));
+                call_provide_trx.actions.emplace_back(
+                    vector<permission_level>{{request_bw.provider, config::active_name}},
+                    request_bw.provider,
+                    config::approve_bw_action,
+                    fc::raw::pack(approvebw(request_bw.account)));
             }
         }
 
