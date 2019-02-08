@@ -68,7 +68,8 @@ foreach(TEST_SUITE ${UNIT_TESTS}) # create an independent target for each test s
     endif()
     # build list of tests to run during coverage testing
     if(${ctest_tests})
-      set(ctest_tests "${ctest_tests}|${TRIMMED_SUITE_NAME}_unit_test_wavm|${TRIMMED_SUITE_NAME}_unit_test_wabt")
+      set(ctest_tests_swap "${ctest_tests}")
+      set(ctest_tests "${ctest_tests_swap}|${TRIMMED_SUITE_NAME}_unit_test_wavm|${TRIMMED_SUITE_NAME}_unit_test_wabt")
     else()
       set(ctest_tests "${TRIMMED_SUITE_NAME}_unit_test_wavm|${TRIMMED_SUITE_NAME}_unit_test_wabt")
     endif()
