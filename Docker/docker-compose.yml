@@ -3,7 +3,7 @@ version: "2.1"
 services:
   mongo:
     container_name: mongo
-    image: mongo
+    image: mongo:4.0.6-xenial
     restart: always
     healthcheck:
        test: mongo --eval 'db.getCollectionNames()'
@@ -39,25 +39,10 @@ services:
     networks:
       - cyberway-net
 
-  keosd:
-    container_name: keosd
-    image: cyberway/cyberway:master
-    command: /opt/cyberway/bin/keosd --wallet-dir /opt/cyberway/bin/data-dir --http-server-address=127.0.0.1:8900 --http-alias=keosd:8900 --http-alias=localhost:8900
-    hostname: keosd
-    links:
-      - nodeosd
-    volumes:
-      - cyberway-keosd-data:/opt/cyberway/bin/data-dir
-    stop_grace_period: 10m
-    networks:
-      - cyberway-net
-
 volumes:
  cyberway-mongodb-data:
    external: true
  cyberway-nodeos-data:
-   external: true
- cyberway-keosd-data:
    external: true
 
 networks:

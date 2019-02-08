@@ -31,6 +31,8 @@ COPY --from=builder /cyberway/Docker/config.ini /
 COPY --from=builder /etc/cyberway-version /etc
 COPY --from=builder /opt/cyberway /opt/cyberway
 COPY --from=builder /cyberway/Docker/nodeosd.sh /opt/cyberway/bin/nodeosd.sh
+COPY --from=builder /cyberway/Docker/run-with-events.sh /opt/cyberway/startup/run-with-events.sh
+COPY --from=builder /cyberway/Docker/docker-compose-events.yml /opt/cyberway/startup/docker-compose-events.yml
 
 ENV CYBERWAY_ROOT=/opt/cyberway
 RUN chmod +x /opt/cyberway/bin/nodeosd.sh

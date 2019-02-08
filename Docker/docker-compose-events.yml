@@ -5,7 +5,7 @@ services:
     container_name: nats-streaming
     image: nats-streaming:0.11.2-linux
     restart: always
-    entrypoint: /nats-streaming-server -p 4222 -m 8222 --cluster_id=cyberway --user=${EXPORTER_USER} --pass=${EXPORTER_PASS}
+    entrypoint: /nats-streaming-server -p 4222 -m 8222 --cluster_id=cyberway --user=${NATS_USER} --pass=${NATS_PASS}
     ports:
       - 0.0.0.0:4222:4222
       - 127.0.0.1:8222:8222
@@ -16,7 +16,7 @@ services:
     container_name: cyberway-notifier
     image: cyberway/cyberway-notifier:latest
     restart: always
-    command: bash -c "/opt/cyberway/bin/cyber-notifier </queue/msg.pipe -s nats://${EXPORTER_USER}:${EXPORTER_PASS}@nats-streaming:4222"
+    command: bash -c "/opt/cyberway/bin/cyber-notifier </queue/msg.pipe -s nats://${NATS_USER}:${NATS_PASS}@nats-streaming:4222"
     volumes:
       - cyberway-queue:/queue:ro
     networks:
@@ -26,7 +26,7 @@ services:
     container_name: nats-exporter
     image: cyberway/nats-exporter:latest
     restart: always
-    command: -varz -http_pass=${EXPORTER_PASS} -http_user=${EXPORTER_USER} "http://nats-streaming:8222"
+    command: -varz -http_pass=${NATS_PASS:?Can't start without auth variable NATS_PASS} -http_user=${NATS_USER:?Can't start without auth variable NATS_USER} "http://nats-streaming:8222"
     ports:
       - 7777:7777
     networks:
@@ -34,11 +34,11 @@ services:
 
   mongo:
     container_name: mongo
-    image: mongo
+    image: mongo:4.0.6-xenial
     restart: always
     healthcheck:
        test: mongo --eval 'db.getCollectionNames()'
-       interval: 2s
+       interval: 10s
        timeout: 2s
        retries: 10
     volumes:
@@ -48,13 +48,33 @@ services:
     networks:
       - cyberway-net
 
+  mongodb-exporter:
+    container_name: mongodb-exporter
+    image: cyberway/mongodb-exporter:${MONGODB_EXPORTER_TAG:-v0.6.2}
+    build:
+      context: ./mongodb-exporter/
+      dockerfile: Dockerfile
+      args:
+        tag: ${MONGODB_EXPORTER_TAG:-v0.6.2}
+    restart: always
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - 9216:9216
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017
+      - HTTP_AUTH=${MONGODB_EXPORTER_USER:?Can't start without auth variable MONGODB_EXPORTER_USER}:${MONGODB_EXPORTER_PASS:?Can't start without auth variable MONGODB_EXPORTER_PASS}
+    networks:
+      - cyberway-net
+
   nodeosd:
     container_name: nodeosd
     image: cyberway/cyberway:latest
     depends_on:
       mongo:
         condition: service_healthy
-    command: bash -c "mkfifo /queue/msg.pipe; /opt/cyberway/bin/nodeosd.sh --data-dir /opt/cyberway/bin/data-dir -e --http-alias=nodeosd:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888 --plugin eosio::event_engine_plugin --event-engine-dumpfile /queue/msg.pipe"
+    command: bash -c "mkfifo /queue/msg.pipe; exec /opt/cyberway/bin/nodeosd.sh --data-dir /opt/cyberway/bin/data-dir -e --http-alias=nodeosd:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888 --plugin eosio::event_engine_plugin --event-engine-dumpfile /queue/msg.pipe"
     hostname: nodeosd
     ports:
       - 8888:8888
@@ -63,26 +83,10 @@ services:
       - "8888"
     volumes:
       - cyberway-nodeos-data:/opt/cyberway/bin/data-dir
-      - /etc/cyberway/config.ini:/opt/cyberway/bin/data-dir/config.ini
-      - /home/deploy/deploy/golos-smart:/opt/cyberway/bin/data-dir/golos-smart  
+      - ${PWD}/config.ini:/opt/cyberway/bin/data-dir/config.ini
       - cyberway-queue:/queue
     cap_add:
       - IPC_LOCK
-    stop_grace_period: 10m
-    networks:
-      - cyberway-net
-
-  keosd:
-    container_name: keosd
-    image: cyberway/cyberway:latest
-    command: /opt/cyberway/bin/keosd --unlock-timeout 999999999 --wallet-dir /opt/cyberway/bin/data-dir --http-server-address=127.0.0.1:8900 --http-alias=keosd:8900 --http-alias=localhost:8900
-    hostname: keosd
-    links:
-      - nodeosd
-    volumes:
-      - cyberway-keosd-data:/opt/cyberway/bin/data-dir
-      - /home/deploy/deploy/golos-smart:/opt/cyberway/bin/data-dir/golos-smart  
-      - /home/deploy/deploy/golos-smart/build:/opt/cyberway/bin/data-dir/contracts
     stop_grace_period: 10m
     networks:
       - cyberway-net
@@ -91,8 +95,6 @@ volumes:
  cyberway-mongodb-data:
    external: true
  cyberway-nodeos-data:
-   external: true
- cyberway-keosd-data:
    external: true
  cyberway-queue:
    external: true
