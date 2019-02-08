@@ -68,8 +68,9 @@ if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
 fi
 
 # llvm-4.0 is installed into /usr/lib/llvm-4.0
+# clang is necessary for building on ubuntu
 DEP_ARRAY=(
-	git llvm-4.0 make automake libbz2-dev libssl-dev doxygen graphviz \
+	git llvm-4.0 clang-4.0 libclang-4.0-dev make automake libbz2-dev libssl-dev doxygen graphviz \
 	libgmp3-dev autotools-dev build-essential libicu-dev python2.7 python2.7-dev python3 python3-dev \
 	autoconf libtool curl zlib1g-dev sudo ruby
 )
