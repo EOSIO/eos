@@ -194,7 +194,7 @@ printf "\\nARCHITECTURE: %s\\n" "${ARCH}"
 
 popd &> /dev/null
 
-export CPATH=$HOME/include:/usr/include/llvm4.0:$CPATH
+export CPATH=$HOME/include:/usr/include/llvm4.0:$CPATH # llvm4.0 for fedora package path inclusion
 export LD_LIBRARY_PATH=$HOME/lib:$HOME/lib64:$HOME/opt/llvm/lib:$LD_LIBRARY_PATH
 export CMAKE_MODULE_PATH=$HOME/lib/cmake
 if [ "$ARCH" == "Linux" ]; then
