@@ -143,6 +143,7 @@ namespace eosio {
          optional<boost::asio::thread_pool>          thread_pool;
          std::shared_ptr<boost::asio::io_context>    server_ioc;
          optional<io_work_t>                         server_ioc_work;
+         std::atomic<int64_t>                        bytes_in_flight{0};
 
          optional<tcp::endpoint>  https_listen_endpoint;
          string                   https_cert_chain;
@@ -283,23 +284,39 @@ namespace eosio {
                }
 
                con->append_header( "Content-type", "application/json" );
-               auto body = con->get_request_body();
-               auto resource = con->get_uri()->get_resource();
+
+               if( bytes_in_flight > 500*1024*1024 ) {
+                  dlog( "503 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight.load()) );
+                  error_results results{websocketpp::http::status_code::too_many_requests, "Busy", error_results::error_info()};
+                  con->set_body( fc::json::to_string( results ));
+                  con->set_status( websocketpp::http::status_code::too_many_requests );
+                  return;
+               }
+
+               std::string body = con->get_request_body();
+               std::string resource = con->get_uri()->get_resource();
                auto handler_itr = url_handlers.find( resource );
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
-                  auto& tp = *thread_pool;
-                  app().post( appbase::priority::low, [&tp, handler_itr, resource, body, con]() {
+                  bytes_in_flight += body.size();
+                  app().post( appbase::priority::low-1,
+                              [&tp = *this->thread_pool, &bytes_in_flight = this->bytes_in_flight, handler_itr,
+                               resource{std::move( resource )}, body{std::move( body )}, con]() {
                      try {
-                        handler_itr->second( resource, body, [&tp, con]( auto code, auto&& body ) {
-                           boost::asio::post( tp, [body, con, code]() {
-                              con->set_body( std::move( body ) );
+                        bytes_in_flight -= body.size();
+                        handler_itr->second( resource, body, [&tp, &bytes_in_flight, con]( int code, std::string response_body ) {
+                           bytes_in_flight += response_body.size();
+                           boost::asio::post( tp, [response_body{std::move( response_body )}, &bytes_in_flight, con, code]() {
+                              size_t body_size = response_body.size();
+                              con->set_body( std::move( response_body ) );
                               con->set_status( websocketpp::http::status_code::value( code ) );
                               con->send_http_response();
+                              bytes_in_flight -= body_size;
                            } );
                         });
                      } catch( ... ) {
                         handle_exception<T>( con );
+                        con->send_http_response();
                      }
                   } );
 
@@ -322,8 +339,8 @@ namespace eosio {
                ws.init_asio(&(*server_ioc));
                ws.set_reuse_addr(true);
                ws.set_max_http_body_size(max_body_size);
-               auto ioc = server_ioc; // capture server_ioc shared_ptr in http handler to keep it alive while in use
-               ws.set_http_handler([&, ioc](connection_hdl hdl) {
+               // capture server_ioc shared_ptr in http handler to keep it alive while in use
+               ws.set_http_handler([&, ioc = this->server_ioc](connection_hdl hdl) {
                   handle_http_request<detail::asio_with_stub_log<T>>(ws.get_con_from_hdl(hdl));
                });
             } catch ( const fc::exception& e ){
