@@ -45,7 +45,7 @@ DEP_ARRAY=(
 	git sudo procps-ng which gcc gcc-c++ autoconf automake libtool make \
 	bzip2-devel wget bzip2 compat-openssl10 graphviz doxygen \
 	openssl-devel gmp-devel libstdc++-devel python2 python2-devel python3 python3-devel \
-	libedit ncurses-devel swig llvm4.0 llvm4.0-devel llvm4.0-libs llvm4.0-static
+	libedit ncurses-devel swig llvm4.0*
 )
 COUNT=1
 DISPLAY=""
