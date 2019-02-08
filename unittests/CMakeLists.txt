@@ -74,6 +74,7 @@ foreach(TEST_SUITE ${UNIT_TESTS}) # create an independent target for each test s
     endif()
   endif()
 endforeach(TEST_SUITE)
+set(ctest_tests "'${ctest_tests}' -j8") # surround test list string in apostrophies
 
 ### COVERAGE TESTING ###
 if(ENABLE_COVERAGE_TESTING)
