@@ -5,7 +5,7 @@
 #include <eosiolib/action.hpp>
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/db.h>
-#include <eosiolib/fixed_key.hpp>
+#include <eosiolib/fixed_bytes.hpp>
 #include <eosiolib/transaction.hpp>
 #include <eosiolib/types.h>
 
