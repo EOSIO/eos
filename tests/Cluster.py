@@ -75,7 +75,7 @@ class Cluster(object):
         self.defProducerAccounts={}
         self.defproduceraAccount=self.defProducerAccounts["defproducera"]= Account("defproducera")
         self.defproducerbAccount=self.defProducerAccounts["defproducerb"]= Account("defproducerb")
-        self.eosioAccount=self.defProducerAccounts["eosio"]= Account("eosio")
+        self.eosioAccount=self.defProducerAccounts["cyber"]= Account("cyber")
 
         self.defproduceraAccount.ownerPrivateKey=defproduceraPrvtKey
         self.defproduceraAccount.activePrivateKey=defproduceraPrvtKey
@@ -372,7 +372,7 @@ class Cluster(object):
             initAccountKeys(account, producerKeys[name])
             self.defProducerAccounts[name] = account
 
-        self.eosioAccount=self.defProducerAccounts["eosio"]
+        self.eosioAccount=self.defProducerAccounts["cyber"]
         self.defproduceraAccount=self.defProducerAccounts["defproducera"]
         self.defproducerbAccount=self.defProducerAccounts["defproducerb"]
 
@@ -877,7 +877,7 @@ class Cluster(object):
             Utils.Print("ERROR: Failed to create ignition wallet.")
             return None
 
-        eosioName="eosio"
+        eosioName="cyber"
         eosioKeys=producerKeys[eosioName]
         eosioAccount=Account(eosioName)
         eosioAccount.ownerPrivateKey=eosioKeys["private"]
@@ -893,15 +893,15 @@ class Cluster(object):
         initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
         Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
         trans=None
-        contract="eosio.token"
+        contract="cyber.token"
         action="transfer"
         for name, keys in producerKeys.items():
-            data="{\"from\":\"eosio\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (name, initialFunds, "init eosio transfer")
-            opts="--permission eosio@active"
-            if name != "eosio":
+            data="{\"from\":\"cyber\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (name, initialFunds, "init cyber transfer")
+            opts="--permission cyber@active"
+            if name != "cyber":
                 trans=biosNode.pushMessage(contract, action, data, opts)
                 if trans is None or not trans[0]:
-                    Utils.Print("ERROR: Failed to transfer funds from eosio.token to %s." % (name))
+                    Utils.Print("ERROR: Failed to transfer funds from cyber.token to %s." % (name))
                     return None
 
             Node.validateTransaction(trans[1])
@@ -948,7 +948,7 @@ class Cluster(object):
 
         ignWallet=walletMgr.create("ignition")
 
-        eosioName="eosio"
+        eosioName="cyber"
         eosioKeys=producerKeys[eosioName]
         eosioAccount=Account(eosioName)
         eosioAccount.ownerPrivateKey=eosioKeys["private"]
@@ -1005,8 +1005,8 @@ class Cluster(object):
                     setProdsStr=f.read()
 
                     Utils.Print("Setting producers.")
-                    opts="--permission eosio@active"
-                    myTrans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
+                    opts="--permission cyber@active"
+                    myTrans=biosNode.pushMessage("cyber", "setprods", setProdsStr, opts)
                     if myTrans is None or not myTrans[0]:
                         Utils.Print("ERROR: Failed to set producers.")
                         return None
@@ -1030,9 +1030,9 @@ class Cluster(object):
                 setProdsStr += ' ] }'
                 if Utils.Debug: Utils.Print("setprods: %s" % (setProdsStr))
                 Utils.Print("Setting producers: %s." % (", ".join(prodNames)))
-                opts="--permission eosio@active"
+                opts="--permission cyber@active"
                 # pylint: disable=redefined-variable-type
-                trans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
+                trans=biosNode.pushMessage("cyber", "setprods", setProdsStr, opts)
                 if trans is None or not trans[0]:
                     Utils.Print("ERROR: Failed to set producer %s." % (keys["name"]))
                     return None
@@ -1043,36 +1043,36 @@ class Cluster(object):
                 Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
                 return None
 
-            # wait for block production handover (essentially a block produced by anyone but eosio).
-            lam = lambda: biosNode.getInfo(exitOnError=True)["head_block_producer"] != "eosio"
+            # wait for block production handover (essentially a block produced by anyone but cyber).
+            lam = lambda: biosNode.getInfo(exitOnError=True)["head_block_producer"] != "cyber"
             ret=Utils.waitForBool(lam)
             if not ret:
                 Utils.Print("ERROR: Block production handover failed.")
                 return None
 
         eosioTokenAccount=copy.deepcopy(eosioAccount)
-        eosioTokenAccount.name="eosio.token"
+        eosioTokenAccount.name="cyber.token"
         trans=biosNode.createAccount(eosioTokenAccount, eosioAccount, 0)
         if trans is None:
             Utils.Print("ERROR: Failed to create account %s" % (eosioTokenAccount.name))
             return None
 
         eosioRamAccount=copy.deepcopy(eosioAccount)
-        eosioRamAccount.name="eosio.ram"
+        eosioRamAccount.name="cyber.ram"
         trans=biosNode.createAccount(eosioRamAccount, eosioAccount, 0)
         if trans is None:
             Utils.Print("ERROR: Failed to create account %s" % (eosioRamAccount.name))
             return None
 
         eosioRamfeeAccount=copy.deepcopy(eosioAccount)
-        eosioRamfeeAccount.name="eosio.ramfee"
+        eosioRamfeeAccount.name="cyber.ramfee"
         trans=biosNode.createAccount(eosioRamfeeAccount, eosioAccount, 0)
         if trans is None:
             Utils.Print("ERROR: Failed to create account %s" % (eosioRamfeeAccount.name))
             return None
 
         eosioStakeAccount=copy.deepcopy(eosioAccount)
-        eosioStakeAccount.name="eosio.stake"
+        eosioStakeAccount.name="cyber.stake"
         trans=biosNode.createAccount(eosioStakeAccount, eosioAccount, 0)
         if trans is None:
             Utils.Print("ERROR: Failed to create account %s" % (eosioStakeAccount.name))
@@ -1084,7 +1084,7 @@ class Cluster(object):
             Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
             return None
 
-        contract="eosio.token"
+        contract="cyber.token"
         contractDir="contracts/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
@@ -1102,7 +1102,7 @@ class Cluster(object):
         opts="--permission %s@active" % (contract)
         trans=biosNode.pushMessage(contract, action, data, opts)
         if trans is None or not trans[0]:
-            Utils.Print("ERROR: Failed to push create action to eosio contract.")
+            Utils.Print("ERROR: Failed to push create action to cyber contract.")
             return None
 
         Node.validateTransaction(trans[1])
@@ -1118,7 +1118,7 @@ class Cluster(object):
         opts="--permission %s@active" % (contract)
         trans=biosNode.pushMessage(contract, action, data, opts)
         if trans is None or not trans[0]:
-            Utils.Print("ERROR: Failed to push issue action to eosio contract.")
+            Utils.Print("ERROR: Failed to push issue action to cyber contract.")
             return None
 
         Node.validateTransaction(trans[1])
@@ -1132,7 +1132,7 @@ class Cluster(object):
             return None
 
         expectedAmount="1000000000.0000 {0}".format(CORE_SYMBOL)
-        Utils.Print("Verify eosio issue, Expected: %s" % (expectedAmount))
+        Utils.Print("Verify cyber issue, Expected: %s" % (expectedAmount))
         actualAmount=biosNode.getAccountEosBalanceStr(eosioAccount.name)
         if expectedAmount != actualAmount:
             Utils.Print("ERROR: Issue verification failed. Excepted %s, actual: %s" %
