@@ -10,10 +10,8 @@
 #include "test_action.cpp"
 #include "test_chain.cpp"
 #include "test_checktime.cpp"
-#include "test_compiler_builtins.cpp"
 #include "test_crypto.cpp"
 #include "test_datastream.cpp"
-#include "test_fixedpoint.cpp"
 #include "test_permission.cpp"
 #include "test_print.cpp"
 #include "test_transaction.cpp"
@@ -50,21 +48,6 @@ extern "C" {
       WASM_TEST_HANDLER( test_types, types_size     );
       WASM_TEST_HANDLER( test_types, char_to_symbol );
       WASM_TEST_HANDLER( test_types, string_to_name );
-
-      //test_compiler_builtins
-      WASM_TEST_HANDLER( test_compiler_builtins, test_multi3       );
-      WASM_TEST_HANDLER( test_compiler_builtins, test_divti3       );
-      WASM_TEST_HANDLER( test_compiler_builtins, test_divti3_by_0  );
-      WASM_TEST_HANDLER( test_compiler_builtins, test_udivti3      );
-      WASM_TEST_HANDLER( test_compiler_builtins, test_udivti3_by_0 );
-      WASM_TEST_HANDLER( test_compiler_builtins, test_modti3       );
-      WASM_TEST_HANDLER( test_compiler_builtins, test_modti3_by_0  );
-      WASM_TEST_HANDLER( test_compiler_builtins, test_umodti3      );
-      WASM_TEST_HANDLER( test_compiler_builtins, test_umodti3_by_0 );
-      WASM_TEST_HANDLER( test_compiler_builtins, test_lshlti3      );
-      WASM_TEST_HANDLER( test_compiler_builtins, test_lshrti3      );
-      WASM_TEST_HANDLER( test_compiler_builtins, test_ashlti3      );
-      WASM_TEST_HANDLER( test_compiler_builtins, test_ashrti3      );
 
       //test_action
       WASM_TEST_HANDLER   ( test_action, read_action_normal         );
@@ -151,14 +134,6 @@ extern "C" {
 
       //test chain
       WASM_TEST_HANDLER( test_chain, test_activeprods );
-
-      // test fixed_point
-      WASM_TEST_HANDLER( test_fixedpoint, create_instances    );
-      WASM_TEST_HANDLER( test_fixedpoint, test_addition       );
-      WASM_TEST_HANDLER( test_fixedpoint, test_subtraction    );
-      WASM_TEST_HANDLER( test_fixedpoint, test_multiplication );
-      WASM_TEST_HANDLER( test_fixedpoint, test_division       );
-      WASM_TEST_HANDLER( test_fixedpoint, test_division_by_0  );
 
       // test checktime
       WASM_TEST_HANDLER( test_checktime, checktime_pass                     );

@@ -966,65 +966,6 @@ BOOST_FIXTURE_TEST_CASE(checktime_hashing_fail, TESTER) { try {
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
- * compiler_builtins_tests test case
- *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, TESTER) { try {
-	produce_blocks(2);
-	create_account( N(testapi) );
-	produce_blocks(10);
-	set_code( N(testapi), contracts::test_api_wasm() );
-	produce_blocks(1);
-
-   // test test_multi3
-   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_multi3", {});
-
-   // test test_divti3
-   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3", {});
-
-   // test test_divti3_by_0
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3_by_0", {}), arithmetic_exception,
-         [](const fc::exception& e) {
-            return expect_assert_message(e, "divide by zero");
-         }
-      );
-
-   // test test_udivti3
-   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_udivti3", {});
-
-   // test test_udivti3_by_0
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_udivti3_by_0", {}), arithmetic_exception,
-         [](const fc::exception& e) {
-            return expect_assert_message(e, "divide by zero");
-         }
-      );
-
-   // test test_modti3
-   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_modti3", {});
-
-   // test test_modti3_by_0
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_modti3_by_0", {}), arithmetic_exception,
-         [](const fc::exception& e) {
-            return expect_assert_message(e, "divide by zero");
-         }
-      );
-
-   // test test_lshlti3
-   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_lshlti3", {});
-
-   // test test_lshrti3
-   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_lshrti3", {});
-
-   // test test_ashlti3
-   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_ashlti3", {});
-
-   // test test_ashrti3
-   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_ashrti3", {});
-
-   BOOST_REQUIRE_EQUAL( validate(), true );
-} FC_LOG_AND_RETHROW() }
-
-
-/*************************************************************************************
  * transaction_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
@@ -1501,27 +1442,6 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
                                            eosio_assert_message_exception, "unable to find sec key");
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_sk_cache_pk_lookup", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_pk_cache_sk_lookup", {});
-
-   BOOST_REQUIRE_EQUAL( validate(), true );
-} FC_LOG_AND_RETHROW() }
-
-/*************************************************************************************
- * fixedpoint_tests test case
- *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, TESTER) { try {
-	produce_blocks(2);
-	create_account( N(testapi) );
-	produce_blocks(10);
-	set_code( N(testapi), contracts::test_api_wasm() );
-	produce_blocks(10);
-
-	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "create_instances", {});
-	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "test_addition", {});
-	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "test_subtraction", {});
-	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "test_multiplication", {});
-	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "test_division", {});
-	CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_fixedpoint", "test_division_by_0", {},
-                                          eosio_assert_message_exception, "divide by zero"     );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
