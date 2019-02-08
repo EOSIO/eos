@@ -40,12 +40,12 @@ printf "Physical Memory: ${MEM_MEG} Mgb\\n"
 printf "Disk space total: ${DISK_TOTAL%.*}G\\n"
 printf "Disk space available: ${DISK_AVAIL%.*}G\\n"
 
-
+# llvm is symlinked from /usr/lib64/llvm4.0 into user's home
 DEP_ARRAY=( 
 	git sudo procps-ng which gcc gcc-c++ autoconf automake libtool make \
 	bzip2-devel wget bzip2 compat-openssl10 graphviz doxygen \
 	openssl-devel gmp-devel libstdc++-devel python2 python2-devel python3 python3-devel \
-	libedit ncurses-devel swig
+	libedit ncurses-devel swig llvm4.0
 )
 COUNT=1
 DISPLAY=""
@@ -208,25 +208,15 @@ else
 	printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
 fi
 
-
 printf "\\n"
-
 
 printf "Checking LLVM 4 support...\\n"
 if [ ! -d $LLVM_ROOT ]; then
-	printf "Installing LLVM 4...\\n"
-	cd ../opt \
-	&& git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \
-	&& mkdir build \
-	&& cd build \
-	&& cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="${LLVM_ROOT}" -DLLVM_TARGETS_TO_BUILD="host" -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE="Release" .. \
-	&& make -j"${JOBS}" \
-	&& make install \
-	&& cd ../.. \
+	ln -s /usr/lib64/llvm4.0 $LLVM_ROOT \
 	|| exit 1
-	printf " - WASM compiler successfully installed @ ${LLVM_ROOT}\\n"
+	printf " - LLVM (WASM compiler) successfully linked from /usr/lib64/llvm4.0 to ${LLVM_ROOT}\\n"
 else
-	printf " - WASM found @ ${LLVM_ROOT}.\\n"
+	printf " - LLVM (WASM compiler) found @ ${LLVM_ROOT}.\\n"
 fi
 
 cd ..
