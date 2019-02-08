@@ -245,10 +245,13 @@ namespace bacc = boost::accumulators;
 
       // Record accounts to be billed for network and CPU usage
       flat_set<account_name> provided_accounts;
+
       for( const auto& act : trx.actions ) {
          if( act.account == N(eosio) && act.name == N(providebw) ) {
             auto args = act.data_as<providebw>();
             provided_accounts.insert(args.account);
+         } else if( act.account == N(eosio) && act.name == N(provideram) ) {
+            add_ram_provider(act.data_as<provideram>());
          }
          for( const auto& auth : act.authorization ) {
              const auto provided_bw_it = provided_bandwith_.find(auth.actor);
@@ -259,7 +262,8 @@ namespace bacc = boost::accumulators;
              }
          }
       }
-      validate_ram_usage.reserve( bill_to_accounts.size() );
+
+      validate_ram_usage.reserve(bill_to_accounts.size());
 
       for( const auto& acc : provided_accounts ) {
          bill_to_accounts.erase(acc);
@@ -311,6 +315,20 @@ namespace bacc = boost::accumulators;
          _deadline_timer.start(_deadline);
 
       is_initialized = true;
+   }
+
+   void transaction_context::add_ram_provider(const provideram& provide_ram) {
+       for (const auto& contract : provide_ram.contracts) {
+           add_ram_provider(contract, provide_ram.account, provide_ram.provider);
+       }
+   }
+
+   void transaction_context::add_ram_provider(account_name contract, account_name user, account_name provider)    {
+       auto provider_for_user = ram_providers_.find(contract);
+
+       EOS_ASSERT(provider_for_user == ram_providers_.end() || provider_for_user->second.find(user) == provider_for_user->second.end(), ram_provider_error, "Provider has been already setted up");
+
+       ram_providers_[contract][user] = provider;
    }
 
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )

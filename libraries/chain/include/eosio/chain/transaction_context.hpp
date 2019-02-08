@@ -21,7 +21,7 @@ namespace eosio { namespace chain {
        account_name get_provider() const {return provider_;}
 
    private:
-       
+
        void verify_limits_not_confirmed();
 
        int64_t net_limit_ = 0;
@@ -50,6 +50,7 @@ namespace eosio { namespace chain {
          static bool initialized;
    };
 
+   struct provideram;
    class transaction_context {
       private:
          void init( uint64_t initial_net_usage);
@@ -115,6 +116,9 @@ namespace eosio { namespace chain {
 
          void add_ram_usage( account_name account, int64_t ram_delta );
 
+         void add_ram_provider(const provideram& provide_ram);
+         void add_ram_provider(account_name contract, account_name user, account_name provider);
+
          void dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free = false, uint32_t recurse_depth = 0 );
          inline void dispatch_action( action_trace& trace, const action& a, bool context_free = false ) {
             dispatch_action(trace, a, a.account, context_free);
@@ -176,6 +180,10 @@ namespace eosio { namespace chain {
          deadline_timer                _deadline_timer;
 
          std::map<account_name, provided_bandwith> provided_bandwith_;
-   };
+
+         using provider_for_user = std::map<account_name, account_name>;
+
+         std::map<account_name, provider_for_user> ram_providers_;
+    };
 
 } }

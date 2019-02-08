@@ -197,6 +197,8 @@ namespace eosio { namespace chain {
                                     3040014, "Unknown transaction compression" )
       FC_DECLARE_DERIVED_EXCEPTION( bandwith_already_confirmed, transaction_exception,
                                     3040015, "Bandwith has been already confirmed" )
+      FC_DECLARE_DERIVED_EXCEPTION( ram_provider_error, transaction_exception,
+                                    3040016, "Ram provider error" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
