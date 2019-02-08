@@ -1,4 +1,4 @@
 #!/bin/sh
-CORES=`getconf _NPROCESSORS_ONLN` # determine number of cores available
-ctest --j $CORES --output-on-failure $@ # run ctest, disregard failure code
+# run ctest, disregard failure code
+ctest --output-on-failure $@
 exit 0
