@@ -55,6 +55,21 @@ namespace boost { namespace test_tools { namespace tt_detail {
 
 } } }
 
+// list common system names here to avoid "magic values" in tests
+namespace eosio { namespace chain { namespace config {
+
+static const auto msig_account_name    = N(cyber.msig);
+static const auto token_account_name   = N(cyber.token);
+static const auto names_account_name   = N(cyber.names);
+static const auto ram_account_name     = N(cyber.ram);
+static const auto ramfee_account_name  = N(cyber.ramfee);
+static const auto stake_account_name   = N(cyber.stake);
+static const auto bpay_account_name    = N(cyber.bpay);
+static const auto vpay_account_name    = N(cyber.vpay);
+static const auto saving_account_name  = N(cyber.saving);
+
+}}};
+
 namespace eosio { namespace testing {
    std::vector<uint8_t> read_wasm( const char* fn );
    std::vector<char>    read_abi( const char* fn );

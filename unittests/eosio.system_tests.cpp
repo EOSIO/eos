@@ -16,18 +16,18 @@ BOOST_FIXTURE_TEST_CASE( buysell, eosio_system_tester ) try {
 
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
-   transfer( "eosio", "alice1111111", core_from_string("1000.0000"), "eosio" );
-   BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
+   transfer(config::system_account_name, "alice1111111", core_from_string("1000.0000"), config::system_account_name);
+   BOOST_REQUIRE_EQUAL(success(), stake(config::system_account_name, "alice1111111", core_from_string("200.0000"), core_from_string("100.0000")));
 
    auto total = get_total_stake( "alice1111111" );
    auto init_bytes =  total["ram_bytes"].as_uint64();
 
-   const asset initial_ram_balance = get_balance(N(eosio.ram));
-   const asset initial_ramfee_balance = get_balance(N(eosio.ramfee));
+   const asset initial_ram_balance = get_balance(config::ram_account_name);
+   const asset initial_ramfee_balance = get_balance(config::ramfee_account_name);
    BOOST_REQUIRE_EQUAL( success(), buyram( "alice1111111", "alice1111111", core_from_string("200.0000") ) );
    BOOST_REQUIRE_EQUAL( core_from_string("800.0000"), get_balance( "alice1111111" ) );
-   BOOST_REQUIRE_EQUAL( initial_ram_balance + core_from_string("199.0000"), get_balance(N(eosio.ram)) );
-   BOOST_REQUIRE_EQUAL( initial_ramfee_balance + core_from_string("1.0000"), get_balance(N(eosio.ramfee)) );
+   BOOST_REQUIRE_EQUAL( initial_ram_balance + core_from_string("199.0000"), get_balance(config::ram_account_name) );
+   BOOST_REQUIRE_EQUAL( initial_ramfee_balance + core_from_string("1.0000"), get_balance(config::ramfee_account_name) );
 
    total = get_total_stake( "alice1111111" );
    auto bytes = total["ram_bytes"].as_uint64();
@@ -41,7 +41,7 @@ BOOST_FIXTURE_TEST_CASE( buysell, eosio_system_tester ) try {
    total = get_total_stake( "alice1111111" );
    BOOST_REQUIRE_EQUAL( true, total["ram_bytes"].as_uint64() == init_bytes );
 
-   transfer( "eosio", "alice1111111", core_from_string("100000000.0000"), "eosio" );
+   transfer(config::system_account_name, "alice1111111", core_from_string("100000000.0000"), config::system_account_name);
    BOOST_REQUIRE_EQUAL( core_from_string("100000998.0049"), get_balance( "alice1111111" ) );
    // alice buys ram for 10000000.0000, 0.5% = 50000.0000 go to ramfee
    // after fee 9950000.0000 go to bought bytes
@@ -120,31 +120,31 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    produce_block( fc::hours(3*24) );
 
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
-   transfer( "eosio", "alice1111111", core_from_string("1000.0000"), "eosio" );
+   transfer(config::system_account_name, "alice1111111", core_from_string("1000.0000"), config::system_account_name);
 
    BOOST_REQUIRE_EQUAL( core_from_string("1000.0000"), get_balance( "alice1111111" ) );
-   BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
+   BOOST_REQUIRE_EQUAL( success(), stake(config::system_account_name, "alice1111111", core_from_string("200.0000"), core_from_string("100.0000")));
 
    auto total = get_total_stake("alice1111111");
    BOOST_REQUIRE_EQUAL( core_from_string("210.0000"), total["net_weight"].as<asset>());
    BOOST_REQUIRE_EQUAL( core_from_string("110.0000"), total["cpu_weight"].as<asset>());
 
-   const auto init_eosio_stake_balance = get_balance( N(eosio.stake) );
+   const auto init_eosio_stake_balance = get_balance(config::stake_account_name);
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
    BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
-   BOOST_REQUIRE_EQUAL( init_eosio_stake_balance + core_from_string("300.0000"), get_balance( N(eosio.stake) ) );
+   BOOST_REQUIRE_EQUAL( init_eosio_stake_balance + core_from_string("300.0000"), get_balance(config::stake_account_name) );
    BOOST_REQUIRE_EQUAL( success(), unstake( "alice1111111", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
    BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
 
    produce_block( fc::hours(3*24-1) );
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
-   BOOST_REQUIRE_EQUAL( init_eosio_stake_balance + core_from_string("300.0000"), get_balance( N(eosio.stake) ) );
+   BOOST_REQUIRE_EQUAL( init_eosio_stake_balance + core_from_string("300.0000"), get_balance(config::stake_account_name) );
    //after 3 days funds should be released
    produce_block( fc::hours(1) );
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL( core_from_string("1000.0000"), get_balance( "alice1111111" ) );
-   BOOST_REQUIRE_EQUAL( init_eosio_stake_balance, get_balance( N(eosio.stake) ) );
+   BOOST_REQUIRE_EQUAL( init_eosio_stake_balance, get_balance(config::stake_account_name) );
 
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "bob111111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
    BOOST_REQUIRE_EQUAL( core_from_string("700.0000"), get_balance( "alice1111111" ) );
@@ -181,13 +181,13 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
 BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, eosio_system_tester ) try {
    cross_15_percent_threshold();
 
-   issue( "eosio", core_from_string("1000.0000"), config::system_account_name );
-   issue( "eosio.stake", core_from_string("1000.0000"), config::system_account_name );
+   issue(config::system_account_name, core_from_string("1000.0000"), config::system_account_name);
+   issue(config::stake_account_name, core_from_string("1000.0000"), config::system_account_name);
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
    //eosio stakes for alice with transfer flag
 
-   transfer( "eosio", "bob111111111", core_from_string("1000.0000"), "eosio" );
+   transfer(config::system_account_name, "bob111111111", core_from_string("1000.0000"), config::system_account_name);
    BOOST_REQUIRE_EQUAL( success(), stake_with_transfer( "bob111111111", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
 
    //check that alice has both bandwidth and voting power
@@ -199,7 +199,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_with_transfer, eosio_system_tester ) try 
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
    //alice stakes for herself
-   transfer( "eosio", "alice1111111", core_from_string("1000.0000"), "eosio" );
+   transfer(config::system_account_name, "alice1111111", core_from_string("1000.0000"), config::system_account_name);
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
    //now alice's stake should be equal to transfered from eosio + own stake
    total = get_total_stake("alice1111111");
@@ -237,7 +237,7 @@ BOOST_FIXTURE_TEST_CASE( stake_to_self_with_transfer, eosio_system_tester ) try 
    cross_15_percent_threshold();
 
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
-   transfer( "eosio", "alice1111111", core_from_string("1000.0000"), "eosio" );
+   transfer(config::system_account_name, "alice1111111", core_from_string("1000.0000"), config::system_account_name);
 
    BOOST_REQUIRE_EQUAL( wasm_assert_msg("cannot use transfer flag if delegating to self"),
                         stake_with_transfer( "alice1111111", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") )
@@ -248,13 +248,13 @@ BOOST_FIXTURE_TEST_CASE( stake_to_self_with_transfer, eosio_system_tester ) try 
 BOOST_FIXTURE_TEST_CASE( stake_while_pending_refund, eosio_system_tester ) try {
    cross_15_percent_threshold();
 
-   issue( "eosio", core_from_string("1000.0000"), config::system_account_name );
-   issue( "eosio.stake", core_from_string("1000.0000"), config::system_account_name );
+   issue(config::system_account_name, core_from_string("1000.0000"), config::system_account_name);
+   issue(config::stake_account_name, core_from_string("1000.0000"), config::system_account_name);
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
    //eosio stakes for alice with transfer flag
 
-   transfer( "eosio", "bob111111111", core_from_string("1000.0000"), "eosio" );
+   transfer(config::system_account_name, "bob111111111", core_from_string("1000.0000"), config::system_account_name);
    BOOST_REQUIRE_EQUAL( success(), stake_with_transfer( "bob111111111", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
 
    //check that alice has both bandwidth and voting power
@@ -266,7 +266,7 @@ BOOST_FIXTURE_TEST_CASE( stake_while_pending_refund, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( core_from_string("0.0000"), get_balance( "alice1111111" ) );
 
    //alice stakes for herself
-   transfer( "eosio", "alice1111111", core_from_string("1000.0000"), "eosio" );
+   transfer(config::system_account_name, "alice1111111", core_from_string("1000.0000"), config::system_account_name);
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("200.0000"), core_from_string("100.0000") ) );
    //now alice's stake should be equal to transfered from eosio + own stake
    total = get_total_stake("alice1111111");
@@ -305,7 +305,7 @@ BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
 
    issue( "alice1111111", core_from_string("1000.0000"),  config::system_account_name );
 
-   BOOST_REQUIRE_EQUAL( success(), stake( "eosio", "alice1111111", core_from_string("2000.0000"), core_from_string("1000.0000") ) );
+   BOOST_REQUIRE_EQUAL( success(), stake(config::system_account_name, "alice1111111", core_from_string("2000.0000"), core_from_string("1000.0000")) );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "bob111111111", core_from_string("10.0000"), core_from_string("10.0000") ) );
 
    BOOST_REQUIRE_EQUAL( error("missing authority of alice1111111"),
@@ -1216,7 +1216,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
       const uint64_t initial_claim_time        = initial_global_state["last_pervote_bucket_fill"].as_uint64();
       const int64_t  initial_pervote_bucket    = initial_global_state["pervote_bucket"].as<int64_t>();
       const int64_t  initial_perblock_bucket   = initial_global_state["perblock_bucket"].as<int64_t>();
-      const int64_t  initial_savings           = get_balance(N(eosio.saving)).get_amount();
+      const int64_t  initial_savings           = get_balance(config::saving_account_name).get_amount();
       const uint32_t initial_tot_unpaid_blocks = initial_global_state["total_unpaid_blocks"].as<uint32_t>();
 
       prod = get_producer_info("defproducera");
@@ -1235,7 +1235,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
       const uint64_t claim_time        = global_state["last_pervote_bucket_fill"].as_uint64();
       const int64_t  pervote_bucket    = global_state["pervote_bucket"].as<int64_t>();
       const int64_t  perblock_bucket   = global_state["perblock_bucket"].as<int64_t>();
-      const int64_t  savings           = get_balance(N(eosio.saving)).get_amount();
+      const int64_t  savings           = get_balance(config::saving_account_name).get_amount();
       const uint32_t tot_unpaid_blocks = global_state["total_unpaid_blocks"].as<uint32_t>();
 
       prod = get_producer_info("defproducera");
@@ -1293,7 +1293,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
       const uint64_t initial_claim_time        = initial_global_state["last_pervote_bucket_fill"].as_uint64();
       const int64_t  initial_pervote_bucket    = initial_global_state["pervote_bucket"].as<int64_t>();
       const int64_t  initial_perblock_bucket   = initial_global_state["perblock_bucket"].as<int64_t>();
-      const int64_t  initial_savings           = get_balance(N(eosio.saving)).get_amount();
+      const int64_t  initial_savings           = get_balance(config::saving_account_name).get_amount();
       const uint32_t initial_tot_unpaid_blocks = initial_global_state["total_unpaid_blocks"].as<uint32_t>();
       const double   initial_tot_vote_weight   = initial_global_state["total_producer_vote_weight"].as<double>();
 
@@ -1316,7 +1316,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
       const uint64_t claim_time        = global_state["last_pervote_bucket_fill"].as_uint64();
       const int64_t  pervote_bucket    = global_state["pervote_bucket"].as<int64_t>();
       const int64_t  perblock_bucket   = global_state["perblock_bucket"].as<int64_t>();
-      const int64_t  savings           = get_balance(N(eosio.saving)).get_amount();
+      const int64_t  savings           = get_balance(config::saving_account_name).get_amount();
       const uint32_t tot_unpaid_blocks = global_state["total_unpaid_blocks"].as<uint32_t>();
 
       prod = get_producer_info("defproducera");
@@ -1357,7 +1357,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
       regproducer(N(defproducerb));
       regproducer(N(defproducerc));
       const asset   initial_supply  = get_token_supply();
-      const int64_t initial_savings = get_balance(N(eosio.saving)).get_amount();
+      const int64_t initial_savings = get_balance(config::saving_account_name).get_amount();
       for (uint32_t i = 0; i < 7 * 52; ++i) {
          produce_block(fc::seconds(8 * 3600));
          BOOST_REQUIRE_EQUAL(success(), push_action(N(defproducerc), N(claimrewards), mvo()("owner", "defproducerc")));
@@ -1367,7 +1367,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
          BOOST_REQUIRE_EQUAL(success(), push_action(N(defproducera), N(claimrewards), mvo()("owner", "defproducera")));
       }
       const asset   supply  = get_token_supply();
-      const int64_t savings = get_balance(N(eosio.saving)).get_amount();
+      const int64_t savings = get_balance(config::saving_account_name).get_amount();
       // Amount issued per year is very close to the 5% inflation target. Small difference (500 tokens out of 50'000'000 issued)
       // is due to compounding every 8 hours in this test as opposed to theoretical continuous compounding
       BOOST_REQUIRE(500 * 10000 > int64_t(double(initial_supply.get_amount()) * double(0.05)) - (supply.get_amount() - initial_supply.get_amount()));
@@ -1492,11 +1492,11 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       const uint64_t initial_claim_time        = initial_global_state["last_pervote_bucket_fill"].as_uint64();
       const int64_t  initial_pervote_bucket    = initial_global_state["pervote_bucket"].as<int64_t>();
       const int64_t  initial_perblock_bucket   = initial_global_state["perblock_bucket"].as<int64_t>();
-      const int64_t  initial_savings           = get_balance(N(eosio.saving)).get_amount();
+      const int64_t  initial_savings           = get_balance(config::saving_account_name).get_amount();
       const uint32_t initial_tot_unpaid_blocks = initial_global_state["total_unpaid_blocks"].as<uint32_t>();
       const asset    initial_supply            = get_token_supply();
-      const asset    initial_bpay_balance      = get_balance(N(eosio.bpay));
-      const asset    initial_vpay_balance      = get_balance(N(eosio.vpay));
+      const asset    initial_bpay_balance      = get_balance(config::bpay_account_name);
+      const asset    initial_vpay_balance      = get_balance(config::vpay_account_name);
       const asset    initial_balance           = get_balance(prod_name);
       const uint32_t initial_unpaid_blocks     = get_producer_info(prod_name)["unpaid_blocks"].as<uint32_t>();
 
@@ -1506,11 +1506,11 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       const uint64_t claim_time        = global_state["last_pervote_bucket_fill"].as_uint64();
       const int64_t  pervote_bucket    = global_state["pervote_bucket"].as<int64_t>();
       const int64_t  perblock_bucket   = global_state["perblock_bucket"].as<int64_t>();
-      const int64_t  savings           = get_balance(N(eosio.saving)).get_amount();
+      const int64_t  savings           = get_balance(config::saving_account_name).get_amount();
       const uint32_t tot_unpaid_blocks = global_state["total_unpaid_blocks"].as<uint32_t>();
       const asset    supply            = get_token_supply();
-      const asset    bpay_balance      = get_balance(N(eosio.bpay));
-      const asset    vpay_balance      = get_balance(N(eosio.vpay));
+      const asset    bpay_balance      = get_balance(config::bpay_account_name);
+      const asset    vpay_balance      = get_balance(config::vpay_account_name);
       const asset    balance           = get_balance(prod_name);
       const uint32_t unpaid_blocks     = get_producer_info(prod_name)["unpaid_blocks"].as<uint32_t>();
 
@@ -1568,11 +1568,11 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       const uint64_t initial_claim_time        = initial_global_state["last_pervote_bucket_fill"].as_uint64();
       const int64_t  initial_pervote_bucket    = initial_global_state["pervote_bucket"].as<int64_t>();
       const int64_t  initial_perblock_bucket   = initial_global_state["perblock_bucket"].as<int64_t>();
-      const int64_t  initial_savings           = get_balance(N(eosio.saving)).get_amount();
+      const int64_t  initial_savings           = get_balance(config::saving_account_name).get_amount();
       const uint32_t initial_tot_unpaid_blocks = initial_global_state["total_unpaid_blocks"].as<uint32_t>();
       const asset    initial_supply            = get_token_supply();
-      const asset    initial_bpay_balance      = get_balance(N(eosio.bpay));
-      const asset    initial_vpay_balance      = get_balance(N(eosio.vpay));
+      const asset    initial_bpay_balance      = get_balance(config::bpay_account_name);
+      const asset    initial_vpay_balance      = get_balance(config::vpay_account_name);
       const asset    initial_balance           = get_balance(prod_name);
       const uint32_t initial_unpaid_blocks     = get_producer_info(prod_name)["unpaid_blocks"].as<uint32_t>();
 
@@ -1582,11 +1582,11 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
       const uint64_t claim_time        = global_state["last_pervote_bucket_fill"].as_uint64();
       const int64_t  pervote_bucket    = global_state["pervote_bucket"].as<int64_t>();
       const int64_t  perblock_bucket   = global_state["perblock_bucket"].as<int64_t>();
-      const int64_t  savings           = get_balance(N(eosio.saving)).get_amount();
+      const int64_t  savings           = get_balance(config::saving_account_name).get_amount();
       const uint32_t tot_unpaid_blocks = global_state["total_unpaid_blocks"].as<uint32_t>();
       const asset    supply            = get_token_supply();
-      const asset    bpay_balance      = get_balance(N(eosio.bpay));
-      const asset    vpay_balance      = get_balance(N(eosio.vpay));
+      const asset    bpay_balance      = get_balance(config::bpay_account_name);
+      const asset    vpay_balance      = get_balance(config::vpay_account_name);
       const asset    balance           = get_balance(prod_name);
       const uint32_t unpaid_blocks     = get_producer_info(prod_name)["unpaid_blocks"].as<uint32_t>();
 
@@ -1692,7 +1692,7 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) 
          string action_type_name = msig_abi_ser.get_action_type(name);
 
          action act;
-         act.account = N(eosio.msig);
+         act.account = config::msig_account_name;
          act.name = name;
          act.data = msig_abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
 
@@ -2114,7 +2114,7 @@ BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, eosio_system_teste
    BOOST_REQUIRE_EQUAL( success(), regproducer( "defproducer3", 3) );
 
    //stake more than 15% of total EOS supply to activate chain
-   transfer( "eosio", "alice1111111", core_from_string("600000000.0000"), "eosio" );
+   transfer(config::system_account_name, "alice1111111", core_from_string("600000000.0000"), config::system_account_name);
    BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_from_string("300000000.0000"), core_from_string("300000000.0000") ) );
    //vote for producers
    BOOST_REQUIRE_EQUAL( success(), vote( N(alice1111111), { N(defproducer1) } ) );
@@ -2202,7 +2202,7 @@ BOOST_FIXTURE_TEST_CASE( buyname, eosio_system_tester ) try {
    //wlog( "verify sam can create nofail" );
    create_accounts_with_resources( { N(nofail) }, N(sam) ); // sam should be able to do this, he won the bid
    //wlog( "verify nofail can create test.nofail" );
-   transfer( "eosio", "nofail", core_from_string( "1000.0000" ) );
+   transfer(config::system_account_name, "nofail", core_from_string("1000.0000"));
    create_accounts_with_resources( { N(test.nofail) }, N(nofail) ); // only nofail can create test.nofail
    //wlog( "verify dan cannot create test.fail" );
    BOOST_REQUIRE_EXCEPTION( create_accounts_with_resources( { N(test.fail) }, N(dan) ), // dan shouldn't be able to do this
@@ -2268,12 +2268,12 @@ BOOST_FIXTURE_TEST_CASE( multiple_namebids, eosio_system_tester ) try {
 
    // alice outbids bob on prefb
    {
-      const asset initial_names_balance = get_balance(N(eosio.names));
+      const asset initial_names_balance = get_balance(config::names_account_name);
       BOOST_REQUIRE_EQUAL( success(),
                            bidname( "alice", "prefb", core_from_string("1.1001") ) );
       BOOST_REQUIRE_EQUAL( core_from_string( "9997.9997" ), get_balance("bob") );
       BOOST_REQUIRE_EQUAL( core_from_string( "9998.8999" ), get_balance("alice") );
-      BOOST_REQUIRE_EQUAL( initial_names_balance + core_from_string("0.1001"), get_balance(N(eosio.names)) );
+      BOOST_REQUIRE_EQUAL( initial_names_balance + core_from_string("0.1001"), get_balance(config::names_account_name) );
    }
 
    // david outbids carl on prefd
@@ -2453,7 +2453,7 @@ BOOST_FIXTURE_TEST_CASE( setparams, eosio_system_tester ) try {
          string action_type_name = msig_abi_ser.get_action_type(name);
 
          action act;
-         act.account = N(eosio.msig);
+         act.account = config::msig_account_name;
          act.name = name;
          act.data = msig_abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
 
