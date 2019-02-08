@@ -183,24 +183,6 @@ else
 	printf "\\n - No required Home Brew dependencies to install.\\n"
 fi
 
-printf "Checking CMAKE installation...\\n"
-CMAKE=$(command -v cmake 2>/dev/null)
-if [ -z $CMAKE ]; then
-	printf "Installing CMAKE...\\n"
-	curl -LO https://cmake.org/files/v$CMAKE_VERSION_MAJOR.$CMAKE_VERSION_MINOR/cmake-$CMAKE_VERSION.tar.gz \
-	&& tar xf cmake-$CMAKE_VERSION.tar.gz \
-	&& cd cmake-$CMAKE_VERSION \
-	&& ./bootstrap --prefix=$HOME \
-	&& make -j"${JOBS}" \
-	&& make install \
-	&& cd .. \
-	&& rm -f cmake-$CMAKE_VERSION.tar.gz \
-	|| exit 1
-	printf " - CMAKE successfully installed @ ${HOME}/bin/cmake \\n"
-else
-	printf " - CMAKE found @ ${CMAKE}.\\n"
-fi
-
 printf "\\n"
 
 export CPATH="$HOME/include:$(python-config --includes | awk '{print $1}' | cut -dI -f2):$CPATH" # Boost has trouble finding pyconfig.h
