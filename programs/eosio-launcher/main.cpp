@@ -850,7 +850,7 @@ launcher_def::bind_nodes () {
       cerr << "Unable to allocate producers due to insufficient prod_nodes = " << prod_nodes << "\n";
       exit (10);
    }
-   unsigned int non_bios = prod_nodes - 1;
+   size_t non_bios = prod_nodes - 1;
    int per_node = producers / non_bios;
    int extra = producers % non_bios;
    unsigned int i = 0;
