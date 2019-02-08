@@ -33,6 +33,7 @@ COPY --from=builder /opt/cyberway /opt/cyberway
 COPY --from=builder /cyberway/Docker/nodeosd.sh /opt/cyberway/bin/nodeosd.sh
 COPY --from=builder /cyberway/Docker/run-with-events.sh /opt/cyberway/startup/run-with-events.sh
 COPY --from=builder /cyberway/Docker/docker-compose-events.yml /opt/cyberway/startup/docker-compose-events.yml
+COPY --from=builder /cyberway/Docker/mongodb-exporter /opt/cyberway/startup/mongodb-exporter
 
 ENV CYBERWAY_ROOT=/opt/cyberway
 RUN chmod +x /opt/cyberway/bin/nodeosd.sh
