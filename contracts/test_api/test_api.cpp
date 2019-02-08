@@ -22,7 +22,7 @@ account_name global_receiver;
 
 extern "C" {
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-      if( code == N(eosio) && action == N(onerror) ) {
+      if( code == SYSTEM_ACC && action == N(onerror) ) {
          auto error = eosio::onerror::from_current_action();
          eosio::print("onerror called\n");
          auto error_trx = error.unpack_sent_trx();
