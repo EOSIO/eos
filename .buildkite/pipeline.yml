@@ -128,7 +128,7 @@ steps:
         echo "+++ :microscope: Running tests" && \
         ln -s "$(pwd)" /data/job && \
         cd /data/job/build && \
-        CORES=`getconf _NPROCESSORS_ONLN` && \
+        CORES=`sysctl -n hw.ncpu` && \
         echo "$CORES CPU cores found, testing on all cores" && \
         ctest -j $CORES -LE _tests --output-on-failure
     label: ":darwin: High Sierra Tests"
@@ -169,7 +169,7 @@ steps:
         echo "+++ :microscope: Running tests" && \
         ln -s "$(pwd)" /data/job && \
         cd /data/job/build && \
-        CORES=`getconf _NPROCESSORS_ONLN` && \
+        CORES=`sysctl -n hw.ncpu` && \
         echo "$CORES CPU cores found, testing on all cores" && \
         ctest -j $CORES -LE _tests --output-on-failure
     label: ":darwin: Mojave Tests"
@@ -210,7 +210,7 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && \
-        CORES=`getconf _NPROCESSORS_ONLN` && \
+        CORES=`grep -c processor /proc/cpuinfo` && \
         echo "$CORES CPU cores found, testing on all cores" && \
         ctest -j $CORES -LE _tests --output-on-failure
     label: ":ubuntu: Tests"
@@ -256,7 +256,7 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && \
-        CORES=`getconf _NPROCESSORS_ONLN` && \
+        CORES=`grep -c processor /proc/cpuinfo` && \
         echo "$CORES CPU cores found, testing on all cores" && \
         ctest -j $CORES -LE _tests --output-on-failure
     label: ":ubuntu: 18.04 Tests"
@@ -302,7 +302,7 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && \
-        CORES=`getconf _NPROCESSORS_ONLN` && \
+        CORES=`grep -c processor /proc/cpuinfo` && \
         echo "$CORES CPU cores found, testing on all cores" && \
         ctest -j $CORES -LE _tests --output-on-failure
     label: ":fedora: Tests"
@@ -348,7 +348,7 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && \
-        CORES=`getconf _NPROCESSORS_ONLN` && \
+        CORES=`grep -c processor /proc/cpuinfo` && \
         echo "$CORES CPU cores found, testing on all cores" && \
         ctest -j $CORES -LE _tests --output-on-failure
     label: ":centos: Tests"
@@ -394,7 +394,7 @@ steps:
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && \
-        CORES=`getconf _NPROCESSORS_ONLN` && \
+        CORES=`grep -c processor /proc/cpuinfo` && \
         echo "$CORES CPU cores found, testing on all cores" && \
         ctest -j $CORES -LE _tests --output-on-failure
     label: ":aws: Tests"
