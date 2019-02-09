@@ -8,14 +8,9 @@ set(EOSIO_VERSION "@VERSION_FULL@")
 
 enable_testing()
 
-if (UNIX)
-   if (APPLE)
-      if (LLVM_DIR STREQUAL "" OR NOT LLVM_DIR)
-         set(LLVM_DIR "~/opt/llvm/lib/cmake/llvm")
-      endif()
-   endif()
+if (LLVM_DIR STREQUAL "" OR NOT LLVM_DIR)
+   set(LLVM_DIR @LLVM_DIR@)
 endif()
-
 
 find_package( Gperftools QUIET )
 if( GPERFTOOLS_FOUND )
@@ -31,7 +26,7 @@ set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON )
 
-set( BOOST_ROOT "~/opt/boost" )
+set( BOOST_ROOT @BOOST_ROOT@ )
 if ( APPLE )
    set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-deprecated-declarations" )
 else ( APPLE )
