@@ -4,5 +4,3 @@ if( EOSIO_COMPILE_TEST_CONTRACTS )
 else()
    configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/asserter.wasm ${CMAKE_CURRENT_BINARY_DIR}/asserter.wasm COPYONLY )
 endif()
-
-configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/asserter.abi ${CMAKE_CURRENT_BINARY_DIR}/asserter.abi COPYONLY )
