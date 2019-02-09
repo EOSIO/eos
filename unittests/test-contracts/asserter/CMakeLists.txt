@@ -1,8 +1,6 @@
 if( ${eosio.cdt_FOUND} )
-  add_executable( asserter asserter asserter.cpp )
-  target_include_directories(asserter PUBLIC ${CMAKE_CURRENT_SOURCE}/../)
+   add_contract( asserter asserter asserter.cpp )
 else()
-  configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/asserter.wasm ${CMAKE_CURRENT_BINARY_DIR}/asserter.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/asserter.wasm ${CMAKE_CURRENT_BINARY_DIR}/asserter.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/asserter.abi  ${CMAKE_CURRENT_BINARY_DIR}/asserter.abi  COPYONLY )
 endif()
-
-configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/asserter.abi ${CMAKE_CURRENT_BINARY_DIR}/asserter.abi COPYONLY )
