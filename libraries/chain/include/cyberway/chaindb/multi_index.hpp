@@ -728,8 +728,7 @@ public:
 
             fc::variant value;
             fc::to_variant(obj, value);
-            auto size = fc::raw::pack_size(obj);
-            controller_.insert(*itm.get(), std::move(value), size);
+            controller_.insert(*itm.get(), std::move(value));
 
             return const_iterator(this, uninitilized_cursor::find_by_pk, pk, std::move(itm));
         } catch (...) {
@@ -757,10 +756,9 @@ public:
         auto mpk = primary_key_extractor_type()(obj);
         CYBERWAY_INDEX_ASSERT(pk == mpk, "updater cannot change primary key when modifying an object");
 
-        auto size = fc::raw::pack_size(obj);
         fc::variant value;
         fc::to_variant(obj, value);
-        auto upk = controller_.update(itm, std::move(value), size);
+        auto upk = controller_.update(itm, std::move(value));
         CYBERWAY_INDEX_ASSERT(upk == pk, "unable to update object");
     }
 
