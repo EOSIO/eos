@@ -33,9 +33,6 @@ struct field_def {
    bool operator==(const field_def& other) const {
       return std::tie(name, type) == std::tie(other.name, other.type);
    }
-
-   // The following fields are service and set by chain code
-   uint       index_count = 0;
 };
 
 struct struct_def {
@@ -109,7 +106,8 @@ struct table_def {
    vector<index_def>  indexes;     //
 
    // The following fields are service and set by chain code
-   int64_t            row_count = 0;
+   int64_t                    row_count = 0;
+   flat_map<field_name, uint> field_index_map;
 };
 
 struct error_message {

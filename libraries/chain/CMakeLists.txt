@@ -49,6 +49,7 @@ add_library( eosio_chain
              chaindb/cache_map.cpp
              chaindb/journal.cpp
              chaindb/abi_info.cpp
+             chaindb/ram_calculator.cpp
              
              domain_name.cpp
              ${CHAINDB_SRCS}

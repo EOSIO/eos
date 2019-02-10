@@ -7,6 +7,7 @@
 #include <cyberway/chaindb/undo_state.hpp>
 #include <cyberway/chaindb/mongo_driver.hpp>
 #include <cyberway/chaindb/abi_info.hpp>
+#include <cyberway/chaindb/ram_calculator.hpp>
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/symbol.hpp>
@@ -247,7 +248,7 @@ namespace cyberway { namespace chaindb {
         ) {
             auto table = get_table(request);
             auto value = table.abi->to_object(table, data, size);
-            auto obj = object_value{{table, pk, payer, size}, std::move(value)};
+            auto obj = object_value{{table, pk, payer}, std::move(value)};
 
             auto inserted_pk = insert(table, obj);
             // TODO: update RAM usage
@@ -258,7 +259,7 @@ namespace cyberway { namespace chaindb {
         // From internal
         primary_key_t insert(cache_item& itm, variant value, const size_t size) {
             auto table = get_table(itm);
-            auto obj = object_value{{table, itm.pk(), account_name() /* payer */, size}, std::move(value)};
+            auto obj = object_value{{table, itm.pk(), account_name() /* payer */}, std::move(value)};
 
             auto inserted_pk = insert(table, obj);
             itm.set_object(std::move(obj));
@@ -273,7 +274,7 @@ namespace cyberway { namespace chaindb {
         ) {
             auto table = get_table(request);
             auto value = table.abi->to_object(table, data, size);
-            auto obj = object_value{{table, pk, payer, size}, std::move(value)};
+            auto obj = object_value{{table, pk, payer}, std::move(value)};
 
             auto updated_pk = update(table, obj);
             cache_.emplace(table, std::move(obj));
@@ -286,7 +287,7 @@ namespace cyberway { namespace chaindb {
         // From internal
         primary_key_t update(cache_item& itm, variant value, const size_t size) {
             auto table = get_table(itm);
-            auto obj = object_value{{table, itm.pk(), account_name() /* payer */, size}, std::move(value)};
+            auto obj = object_value{{table, itm.pk(), account_name() /* payer */}, std::move(value)};
 
             auto updated_pk = update(table, obj);
             itm.set_object(std::move(obj));
@@ -512,12 +513,14 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t insert(const table_info& table, object_value& obj) {
             validate_object(table, obj, obj.pk());
+            obj.service.size = calc_ram_usage(*table.table, obj.value);
             undo_.insert(table, obj);
             return obj.pk();
         }
 
         primary_key_t update(const table_info& table, object_value& obj) {
             validate_object(table, obj, obj.pk());
+            obj.service.size = calc_ram_usage(*table.table, obj.value);
 
             auto orig_obj = object_by_pk(table, obj.pk());
             if (obj.service.payer.empty()) {

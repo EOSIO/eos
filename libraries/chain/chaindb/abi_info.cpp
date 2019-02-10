@@ -150,10 +150,12 @@ namespace cyberway { namespace chaindb {
                         --size;
                         if (!size) {
                             auto field = src_field;
-                            field.index_count++;
                             field.type = serializer_.resolve_type(src_field.type);
                             order.type = field.type;
                             dst_struct->fields.emplace_back(std::move(field));
+
+                            auto index_cnt_res = table.field_index_map.emplace(order.field, 0);
+                            index_cnt_res.first->second++;
                         } else {
                             src_struct = &get_struct(src_field.type);
                             struct_name.append(1, '.').append(key);
@@ -292,7 +294,6 @@ namespace cyberway { namespace chaindb {
         for (auto& table: drop_tables)    driver.drop_table(  table);
         for (auto& index: drop_indexes)   driver.drop_index(  index);
         for (auto& index: create_indexes) driver.create_index(index);
-
     }
 
 } } // namespace cyberway::chaindb
