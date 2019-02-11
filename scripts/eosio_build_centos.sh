@@ -189,6 +189,7 @@ fi
 
 printf "\\n"
 
+
 export CPATH="$CPATH:/opt/rh/python33/root/usr/include/python3.3m" # m on the end causes problems with boost finding python3
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
 if [ ! -d $BOOST_ROOT ]; then
@@ -287,6 +288,7 @@ else
 	printf " - WASM found @ ${LLVM_ROOT}.\\n"
 fi
 
+
 cd ..
 printf "\\n"
 
@@ -299,7 +301,7 @@ function print_instructions()
 	# HOME/bin first to load proper cmake version over the one in /usr/bin.
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang (We don't symlink into $HOME/bin)
 	printf "export PATH=\$HOME/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
-	printf "export LD_LIBRARY_PATH=\$HOME/lib:\$HOME/lib64:\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n" # libmongoc is installed into $HOME/lib64
+	printf "export LD_LIBRARY_PATH=\$HOME/lib:\$HOME/lib64:\$LD_LIBRARY_PATH\\n" # libmongoc is installed into $HOME/lib64
 	printf "export CMAKE_MODULE_PATH=\$HOME/lib/cmake\\n"
 	printf "export CPATH=\$HOME/include:\$CPLUS_INCLUDE_PATH\\n" # libmongoc is installed into $HOME/include
 	printf "\\nThen, source the file (or restart the terminal) and run:\\n"
