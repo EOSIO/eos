@@ -144,6 +144,7 @@ namespace eosio {
          std::shared_ptr<boost::asio::io_context>    server_ioc;
          optional<io_work_t>                         server_ioc_work;
          std::atomic<int64_t>                        bytes_in_flight{0};
+         size_t                                      max_bytes_in_flight = 0;
 
          optional<tcp::endpoint>  https_listen_endpoint;
          string                   https_cert_chain;
@@ -418,6 +419,8 @@ namespace eosio {
              "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
             ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024),
              "The maximum body size in bytes allowed for incoming RPC requests")
+            ("http-max-bytes-in-flight-mb", bpo::value<uint32_t>()->default_value(500),
+             "Maximum size in megabytes http_plugin should use for processing http requests. 503 error response when exceeded." )
             ("verbose-http-errors", bpo::bool_switch()->default_value(false),
              "Append the error log to HTTP responses")
             ("http-validate-host", boost::program_options::value<bool>()->default_value(true),
@@ -503,6 +506,8 @@ namespace eosio {
          my->thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
          EOS_ASSERT( my->thread_pool_size > 1, chain::plugin_config_exception,
                      "http-threads ${num} must be greater than 1", ("num", my->thread_pool_size));
+
+         my->max_bytes_in_flight = options.at( "http-max-bytes-in-flight-mb" ).as<uint32_t>() * 1024 * 1024;
 
          //watch out for the returns above when adding new code here
       } FC_LOG_AND_RETHROW()
