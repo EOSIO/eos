@@ -209,7 +209,7 @@ fi
 printf "\\n"
 
 
-printf "\\nChecking MongoDB installation...\\n"
+printf "Checking MongoDB installation...\\n"
 if [ ! -d $MONGODB_ROOT ]; then
 	printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
 	curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
@@ -263,8 +263,12 @@ else
 	printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
 fi
 
+
+printf "\\n"
+
+
 # We install llvm into /usr/local/opt using brew install llvm@4
-printf "\\nChecking LLVM 4 support...\\n"
+printf "Checking LLVM 4 support...\\n"
 if [ ! -d $LLVM_ROOT ]; then
 	ln -s /usr/local/opt/llvm@4 $LLVM_ROOT \
 	|| exit 1
@@ -272,6 +276,7 @@ if [ ! -d $LLVM_ROOT ]; then
 else
 	printf " - LLVM (WASM compiler) found @ ${LLVM_ROOT}.\\n"
 fi
+
 
 cd ..
 printf "\\n"
@@ -283,7 +288,7 @@ printf "Please ensure the following in your ~/.bash_profile:\\n"
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang + We don't symlink into $HOME/bin
 	# /usr/local/opt/python/libexec/bin: brew install python installs python3, but doesn't symlink it as python into /usr/local/bin
 	printf "export PATH=\$HOME/bin:/usr/local/opt/python/libexec/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
-	printf "export LD_LIBRARY_PATH=\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n"
+	printf "export LD_LIBRARY_PATH=\$HOME/lib:\$LD_LIBRARY_PATH\\n"
 	printf "export CMAKE_MODULE_PATH=\$HOME/lib/cmake\\n"
 	printf "export CPATH=\$HOME/include:$(python-config --includes | awk '{print $1}' | cut -dI -f2):\$CPATH\\n"
 	printf "\\nThen, source the file (or restart the terminal) and run:\\n"
