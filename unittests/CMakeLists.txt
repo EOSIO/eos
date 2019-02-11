@@ -59,13 +59,8 @@ foreach(TEST_SUITE ${UNIT_TESTS}) # create an independent target for each test s
   if (NOT "" STREQUAL "${SUITE_NAME}") # ignore empty lines
     execute_process(COMMAND bash -c "echo ${SUITE_NAME} | sed -e 's/s$//' | sed -e 's/_test$//'" OUTPUT_VARIABLE TRIMMED_SUITE_NAME OUTPUT_STRIP_TRAILING_WHITESPACE) # trim "_test" or "_tests" from the end of ${SUITE_NAME}
     # to run unit_test with all log from blockchain displayed, put "--verbose" after "--", i.e. "unit_test -- --verbose"
-    if("wasm" STREQUAL "${TRIMMED_SUITE_NAME}") # edge case: exclude some test cases from suite
-      add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_wavm COMMAND unit_test --run_test=wasm_tests -t \!wasm_tests/weighted_cpu_limit_tests --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
-      add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_wabt COMMAND unit_test --run_test=wasm_tests -t \!wasm_tests/weighted_cpu_limit_tests --report_level=detailed --color_output -- --wabt)
-    else() # run all test cases in suite
-      add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_wavm COMMAND unit_test --run_test=${SUITE_NAME} --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
-      add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_wabt COMMAND unit_test --run_test=${SUITE_NAME} --report_level=detailed --color_output -- --wabt)
-    endif()
+    add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_wavm COMMAND unit_test --run_test=${SUITE_NAME} --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
+    add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_wabt COMMAND unit_test --run_test=${SUITE_NAME} --report_level=detailed --color_output -- --wabt)
     # build list of tests to run during coverage testing
     if(NOT "" STREQUAL "${ctest_tests}")
       set(ctest_tests "${ctest_tests}|${TRIMMED_SUITE_NAME}_unit_test_wavm|${TRIMMED_SUITE_NAME}_unit_test_wabt")
