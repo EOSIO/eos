@@ -22,9 +22,13 @@ if (UNIX)
    endif()
 endif()
 
-set(LLVM_DIR "$ENV{HOME}/opt/llvm/lib/cmake/llvm")
-set(BOOST_ROOT "$ENV{HOME}/opt/boost")
+if (LLVM_DIR STREQUAL "" OR NOT LLVM_DIR)
+    set(LLVM_DIR "$ENV{HOME}/opt/llvm/lib/cmake/llvm")
+endif()
 
+if (BOOST_ROOT STREQUAL "" OR NOT BOOST_ROOT)
+    set(BOOST_ROOT "$ENV{HOME}/opt/boost")
+endif()
 
 include( GNUInstallDirs )
 include( VersionMacros )
