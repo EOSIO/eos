@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 
@@ -10,7 +10,6 @@ namespace eosio { namespace chain {
 
 using type_name      = string;
 using field_name     = string;
-using hash_type      = uint64_t;
 
 struct type_def {
    type_def() = default;
@@ -53,13 +52,12 @@ struct struct_def {
 
 struct action_def {
    action_def() = default;
-   action_def(const action_name& name, const type_name& type, const string& ricardian_contract)
-   :name(name), type(type), ricardian_contract(ricardian_contract)
+   action_def(const action_name& name, const type_name& type)
+   :name(name), type(type)
    {}
 
    action_name name;
    type_name   type;
-   string      ricardian_contract;
 };
 
 struct event_def {
@@ -90,12 +88,7 @@ struct index_def {
    : name(name), unique(unique), orders(orders)
    { }
 
-   index_def(const index_name& name, const hash_type hash, const bool unique, const vector<order_def>& orders)
-   : name(name), hash(hash), unique(unique), orders(orders)
-   { }
-
    index_name         name;
-   hash_type          hash = 0;
    bool               unique = false;
    vector<order_def>  orders;
 };
@@ -106,25 +99,10 @@ struct table_def {
    :name(name), type(type), indexes(indexes)
    {}
 
-   table_def(const table_name& name, const hash_type hash, const type_name& type, const vector<index_def>& indexes)
-   :name(name), hash(hash), type(type), indexes(indexes)
-   {}
-
    table_name         name;        // the name of the table
-   hash_type          hash = 0;
    int64_t            row_count = 0;
    type_name          type;        // type of binary data stored in this table
    vector<index_def>  indexes;     //
-};
-
-struct clause_pair {
-   clause_pair() = default;
-   clause_pair( const string& id, const string& body )
-   : id(id), body(body)
-   {}
-
-   string id;
-   string body;
 };
 
 struct error_message {
@@ -149,13 +127,12 @@ struct may_not_exist {
 
 struct abi_def {
    abi_def() = default;
-   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<event_def>& events, const vector<table_def>& tables, const vector<clause_pair>& clauses, const vector<error_message>& error_msgs)
+   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<event_def>& events, const vector<table_def>& tables, const vector<error_message>& error_msgs)
    :types(types)
    ,structs(structs)
    ,actions(actions)
    ,events(events)
    ,tables(tables)
-   ,ricardian_clauses(clauses)
    ,error_messages(error_msgs)
    {}
 
@@ -165,13 +142,13 @@ struct abi_def {
    vector<action_def>                  actions;
    vector<event_def>                   events;
    vector<table_def>                   tables;
-   vector<clause_pair>                 ricardian_clauses;
    vector<error_message>               error_messages;
    extensions_type                     abi_extensions;
    may_not_exist<vector<variant_def>>  variants;
 };
 
-abi_def eosio_contract_abi(const abi_def& eosio_system_abi);
+abi_def eosio_contract_abi(abi_def abi = abi_def());
+abi_def domain_contract_abi(abi_def abi = abi_def());
 vector<type_def> common_type_defs();
 
 } } /// namespace eosio::chain
@@ -206,13 +183,12 @@ void from_variant(const fc::variant& v, eosio::chain::may_not_exist<T>& e) {
 FC_REFLECT( eosio::chain::type_def                         , (new_type_name)(type) )
 FC_REFLECT( eosio::chain::field_def                        , (name)(type) )
 FC_REFLECT( eosio::chain::struct_def                       , (name)(base)(fields) )
-FC_REFLECT( eosio::chain::action_def                       , (name)(type)(ricardian_contract) )
+FC_REFLECT( eosio::chain::action_def                       , (name)(type) )
 FC_REFLECT( eosio::chain::event_def                        , (name)(type) )
 FC_REFLECT( eosio::chain::order_def                        , (field)(order) )
 FC_REFLECT( eosio::chain::index_def                        , (name)(unique)(orders) )
 FC_REFLECT( eosio::chain::table_def                        , (name)(type)(indexes) )
-FC_REFLECT( eosio::chain::clause_pair                      , (id)(body) )
 FC_REFLECT( eosio::chain::error_message                    , (error_code)(error_msg) )
 FC_REFLECT( eosio::chain::variant_def                      , (name)(types) )
 FC_REFLECT( eosio::chain::abi_def                          , (version)(types)(structs)(actions)(events)(tables)
-                                                             (ricardian_clauses)(error_messages)(abi_extensions)(variants) )
+                                                             (error_messages)(abi_extensions)(variants) )

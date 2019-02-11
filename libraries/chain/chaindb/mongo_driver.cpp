@@ -286,18 +286,14 @@ namespace cyberway { namespace chaindb {
 
             if (end_primary_key == get_pk_value()) {
                 object_.value = variant_object();
-                object_.service.pk = pk;
+                object_.service.pk    = pk;
+                object_.service.code  = index.code;
+                object_.service.scope = index.scope;
+                object_.service.table = index.table->name;
             } else {
                 auto& view = *source_->begin();
                 object_ = build_object(index, view);
                 pk = object_.service.pk;
-            }
-
-            if (!object_.service.hash) {
-                object_.service.code  = index.code;
-                object_.service.scope = index.scope;
-                object_.service.table = index.table->name;
-                object_.service.hash  = index.table->hash;
             }
 
             return object_;

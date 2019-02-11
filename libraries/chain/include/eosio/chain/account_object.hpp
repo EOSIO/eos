@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <eosio/chain/database_utils.hpp>
@@ -77,7 +77,9 @@ namespace eosio { namespace chain {
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_index)
+CHAINDB_TAG(eosio::chain::account_object, account)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_sequence_object, eosio::chain::account_sequence_index)
+CHAINDB_TAG(eosio::chain::account_sequence_object, accountseq)
 
 FC_REFLECT(eosio::chain::account_object, (id)(name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date)(code)(abi))
 FC_REFLECT(eosio::chain::account_sequence_object, (id)(name)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence))

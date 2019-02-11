@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <fc/exception/exception.hpp>
@@ -137,7 +137,7 @@ namespace eosio {
                return ds << s.to_string();
             }
 
-            void reflector_verify()const {
+            void reflector_init()const {
                EOS_ASSERT( decimals() <= max_precision, symbol_type_exception, "precision ${p} should be <= 18", ("p", decimals()) );
                EOS_ASSERT( valid_name(name()), symbol_type_exception, "invalid symbol: ${name}", ("name",name()));
             }

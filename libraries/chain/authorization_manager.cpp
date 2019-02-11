@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 
 #include <eosio/chain/authorization_manager.hpp>
@@ -29,92 +29,6 @@ namespace eosio { namespace chain {
 
    void authorization_manager::add_indices() {
        authorization_index_set::add_indices(_db, _control.chaindb());
-   }
-
-   void authorization_manager::add_abi_tables(eosio::chain::abi_def &abi) {
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "permission_usage", "",
-        {{"id", "uint64"},
-         {"last_used", "uint64"}}
-      });
-
-      abi.tables.emplace_back( eosio::chain::table_def {
-        "permusage",
-        cyberway::chaindb::tag<permission_usage_object>::get_code(),
-        "permission_usage",
-        {{"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "permission_level", "",
-        {{"actor", "name"},
-         {"permission", "name"}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "key_weight", "",
-        {{"key", "public_key"},
-         {"weight", "uint16"}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "permission_level_weight", "",
-        {{"permission", "permission_level"},
-         {"weight", "uint16"}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "wait_weight", "",
-        {{"wait_sec", "uint32"},
-         {"weight", "uint16"}}
-      });
-
-      abi.structs.emplace_back( eosio::chain::struct_def{
-        "permission", "",
-        {{"id", "uint64"},
-         {"usage_id", "uint64"},
-         {"parent", "uint64"},
-         {"owner", "name"},
-         {"name", "name"},
-         {"last_updated", "uint64"},
-
-         {"threshold", "uint32"},
-         {"keys", "key_weight[]"},
-         {"accounts", "permission_level_weight[]"},
-         {"waits", "wait_weight[]"}}
-      });
-
-      abi.tables.emplace_back( eosio::chain::table_def {
-        "permission",
-        cyberway::chaindb::tag<permission_object>::get_code(),
-        "permission",
-        {
-           {"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-           {"parent", cyberway::chaindb::tag<by_parent>::get_code(), true, {{"parent", "asc"}, {"id","asc"}}},
-           {"owner", cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner","asc"}, {"name","asc"}}},
-           {"name", cyberway::chaindb::tag<by_name>::get_code(), true, {{"name","asc"}, {"id","asc"}}},
-        }
-      });
-
-      abi.structs.emplace_back (eosio::chain::struct_def{
-          "permlink", "",
-         {{"id", "uint64"},
-          {"account","name"},
-          {"code","name"},
-          {"message_type","name"},
-          {"required_permission","name"}}
-      });
-
-      abi.tables.emplace_back( eosio::chain::table_def {
-        "permlink",
-        cyberway::chaindb::tag<permission_link_object>::get_code(),
-        "permlink",
-        {
-           {"id", cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-           {"action", cyberway::chaindb::tag<by_action_name>::get_code(), true, {{"account","asc"},{"code", "asc"},{"message_type","asc"}}},
-           {"permission", cyberway::chaindb::tag<by_permission_name>::get_code(), true, {{"account","asc"},{"required_permission","asc"},{"code","asc"},{"message_type","asc"}}},
-        }
-      });
    }
 
    void authorization_manager::initialize_database() {
@@ -517,7 +431,8 @@ namespace eosio { namespace chain {
                                                const flat_set<permission_level>&    provided_permissions,
                                                fc::microseconds                     provided_delay,
                                                const std::function<void()>&         _checktime,
-                                               bool                                 allow_unused_keys
+                                               bool                                 allow_unused_keys,
+                                               const flat_set<permission_level>&    satisfied_authorizations
                                              )const
    {
       const auto& checktime = ( static_cast<bool>(_checktime) ? _checktime : _noop_checktime );
@@ -574,9 +489,11 @@ namespace eosio { namespace chain {
                }
             }
 
-            auto res = permissions_to_satisfy.emplace( declared_auth, delay );
-            if( !res.second && res.first->second > delay) { // if the declared_auth was already in the map and with a higher delay
-               res.first->second = delay;
+            if( satisfied_authorizations.find( declared_auth ) == satisfied_authorizations.end() ) {
+               auto res = permissions_to_satisfy.emplace( declared_auth, delay );
+               if( !res.second && res.first->second > delay) { // if the declared_auth was already in the map and with a higher delay
+                  res.first->second = delay;
+               }
             }
          }
       }

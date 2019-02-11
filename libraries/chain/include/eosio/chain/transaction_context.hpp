@@ -6,12 +6,35 @@
 namespace eosio { namespace chain {
 
    struct provided_bandwith {
-       provided_bandwith(uint64_t net_limit, uint64_t cpu_limit)
-           : net_limit(net_limit),
-             cpu_limit(cpu_limit) {}
+       provided_bandwith() = default;
 
-       uint64_t net_limit;
-       uint64_t cpu_limit;
+       void confirm(account_name provider);
+
+       bool is_confirmed() const {return confirmed_;}
+
+       int64_t get_net_limit() const {return net_limit_;}
+       int64_t get_cpu_limit() const {return cpu_limit_;}
+
+       void set_net_limit(int64_t net_limit);
+       void set_cpu_limit(int64_t cpu_limit);
+
+       account_name get_provider() const {return provider_;}
+
+   private:
+
+       void verify_limits_not_confirmed();
+
+       int64_t net_limit_ = 0;
+       int64_t cpu_limit_ = 0;
+       bool confirmed_ = false;
+       account_name provider_;
+   };
+
+
+   struct bandwith_request_result {
+       std::map<account_name, provided_bandwith> bandwith;
+       uint64_t used_net;
+       uint64_t used_cpu;
    };
 
    struct deadline_timer {
@@ -27,6 +50,7 @@ namespace eosio { namespace chain {
          static bool initialized;
    };
 
+   struct provideram;
    class transaction_context {
       private:
          void init( uint64_t initial_net_usage);
@@ -42,7 +66,6 @@ namespace eosio { namespace chain {
 
          void init_for_input_trx( uint64_t packed_trx_unprunable_size,
                                   uint64_t packed_trx_prunable_size,
-                                  uint32_t num_signatures,
                                   bool skip_recording);
 
          void init_for_deferred_trx( fc::time_point published );
@@ -51,8 +74,13 @@ namespace eosio { namespace chain {
          void finalize();
          void squash();
          void undo();
+         void validate_bw_usage();
 
          inline void add_net_usage( uint64_t u ) { net_usage += u; check_net_usage(); }
+         inline void add_cpu_usage( uint64_t u ) { billed_cpu_time_us += u;}
+
+         uint64_t get_net_usage() const {return net_usage;}
+         uint64_t get_cpu_usage() const {return billed_cpu_time_us;}
 
          void check_net_usage()const;
 
@@ -63,11 +91,23 @@ namespace eosio { namespace chain {
 
          uint32_t update_billed_cpu_time( fc::time_point now );
 
-         std::tuple<int64_t, int64_t, bool, bool> max_bandwidth_billed_accounts_can_pay( bool force_elastic_limits = false )const;
+         std::tuple<int64_t, int64_t> max_bandwidth_billed_accounts_can_pay() const;
 
-         uint64_t get_provided_net_limit() const {return provided_bandwith_.net_limit;}
+         uint64_t get_provided_net_limit(account_name account) const;
 
-         uint64_t get_provided_cpu_limit() const {return provided_bandwith_.cpu_limit;}
+         uint64_t get_provided_cpu_limit(account_name account) const;
+
+         std::map<account_name, provided_bandwith> get_provided_bandwith() const {return provided_bandwith_;}
+
+         bool is_provided_bandwith_confirmed(account_name account) const;
+
+         void set_provided_bandwith(std::map<account_name, provided_bandwith>&& bandwith);
+
+         void set_provided_bandwith_limits(account_name account, uint64_t net_limit, uint64_t cpu_limit);
+
+         void confirm_provided_bandwith_limits(account_name account, account_name provider);
+
+         void validate_referenced_accounts(const transaction& trx) const;
 
       private:
 
@@ -75,6 +115,9 @@ namespace eosio { namespace chain {
          friend class apply_context;
 
          void add_ram_usage( account_name account, int64_t ram_delta );
+
+         void add_ram_provider(const provideram& provide_ram);
+         void add_ram_provider(account_name contract, account_name user, account_name provider);
 
          void dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free = false, uint32_t recurse_depth = 0 );
          inline void dispatch_action( action_trace& trace, const action& a, bool context_free = false ) {
@@ -85,7 +128,6 @@ namespace eosio { namespace chain {
 
          void validate_cpu_usage_to_bill( int64_t u, bool check_minimum = true )const;
 
-         provided_bandwith get_provided_bandwith() const;
       /// Fields:
       public:
 
@@ -111,7 +153,6 @@ namespace eosio { namespace chain {
          fc::microseconds              delay;
          bool                          is_input           = false;
          bool                          apply_context_free = true;
-         bool                          can_subjectively_fail = true;
 
          fc::time_point                deadline = fc::time_point::maximum();
          fc::microseconds              leeway = fc::microseconds(3000);
@@ -124,11 +165,8 @@ namespace eosio { namespace chain {
 
          uint64_t                      net_limit = 0;
          bool                          net_limit_due_to_block = true;
-         bool                          net_limit_due_to_greylist = false;
          uint64_t                      eager_net_limit = 0;
          uint64_t&                     net_usage; /// reference to trace->net_usage
-
-         bool                          cpu_limit_due_to_greylist = false;
 
          fc::microseconds              initial_objective_duration_limit;
          fc::microseconds              objective_duration_limit;
@@ -141,7 +179,11 @@ namespace eosio { namespace chain {
 
          deadline_timer                _deadline_timer;
 
-         provided_bandwith             provided_bandwith_;
-   };
+         std::map<account_name, provided_bandwith> provided_bandwith_;
+
+         using provider_for_user = std::map<account_name, account_name>;
+
+         std::map<account_name, provider_for_user> ram_providers_;
+    };
 
 } }

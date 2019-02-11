@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <fc/io/raw.hpp>
@@ -48,4 +48,5 @@ namespace eosio { namespace chain {
 } }
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::transaction_object, eosio::chain::transaction_multi_index)
+CHAINDB_TAG(eosio::chain::transaction_object, transaction)
 FC_REFLECT(eosio::chain::transaction_object, (id)(expiration)(trx_id))

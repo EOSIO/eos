@@ -297,12 +297,6 @@ namespace cyberway { namespace chaindb {
                     state.undo_pk = from_decimal128(itm.get_decimal128());
                     break;
                 }
-                case 'h': {
-                    validate_field_name(names::hash_field == key, src, itm);
-                    validate_field_type(type::k_decimal128 == key_type, src, itm);
-                    state.hash = from_decimal128(itm.get_decimal128());
-                    break;
-                }
                 default:
                     validate_field_name(false, src, itm);
                     break;
@@ -396,6 +390,9 @@ namespace cyberway { namespace chaindb {
         obj.value = build_variant(&obj.service, src);
         if (obj.pk() == unset_primary_key) {
             obj.service.pk = get_pk_value(info, src);
+            obj.service.code  = info.code;
+            obj.service.scope = info.scope;
+            obj.service.table = info.table->name;
         }
         return obj;
     }
@@ -542,7 +539,6 @@ namespace cyberway { namespace chaindb {
             serv_doc.append(kvp(names::undo_rec_field, fc::reflector<undo_record>::to_string(obj.service.undo_rec)));
             serv_doc.append(kvp(names::code_field, get_code_name(table)));
             serv_doc.append(kvp(names::table_field, get_table_name(table)));
-            serv_doc.append(kvp(names::hash_field, to_decimal128(obj.service.hash)));
             serv_doc.append(kvp(names::scope_field, get_scope_name(table)));
             serv_doc.append(kvp(names::pk_field, to_decimal128(obj.service.pk)));
             serv_doc.append(kvp(names::revision_field, obj.service.revision));

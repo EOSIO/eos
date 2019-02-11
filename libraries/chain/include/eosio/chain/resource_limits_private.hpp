@@ -265,6 +265,11 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_usage_object,  
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_config_object, eosio::chain::resource_limits::resource_limits_config_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_state_object,  eosio::chain::resource_limits::resource_limits_state_index)
 
+CHAINDB_TAG(eosio::chain::resource_limits::resource_limits_object,        reslimit)
+CHAINDB_TAG(eosio::chain::resource_limits::resource_usage_object,         resusage)
+CHAINDB_TAG(eosio::chain::resource_limits::resource_limits_config_object, resconfig)
+CHAINDB_TAG(eosio::chain::resource_limits::resource_limits_state_object,  resstate)
+
 FC_REFLECT(eosio::chain::resource_limits::usage_accumulator, (last_ordinal)(value_ex)(consumed))
 
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_object, (id)(owner)(pending)(net_weight)(cpu_weight)(ram_bytes))

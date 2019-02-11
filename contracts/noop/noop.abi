@@ -17,11 +17,9 @@
   ],
   "actions": [{
   "name":"anyaction",
-  "type":"anyaction",
-  "ricardian_contract": ""
+  "type":"anyaction"
   }
 ],
   "tables": [],
-  "ricardian_clauses": [],
   "abi_extensions": []
 }

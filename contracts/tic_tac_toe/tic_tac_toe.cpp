@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include "tic_tac_toe.hpp"
 
@@ -51,7 +51,7 @@ account_name get_winner(const tic_tac_toe::game& current_game) {
    uint32_t consecutive_diagonal_backslash = 3;
    uint32_t consecutive_diagonal_slash = 3;
    for (uint32_t i = 0; i < board.size(); i++) {
-      is_board_full &= is_empty_cell(board[i]);
+      is_board_full &= !is_empty_cell(board[i]);
       uint16_t row = uint16_t(i / tic_tac_toe::game::board_width);
       uint16_t column = uint16_t(i % tic_tac_toe::game::board_width);
 

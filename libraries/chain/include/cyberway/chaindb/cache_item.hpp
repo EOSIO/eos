@@ -26,13 +26,13 @@ namespace cyberway { namespace chaindb {
     }; // struct cache_load_interface
 
     class cache_item final {
-        hash_t hash_ = 0;
+        table_name   table_ = 0;
         object_value object_;
-        bool is_deleted_ = false;
+        bool         is_deleted_ = false;
 
     public:
         cache_item(object_value obj)
-        : hash_(obj.service.hash),
+        : table_(obj.service.table),
           object_(std::move(obj)) {
         }
 
@@ -47,8 +47,8 @@ namespace cyberway { namespace chaindb {
             is_deleted_ = true;
         }
 
-        bool is_valid_table(const hash_t hash) const {
-            return hash_ == hash;
+        bool is_valid_table(const table_name table) const {
+            return table_ == table;
         }
 
         primary_key_t pk() const {
@@ -56,7 +56,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void set_object(object_value obj) {
-            assert(is_valid_table(obj.service.hash));
+            assert(is_valid_table(obj.service.table));
             object_ = std::move(obj);
         }
 

@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/http_plugin/local_endpoint.hpp>
@@ -548,6 +548,8 @@ namespace eosio {
          my->server.stop_listening();
       if(my->https_server.is_listening())
          my->https_server.stop_listening();
+      if(my->unix_server.is_listening())
+         my->unix_server.stop_listening();
    }
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {
@@ -561,6 +563,9 @@ namespace eosio {
       try {
          try {
             throw;
+         } catch (chain::unknown_block_exception& e) {
+            error_results results{400, "Unknown Block", error_results::error_info(e, verbose_http_errors)};
+            cb( 400, fc::json::to_string( results ));
          } catch (chain::unsatisfied_authorization& e) {
             error_results results{401, "UnAuthorized", error_results::error_info(e, verbose_http_errors)};
             cb( 401, fc::json::to_string( results ));
@@ -575,11 +580,9 @@ namespace eosio {
          } catch (fc::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(e, verbose_http_errors)};
             cb( 500, fc::json::to_string( results ));
-            if (e.code() != chain::greylist_net_usage_exceeded::code_value && e.code() != chain::greylist_cpu_usage_exceeded::code_value) {
-               elog( "FC Exception encountered while processing ${api}.${call}",
-                     ("api", api_name)( "call", call_name ));
-               dlog( "Exception Details: ${e}", ("e", e.to_detail_string()));
-            }
+            elog( "FC Exception encountered while processing ${api}.${call}",
+                  ("api", api_name)( "call", call_name ));
+            dlog( "Exception Details: ${e}", ("e", e.to_detail_string()));
          } catch (std::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, e.what())), verbose_http_errors)};
             cb( 500, fc::json::to_string( results ));

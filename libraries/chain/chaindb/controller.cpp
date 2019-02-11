@@ -277,6 +277,7 @@ namespace cyberway { namespace chaindb {
             auto obj = object_value{{table, pk, payer, size}, std::move(value)};
 
             auto updated_pk = update(table, obj);
+            cache_.emplace(table, std::move(obj));
 
             // TODO: update RAM usage
 
@@ -298,7 +299,9 @@ namespace cyberway { namespace chaindb {
         primary_key_t remove(apply_context&, const table_request& request, const primary_key_t pk) {
             auto table = get_table(request);
             auto obj = object_by_pk(table, pk);
+
             auto removed_pk = remove(table, obj);
+            cache_.remove(table, pk);
 
             // TODO: update RAM usage
 
@@ -350,7 +353,7 @@ namespace cyberway { namespace chaindb {
             auto info = find_table<index_info>(request);
             CYBERWAY_ASSERT(info.table, unknown_table_exception,
                 "ABI table ${code}.${table} doesn't exists",
-                ("code", get_code_name(request))("table", get_table_name(request.hash)));
+                ("code", get_code_name(request))("table", get_table_name(request.table)));
 
             return std::move(info);
         }
@@ -359,7 +362,7 @@ namespace cyberway { namespace chaindb {
             auto info = find_index(request);
             CYBERWAY_ASSERT(info.index, unknown_index_exception,
                 "ABI index ${code}.${table}.${index} doesn't exists",
-                ("code", get_code_name(request))("table", get_table_name(request.hash))
+                ("code", get_code_name(request))("table", get_table_name(request.table))
                 ("index", get_index_name(request.index)));
 
             return info;
@@ -373,7 +376,7 @@ namespace cyberway { namespace chaindb {
             if (abi_map_.end() == itr) return info;
 
             info.abi = &itr->second;
-            info.table = itr->second.find_table(request.hash);
+            info.table = itr->second.find_table(request.table);
             if (info.table) info.pk_order = &get_pk_order(info);
             return info;
         }
@@ -383,7 +386,7 @@ namespace cyberway { namespace chaindb {
             if (info.table == nullptr) return info;
 
             for (auto& i: info.table->indexes) {
-                if (i.hash == request.index) {
+                if (i.name == request.index) {
                     info.index = &i;
                     break;
                 }

@@ -197,67 +197,51 @@
     }],
    "actions": [{
       "name": "newaccount",
-      "type": "newaccount",
-      "ricardian_contract": ""
+      "type": "newaccount"
     },{
       "name": "setcode",
-      "type": "setcode",
-      "ricardian_contract": ""
+      "type": "setcode"
     },{
       "name": "setabi",
-      "type": "setabi",
-      "ricardian_contract": ""
+      "type": "setabi"
     },{
       "name": "updateauth",
-      "type": "updateauth",
-      "ricardian_contract": ""
+      "type": "updateauth"
     },{
       "name": "deleteauth",
-      "type": "deleteauth",
-      "ricardian_contract": ""
+      "type": "deleteauth"
     },{
       "name": "linkauth",
-      "type": "linkauth",
-      "ricardian_contract": ""
+      "type": "linkauth"
     },{
       "name": "unlinkauth",
-      "type": "unlinkauth",
-      "ricardian_contract": ""
+      "type": "unlinkauth"
     },{
       "name": "canceldelay",
-      "type": "canceldelay",
-      "ricardian_contract": ""
+      "type": "canceldelay"
     },{
       "name": "onerror",
-      "type": "onerror",
-      "ricardian_contract": ""
+      "type": "onerror"
     },{
       "name": "setalimits",
-      "type": "set_account_limits",
-      "ricardian_contract": ""
+      "type": "set_account_limits"
     },{
       "name": "setglimits",
-      "type": "set_global_limits",
-      "ricardian_contract": ""
+      "type": "set_global_limits"
     },{
        "name": "setpriv",
-       "type": "setpriv",
-      "ricardian_contract": ""
+       "type": "setpriv"
     },{
       "name": "setprods",
-      "type": "set_producers",
-      "ricardian_contract": ""
+      "type": "set_producers"
     },{
       "name": "setparams",
-      "type": "setparams",
-      "ricardian_contract": ""
+      "type": "setparams"
     },{
       "name": "reqauth",
-      "type": "require_auth",
-      "ricardian_contract": ""
+      "type": "require_auth"
     }
    ],
    "tables": [],
-   "ricardian_clauses": [],
    "abi_extensions": []
 }

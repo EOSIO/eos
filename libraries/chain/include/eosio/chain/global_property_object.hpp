@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <fc/uint128.hpp>
@@ -74,8 +74,10 @@ namespace eosio { namespace chain {
 }}
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::global_property_object, eosio::chain::global_property_multi_index)
+CHAINDB_TAG(eosio::chain::global_property_object, gproperty)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::dynamic_global_property_object,
                          eosio::chain::dynamic_global_property_multi_index)
+CHAINDB_TAG(eosio::chain::dynamic_global_property_object, gdynproperty)
 
 //FC_REFLECT(chainbase::oid<eosio::chain::global_property_object>, (_id))
 //FC_REFLECT(chainbase::oid<eosio::chain::dynamic_global_property_object>, (_id))

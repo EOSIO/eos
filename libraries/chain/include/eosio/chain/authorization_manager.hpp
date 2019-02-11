@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 
@@ -29,7 +29,6 @@ namespace eosio { namespace chain {
          explicit authorization_manager(controller& c, chainbase::database& d);
 
          void add_indices();
-         void add_abi_tables(eosio::chain::abi_def &abi);
          void initialize_database();
          void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const;
          void read_from_snapshot( const snapshot_reader_ptr& snapshot );
@@ -87,7 +86,8 @@ namespace eosio { namespace chain {
                               const flat_set<permission_level>&    provided_permissions = flat_set<permission_level>(),
                               fc::microseconds                     provided_delay = fc::microseconds(0),
                               const std::function<void()>&         checktime = std::function<void()>(),
-                              bool                                 allow_unused_keys = false
+                              bool                                 allow_unused_keys = false,
+                              const flat_set<permission_level>&    satisfied_authorizations = flat_set<permission_level>()
                             )const;
 
 

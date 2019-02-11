@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <eosio/chain/authority.hpp>
@@ -77,5 +77,6 @@ namespace eosio { namespace chain {
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_link_object, eosio::chain::permission_link_index)
+CHAINDB_TAG(eosio::chain::permission_link_object, permlink)
 
 FC_REFLECT(eosio::chain::permission_link_object, (id)(account)(code)(message_type)(required_permission))

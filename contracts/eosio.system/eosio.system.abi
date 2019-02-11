@@ -408,120 +408,91 @@
    ],
    "actions": [{
      "name": "newaccount",
-     "type": "newaccount",
-     "ricardian_contract": ""
+     "type": "newaccount"
    },{
      "name": "setcode",
-     "type": "setcode",
-     "ricardian_contract": ""
+     "type": "setcode"
    },{
      "name": "setabi",
-     "type": "setabi",
-     "ricardian_contract": ""
+     "type": "setabi"
    },{
      "name": "updateauth",
-     "type": "updateauth",
-     "ricardian_contract": ""
+     "type": "updateauth"
    },{
      "name": "deleteauth",
-     "type": "deleteauth",
-     "ricardian_contract": ""
+     "type": "deleteauth"
    },{
      "name": "linkauth",
-     "type": "linkauth",
-     "ricardian_contract": ""
+     "type": "linkauth"
    },{
      "name": "unlinkauth",
-     "type": "unlinkauth",
-     "ricardian_contract": ""
+     "type": "unlinkauth"
    },{
      "name": "canceldelay",
-     "type": "canceldelay",
-     "ricardian_contract": ""
+     "type": "canceldelay"
    },{
      "name": "onerror",
-     "type": "onerror",
-     "ricardian_contract": ""
+     "type": "onerror"
    },{
       "name": "buyrambytes",
-      "type": "buyrambytes",
-      "ricardian_contract": ""
+      "type": "buyrambytes"
    },{
       "name": "buyram",
-      "type": "buyram",
-      "ricardian_contract": ""
+      "type": "buyram"
    },{
       "name": "sellram",
-      "type": "sellram",
-      "ricardian_contract": ""
+      "type": "sellram"
    },{
       "name": "delegatebw",
-      "type": "delegatebw",
-      "ricardian_contract": ""
+      "type": "delegatebw"
    },{
       "name": "undelegatebw",
-      "type": "undelegatebw",
-      "ricardian_contract": ""
+      "type": "undelegatebw"
    },{
       "name": "refund",
-      "type": "refund",
-      "ricardian_contract": ""
+      "type": "refund"
    },{
       "name": "regproducer",
-      "type": "regproducer",
-      "ricardian_contract": ""
+      "type": "regproducer"
    },{
       "name": "setram",
-      "type": "setram",
-      "ricardian_contract": ""
+      "type": "setram"
    },{
       "name": "bidname",
-      "type": "bidname",
-      "ricardian_contract": ""
+      "type": "bidname"
    },{
       "name": "unregprod",
-      "type": "unregprod",
-      "ricardian_contract": ""
+      "type": "unregprod"
    },{
       "name": "regproxy",
-      "type": "regproxy",
-      "ricardian_contract": ""
+      "type": "regproxy"
    },{
       "name": "voteproducer",
-      "type": "voteproducer",
-      "ricardian_contract": ""
+      "type": "voteproducer"
    },{
       "name": "claimrewards",
-      "type": "claimrewards",
-      "ricardian_contract": ""
+      "type": "claimrewards"
    },{
       "name": "setpriv",
-      "type": "setpriv",
-      "ricardian_contract": ""
+      "type": "setpriv"
    },{
       "name": "rmvproducer",
-      "type": "rmvproducer",
-      "ricardian_contract": ""
+      "type": "rmvproducer"
    },{
       "name": "setalimits",
-      "type": "set_account_limits",
-      "ricardian_contract": ""
+      "type": "set_account_limits"
     },{
       "name": "setglimits",
-      "type": "set_global_limits",
-      "ricardian_contract": ""
+      "type": "set_global_limits"
     },{
       "name": "setprods",
-      "type": "set_producers",
-      "ricardian_contract": ""
+      "type": "set_producers"
     },{
       "name": "reqauth",
-      "type": "require_auth",
-      "ricardian_contract": ""
+      "type": "require_auth"
     },{
       "name": "setparams",
-      "type": "setparams",
-      "ricardian_contract": ""
+      "type": "setparams"
     }],
    "tables": [{
       "name": "producers",
@@ -573,6 +544,5 @@
        "key_types" : ["account_name"]
     }
    ],
-   "ricardian_clauses": [],
    "abi_extensions": []
 }

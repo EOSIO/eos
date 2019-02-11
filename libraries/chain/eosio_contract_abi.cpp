@@ -1,6 +1,17 @@
 #include <eosio/chain/abi_def.hpp>
 #include <fc/utility.hpp>
 
+#include <eosio/chain/account_object.hpp>
+#include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/block_summary_object.hpp>
+#include <eosio/chain/transaction_object.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
+#include <eosio/chain/domain_object.hpp>
+#include <eosio/chain/permission_object.hpp>
+#include <eosio/chain/permission_link_object.hpp>
+#include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/resource_limits_private.hpp>
+
 namespace eosio { namespace chain {
 
 vector<type_def> common_type_defs() {
@@ -17,10 +28,8 @@ vector<type_def> common_type_defs() {
    return types;
 }
 
-abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
+abi_def eosio_contract_abi(abi_def eos_abi)
 {
-   abi_def eos_abi(eosio_system_abi);
-
    if( eos_abi.version.size() == 0 ) {
       eos_abi.version = "cyberway::abi/1.0";
    }
@@ -131,8 +140,351 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   // TODO add any ricardian_clauses
    //
+   // SYSTEM TABLES
+   //
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "account_object", "", {
+         {"id", "uint64"},
+         {"name", "name"},
+         {"vm_type", "uint8"},
+         {"vm_version", "uint8"},
+         {"privileged", "bool"},
+         {"last_code_update", "time_point"},
+         {"code_version", "checksum256"},
+         {"creation_date", "block_timestamp_type"},
+         {"code", "string"},
+         {"abi", "bytes"}
+      }
+    });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<account_object>::get_code(), "account_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "account_sequence_object", "", {
+         {"id", "uint64"},
+         {"name", "name"},
+         {"recv", "uint64"},
+         {"auth", "uint64"},
+         {"code", "uint64"},
+         {"abi", "uint64"}
+      }
+   });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<account_sequence_object>::get_code(), "account_sequence_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "chain_config", "", {
+         {"max_block_net_usage", "uint64"},
+         {"target_block_net_usage_pct", "uint32"},
+         {"max_transaction_net_usage", "uint32"},
+         {"base_per_transaction_net_usage", "uint32"},
+         {"net_usage_leeway", "uint32"},
+         {"context_free_discount_net_usage_num", "uint32"},
+         {"context_free_discount_net_usage_den", "uint32"},
+         {"max_block_cpu_usage", "uint32"},
+         {"target_block_cpu_usage_pct", "uint32"},
+         {"max_transaction_cpu_usage", "uint32"},
+         {"min_transaction_cpu_usage", "uint32"},
+         {"max_transaction_lifetime", "uint32"},
+         {"deferred_trx_expiration_window", "uint32"},
+         {"max_transaction_delay", "uint32"},
+         {"max_inline_action_size", "uint32"},
+         {"max_inline_action_depth", "uint16"},
+         {"max_authority_depth", "uint16"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "global_property_object", "", {
+         {"id", "uint64"},
+         {"proposed_schedule_block_num", "uint32?"},
+         {"proposed_schedule", "producer_schedule"},
+         {"configuration", "chain_config"}
+      }
+   });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<global_property_object>::get_code(), "global_property_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "dynamic_global_property_object", "", {
+         {"id", "uint64"},
+         {"global_action_seq", "uint64"}
+      }
+   });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<dynamic_global_property_object>::get_code(), "dynamic_global_property_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "block_summary_object", "", {
+         {"id", "uint64"},
+         {"block_id", "checksum256"}
+      }
+   });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<block_summary_object>::get_code(), "block_summary_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "transaction_object", "", {
+         {"id", "uint64"},
+         {"expiration", "time_point_sec"},
+         {"trx_id", "checksum256"}
+      }
+   });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<transaction_object>::get_code(), "transaction_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {cyberway::chaindb::tag<by_trx_id>::get_code(), true, {{"trx_id", "asc"}}},
+         {cyberway::chaindb::tag<by_expiration>::get_code(), true, {{"expiration","asc"}, {"id","asc"}}}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "generated_transaction_object", "", {
+         {"id", "uint64"},
+         {"trx_id", "checksum256"},
+         {"sender", "name"},
+         {"sender_id", "uint128"},
+         {"payer", "name"},
+         {"delay_until", "time_point"},
+         {"expiration", "time_point"},
+         {"published", "time_point"},
+         {"packed_trx", "string"}
+      }
+   });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<generated_transaction_object>::get_code(), "generated_transaction_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {cyberway::chaindb::tag<by_trx_id>::get_code(), true, {{"trx_id", "asc"}}},
+         {cyberway::chaindb::tag<by_expiration>::get_code(), true, {{"expiration","asc"}, {"id","asc"}}},
+         {cyberway::chaindb::tag<by_delay>::get_code(), true, {{"delay_until", "asc"}, {"id", "asc"}}},
+         {cyberway::chaindb::tag<by_sender_id>::get_code(), true, {{"sender", "asc"}, {"sender_id", "asc"}}}
+      }
+   });
+
+   eos_abi.structs.emplace_back(eosio::chain::struct_def{
+      "domain_object", "", {
+         {"id", "uint64"},
+         {"owner", "name"},
+         {"linked_to", "name"},
+         {"creation_date", "block_timestamp_type"},
+         {"name", "string"}
+      }
+   });
+
+   eos_abi.tables.emplace_back(eosio::chain::table_def{
+      cyberway::chaindb::tag<domain_object>::get_code(), "domain_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}},
+         {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"},{"name", "asc"}}}
+      }
+   });
+
+   eos_abi.structs.emplace_back(eosio::chain::struct_def{
+      "username_object", "", {
+         {"id", "uint64"},
+         {"owner", "name"},
+         {"scope", "name"},
+         {"name", "string"}
+      }
+   });
+
+   eos_abi.tables.emplace_back(eosio::chain::table_def{
+      cyberway::chaindb::tag<username_object>::get_code(), "username_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {cyberway::chaindb::tag<by_scope_name>::get_code(), true, {{"scope", "asc"},{"name", "asc"}}},
+         {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner","asc"},{"scope","asc"},{"name","asc"}}}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "permission_usage_object", "", {
+         {"id", "uint64"},
+         {"last_used", "uint64"}
+      }
+   });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<permission_usage_object>::get_code(), "permission_usage_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "permission_object", "", {
+         {"id", "uint64"},
+         {"usage_id", "uint64"},
+         {"parent", "uint64"},
+         {"owner", "name"},
+         {"name", "name"},
+         {"last_updated", "uint64"},
+
+         {"threshold", "uint32"},
+         {"keys", "key_weight[]"},
+         {"accounts", "permission_level_weight[]"},
+         {"waits", "wait_weight[]"}}
+   });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<permission_object>::get_code(), "permission_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {cyberway::chaindb::tag<by_parent>::get_code(), true, {{"parent", "asc"}, {"id","asc"}}},
+         {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner","asc"}, {"name","asc"}}},
+         {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name","asc"}, {"id","asc"}}},
+      }
+   });
+
+   eos_abi.structs.emplace_back (eosio::chain::struct_def{
+      "permission_link_object", "", {
+         {"id", "uint64"},
+         {"account","name"},
+         {"code","name"},
+         {"message_type","name"},
+         {"required_permission","name"}
+      }
+   });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<permission_link_object>::get_code(), "permission_link_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {cyberway::chaindb::tag<by_action_name>::get_code(), true, {
+            {"account","asc"},
+            {"code", "asc"},
+            {"message_type","asc"}
+         }},
+         {cyberway::chaindb::tag<by_permission_name>::get_code(), true, {
+            {"account","asc"},
+            {"required_permission","asc"},
+            {"code","asc"},
+            {"message_type","asc"}
+         }},
+      }
+   });
+
+   namespace rl = resource_limits;
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "resource_limit_object", "", {
+         {"id", "uint64"},
+         {"owner", "name"},
+         {"pending", "bool"},
+         {"net_weight", "int64"},
+         {"cpu_weight", "int64"},
+         {"ram_bytes", "int64"}
+      }
+   });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<rl::resource_limits_object>::get_code(), "resource_limit_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"pending","asc"}, {"owner","asc"}}}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "usage_accumulator", "", {
+         {"last_ordinal", "uint32"},
+         {"value_ex", "uint64"},
+         {"consumed", "uint64"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "resource_usage_object", "", {
+         {"id", "uint64"},
+         {"owner", "name"},
+         {"net_usage", "usage_accumulator"},
+         {"cpu_usage", "usage_accumulator"},
+         {"ram_usage", "uint64"}
+      }
+   });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<rl::resource_usage_object>::get_code(), "resource_usage_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "ratio64", "", {
+         {"numerator", "uint64"},
+         {"denominator", "uint64"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "elastic_limit_params", "", {
+         {"target", "uint64"},
+         {"max", "uint64"},
+         {"periods", "uint32"},
+         {"max_multiplier", "uint32"},
+         {"contract_rate", "ratio64"},
+         {"expand_rate", "ratio64"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "resource_limits_config_object", "", {
+         {"id", "uint64"},
+         {"cpu_limit", "elastic_limit_params"},
+         {"net_limit", "elastic_limit_params"},
+         {"acc_cpu_usage_avg_window", "uint32"},
+         {"acc_net_usage_avg_window", "uint32"}}
+   });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<rl::resource_limits_config_object>::get_code(), "resource_limits_config_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}
+      }
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "resource_limits_state_object", "", {
+         {"id", "uint64"},
+         {"avg_block_net_usage", "usage_accumulator"},
+         {"avg_block_cpu_usage", "usage_accumulator"},
+         {"pending_net_usage", "uint64"},
+         {"pending_cpu_usage", "uint64"},
+         {"total_net_weight", "uint64"},
+         {"total_cpu_weight", "uint64"},
+         {"total_ram_bytes", "uint64"},
+         {"virtual_net_limit", "uint64"},
+         {"virtual_cpu_limit", "uint64"}
+      }
+   });
+
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<rl::resource_limits_state_object>::get_code(), "resource_limits_state_object", {
+          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}
+      }
+   });
+
    // ACTION PAYLOADS
 
    eos_abi.structs.emplace_back( struct_def {
@@ -200,44 +552,18 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back(struct_def {
-      "newusername", "", {
-         {"creator", "account_name"},
-         {"owner",   "account_name"},
-         {"name",    "string"},
-      }
-   });
-   eos_abi.structs.emplace_back(struct_def {
-      "newdomain", "", {
-         {"creator", "account_name"},
-         {"name",    "string"},
-      }
-   });
-   eos_abi.structs.emplace_back(struct_def {
-      "passdomain", "", {
-         {"from", "account_name"},
-         {"to",   "account_name"},
-         {"name", "string"},
-      }
-   });
-   eos_abi.structs.emplace_back(struct_def {
-      "linkdomain", "", {
-         {"owner", "account_name"},
-         {"to",    "account_name"},
-         {"name",  "string"},
-      }
-   });
-   eos_abi.structs.emplace_back(struct_def {
-      "unlinkdomain", "", {
-         {"owner", "account_name"},
-         {"name",  "string"},
-      }
-   });
-
    eos_abi.structs.emplace_back( struct_def {
       "requestbw", "", {
          {"provider", "account_name"},
          {"account", "account_name"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "provideram", "", {
+         {"provider", "account_name"},
+         {"account", "account_name"},
+         {"contracts", "account_name[]"},
       }
    });
 
@@ -261,27 +587,61 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   // TODO add ricardian contracts
-   eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount",""} );
-   eos_abi.actions.push_back( action_def{name("setcode"), "setcode",""} );
-   eos_abi.actions.push_back( action_def{name("setabi"), "setabi",""} );
-   eos_abi.actions.push_back( action_def{name("updateauth"), "updateauth",""} );
-   eos_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth",""} );
-   eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth",""} );
-   eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth",""} );
-   eos_abi.actions.push_back( action_def{name("providebw"), "providebw",""} );
-   eos_abi.actions.push_back( action_def{name("requestbw"), "requestbw",""} );
-   eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay",""} );
-   eos_abi.actions.push_back( action_def{name("onerror"), "onerror",""} );
-   eos_abi.actions.push_back( action_def{name("onblock"), "onblock",""} );
-
-    eos_abi.actions.push_back(action_def{name("newusername"), "newusername",""});
-    eos_abi.actions.push_back(action_def{name("newdomain"), "newdomain",""});
-    eos_abi.actions.push_back(action_def{name("passdomain"), "passdomain",""});
-    eos_abi.actions.push_back(action_def{name("linkdomain"), "linkdomain",""});
-    eos_abi.actions.push_back(action_def{name("unlinkdomain"), "unlinkdomain",""});
+   eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
+   eos_abi.actions.push_back( action_def{name("setcode"), "setcode"} );
+   eos_abi.actions.push_back( action_def{name("setabi"), "setabi"} );
+   eos_abi.actions.push_back( action_def{name("updateauth"), "updateauth"} );
+   eos_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth"} );
+   eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth"} );
+   eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth"} );
+   eos_abi.actions.push_back( action_def{name("providebw"), "providebw"} );
+   eos_abi.actions.push_back( action_def{name("requestbw"), "requestbw"} );
+   eos_abi.actions.push_back( action_def{name("provideram"), "provideram"} );
+   eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
+   eos_abi.actions.push_back( action_def{name("onerror"), "onerror"} );
+   eos_abi.actions.push_back( action_def{name("onblock"), "onblock"} );
 
    return eos_abi;
+}
+
+
+abi_def domain_contract_abi(abi_def abi) {
+    if (abi.version.size() == 0) {
+        abi.version = "cyberway::abi/1.0";
+    }
+    fc::move_append(abi.types, common_type_defs());
+
+    abi.structs.emplace_back(struct_def {"newusername", "", {
+        {"creator", "name"},
+        {"owner",   "name"},
+        {"name",    "string"}}
+    });
+    abi.structs.emplace_back(struct_def {"newdomain", "", {
+        {"creator", "name"},
+        {"name",    "string"}}
+    });
+    abi.structs.emplace_back(struct_def {"passdomain", "", {
+        {"from", "name"},
+        {"to",   "account_name"},
+        {"name", "string"}}
+    });
+    abi.structs.emplace_back(struct_def {"linkdomain", "", {
+        {"owner", "name"},
+        {"to",    "name"},
+        {"name",  "string"}}
+    });
+    abi.structs.emplace_back(struct_def {"unlinkdomain", "", {
+        {"owner", "name"},
+        {"name",  "string"}}
+    });
+
+    abi.actions.push_back(action_def{name("newusername"), "newusername"});
+    abi.actions.push_back(action_def{name("newdomain"), "newdomain"});
+    abi.actions.push_back(action_def{name("passdomain"), "passdomain"});
+    abi.actions.push_back(action_def{name("linkdomain"), "linkdomain"});
+    abi.actions.push_back(action_def{name("unlinkdomain"), "unlinkdomain"});
+
+    return abi;
 }
 
 } } /// eosio::chain

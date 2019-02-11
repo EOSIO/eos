@@ -6,10 +6,9 @@
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
-//#include <eosio/history_plugin/history_plugin.hpp> # TODO: CyberWay
+
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/utilities/common.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
@@ -95,7 +94,6 @@ int main(int argc, char** argv)
 {
    try {
       app().set_version(eosio::nodeos::config::version);
-      // app().register_plugin<history_plugin>(); TODO: CyberWay
 
       auto root = fc::app_path();
       fc::install_btrace_signal_handler(root / "eosio/nodeos/backtrace.dmp");

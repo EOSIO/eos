@@ -71,7 +71,7 @@ namespace cyberway { namespace chaindb {
     } }
 
     class index_builder final {
-        using table_map_type = std::map<hash_t, table_def>;
+        using table_map_type = std::map<table_name_t, table_def>;
         index_info info_;
         abi_serializer& serializer_;
         table_map_type& table_map_;
@@ -90,9 +90,6 @@ namespace cyberway { namespace chaindb {
                 auto& table_struct = serializer_.get_struct(serializer_.resolve_type(table.type));
 
                 for (auto& index: table.indexes) {
-                    // if abi was loaded instead of declared
-                    if (!index.hash) index.hash = index.name.value;
-
                     build_index(table, index, table_struct);
                 }
                 validate_pk_index(table);
@@ -205,8 +202,8 @@ namespace cyberway { namespace chaindb {
             CYBERWAY_ASSERT(table.indexes.size() <= max_index_cnt, max_index_count_exception,
                 "The table '${table}' can't has more than ${max} indexes",
                 ("table", get_full_table_name(code_, table))("max", max_index_cnt));
-            if (!table.hash) table.hash = table.name.value;
-            table_map_.emplace(table.hash, std::move(table));
+            auto id = table.name;
+            table_map_.emplace(id, std::move(table));
         }
 
         CYBERWAY_ASSERT(table_map_.size() == abi.tables.size(), unique_table_name_exception,

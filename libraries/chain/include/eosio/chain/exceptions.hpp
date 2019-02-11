@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 
@@ -85,7 +85,6 @@ namespace eosio { namespace chain {
     *   |- misc_exception
     *   |- plugin_exception
     *   |- wallet_exception
-    *   |- whitelist_blacklist_exception
     *   |- controller_emit_signal_exception
     *   |- abi_exception
     *   |- contract_exception
@@ -196,6 +195,10 @@ namespace eosio { namespace chain {
                                     3040013, "Transaction is too big" )
       FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_compression, transaction_exception,
                                     3040014, "Unknown transaction compression" )
+      FC_DECLARE_DERIVED_EXCEPTION( bandwith_already_confirmed, transaction_exception,
+                                    3040015, "Bandwith has been already confirmed" )
+      FC_DECLARE_DERIVED_EXCEPTION( ram_provider_error, transaction_exception,
+                                    3040016, "Ram provider error" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
@@ -233,7 +236,9 @@ namespace eosio { namespace chain {
                                     3060004, "Contract Query Exception" )
 
         FC_DECLARE_DERIVED_EXCEPTION(domain_query_exception,   database_exception, 3060005, "Domain Query Exception")
-        FC_DECLARE_DERIVED_EXCEPTION(username_query_exception, database_exception, 3060006, "Username Query Exception")
+        FC_DECLARE_DERIVED_EXCEPTION(domain_exists_exception,  database_exception, 3060006, "Domain name already exists")
+        FC_DECLARE_DERIVED_EXCEPTION(username_query_exception, database_exception, 3060007, "Username Query Exception")
+        FC_DECLARE_DERIVED_EXCEPTION(username_exists_exception,database_exception, 3060008, "Username already exists")
 
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
@@ -257,7 +262,6 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( binaryen_exception, wasm_exception,
                                     3070005, "binaryen exception" )
 
-
    FC_DECLARE_DERIVED_EXCEPTION( resource_exhausted_exception, chain_exception,
                                  3080000, "Resource exhausted exception" )
 
@@ -273,10 +277,7 @@ namespace eosio { namespace chain {
                                     3080005, "Transaction CPU usage is too much for the remaining allowable usage of the current block" )
       FC_DECLARE_DERIVED_EXCEPTION( deadline_exception, resource_exhausted_exception,
                                     3080006, "Transaction took too long" )
-      FC_DECLARE_DERIVED_EXCEPTION( greylist_net_usage_exceeded, resource_exhausted_exception,
-                                    3080007, "Transaction exceeded the current greylisted account network usage limit" )
-      FC_DECLARE_DERIVED_EXCEPTION( greylist_cpu_usage_exceeded, resource_exhausted_exception,
-                                    3080008, "Transaction exceeded the current greylisted account CPU usage limit" )
+// CYBERWAY: greylist removed (3080007, 3080008)
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
 
@@ -370,22 +371,7 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( secure_enclave_exception,          wallet_exception,
                                     3120012, "Secure Enclave Exception" )
 
-
-   FC_DECLARE_DERIVED_EXCEPTION( whitelist_blacklist_exception,   chain_exception,
-                                 3130000, "Actor or contract whitelist/blacklist exception" )
-
-      FC_DECLARE_DERIVED_EXCEPTION( actor_whitelist_exception,    whitelist_blacklist_exception,
-                                    3130001, "Authorizing actor of transaction is not on the whitelist" )
-      FC_DECLARE_DERIVED_EXCEPTION( actor_blacklist_exception,    whitelist_blacklist_exception,
-                                    3130002, "Authorizing actor of transaction is on the blacklist" )
-      FC_DECLARE_DERIVED_EXCEPTION( contract_whitelist_exception, whitelist_blacklist_exception,
-                                    3130003, "Contract to execute is not on the whitelist" )
-      FC_DECLARE_DERIVED_EXCEPTION( contract_blacklist_exception, whitelist_blacklist_exception,
-                                    3130004, "Contract to execute is on the blacklist" )
-      FC_DECLARE_DERIVED_EXCEPTION( action_blacklist_exception,   whitelist_blacklist_exception,
-                                    3130005, "Action to execute is on the blacklist" )
-      FC_DECLARE_DERIVED_EXCEPTION( key_blacklist_exception,      whitelist_blacklist_exception,
-                                    3130006, "Public key in authority is on the blacklist" )
+// CYBERWAY: whitelist_blacklist_exception (3130000) removed
 
    FC_DECLARE_DERIVED_EXCEPTION( controller_emit_signal_exception, chain_exception,
                                  3140000, "Exceptions that are allowed to bubble out of emit calls in controller" )
@@ -397,10 +383,9 @@ namespace eosio { namespace chain {
                                  3015000, "ABI exception" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_not_found_exception,              abi_exception,
                                     3015001, "No ABI found" )
-      FC_DECLARE_DERIVED_EXCEPTION( invalid_ricardian_clause_exception,   abi_exception,
-                                    3015002, "Invalid Ricardian Clause" )
-      FC_DECLARE_DERIVED_EXCEPTION( invalid_ricardian_action_exception,   abi_exception,
-                                    3015003, "Invalid Ricardian Action" )
+
+// CYBERWAY: ricardian exceptions (3015002, 3015003) removed
+
       FC_DECLARE_DERIVED_EXCEPTION( invalid_type_inside_abi,           abi_exception,
                                     3015004, "The type defined in the ABI is invalid" ) // Not to be confused with abi_type_exception
       FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_type_def_exception,     abi_exception,
@@ -427,6 +412,8 @@ namespace eosio { namespace chain {
                                     3015015, "Duplicate variant definition in the ABI" )
       FC_DECLARE_DERIVED_EXCEPTION( unsupported_abi_version_exception,  abi_exception,
                                     3015016, "ABI has an unsupported version" )
+      FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_event_def_exception,   abi_exception,
+                                    3015007, "Duplicate event definition in the ABI" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( contract_exception,           chain_exception,
@@ -447,8 +434,8 @@ namespace eosio { namespace chain {
                                     3160007, "Invalid contract vm version" )
       FC_DECLARE_DERIVED_EXCEPTION( set_exact_code,          contract_exception,
                                     3160008, "Contract is already running this version of code" )
-      FC_DECLARE_DERIVED_EXCEPTION( wast_file_not_found,          contract_exception,
-                                    3160009, "No wast file found" )
+      FC_DECLARE_DERIVED_EXCEPTION( wasm_file_not_found,          contract_exception,
+                                    3160009, "No wasm file found" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_file_not_found,          contract_exception,
                                     3160010, "No abi file found" )
 

@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <eosio/chain/wasm_interface.hpp>
@@ -26,6 +26,7 @@ const static auto default_state_guard_size      =    128*1024*1024ll;
 const static uint64_t system_account_name    = N(eosio);
 const static uint64_t null_account_name      = N(eosio.null);
 const static uint64_t producers_account_name = N(eosio.prods);
+const static uint64_t domain_account_name    = N(cyber.domain);
 
 // Active permission of producers account requires greater than 2/3 of the producers to authorize
 const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
@@ -79,6 +80,8 @@ const static uint32_t   default_max_trx_delay                  = 45*24*3600; // 
 const static uint32_t   default_max_inline_action_size         = 4 * 1024;   // 4 KB
 const static uint16_t   default_max_inline_action_depth        = 4;
 const static uint16_t   default_max_auth_depth                 = 6;
+const static uint32_t   default_sig_cpu_bill_pct               = 50 * percent_1; // billable percentage of signature recovery
+const static uint16_t   default_controller_thread_pool_size    = 2;
 
 const static uint32_t   min_net_usage_delta_between_base_and_max_for_trx  = 10*1024;
 // Should be large enough to allow recovery from badly set blockchain parameters without a hard fork
