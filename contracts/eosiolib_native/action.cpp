@@ -7,9 +7,6 @@
 #include "vm_api.h"
 
 uint32_t read_action_data( void* msg, uint32_t len ) {
-   if (get_vm_api()->get_call_status()) {
-      return get_vm_api()->call_get_args((char*)msg, len);
-   }
    return get_vm_api()->read_action_data(msg, len);
 }
 

@@ -1,4 +1,4 @@
-add_library(eosiolib_native SHARED 
+add_library(eosiolib_native STATIC 
 eosiolib.cpp
 action.cpp
 chain.cpp
@@ -10,8 +10,6 @@ print.cpp
 privileged.cpp
 system.cpp
 transaction.cpp
-vm_api.cpp
-vm_exception.cpp
 )
 
 target_link_libraries( eosiolib_native PUBLIC softfloat)
