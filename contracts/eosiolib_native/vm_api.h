@@ -188,9 +188,6 @@ struct vm_api {
 
    void (*checktime)(void);
    void (*check_context_free)(bool context_free);
-   bool (*contracts_console)(void);
-   void (*update_db_usage)( uint64_t payer, int64_t delta );
-   bool (*verify_account_ram_usage)( uint64_t account );
 
    void (*send_deferred)(const __uint128* sender_id, uint64_t payer, const char *serialized_transaction, size_t size, uint32_t replace_existing);
    int (*cancel_deferred)(const __uint128* sender_id);
@@ -206,89 +203,9 @@ struct vm_api {
    void (*assert_context_free)(void);
    int (*get_context_free_data)( uint32_t index, char* buff, size_t size );
 
-   void (*rodb_remove_i64)( int32_t itr );
-   int32_t (*rodb_get_i64)( int32_t itr, char* buffer, size_t buffer_size );
-   int32_t (*rodb_get_i64_ex)( int iterator, uint64_t* primary, char* buffer, size_t buffer_size );
-   const char* (*rodb_get_i64_exex)( int itr, size_t* buffer_size );
-
-   int32_t (*rodb_next_i64)( int32_t itr, uint64_t* primary );
-   int32_t (*rodb_previous_i64)( int32_t itr, uint64_t* primary );
-   int32_t (*rodb_find_i64)( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-   int32_t (*rodb_lowerbound_i64)( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-   int32_t (*rodb_upperbound_i64)( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-   int32_t (*rodb_end_i64)( uint64_t code, uint64_t scope, uint64_t table );
-
-
-   bool (*is_code_activated)( uint64_t name );
-   bool (*is_replay)(void);
-   int (*get_table_item_count)(uint64_t code, uint64_t scope, uint64_t table);
-
-   const char* (*get_code)( uint64_t receiver, size_t* size );
-   void (*set_code)(uint64_t user_account, int vm_type, const char* code, int code_size);
-   int (*get_code_id)( uint64_t account, char* code_id, size_t size );
-   int (*get_code_type)( uint64_t account);
-
-   int (*set_code_ext)(uint64_t account, int vm_type, uint64_t code_name, const char* src_code, size_t code_size);
-   const char* (*load_code_ext)(uint64_t account, uint64_t code_name, size_t* code_size);
-   bool (*check_code_auth)(uint64_t account, uint64_t code_account, uint64_t code_name);
-
-   int (*split_path)(const char* str_path, char *path1, size_t path1_size, char *path2, size_t path2_size);
-   uint64_t (*get_action_account)(void);
-   uint64_t (*string_to_uint64)(const char* str);
-   int32_t (*uint64_to_string)(uint64_t n, char* out, int size);
-   uint64_t (*string_to_symbol)(uint8_t precision, const char* str);
-
-   void (*resume_billing_timer)(void);
-   void (*pause_billing_timer)(void);
-
-   uint64_t (*wasm_call)(const char*func, uint64_t* args , int argc);
-
-   int (*call_set_args)(const char* args , int len);
-   int (*call_get_args)(char* args , int len);
-
-   int (*call)(uint64_t account, uint64_t func);
-   int (*get_call_status)(void);
-   int (*call_set_results)(const char* result , int len);
-   int (*call_get_results)(char* result , int len);
-
-   int (*has_option)(const char* _option);
-   int (*get_option)(const char* option, char *result, int size);
-   int (*app_init_finished)(void);
-
-   int (*run_mode)(void); // 0 for server, 1 for client
-
-   uint64_t (*ethaddr2n)(const char* address, int size);
-   void (*n2ethaddr)(uint64_t n, char* address, int size);
-   int (*is_contracts_console_enabled)();
-
-   bool (*vm_cleanup)(void);
-   int (*vm_run_script)(const char* str);
-   int (*vm_run_lua_script)(const char* cfg, const char* script);
-   void (*log)(int level, int line, const char *file, const char *func, const char *fmt, ...);
-   const char *(*vm_cpython_compile)(const char *name, const char *code, int size, int *result_size);
-   bool (*is_debug_mode)(void);
-   bool (*is_unittest_mode)(void);
-   void (*throw_exception)(int type, const char *fmt, ...);
-
-   void (*vm_set_debug_contract)(uint64_t account, const char* path);
-   const char* (*vm_get_debug_contract)(uint64_t* account);
-
-   int  (*wasm_to_wast)( const uint8_t* data, size_t size, uint8_t* wast, size_t wast_size, bool strip_names );
-   int  (*wast_to_wasm)( const uint8_t* data, size_t size, uint8_t* wasm, size_t wasm_size );
-   bool (*is_producing_block)(void);
-
-   int (*get_wasm_runtime_type)(void);
-
-
-   int (*vm_apply)(int type, uint64_t receiver, uint64_t account, uint64_t act);
-   void (*vm_call)(uint64_t contract, uint64_t func_name, uint64_t arg1, uint64_t arg2, uint64_t arg3, const char* extra_args, size_t in_size, char* out, size_t out_size);
    void (*token_create)( uint64_t issuer, const char* maximum_supply, size_t size );
    void (*token_issue)( uint64_t to, const char* quantity, size_t size1, const char* memo, size_t size2 );
    void (*token_transfer)( uint64_t from, uint64_t to, const char* quantity, size_t size1, const char* memo, size_t size2 );
-
-   int (*call_contract_get_extra_args)(void* extra_args, size_t size1);
-   int (*call_contract_set_results)(const void* result, size_t size1);
-
 
    char reserved[sizeof(char*)*128]; //for forward compatibility
 };
