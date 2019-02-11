@@ -196,6 +196,7 @@ uint32_t tx_max_net_usage = 0;
 uint32_t delaysec = 0;
 
 vector<string> bandwidth_provider;
+vector<string> ram_providers;
 
 struct resolved_name_info {
     string domain;
@@ -283,6 +284,8 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("--delay-sec", delaysec, localized("set the delay_sec seconds, defaults to 0s"));
 
    cmd->add_option("--bandwidth-provider", bandwidth_provider, localized("set an account which provide own bandwidth for transaction"));
+   cmd->add_option("--ram-provider", ram_providers, localized("set an account which provide own ram for transaction"));
+
    cmd->add_flag("--dont-declare-names", tx_dont_declare_names, localized("don't add `declarenames` action for resolved account names"));
 }
 
@@ -315,6 +318,42 @@ bandwidth_providers get_bandwidth_providers(const vector<string>& providers) {
    }
    return bandwidthProviders;
 }
+
+struct provide_ram_params {
+    provide_ram_params(const string& providers) {
+        vector<string> pieces;
+        split(pieces, providers, boost::algorithm::is_any_of("/"));
+        if (pieces.size() != 3) {
+           std::cerr << localized("Ram provider ${p} not in 'account/provider[@permission]/list,of,contracts' form", ("p", providers)) << std::endl;
+           return;
+        }
+        actor = pieces[0];
+
+        std::vector<string> provider_and_authority;
+        split(provider_and_authority, pieces[1], boost::algorithm::is_any_of("@"));
+
+        provider = provider_and_authority[0];
+        permission.permission = provider_and_authority.size() == 1 ? "active" : provider_and_authority[1];
+        permission.actor = provider;
+
+        std::vector<string> contracts_as_strings;
+
+        split(contracts_as_strings, pieces[2], boost::algorithm::is_any_of(","));
+        if (contracts_as_strings.empty()) {
+            std::cerr << localized("List of contracts is empty") << std::endl;
+            return;
+        }
+
+        for (const auto& contract : contracts_as_strings) {
+            contracts.emplace_back(contract);
+        }
+    }
+
+    account_name provider;
+    account_name actor;
+    std::vector<account_name> contracts;
+    chain::permission_level permission;
+};
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions, const chain::permission_level& default_permission) {
    if (permissions.empty())
@@ -416,6 +455,14 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
          for (const auto& prov: providers) {
             trx.actions.emplace_back(vector<chain::permission_level>{prov.second}, providebw{prov.second.actor, prov.first} );
          }
+      }
+
+      if (!ram_providers.empty()) {
+          for (const auto& ram_provider : ram_providers) {
+              const provide_ram_params provide_params(ram_provider);
+              trx.actions.emplace_back(vector<chain::permission_level>{provide_params.permission}, provideram{provide_params.provider, provide_params.actor, provide_params.contracts});
+          }
+
       }
 
         bool declare_names = !tx_dont_declare_names && tx_resolved_names.size() > 0;

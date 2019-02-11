@@ -238,6 +238,7 @@ struct controller_impl {
 
    SET_APP_HANDLER(cyber, cyber, providebw);
    SET_APP_HANDLER(cyber, cyber, requestbw);
+   SET_APP_HANDLER(cyber, cyber, provideram);
 /*
    SET_APP_HANDLER(cyber, cyber, postrecovery);
    SET_APP_HANDLER(cyber, cyber, passrecovery);
