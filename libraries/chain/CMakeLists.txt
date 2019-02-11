@@ -47,18 +47,24 @@ add_library( eosio_chain
 
 
              transaction_metadata.cpp
+             vm_api/vm_api.cpp
+             "${CMAKE_SOURCE_DIR}/contracts/eosio.token/eosio.token.cpp"
              ${HEADERS}
              )
 
 target_link_libraries( eosio_chain fc chainbase Logging IR WAST WASM Runtime
-                       softfloat builtins wabt
+                       softfloat builtins wabt eosiolib_native
                      )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                                    "${CMAKE_SOURCE_DIR}/libraries/wabt"
                                    "${CMAKE_BINARY_DIR}/libraries/wabt"
-                            )
+                              PRIVATE "${CMAKE_SOURCE_DIR}/contracts/eosiolib_native/include"
+                              PRIVATE "${CMAKE_SOURCE_DIR}/contracts"
+                              PRIVATE "${CMAKE_BINARY_DIR}/contracts"
+                              PRIVATE ${CMAKE_SOURCE_DIR}/externals/magic_get/include
+                        )
 
 install( TARGETS eosio_chain
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}

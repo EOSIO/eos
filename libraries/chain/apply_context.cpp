@@ -28,9 +28,15 @@ static inline void print_debug(account_name receiver, const action_trace& ar) {
            + prefix + ": CONSOLE OUTPUT END   =====================" );
    }
 }
+//vm_api.cpp
+void set_apply_context(apply_context *ctx);
 
 void apply_context::exec_one( action_trace& trace )
 {
+   auto cleanup = fc::make_scoped_exit([&](){
+      set_apply_context(nullptr);
+   });
+   set_apply_context(this);
    auto start = fc::time_point::now();
 
    action_receipt r;

@@ -22,6 +22,7 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <fstream>
+#include <eosiolib_native/vm_api.h>
 
 namespace eosio { namespace chain {
    using namespace webassembly;
@@ -1628,6 +1629,29 @@ class call_depth_api : public context_aware_api {
          FC_THROW_EXCEPTION(wasm_execution_error, "Exceeded call depth maximum");
       }
 };
+
+class token_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void token_create( uint64_t issuer, array_ptr<const char> maximum_supply, size_t size ) {
+         get_vm_api()->token_create(issuer, maximum_supply, size);
+      }
+
+      void token_issue( uint64_t to, array_ptr<const char> quantity, size_t size1, array_ptr<const char> memo, size_t size2 ) {
+         get_vm_api()->token_issue(to, quantity, size1, memo, size2);
+      }
+
+      void token_transfer( uint64_t from, uint64_t to, array_ptr<const char> quantity, size_t size1, array_ptr<const char> memo, size_t size2 ) {
+         get_vm_api()->token_transfer(from, to, quantity, size1, memo, size2);
+      }
+};
+
+REGISTER_INTRINSICS(token_api,
+   (token_create,    void(int64_t, int, int)  )
+   (token_issue,     void(int64_t, int, int, int, int)           )
+   (token_transfer,  void(int64_t, int64_t, int, int, int, int)  )
+);
 
 REGISTER_INJECTED_INTRINSICS(call_depth_api,
    (call_depth_assert,  void()               )
