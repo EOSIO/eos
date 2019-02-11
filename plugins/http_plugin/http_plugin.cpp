@@ -286,7 +286,7 @@ namespace eosio {
 
                con->append_header( "Content-type", "application/json" );
 
-               if( bytes_in_flight > 500*1024*1024 ) {
+               if( bytes_in_flight > max_bytes_in_flight ) {
                   dlog( "503 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight.load()) );
                   error_results results{websocketpp::http::status_code::too_many_requests, "Busy", error_results::error_info()};
                   con->set_body( fc::json::to_string( results ));
