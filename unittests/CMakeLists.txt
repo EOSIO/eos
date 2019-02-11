@@ -2,13 +2,16 @@ find_package( Gperftools QUIET )
 
 ### Build contracts with cdt if available
 include(ExternalProject)
-# if no cdt root is given use default path
-if(EOSIO_CDT_ROOT STREQUAL "" OR NOT EOSIO_CDT_ROOT)
-   set(EOSIO_WASM_OLD_BEHAVIOR "Off")
-   find_package(eosio.cdt)
+if ( EOSIO_COMPILE_TEST_CONTRACTS )
+  # if no cdt root is given use default path
+  if(EOSIO_CDT_ROOT STREQUAL "" OR NOT EOSIO_CDT_ROOT)
+    set(EOSIO_WASM_OLD_BEHAVIOR "Off")
+    find_package(eosio.cdt)
+  endif()
 endif()
 
-if (eosio.cdt_FOUND)
+if ( EOSIO_COMPILE_TEST_CONTRACTS )
+   message( STATUS "Building contracts in directory `eos/unittests/test-contracts/`" )
    ExternalProject_Add(
       test_contracts_project
       SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test-contracts
@@ -21,6 +24,7 @@ if (eosio.cdt_FOUND)
       BUILD_ALWAYS 1
    )
 else()
+   message( STATUS "Not building contracts in directory `eos/unittests/test-contracts/`" )
    add_subdirectory(test-contracts)
 endif()
 

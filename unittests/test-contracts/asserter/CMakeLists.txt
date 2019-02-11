@@ -1,4 +1,4 @@
-if( ${eosio.cdt_FOUND} )
+if ( EOSIO_COMPILE_TEST_CONTRACTS )
   add_executable( asserter asserter asserter.cpp )
   target_include_directories(asserter PUBLIC ${CMAKE_CURRENT_SOURCE}/../)
 else()
