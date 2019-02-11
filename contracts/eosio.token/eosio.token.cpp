@@ -124,24 +124,24 @@ EOSIO_ABI( eosio::token, (create)(issue)(transfer) )
 using namespace eosio;
 void token_create( uint64_t issuer, const char* maximum_supply, size_t size) {
    token _token( current_receiver() );
-   eosio_assert( size == sizeof(asset), "wrong asset size" );
-   _token.create( issuer, *((asset*)maximum_supply) );
+   auto _maximum_supply = unpack<asset>( (char*)maximum_supply, size );
+   _token.create( issuer, _maximum_supply );
 }
 
 void token_issue( uint64_t to, const char* quantity, size_t size1, const char* memo, size_t size2 ) {
    token _token( current_receiver() );
-   eosio_assert( size1 == sizeof(asset), "wrong asset size" );
    eosio_assert( size2 <= 256, "memo has more than 256 bytes" );
+   auto _quantity = unpack<asset>( (char*)quantity, size1 );
    string _memo( memo, size2 );
-   _token.issue( to, *((asset*)quantity), _memo );
+   _token.issue( to, _quantity, _memo );
 }
 
 void token_transfer( uint64_t from, uint64_t to, const char* quantity, size_t size1, const char* memo, size_t size2) {
    token _token( current_receiver() );
-   eosio_assert( size1 == sizeof(asset), "wrong asset size" );
    eosio_assert( size2 <= 256, "memo has more than 256 bytes" );
+   auto _quantity = unpack<asset>( (char*)quantity, size1 );
    string _memo( memo, size2 );
-   _token.transfer( from, to, *((asset*)quantity), _memo );
+   _token.transfer( from, to, _quantity, _memo );
 }
 
 #endif
