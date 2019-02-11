@@ -5,6 +5,7 @@
 #pragma once
 #include <eosio/chain/transaction.hpp>
 #include <eosio/wallet_plugin/wallet_api.hpp>
+#include <boost/asio/deadline_timer.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <chrono>
@@ -142,6 +143,7 @@ private:
    boost::filesystem::path lock_path = dir / "wallet.lock";
    std::unique_ptr<boost::interprocess::file_lock> wallet_dir_lock;
 
+   void start_lock_watch(std::shared_ptr<boost::asio::deadline_timer> t);
    void initialize_lock();
 };
 

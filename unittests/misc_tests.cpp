@@ -542,7 +542,7 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
     tmp.push_back(str);
   }
 
-  for(int i = 0; i < words.size(); ++i ) {
+  for(size_t i = 0; i < words.size(); ++i ) {
     BOOST_TEST(tmp[i] == words[i]);
   }
 
@@ -631,6 +631,7 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    uint32_t pack_size = fc::raw::pack_size( pkt );
    vector<char> buf(pack_size);
    fc::datastream<char*> ds(buf.data(), pack_size);
+
    fc::raw::pack( ds, pkt );
    // unpack
    ds.seekp(0);
@@ -663,6 +664,34 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+
+BOOST_AUTO_TEST_CASE(signed_int_test) { try {
+    char buf[32];
+    fc::datastream<char*> ds(buf,32);
+    signed_int a(47), b((1<<30)+2), c(-47), d(-(1<<30)-2); //small +, big +, small -, big -
+    signed_int ee;
+    fc::raw::pack(ds,a);
+    ds.seekp(0);
+    fc::raw::unpack(ds,ee);
+    ds.seekp(0);
+    BOOST_CHECK_EQUAL(a,ee);
+    fc::raw::pack(ds,b);
+    ds.seekp(0);
+    fc::raw::unpack(ds,ee);
+    ds.seekp(0);
+    BOOST_CHECK_EQUAL(b,ee);
+    fc::raw::pack(ds,c);
+    ds.seekp(0);
+    fc::raw::unpack(ds,ee);
+    ds.seekp(0);
+    BOOST_CHECK_EQUAL(c,ee);
+    fc::raw::pack(ds,d);
+    ds.seekp(0);
+    fc::raw::unpack(ds,ee);
+    ds.seekp(0);
+    BOOST_CHECK_EQUAL(d,ee);
+
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
 

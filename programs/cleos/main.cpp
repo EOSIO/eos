@@ -1850,7 +1850,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
             auto& prods = obj["producers"].get_array();
             std::cout << "producers:";
             if ( !prods.empty() ) {
-               for ( int i = 0; i < prods.size(); ++i ) {
+               for ( size_t i = 0; i < prods.size(); ++i ) {
                   if ( i%3 == 0 ) {
                      std::cout << std::endl << indent;
                   }
@@ -2827,7 +2827,7 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
-   auto stopKeosd = wallet->add_subcommand("stop", localized("Stop keosd (doesn't work with nodeos)."), false);
+   auto stopKeosd = wallet->add_subcommand("stop", localized("Stop keosd."), false);
    stopKeosd->set_callback([] {
       const auto& v = call(wallet_url, keosd_stop);
       if ( !v.is_object() || v.get_object().size() != 0 ) { //on success keosd responds with empty object

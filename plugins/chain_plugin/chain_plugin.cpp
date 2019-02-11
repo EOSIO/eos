@@ -197,6 +197,8 @@ public:
 
 chain_plugin::chain_plugin()
 :my(new chain_plugin_impl()) {
+   app().register_config_type<eosio::chain::db_read_mode>();
+   app().register_config_type<eosio::chain::validation_mode>();
 }
 
 chain_plugin::~chain_plugin(){}
@@ -880,7 +882,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
    reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::in | std::ios::binary );
 
    reversible_blocks.seekg( 0, std::ios::end );
-   uint64_t end_pos = reversible_blocks.tellg();
+   auto end_pos = reversible_blocks.tellg();
    reversible_blocks.seekg( 0 );
 
    uint32_t num = 0;
@@ -1324,7 +1326,7 @@ fc::variant get_global_row( const database& db, const abi_def& abi, const abi_se
    return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_ms, shorten_abi_errors );
 }
 
-read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
+read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const try {
    const abi_def abi = eosio::chain_apis::get_abi(db, config::system_account_name);
    const auto table_type = get_table_type(abi, N(producers));
    const abi_serializer abis{ abi, abi_serializer_max_time };
@@ -1372,6 +1374,20 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    }
 
    result.total_producer_vote_weight = get_global_row(d, abi, abis, abi_serializer_max_time, shorten_abi_errors)["total_producer_vote_weight"].as_double();
+   return result;
+} catch (...) {
+   read_only::get_producers_result result;
+
+   for (auto p : db.active_producers().producers) {
+      fc::variant row = fc::mutable_variant_object()
+         ("owner", p.producer_name)
+         ("producer_key", p.block_signing_key)
+         ("url", "")
+         ("total_votes", 0.0f);
+
+      result.rows.push_back(row);
+   }
+
    return result;
 }
 
@@ -1585,7 +1601,7 @@ static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_w
          results->emplace_back( r );
       }
 
-      int next_index = index + 1;
+      size_t next_index = index + 1;
       if (next_index < params->size()) {
          push_recurse(rw, next_index, params, results, next );
       } else {
@@ -1632,7 +1648,7 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
 
    if( accnt.code.size() ) {
       result.wasm = string(accnt.code.begin(), accnt.code.end());
-      result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+      result.code_hash = accnt.code_version;
    }
 
    abi_def abi;
@@ -1650,7 +1666,7 @@ read_only::get_code_hash_results read_only::get_code_hash( const get_code_hash_p
    const auto& accnt  = d.get<account_object,by_name>( params.account_name );
 
    if( accnt.code.size() ) {
-      result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+      result.code_hash = accnt.code_version;
    }
 
    return result;
@@ -1675,7 +1691,7 @@ read_only::get_raw_abi_results read_only::get_raw_abi( const get_raw_abi_params&
    const auto& d = db.db();
    const auto& accnt = d.get<account_object,by_name>(params.account_name);
    result.abi_hash = fc::sha256::hash( accnt.abi.data(), accnt.abi.size() );
-   result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+   result.code_hash = accnt.code_version;
    if( !params.abi_hash || *params.abi_hash != result.abi_hash )
       result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
 

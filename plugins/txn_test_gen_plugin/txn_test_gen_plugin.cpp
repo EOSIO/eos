@@ -98,7 +98,7 @@ struct txn_test_gen_plugin_impl {
       chain_plugin& cp = app().get_plugin<chain_plugin>();
 
       const int overlap = 20;
-      int end = std::min(index + overlap, trxs->size());
+      size_t end = std::min(index + overlap, trxs->size());
       _remain = end - index;
       for (int i = index; i < end; ++i) {
          cp.accept_transaction( packed_transaction(trxs->at(i)), [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){

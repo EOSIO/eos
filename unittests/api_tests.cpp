@@ -201,7 +201,7 @@ transaction_trace_ptr CallAction(TESTER& test, T ac, const vector<account_name>&
 
    auto pl = vector<permission_level>{{scope[0], config::active_name}};
    if (scope.size() > 1)
-      for (int i = 1; i < scope.size(); i++)
+      for (size_t i = 1; i < scope.size(); i++)
          pl.push_back({scope[i], config::active_name});
 
    action act(pl, ac);
@@ -1152,7 +1152,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       produce_blocks( 3 );
 
       //check that only one deferred transaction executed
-      auto dtrxs = control->get_scheduled_transactions();
+      auto dtrxs = get_scheduled_transactions();
       BOOST_CHECK_EQUAL(dtrxs.size(), 1);
       for (const auto& trx: dtrxs) {
          control->push_scheduled_transaction(trx, fc::time_point::maximum());
@@ -1177,7 +1177,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       produce_blocks( 3 );
 
       //check that only one deferred transaction executed
-      auto dtrxs = control->get_scheduled_transactions();
+      auto dtrxs = get_scheduled_transactions();
       BOOST_CHECK_EQUAL(dtrxs.size(), 1);
       for (const auto& trx: dtrxs) {
          control->push_scheduled_transaction(trx, fc::time_point::maximum());
