@@ -162,7 +162,65 @@ else
 fi
 
 
-printf "\\n"
+	printf "\\n\\tChecking boost library installation.\\n"
+	BVERSION=$( grep "#define BOOST_VERSION" "/usr/local/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
+	if [ "${BVERSION}" != "106700" ]; then
+		if [ ! -z "${BVERSION}" ]; then
+			printf "\\tFound Boost Version %s.\\n" "${BVERSION}"
+			printf "\\tEOS.IO requires Boost version 1.67.\\n"
+			printf "\\tWould you like to uninstall version %s and install Boost version 1.67.\\n" "${BVERSION}"
+			select yn in "Yes" "No"; do
+				case $yn in
+					[Yy]* )
+						if "${BREW}" list | grep "boost"
+						then
+							printf "\\tUninstalling Boost Version %s.\\n" "${BVERSION}"
+							if ! "${BREW}" uninstall --force boost
+							then
+								printf "\\tUnable to remove boost libraries at this time. 0\\n"
+								printf "\\tExiting now.\\n\\n"
+								exit 1;
+							fi
+						else
+							printf "\\tRemoving Boost Version %s.\\n" "${BVERSION}"
+							if ! sudo rm -rf "/usr/local/include/boost"
+							then
+								printf "\\tUnable to remove boost libraries at this time. 1\\n"
+								printf "\\tExiting now.\\n\\n"
+								exit 1;
+							fi
+							if ! sudo rm -rf /usr/local/lib/libboost*
+							then
+								printf "\\tUnable to remove boost libraries at this time. 2\\n"
+								printf "\\tExiting now.\\n\\n"
+								exit 1;
+							fi
+						fi
+					break;;
+					[Nn]* ) echo "User cancelled installation of Boost libraries, Exiting now."; exit;;
+					* ) echo "Please type 1 for yes or 2 for no.";;
+				esac
+			done
+		fi
+		printf "\\tInstalling boost libraries.\\n"
+		if ! "${BREW}" install "${SOURCE_DIR}/scripts/boost.rb"
+		then
+			printf "\\tUnable to install boost 1.67 libraries at this time. 0\\n"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+		fi
+		if [ -d "$BUILD_DIR" ]; then
+			if ! rm -rf "$BUILD_DIR"
+			then
+			printf "\\tUnable to remove directory %s. Please remove this directory and run this script %s again. 0\\n" "$BUILD_DIR" "${BASH_SOURCE[0]}"
+			printf "\\tExiting now.\\n\\n"
+			exit 1;
+			fi
+		fi
+		printf "\\tBoost 1.67.0 successfully installed @ /usr/local.\\n"
+	else
+		printf "\\tBoost 1.67.0 found at /usr/local.\\n"
+	fi
 
 
 export CPATH="$(python-config --includes | awk '{print $1}' | cut -dI -f2):$CPATH" # Boost has trouble finding pyconfig.h
