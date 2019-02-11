@@ -16,11 +16,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 if (UNIX)
    if (APPLE)
-      execute_process(COMMAND xcrun --show-sdk-path
-                      OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
-                      OUTPUT_STRIP_TRAILING_WHITESPACE)
-      list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/llvm@4")
-      list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/gettext")
+      if (LLVM_DIR STREQUAL "" OR NOT LLVM_DIR)
+         set(LLVM_DIR "/usr/local/opt/llvm@4/lib/cmake/llvm/")
+      endif()
    endif()
 endif()
 
