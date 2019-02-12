@@ -2,10 +2,10 @@
 
 NAME=$1
 EOS_PREFIX=${PREFIX}/${SUBPREFIX}
-mkdir -p ${PREFIX}/bin/ || exit 1
+mkdir -p ${PREFIX}/bin/
 #mkdir -p ${PREFIX}/lib/cmake/${PROJECT}
-mkdir -p ${EOS_PREFIX}/bin || exit 1
-mkdir -p ${EOS_PREFIX}/licenses/eosio || exit 1
+mkdir -p ${EOS_PREFIX}/bin
+mkdir -p ${EOS_PREFIX}/licenses/eosio
 #mkdir -p ${EOS_PREFIX}/include
 #mkdir -p ${EOS_PREFIX}/lib/cmake/${PROJECT}
 #mkdir -p ${EOS_PREFIX}/cmake
@@ -38,5 +38,5 @@ for f in $(ls "${BUILD_DIR}/bin/"); do
    ln -sf ../${SUBPREFIX}/bin/$bn ${PREFIX}/bin/$bn || exit 1
 done
 echo "Generating Tarball $NAME.tar.gz..."
-tar -cvzf $NAME ./${PREFIX}/* || exit 1
+tar -cvzf $NAME.tar.gz ./${PREFIX}/* || exit 1
 rm -r ${PREFIX} || exit 1

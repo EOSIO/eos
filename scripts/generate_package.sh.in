@@ -25,7 +25,7 @@ export DESC
 export URL
 export EMAIL
 
-mkdir tmp || exit 1
+mkdir -p tmp
 
 if [[ ${VARIANT} == "brew" ]]; then
    . ./generate_bottle.sh
@@ -38,8 +38,4 @@ else
    exit -1
 fi
 
-BUILDSTATUS=$?
-
 rm -r tmp || exit 1
-
-exit $BUILDSTATUS

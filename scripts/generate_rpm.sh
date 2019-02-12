@@ -21,7 +21,7 @@ export SSUBPREFIX
 . ./generate_tarball.sh ${NAME}
 
 RPMBUILD=`realpath ~/rpmbuild/BUILDROOT/${NAME}.x86_64`
-mkdir -p ${RPMBUILD} || exit 1
+mkdir -p ${RPMBUILD}
 FILES=$(tar -xvzf ${NAME}.tar.gz -C ${RPMBUILD})
 PFILES=""
 for f in ${FILES[@]}; do
@@ -31,7 +31,7 @@ for f in ${FILES[@]}; do
 done
 echo -e ${PFILES} &> ~/rpmbuild/BUILD/filenames.txt
 
-mkdir -p ${PROJECT} || exit 1
+mkdir -p ${PROJECT}
 echo -e "Name: ${PROJECT} 
 Version: ${VERSION_NO_SUFFIX}
 License: MIT

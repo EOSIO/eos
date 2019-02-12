@@ -31,7 +31,7 @@ else
   exit 1
 fi
 
-mkdir -p ${PROJECT}/DEBIAN || exit 1
+mkdir -p ${PROJECT}/DEBIAN
 chmod 0755 ${PROJECT}/DEBIAN || exit 1
 echo "Package: ${PROJECT}
 Version: ${VERSION_NO_SUFFIX}-${RELEASE}

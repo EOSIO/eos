@@ -16,7 +16,7 @@ fi
 
 NAME="${PROJECT}-${VERSION}.${MAC_VERSION}.bottle.tar.gz"
 
-mkdir -p ${PROJECT}/${VERSION}/opt/eosio/lib/cmake || exit 1
+mkdir -p ${PROJECT}/${VERSION}/opt/eosio/lib/cmake
 
 PREFIX="${PROJECT}/${VERSION}"
 SPREFIX="\/usr\/local"
