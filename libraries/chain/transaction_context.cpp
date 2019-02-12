@@ -250,7 +250,7 @@ namespace bacc = boost::accumulators;
          if (act.account == config::system_account_name && act.name == config::provide_bw_action) {
             auto args = act.data_as<providebw>();
             provided_accounts.insert(args.account);
-         } else if( act.account == N(eosio) && act.name == N(provideram) ) {
+         } else if (act.account == config::system_account_name && act.name == N(provideram)) {
             add_ram_provider(act.data_as<provideram>());
          }
          for( const auto& auth : act.authorization ) {
