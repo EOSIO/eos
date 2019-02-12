@@ -567,7 +567,7 @@ namespace eosio {
         template<typename L>
         void async_get_pending_block_ids( L&& callback ) {
            /// send peer my head block status which is read from chain plugin
-           app().post(priority::low, [self = shared_from_this(),callback]{
+           app().post(priority::low, "get blk", [self = shared_from_this(),callback]{
               auto& control = app().get_plugin<chain_plugin>().chain();
               auto lib = control.last_irreversible_block_num();
               auto head = control.fork_db_head_block_id();
@@ -592,7 +592,7 @@ namespace eosio {
 
         template<typename L>
         void async_get_block_num( uint32_t blocknum, L&& callback ) {
-           app().post(priority::low, [self = shared_from_this(), blocknum, callback]{
+           app().post(priority::low, "fetch block", [self = shared_from_this(), blocknum, callback]{
               auto& control = app().get_plugin<chain_plugin>().chain();
               signed_block_ptr sblockptr;
               try {
@@ -916,7 +916,7 @@ namespace eosio {
          * the connection from being closed.
          */
         void wait_on_app() {
-           app().post( priority::medium, [self = shared_from_this()]() {
+           app().post( priority::medium, "do_read", [self = shared_from_this()]() {
               app().get_io_service().post( boost::asio::bind_executor( self->_strand, [self] { self->do_read(); } ) );
            } );
         }
@@ -1151,7 +1151,7 @@ namespace eosio {
          channels::accepted_transaction::channel_type::handle   _on_appled_trx_handle;
 
          void async_add_session( std::weak_ptr<session> wp ) {
-            app().post(priority::low, [wp,this]{
+            app().post(priority::low, "add session", [wp,this]{
                if( auto l = wp.lock() ) {
                   _sessions[l.get()] = wp;
                }
@@ -1166,7 +1166,7 @@ namespace eosio {
 
          template<typename Call>
          void for_each_session( Call callback ) {
-            app().post(priority::low, [this, callback = callback] {
+            app().post(priority::low, "foreach session", [this, callback = callback] {
                for (const auto& item : _sessions) {
                   if (auto ses = item.second.lock()) {
                      ses->_ios.post(boost::asio::bind_executor(
@@ -1249,7 +1249,7 @@ namespace eosio {
             /// add some random delay so that all my peers don't attempt to reconnect to me
             /// at the same time after shutting down..
             _timer->expires_from_now( boost::posix_time::microseconds( 1000000*(10+rand()%5) ) );
-            _timer->async_wait(app().get_priority_queue().wrap(priority::low, [=](const boost::system::error_code& ec) {
+            _timer->async_wait(app().get_priority_queue().wrap(priority::low, "reconnect peers", [=](const boost::system::error_code& ec) {
                 if( ec ) { return; }
                 on_reconnect_peers();
             }));
@@ -1448,7 +1448,7 @@ namespace eosio {
    session::~session() {
      wlog( "close session ${n}",("n",_session_num) );
      std::weak_ptr<bnet_plugin_impl> netp = _net_plugin;
-      app().post(priority::low, [netp,ses=this]{
+      app().post(priority::low, "session close", [netp,ses=this]{
         if( auto net = netp.lock() )
            net->on_session_close(ses);
      });
@@ -1475,7 +1475,7 @@ namespace eosio {
    }
 
    void session::check_for_redundant_connection() {
-     app().post(priority::low, [self=shared_from_this()]{
+     app().post(priority::low, "goodbye", [self=shared_from_this()]{
        self->_net_plugin->for_each_session( [self]( auto ses ){
          if( ses != self && ses->_remote_peer_id == self->_remote_peer_id ) {
            self->do_goodbye( "redundant connection" );

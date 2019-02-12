@@ -976,7 +976,7 @@ namespace eosio {
       buffer_queue.fill_out_buffer( bufs );
 
       boost::asio::async_write(*socket, bufs, [c, priority]( boost::system::error_code ec, std::size_t w ) {
-         app().post(priority, [c, priority, ec, w]() {
+         app().post(priority, "queue write", [c, priority, ec, w]() {
             try {
                auto conn = c.lock();
                if(!conn)
@@ -1144,7 +1144,7 @@ namespace eosio {
       response_expected->expires_from_now( my_impl->resp_expected_period);
       connection_wptr c(shared_from_this());
       response_expected->async_wait( [c]( boost::system::error_code ec ) {
-         app().post(priority::low, [c, ec]() {
+         app().post(priority::low, "sync_timeout", [c, ec]() {
             connection_ptr conn = c.lock();
             if (!conn) {
                // connection was destroyed before this lambda was delivered
@@ -1160,7 +1160,7 @@ namespace eosio {
       response_expected->expires_from_now( my_impl->resp_expected_period);
       connection_wptr c(shared_from_this());
       response_expected->async_wait( [c]( boost::system::error_code ec ) {
-         app().post(priority::low, [c, ec]() {
+         app().post(priority::low, "fetch timeout", [c, ec]() {
             connection_ptr conn = c.lock();
             if (!conn) {
                // connection was destroyed before this lambda was delivered
@@ -1838,7 +1838,7 @@ namespace eosio {
 
       resolver->async_resolve( query,
                 [weak_conn, this]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ) {
-                   app().post( priority::low, [err, endpoint_itr, weak_conn, this]() {
+                   app().post( priority::low, "async resolve", [err, endpoint_itr, weak_conn, this]() {
                       auto c = weak_conn.lock();
                       if( !c ) return;
                       if( !err ) {
@@ -1861,7 +1861,7 @@ namespace eosio {
       c->connecting = true;
       connection_wptr weak_conn = c;
       c->socket->async_connect( current_endpoint, [weak_conn, endpoint_itr, this]( const boost::system::error_code& err ) {
-         app().post( priority::low, [weak_conn, endpoint_itr, this, err]() {
+         app().post( priority::low, "async connect", [weak_conn, endpoint_itr, this, err]() {
             auto c = weak_conn.lock();
             if( !c ) return;
             if( !err && c->socket->is_open()) {
@@ -1906,7 +1906,7 @@ namespace eosio {
    void net_plugin_impl::start_listen_loop() {
       auto socket = std::make_shared<tcp::socket>( std::ref( *server_ioc ) );
       acceptor->async_accept( *socket, [socket, this, ioc = server_ioc]( boost::system::error_code ec ) {
-            app().post( priority::low, [socket, this, ec, ioc{std::move(ioc)}]() {
+            app().post( priority::low, "async_accept", [socket, this, ec, ioc{std::move(ioc)}]() {
             if( !ec ) {
                uint32_t visitors = 0;
                uint32_t from_addr = 0;
@@ -2018,7 +2018,7 @@ namespace eosio {
             if( !conn->read_delay_timer ) return;
             conn->read_delay_timer->expires_from_now( def_read_delay_for_full_write_queue );
             conn->read_delay_timer->async_wait(
-                  app().get_priority_queue().wrap( priority::low, [this, weak_conn]( boost::system::error_code ) {
+                  app().get_priority_queue().wrap( priority::low, "start read mess", [this, weak_conn]( boost::system::error_code ) {
                auto conn = weak_conn.lock();
                if( !conn ) return;
                start_read_message( conn );
@@ -2030,7 +2030,7 @@ namespace eosio {
          boost::asio::async_read(*conn->socket,
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
             [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
-            app().post( priority::medium, [this,weak_conn, ec, bytes_transferred]() {
+            app().post( priority::medium, "async_read", [this,weak_conn, ec, bytes_transferred]() {
                auto conn = weak_conn.lock();
                if (!conn) {
                   return;
@@ -2588,7 +2588,7 @@ namespace eosio {
    void net_plugin_impl::start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection) {
       connector_check->expires_from_now( du);
       connector_check->async_wait( [this, from_connection](boost::system::error_code ec) {
-            app().post( priority::low, [this, from_connection, ec]() {
+            app().post( priority::low, "con monitor", [this, from_connection, ec]() {
             if( !ec) {
                connection_monitor(from_connection);
             }
@@ -2604,7 +2604,7 @@ namespace eosio {
       transaction_check->expires_from_now( txn_exp_period);
       transaction_check->async_wait( [this]( boost::system::error_code ec ) {
          int lower_than_low = priority::low - 1;
-         app().post( lower_than_low, [this, ec]() {
+         app().post( lower_than_low, "expire trxs", [this, ec]() {
             if( !ec ) {
                expire_txns();
             } else {
@@ -2618,7 +2618,7 @@ namespace eosio {
    void net_plugin_impl::ticker() {
       keepalive_timer->expires_from_now(keepalive_interval);
       keepalive_timer->async_wait( [this]( boost::system::error_code ec ) {
-         app().post( priority::low, [this, ec]() {
+         app().post( priority::low, "ticker", [this, ec]() {
             ticker();
             if( ec ) {
                fc_wlog( logger, "Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()) );
