@@ -300,7 +300,7 @@ namespace eosio {
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
                   bytes_in_flight += body.size();
-                  app().post( appbase::priority::low-1,
+                  app().post( appbase::priority::low,
                               [&tp = *this->thread_pool, &bytes_in_flight = this->bytes_in_flight, handler_itr,
                                resource{std::move( resource )}, body{std::move( body )}, con]() {
                      try {
@@ -545,10 +545,10 @@ namespace eosio {
       if(my->unix_endpoint) {
          try {
             my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
-            my->unix_server.init_asio(&app().get_io_service());
+            my->unix_server.init_asio(&(*my->server_ioc));
             my->unix_server.set_max_http_body_size(my->max_body_size);
             my->unix_server.listen(*my->unix_endpoint);
-            my->unix_server.set_http_handler([&](connection_hdl hdl) {
+            my->unix_server.set_http_handler([&, ioc = my->server_ioc](connection_hdl hdl) {
                my->handle_http_request<detail::asio_local_with_stub_log>( my->unix_server.get_con_from_hdl(hdl));
             });
             my->unix_server.start_accept();
