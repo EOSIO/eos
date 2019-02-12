@@ -157,7 +157,7 @@ namespace eosio {
 
       channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
-      uint16_t                                  thread_pool_size = 2;
+      uint16_t                                  thread_pool_size = 1; // currently used by server_ioc
       optional<boost::asio::thread_pool>        thread_pool;
       std::shared_ptr<boost::asio::io_context>  server_ioc;
       optional<io_work_t>                       server_ioc_work;
@@ -2909,8 +2909,8 @@ namespace eosio {
          }
 
          my->thread_pool_size = options.at( "net-threads" ).as<uint16_t>();
-         EOS_ASSERT( my->thread_pool_size > 1, chain::plugin_config_exception,
-                     "net-threads ${num} must be greater than 1", ("num", my->thread_pool_size) );
+         EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
+                     "net-threads ${num} must be greater than 0", ("num", my->thread_pool_size) );
 
          if( options.count( "p2p-peer-address" )) {
             my->supplied_peers = options.at( "p2p-peer-address" ).as<vector<string> >();
@@ -2969,8 +2969,8 @@ namespace eosio {
       my->thread_pool.emplace( my->thread_pool_size );
       my->server_ioc = std::make_shared<boost::asio::io_context>();
       my->server_ioc_work.emplace( boost::asio::make_work_guard( *my->server_ioc ) );
-      // post to half the threads
-      for( uint16_t i = 0; i < my->thread_pool_size; i += 2 ) {
+      // currently thread_pool only used for server_ioc
+      for( uint16_t i = 0; i < my->thread_pool_size; ++i ) {
          boost::asio::post( *my->thread_pool, [ioc = my->server_ioc]() { ioc->run(); } );
       }
 
