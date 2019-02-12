@@ -1,5 +1,7 @@
-set(EOSIO_WASM_OLD_BEHAVIOR "Off")
-find_package( eosio.cdt )
+if ( EOSIO_COMPILE_TEST_CONTRACTS )
+   set(EOSIO_WASM_OLD_BEHAVIOR "Off")
+   find_package( eosio.cdt REQUIRED )
+endif()
 
 add_subdirectory( asserter )
 add_subdirectory( deferred_test )

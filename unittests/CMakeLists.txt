@@ -2,15 +2,11 @@ find_package( Gperftools QUIET )
 
 ### Build contracts with cdt if available
 include(ExternalProject)
-if ( EOSIO_COMPILE_TEST_CONTRACTS )
-  # if no cdt root is given use default path
-  if(EOSIO_CDT_ROOT STREQUAL "" OR NOT EOSIO_CDT_ROOT)
-    set(EOSIO_WASM_OLD_BEHAVIOR "Off")
-    find_package(eosio.cdt)
-  endif()
-endif()
 
 if ( EOSIO_COMPILE_TEST_CONTRACTS )
+   set(EOSIO_WASM_OLD_BEHAVIOR "Off")
+   find_package(eosio.cdt REQUIRED)
+   
    message( STATUS "Building contracts in directory `eos/unittests/test-contracts/`" )
    ExternalProject_Add(
       test_contracts_project
@@ -24,13 +20,13 @@ if ( EOSIO_COMPILE_TEST_CONTRACTS )
       BUILD_ALWAYS 1
    )
 else()
-   message( STATUS "Not building contracts in directory `eos/unittests/test-contracts/`" )
-   add_subdirectory(test-contracts)
+  message( STATUS "Not building contracts in directory `eos/unittests/test-contracts/`" )
+  add_subdirectory(test-contracts)
 endif()
 
 if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling tests with TCMalloc")
-    list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
+   message( STATUS "Found gperftools; compiling tests with TCMalloc" )
+   list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
 find_package(LLVM 4.0 REQUIRED CONFIG)
