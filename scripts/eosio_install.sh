@@ -36,6 +36,12 @@ if [ "${CWD}" != "${PWD}" ]; then
    exit 1
 fi
 
+if [[ $1 == "--with-symlinks" ]]; then
+  SYMLINKS=1
+else
+  SYMLINKS=0
+fi
+
 OPT_LOCATION=$HOME/opt
 BIN_LOCATION=$HOME/bin
 LIB_LOCATION=$HOME/lib
@@ -58,7 +64,7 @@ create_symlink() {
 
 create_cmake_symlink() {
    mkdir -p $LIB_LOCATION/cmake/eosio
-   printf " ln -sf ${OPT_LOCATION}/eosio.cdt/lib/cmake/eosio/${1} ${LIB_LOCATION}/cmake/eosio/${1}\\n"
+   printf " ln -sf ${OPT_LOCATION}/eosio/lib/cmake/eosio/${1} ${LIB_LOCATION}/cmake/eosio/${1}\\n"
    ln -sf $OPT_LOCATION/eosio/lib/cmake/eosio/$1 $LIB_LOCATION/cmake/eosio/$1
 }
 
@@ -87,10 +93,14 @@ if ! make install; then
 fi
 popd &> /dev/null 
 
-install_symlinks
-printf "\\n\\nInstalling EOSIO.CDT CMAKE file Symlinks...\\n"
-create_cmake_symlink "eosio-config.cmake"
-printf "Installed CMAKE files into ${LIB_LOCATION}/cmake/eosio!\\n"
+if [ SYMLINKS == 1 ]; then
+   install_symlinks
+   printf "\\n\\nInstalling EOSIO.CDT CMAKE file Symlinks...\\n"
+   create_cmake_symlink "eosio-config.cmake"
+   printf "Installed CMAKE files into ${LIB_LOCATION}/cmake/eosio!\\n"
+else
+   printf "\\n\\nEOSIO has been installed into ${OPT_LOCATION}/eosio/bin!"
+fi
 
 printf "\n${bldred}      ___           ___           ___                       ___\n"
 printf "     /  /\\         /  /\\         /  /\\        ___          /  /\\ \n"

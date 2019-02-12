@@ -86,6 +86,7 @@ if [ -z $CMAKE ]; then
 else
 	printf " - CMAKE found @ ${CMAKE}.\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 
 printf "Checking Home Brew installation...\\n"
 if ! BREW=$( command -v brew )
@@ -131,7 +132,7 @@ while read -r name tester testee brewname uri; do
 	DISPLAY="${DISPLAY}${COUNT}. ${name}\\n"
 	printf " - %s ${bldred}NOT${txtrst} found.\\n" "${name}"
 	(( COUNT++ ))
-done < "${CURRENT_DIR}/scripts/eosio_build_darwin_deps"
+done < "${REPO_ROOT}/scripts/eosio_build_darwin_deps"
 IFS="${var_ifs}"
 
 if [ ! -d /usr/local/Frameworks ]; then
@@ -183,7 +184,9 @@ else
 	printf "\\n - No required Home Brew dependencies to install.\\n"
 fi
 
+
 printf "\\n"
+
 
 export CPATH="$HOME/include:$(python-config --includes | awk '{print $1}' | cut -dI -f2):$CPATH" # Boost has trouble finding pyconfig.h
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
@@ -204,6 +207,7 @@ if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST
 else
 	printf " - Boost library found with correct version @ ${BOOST_ROOT}.\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 
 
 printf "\\n"
@@ -217,7 +221,7 @@ if [ ! -d $MONGODB_ROOT ]; then
 	&& mv $SRC_LOCATION/mongodb-osx-x86_64-$MONGODB_VERSION $MONGODB_ROOT \
 	&& touch $MONGODB_LOG_LOCATION/mongod.log \
 	&& rm -f mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
-	&& cp -f $CURRENT_DIR/scripts/mongod.conf $MONGODB_CONF \
+	&& cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
 	&& mkdir -p $MONGODB_DATA_LOCATION \
 	&& rm -rf $MONGODB_LINK_LOCATION \
 	&& rm -rf $BIN_LOCATION/mongod \
@@ -228,6 +232,7 @@ if [ ! -d $MONGODB_ROOT ]; then
 else
 	printf " - MongoDB found with correct version @ ${MONGODB_ROOT}.\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 printf "Checking MongoDB C driver installation...\\n"
 if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C driver...\\n"
@@ -246,6 +251,7 @@ if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 else
 	printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 printf "Checking MongoDB C++ driver installation...\\n"
 if [ "$(grep "Version:" $HOME/lib/pkgconfig/libmongocxx-static.pc | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ]; then
 	printf "Installing MongoDB C++ driver...\\n"
@@ -262,7 +268,7 @@ if [ "$(grep "Version:" $HOME/lib/pkgconfig/libmongocxx-static.pc | tr -s ' ' | 
 else
 	printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
 fi
-
+if [ $? -ne 0 ]; then exit -1; fi
 
 printf "\\n"
 

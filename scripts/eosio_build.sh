@@ -30,7 +30,7 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
 
-VERSION=2.0 # Build script version
+VERSION=2.1 # Build script version
 CMAKE_BUILD_TYPE=Release
 export DISK_MIN=20
 DOXYGEN=false
@@ -87,17 +87,18 @@ mkdir -p $MONGODB_LOG_LOCATION
 mkdir -p $MONGODB_DATA_LOCATION
 
 CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-if [ "${CURRENT_DIR}" == "${PWD}" ]; then
-   BUILD_DIR="${PWD}/build"
+if [[ "${CURRENT_DIR}" =~ "scripts$" ]]; then
+   BUILD_DIR="../build"
 else
-   BUILD_DIR="${PWD}"
+   BUILD_DIR="build"
 fi
+REPO_ROOT="${CURRENT_DIR}/.."
 
 # Use current directory's tmp directory if noexec is enabled for /tmp
 if (mount | grep "/tmp " | grep --quiet noexec); then
-      mkdir -p $CURRENT_DIR/tmp
-      TEMP_DIR="${CURRENT_DIR}/tmp"
-      rm -rf $CURRENT_DIR/tmp/*
+      mkdir -p $REPO_ROOT/tmp
+      TEMP_DIR="${REPO_ROOT}/tmp"
+      rm -rf $REPO_ROOT/tmp/*
 else # noexec wasn't found
       TEMP_DIR="/tmp"
 fi
@@ -167,14 +168,14 @@ if [ $# -ne 0 ]; then
    done
 fi
 
-if [ ! -d "${CURRENT_DIR}/.git" ]; then
+if [ ! -d "${REPO_ROOT}/.git" ]; then
    printf "\\nThis build script only works with sources cloned from git\\n"
    printf "Please clone a new eos directory with 'git clone https://github.com/EOSIO/eos --recursive'\\n"
    printf "See the wiki for instructions: https://github.com/EOSIO/eos/wiki\\n"
    exit 1
 fi
 
-pushd "${CURRENT_DIR}" &> /dev/null
+pushd "${REPO_ROOT}" &> /dev/null
 
 STALE_SUBMODS=$(( $(git submodule status --recursive | grep -c "^[+\-]") ))
 if [ $STALE_SUBMODS -gt 0 ]; then
@@ -214,37 +215,37 @@ if [ "$ARCH" == "Linux" ]; then
    fi
    case "$OS_NAME" in
       "Amazon Linux AMI"|"Amazon Linux")
-         FILE="${CURRENT_DIR}/scripts/eosio_build_amazon.sh"
+         FILE="${REPO_ROOT}/scripts/eosio_build_amazon.sh"
          CXX_COMPILER=g++
          C_COMPILER=gcc
       ;;
       "CentOS Linux")
-         FILE="${CURRENT_DIR}/scripts/eosio_build_centos.sh"
+         FILE="${REPO_ROOT}/scripts/eosio_build_centos.sh"
          CXX_COMPILER=g++
          C_COMPILER=gcc
       ;;
       "elementary OS")
-         FILE="${CURRENT_DIR}/scripts/eosio_build_ubuntu.sh"
+         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
          CXX_COMPILER=clang++-4.0
          C_COMPILER=clang-4.0
       ;;
       "Fedora")
-         FILE="${CURRENT_DIR}/scripts/eosio_build_fedora.sh"
+         FILE="${REPO_ROOT}/scripts/eosio_build_fedora.sh"
          CXX_COMPILER=g++
          C_COMPILER=gcc
       ;;
       "Linux Mint")
-         FILE="${CURRENT_DIR}/scripts/eosio_build_ubuntu.sh"
+         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
          CXX_COMPILER=clang++-4.0
          C_COMPILER=clang-4.0
       ;;
       "Ubuntu")
-         FILE="${CURRENT_DIR}/scripts/eosio_build_ubuntu.sh"
+         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
          CXX_COMPILER=clang++-4.0
          C_COMPILER=clang-4.0
       ;;
       "Debian GNU/Linux")
-         FILE="${CURRENT_DIR}/scripts/eosio_build_ubuntu.sh"
+         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
          CXX_COMPILER=clang++-4.0
          C_COMPILER=clang-4.0
       ;;
@@ -260,14 +261,14 @@ if [ "$ARCH" == "Darwin" ]; then
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang
    export PATH=$HOME/bin:/usr/local/opt/python/libexec/bin:$PATH:$HOME/opt/mongodb/bin:/usr/local/opt/gettext/bin:$HOME/opt/llvm/bin
    LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH=/usr/local/opt/gettext ${LOCAL_CMAKE_FLAGS}" # cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
-   FILE="${CURRENT_DIR}/scripts/eosio_build_darwin.sh"
+   FILE="${REPO_ROOT}/scripts/eosio_build_darwin.sh"
    CXX_COMPILER=clang++
    C_COMPILER=clang
    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 fi
 
 # Cleanup old installation
-(. ${CURRENT_DIR}/scripts/clean_old_install.sh)
+(. ./scripts/clean_old_install.sh)
 if [ $? -ne 0 ]; then exit -1; fi # Stop if exit from script is not 0
 
 pushd $SRC_LOCATION &> /dev/null
@@ -290,7 +291,7 @@ $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMP
    -DCMAKE_C_COMPILER="${C_COMPILER}" -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
    -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
    -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
-   -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio $LOCAL_CMAKE_FLAGS "${CURRENT_DIR}"
+   -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio $LOCAL_CMAKE_FLAGS "${REPO_ROOT}"
 if [ $? -ne 0 ]; then exit -1; fi
 make -j"${JOBS}"
 if [ $? -ne 0 ]; then exit -1; fi
@@ -298,21 +299,19 @@ popd &> /dev/null
 
 TIME_END=$(( $(date -u +%s) - $TIME_BEGIN ))
 
-printf "\n\n _______  _______  _______ _________ _______\n"
+printf "${bldred}\n\n _______  _______  _______ _________ _______\n"
 printf '(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
 printf "| (    \/| (   ) || (    \/   ) (   | (   ) |\n"
 printf "| (__    | |   | || (_____    | |   | |   | |\n"
 printf "|  __)   | |   | |(_____  )   | |   | |   | |\n"
 printf "| (      | |   | |      ) |   | |   | |   | |\n"
 printf "| (____/\| (___) |/\____) |___) (___| (___) |\n"
-printf "(_______/(_______)\_______)\_______/(_______)\n\n"
+printf "(_______/(_______)\_______)\_______/(_______)\n\n${txtrst}"
 
-printf "\\nEOSIO has been successfully built. %02d:%02d:%02d\\n\\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
-printf "==============================================================================================\\n"
-printf "Please run the following commands:\\n${bldred}"
+printf "\\nEOSIO has been successfully built. %02d:%02d:%02d\\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
+printf "==============================================================================================\\n${bldred}"
 print_instructions
 printf "${txtrst}==============================================================================================\\n"
-
 printf "For more information:\\n"
 printf "EOSIO website: https://eos.io\\n"
 printf "EOSIO Telegram channel @ https://t.me/EOSProject\\n"

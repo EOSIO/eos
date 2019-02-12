@@ -126,6 +126,7 @@ if [ -z $CMAKE ]; then
 else
 	printf " - CMAKE found @ ${CMAKE}.\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 
 
 printf "\\n"
@@ -148,6 +149,7 @@ if [ ! -d $BOOST_ROOT ]; then
 else
 	printf " - Boost library found with correct version @ ${BOOST_ROOT} (Symlinked to ${BOOST_LINK_LOCATION}).\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 
 
 printf "\\n"
@@ -161,7 +163,7 @@ if [ ! -d $MONGODB_ROOT ]; then
 	&& mv $SRC_LOCATION/mongodb-linux-x86_64-amazon-$MONGODB_VERSION $MONGODB_ROOT \
 	&& touch $MONGODB_LOG_LOCATION/mongod.log \
 	&& rm -f mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
-	&& cp -f $CURRENT_DIR/scripts/mongod.conf $MONGODB_CONF \
+	&& cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
 	&& mkdir -p $MONGODB_DATA_LOCATION \
 	&& rm -rf $MONGODB_LINK_LOCATION \
 	&& rm -rf $BIN_LOCATION/mongod \
@@ -172,6 +174,7 @@ if [ ! -d $MONGODB_ROOT ]; then
 else
 	printf " - MongoDB found with correct version @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION}).\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 printf "Checking MongoDB C driver installation...\\n"
 if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C driver...\\n"
@@ -190,6 +193,7 @@ if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 else
 	printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 printf "Checking MongoDB C++ driver installation...\\n"
 if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C++ driver...\\n"
@@ -206,6 +210,7 @@ if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 else
 	printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 
 
 printf "\\n"
@@ -227,6 +232,7 @@ if [ ! -d $LLVM_ROOT ]; then
 else
 	printf " - WASM found @ ${LLVM_ROOT}.\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 
 
 cd ..

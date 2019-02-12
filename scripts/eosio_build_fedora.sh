@@ -127,6 +127,7 @@ if [ -z $CMAKE ]; then
 else
 	printf " - CMAKE found @ ${CMAKE}.\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 
 
 printf "\\n"
@@ -149,6 +150,7 @@ if [ ! -d $BOOST_ROOT ]; then
 else
 	printf " - Boost library found with correct version @ ${BOOST_ROOT} (Symlinked to ${BOOST_LINK_LOCATION}).\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 
 
 printf "\\n"
@@ -162,7 +164,7 @@ if [ ! -d $MONGODB_ROOT ]; then
 	&& mv $SRC_LOCATION/mongodb-linux-x86_64-amazon-$MONGODB_VERSION $MONGODB_ROOT \
 	&& touch $MONGODB_LOG_LOCATION/mongod.log \
 	&& rm -f mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
-	&& cp -f $CURRENT_DIR/scripts/mongod.conf $MONGODB_CONF \
+	&& cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
 	&& mkdir -p $MONGODB_DATA_LOCATION \
 	&& rm -rf $MONGODB_LINK_LOCATION \
 	&& rm -rf $BIN_LOCATION/mongod \
@@ -173,6 +175,7 @@ if [ ! -d $MONGODB_ROOT ]; then
 else
 	printf " - MongoDB found with correct version @ ${MONGODB_ROOT}.\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 printf "Checking MongoDB C driver installation...\\n"
 if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C driver...\\n"
@@ -191,6 +194,7 @@ if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 else
 	printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
 printf "Checking MongoDB C++ driver installation...\\n"
 if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C++ driver...\\n"
@@ -207,8 +211,11 @@ if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 else
 	printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
+
 
 printf "\\n"
+
 
 printf "Checking LLVM 4 support...\\n"
 if [ ! -d $LLVM_ROOT ]; then
@@ -218,6 +225,8 @@ if [ ! -d $LLVM_ROOT ]; then
 else
 	printf " - LLVM (WASM compiler) found @ ${LLVM_ROOT}.\\n"
 fi
+if [ $? -ne 0 ]; then exit -1; fi
+
 
 cd ..
 printf "\\n"
@@ -228,7 +237,7 @@ function print_instructions()
 	# HOME/bin first to load proper cmake version over the one in /usr/bin.
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang + We don't symlink into $HOME/bin
 	printf "export PATH=\$HOME/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
-	printf "export LD_LIBRARY_PATH=\$HOME/lib:\$HOME/lib64:\$LD_LIBRARY_PATH\\n" # libmongoc is installed into $HOME/lib64
+	printf "export LD_LIBRARY_PATH=\$HOME/lib:\$HOME/lib64:\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n" # libmongoc is installed into $HOME/lib64
 	printf "export CMAKE_MODULE_PATH=\$HOME/lib/cmake\\n"
 	printf "export CPATH=\$HOME/include:/usr/include/llvm4.0:\$CPLUS_INCLUDE_PATH\\n" # libmongoc is installed into $HOME/include; llvm4.0 headers are in /usr/include/llvm4.0
 	printf "\\nThen, source the file (or restart the terminal) and run:\\n"
