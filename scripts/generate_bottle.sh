@@ -59,4 +59,4 @@ echo "class Eosio < Formula
 end
 __END__" &> eosio.rb
 
-rm -r ${PROJECT}
+rm -r ${PROJECT} || exit 1

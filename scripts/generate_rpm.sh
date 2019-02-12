@@ -18,10 +18,10 @@ export SUBPREFIX
 export SPREFIX
 export SSUBPREFIX
 
-bash generate_tarball.sh ${NAME}.tar.gz
+. ./generate_tarball.sh ${NAME}.tar.gz
 
 RPMBUILD=`realpath ~/rpmbuild/BUILDROOT/${NAME}.x86_64`
-mkdir -p ${RPMBUILD} 
+mkdir -p ${RPMBUILD} || exit 1
 FILES=$(tar -xvzf ${NAME}.tar.gz -C ${RPMBUILD})
 PFILES=""
 for f in ${FILES[@]}; do
@@ -31,7 +31,7 @@ for f in ${FILES[@]}; do
 done
 echo -e ${PFILES} &> ~/rpmbuild/BUILD/filenames.txt
 
-mkdir -p ${PROJECT} 
+mkdir -p ${PROJECT} || exit 1
 echo -e "Name: ${PROJECT} 
 Version: ${VERSION_NO_SUFFIX}
 License: MIT
@@ -46,9 +46,9 @@ Release: ${RELEASE}
 ${DESC}
 %files -f filenames.txt" &> ${PROJECT}.spec
 
-rpmbuild -bb ${PROJECT}.spec
+rpmbuild -bb ${PROJECT}.spec || exit 1
 BUILDSTATUS=$?
-mv ~/rpmbuild/RPMS/x86_64 ./
-rm -r ${PROJECT} ~/rpmbuild/BUILD/filenames.txt ${PROJECT}.spec
+mv ~/rpmbuild/RPMS/x86_64 ./ || exit 1
+rm -r ${PROJECT} ~/rpmbuild/BUILD/filenames.txt ${PROJECT}.spec || exit 1
 
 exit $BUILDSTATUS

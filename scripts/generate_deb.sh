@@ -31,8 +31,8 @@ else
   exit 1
 fi
 
-mkdir -p ${PROJECT}/DEBIAN
-chmod 0755 ${PROJECT}/DEBIAN
+mkdir -p ${PROJECT}/DEBIAN || exit 1
+chmod 0755 ${PROJECT}/DEBIAN || exit 1
 echo "Package: ${PROJECT}
 Version: ${VERSION_NO_SUFFIX}-${RELEASE}
 Section: devel
@@ -48,12 +48,12 @@ export SUBPREFIX
 export SPREFIX
 export SSUBPREFIX
 
-bash generate_tarball.sh ${NAME}.tar.gz
+. ./generate_tarball.sh ${NAME}.tar.gz
 
-tar -xvzf ${NAME}.tar.gz -C ${PROJECT}
-dpkg-deb --build ${PROJECT}
+tar -xvzf ${NAME}.tar.gz -C ${PROJECT} || exit 1
+dpkg-deb --build ${PROJECT} || exit 1
 BUILDSTATUS=$?
-mv ${PROJECT}.deb ${NAME}.deb
-rm -r ${PROJECT}
+mv ${PROJECT}.deb ${NAME}.deb || exit 1
+rm -r ${PROJECT} || exit 1
 
 exit $BUILDSTATUS
