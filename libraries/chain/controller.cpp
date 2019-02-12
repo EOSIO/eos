@@ -309,7 +309,7 @@ struct controller_impl {
       auto start = fc::time_point::now();
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
          replay_push_block( next, controller::block_status::irreversible );
-         if( next->block_num() % 100 == 0 ) {
+         if( next->block_num() % 500 == 0 ) {
             ilog( "${n} of ${head}", ("n", next->block_num())("head", blog_head->block_num()) );
             if( shutdown() ) break;
          }
