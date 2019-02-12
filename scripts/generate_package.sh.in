@@ -28,11 +28,11 @@ export EMAIL
 mkdir tmp
 
 if [[ ${VARIANT} == "brew" ]]; then
-   bash generate_bottle.sh
+   . ./generate_bottle.sh
 elif [[ ${VARIANT} == "deb" ]]; then
-   bash generate_deb.sh
+   . ./generate_deb.sh
 elif [[ ${VARIANT} == "rpm" ]]; then
-   bash generate_rpm.sh
+   . ./generate_rpm.sh
 else
    echo "Error, unknown package type. Use either ['brew', 'deb', 'rpm']."
    exit -1
