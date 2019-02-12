@@ -30,24 +30,15 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE.txt
 ##########################################################################
 
-CWD="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-if [ "${CWD}" != "${PWD}" ]; then
-   printf "\\nPlease cd into directory %s to run this script.\\n Exiting now.\\n\\n" "${CWD}"
-   exit 1
-fi
-
-if [[ $1 == "--with-symlinks" ]]; then
-  SYMLINKS=1
-else
-  SYMLINKS=0
-fi
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+REPO_ROOT="${SCRIPT_DIR}/.."
+BUILD_DIR="${REPO_ROOT}/build"
 
 OPT_LOCATION=$HOME/opt
 BIN_LOCATION=$HOME/bin
 LIB_LOCATION=$HOME/lib
 mkdir -p $LIB_LOCATION
 
-BUILD_DIR="${PWD}/build"
 CMAKE_BUILD_TYPE=Release
 TIME_BEGIN=$( date -u +%s )
 INSTALL_PREFIX=$OPT_LOCATION/eosio
@@ -56,26 +47,6 @@ VERSION=1.2
 txtbld=$(tput bold)
 bldred=${txtbld}$(tput setaf 1)
 txtrst=$(tput sgr0)
-
-create_symlink() {
-   printf " ln -sf ${OPT_LOCATION}/eosio/bin/${1} ${BIN_LOCATION}/${1}\\n"
-   ln -sf $OPT_LOCATION/eosio/bin/$1 $BIN_LOCATION/$1
-}
-
-create_cmake_symlink() {
-   mkdir -p $LIB_LOCATION/cmake/eosio
-   printf " ln -sf ${OPT_LOCATION}/eosio/lib/cmake/eosio/${1} ${LIB_LOCATION}/cmake/eosio/${1}\\n"
-   ln -sf $OPT_LOCATION/eosio/lib/cmake/eosio/$1 $LIB_LOCATION/cmake/eosio/$1
-}
-
-install_symlinks() {
-   printf "\\nInstalling EOSIO Binary Symlinks...\\n"
-   create_symlink "cleos"
-   create_symlink "eosio-launcher"
-   create_symlink "keosd"
-   create_symlink "nodeos"
-   printf "Installed binaries into ${BIN_LOCATION}!"
-}
 
 if [ ! -d $BUILD_DIR ]; then
    printf "\\nError, eosio_build.sh has not ran.  Please run ./eosio_build.sh first!\\n\\n"
@@ -88,19 +59,10 @@ if ! pushd "${BUILD_DIR}" &> /dev/null;then
 fi
 
 if ! make install; then
-   printf "\\n>>>>>>>>>>>>>>>>>>>> MAKE installing EOSIO has exited with the above error.\\n\\n"
+   printf "\\nMAKE installing EOSIO has exited with the above error.\\n\\n"
    exit -1
 fi
 popd &> /dev/null 
-
-if [ SYMLINKS == 1 ]; then
-   install_symlinks
-   printf "\\n\\nInstalling EOSIO.CDT CMAKE file Symlinks...\\n"
-   create_cmake_symlink "eosio-config.cmake"
-   printf "Installed CMAKE files into ${LIB_LOCATION}/cmake/eosio!\\n"
-else
-   printf "\\n\\nEOSIO has been installed into ${OPT_LOCATION}/eosio/bin!"
-fi
 
 printf "\n${bldred}      ___           ___           ___                       ___\n"
 printf "     /  /\\         /  /\\         /  /\\        ___          /  /\\ \n"
@@ -115,7 +77,7 @@ printf "    \\  \\::/       \\  \\::/        /__/:/        \\__\\/      \\  \\::
 printf "     \\__\\/         \\__\\/         \\__\\/                     \\__\\/ \n\n${txtrst}"
 
 printf "==============================================================================================\\n"
-printf "EOSIO has been installed into $HOME/bin.\\n"
+printf "EOSIO has been installed into ${OPT_LOCATION}/eosio/bin!\\n"
 printf "If you need to, you can fully uninstall using eosio_uninstall.sh && scripts/clean_old_install.sh.\\n"
 printf "==============================================================================================\\n\\n"
 
