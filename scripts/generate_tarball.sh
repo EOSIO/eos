@@ -11,6 +11,8 @@ mkdir -p ${EOS_PREFIX}/licenses/eosio
 #mkdir -p ${EOS_PREFIX}/cmake
 #mkdir -p ${EOS_PREFIX}/scripts
 
+echo "${BUILD_DIR}"
+ls -laht ${BUILD_DIR}
 # install binaries 
 cp -R ${BUILD_DIR}/bin/* ${EOS_PREFIX}/bin  || exit 1
 
