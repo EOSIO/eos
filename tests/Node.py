@@ -4,7 +4,7 @@ import subprocess
 import time
 import os
 import re
-import glob
+import datetime
 import json
 import signal
 
@@ -1318,11 +1318,11 @@ class Node(object):
             myCmd=" ".join(cmdArr)
 
         dataDir="var/lib/node_%02d" % (nodeId)
-        logs = glob.glob('%s/stderr.??.txt' % dataDir)
-        logs.sort()
-        lastSeq = 1 if len(logs) == 0 else int(logs[-1][-6:-4]) + 1
-        stdoutFile="%s/stdout.%02d.txt" % (dataDir, lastSeq)
-        stderrFile="%s/stderr.%02d.txt" % (dataDir, lastSeq)
+        dt = datetime.datetime.now()
+        dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
+            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+        stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
+        stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
         with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
             cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
             Utils.Print("cmd: %s" % (cmd))
