@@ -63,14 +63,3 @@ void proxy::on_error( uint128_t sender_id, eosio::ignore<std::vector<char>> ) {
    trx.delay_sec = cfg.delay;
    trx.send( id, get_self() );
 }
-
-// Remove pre_dispatch when buggy eosio::onerror handling of CDT is fixed.
-extern "C" {
-bool pre_dispatch( name self, name first_receiver, name action ) {
-   if( first_receiver == "eosio"_n && action == "onerror"_n ) {
-      eosio::execute_action( self, first_receiver, &proxy::on_error );
-      return false;
-   }
-   return true;
-}
-}
