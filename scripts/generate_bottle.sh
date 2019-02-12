@@ -16,7 +16,7 @@ fi
 
 NAME="${PROJECT}-${VERSION}.${MAC_VERSION}.bottle.tar.gz"
 
-mkdir -p ${PROJECT}/${VERSION}/opt/eosio/lib/cmake
+mkdir -p ${PROJECT}/${VERSION}/opt/eosio/lib/cmake || exit 1
 
 PREFIX="${PROJECT}/${VERSION}"
 SPREFIX="\/usr\/local"
@@ -28,7 +28,7 @@ export SPREFIX
 export SUBPREFIX
 export SSUBPREFIX
 
-bash generate_tarball.sh ${NAME}
+. ./generate_tarball.sh ${NAME}
 
 hash=`openssl dgst -sha256 ${NAME} | awk 'NF>1{print $NF}'`
 
