@@ -8,7 +8,7 @@ using namespace eosio;
 
 namespace multi_index_test {
 
-   CONTRACT snapshot_test : public contract {
+   CONTRACT multi_index_test : public contract {
    public:
       using contract::contract;
 
@@ -19,7 +19,7 @@ namespace multi_index_test {
          uint64_t  expiration;
          name      owner;
 
-         auto primary_key()const { return id; }         
+         auto primary_key()const { return id; }
          uint64_t get_expiration()const { return expiration; }
          uint128_t get_price()const { return price; }
 
@@ -40,7 +40,7 @@ namespace multi_index_test {
          trigger( uint32_t w = 0 )
             : what(w)
          {}
-         
+
          uint32_t what;
       };
 
@@ -178,11 +178,11 @@ namespace multi_index_test {
                buffer = alloca( 512 );
                read_action_data( buffer, size );
                datastream<const char*> ds( (char*)buffer, size );
-               
+
                uint32_t w;
                ds >> w;
-                    
-               snapshot_test test( name{receiver}, name{code}, ds );
+
+               multi_index_test test( name{receiver}, name{code}, ds );
                test.multitest( w );
             }
             else {
