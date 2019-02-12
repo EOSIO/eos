@@ -577,7 +577,7 @@ steps:
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
-      - "build/packages/x86_64/*.rpm"
+      - "build/packages/*.rpm"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -610,7 +610,7 @@ steps:
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
-      - "build/packages/x86_64/*.rpm"
+      - "build/packages/*.rpm"
     plugins:
       ecr#v1.1.4:
         login: true

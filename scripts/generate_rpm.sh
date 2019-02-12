@@ -48,5 +48,5 @@ ${DESC}
 cat ${PROJECT}.spec
 
 rpmbuild -bb ${PROJECT}.spec || exit 1
-mv ~/rpmbuild/RPMS/x86_64 ./ || exit 1
+mv ~/rpmbuild/RPMS/x86_64/*.rpm ./ || exit 1
 rm -r ${PROJECT} ~/rpmbuild/BUILD/filenames.txt ${PROJECT}.spec || exit 1
