@@ -42,18 +42,16 @@ Architecture: amd64
 Homepage: ${URL}
 Maintainer: ${EMAIL}
 Description: ${DESC}" &> ${PROJECT}/DEBIAN/control
+cat ${PROJECT}/DEBIAN/control
 
 export PREFIX
 export SUBPREFIX
 export SPREFIX
 export SSUBPREFIX
 
-. ./generate_tarball.sh ${NAME}.tar.gz
-
-tar -xvzf ${NAME}.tar.gz -C ${PROJECT} || exit 1
+. ./generate_tarball.sh ${NAME}
+echo "Unpacking tarball: ${NAME}.tar.gz..."
+tar -xzvf ${NAME}.tar.gz -C ${PROJECT} || exit 1
 dpkg-deb --build ${PROJECT} || exit 1
-BUILDSTATUS=$?
 mv ${PROJECT}.deb ${NAME}.deb || exit 1
 rm -r ${PROJECT} || exit 1
-
-exit $BUILDSTATUS

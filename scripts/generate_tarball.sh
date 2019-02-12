@@ -33,12 +33,10 @@ cp -R ${BUILD_DIR}/licenses/eosio/* ${EOS_PREFIX}/licenses || exit 1
 #ln -sf ../../../${SUBPREFIX}/lib/cmake/${PROJECT}/EosioTester.cmake EosioTester.cmake
 #popd &> /dev/null
 
-pushd ${PREFIX}/bin &> /dev/null
-for f in `ls ${BUILD_DIR}/bin/`; do
+for f in $(ls "${BUILD_DIR}/bin/"); do
    bn=$(basename $f)
-   ln -sf ../${SUBPREFIX}/bin/$bn $bn || exit 1
+   ln -sf ../${SUBPREFIX}/bin/$bn ${PREFIX}/bin/$bn || exit 1
 done
-popd &> /dev/null
-
+echo "Generating Tarball $NAME.tar.gz..."
 tar -cvzf $NAME ./${PREFIX}/* || exit 1
 rm -r ${PREFIX} || exit 1
