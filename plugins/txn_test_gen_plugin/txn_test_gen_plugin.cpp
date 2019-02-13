@@ -97,6 +97,7 @@ struct txn_test_gen_plugin_impl {
 
    std::shared_ptr<boost::asio::io_context>             gen_ioc;
    optional<io_work_t>                                  gen_ioc_work;
+   uint16_t                                             thread_pool_size;
    optional<boost::asio::thread_pool>                   thread_pool;
    std::shared_ptr<boost::asio::high_resolution_timer>  timer;
 
@@ -295,7 +296,6 @@ struct txn_test_gen_plugin_impl {
       batch = batch_size/2;
       nonce_prefix = 0;
 
-      uint32_t thread_pool_size = 2;
       gen_ioc = std::make_shared<boost::asio::io_context>();
       gen_ioc_work.emplace( boost::asio::make_work_guard(*gen_ioc) );
       thread_pool.emplace( thread_pool_size );
@@ -423,6 +423,7 @@ txn_test_gen_plugin::~txn_test_gen_plugin() {}
 void txn_test_gen_plugin::set_program_options(options_description&, options_description& cfg) {
    cfg.add_options()
       ("txn-reference-block-lag", bpo::value<int32_t>()->default_value(0), "Lag in number of blocks from the head block when selecting the reference block for transactions (-1 means Last Irreversible Block)")
+      ("txn-test-gen-threads", bpo::value<uint16_t>()->default_value(2), "Number of worker threads in txn_test_gen thread pool")
    ;
 }
 
@@ -430,6 +431,9 @@ void txn_test_gen_plugin::plugin_initialize(const variables_map& options) {
    try {
       my.reset( new txn_test_gen_plugin_impl );
       my->txn_reference_block_lag = options.at( "txn-reference-block-lag" ).as<int32_t>();
+      my->thread_pool_size = options.at( "txn-test-gen-threads" ).as<uint16_t>();
+      EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
+                  "txn-test-gen-threads ${num} must be greater than 0", ("num", my->thread_pool_size) );
    } FC_LOG_AND_RETHROW()
 }
 
