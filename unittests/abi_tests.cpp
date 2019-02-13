@@ -22,8 +22,6 @@
 
 #include <boost/test/framework.hpp>
 
-#include <config.hpp>
-
 #include <deep_nested.abi.hpp>
 #include <large_nested.abi.hpp>
 
