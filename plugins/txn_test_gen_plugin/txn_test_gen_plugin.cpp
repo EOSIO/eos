@@ -37,6 +37,7 @@ namespace eosio {
 static appbase::abstract_plugin& _txn_test_gen_plugin = app().register_plugin<txn_test_gen_plugin>();
 
 using namespace eosio::chain;
+using io_work_t = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
 #define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
@@ -94,6 +95,11 @@ struct txn_test_gen_plugin_impl {
 
    int _remain = 0;
 
+   std::shared_ptr<boost::asio::io_context>             gen_ioc;
+   optional<io_work_t>                                  gen_ioc_work;
+   optional<boost::asio::thread_pool>                   thread_pool;
+   std::shared_ptr<boost::asio::high_resolution_timer>  timer;
+
    void push_next_transaction(const std::shared_ptr<std::vector<signed_transaction>>& trxs, size_t index, const std::function<void(const fc::exception_ptr&)>& next ) {
       chain_plugin& cp = app().get_plugin<chain_plugin>();
 
@@ -124,7 +130,9 @@ struct txn_test_gen_plugin_impl {
 
    void push_transactions( std::vector<signed_transaction>&& trxs, const std::function<void(fc::exception_ptr)>& next ) {
       auto trxs_copy = std::make_shared<std::decay_t<decltype(trxs)>>(std::move(trxs));
-      push_next_transaction(trxs_copy, 0, next);
+      app().post(priority::low, [this, trxs_copy, next]() {
+         push_next_transaction(trxs_copy, 0, next);
+      });
    }
 
    void create_test_accounts(const std::string& init_name, const std::string& init_priv_key, const std::function<void(const fc::exception_ptr&)>& next) {
@@ -286,25 +294,36 @@ struct txn_test_gen_plugin_impl {
       timer_timeout = period;
       batch = batch_size/2;
 
-      ilog("Started transaction test plugin; performing ${p} transactions every ${m}ms", ("p", batch_size)("m", period));
+      uint32_t thread_pool_size = 1;
+      gen_ioc = std::make_shared<boost::asio::io_context>();
+      gen_ioc_work.emplace( boost::asio::make_work_guard(*gen_ioc) );
+      thread_pool.emplace( thread_pool_size );
+      for( uint16_t i = 0; i < thread_pool_size; i++ )
+         boost::asio::post( *thread_pool, [ioc = gen_ioc]() { ioc->run(); } );
+      timer = std::make_shared<boost::asio::high_resolution_timer>(*gen_ioc);
 
-      arm_timer(boost::asio::high_resolution_timer::clock_type::now());
+      ilog("Started transaction test plugin; generating ${p} transactions every ${m} ms by ${t} load generation threads",
+         ("p", batch_size) ("m", period) ("t", thread_pool_size));
+
+      boost::asio::post( *gen_ioc, [this]() {
+         arm_timer(boost::asio::high_resolution_timer::clock_type::now());
+      });
    }
 
    void arm_timer(boost::asio::high_resolution_timer::time_point s) {
-      timer.expires_at(s + std::chrono::milliseconds(timer_timeout));
-      timer.async_wait([this](const boost::system::error_code& ec) {
-         if(!running || ec)
-            return;
-
+      timer->expires_at(s + std::chrono::milliseconds(timer_timeout));
+      boost::asio::post( *gen_ioc, [this]() {
          send_transaction([this](const fc::exception_ptr& e){
             if (e) {
                elog("pushing transaction failed: ${e}", ("e", e->to_detail_string()));
                stop_generation();
-            } else {
-               arm_timer(timer.expires_at());
             }
          });
+      });
+      timer->async_wait([this](const boost::system::error_code& ec) {
+         if(!running || ec)
+            return;
+         arm_timer(timer->expires_at());
       });
    }
 
@@ -366,8 +385,16 @@ struct txn_test_gen_plugin_impl {
    void stop_generation() {
       if(!running)
          throw fc::exception(fc::invalid_operation_exception_code);
-      timer.cancel();
+      timer->cancel();
       running = false;
+      if( gen_ioc_work )
+         gen_ioc_work->reset();
+      if( gen_ioc )
+         gen_ioc->stop();
+      if( thread_pool ) {
+         thread_pool->join();
+         thread_pool->stop();
+      }
       ilog("Stopping transaction generation test");
 
       if (_txcount) {
@@ -376,7 +403,6 @@ struct txn_test_gen_plugin_impl {
       }
    }
 
-   boost::asio::high_resolution_timer timer{app().get_io_service()};
    bool running{false};
 
    unsigned timer_timeout;
