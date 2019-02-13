@@ -1,4 +1,4 @@
-if ( EOSIO_COMPILE_TEST_CONTRACTS )
+if( EOSIO_COMPILE_TEST_CONTRACTS )
    add_contract( test.inline test.inline test.inline.cpp )
 else()
    configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/test.inline.wasm ${CMAKE_CURRENT_BINARY_DIR}/test.inline.wasm COPYONLY )

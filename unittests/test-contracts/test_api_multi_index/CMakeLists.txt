@@ -1,4 +1,4 @@
-if ( EOSIO_COMPILE_TEST_CONTRACTS )
+if( EOSIO_COMPILE_TEST_CONTRACTS )
    include_directories( ${Boost_INCLUDE_DIRS} )
    add_executable( test_api_multi_index test_api_multi_index.cpp )
 else()

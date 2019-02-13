@@ -1,4 +1,4 @@
-if ( EOSIO_COMPILE_TEST_CONTRACTS )
+if( EOSIO_COMPILE_TEST_CONTRACTS )
    add_contract( integration_test integration_test integration_test.cpp )
 else()
    configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/integration_test.wasm ${CMAKE_CURRENT_BINARY_DIR}/integration_test.wasm COPYONLY )

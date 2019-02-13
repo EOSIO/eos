@@ -3,7 +3,7 @@ find_package( Gperftools QUIET )
 ### Build contracts with cdt if available
 include(ExternalProject)
 
-if ( EOSIO_COMPILE_TEST_CONTRACTS )
+if( EOSIO_COMPILE_TEST_CONTRACTS )
    set(EOSIO_WASM_OLD_BEHAVIOR "Off")
    find_package(eosio.cdt REQUIRED)
    
