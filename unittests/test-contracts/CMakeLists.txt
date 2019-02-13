@@ -3,6 +3,10 @@ if( EOSIO_COMPILE_TEST_CONTRACTS )
    find_package( eosio.cdt REQUIRED )
 endif()
 
+if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+   add_compile_options(-fcolor-diagnostics)
+endif()
+
 add_subdirectory( asserter )
 add_subdirectory( deferred_test )
 add_subdirectory( multi_index_test )

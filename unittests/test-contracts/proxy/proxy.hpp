@@ -37,7 +37,7 @@ public:
                      eosio::asset       quantity,
                      const std::string& memo );
 
-   [[eosio::on_notify("eosio::onerror")]] // CDT v1.6.0-rc1 handling of eosio::onerror is buggy
+   [[eosio::on_notify("eosio::onerror")]]
    void on_error( uint128_t sender_id, eosio::ignore<std::vector<char>> sent_trx );
 
    struct [[eosio::table]] config {

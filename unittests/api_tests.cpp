@@ -305,47 +305,105 @@ struct MySink : public bio::sink
 uint32_t last_fnc_err = 0;
 
 BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
-	produce_blocks(2);
-	create_account( N(testapi) );
-	create_account( N(testapi2) );
-	produce_blocks(10);
-	set_code( N(testapi), contracts::test_api_wasm() );
-	produce_blocks(1);
+   produce_blocks(2);
+   create_account( N(test) );
+   set_code( N(test), contracts::payloadless_wasm() );
+   produce_blocks(1);
 
-	auto res = CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
-   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 1);
-   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 0);
-
-   set_code( N(testapi), contracts::test_api_db_wasm() );
-   set_code( config::system_account_name, contracts::test_api_db_wasm() );
-   res = CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_general", {});
-   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 2);
-   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 0);
-
-   {
+   auto call_doit_and_check = [&]( account_name contract, account_name signer, auto&& checker ) {
       signed_transaction trx;
-      auto pl = vector<permission_level>{{config::system_account_name, config::active_name}};
-      action act(pl, test_chain_action<TEST_METHOD("test_db", "primary_i64_general")>{});
-      act.authorization = {{config::system_account_name, config::active_name}};
-      trx.actions.push_back(act);
-      this->set_transaction_headers(trx, this->DEFAULT_EXPIRATION_DELTA);
-      trx.sign(this->get_private_key(config::system_account_name, "active"), control->get_chain_id());
-      flat_set<public_key_type> keys;
-      trx.get_signature_keys(control->get_chain_id(), fc::time_point::maximum(), keys);
+      trx.actions.emplace_back( vector<permission_level>{{signer, config::active_name}}, contract, N(doit), bytes{} );
+      this->set_transaction_headers( trx, this->DEFAULT_EXPIRATION_DELTA );
+      trx.sign( this->get_private_key(signer, "active"), control->get_chain_id() );
       auto res = this->push_transaction(trx);
-      BOOST_CHECK_EQUAL(res->receipt->status, transaction_receipt::executed);
-      this->produce_block();
-      BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 2);
-      BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 1);
-   }
+      checker( res );
+   };
+
+   auto call_provereset_and_check = [&]( account_name contract, account_name signer, auto&& checker ) {
+      signed_transaction trx;
+      trx.actions.emplace_back( vector<permission_level>{{signer, config::active_name}}, contract, N(provereset), bytes{} );
+      this->set_transaction_headers( trx, this->DEFAULT_EXPIRATION_DELTA );
+      trx.sign( this->get_private_key(signer, "active"), control->get_chain_id() );
+      auto res = this->push_transaction(trx);
+      checker( res );
+   };
+
+   auto result = push_reqauth( config::system_account_name, "active" );
+   BOOST_REQUIRE_EQUAL( result->receipt->status, transaction_receipt::executed );
+   BOOST_REQUIRE( result->action_traces[0].receipt.auth_sequence.find( config::system_account_name )
+                     != result->action_traces[0].receipt.auth_sequence.end() );
+   auto base_global_sequence_num = result->action_traces[0].receipt.global_sequence;
+   auto base_system_recv_seq_num = result->action_traces[0].receipt.recv_sequence;
+   auto base_system_auth_seq_num = result->action_traces[0].receipt.auth_sequence[config::system_account_name];
+   auto base_system_code_seq_num = result->action_traces[0].receipt.code_sequence.value;
+   auto base_system_abi_seq_num  = result->action_traces[0].receipt.abi_sequence.value;
+
+   uint64_t base_test_recv_seq_num = 0;
+   uint64_t base_test_auth_seq_num = 0;
+   call_doit_and_check( N(test), N(test), [&]( const transaction_trace_ptr& res ) {
+      BOOST_CHECK_EQUAL( res->receipt->status, transaction_receipt::executed );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.global_sequence, base_global_sequence_num + 1 );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.code_sequence.value, 1 );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.abi_sequence.value, 0 );
+      base_test_recv_seq_num = res->action_traces[0].receipt.recv_sequence;
+      BOOST_CHECK( base_test_recv_seq_num > 0 );
+      base_test_recv_seq_num--;
+      const auto& m = res->action_traces[0].receipt.auth_sequence;
+      BOOST_CHECK_EQUAL( m.size(), 1 );
+      BOOST_CHECK_EQUAL( m.begin()->first.to_string(), "test" );
+      base_test_auth_seq_num = m.begin()->second;
+      BOOST_CHECK( base_test_auth_seq_num > 0 );
+      --base_test_auth_seq_num;
+   } );
+
+   set_code( N(test), contracts::asserter_wasm() );
+   set_code( config::system_account_name, contracts::payloadless_wasm() );
+
+   call_provereset_and_check( N(test), N(test), [&]( const transaction_trace_ptr& res ) {
+      BOOST_CHECK_EQUAL( res->receipt->status, transaction_receipt::executed );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.global_sequence, base_global_sequence_num + 4 );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.recv_sequence, base_test_recv_seq_num + 2 );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.code_sequence.value, 2 );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.abi_sequence.value, 0 );
+      const auto& m = res->action_traces[0].receipt.auth_sequence;
+      BOOST_CHECK_EQUAL( m.size(), 1 );
+      BOOST_CHECK_EQUAL( m.begin()->first.to_string(), "test" );
+      BOOST_CHECK_EQUAL( m.begin()->second, base_test_auth_seq_num + 3 );
+   } );
+
+   produce_blocks(1); // Added to avoid the last doit transaction from being considered a duplicate.
+   // Adding a block also retires an onblock action which increments both the global sequence number
+   // and the recv and auth sequences numbers for the system account.
+
+   call_doit_and_check( config::system_account_name, N(test), [&]( const transaction_trace_ptr& res ) {
+      BOOST_CHECK_EQUAL( res->receipt->status, transaction_receipt::executed );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.global_sequence, base_global_sequence_num + 6 );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.recv_sequence, base_system_recv_seq_num + 4 );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.code_sequence.value, base_system_code_seq_num + 1 );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.abi_sequence.value, base_system_abi_seq_num );
+      const auto& m = res->action_traces[0].receipt.auth_sequence;
+      BOOST_CHECK_EQUAL( m.size(), 1 );
+      BOOST_CHECK_EQUAL( m.begin()->first.to_string(), "test" );
+      BOOST_CHECK_EQUAL( m.begin()->second, base_test_auth_seq_num + 4 );
+   } );
+
    set_code( config::system_account_name, contracts::eosio_bios_wasm() );
 
-   set_code( N(testapi), contracts::eosio_bios_wasm() );
-   set_abi(N(testapi), contracts::eosio_bios_abi().data() );
-	set_code( N(testapi), contracts::test_api_wasm() );
-	res = CALL_TEST_FUNCTION( *this, "test_action", "assert_true", {});
-   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.code_sequence), 4);
-   BOOST_REQUIRE_EQUAL(uint32_t(res->action_traces[0].receipt.abi_sequence), 1);
+   set_code( N(test), contracts::eosio_bios_wasm() );
+   set_abi( N(test), contracts::eosio_bios_abi().data() );
+	set_code( N(test), contracts::payloadless_wasm() );
+
+   call_doit_and_check( N(test), N(test), [&]( const transaction_trace_ptr& res ) {
+      BOOST_CHECK_EQUAL( res->receipt->status, transaction_receipt::executed);
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.global_sequence, base_global_sequence_num + 11 );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.recv_sequence, base_test_recv_seq_num + 3 );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.code_sequence.value, 4 );
+      BOOST_CHECK_EQUAL( res->action_traces[0].receipt.abi_sequence.value, 1 );
+      const auto& m = res->action_traces[0].receipt.auth_sequence;
+      BOOST_CHECK_EQUAL( m.size(), 1 );
+      BOOST_CHECK_EQUAL( m.begin()->first.to_string(), "test" );
+      BOOST_CHECK_EQUAL( m.begin()->second, base_test_auth_seq_num + 8 );
+   } );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -1303,82 +1361,103 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    create_account( N(testapi2) );
    produce_blocks(10);
    set_code( N(testapi), contracts::test_api_db_wasm() );
+   set_abi(  N(testapi), contracts::test_api_db_abi().data() );
    set_code( N(testapi2), contracts::test_api_db_wasm() );
+   set_abi(  N(testapi2), contracts::test_api_db_abi().data() );
    produce_blocks(1);
 
-   CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_general", {});
-   CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_lowerbound", {});
-   CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_upperbound", {});
-   CALL_TEST_FUNCTION( *this, "test_db", "idx64_general", {});
-   CALL_TEST_FUNCTION( *this, "test_db", "idx64_lowerbound", {});
-   CALL_TEST_FUNCTION( *this, "test_db", "idx64_upperbound", {});
+   push_action( N(testapi), N(pg),  N(testapi), mutable_variant_object() ); // primary_i64_general
+   push_action( N(testapi), N(pl),  N(testapi), mutable_variant_object() ); // primary_i64_lowerbound
+   push_action( N(testapi), N(pu),  N(testapi), mutable_variant_object() ); // primary_i64_upperbound
+   push_action( N(testapi), N(s1g), N(testapi), mutable_variant_object() ); // idx64_general
+   push_action( N(testapi), N(s1l), N(testapi), mutable_variant_object() ); // idx64_lowerbound
+   push_action( N(testapi), N(s1u), N(testapi), mutable_variant_object() ); // idx64_upperbound
 
    // Store value in primary table
-   invalid_access_action ia1{.code = N(testapi), .val = 10, .index = 0, .store = true};
-   auto res = push_action( action({{N(testapi), config::active_name}},
-                                  N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
-                                  fc::raw::pack(ia1)),
-                           N(testapi) );
-   BOOST_CHECK_EQUAL( res, success() );
+   push_action( N(testapi), N(tia), N(testapi), mutable_variant_object() // test_invalid_access
+      ("code", "testapi")
+      ("val", 10)
+      ("index", 0)
+      ("store", true)
+   );
 
    // Attempt to change the value stored in the primary table under the code of N(testapi)
-   invalid_access_action ia2{.code = ia1.code, .val = 20, .index = 0, .store = true};
-   res = push_action( action({{N(testapi2), config::active_name}},
-                             N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
-                             fc::raw::pack(ia2)),
-                      N(testapi2) );
-      wdump((res));
-   BOOST_CHECK_EQUAL( boost::algorithm::ends_with(res, "db access violation"), true );
-
+   BOOST_CHECK_EXCEPTION( push_action( N(testapi2), N(tia), N(testapi2), mutable_variant_object()
+                              ("code", "testapi")
+                              ("val", "20")
+                              ("index", 0)
+                              ("store", true)
+                           ), table_access_violation,
+                           fc_exception_message_is("db access violation")
+   );
 
    // Verify that the value has not changed.
-   ia1.store = false;
-   res = push_action( action({{N(testapi), config::active_name}},
-                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
-                             fc::raw::pack(ia1)),
-                      N(testapi) );
-   BOOST_CHECK_EQUAL( res, success() );
+   push_action( N(testapi), N(tia), N(testapi), mutable_variant_object()
+      ("code", "testapi")
+      ("val", 10)
+      ("index", 0)
+      ("store", false)
+   );
 
    // Store value in secondary table
-   ia1.store = true; ia1.index = 1;
-   res = push_action( action({{N(testapi), config::active_name}},
-                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
-                             fc::raw::pack(ia1)),
-                      N(testapi) );
-   BOOST_CHECK_EQUAL( res, success() );
+   push_action( N(testapi), N(tia), N(testapi), mutable_variant_object() // test_invalid_access
+      ("code", "testapi")
+      ("val", 10)
+      ("index", 1)
+      ("store", true)
+   );
 
    // Attempt to change the value stored in the secondary table under the code of N(testapi)
-   ia2.index = 1;
-   res = push_action( action({{N(testapi2), config::active_name}},
-                             N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
-                             fc::raw::pack(ia2)),
-                      N(testapi2) );
-   BOOST_CHECK_EQUAL( boost::algorithm::ends_with(res, "db access violation"), true );
+   BOOST_CHECK_EXCEPTION( push_action( N(testapi2), N(tia), N(testapi2), mutable_variant_object()
+                              ("code", "testapi")
+                              ("val", "20")
+                              ("index", 1)
+                              ("store", true)
+                           ), table_access_violation,
+                           fc_exception_message_is("db access violation")
+   );
 
    // Verify that the value has not changed.
-   ia1.store = false;
-   res = push_action( action({{N(testapi), config::active_name}},
-                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
-                             fc::raw::pack(ia1)),
-                      N(testapi) );
-   BOOST_CHECK_EQUAL( res, success() );
+   push_action( N(testapi), N(tia), N(testapi), mutable_variant_object()
+      ("code", "testapi")
+      ("val", 10)
+      ("index", 1)
+      ("store", false)
+   );
 
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_create_fail", {},
-                                           transaction_exception, "NaN is not an allowed value for a secondary key");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_modify_fail", {},
-                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+   // idx_double_nan_create_fail
+   BOOST_CHECK_EXCEPTION(  push_action( N(testapi), N(sdnancreate), N(testapi), mutable_variant_object() ),
+                           transaction_exception,
+                           fc_exception_message_is("NaN is not an allowed value for a secondary key")
+   );
 
-   uint32_t lookup_type = 0; // 0 for find, 1 for lower bound, and 2 for upper bound;
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_lookup_fail", fc::raw::pack(lookup_type),
-                                           transaction_exception, "NaN is not an allowed value for a secondary key");
-   lookup_type = 1;
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_lookup_fail", fc::raw::pack(lookup_type),
-                                           transaction_exception, "NaN is not an allowed value for a secondary key");
-   lookup_type = 2;
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_lookup_fail", fc::raw::pack(lookup_type),
-                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+   // idx_double_nan_modify_fail
+   BOOST_CHECK_EXCEPTION(  push_action( N(testapi), N(sdnanmodify), N(testapi), mutable_variant_object() ),
+                           transaction_exception,
+                           fc_exception_message_is("NaN is not an allowed value for a secondary key")
+   );
 
-   CALL_TEST_FUNCTION( *this, "test_db", "misaligned_secondary_key256_tests", {});
+   // idx_double_nan_lookup_fail
+   BOOST_CHECK_EXCEPTION(  push_action( N(testapi), N(sdnanlookup), N(testapi), mutable_variant_object()
+                              ("lookup_type", 0) // 0 for find
+                           ), transaction_exception,
+                           fc_exception_message_is("NaN is not an allowed value for a secondary key")
+   );
+
+   BOOST_CHECK_EXCEPTION(  push_action( N(testapi), N(sdnanlookup), N(testapi), mutable_variant_object()
+                              ("lookup_type", 1) // 1 for lower bound
+                           ), transaction_exception,
+                           fc_exception_message_is("NaN is not an allowed value for a secondary key")
+   );
+
+   BOOST_CHECK_EXCEPTION(  push_action( N(testapi), N(sdnanlookup), N(testapi), mutable_variant_object()
+                              ("lookup_type", 2) // 2 for upper bound
+                           ), transaction_exception,
+                           fc_exception_message_is("NaN is not an allowed value for a secondary key")
+   );
+
+   push_action( N(testapi), N(sk32align), N(testapi), mutable_variant_object() ); // misaligned_secondary_key256_tests
+
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
