@@ -2,18 +2,17 @@ find_package( Gperftools QUIET )
 
 ### Build contracts with cdt if available ###
 include(ExternalProject)
-# if no cdt root is given use default path
-if(EOSIO_CDT_ROOT STREQUAL "" OR NOT EOSIO_CDT_ROOT)
-   set(EOSIO_WASM_OLD_BEHAVIOR "Off")
-   find_package(eosio.cdt)
-endif()
 
-if (eosio.cdt_FOUND)
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   set(EOSIO_WASM_OLD_BEHAVIOR "Off")
+   find_package(eosio.cdt REQUIRED)
+   
+   message( STATUS "Building contracts in directory `eos/unittests/test-contracts/`" )
    ExternalProject_Add(
       test_contracts_project
       SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test-contracts
       BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/test-contracts
-      CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${EOSIO_CDT_ROOT}/lib/cmake/eosio.cdt/EosioWasmToolchain.cmake -DBoost_INCLUDE_DIRS=${Boost_INCLUDE_DIRS}
+      CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${EOSIO_CDT_ROOT}/lib/cmake/eosio.cdt/EosioWasmToolchain.cmake -DBoost_INCLUDE_DIRS=${Boost_INCLUDE_DIRS} -DEOSIO_COMPILE_TEST_CONTRACTS=${EOSIO_COMPILE_TEST_CONTRACTS}
       UPDATE_COMMAND ""
       PATCH_COMMAND ""
       TEST_COMMAND ""
@@ -21,12 +20,13 @@ if (eosio.cdt_FOUND)
       BUILD_ALWAYS 1
    )
 else()
-   add_subdirectory(test-contracts)
+  message( STATUS "Not building contracts in directory `eos/unittests/test-contracts/`" )
+  add_subdirectory(test-contracts)
 endif()
 
 if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling tests with TCMalloc")
-    list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
+   message( STATUS "Found gperftools; compiling tests with TCMalloc" )
+   list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
 find_package(LLVM 4.0 REQUIRED CONFIG)
