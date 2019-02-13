@@ -1,0 +1,6 @@
+_wasm_interface_init_*
+_wasm_interface_deinit_*
+_wasm_interface_validate_*
+_wasm_interface_apply_*
+_wasm_interface_is_busy_*
+_wasm_interface_call_*

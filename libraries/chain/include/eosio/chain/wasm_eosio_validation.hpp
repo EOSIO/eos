@@ -2,7 +2,7 @@
 
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/controller.hpp>
+//#include <eosio/chain/controller.hpp>
 #include <eosio/chain/wasm_eosio_binary_ops.hpp>
 #include <functional>
 #include <vector>
@@ -10,6 +10,9 @@
 #include "IR/Module.h"
 #include "IR/Operators.h"
 #include "WASM/WASM.h"
+#include <chain_api.hpp>
+#include <eosiolib_native/vm_api.h>
+#include <eosiolib_native/vm_exceptions.h>
 
 namespace eosio { namespace chain { namespace wasm_validations {
 
@@ -330,9 +333,9 @@ namespace eosio { namespace chain { namespace wasm_validations {
                                                                              maximum_function_stack_visitor,
                                                                              ensure_apply_exported_visitor>;
       public:
-         wasm_binary_validation( const eosio::chain::controller& control, IR::Module& mod ) : _module( &mod ) {
+         wasm_binary_validation( IR::Module& mod ) : _module( &mod ) {
             // initialize validators here
-            nested_validator::init(!control.is_producing_block());
+            nested_validator::init(!get_chain_api_cpp()->is_producing_block());
          }
 
          void validate() {

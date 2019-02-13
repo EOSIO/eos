@@ -1,7 +1,6 @@
-#include <eosio/chain/webassembly/wavm.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
-#include <eosio/chain/apply_context.hpp>
+//#include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/exceptions.hpp>
 
 #include "IR/Module.h"
@@ -12,7 +11,9 @@
 #include "Runtime/Linker.h"
 #include "Runtime/Intrinsics.h"
 
+#include <eosio/chain/webassembly/wavm.hpp>
 #include <mutex>
+#include <chain_api.hpp>
 
 using namespace IR;
 using namespace Runtime;
@@ -29,16 +30,32 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
          _module(std::move(module))
       {}
 
-      void apply(apply_context& context) override {
-         vector<Value> args = {Value(uint64_t(context.receiver)),
-	                       Value(uint64_t(context.act.account)),
-                               Value(uint64_t(context.act.name))};
+      void apply() override {
+         uint64_t receiver = get_vm_api()->current_receiver();
+         uint64_t act_account = 0;
+         uint64_t act_name = 0;
+         get_vm_api()->get_action_info(&act_account, &act_name);
+         vector<Value> args = {Value(uint64_t(receiver)),
+	                       Value(uint64_t(act_account)),
+                               Value(uint64_t(act_name))};
 
-         call("apply", args, context);
+         call("apply", args);
+      }
+
+      void call(uint64_t func_name, uint64_t arg1, uint64_t arg2, uint64_t arg3) override {
+         vector<Value> args = {
+            Value(uint64_t(func_name)),
+            Value(uint64_t(arg1)),
+            Value(uint64_t(arg2)),
+            Value(uint64_t(arg3))
+         };
+         string str_func_name;
+         get_chain_api_cpp()->n2str(func_name, str_func_name);
+         call(str_func_name, args);
       }
 
    private:
-      void call(const string &entry_point, const vector <Value> &args, apply_context &context) {
+      void call(const string &entry_point, const vector <Value> &args) {
          try {
             FunctionInstance* call = asFunctionNullable(getInstanceExport(_instance,entry_point));
             if( !call )
@@ -59,7 +76,7 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
             }
 
             the_running_instance_context.memory = default_mem;
-            the_running_instance_context.apply_ctx = &context;
+//            the_running_instance_context.apply_ctx = &context;
 
             resetGlobalInstances(_instance);
             runInstanceStartFunc(_instance);

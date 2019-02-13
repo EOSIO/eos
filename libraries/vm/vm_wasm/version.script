@@ -1,0 +1,4 @@
+CODEABI_1.0 {
+    global: wasm_interface_init_*;wasm_interface_deinit_*;wasm_interface_is_busy_*;wasm_interface_validate_[0-9]*;wasm_interface_apply_[0-9]*;wasm_interface_call_*;
+    local: *;
+};

@@ -1,15 +1,12 @@
 #include <eosio/chain/wasm_interface.hpp>
-#include <eosio/chain/apply_context.hpp>
-#include <eosio/chain/controller.hpp>
-#include <eosio/chain/transaction_context.hpp>
+//#include <eosio/chain/apply_context.hpp>
+//#include <eosio/chain/controller.hpp>
+//#include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/wasm_interface_private.hpp>
-#include <eosio/chain/wasm_eosio_validation.hpp>
-#include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/account_object.hpp>
 #include <fc/exception/exception.hpp>
@@ -17,22 +14,28 @@
 #include <fc/crypto/sha1.hpp>
 #include <fc/io/raw.hpp>
 
+#include <eosio/chain/wasm_eosio_validation.hpp>
+#include <eosio/chain/wasm_eosio_injection.hpp>
+#include <eosio/chain/wasm_interface_private.hpp>
+
 #include <softfloat.hpp>
 #include <compiler_builtins.hpp>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <fstream>
-#include <eosiolib_native/vm_api.h>
+
+#include <chain_api.hpp>
+
+#define API() get_vm_api()
 
 namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
-
    wasm_interface::wasm_interface(vm_type vm) : my( new wasm_interface_impl(vm) ) {}
 
    wasm_interface::~wasm_interface() {}
 
-   void wasm_interface::validate(const controller& control, const bytes& code) {
+   void wasm_interface::validate(const bytes& code) {
       Module module;
       try {
          Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
@@ -43,7 +46,7 @@ namespace eosio { namespace chain {
          EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
       }
 
-      wasm_validations::wasm_binary_validation validator(control, module);
+      wasm_validations::wasm_binary_validation validator(module);
       validator.validate();
 
       root_resolver resolver(true);
@@ -54,8 +57,52 @@ namespace eosio { namespace chain {
       //Hard: Kick off instantiation in a separate thread at this location
 	 }
 
-   void wasm_interface::apply( const digest_type& code_id, const shared_string& code, apply_context& context ) {
-      my->get_instantiated_module(code_id, code, context.trx_context)->apply(context);
+   bool wasm_interface::apply( const digest_type& code_id, const shared_string& code) {
+      if (my->_vm_type == vm_type::wavm) {
+         if (!has_module(code_id)) {
+            load_module(code_id, code);
+            return false;
+         }
+         if (is_busy()) {
+            return false;
+         }
+      }
+      my->get_instantiated_module(code_id, code)->apply();
+      return true;
+   }
+
+   bool wasm_interface::call( uint64_t contract, uint64_t func_name, uint64_t arg1, uint64_t arg2, uint64_t arg3 ) {
+      digest_type code_id;
+      const shared_string* _code;
+      if (!get_chain_api_cpp()->get_code(contract, code_id, &_code)) {
+         return false;
+      }
+      const shared_string& code = *_code;
+      if (my->_vm_type == vm_type::wavm) {
+         if (!has_module(code_id)) {
+            load_module(code_id, code);
+            return false;
+         }
+         if (is_busy()) {
+            return false;
+         }
+      }
+      my->get_instantiated_module(code_id, code)->call(func_name, arg1, arg2, arg3);
+      return true;
+   }
+
+
+
+   bool wasm_interface::has_module( const digest_type& code_id) {
+      return my->has_module(code_id);
+   }
+
+   void wasm_interface::load_module( const digest_type& code_id, const shared_string& code) {
+      my->load_module(code_id, code);
+   }
+
+   bool wasm_interface::is_busy() {
+      return my->is_busy();
    }
 
    void wasm_interface::exit() {
@@ -68,45 +115,36 @@ namespace eosio { namespace chain {
 #if defined(assert)
    #undef assert
 #endif
-
 class context_aware_api {
    public:
-      context_aware_api(apply_context& ctx, bool context_free = false )
-      :context(ctx)
+      context_aware_api(bool context_free = false )
       {
-         if( context.context_free )
-            EOS_ASSERT( context_free, unaccessible_api, "only context free api's can be used in this context" );
-         context.used_context_free_api |= !context_free;
+         API()->check_context_free(context_free);
       }
 
       void checktime() {
-         context.trx_context.checktime();
+         API()->checktime();
       }
-
-   protected:
-      apply_context&             context;
-
 };
 
 class context_free_api : public context_aware_api {
-   public:
-      context_free_api( apply_context& ctx )
-      :context_aware_api(ctx, true) {
-         /* the context_free_data is not available during normal application because it is prunable */
-         EOS_ASSERT( context.context_free, unaccessible_api, "this API may only be called from context_free apply" );
-      }
+public:
+   context_free_api()
+   :context_aware_api(true) {
+      /* the context_free_data is not available during normal application because it is prunable */
+      API()->assert_context_free();
+   }
 
-      int get_context_free_data( uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
-         return context.get_context_free_data( index, buffer, buffer_size );
-      }
+   int get_context_free_data( uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
+      return API()->get_context_free_data( index, buffer, buffer_size );
+   }
 };
 
 class privileged_api : public context_aware_api {
    public:
-      privileged_api( apply_context& ctx )
-      :context_aware_api(ctx)
+      privileged_api():context_aware_api()
       {
-         EOS_ASSERT( context.privileged, unaccessible_api, "${code} does not have permission to call this API", ("code",context.receiver) );
+         API()->assert_privileged();
       }
 
       /**
@@ -127,7 +165,7 @@ class privileged_api : public context_aware_api {
        *  Feature name should be base32 encoded name.
        */
       void activate_feature( int64_t feature_name ) {
-         EOS_ASSERT( false, unsupported_feature, "Unsupported Hardfork Detected" );
+         API()->activate_feature( feature_name );
       }
 
       /**
@@ -140,68 +178,31 @@ class privileged_api : public context_aware_api {
        * @param cpu_weight - the weight for determining share of compute capacity
        */
       void set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
-         EOS_ASSERT(ram_bytes >= -1, wasm_execution_error, "invalid value for ram resource limit expected [-1,INT64_MAX]");
-         EOS_ASSERT(net_weight >= -1, wasm_execution_error, "invalid value for net resource weight expected [-1,INT64_MAX]");
-         EOS_ASSERT(cpu_weight >= -1, wasm_execution_error, "invalid value for cpu resource weight expected [-1,INT64_MAX]");
-         if( context.control.get_mutable_resource_limits_manager().set_account_limits(account, ram_bytes, net_weight, cpu_weight) ) {
-            context.trx_context.validate_ram_usage.insert( account );
-         }
+         API()->set_resource_limits( account, ram_bytes, net_weight, cpu_weight);
       }
 
       void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) {
-         context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
+         API()->get_resource_limits( account, &ram_bytes, &net_weight, &cpu_weight );
       }
 
       int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
-         datastream<const char*> ds( packed_producer_schedule, datalen );
-         vector<producer_key> producers;
-         fc::raw::unpack(ds, producers);
-         EOS_ASSERT(producers.size() <= config::max_producers, wasm_execution_error, "Producer schedule exceeds the maximum producer count for this chain");
-         // check that producers are unique
-         std::set<account_name> unique_producers;
-         for (const auto& p: producers) {
-            EOS_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
-            EOS_ASSERT( p.block_signing_key.valid(), wasm_execution_error, "producer schedule includes an invalid key" );
-            unique_producers.insert(p.producer_name);
-         }
-         EOS_ASSERT( producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule" );
-         return context.control.set_proposed_producers( std::move(producers) );
+         return API()->set_proposed_producers( packed_producer_schedule, datalen);
       }
 
       uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t buffer_size) {
-         auto& gpo = context.control.get_global_properties();
-
-         auto s = fc::raw::pack_size( gpo.configuration );
-         if( buffer_size == 0 ) return s;
-
-         if ( s <= buffer_size ) {
-            datastream<char*> ds( packed_blockchain_parameters, s );
-            fc::raw::pack(ds, gpo.configuration);
-            return s;
-         }
-         return 0;
+         return API()->get_blockchain_parameters_packed( packed_blockchain_parameters, buffer_size);
       }
 
       void set_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
-         datastream<const char*> ds( packed_blockchain_parameters, datalen );
-         chain::chain_config cfg;
-         fc::raw::unpack(ds, cfg);
-         cfg.validate();
-         context.db.modify( context.control.get_global_properties(),
-            [&]( auto& gprops ) {
-                 gprops.configuration = cfg;
-         });
+         return API()->set_blockchain_parameters_packed( packed_blockchain_parameters, datalen);
       }
 
       bool is_privileged( account_name n )const {
-         return context.db.get<account_object, by_name>( n ).privileged;
+         return API()->is_privileged(n);
       }
 
       void set_privileged( account_name n, bool is_priv ) {
-         const auto& a = context.db.get<account_object, by_name>( n );
-         context.db.modify( a, [&]( auto& ma ){
-            ma.privileged = is_priv;
-         });
+         return API()->set_privileged(n, is_priv);
       }
 
 };
@@ -209,8 +210,7 @@ class privileged_api : public context_aware_api {
 class softfloat_api : public context_aware_api {
    public:
       // TODO add traps on truncations for special cases (NaN or outside the range which rounds to an integer)
-      softfloat_api( apply_context& ctx )
-      :context_aware_api(ctx, true) {}
+      softfloat_api() : context_aware_api(true) {}
 
       // float binops
       float _eosio_f32_add( float a, float b ) {
@@ -562,67 +562,66 @@ class softfloat_api : public context_aware_api {
       int32_t _eosio_f32_trunc_i32s( float af ) {
          float32_t a = to_softfloat32(af);
          if (_eosio_f32_ge(af, 2147483648.0f) || _eosio_f32_lt(af, -2147483648.0f))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow" );
-
+            EOS_THROW(wasm_execution_error, "Error, f32.convert_s/i32 overflow" );
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
+            EOS_THROW(wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
          return f32_to_i32( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
       }
       int32_t _eosio_f64_trunc_i32s( double af ) {
          float64_t a = to_softfloat64(af);
          if (_eosio_f64_ge(af, 2147483648.0) || _eosio_f64_lt(af, -2147483648.0))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 overflow");
+            EOS_THROW(wasm_execution_error, "Error, f64.convert_s/i32 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 unrepresentable");
+            EOS_THROW(wasm_execution_error, "Error, f64.convert_s/i32 unrepresentable");
          return f64_to_i32( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
       }
       uint32_t _eosio_f32_trunc_i32u( float af ) {
          float32_t a = to_softfloat32(af);
          if (_eosio_f32_ge(af, 4294967296.0f) || _eosio_f32_le(af, -1.0f))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_u/i32 overflow");
+            EOS_THROW(wasm_execution_error, "Error, f32.convert_u/i32 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_u/i32 unrepresentable");
+            EOS_THROW(wasm_execution_error, "Error, f32.convert_u/i32 unrepresentable");
          return f32_to_ui32( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
       }
       uint32_t _eosio_f64_trunc_i32u( double af ) {
          float64_t a = to_softfloat64(af);
          if (_eosio_f64_ge(af, 4294967296.0) || _eosio_f64_le(af, -1.0))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_u/i32 overflow");
+            EOS_THROW(wasm_execution_error, "Error, f64.convert_u/i32 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_u/i32 unrepresentable");
+            EOS_THROW(wasm_execution_error, "Error, f64.convert_u/i32 unrepresentable");
          return f64_to_ui32( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
       }
       int64_t _eosio_f32_trunc_i64s( float af ) {
          float32_t a = to_softfloat32(af);
          if (_eosio_f32_ge(af, 9223372036854775808.0f) || _eosio_f32_lt(af, -9223372036854775808.0f))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i64 overflow");
+            EOS_THROW(wasm_execution_error, "Error, f32.convert_s/i64 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i64 unrepresentable");
+            EOS_THROW(wasm_execution_error, "Error, f32.convert_s/i64 unrepresentable");
          return f32_to_i64( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
       }
       int64_t _eosio_f64_trunc_i64s( double af ) {
          float64_t a = to_softfloat64(af);
          if (_eosio_f64_ge(af, 9223372036854775808.0) || _eosio_f64_lt(af, -9223372036854775808.0))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i64 overflow");
+            EOS_THROW(wasm_execution_error, "Error, f64.convert_s/i64 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i64 unrepresentable");
+            EOS_THROW(wasm_execution_error, "Error, f64.convert_s/i64 unrepresentable");
 
          return f64_to_i64( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
       }
       uint64_t _eosio_f32_trunc_i64u( float af ) {
          float32_t a = to_softfloat32(af);
          if (_eosio_f32_ge(af, 18446744073709551616.0f) || _eosio_f32_le(af, -1.0f))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_u/i64 overflow");
+            EOS_THROW(wasm_execution_error, "Error, f32.convert_u/i64 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_u/i64 unrepresentable");
+            EOS_THROW(wasm_execution_error, "Error, f32.convert_u/i64 unrepresentable");
          return f32_to_ui64( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
       }
       uint64_t _eosio_f64_trunc_i64u( double af ) {
          float64_t a = to_softfloat64(af);
          if (_eosio_f64_ge(af, 18446744073709551616.0) || _eosio_f64_le(af, -1.0))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_u/i64 overflow");
+            EOS_THROW(wasm_execution_error, "Error, f64.convert_u/i64 overflow");
          if (is_nan(a))
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_u/i64 unrepresentable");
+            EOS_THROW(wasm_execution_error, "Error, f64.convert_u/i64 unrepresentable");
          return f64_to_ui64( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
       }
       float _eosio_i32_to_f32( int32_t a )  {
@@ -669,23 +668,14 @@ class producer_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
       int get_active_producers(array_ptr<chain::account_name> producers, size_t buffer_size) {
-         auto active_producers = context.get_active_producers();
-
-         size_t len = active_producers.size();
-         auto s = len * sizeof(chain::account_name);
-         if( buffer_size == 0 ) return s;
-
-         auto copy_size = std::min( buffer_size, s );
-         memcpy( producers, active_producers.data(), copy_size );
-
-         return copy_size;
+         return API()->get_active_producers((uint64_t*)producers.value, buffer_size);
       }
 };
 
 class crypto_api : public context_aware_api {
    public:
-      explicit crypto_api( apply_context& ctx )
-      :context_aware_api(ctx,true){}
+      explicit crypto_api()
+      :context_aware_api(true){}
       /**
        * This method can be optimized out during replay as it has
        * no possible side effects other than "passing".
@@ -693,77 +683,45 @@ class crypto_api : public context_aware_api {
       void assert_recover_key( const fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
-         fc::crypto::signature s;
-         fc::crypto::public_key p;
-         datastream<const char*> ds( sig, siglen );
-         datastream<const char*> pubds( pub, publen );
-
-         fc::raw::unpack(ds, s);
-         fc::raw::unpack(pubds, p);
-
-         auto check = fc::crypto::public_key( s, digest, false );
-         EOS_ASSERT( check == p, crypto_api_exception, "Error expected key different than recovered key" );
+         API()->assert_recover_key((checksum256*)&digest._hash, sig, siglen, pub, publen);
       }
 
       int recover_key( const fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
-         fc::crypto::signature s;
-         datastream<const char*> ds( sig, siglen );
-         datastream<char*> pubds( pub, publen );
-
-         fc::raw::unpack(ds, s);
-         fc::raw::pack( pubds, fc::crypto::public_key( s, digest, false ) );
-         return pubds.tellp();
-      }
-
-      template<class Encoder> auto encode(char* data, size_t datalen) {
-         Encoder e;
-         const size_t bs = eosio::chain::config::hashing_checktime_block_size;
-         while ( datalen > bs ) {
-            e.write( data, bs );
-            data += bs;
-            datalen -= bs;
-            context.trx_context.checktime();
-         }
-         e.write( data, datalen );
-         return e.result();
+         return API()->recover_key((checksum256*)&digest._hash, sig, siglen, pub, publen);
       }
 
       void assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
-         auto result = encode<fc::sha256::encoder>( data, datalen );
-         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
+         API()->assert_sha256(data, datalen, (checksum256*)&hash_val._hash);
       }
 
       void assert_sha1(array_ptr<char> data, size_t datalen, const fc::sha1& hash_val) {
-         auto result = encode<fc::sha1::encoder>( data, datalen );
-         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
+         API()->assert_sha1(data, datalen, (checksum160*)&hash_val._hash);
       }
 
       void assert_sha512(array_ptr<char> data, size_t datalen, const fc::sha512& hash_val) {
-         auto result = encode<fc::sha512::encoder>( data, datalen );
-         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
+         API()->assert_sha512(data, datalen, (checksum512*)&hash_val._hash);
       }
 
       void assert_ripemd160(array_ptr<char> data, size_t datalen, const fc::ripemd160& hash_val) {
-         auto result = encode<fc::ripemd160::encoder>( data, datalen );
-         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
+         API()->assert_ripemd160(data, datalen, (checksum160*)&hash_val._hash);
       }
 
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
-         hash_val = encode<fc::sha1::encoder>( data, datalen );
+         API()->sha1(data, datalen, (checksum160*)&hash_val._hash);
       }
 
       void sha256(array_ptr<char> data, size_t datalen, fc::sha256& hash_val) {
-         hash_val = encode<fc::sha256::encoder>( data, datalen );
+         API()->sha256(data, datalen, (checksum256*)&hash_val._hash);
       }
 
       void sha512(array_ptr<char> data, size_t datalen, fc::sha512& hash_val) {
-         hash_val = encode<fc::sha512::encoder>( data, datalen );
+         API()->sha512(data, datalen, (checksum512*)&hash_val._hash);
       }
 
       void ripemd160(array_ptr<char> data, size_t datalen, fc::ripemd160& hash_val) {
-         hash_val = encode<fc::ripemd160::encoder>( data, datalen );
+         API()->ripemd160(data, datalen, (checksum160*)&hash_val._hash);
       }
 };
 
@@ -776,28 +734,7 @@ class permission_api : public context_aware_api {
                                             array_ptr<char> perms_data,   size_t perms_size
                                           )
       {
-         transaction trx = fc::raw::unpack<transaction>( trx_data, trx_size );
-
-         flat_set<public_key_type> provided_keys;
-         unpack_provided_keys( provided_keys, pubkeys_data, pubkeys_size );
-
-         flat_set<permission_level> provided_permissions;
-         unpack_provided_permissions( provided_permissions, perms_data, perms_size );
-
-         try {
-            context.control
-                   .get_authorization_manager()
-                   .check_authorization( trx.actions,
-                                         provided_keys,
-                                         provided_permissions,
-                                         fc::seconds(trx.delay_sec),
-                                         std::bind(&transaction_context::checktime, &context.trx_context),
-                                         false
-                                       );
-            return true;
-         } catch( const authorization_exception& e ) {}
-
-         return false;
+         return API()->check_transaction_authorization( trx_data, trx_size, pubkeys_data, pubkeys_size, perms_data,  perms_size);
       }
 
       bool check_permission_authorization( account_name account, permission_name permission,
@@ -806,42 +743,18 @@ class permission_api : public context_aware_api {
                                            uint64_t delay_us
                                          )
       {
-         EOS_ASSERT( delay_us <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()),
-                     action_validate_exception, "provided delay is too large" );
-
-         flat_set<public_key_type> provided_keys;
-         unpack_provided_keys( provided_keys, pubkeys_data, pubkeys_size );
-
-         flat_set<permission_level> provided_permissions;
-         unpack_provided_permissions( provided_permissions, perms_data, perms_size );
-
-         try {
-            context.control
-                   .get_authorization_manager()
-                   .check_authorization( account,
-                                         permission,
-                                         provided_keys,
-                                         provided_permissions,
-                                         fc::microseconds(delay_us),
-                                         std::bind(&transaction_context::checktime, &context.trx_context),
-                                         false
-                                       );
-            return true;
-         } catch( const authorization_exception& e ) {}
-
-         return false;
+         return API()->check_permission_authorization( account, permission,
+               pubkeys_data, pubkeys_size,
+               perms_data, perms_size,
+               delay_us);
       }
 
       int64_t get_permission_last_used( account_name account, permission_name permission ) {
-         const auto& am = context.control.get_authorization_manager();
-         return am.get_permission_last_used( am.get_permission({account, permission}) ).time_since_epoch().count();
+         return API()->get_permission_last_used( account, permission );
       };
 
       int64_t get_account_creation_time( account_name account ) {
-         auto* acct = context.db.find<account_object, by_name>(account);
-         EOS_ASSERT( acct != nullptr, action_validate_exception,
-                     "account '${account}' does not exist", ("account", account) );
-         return time_point(acct->creation_date).time_since_epoch().count();
+         return API()->get_account_creation_time( account );
       }
 
    private:
@@ -866,24 +779,24 @@ class authorization_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
    void require_authorization( const account_name& account ) {
-      context.require_authorization( account );
+      API()->require_auth( account );
    }
 
    bool has_authorization( const account_name& account )const {
-      return context.has_authorization( account );
+      return API()->has_auth( account );
    }
 
    void require_authorization(const account_name& account,
                                                  const permission_name& permission) {
-      context.require_authorization( account, permission );
+      API()->require_auth2( account, permission );
    }
 
    void require_recipient( account_name recipient ) {
-      context.require_recipient( recipient );
+      API()->require_recipient( recipient );
    }
 
    bool is_account( const account_name& account )const {
-      return context.is_account( account );
+      return API()->is_account( account );
    }
 
 };
@@ -893,157 +806,115 @@ class system_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
       uint64_t current_time() {
-         return static_cast<uint64_t>( context.control.pending_block_time().time_since_epoch().count() );
+         return API()->current_time();
       }
 
       uint64_t publication_time() {
-         return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
+         return API()->publication_time();
       }
 
 };
 
 class context_free_system_api :  public context_aware_api {
 public:
-   explicit context_free_system_api( apply_context& ctx )
-   :context_aware_api(ctx,true){}
+   explicit context_free_system_api()
+   :context_aware_api(true){}
 
    void abort() {
-      EOS_ASSERT( false, abort_called, "abort() called");
+      API()->eosio_abort();
    }
 
    // Kept as intrinsic rather than implementing on WASM side (using eosio_assert_message and strlen) because strlen is faster on native side.
    void eosio_assert( bool condition, null_terminated_ptr msg ) {
-      if( BOOST_UNLIKELY( !condition ) ) {
-         std::string message( msg );
-         EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
-      }
+      API()->eosio_assert( condition, msg );
    }
 
    void eosio_assert_message( bool condition, array_ptr<const char> msg, size_t msg_len ) {
-      if( BOOST_UNLIKELY( !condition ) ) {
-         std::string message( msg, msg_len );
-         EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
-      }
+      API()->eosio_assert_message(condition, msg, msg_len);
    }
 
    void eosio_assert_code( bool condition, uint64_t error_code ) {
-      if( BOOST_UNLIKELY( !condition ) ) {
-         EOS_THROW( eosio_assert_code_exception,
-                    "assertion failure with error code: ${error_code}", ("error_code", error_code) );
-      }
+      API()->eosio_assert_code(condition, error_code);
    }
 
    void eosio_exit(int32_t code) {
-      context.control.get_wasm_interface().exit();
+      throw wasm_exit{code};
    }
 
 };
 
 class action_api : public context_aware_api {
    public:
-   action_api( apply_context& ctx )
-      :context_aware_api(ctx,true){}
+   action_api()
+      :context_aware_api(true){}
 
       int read_action_data(array_ptr<char> memory, size_t buffer_size) {
-         auto s = context.act.data.size();
-         if( buffer_size == 0 ) return s;
-
-         auto copy_size = std::min( buffer_size, s );
-         memcpy( memory, context.act.data.data(), copy_size );
-
-         return copy_size;
+         return API()->read_action_data(memory.value, buffer_size);
       }
 
       int action_data_size() {
-         return context.act.data.size();
+         return API()->action_data_size();
       }
 
       name current_receiver() {
-         return context.receiver;
+         return API()->current_receiver();
       }
 };
 
 class console_api : public context_aware_api {
    public:
-      console_api( apply_context& ctx )
-      : context_aware_api(ctx,true)
-      , ignore(!ctx.control.contracts_console()) {}
+      console_api()
+      : context_aware_api(true)
+      , ignore(!get_chain_api_cpp()->contracts_console()) {}
 
       // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.
       void prints(null_terminated_ptr str) {
          if ( !ignore ) {
-            context.console_append<const char*>(str);
+            API()->prints(str);
          }
       }
 
       void prints_l(array_ptr<const char> str, size_t str_len ) {
          if ( !ignore ) {
-            context.console_append(string(str, str_len));
+            API()->prints_l(str, str_len );
          }
       }
 
       void printi(int64_t val) {
          if ( !ignore ) {
-            context.console_append(val);
+            API()->printi(val);
          }
       }
 
       void printui(uint64_t val) {
          if ( !ignore ) {
-            context.console_append(val);
+            API()->printui(val);
          }
       }
 
       void printi128(const __int128& val) {
          if ( !ignore ) {
-            bool is_negative = (val < 0);
-            unsigned __int128 val_magnitude;
-
-            if( is_negative )
-               val_magnitude = static_cast<unsigned __int128>(-val); // Works even if val is at the lowest possible value of a int128_t
-            else
-               val_magnitude = static_cast<unsigned __int128>(val);
-
-            fc::uint128_t v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
-
-            if( is_negative ) {
-               context.console_append("-");
-            }
-
-            context.console_append(fc::variant(v).get_string());
+            API()->printi128(&val);
          }
       }
 
       void printui128(const unsigned __int128& val) {
          if ( !ignore ) {
-            fc::uint128_t v(val>>64, static_cast<uint64_t>(val) );
-            context.console_append(fc::variant(v).get_string());
+            API()->printui128(&val);
          }
       }
 
       void printsf( float val ) {
          if ( !ignore ) {
             // Assumes float representation on native side is the same as on the WASM side
-            auto& console = context.get_console_stream();
-            auto orig_prec = console.precision();
-
-            console.precision( std::numeric_limits<float>::digits10 );
-            context.console_append(val);
-
-            console.precision( orig_prec );
+            API()->printsf(val);
          }
       }
 
       void printdf( double val ) {
          if ( !ignore ) {
             // Assumes double representation on native side is the same as on the WASM side
-            auto& console = context.get_console_stream();
-            auto orig_prec = console.precision();
-
-            console.precision( std::numeric_limits<double>::digits10 );
-            context.console_append(val);
-
-            console.precision( orig_prec );
+            API()->printdf(val);
          }
       }
 
@@ -1061,32 +932,19 @@ class console_api : public context_aware_api {
           */
 
          if ( !ignore ) {
-            auto& console = context.get_console_stream();
-            auto orig_prec = console.precision();
-
-#ifdef __x86_64__
-            console.precision( std::numeric_limits<long double>::digits10 );
-            extFloat80_t val_approx;
-            f128M_to_extF80M(&val, &val_approx);
-            context.console_append( *(long double*)(&val_approx) );
-#else
-            console.precision( std::numeric_limits<double>::digits10 );
-            double val_approx = from_softfloat64( f128M_to_f64(&val) );
-            context.console_append(val_approx);
-#endif
-            console.precision( orig_prec );
+            API()->printqf(&val);
          }
       }
 
       void printn(const name& value) {
          if ( !ignore ) {
-            context.console_append(value.to_string());
+            API()->printn(value.value);
          }
       }
 
       void printhex(array_ptr<const char> data, size_t data_len ) {
          if ( !ignore ) {
-            context.console_append(fc::to_hex(data, data_len));
+            API()->printhex(data, data_len );
          }
       }
 
@@ -1096,127 +954,103 @@ class console_api : public context_aware_api {
 
 #define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
-         return context.IDX.store( scope, table, payer, id, secondary );\
+         return API()->db_##IDX##_store( scope, table, payer, id, &secondary );\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
-         return context.IDX.update( iterator, payer, secondary );\
+         API()->db_##IDX##_update( iterator, payer, &secondary );\
       }\
       void db_##IDX##_remove( int iterator ) {\
-         return context.IDX.remove( iterator );\
+         API()->db_##IDX##_remove( iterator );\
       }\
       int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
-         return context.IDX.find_secondary(code, scope, table, secondary, primary);\
+         return API()->db_##IDX##_find_secondary(code, scope, table, &secondary, &primary);\
       }\
       int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t primary ) {\
-         return context.IDX.find_primary(code, scope, table, secondary, primary);\
+         return API()->db_##IDX##_find_primary(code, scope, table, &secondary, primary);\
       }\
       int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
-         return context.IDX.lowerbound_secondary(code, scope, table, secondary, primary);\
+         return API()->db_##IDX##_lowerbound(code, scope, table, &secondary, &primary);\
       }\
       int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
-         return context.IDX.upperbound_secondary(code, scope, table, secondary, primary);\
+         return API()->db_##IDX##_upperbound(code, scope, table, &secondary, &primary);\
       }\
       int db_##IDX##_end( uint64_t code, uint64_t scope, uint64_t table ) {\
-         return context.IDX.end_secondary(code, scope, table);\
+         return API()->db_##IDX##_end(code, scope, table);\
       }\
       int db_##IDX##_next( int iterator, uint64_t& primary  ) {\
-         return context.IDX.next_secondary(iterator, primary);\
+         return API()->db_##IDX##_next(iterator, &primary);\
       }\
       int db_##IDX##_previous( int iterator, uint64_t& primary ) {\
-         return context.IDX.previous_secondary(iterator, primary);\
+         return API()->db_##IDX##_previous(iterator, &primary);\
       }
 
 #define DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(IDX, ARR_SIZE, ARR_ELEMENT_TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len) {\
-         EOS_ASSERT( data_len == ARR_SIZE,\
-                    db_api_exception,\
-                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
-                    ("given",data_len)("expected",ARR_SIZE) );\
-         return context.IDX.store(scope, table, payer, id, data.value);\
+         return API()->db_##IDX##_store(scope, table, payer, id, data.value, data_len);\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len ) {\
-         EOS_ASSERT( data_len == ARR_SIZE,\
-                    db_api_exception,\
-                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
-                    ("given",data_len)("expected",ARR_SIZE) );\
-         return context.IDX.update(iterator, payer, data.value);\
+         return API()->db_##IDX##_update(iterator, payer, data.value, data_len);\
       }\
       void db_##IDX##_remove( int iterator ) {\
-         return context.IDX.remove(iterator);\
+         return API()->db_##IDX##_remove(iterator);\
       }\
       int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
-         EOS_ASSERT( data_len == ARR_SIZE,\
-                    db_api_exception,\
-                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
-                    ("given",data_len)("expected",ARR_SIZE) );\
-         return context.IDX.find_secondary(code, scope, table, data, primary);\
+         return API()->db_##IDX##_find_secondary(code, scope, table, data, data_len, &primary);\
       }\
       int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t primary ) {\
-         EOS_ASSERT( data_len == ARR_SIZE,\
-                    db_api_exception,\
-                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
-                    ("given",data_len)("expected",ARR_SIZE) );\
-         return context.IDX.find_primary(code, scope, table, data.value, primary);\
+         return API()->db_##IDX##_find_primary(code, scope, table, data.value, data_len, primary);\
       }\
       int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
-         EOS_ASSERT( data_len == ARR_SIZE,\
-                    db_api_exception,\
-                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
-                    ("given",data_len)("expected",ARR_SIZE) );\
-         return context.IDX.lowerbound_secondary(code, scope, table, data.value, primary);\
+         return API()->db_##IDX##_lowerbound(code, scope, table, data.value, data_len, &primary);\
       }\
       int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
-         EOS_ASSERT( data_len == ARR_SIZE,\
-                    db_api_exception,\
-                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
-                    ("given",data_len)("expected",ARR_SIZE) );\
-         return context.IDX.upperbound_secondary(code, scope, table, data.value, primary);\
+         return API()->db_##IDX##_upperbound(code, scope, table, data.value, data_len, &primary);\
       }\
       int db_##IDX##_end( uint64_t code, uint64_t scope, uint64_t table ) {\
-         return context.IDX.end_secondary(code, scope, table);\
+         return API()->db_##IDX##_end(code, scope, table);\
       }\
       int db_##IDX##_next( int iterator, uint64_t& primary  ) {\
-         return context.IDX.next_secondary(iterator, primary);\
+         return API()->db_##IDX##_next(iterator, &primary);\
       }\
       int db_##IDX##_previous( int iterator, uint64_t& primary ) {\
-         return context.IDX.previous_secondary(iterator, primary);\
+         return API()->db_##IDX##_previous(iterator, &primary);\
       }
 
 #define DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
          EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
-         return context.IDX.store( scope, table, payer, id, secondary );\
+         return API()->db_##IDX##_store( scope, table, payer, id, &secondary );\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
          EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
-         return context.IDX.update( iterator, payer, secondary );\
+         return API()->db_##IDX##_update( iterator, payer, &secondary );\
       }\
       void db_##IDX##_remove( int iterator ) {\
-         return context.IDX.remove( iterator );\
+         return API()->db_##IDX##_remove( iterator );\
       }\
       int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
          EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
-         return context.IDX.find_secondary(code, scope, table, secondary, primary);\
+         return API()->db_##IDX##_find_secondary(code, scope, table, &secondary, &primary);\
       }\
       int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t primary ) {\
-         return context.IDX.find_primary(code, scope, table, secondary, primary);\
+         return API()->db_##IDX##_find_primary(code, scope, table, &secondary, primary);\
       }\
       int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
          EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
-         return context.IDX.lowerbound_secondary(code, scope, table, secondary, primary);\
+         return API()->db_##IDX##_lowerbound(code, scope, table, &secondary, &primary);\
       }\
       int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
          EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
-         return context.IDX.upperbound_secondary(code, scope, table, secondary, primary);\
+         return API()->db_##IDX##_upperbound(code, scope, table, &secondary, &primary);\
       }\
       int db_##IDX##_end( uint64_t code, uint64_t scope, uint64_t table ) {\
-         return context.IDX.end_secondary(code, scope, table);\
+         return API()->db_##IDX##_end(code, scope, table);\
       }\
       int db_##IDX##_next( int iterator, uint64_t& primary  ) {\
-         return context.IDX.next_secondary(iterator, primary);\
+         return API()->db_##IDX##_next(iterator, &primary);\
       }\
       int db_##IDX##_previous( int iterator, uint64_t& primary ) {\
-         return context.IDX.previous_secondary(iterator, primary);\
+         return API()->db_##IDX##_previous(iterator,& primary);\
       }
 
 class database_api : public context_aware_api {
@@ -1224,34 +1058,37 @@ class database_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
       int db_store_i64( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const char> buffer, size_t buffer_size ) {
-         return context.db_store_i64( scope, table, payer, id, buffer, buffer_size );
+         return API()->db_store_i64( scope, table, payer, id, buffer, buffer_size );
       }
       void db_update_i64( int itr, uint64_t payer, array_ptr<const char> buffer, size_t buffer_size ) {
-         context.db_update_i64( itr, payer, buffer, buffer_size );
+         API()->db_update_i64( itr, payer, buffer, buffer_size );
       }
       void db_remove_i64( int itr ) {
-         context.db_remove_i64( itr );
+         API()->db_remove_i64( itr );
       }
       int db_get_i64( int itr, array_ptr<char> buffer, size_t buffer_size ) {
-         return context.db_get_i64( itr, buffer, buffer_size );
+         return API()->db_get_i64( itr, buffer, buffer_size );
       }
       int db_next_i64( int itr, uint64_t& primary ) {
-         return context.db_next_i64(itr, primary);
+         return API()->db_next_i64(itr, &primary);
       }
       int db_previous_i64( int itr, uint64_t& primary ) {
-         return context.db_previous_i64(itr, primary);
+         return API()->db_previous_i64(itr, &primary);
       }
       int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-         return context.db_find_i64( code, scope, table, id );
+         return API()->db_find_i64( code, scope, table, id );
       }
       int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-         return context.db_lowerbound_i64( code, scope, table, id );
+         return API()->db_lowerbound_i64( code, scope, table, id );
       }
       int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-         return context.db_upperbound_i64( code, scope, table, id );
+         return API()->db_upperbound_i64( code, scope, table, id );
       }
       int db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
-         return context.db_end_i64( code, scope, table );
+         return API()->db_end_i64( code, scope, table );
+      }
+      int db_store_i256( uint64_t scope, uint64_t table, uint64_t payer, array_ptr<const char> id, int size, const array_ptr<const char> buffer, size_t buffer_size ) {
+         return API()->db_store_i256(scope, table, payer, (void*)id.value, size, buffer, buffer_size);
       }
 
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
@@ -1263,8 +1100,8 @@ class database_api : public context_aware_api {
 
 class memory_api : public context_aware_api {
    public:
-      memory_api( apply_context& ctx )
-      :context_aware_api(ctx,true){}
+      memory_api()
+      :context_aware_api(true){}
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
          EOS_ASSERT((std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
@@ -1296,78 +1133,57 @@ class transaction_api : public context_aware_api {
 
       void send_inline( array_ptr<char> data, size_t data_len ) {
          //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
-         EOS_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
-                    "inline action too big" );
-
-         action act;
-         fc::raw::unpack<action>(data, data_len, act);
-         context.execute_inline(std::move(act));
+         API()->send_inline( data, data_len );
       }
 
       void send_context_free_inline( array_ptr<char> data, size_t data_len ) {
          //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
-         EOS_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
-                   "inline action too big" );
-
-         action act;
-         fc::raw::unpack<action>(data, data_len, act);
-         context.execute_context_free_inline(std::move(act));
+         API()->send_context_free_inline( data, data_len );
       }
 
       void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len, uint32_t replace_existing) {
-         transaction trx;
-         fc::raw::unpack<transaction>(data, data_len, trx);
-         context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);
+         API()->send_deferred( &sender_id, payer, data, data_len, replace_existing);
       }
 
       bool cancel_deferred( const unsigned __int128& val ) {
-         fc::uint128_t sender_id(val>>64, uint64_t(val) );
-         return context.cancel_deferred_transaction( (unsigned __int128)sender_id );
+         return API()->cancel_deferred( &val );
       }
 };
 
 
 class context_free_transaction_api : public context_aware_api {
    public:
-      context_free_transaction_api( apply_context& ctx )
-      :context_aware_api(ctx,true){}
+      context_free_transaction_api()
+      :context_aware_api(true){}
 
       int read_transaction( array_ptr<char> data, size_t buffer_size ) {
-         bytes trx = context.get_packed_transaction();
-
-         auto s = trx.size();
-         if( buffer_size == 0) return s;
-
-         auto copy_size = std::min( buffer_size, s );
-         memcpy( data, trx.data(), copy_size );
-
-         return copy_size;
+         return API()->read_transaction( data, buffer_size );
       }
 
       int transaction_size() {
-         return context.get_packed_transaction().size();
+         return API()->transaction_size();
       }
 
       int expiration() {
-        return context.trx_context.trx.expiration.sec_since_epoch();
+        return API()->expiration();
       }
 
       int tapos_block_num() {
-        return context.trx_context.trx.ref_block_num;
+        return API()->tapos_block_num();
       }
       int tapos_block_prefix() {
-        return context.trx_context.trx.ref_block_prefix;
+        return API()->tapos_block_prefix();
       }
 
       int get_action( uint32_t type, uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
-         return context.get_action( type, index, buffer, buffer_size );
+         return API()->get_action( type, index, buffer, buffer_size );
       }
 };
 
 class compiler_builtins : public context_aware_api {
    public:
-      compiler_builtins( apply_context& ctx )
-      :context_aware_api(ctx,true){}
+      compiler_builtins()
+      :context_aware_api(true){}
 
       void __ashlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
          fc::uint128_t i(high, low);
@@ -1623,14 +1439,14 @@ class compiler_builtins : public context_aware_api {
  */
 class call_depth_api : public context_aware_api {
    public:
-      call_depth_api( apply_context& ctx )
-      :context_aware_api(ctx,true){}
+      call_depth_api()
+      :context_aware_api(true){}
       void call_depth_assert() {
          FC_THROW_EXCEPTION(wasm_execution_error, "Exceeded call depth maximum");
       }
 };
 
-class token_api : public context_aware_api {
+class vm_apis : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
@@ -1647,11 +1463,19 @@ class token_api : public context_aware_api {
       }
 };
 
-REGISTER_INTRINSICS(token_api,
+REGISTER_INTRINSICS(vm_apis,
    (token_create,    void(int64_t, int, int)  )
    (token_issue,     void(int64_t, int, int, int, int)           )
    (token_transfer,  void(int64_t, int64_t, int, int, int, int)  )
 );
+
+class transaction_context_ {
+public:
+   transaction_context_() {}
+   void checktime() {
+      API()->checktime();
+   }
+};
 
 REGISTER_INJECTED_INTRINSICS(call_depth_api,
    (call_depth_assert,  void()               )
@@ -1715,7 +1539,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_privileged,                   void(int64_t, int)                    )
 );
 
-REGISTER_INJECTED_INTRINSICS(transaction_context,
+REGISTER_INJECTED_INTRINSICS(transaction_context_,
    (checktime,      void())
 );
 

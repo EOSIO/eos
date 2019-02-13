@@ -8,8 +8,8 @@ class apply_context;
 
 class wasm_instantiated_module_interface {
    public:
-      virtual void apply(apply_context& context) = 0;
-
+      virtual void apply() = 0;
+      virtual void call(uint64_t func_name, uint64_t arg1, uint64_t arg2, uint64_t arg3) = 0;
       virtual ~wasm_instantiated_module_interface();
 };
 

@@ -290,7 +290,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
          injector_utils::add_import<ResultType::none>(*(arg.module), "call_depth_assert", assert_idx);
 
          wasm_ops::op_types<>::call_t call_assert;
-         wasm_ops::op_types<>::call_t call_checktime;
          wasm_ops::op_types<>::get_global_t get_global_inst; 
          wasm_ops::op_types<>::set_global_t set_global_inst;
 
@@ -302,7 +301,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
          wasm_ops::op_types<>::else__t else_inst; 
 
          call_assert.field = assert_idx;
-         call_checktime.field = checktime_injection::chktm_idx;
          get_global_inst.field = global_idx;
          set_global_inst.field = global_idx;
          const_inst.field = -1;
@@ -336,7 +334,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
          INSERT_INJECTED(const_inst);
          INSERT_INJECTED(add_inst);
          INSERT_INJECTED(set_global_inst);
-         INSERT_INJECTED(call_checktime);
 
 #undef INSERT_INJECTED
       }
@@ -463,8 +460,9 @@ namespace eosio { namespace chain { namespace wasm_injections {
             return u8"_eosio_ui64_to_f64";
 
          default:
-            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, unknown opcode in injection ${op}", ("op", opcode));
+            FC_THROW_EXCEPTION( wasm_execution_error, "Error, unknown opcode in injection ${op}", ("op", opcode));
       }
+      return "";
    }
 
    template <uint16_t Opcode>
@@ -682,8 +680,8 @@ namespace eosio { namespace chain { namespace wasm_injections {
    };
 
    struct pre_op_injectors : wasm_ops::op_types<pass_injector> {
-      using call_t            = wasm_ops::call                    <call_depth_check_and_insert_checktime>;
-      using call_indirect_t   = wasm_ops::call_indirect           <call_depth_check_and_insert_checktime>;
+      using call_t            = wasm_ops::call                    <call_depth_check>;
+      using call_indirect_t   = wasm_ops::call_indirect           <call_depth_check>;
       
       // float binops 
       using f32_add_t         = wasm_ops::f32_add                 <f32_binop_injector<wasm_ops::f32_add_code>>;
@@ -788,7 +786,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             // initialize static fields of injectors
             injector_utils::init( mod );
             checktime_injection::init();
-            call_depth_check_and_insert_checktime::init();
+            call_depth_check::init();
          }
 
          void inject() {

@@ -5,7 +5,9 @@ add_subdirectory( chainbase )
 add_subdirectory( wasm-jit )
 add_subdirectory( appbase )
 add_subdirectory( chain )
+add_subdirectory( chain_api )
 add_subdirectory( testing )
+add_subdirectory( vm )
 
 #turn tools&tests off; not needed for library build
 set(BUILD_TESTS OFF CACHE BOOL "Build GTest-based tests")

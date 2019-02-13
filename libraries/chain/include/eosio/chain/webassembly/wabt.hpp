@@ -3,13 +3,17 @@
 #include <eosio/chain/webassembly/common.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/apply_context.hpp>
+//#include <eosio/chain/apply_context.hpp>
 #include <softfloat_types.h>
 
 //wabt includes
 #include <src/binary-reader.h>
 #include <src/common.h>
 #include <src/interp.h>
+
+#include <chain_api.hpp>
+#include <eosiolib_native/vm_api.h>
+#include <eosiolib_native/vm_exceptions.h>
 
 namespace eosio { namespace chain { namespace webassembly { namespace wabt_runtime {
 
@@ -20,7 +24,6 @@ using namespace eosio::chain::webassembly::common;
 
 struct wabt_apply_instance_vars {
    Memory* memory;
-   apply_context& ctx;
 
    char* get_validated_pointer(uint32_t offset, uint32_t size) {
       EOS_ASSERT(memory, wasm_execution_error, "access violation");
@@ -84,7 +87,8 @@ inline null_terminated_ptr null_terminated_ptr_impl(wabt_apply_instance_vars& va
       if(*p++ == '\0')
          return null_terminated_ptr(value);
 
-   FC_THROW_EXCEPTION(wasm_execution_error, "unterminated string");
+   EOS_THROW(wasm_execution_error, "unterminated string");
+   return null_terminated_ptr(0);
 }
 
 
@@ -373,7 +377,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>> 
       size_t length = args.at((uint32_t)offset).get_i32();
       T* base = array_ptr_impl<T>(vars, ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(vars.ctx.control.contracts_console())
+         if(get_chain_api_cpp()->contracts_console())
             wlog( "misaligned array of const values" );
          std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
          T* copy_ptr = &copy[0];
@@ -390,7 +394,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>> 
       size_t length = args.at((uint32_t)offset).get_i32();
       T* base = array_ptr_impl<T>(vars, ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(vars.ctx.control.contracts_console())
+         if(get_chain_api_cpp()->contracts_console())
             wlog( "misaligned array of values" );
          std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
          T* copy_ptr = &copy[0];
@@ -504,7 +508,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
       uint32_t ptr = args.at((uint32_t)offset).get_i32();
       T* base = array_ptr_impl<T>(vars, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(vars.ctx.control.contracts_console())
+         if(get_chain_api_cpp()->contracts_console())
             wlog( "misaligned const pointer" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
@@ -519,7 +523,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
       uint32_t ptr = args.at((uint32_t)offset).get_i32();
       T* base = array_ptr_impl<T>(vars, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(vars.ctx.control.contracts_console())
+         if(get_chain_api_cpp()->contracts_console())
             wlog( "misaligned pointer" );
          T copy;
          memcpy( (void*)&copy, (void*)base, sizeof(T) );
@@ -609,7 +613,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
       EOS_ASSERT(ptr != 0, binaryen_exception, "references cannot be created for null pointers");
       T* base = array_ptr_impl<T>(vars, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(vars.ctx.control.contracts_console())
+         if(get_chain_api_cpp()->contracts_console())
             wlog( "misaligned const reference" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
@@ -626,7 +630,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
       EOS_ASSERT(ptr != 0, binaryen_exception, "references cannot be created for null pointers");
       T* base = array_ptr_impl<T>(vars, ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(vars.ctx.control.contracts_console())
+         if(get_chain_api_cpp()->contracts_console())
             wlog( "misaligned reference" );
          T copy;
          memcpy( (void*)&copy, (void*)base, sizeof(T) );
@@ -655,8 +659,8 @@ struct intrinsic_function_invoker {
 
    template<MethodSig Method>
    static Ret wrapper(wabt_apply_instance_vars& vars, Params... params, const TypedValues&, int) {
-      class_from_wasm<Cls>::value(vars.ctx).checktime();
-      return (class_from_wasm<Cls>::value(vars.ctx).*Method)(params...);
+      class_from_wasm<Cls>::value().checktime();
+      return (class_from_wasm<Cls>::value().*Method)(params...);
    }
 
    template<MethodSig Method>
@@ -671,8 +675,8 @@ struct intrinsic_function_invoker<void, MethodSig, Cls, Params...> {
 
    template<MethodSig Method>
    static void_type wrapper(wabt_apply_instance_vars& vars, Params... params, const TypedValues& args, int offset) {
-      class_from_wasm<Cls>::value(vars.ctx).checktime();
-      (class_from_wasm<Cls>::value(vars.ctx).*Method)(params...);
+      class_from_wasm<Cls>::value().checktime();
+      (class_from_wasm<Cls>::value().*Method)(params...);
       return void_type();
    }
 
@@ -705,6 +709,12 @@ template<typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<Ret (Cls::*)(Params...) const volatile> {
    using type = intrinsic_function_invoker<Ret, Ret (Cls::*)(Params...) const volatile, Cls, Params...>;
 };
+
+#define _ADD_PAREN_1(...) ((__VA_ARGS__)) _ADD_PAREN_2
+#define _ADD_PAREN_2(...) ((__VA_ARGS__)) _ADD_PAREN_1
+#define _ADD_PAREN_1_END
+#define _ADD_PAREN_2_END
+#define _WRAPPED_SEQ(SEQ) BOOST_PP_CAT(_ADD_PAREN_1 SEQ, _END)
 
 #define __INTRINSIC_NAME(LABEL, SUFFIX) LABEL##SUFFIX
 #define _INTRINSIC_NAME(LABEL, SUFFIX) __INTRINSIC_NAME(LABEL,SUFFIX)

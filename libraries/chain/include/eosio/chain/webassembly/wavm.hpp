@@ -3,11 +3,14 @@
 #include <eosio/chain/webassembly/common.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
-#include <eosio/chain/apply_context.hpp>
+//#include <eosio/chain/apply_context.hpp>
 #include <softfloat.hpp>
 #include "Runtime/Runtime.h"
 #include "IR/Types.h"
 
+#include <chain_api.hpp>
+#include <eosiolib_native/vm_api.h>
+#include <eosiolib_native/vm_exceptions.h>
 
 namespace eosio { namespace chain { namespace webassembly { namespace wavm {
 
@@ -36,7 +39,7 @@ class wavm_runtime : public eosio::chain::wasm_runtime_interface {
 //This is a temporary hack for the single threaded implementation
 struct running_instance_context {
    MemoryInstance* memory;
-   apply_context*  apply_ctx;
+//   apply_context*  apply_ctx;
 };
 extern running_instance_context the_running_instance_context;
 
@@ -51,14 +54,14 @@ template<typename T>
 inline array_ptr<T> array_ptr_impl (running_instance_context& ctx, U32 ptr, size_t length)
 {
    MemoryInstance* mem = ctx.memory;
-   if (!mem) 
+   if (!mem)
       Runtime::causeException(Exception::Cause::accessViolation);
 
    size_t mem_total = IR::numBytesPerPage * Runtime::getMemoryNumPages(mem);
    if (ptr >= mem_total || length > (mem_total - ptr) / sizeof(T))
       Runtime::causeException(Exception::Cause::accessViolation);
-   
-   T* ret_ptr = (T*)(getMemoryBaseAddress(mem) + ptr);
+
+//   T* ret_ptr = (T*)(getMemoryBaseAddress(mem) + ptr);
 
    return array_ptr<T>((T*)(getMemoryBaseAddress(mem) + ptr));
 }
@@ -385,7 +388,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
       const auto length = size_t(size);
       T* base = array_ptr_impl<T>(ctx, (U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(ctx.apply_ctx->control.contracts_console())
+         if(get_chain_api_cpp()->contracts_console())
             wlog( "misaligned array of const values" );
          std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
          T* copy_ptr = &copy[0];
@@ -401,12 +404,12 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
       const auto length = size_t(size);
       T* base = array_ptr_impl<T>(ctx, (U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(ctx.apply_ctx->control.contracts_console())
+         if(get_chain_api_cpp()->contracts_console())
             wlog( "misaligned array of values" );
          std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
          T* copy_ptr = &copy[0];
          memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
-         Ret ret = Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);  
+         Ret ret = Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);
          memcpy( (void*)base, (void*)copy_ptr, length * sizeof(T) );
          return ret;
       }
@@ -513,7 +516,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Transl
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       T* base = array_ptr_impl<T>(ctx, (U32)ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(ctx.apply_ctx->control.contracts_console())
+         if(get_chain_api_cpp()->contracts_console())
             wlog( "misaligned const pointer" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
@@ -527,7 +530,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Transl
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
       T* base = array_ptr_impl<T>(ctx, (U32)ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(ctx.apply_ctx->control.contracts_console())
+         if(get_chain_api_cpp()->contracts_console())
             wlog( "misaligned pointer" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
@@ -594,7 +597,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
          Runtime::causeException(Exception::Cause::accessViolation);
       T &base = *(T*)(getMemoryBaseAddress(mem)+(U32)ptr);
       if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
-         if(ctx.apply_ctx->control.contracts_console())
+         if(get_chain_api_cpp()->contracts_console())
             wlog( "misaligned const reference" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
@@ -613,7 +616,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
          Runtime::causeException(Exception::Cause::accessViolation);
       T &base = *(T*)(getMemoryBaseAddress(mem)+(U32)ptr);
       if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
-         if(ctx.apply_ctx->control.contracts_console())
+         if(get_chain_api_cpp()->contracts_console())
             wlog( "misaligned reference" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
@@ -640,8 +643,8 @@ struct intrinsic_function_invoker {
 
    template<MethodSig Method>
    static Ret wrapper(running_instance_context& ctx, Params... params) {
-      class_from_wasm<Cls>::value(*ctx.apply_ctx).checktime();
-      return (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
+      class_from_wasm<Cls>::value().checktime();
+      return (class_from_wasm<Cls>::value().*Method)(params...);
    }
 
    template<MethodSig Method>
@@ -659,8 +662,8 @@ struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
 
    template<MethodSig Method>
    static void_type wrapper(running_instance_context& ctx, Params... params) {
-      class_from_wasm<Cls>::value(*ctx.apply_ctx).checktime();
-      (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
+      class_from_wasm<Cls>::value().checktime();
+      (class_from_wasm<Cls>::value().*Method)(params...);
       return void_type();
    }
 

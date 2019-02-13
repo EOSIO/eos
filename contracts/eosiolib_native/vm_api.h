@@ -202,11 +202,13 @@ struct vm_api {
    void (*assert_privileged)(void);
    void (*assert_context_free)(void);
    int (*get_context_free_data)( uint32_t index, char *buff, size_t size );
+   void (*log)(int level, int line, const char *file, const char *func, const char *fmt, ...);
 
    void (*token_create)( uint64_t issuer, const char *maximum_supply, size_t size );
    void (*token_issue)( uint64_t to, const char *quantity, size_t size1, const char* memo, size_t size2 );
    void (*token_transfer)( uint64_t from, uint64_t to, const char *quantity, size_t size1, const char* memo, size_t size2 );
 
+   void (*throw_exception)(int type, const char* fmt, ...);
 
    char reserved[sizeof(char *)*128]; //for forward compatibility
 };

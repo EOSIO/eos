@@ -72,7 +72,7 @@ void apply_context::exec_one( action_trace& trace )
                control.check_action_list( act.account, act.name );
             }
             try {
-               control.get_wasm_interface().apply( a.code_version, a.code, *this );
+               control.get_wasm_interface().apply( a.code_version, a.code );
             } catch( const wasm_exit& ) {}
          }
       } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output.str()) )

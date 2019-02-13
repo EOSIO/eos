@@ -10,6 +10,7 @@ print.cpp
 privileged.cpp
 system.cpp
 transaction.cpp
+vm_exception.cpp
 )
 
 target_link_libraries( eosiolib_native PUBLIC softfloat)

@@ -1,11 +1,12 @@
-#include <eosio/chain/webassembly/wabt.hpp>
-#include <eosio/chain/apply_context.hpp>
+//#include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 
 //wabt includes
 #include <src/interp.h>
 #include <src/binary-reader-interp.h>
 #include <src/error-formatter.h>
+
+#include <eosio/chain/webassembly/wabt.hpp>
 
 namespace eosio { namespace chain { namespace webassembly { namespace wabt_runtime {
 
@@ -33,12 +34,12 @@ class wabt_instantiated_module : public wasm_instantiated_module_interface {
             _initial_memory_configuration = _env->GetMemory(0)->page_limits;
       }
 
-      void apply(apply_context& context) override {
+      void apply() override {
          //reset mutable globals
          for(const auto& mg : _initial_globals)
             mg.first->typed_value = mg.second;
 
-         wabt_apply_instance_vars this_run_vars{nullptr, context};
+         wabt_apply_instance_vars this_run_vars{nullptr};
          static_wabt_vars = &this_run_vars;
 
          //reset memory to inital size & copy back in initial data
@@ -49,15 +50,46 @@ class wabt_instantiated_module : public wasm_instantiated_module_interface {
             memset(memory->data.data(), 0, memory->data.size());
             memcpy(memory->data.data(), _initial_memory.data(), _initial_memory.size());
          }
-
-         _params[0].set_i64(uint64_t(context.receiver));
-         _params[1].set_i64(uint64_t(context.act.account));
-         _params[2].set_i64(uint64_t(context.act.name));
+         uint64_t account = 0;
+         uint64_t act_name = 0;
+         get_vm_api()->get_action_info(&account, &act_name);
+         _params[0].set_i64(uint64_t(get_vm_api()->current_receiver()));
+         _params[1].set_i64(uint64_t(account));
+         _params[2].set_i64(uint64_t(act_name));
 
          ExecResult res = _executor.RunStartFunction(_instatiated_module);
          EOS_ASSERT( res.result == interp::Result::Ok, wasm_execution_error, "wabt start function failure (${s})", ("s", ResultToString(res.result)) );
 
          res = _executor.RunExportByName(_instatiated_module, "apply", _params);
+         EOS_ASSERT( res.result == interp::Result::Ok, wasm_execution_error, "wabt execution failure (${s})", ("s", ResultToString(res.result)) );
+      }
+
+      void call(uint64_t func_name, uint64_t arg1, uint64_t arg2, uint64_t arg3) override {
+         //reset mutable globals
+         for(const auto& mg : _initial_globals)
+            mg.first->typed_value = mg.second;
+
+         wabt_apply_instance_vars this_run_vars{nullptr};
+         static_wabt_vars = &this_run_vars;
+
+         //reset memory to inital size & copy back in initial data
+         if(_env->GetMemoryCount()) {
+            Memory* memory = this_run_vars.memory = _env->GetMemory(0);
+            memory->page_limits = _initial_memory_configuration;
+            memory->data.resize(_initial_memory_configuration.initial * WABT_PAGE_SIZE);
+            memset(memory->data.data(), 0, memory->data.size());
+            memcpy(memory->data.data(), _initial_memory.data(), _initial_memory.size());
+         }
+         TypedValues _call_params{4, TypedValue(Type::I64)};
+         _call_params[0].set_i64(func_name);
+         _call_params[1].set_i64(arg1);
+         _call_params[2].set_i64(arg2);
+         _call_params[3].set_i64(arg3);
+
+         ExecResult res = _executor.RunStartFunction(_instatiated_module);
+         EOS_ASSERT( res.result == interp::Result::Ok, wasm_execution_error, "wabt start function failure (${s})", ("s", ResultToString(res.result)) );
+
+         res = _executor.RunExportByName(_instatiated_module, "call", _call_params);
          EOS_ASSERT( res.result == interp::Result::Ok, wasm_execution_error, "wabt execution failure (${s})", ("s", ResultToString(res.result)) );
       }
 

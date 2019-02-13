@@ -42,6 +42,9 @@ public:
 static init_vm_api _init_vm_api;
 static apply_context *s_ctx = nullptr;
 
+//vm_exceptions.cpp
+void vm_throw_exception(int type, const char* fmt, ...);
+
 //eosio.token.cpp
 void token_create( uint64_t issuer, const char* maximum_supply, size_t size);
 void token_issue( uint64_t to, const char* quantity, size_t size1, const char* memo, size_t size2 );
@@ -76,6 +79,33 @@ static inline apply_context& ctx() {
 
 static struct vm_api _vm_api = {
 };
+
+static vector<char> print_buffer;
+
+void log_(int level, int line, const char *file, const char *func, const char *fmt, ...) {
+//void log_(const char *output, int level, int line, const char *file, const char *func) {
+   char output[1024];
+   va_list args;
+   va_start(args, fmt);
+   int len = vsnprintf(output, sizeof output, fmt, args);
+   va_end(args);
+
+   for (int i=0;i<len;i++) {
+      if (output[i] == '\n') {
+         string s(print_buffer.data(), print_buffer.size());
+
+         FC_MULTILINE_MACRO_BEGIN
+          if( (fc::logger::get(DEFAULT_LOGGER)).is_enabled( (fc::log_level::values)level ) )
+             (fc::logger::get(DEFAULT_LOGGER)).log( fc::log_message( fc::log_context((fc::log_level::values)level, file, line, func ), s.c_str() ));
+         FC_MULTILINE_MACRO_END;
+
+         print_buffer.clear();
+
+         continue;
+      }
+      print_buffer.push_back(output[i]);
+   }
+}
 
 extern "C" void vm_api_init() {
    static bool s_init = false;
@@ -228,10 +258,13 @@ extern "C" void vm_api_init() {
       _vm_api.assert_context_free = assert_context_free;
       _vm_api.get_context_free_data = get_context_free_data;
 
+      _vm_api.log = log_;
 
       _vm_api.token_create = token_create;
       _vm_api.token_issue = token_issue;
       _vm_api.token_transfer = token_transfer;
+
+      _vm_api.throw_exception = vm_throw_exception;
    }
    vm_register_api(&_vm_api);
 }

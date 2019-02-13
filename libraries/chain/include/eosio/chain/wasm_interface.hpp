@@ -60,11 +60,15 @@ namespace eosio { namespace chain {
          ~wasm_interface();
 
          //validates code -- does a WASM validation pass and checks the wasm against EOSIO specific constraints
-         static void validate(const controller& control, const bytes& code);
+         static void validate(const bytes& code);
 
          //Calls apply or error on a given code
-         void apply(const digest_type& code_id, const shared_string& code, apply_context& context);
+         bool apply(const digest_type& code_id, const shared_string& code);
+         bool call(uint64_t contract, uint64_t func_name, uint64_t arg1, uint64_t arg2, uint64_t arg3);
 
+         bool has_module(const digest_type& code_id);
+         void load_module(const digest_type& code_id, const shared_string& code);
+         bool is_busy();
          //Immediately exits currently running wasm. UB is called when no wasm running
          void exit();
 
