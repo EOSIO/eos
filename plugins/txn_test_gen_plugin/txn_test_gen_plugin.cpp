@@ -293,8 +293,9 @@ struct txn_test_gen_plugin_impl {
 
       timer_timeout = period;
       batch = batch_size/2;
+      nonce_prefix = 0;
 
-      uint32_t thread_pool_size = 1;
+      uint32_t thread_pool_size = 2;
       gen_ioc = std::make_shared<boost::asio::io_context>();
       gen_ioc_work.emplace( boost::asio::make_work_guard(*gen_ioc) );
       thread_pool.emplace( thread_pool_size );
@@ -316,9 +317,10 @@ struct txn_test_gen_plugin_impl {
          send_transaction([this](const fc::exception_ptr& e){
             if (e) {
                elog("pushing transaction failed: ${e}", ("e", e->to_detail_string()));
-               stop_generation();
+               if(running)
+                  stop_generation();
             }
-         });
+         }, nonce_prefix++);
       });
       timer->async_wait([this](const boost::system::error_code& ec) {
          if(!running || ec)
@@ -327,7 +329,7 @@ struct txn_test_gen_plugin_impl {
       });
    }
 
-   void send_transaction(std::function<void(const fc::exception_ptr&)> next) {
+   void send_transaction(std::function<void(const fc::exception_ptr&)> next, uint64_t nonce_prefix) {
       std::vector<signed_transaction> trxs;
       trxs.reserve(2*batch);
 
@@ -356,7 +358,7 @@ struct txn_test_gen_plugin_impl {
          {
          signed_transaction trx;
          trx.actions.push_back(act_a_to_b);
-         trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
+         trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
          trx.set_reference_block(reference_block_id);
          trx.expiration = cc.head_block_time() + fc::seconds(30);
          trx.max_net_usage_words = 100;
@@ -367,7 +369,7 @@ struct txn_test_gen_plugin_impl {
          {
          signed_transaction trx;
          trx.actions.push_back(act_b_to_a);
-         trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack(nonce++)));
+         trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
          trx.set_reference_block(reference_block_id);
          trx.expiration = cc.head_block_time() + fc::seconds(30);
          trx.max_net_usage_words = 100;
@@ -407,6 +409,7 @@ struct txn_test_gen_plugin_impl {
 
    unsigned timer_timeout;
    unsigned batch;
+   uint64_t nonce_prefix;
 
    action act_a_to_b;
    action act_b_to_a;
