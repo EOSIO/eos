@@ -1,6 +1,10 @@
 set(EOSIO_WASM_OLD_BEHAVIOR "Off")
 find_package( eosio.cdt )
 
+if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+   add_compile_options(-fcolor-diagnostics)
+endif()
+
 add_subdirectory( asserter )
 add_subdirectory( deferred_test )
 add_subdirectory( multi_index_test )
