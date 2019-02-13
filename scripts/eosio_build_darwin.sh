@@ -76,7 +76,7 @@ if [ -z $CMAKE ]; then
 	curl -LO https://cmake.org/files/v$CMAKE_VERSION_MAJOR.$CMAKE_VERSION_MINOR/cmake-$CMAKE_VERSION.tar.gz \
 	&& tar xf cmake-$CMAKE_VERSION.tar.gz \
 	&& cd cmake-$CMAKE_VERSION \
-	&& ./bootstrap --prefix=$HOME \
+	&& ./bootstrap --prefix=$HOME \y
 	&& make -j"${JOBS}" \
 	&& make install \
 	&& cd .. \
@@ -278,9 +278,9 @@ printf "Checking LLVM 4 support...\\n"
 if [ ! -d $LLVM_ROOT ]; then
 	ln -s /usr/local/opt/llvm@4 $LLVM_ROOT \
 	|| exit 1
-	printf " - LLVM (WASM compiler) successfully linked from /usr/local/opt/llvm@4 to ${LLVM_ROOT}\\n"
+	printf " - LLVM successfully linked from /usr/local/opt/llvm@4 to ${LLVM_ROOT}\\n"
 else
-	printf " - LLVM (WASM compiler) found @ ${LLVM_ROOT}.\\n"
+	printf " - LLVM found @ ${LLVM_ROOT}.\\n"
 fi
 
 
