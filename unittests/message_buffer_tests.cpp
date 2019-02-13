@@ -318,6 +318,45 @@ BOOST_AUTO_TEST_CASE(message_buffer_read_peek_bounds_multi) {
    BOOST_CHECK_THROW(mbuff.read(&throw_away_buffer, 1), fc::out_of_range_exception);
 }
 
+BOOST_AUTO_TEST_CASE(message_buffer_datastream) {
+   using my_message_buffer_t = fc::message_buffer<1024>;
+   my_message_buffer_t mbuff;
+
+   char buf[1024];
+   fc::datastream<char*> ds( buf, 1024 );
+
+   int v = 13;
+   fc::raw::pack( ds, v );
+   v = 42;
+   fc::raw::pack( ds, 42 );
+   fc::raw::pack( ds, std::string( "hello" ) );
+
+   memcpy(mbuff.write_ptr(), buf, 1024);
+   mbuff.advance_write_ptr(1024);
+
+   for( int i = 0; i < 3; ++i ) {
+      auto ds2 = mbuff.create_peek_datastream();
+      fc::raw::unpack( ds2, v );
+      BOOST_CHECK_EQUAL( 13, v );
+      fc::raw::unpack( ds2, v );
+      BOOST_CHECK_EQUAL( 42, v );
+      std::string s;
+      fc::raw::unpack( ds2, s );
+      BOOST_CHECK_EQUAL( s, std::string( "hello" ) );
+   }
+
+   {
+      auto ds2 = mbuff.create_datastream();
+      fc::raw::unpack( ds2, v );
+      BOOST_CHECK_EQUAL( 13, v );
+      fc::raw::unpack( ds2, v );
+      BOOST_CHECK_EQUAL( 42, v );
+      std::string s;
+      fc::raw::unpack( ds2, s );
+      BOOST_CHECK_EQUAL( s, std::string( "hello" ) );
+   }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 } // namespace eosio
