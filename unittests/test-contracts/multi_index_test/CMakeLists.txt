@@ -1,4 +1,4 @@
-if( ${eosio.cdt_FOUND} )
+if( EOSIO_COMPILE_TEST_CONTRACTS )
    add_contract( multi_index_test multi_index_test multi_index_test.cpp )
 else()
    configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/multi_index_test.wasm ${CMAKE_CURRENT_BINARY_DIR}/multi_index_test.wasm COPYONLY )

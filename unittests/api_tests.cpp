@@ -201,7 +201,7 @@ transaction_trace_ptr CallAction(TESTER& test, T ac, const vector<account_name>&
 
    auto pl = vector<permission_level>{{scope[0], config::active_name}};
    if (scope.size() > 1)
-      for (int i = 1; i < scope.size(); i++)
+      for (size_t i = 1; i < scope.size(); i++)
          pl.push_back({scope[i], config::active_name});
 
    action act(pl, ac);
