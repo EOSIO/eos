@@ -1067,8 +1067,9 @@ namespace eosio {
 
       uint32_t payload_size = fc::raw::pack_size( m );
 
-      char* header = reinterpret_cast<char*>(&payload_size);
-      size_t header_size = sizeof(payload_size);
+      char* header = reinterpret_cast<char*>(&payload_size); // avoid variable size encoding of uint32_t
+      constexpr size_t header_size = sizeof(payload_size);
+      static_assert( header_size == message_header_size, "invalid message_header_size" );
       size_t buffer_size = header_size + payload_size;
 
       auto send_buffer = std::make_shared<vector<char>>(buffer_size);
@@ -1079,24 +1080,38 @@ namespace eosio {
       enqueue_buffer( send_buffer, trigger_send, priority::low, close_after_send );
    }
 
+   template< typename T>
+   static std::shared_ptr<std::vector<char>> create_send_buffer( int which, const T& v ) {
+      // match net_message static_variant pack
+      uint32_t which_size = fc::raw::pack_size( unsigned_int( which ) );
+      uint32_t payload_size = which_size + fc::raw::pack_size( v );
+
+      char* header = reinterpret_cast<char*>(&payload_size); // avoid variable size encoding of uint32_t
+      constexpr size_t header_size = sizeof( payload_size );
+      static_assert( header_size == message_header_size, "invalid message_header_size" );
+      size_t buffer_size = header_size + payload_size;
+
+      auto send_buffer = std::make_shared<vector<char>>( buffer_size );
+      fc::datastream<char*> ds( send_buffer->data(), buffer_size );
+      ds.write( header, header_size );
+      fc::raw::pack( ds, unsigned_int( which ) );
+      fc::raw::pack( ds, v );
+
+      return send_buffer;
+   }
+
    static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_ptr& sb ) {
       // this implementation is to avoid copy of signed_block to net_message
       int which = 7; // matches which of net_message for signed_block
 
-      uint32_t which_size = fc::raw::pack_size( unsigned_int( which ));
-      uint32_t payload_size = which_size + fc::raw::pack_size( *sb );
+      return create_send_buffer( which, *sb );
+   }
 
-      char* header = reinterpret_cast<char*>(&payload_size);
-      size_t header_size = sizeof(payload_size);
-      size_t buffer_size = header_size + payload_size;
+   static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction& trx ) {
+      // this implementation is to avoid copy of packed_transaction to net_message
+      int which = 8; // matches which of net_message for packed_transaction
 
-      auto send_buffer = std::make_shared<vector<char>>(buffer_size);
-      fc::datastream<char*> ds( send_buffer->data(), buffer_size);
-      ds.write( header, header_size );
-      fc::raw::pack( ds, unsigned_int( which ));
-      fc::raw::pack( ds, *sb );
-
-      return send_buffer;
+      return create_send_buffer( which, trx );
    }
 
    void connection::enqueue_block( const signed_block_ptr& sb, bool trigger_send, bool to_sync_queue) {
@@ -1675,21 +1690,7 @@ namespace eosio {
       time_point_sec trx_expiration = ptrx->packed_trx->expiration();
       const packed_transaction& trx = *ptrx->packed_trx;
 
-      // this implementation is to avoid copy of packed_transaction to net_message
-      int which = 8; // matches which of net_message for packed_transaction
-
-      uint32_t which_size = fc::raw::pack_size( unsigned_int( which ));
-      uint32_t payload_size = which_size + fc::raw::pack_size( trx );
-
-      char* header = reinterpret_cast<char*>(&payload_size);
-      size_t header_size = sizeof(payload_size);
-      size_t buffer_size = header_size + payload_size;
-
-      auto buff = std::make_shared<vector<char>>(buffer_size);
-      fc::datastream<char*> ds( buff->data(), buffer_size);
-      ds.write( header, header_size );
-      fc::raw::pack( ds, unsigned_int( which ));
-      fc::raw::pack( ds, trx );
+      auto buff = create_send_buffer( trx );
 
       node_transaction_state nts = {id, trx_expiration, 0, buff};
       my_impl->local_txns.insert(std::move(nts));
