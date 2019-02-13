@@ -1207,7 +1207,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act2));
 
       // If the deferred tx receiver == this tx receiver, the authorization checking would originally be bypassed.
-      // But not anymore. Now it should subjectively fail because testapi@additional permission is not unilaterally satisfied by testapi@eosio.code.
+      // But not anymore. Now it should subjectively fail because testapi@additional permission is not unilaterally satisfied by testapi@cyber.code.
       dtt_action dtt_act3;
       dtt_act3.deferred_account = N(testapi);
       dtt_act3.permission_name = N(additional);
@@ -2038,7 +2038,7 @@ BOOST_FIXTURE_TEST_CASE(permission_usage_tests, TESTER) { try {
 
    push_action(config::system_account_name, linkauth::get_name(), N(bob), fc::mutable_variant_object()
            ("account", "bob")
-           ("code", "eosio")
+           ("code", config::system_account_name)
            ("type", "reqauth")
            ("requirement", "perm1")
    );

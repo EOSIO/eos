@@ -15,15 +15,15 @@ namespace eosio { namespace chain {
     * @defgroup native_action_handlers Native Action Handlers
     */
    ///@{
-   void apply_eosio_newaccount(apply_context&);
-   void apply_eosio_updateauth(apply_context&);
-   void apply_eosio_deleteauth(apply_context&);
-   void apply_eosio_linkauth(apply_context&);
-   void apply_eosio_unlinkauth(apply_context&);
+   void apply_cyber_newaccount(apply_context&);
+   void apply_cyber_updateauth(apply_context&);
+   void apply_cyber_deleteauth(apply_context&);
+   void apply_cyber_linkauth(apply_context&);
+   void apply_cyber_unlinkauth(apply_context&);
 
-   void apply_eosio_providebw(apply_context&);
+   void apply_cyber_providebw(apply_context&);
 
-   void apply_eosio_requestbw(apply_context&);
+   void apply_cyber_requestbw(apply_context&);
 
    void apply_cyber_domain_newdomain(apply_context&);
    void apply_cyber_domain_passdomain(apply_context&);
@@ -32,15 +32,15 @@ namespace eosio { namespace chain {
    void apply_cyber_domain_newusername(apply_context&);
 
    /*
-   void apply_eosio_postrecovery(apply_context&);
-   void apply_eosio_passrecovery(apply_context&);
-   void apply_eosio_vetorecovery(apply_context&);
+   void apply_cyber_postrecovery(apply_context&);
+   void apply_cyber_passrecovery(apply_context&);
+   void apply_cyber_vetorecovery(apply_context&);
    */
 
-   void apply_eosio_setcode(apply_context&);
-   void apply_eosio_setabi(apply_context&);
+   void apply_cyber_setcode(apply_context&);
+   void apply_cyber_setabi(apply_context&);
 
-   void apply_eosio_canceldelay(apply_context&);
+   void apply_cyber_canceldelay(apply_context&);
    ///@}  end action handlers
 
 } } /// namespace eosio::chain

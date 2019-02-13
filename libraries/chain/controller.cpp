@@ -228,23 +228,23 @@ struct controller_impl {
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
-   SET_APP_HANDLER( eosio, eosio, newaccount );
-   SET_APP_HANDLER( eosio, eosio, setcode );
-   SET_APP_HANDLER( eosio, eosio, setabi );
-   SET_APP_HANDLER( eosio, eosio, updateauth );
-   SET_APP_HANDLER( eosio, eosio, deleteauth );
-   SET_APP_HANDLER( eosio, eosio, linkauth );
-   SET_APP_HANDLER( eosio, eosio, unlinkauth );
+   SET_APP_HANDLER(cyber, cyber, newaccount);
+   SET_APP_HANDLER(cyber, cyber, setcode);
+   SET_APP_HANDLER(cyber, cyber, setabi);
+   SET_APP_HANDLER(cyber, cyber, updateauth);
+   SET_APP_HANDLER(cyber, cyber, deleteauth);
+   SET_APP_HANDLER(cyber, cyber, linkauth);
+   SET_APP_HANDLER(cyber, cyber, unlinkauth);
 
-   SET_APP_HANDLER( eosio, eosio, providebw );
-   SET_APP_HANDLER( eosio, eosio, requestbw );
+   SET_APP_HANDLER(cyber, cyber, providebw);
+   SET_APP_HANDLER(cyber, cyber, requestbw);
 /*
-   SET_APP_HANDLER( eosio, eosio, postrecovery );
-   SET_APP_HANDLER( eosio, eosio, passrecovery );
-   SET_APP_HANDLER( eosio, eosio, vetorecovery );
+   SET_APP_HANDLER(cyber, cyber, postrecovery);
+   SET_APP_HANDLER(cyber, cyber, passrecovery);
+   SET_APP_HANDLER(cyber, cyber, vetorecovery);
 */
 
-   SET_APP_HANDLER( eosio, eosio, canceldelay );
+   SET_APP_HANDLER(cyber, cyber, canceldelay);
 
 #define SET_CONTRACT_HANDLER(contract, action, function) set_apply_handler(contract, contract, #action, function);
 #define SET_DOTCONTRACT_HANDLER(base, sub, action) SET_CONTRACT_HANDLER(#base "." #sub, action, \
@@ -860,9 +860,13 @@ struct controller_impl {
         signed_transaction call_provide_trx;
         transaction_context trx_context( self, call_provide_trx, call_provide_trx.id());
         for (const auto& action : actions) {
-            if (action.account == N(eosio) && action.name == N(requestbw)) {
+            if (action.account == config::system_account_name && action.name == config::request_bw_action) {
                 const auto request_bw = action.data_as<requestbw>();
-                call_provide_trx.actions.emplace_back(vector<permission_level>{{request_bw.provider, config::active_name}}, request_bw.provider, N(approvebw), fc::raw::pack(approvebw( request_bw.account)));
+                call_provide_trx.actions.emplace_back(
+                    vector<permission_level>{{request_bw.provider, config::active_name}},
+                    request_bw.provider,
+                    config::approve_bw_action,
+                    fc::raw::pack(approvebw(request_bw.account)));
             }
         }
 

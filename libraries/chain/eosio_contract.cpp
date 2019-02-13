@@ -46,7 +46,7 @@ void validate_authority_precondition( const apply_context& context, const author
       if( a.permission.permission == config::owner_name || a.permission.permission == config::active_name )
          continue; // account was already checked to exist, so its owner and active permissions should exist
 
-      if( a.permission.permission == config::eosio_code_name ) // virtual eosio.code permission does not really exist but is allowed
+      if( a.permission.permission == config::eosio_code_name ) // virtual cyber.code permission does not really exist but is allowed
          continue;
 
       try {
@@ -66,10 +66,15 @@ void validate_authority_precondition( const apply_context& context, const author
    }
 }
 
+const string& system_prefix() {
+   static const string prefix = name{config::system_account_name}.to_string() + '.';
+   return prefix;
+}
+
 /**
  *  This method is called assuming precondition_system_newaccount succeeds a
  */
-void apply_eosio_newaccount(apply_context& context) {
+void apply_cyber_newaccount(apply_context& context) {
    auto create = context.act.data_as<newaccount>();
    try {
    context.require_authorization(create.creator);
@@ -89,8 +94,8 @@ void apply_eosio_newaccount(apply_context& context) {
    // Check if the creator is privileged
    const auto &creator = db.get<account_object, by_name>(create.creator);
    if( !creator.privileged ) {
-      EOS_ASSERT( name_str.find( "eosio." ) != 0, action_validate_exception,
-                  "only privileged accounts can have names that start with 'eosio.'" );
+      EOS_ASSERT(name_str.find(system_prefix()) != 0, action_validate_exception,
+         "only privileged accounts can have names that start with '${prefix}'", ("prefix", system_prefix()));
    }
 
    auto existing_account = db.find<account_object, by_name>(create.name);
@@ -127,7 +132,7 @@ void apply_eosio_newaccount(apply_context& context) {
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
-void apply_eosio_setcode(apply_context& context) {
+void apply_cyber_setcode(apply_context& context) {
    const auto& cfg = context.control.get_global_properties().configuration;
 
    auto& db = context.db;
@@ -173,7 +178,7 @@ void apply_eosio_setcode(apply_context& context) {
    }
 }
 
-void apply_eosio_setabi(apply_context& context) {
+void apply_cyber_setabi(apply_context& context) {
    auto& db  = context.db;
    auto  act = context.act.data_as<setabi>();
 
@@ -204,7 +209,7 @@ void apply_eosio_setabi(apply_context& context) {
    }
 }
 
-void apply_eosio_updateauth(apply_context& context) {
+void apply_cyber_updateauth(apply_context& context) {
 
    auto update = context.act.data_as<updateauth>();
    context.require_authorization(update.account); // only here to mark the single authority on this action as used
@@ -213,8 +218,8 @@ void apply_eosio_updateauth(apply_context& context) {
    auto& db = context.db;
 
    EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
-   EOS_ASSERT( update.permission.to_string().find( "eosio." ) != 0, action_validate_exception,
-               "Permission names that start with 'eosio.' are reserved" );
+   EOS_ASSERT( update.permission.to_string().find(system_prefix()) != 0, action_validate_exception,
+      "Permission names that start with '${prefix}' are reserved", ("prefix", system_prefix()));
    EOS_ASSERT(update.permission != update.parent, action_validate_exception, "Cannot set an authority as its own parent");
    db.get<account_object, by_name>(update.account);
    EOS_ASSERT(validate(update.auth), action_validate_exception,
@@ -268,7 +273,7 @@ void apply_eosio_updateauth(apply_context& context) {
    }
 }
 
-void apply_eosio_deleteauth(apply_context& context) {
+void apply_cyber_deleteauth(apply_context& context) {
 //   context.require_write_lock( config::eosio_auth_scope );
 
    auto remove = context.act.data_as<deleteauth>();
@@ -299,7 +304,7 @@ void apply_eosio_deleteauth(apply_context& context) {
 
 }
 
-void apply_eosio_linkauth(apply_context& context) {
+void apply_cyber_linkauth(apply_context& context) {
 //   context.require_write_lock( config::eosio_auth_scope );
 
    auto requirement = context.act.data_as<linkauth>();
@@ -347,7 +352,7 @@ void apply_eosio_linkauth(apply_context& context) {
   } FC_CAPTURE_AND_RETHROW((requirement))
 }
 
-void apply_eosio_unlinkauth(apply_context& context) {
+void apply_cyber_unlinkauth(apply_context& context) {
 //   context.require_write_lock( config::eosio_auth_scope );
 
    auto& db = context.db;
@@ -366,22 +371,22 @@ void apply_eosio_unlinkauth(apply_context& context) {
    db.remove(*link);
 }
 
-void apply_eosio_providebw(apply_context& context) {
+void apply_cyber_providebw(apply_context& context) {
    auto args = context.act.data_as<providebw>();
    context.require_authorization(args.provider);
 }
 
-void apply_eosio_requestbw(apply_context& context) {
+void apply_cyber_requestbw(apply_context& context) {
    auto args = context.act.data_as<requestbw>();
    context.require_authorization(args.account);
 }
 
-void apply_eosio_provideram(apply_context& context) {
+void apply_cyber_provideram(apply_context& context) {
    auto args = context.act.data_as<provideram>();
    context.require_authorization(args.provider);
 }
 
-void apply_eosio_canceldelay(apply_context& context) {
+void apply_cyber_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
    context.require_authorization(cancel.canceling_auth.actor); // only here to mark the single authority on this action as used
 
