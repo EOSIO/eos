@@ -257,9 +257,9 @@ namespace cyberway { namespace chaindb {
         }
 
         // From internal
-        primary_key_t insert(cache_item& itm, variant value) {
+        primary_key_t insert(cache_item& itm, variant value, const account_name& payer) {
             auto table = get_table(itm);
-            auto obj = object_value{{table, itm.pk(), account_name() /* payer */}, std::move(value)};
+            auto obj = object_value{{table, itm.pk(), payer}, std::move(value)};
 
             auto inserted_pk = insert(table, obj);
             itm.set_object(std::move(obj));
@@ -285,9 +285,9 @@ namespace cyberway { namespace chaindb {
         }
 
         // From internal
-        primary_key_t update(cache_item& itm, variant value) {
+        primary_key_t update(cache_item& itm, variant value, const account_name& payer) {
             auto table = get_table(itm);
-            auto obj = object_value{{table, itm.pk(), account_name() /* payer */}, std::move(value)};
+            auto obj = object_value{{table, itm.pk(), payer}, std::move(value)};
 
             auto updated_pk = update(table, obj);
             itm.set_object(std::move(obj));
@@ -694,12 +694,12 @@ namespace cyberway { namespace chaindb {
         return impl_->remove(ctx, request, pk);
     }
 
-    primary_key_t chaindb_controller::insert(cache_item& itm, variant data) {
-        return impl_->insert(itm, std::move(data));
+    primary_key_t chaindb_controller::insert(cache_item& itm, variant data, const account_name& payer) {
+        return impl_->insert(itm, std::move(data), payer);
     }
 
-    primary_key_t chaindb_controller::update(cache_item& itm, variant data) {
-        return impl_->update(itm, std::move(data));
+    primary_key_t chaindb_controller::update(cache_item& itm, variant data, const account_name& payer) {
+        return impl_->update(itm, std::move(data), payer);
     }
 
     primary_key_t chaindb_controller::remove(cache_item& itm) {

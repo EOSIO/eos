@@ -99,9 +99,14 @@ namespace cyberway { namespace chaindb {
         }
     }; // struct object_id_extractor
 
+    struct primary_index {
+        using tag = tag<by_id>;
+        using extractor = object_id_extractor;
+    }; // struct primary_index
+
     template<typename Object, typename Allocator, typename... Items>
     struct multi_index_container<Object, Allocator, indexed_by<Items...>> {
-        using impl = multi_index<tag<Object>, PrimaryIndex<tag<by_id>, object_id_extractor>, Object, Allocator, Items...>;
+        using impl = multi_index<tag<Object>, primary_index, Object, Allocator, Items...>;
     };
 
    template<typename Object, typename IndexSpec>
@@ -171,7 +176,7 @@ namespace cyberway { namespace chaindb {
 
        template<typename Modifier>
        bool modify(iterator position, Modifier&& mod) {
-           impl.modify(position, std::forward<Modifier>(mod));
+           impl.modify(position, account_name(), std::forward<Modifier>(mod));
            return true;
        }
 
@@ -180,7 +185,7 @@ namespace cyberway { namespace chaindb {
        template<typename Constructor, typename Allocator>
        emplace_return_type emplace(Constructor&& constructor, Allocator&&) {
            try {
-               auto iter = impl.emplace(std::forward<Constructor>(constructor));
+               auto iter = impl.emplace(account_name(), std::forward<Constructor>(constructor));
                return std::make_pair(std::move(iter), true);
            } catch (const fc::exception& err) {
                return std::make_pair(end(), false);

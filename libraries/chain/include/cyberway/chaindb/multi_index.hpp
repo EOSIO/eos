@@ -211,11 +211,6 @@ struct code_extractor<std::integral_constant<uint64_t, N>> {
     constexpr static uint64_t get_code() {return N;}
 }; // struct code_extractor
 
-template<typename Tag, typename Extractor> struct PrimaryIndex {
-    using tag = Tag;
-    using extractor = Extractor;
-}; // struct PrimaryIndex
-
 template<typename TableName, typename Index, typename T, typename Allocator, typename... Indices>
 struct multi_index {
 public:
@@ -619,7 +614,7 @@ public:
         }
 
         template<typename Lambda>
-        void modify(const const_iterator& itr, account_name_t payer, Lambda&& updater) const {
+        void modify(const const_iterator& itr, const account_name& payer, Lambda&& updater) const {
             CYBERWAY_INDEX_ASSERT(itr != cend(), "cannot pass end iterator to modify");
             multidx_().modify(*itr, payer, std::forward<Lambda&&>(updater));
         }
@@ -713,7 +708,7 @@ public:
     }
 
     template<typename Lambda>
-    const_iterator emplace(Lambda&& constructor) const {
+    const_iterator emplace(const account_name& payer, Lambda&& constructor) const {
         auto itm = controller_.create_cache_item(get_table_request());
         try {
             auto pk = itm->pk();
@@ -728,7 +723,7 @@ public:
 
             fc::variant value;
             fc::to_variant(obj, value);
-            controller_.insert(*itm.get(), std::move(value));
+            controller_.insert(*itm.get(), std::move(value), payer);
 
             return const_iterator(this, uninitilized_cursor::find_by_pk, pk, std::move(itm));
         } catch (...) {
@@ -738,13 +733,13 @@ public:
     }
 
     template<typename Lambda>
-    void modify(const_iterator itr, Lambda&& updater) const {
+    void modify(const_iterator itr, const account_name& payer, Lambda&& updater) const {
         CYBERWAY_INDEX_ASSERT(itr != end(), "cannot pass end iterator to modify");
-        modify(*itr, std::forward<Lambda&&>(updater));
+        modify(*itr, payer, std::forward<Lambda&&>(updater));
     }
 
     template<typename Lambda>
-    void modify(const T& obj, Lambda&& updater) const {
+    void modify(const T& obj, const account_name& payer, Lambda&& updater) const {
         auto& itm = item_data::get_cache(obj);
         CYBERWAY_INDEX_ASSERT(itm.is_valid_table(table_name()), "object passed to modify is not in multi_index");
 
@@ -758,7 +753,7 @@ public:
 
         fc::variant value;
         fc::to_variant(obj, value);
-        auto upk = controller_.update(itm, std::move(value));
+        auto upk = controller_.update(itm, std::move(value), payer);
         CYBERWAY_INDEX_ASSERT(upk == pk, "unable to update object");
     }
 
