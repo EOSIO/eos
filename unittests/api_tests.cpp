@@ -1469,58 +1469,50 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
    create_account( N(testapi) );
    produce_blocks(1);
    set_code( N(testapi), contracts::test_api_multi_index_wasm() );
+   set_abi( N(testapi), contracts::test_api_multi_index_abi().data() );
    produce_blocks(1);
 
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_general", {});
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_store_only", {});
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_check_without_storing", {});
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_general", {});
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_store_only", {});
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_check_without_storing", {});
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test", {});
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part1", {});
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part2", {});
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx256_general", {});
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_double_general", {});
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_long_double_general", {});
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pk_iterator_exceed_end", {},
-                                           eosio_assert_message_exception, "cannot increment end iterator");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_sk_iterator_exceed_end", {},
-                                           eosio_assert_message_exception, "cannot increment end iterator");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pk_iterator_exceed_begin", {},
-                                           eosio_assert_message_exception, "cannot decrement iterator at beginning of table");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_sk_iterator_exceed_begin", {},
-                                           eosio_assert_message_exception, "cannot decrement iterator at beginning of index");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_pk_ref_to_other_table", {},
-                                           eosio_assert_message_exception, "object passed to iterator_to is not in multi_index");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_sk_ref_to_other_table", {},
-                                           eosio_assert_message_exception, "object passed to iterator_to is not in multi_index");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_pk_end_itr_to_iterator_to", {},
-                                           eosio_assert_message_exception, "object passed to iterator_to is not in multi_index");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_pk_end_itr_to_modify", {},
-                                           eosio_assert_message_exception, "cannot pass end iterator to modify");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_pk_end_itr_to_erase", {},
-                                           eosio_assert_message_exception, "cannot pass end iterator to erase");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_sk_end_itr_to_iterator_to", {},
-                                           eosio_assert_message_exception, "object passed to iterator_to is not in multi_index");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_sk_end_itr_to_modify", {},
-                                           eosio_assert_message_exception, "cannot pass end iterator to modify");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_sk_end_itr_to_erase", {},
-                                           eosio_assert_message_exception, "cannot pass end iterator to erase");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_modify_primary_key", {},
-                                           eosio_assert_message_exception, "updater cannot change primary key when modifying an object");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_run_out_of_avl_pk", {},
-                                           eosio_assert_message_exception, "next primary key in table is at autoincrement limit");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_fail", {},
-                                           eosio_assert_message_exception, "unable to find key");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_fail_with_msg", {},
-                                           eosio_assert_message_exception, "unable to find primary key in require_find");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_sk_fail", {},
-                                           eosio_assert_message_exception, "unable to find secondary key");
-   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_require_find_sk_fail_with_msg", {},
-                                           eosio_assert_message_exception, "unable to find sec key");
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_sk_cache_pk_lookup", {});
-   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_pk_cache_sk_lookup", {});
+   auto check_failure = [this]( action_name a, const char* expected_error_msg ) {
+      BOOST_CHECK_EXCEPTION(  push_action( N(testapi), a, N(testapi), {} ),
+                              eosio_assert_message_exception,
+                              eosio_assert_message_is( expected_error_msg )
+      );
+   };
+
+   push_action( N(testapi), N(s1g),  N(testapi), {} );        // idx64_general
+   push_action( N(testapi), N(s1store),  N(testapi), {} );    // idx64_store_only
+   push_action( N(testapi), N(s1check),  N(testapi), {} );    // idx64_check_without_storing
+   push_action( N(testapi), N(s2g),  N(testapi), {} );        // idx128_general
+   push_action( N(testapi), N(s2store),  N(testapi), {} );    // idx128_store_only
+   push_action( N(testapi), N(s2check),  N(testapi), {} );    // idx128_check_without_storing
+   push_action( N(testapi), N(s2autoinc),  N(testapi), {} );  // idx128_autoincrement_test
+   push_action( N(testapi), N(s2autoinc1),  N(testapi), {} ); // idx128_autoincrement_test_part1
+   push_action( N(testapi), N(s2autoinc2),  N(testapi), {} ); // idx128_autoincrement_test_part2
+   push_action( N(testapi), N(s3g),  N(testapi), {} );        // idx256_general
+   push_action( N(testapi), N(sdg),  N(testapi), {} );        // idx_double_general
+   push_action( N(testapi), N(sldg),  N(testapi), {} );       // idx_long_double_general
+
+   check_failure( N(s1pkend), "cannot increment end iterator" ); // idx64_pk_iterator_exceed_end
+   check_failure( N(s1skend), "cannot increment end iterator" ); // idx64_sk_iterator_exceed_end
+   check_failure( N(s1pkbegin), "cannot decrement iterator at beginning of table" ); // idx64_pk_iterator_exceed_begin
+   check_failure( N(s1skbegin), "cannot decrement iterator at beginning of index" ); // idx64_sk_iterator_exceed_begin
+   check_failure( N(s1pkref), "object passed to iterator_to is not in multi_index" ); // idx64_pass_pk_ref_to_other_table
+   check_failure( N(s1skref), "object passed to iterator_to is not in multi_index" ); // idx64_pass_sk_ref_to_other_table
+   check_failure( N(s1pkitrto), "object passed to iterator_to is not in multi_index" ); // idx64_pass_pk_end_itr_to_iterator_to
+   check_failure( N(s1pkmodify), "cannot pass end iterator to modify" ); // idx64_pass_pk_end_itr_to_modify
+   check_failure( N(s1pkerase), "cannot pass end iterator to erase" ); // idx64_pass_pk_end_itr_to_erase
+   check_failure( N(s1skitrto), "object passed to iterator_to is not in multi_index" ); // idx64_pass_sk_end_itr_to_iterator_to
+   check_failure( N(s1skmodify), "cannot pass end iterator to modify" ); // idx64_pass_sk_end_itr_to_modify
+   check_failure( N(s1skerase), "cannot pass end iterator to erase" ); // idx64_pass_sk_end_itr_to_erase
+   check_failure( N(s1modpk), "updater cannot change primary key when modifying an object" ); // idx64_modify_primary_key
+   check_failure( N(s1exhaustpk), "next primary key in table is at autoincrement limit" ); // idx64_run_out_of_avl_pk
+   check_failure( N(s1findfail1), "unable to find key" ); // idx64_require_find_fail
+   check_failure( N(s1findfail2), "unable to find primary key in require_find" );// idx64_require_find_fail_with_msg
+   check_failure( N(s1findfail3), "unable to find secondary key" ); // idx64_require_find_sk_fail
+   check_failure( N(s1findfail4), "unable to find sec key" ); // idx64_require_find_sk_fail_with_msg
+
+   push_action( N(testapi), N(s1skcache),  N(testapi), {} ); // idx64_sk_cache_pk_lookup
+   push_action( N(testapi), N(s1pkcache),  N(testapi), {} ); // idx64_pk_cache_sk_lookup
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
