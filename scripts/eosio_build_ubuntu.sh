@@ -132,8 +132,9 @@ fi
 
 printf "\\n"
 
+
 printf "Checking CMAKE installation...\\n"
-if [ -z $CMAKE ]; then
+if [ ! -e $CMAKE ]; then
 	printf "Installing CMAKE...\\n"
 	curl -LO https://cmake.org/files/v$CMAKE_VERSION_MAJOR.$CMAKE_VERSION_MINOR/cmake-$CMAKE_VERSION.tar.gz \
 	&& tar -xzf cmake-$CMAKE_VERSION.tar.gz \
@@ -144,7 +145,7 @@ if [ -z $CMAKE ]; then
 	&& cd .. \
 	&& rm -f cmake-$CMAKE_VERSION.tar.gz \
 	|| exit 1
-	printf " - CMAKE successfully installed @ ${HOME}/bin/cmake \\n"
+	printf " - CMAKE successfully installed @ ${CMAKE} \\n"
 else
 	printf " - CMAKE found @ ${CMAKE}.\\n"
 fi

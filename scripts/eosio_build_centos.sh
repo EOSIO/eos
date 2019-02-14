@@ -180,7 +180,7 @@ if [ ! -e $CMAKE ]; then
 	&& cd .. \
 	&& rm -f cmake-$CMAKE_VERSION.tar.gz \
 	|| exit 1
-	printf " - CMAKE successfully installed @ ${HOME}/bin/cmake \\n"
+	printf " - CMAKE successfully installed @ ${CMAKE} \\n"
 else
 	printf " - CMAKE found @ ${CMAKE}.\\n"
 fi
