@@ -169,7 +169,7 @@ fi
 printf "\\n"
 
 printf "Checking CMAKE installation...\\n"
-if [ ! -f "$HOME/bin/cmake" ]; then
+if [ ! -e $HOME/bin/cmake ]; then
 	printf "Installing CMAKE...\\n"
 	curl -LO https://cmake.org/files/v$CMAKE_VERSION_MAJOR.$CMAKE_VERSION_MINOR/cmake-$CMAKE_VERSION.tar.gz \
 	&& tar xf cmake-$CMAKE_VERSION.tar.gz \
