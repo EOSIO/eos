@@ -484,6 +484,7 @@ namespace eosio {
       peer_block_state_index  blk_state;
       transaction_state_index trx_state;
       optional<sync_state>    peer_requested;  // this peer is requesting info from us
+      std::shared_ptr<boost::asio::io_context>  server_ioc; // keep ioc alive
       socket_ptr              socket;
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
@@ -726,6 +727,7 @@ namespace eosio {
       : blk_state(),
         trx_state(),
         peer_requested(),
+        server_ioc( my_impl->server_ioc ),
         socket( std::make_shared<tcp::socket>( std::ref( *my_impl->server_ioc ))),
         node_id(),
         last_handshake_recv(),
@@ -750,6 +752,7 @@ namespace eosio {
       : blk_state(),
         trx_state(),
         peer_requested(),
+        server_ioc( my_impl->server_ioc ),
         socket( s ),
         node_id(),
         last_handshake_recv(),
@@ -3054,13 +3057,13 @@ namespace eosio {
             my->acceptor->cancel();
             my->acceptor->close();
 
-            ilog( "close ${s} connections",( "s",my->connections.size()) );
-            auto cons = my->connections;
-            for( auto con : cons ) {
-               my->close( con);
-            }
-
             my->acceptor.reset(nullptr);
+
+            ilog( "close ${s} connections",( "s",my->connections.size()) );
+            for( auto& con : my->connections ) {
+               my->close( con );
+            }
+            my->connections.clear();
          }
 
          if( my->server_ioc )
