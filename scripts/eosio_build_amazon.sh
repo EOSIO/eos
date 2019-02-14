@@ -228,9 +228,9 @@ if [ ! -d $LLVM_ROOT ]; then
 	&& make install \
 	&& cd ../.. \
 	|| exit 1
-	printf " - WASM compiler successfully installed @ ${LLVM_ROOT}\\n"
+	printf " - LLVM successfully installed @ ${LLVM_ROOT}\\n"
 else
-	printf " - WASM found @ ${LLVM_ROOT}.\\n"
+	printf " - LLVM found @ ${LLVM_ROOT}.\\n"
 fi
 if [ $? -ne 0 ]; then exit -1; fi
 
@@ -240,15 +240,8 @@ printf "\\n"
 
 function print_instructions()
 {
-	printf "Please ensure the following in your ~/.bash_profile:\\n"
-	# HOME/bin first to load proper cmake version over the one in /usr/bin.
-	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang + We don't symlink into $HOME/bin
-	printf "export PATH=\$HOME/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
-	printf "export LD_LIBRARY_PATH=\$HOME/lib:\$HOME/lib64:\$HOME/opt/llvm/lib:\$LD_LIBRARY_PATH\\n" # libmongoc is installed into $HOME/lib64
-	printf "export CMAKE_MODULE_PATH=\$HOME/lib/cmake\\n"
-	printf "export CPATH=\$HOME/include:\$CPLUS_INCLUDE_PATH\\n" # libmongoc is installed into $HOME/include
-	printf "\\nThen, source the file (or restart the terminal) and run:\\n"
-	printf "$( command -v mongod ) --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
+	printf "(Optional) Testing Instructions:\\n"
+	printf "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
 	printf "cd ${BUILD_DIR} && make test\\n"
 	return 0
 }

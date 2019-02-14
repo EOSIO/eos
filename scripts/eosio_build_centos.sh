@@ -288,9 +288,9 @@ if [ ! -d $LLVM_ROOT ]; then
 	&& make install \
 	&& cd ../.. \
 	|| exit 1
-	printf " - WASM compiler successfully installed @ ${LLVM_ROOT}\\n"
+	printf " - LLVM successfully installed @ ${LLVM_ROOT}\\n"
 else
-	printf " - WASM found @ ${LLVM_ROOT}.\\n"
+	printf " - LLVM found @ ${LLVM_ROOT}.\\n"
 fi
 if [ $? -ne 0 ]; then exit -1; fi
 
@@ -302,9 +302,8 @@ function print_instructions()
 {
 	printf "(Optional) Testing Instructions:\\n"
 	printf "source /opt/rh/python33/enable\\n"
-	# printf "CPATH=\$CPATH:/opt/rh/python33/root/usr/include/python3.3m\\n" # Boost has trouble finding pyconfig.h
 	printf "source /opt/rh/devtoolset-7/enable\\n"
-	printf "$( command -v mongod ) --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
+	printf "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
 	printf "cd build && make test\\n"
 	return 0
 }

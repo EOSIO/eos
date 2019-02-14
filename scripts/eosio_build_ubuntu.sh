@@ -132,9 +132,8 @@ fi
 
 printf "\\n"
 
-CMAKE=$(command -v cmake 2>/dev/null)
 printf "Checking CMAKE installation...\\n"
-if [ ! -d $SRC_LOCATION/cmake-$CMAKE_VERSION ]; then
+if [ -z $CMAKE ]; then
 	printf "Installing CMAKE...\\n"
 	curl -LO https://cmake.org/files/v$CMAKE_VERSION_MAJOR.$CMAKE_VERSION_MINOR/cmake-$CMAKE_VERSION.tar.gz \
 	&& tar xf cmake-$CMAKE_VERSION.tar.gz \
@@ -207,7 +206,7 @@ if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 	&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 	&& mkdir -p cmake-build \
 	&& cd cmake-build \
-	&& cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
+	&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
 	&& make -j"${JOBS}" \
 	&& make install \
 	&& cd ../.. \
@@ -224,7 +223,7 @@ if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
 	&& tar -xzvf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
-	&& cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
+	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
 	&& make -j"${JOBS}" VERBOSE=1 \
 	&& make install \
 	&& cd ../.. \
@@ -244,9 +243,9 @@ printf "Checking LLVM 4 support...\\n"
 if [ ! -d $LLVM_ROOT ]; then
 	ln -s /usr/lib/llvm-4.0 $LLVM_ROOT \
 	|| exit 1
-	printf " - LLVM (WASM compiler) successfully linked from /usr/lib/llvm-4.0 to ${LLVM_ROOT}\\n"
+	printf " - LLVM successfully linked from /usr/lib/llvm-4.0 to ${LLVM_ROOT}\\n"
 else
-	printf " - LLVM (WASM compiler) found @ ${LLVM_ROOT}.\\n"
+	printf " - LLVM found @ ${LLVM_ROOT}.\\n"
 fi
 if [ $? -ne 0 ]; then exit -1; fi
 
