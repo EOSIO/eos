@@ -178,7 +178,7 @@
 			printf "\\n\\tExiting now.\\n\\n"
 			exit 1
 		fi
-		if ! ./b2 -j"${CPU_CORE}" install
+		if ! ./b2 -j"${CPU_CORE}" --with-thread --with-date_time --with-filesystem --with-system --with-program_options --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-iostreams cxxflags="-fPIC" link=static stage install
 		then
 			printf "\\n\\tInstallation of boost libraries failed. 1\\n"
 			printf "\\n\\tExiting now.\\n\\n"
