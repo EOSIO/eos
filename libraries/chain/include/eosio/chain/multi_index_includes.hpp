@@ -11,13 +11,7 @@
 #include <boost/multi_index/ordered_index.hpp>
 
 #include <cyberway/chaindb/multi_index.hpp>
-
-#define OBJECT_CTOR(NAME) \
-    NAME() = delete; \
-    public: \
-    template<typename Constructor> \
-    NAME(Constructor&& c, int) \
-    { c(*this); }
+#include <cyberway/chaindb/index_object.hpp>
 
 namespace bmi = boost::multi_index;
 using bmi::indexed_by;

@@ -1,15 +1,18 @@
 #pragma once
 
 #include <chainbase/chainbase.hpp>
+#include <cyberway/chaindb/index_object.hpp>
 
 namespace fc {
     class variant;
 
-    template<typename T>
-    inline void to_variant(const chainbase::oid<T>& var, variant& vo);
+    template<typename T> inline void to_variant(const chainbase::oid<T>&, variant&);
+    template<typename T> inline void from_variant(const variant&, chainbase::oid<T>&);
+    template<typename T> inline void from_variant(const variant&, chainbase::oid<T>&);
 
-    template<typename T>
-    inline void from_variant(const variant& var, chainbase::oid<T>& vo);
+    template<typename T> inline void to_variant(const cyberway::chaindb::oid<T>&, variant&);
+    template<typename T> inline void from_variant(const variant&, cyberway::chaindb::oid<T>&);
+    template<typename T> inline void from_variant(const variant&, cyberway::chaindb::oid<T>&);
 
     inline void to_variant(const std::vector<bool>& t, variant& vo);
 
@@ -39,13 +42,11 @@ namespace fc {
     }
 
     namespace raw {
-        template<typename Stream, typename T>
-        inline void pack(Stream& s, const chainbase::oid<T>& o) {
+        template<typename Stream, typename T> inline void pack(Stream& s, const chainbase::oid<T>& o) {
             fc::raw::pack(s, o._id);
         }
 
-        template<typename Stream, typename T>
-        inline void unpack(Stream& s, chainbase::oid<T>& o) {
+        template<typename Stream, typename T> inline void unpack(Stream& s, chainbase::oid<T>& o) {
             fc::raw::unpack(s, o._id);
         }
 
