@@ -258,7 +258,7 @@ if [ "$ARCH" == "Darwin" ]; then
 fi
 
 # Cleanup old installation
-(. ./scripts/dep_uninstall.sh)
+(. ./scripts/dep_uninstaller.sh)
 if [ $? -ne 0 ]; then exit -1; fi # Stop if exit from script is not 0
 
 pushd $SRC_LOCATION &> /dev/null
