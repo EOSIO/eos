@@ -189,7 +189,7 @@ struct provideram {
     }
 
     static action_name get_name() {
-        return N(providebw);
+        return N(provideram);
     }
 };
 

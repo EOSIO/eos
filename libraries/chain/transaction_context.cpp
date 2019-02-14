@@ -324,11 +324,11 @@ namespace bacc = boost::accumulators;
    }
 
    void transaction_context::add_ram_provider(account_name contract, account_name user, account_name provider)    {
-       auto provider_for_user = ram_providers_.find(contract);
+       const auto provider_it = ram_providers_.find({contract, user});
 
-       EOS_ASSERT(provider_for_user == ram_providers_.end() || provider_for_user->second.find(user) == provider_for_user->second.end(), ram_provider_error, "Provider has been already setted up");
+       EOS_ASSERT(provider_it == ram_providers_.end(), ram_provider_error, "Provider has been already setted up");
 
-       ram_providers_[contract][user] = provider;
+       ram_providers_[{contract, user}] = provider;
    }
 
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
@@ -720,6 +720,12 @@ namespace bacc = boost::accumulators;
          }
       }
       EOS_ASSERT( one_auth, tx_no_auths, "transaction must have at least one authorization" );
+   }
+
+   account_name transaction_context::get_ram_provider(account_name running_contract, account_name user) const {
+       const auto contract_provider = ram_providers_.find({running_contract, user});
+
+       return contract_provider == ram_providers_.end() ? user : contract_provider->second;
    }
 
 } } /// eosio::chain
