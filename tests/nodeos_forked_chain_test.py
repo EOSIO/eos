@@ -433,4 +433,13 @@ try:
 finally:
     TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
 
+    if not testSuccessful:
+        Print(Utils.FileDivider)
+        Print("Compare Blocklog")
+        cluster.compareBlockLogs()
+        Print(Utils.FileDivider)
+        Print("Compare Blocklog")
+        cluster.printBlockLog()
+        Print(Utils.FileDivider)
+
 exit(0)
