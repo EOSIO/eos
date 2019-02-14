@@ -202,7 +202,7 @@ void apply_cyber_setabi(apply_context& context) {
 
     if (is_protected_account(act.account)) {
         // TODO: add ability to change with hardfork
-        EOS_ASSERT(old_size == 0, protected_contract_code, "can't change abi of protected account");
+        // EOS_ASSERT(old_size == 0, protected_contract_code, "can't change abi of protected account");
     }
 
    db.modify( account, [&]( auto& a ) {
