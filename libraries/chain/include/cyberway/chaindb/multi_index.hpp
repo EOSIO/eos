@@ -211,7 +211,7 @@ struct code_extractor<std::integral_constant<uint64_t, N>> {
     constexpr static uint64_t get_code() {return N;}
 }; // struct code_extractor
 
-template<typename TableName, typename Index, typename T, typename Allocator, typename... Indices>
+template<typename TableName, typename Index, typename T, typename... Indices>
 struct multi_index {
 public:
     template<typename IndexName, typename Extractor> class index;
@@ -219,14 +219,11 @@ public:
 private:
     static_assert(sizeof...(Indices) <= 16, "multi_index only supports a maximum of 16 secondary indices");
 
-    Allocator& allocator_;
-    chaindb_controller& controller_;
-
     struct item_data: public cache_item_data {
         struct item_type: public T {
             template<typename Constructor>
-            item_type(cache_item& cache, Constructor&& constructor, Allocator& alloc)
-            : T(std::forward<Constructor>(constructor), alloc),
+            item_type(cache_item& cache, Constructor&& constructor)
+            : T(std::forward<Constructor>(constructor), 0),
               cache(cache) {
             }
 
@@ -234,8 +231,8 @@ private:
         } item;
 
         template<typename Constructor>
-        item_data(cache_item& cache, Allocator& alloc, Constructor&& constructor)
-        : item(cache, std::forward<Constructor>(constructor), alloc) {
+        item_data(cache_item& cache, Constructor&& constructor)
+        : item(cache, std::forward<Constructor>(constructor)) {
         }
 
         static const T& get_T(const cache_item_ptr& cache) {
@@ -249,15 +246,14 @@ private:
         using value_type = T;
     }; // struct item_data
 
-    struct variant_converter: public cache_converter_interface {
-        variant_converter(Allocator& allocator)
-        : allocator_(allocator) {
-        }
+    chaindb_controller& controller_;
 
+    struct variant_converter: public cache_converter_interface {
+        variant_converter() = default;
         ~variant_converter() = default;
 
         cache_item_data_ptr convert_variant(cache_item& itm, const object_value& obj) const override {
-            auto ptr = std::make_unique<item_data>(itm, allocator_, [&](auto& o) {
+            auto ptr = std::make_unique<item_data>(itm, [&](auto& o) {
                 T& data = static_cast<T&>(o);
                 fc::from_variant(obj.value, data);
             });
@@ -268,9 +264,6 @@ private:
                 "invalid primary key ${pk} for the object ${obj}", ("pk", obj.pk())("obj", obj.value));
             return ptr;
         }
-
-    private:
-        Allocator& allocator_;
     } variant_converter_;
 
     using primary_key_extractor_type = typename Index::extractor;
@@ -650,10 +643,8 @@ public:
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
 public:
-    multi_index(Allocator& allocator, chaindb_controller& controller)
-    : allocator_(allocator),
-      controller_(controller),
-      variant_converter_(allocator_),
+    multi_index(chaindb_controller& controller)
+    : controller_(controller),
       primary_idx_(this) {
         controller_.set_cache_converter(get_table_request(), variant_converter_);
     }
@@ -712,7 +703,7 @@ public:
         auto itm = controller_.create_cache_item(get_table_request());
         try {
             auto pk = itm->pk();
-            itm->data = std::make_unique<item_data>(*itm.get(), allocator_, [&](auto& o) {
+            itm->data = std::make_unique<item_data>(*itm.get(), [&](auto& o) {
                 constructor(static_cast<T&>(o));
                 o.id = pk;
             });

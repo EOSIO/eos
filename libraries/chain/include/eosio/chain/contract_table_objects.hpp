@@ -17,7 +17,7 @@ namespace eosio { namespace chain {
     * @brief The table_id_object class tracks the mapping of (scope, code, table) to an opaque identifier
     */
    class table_id_object : public chainbase::object<table_id_object_type, table_id_object> {
-      OBJECT_CTOR(table_id_object)
+      CHAINBASE_OBJECT_CTOR(table_id_object)
 
       id_type        id;
       account_name   code;
@@ -53,7 +53,7 @@ namespace eosio { namespace chain {
 
 
    struct key_value_object : public chainbase::object<key_value_object_type, key_value_object> {
-      OBJECT_CTOR(key_value_object, (value))
+      CHAINBASE_OBJECT_CTOR(key_value_object, (value))
 
       typedef uint64_t key_type;
       static const int number_of_keys = 1;

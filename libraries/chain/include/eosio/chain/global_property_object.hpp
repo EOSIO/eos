@@ -26,7 +26,7 @@ namespace eosio { namespace chain {
     */
    class global_property_object : public chainbase::object<global_property_object_type, global_property_object>
    {
-      OBJECT_CTOR(global_property_object, (proposed_schedule))
+      OBJECT_CTOR(global_property_object)
 
       id_type                           id;
       optional<block_num_type>          proposed_schedule_block_num;

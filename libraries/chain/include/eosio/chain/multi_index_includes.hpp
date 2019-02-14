@@ -12,6 +12,13 @@
 
 #include <cyberway/chaindb/multi_index.hpp>
 
+#define OBJECT_CTOR(NAME) \
+    NAME() = delete; \
+    public: \
+    template<typename Constructor> \
+    NAME(Constructor&& c, int) \
+    { c(*this); }
+
 namespace bmi = boost::multi_index;
 using bmi::indexed_by;
 using bmi::ordered_unique;
@@ -89,7 +96,7 @@ namespace cyberway { namespace chaindb {
     template<typename... Items>
     struct indexed_by {};
 
-    template<typename Object, typename Allocator, typename Items>
+    template<typename Object, typename Items>
     struct multi_index_container;
 
     struct object_id_extractor {
@@ -104,9 +111,9 @@ namespace cyberway { namespace chaindb {
         using extractor = object_id_extractor;
     }; // struct primary_index
 
-    template<typename Object, typename Allocator, typename... Items>
-    struct multi_index_container<Object, Allocator, indexed_by<Items...>> {
-        using impl = multi_index<tag<Object>, primary_index, Object, Allocator, Items...>;
+    template<typename Object, typename... Items>
+    struct multi_index_container<Object, indexed_by<Items...>> {
+        using impl = multi_index<tag<Object>, primary_index, Object, Items...>;
     };
 
    template<typename Object, typename IndexSpec>
@@ -114,7 +121,7 @@ namespace cyberway { namespace chaindb {
        struct node_type {};
        using value_type = Object;
        using allocator_type = chainbase::allocator<value_type>;
-       using container_impl = typename multi_index_container<Object, chainbase::allocator<value_type>, IndexSpec>::impl;
+       using container_impl = typename multi_index_container<Object, IndexSpec>::impl;
 
        container_impl impl;
 
@@ -219,7 +226,7 @@ namespace cyberway { namespace chaindb {
        }
 
        explicit shared_multi_index_container(allocator_type& al, chaindb_controller& controller)
-       : impl(al, controller), allocator(al)
+       : impl(controller), allocator(al)
        { }
 
    private:

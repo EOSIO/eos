@@ -26,7 +26,7 @@ namespace eosio { namespace chain {
 
 
    class permission_object : public chainbase::object<permission_object_type, permission_object> {
-      OBJECT_CTOR(permission_object, (auth) )
+      OBJECT_CTOR(permission_object)
 
       id_type                           id;
       permission_usage_object::id_type  usage_id;
