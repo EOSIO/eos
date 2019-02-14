@@ -22,8 +22,8 @@ namespace eosio { namespace chain {
    void apply_cyber_unlinkauth(apply_context&);
 
    void apply_cyber_providebw(apply_context&);
-
    void apply_cyber_requestbw(apply_context&);
+   void apply_cyber_provideram(apply_context&);
 
    void apply_cyber_domain_newdomain(apply_context&);
    void apply_cyber_domain_passdomain(apply_context&);
