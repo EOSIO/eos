@@ -245,31 +245,31 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       auto checker = make_auth_checker(GetNullAuthority, 2, {a, b});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 2);
-      BOOST_TEST(checker.unused_keys().size() == 0);
+      BOOST_TEST(checker.used_keys().size() == 2u);
+      BOOST_TEST(checker.unused_keys().size() == 0u);
    }
    {
       auto checker = make_auth_checker(GetNullAuthority, 2, {a, c});
       BOOST_TEST(!checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 0);
-      BOOST_TEST(checker.unused_keys().size() == 2);
+      BOOST_TEST(checker.used_keys().size() == 0u);
+      BOOST_TEST(checker.unused_keys().size() == 2u);
    }
    {
       auto checker = make_auth_checker(GetNullAuthority, 2, {a, b, c});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 2);
-      BOOST_TEST(checker.used_keys().count(a) == 1);
-      BOOST_TEST(checker.used_keys().count(b) == 1);
-      BOOST_TEST(checker.unused_keys().size() == 1);
-      BOOST_TEST(checker.unused_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 2u);
+      BOOST_TEST(checker.used_keys().count(a) == 1u);
+      BOOST_TEST(checker.used_keys().count(b) == 1u);
+      BOOST_TEST(checker.unused_keys().size() == 1u);
+      BOOST_TEST(checker.unused_keys().count(c) == 1u);
    }
    {
       auto checker = make_auth_checker(GetNullAuthority, 2, {b, c});
       BOOST_TEST(!checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 0);
+      BOOST_TEST(checker.used_keys().size() == 0u);
    }
 
    A = authority(3, {key_weight{a, 1}, key_weight{b, 1}, key_weight{c, 1}});
@@ -301,35 +301,35 @@ BOOST_AUTO_TEST_CASE(authority_checker)
    {
       auto checker = make_auth_checker(GetCAuthority, 2, {b});
       BOOST_TEST(!checker.satisfied(A));
-      BOOST_TEST(checker.used_keys().size() == 0);
-      BOOST_TEST(checker.unused_keys().size() == 1);
-      BOOST_TEST(checker.unused_keys().count(b) == 1);
+      BOOST_TEST(checker.used_keys().size() == 0u);
+      BOOST_TEST(checker.unused_keys().size() == 1u);
+      BOOST_TEST(checker.unused_keys().count(b) == 1u);
    }
    {
       auto checker = make_auth_checker(GetCAuthority, 2, {c});
       BOOST_TEST(!checker.satisfied(A));
-      BOOST_TEST(checker.used_keys().size() == 0);
-      BOOST_TEST(checker.unused_keys().size() == 1);
-      BOOST_TEST(checker.unused_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 0u);
+      BOOST_TEST(checker.unused_keys().size() == 1u);
+      BOOST_TEST(checker.unused_keys().count(c) == 1u);
    }
    {
       auto checker = make_auth_checker(GetCAuthority, 2, {b, c});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 2);
-      BOOST_TEST(checker.unused_keys().size() == 0);
-      BOOST_TEST(checker.used_keys().count(b) == 1);
-      BOOST_TEST(checker.used_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 2u);
+      BOOST_TEST(checker.unused_keys().size() == 0u);
+      BOOST_TEST(checker.used_keys().count(b) == 1u);
+      BOOST_TEST(checker.used_keys().count(c) == 1u);
    }
    {
       auto checker = make_auth_checker(GetCAuthority, 2, {b, c, a});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 1);
-      BOOST_TEST(checker.used_keys().count(a) == 1);
-      BOOST_TEST(checker.unused_keys().size() == 2);
-      BOOST_TEST(checker.unused_keys().count(b) == 1);
-      BOOST_TEST(checker.unused_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 1u);
+      BOOST_TEST(checker.used_keys().count(a) == 1u);
+      BOOST_TEST(checker.unused_keys().size() == 2u);
+      BOOST_TEST(checker.unused_keys().count(b) == 1u);
+      BOOST_TEST(checker.unused_keys().count(c) == 1u);
    }
 
    A = authority(3, {key_weight{a, 2}, key_weight{b, 1}}, {permission_level_weight{{"hello",  "world"}, 3}});
@@ -342,11 +342,11 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       auto checker = make_auth_checker(GetCAuthority, 2, {a, b, c});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 1);
-      BOOST_TEST(checker.used_keys().count(c) == 1);
-      BOOST_TEST(checker.unused_keys().size() == 2);
-      BOOST_TEST(checker.unused_keys().count(a) == 1);
-      BOOST_TEST(checker.unused_keys().count(b) == 1);
+      BOOST_TEST(checker.used_keys().size() == 1u);
+      BOOST_TEST(checker.used_keys().count(c) == 1u);
+      BOOST_TEST(checker.unused_keys().size() == 2u);
+      BOOST_TEST(checker.unused_keys().count(a) == 1u);
+      BOOST_TEST(checker.unused_keys().count(b) == 1u);
    }
 
    A = authority(2, {key_weight{a, 1}, key_weight{b, 1}}, {permission_level_weight{{"hello",  "world"}, 1}});
@@ -360,9 +360,9 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       auto checker = make_auth_checker(GetCAuthority, 2, {a, b, c});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 2);
-      BOOST_TEST(checker.unused_keys().size() == 1);
-      BOOST_TEST(checker.unused_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 2u);
+      BOOST_TEST(checker.unused_keys().size() == 1u);
+      BOOST_TEST(checker.unused_keys().count(c) == 1u);
    }
 
    A = authority(2, {key_weight{a, 1}, key_weight{b, 1}}, {permission_level_weight{{"hello",  "world"}, 2}});
@@ -374,9 +374,9 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       auto checker = make_auth_checker(GetCAuthority, 2, {a, b, c});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 1);
-      BOOST_TEST(checker.unused_keys().size() == 2);
-      BOOST_TEST(checker.used_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 1u);
+      BOOST_TEST(checker.unused_keys().size() == 2u);
+      BOOST_TEST(checker.used_keys().count(c) == 1u);
    }
 
    auto d = test.get_public_key("d", "active");
@@ -398,20 +398,20 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       auto checker = make_auth_checker(GetAuthority, 2, {a, b, c, d, e});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 2);
-      BOOST_TEST(checker.unused_keys().size() == 3);
-      BOOST_TEST(checker.used_keys().count(d) == 1);
-      BOOST_TEST(checker.used_keys().count(e) == 1);
+      BOOST_TEST(checker.used_keys().size() == 2u);
+      BOOST_TEST(checker.unused_keys().size() == 3u);
+      BOOST_TEST(checker.used_keys().count(d) == 1u);
+      BOOST_TEST(checker.used_keys().count(e) == 1u);
    }
    {
       auto checker = make_auth_checker(GetAuthority, 2, {a, b, c, e});
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.used_keys().size() == 3);
-      BOOST_TEST(checker.unused_keys().size() == 1);
-      BOOST_TEST(checker.used_keys().count(a) == 1);
-      BOOST_TEST(checker.used_keys().count(b) == 1);
-      BOOST_TEST(checker.used_keys().count(c) == 1);
+      BOOST_TEST(checker.used_keys().size() == 3u);
+      BOOST_TEST(checker.unused_keys().size() == 1u);
+      BOOST_TEST(checker.used_keys().count(a) == 1u);
+      BOOST_TEST(checker.used_keys().count(b) == 1u);
+      BOOST_TEST(checker.used_keys().count(c) == 1u);
    }
    BOOST_TEST(make_auth_checker(GetAuthority, 1, {a, b, c}).satisfied(A));
    // Fails due to short recursion depth limit
@@ -443,15 +443,15 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       BOOST_TEST(!validate(F));
 
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.unused_keys().count(b) == 1);
-      BOOST_TEST(checker.unused_keys().count(a) == 1);
-      BOOST_TEST(checker.unused_keys().count(c) == 1);
+      BOOST_TEST(checker.unused_keys().count(b) == 1u);
+      BOOST_TEST(checker.unused_keys().count(a) == 1u);
+      BOOST_TEST(checker.unused_keys().count(c) == 1u);
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(checker.satisfied(B));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.unused_keys().count(b) == 0);
-      BOOST_TEST(checker.unused_keys().count(a) == 0);
-      BOOST_TEST(checker.unused_keys().count(c) == 1);
+      BOOST_TEST(checker.unused_keys().count(b) == 0u);
+      BOOST_TEST(checker.unused_keys().count(a) == 0u);
+      BOOST_TEST(checker.unused_keys().count(c) == 1u);
    }
    {
       auto A2 = authority(4, {key_weight{b, 1}, key_weight{a, 1}, key_weight{c, 1}},
@@ -584,13 +584,13 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
 
    trx.expiration = fc::time_point::now();
    trx.validate();
-   BOOST_CHECK_EQUAL(0, trx.signatures.size());
+   BOOST_CHECK_EQUAL(0u, trx.signatures.size());
    ((const signed_transaction &)trx).sign( test.get_private_key( config::system_account_name, "active" ), test.control->get_chain_id());
-   BOOST_CHECK_EQUAL(0, trx.signatures.size());
+   BOOST_CHECK_EQUAL(0u, trx.signatures.size());
    auto private_key = test.get_private_key( config::system_account_name, "active" );
    auto public_key = private_key.get_public_key();
    trx.sign( private_key, test.control->get_chain_id()  );
-   BOOST_CHECK_EQUAL(1, trx.signatures.size());
+   BOOST_CHECK_EQUAL(1u, trx.signatures.size());
    trx.validate();
 
    packed_transaction pkt(trx, packed_transaction::none);
@@ -613,11 +613,11 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
 
    flat_set<public_key_type> keys;
    auto cpu_time1 = pkt.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
-   BOOST_CHECK_EQUAL(1, keys.size());
+   BOOST_CHECK_EQUAL(1u, keys.size());
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
    keys.clear();
    auto cpu_time2 = pkt.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
-   BOOST_CHECK_EQUAL(1, keys.size());
+   BOOST_CHECK_EQUAL(1u, keys.size());
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
    BOOST_CHECK(cpu_time1 > fc::microseconds(0));
@@ -658,8 +658,8 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.expiration());
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.get_signed_transaction().expiration);
    keys.clear();
-   auto cpu_time3 = pkt4.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
-   BOOST_CHECK_EQUAL(1, keys.size());
+   pkt4.get_signed_transaction().get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+   BOOST_CHECK_EQUAL(1u, keys.size());
    BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
 } FC_LOG_AND_RETHROW() }
@@ -729,7 +729,7 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       auto private_key = test.get_private_key( config::system_account_name, "active" );
       auto public_key = private_key.get_public_key();
       trx.sign( private_key, test.control->get_chain_id()  );
-      BOOST_CHECK_EQUAL(1, trx.signatures.size());
+      BOOST_CHECK_EQUAL(1u, trx.signatures.size());
 
       packed_transaction pkt(trx, packed_transaction::none);
       packed_transaction pkt2(trx, packed_transaction::zlib);
@@ -758,16 +758,16 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       transaction_metadata::create_signing_keys_future( mtrx2, thread_pool, test.control->get_chain_id(), fc::microseconds::maximum() );
 
       auto keys = mtrx->recover_keys( test.control->get_chain_id() );
-      BOOST_CHECK_EQUAL(1, keys.size());
+      BOOST_CHECK_EQUAL(1u, keys.size());
       BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
       // again
       keys = mtrx->recover_keys( test.control->get_chain_id() );
-      BOOST_CHECK_EQUAL(1, keys.size());
+      BOOST_CHECK_EQUAL(1u, keys.size());
       BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
       auto keys2 = mtrx2->recover_keys( test.control->get_chain_id() );
-      BOOST_CHECK_EQUAL(1, keys.size());
+      BOOST_CHECK_EQUAL(1u, keys.size());
       BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
 
