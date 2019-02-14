@@ -255,7 +255,9 @@ if [ "$ARCH" == "Darwin" ]; then
    # Check if cmake is already installed or not and use source install location
    if [ -z $CMAKE ]; then export CMAKE=/usr/local/bin/cmake; fi
    export OS_NAME=MacOSX
-   LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH=/usr/local/opt/gettext ${LOCAL_CMAKE_FLAGS}" # cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
+   # opt/gettext: cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
+   # HOME/lib/cmake: mongo_db_plugin.cpp:25:10: fatal error: 'bsoncxx/builder/basic/kvp.hpp' file not found
+   LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH=/usr/local/opt/gettext;$HOME/lib/cmake ${LOCAL_CMAKE_FLAGS}" 
    FILE="${REPO_ROOT}/scripts/eosio_build_darwin.sh"
    CXX_COMPILER=clang++
    C_COMPILER=clang
@@ -302,7 +304,11 @@ printf "(_______/(_______)\_______)\_______/(_______)\n\n${txtrst}"
 
 printf "\\nEOSIO has been successfully built. %02d:%02d:%02d\\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
 printf "==============================================================================================\\n${bldred}"
+printf "(Optional) Testing Instructions:\\n"
+printf "export PATH=\$PATH:$HOME/opt/mongodb/bin\\n" # Needed for python mongodb tests
 print_instructions
+printf "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
+printf "cd ./build && make test\\n"
 printf "${txtrst}==============================================================================================\\n"
 printf "For more information:\\n"
 printf "EOSIO website: https://eos.io\\n"

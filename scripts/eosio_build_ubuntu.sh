@@ -85,7 +85,7 @@ fi
 if [ $1 == 0 ]; then read -p "Do you wish to update repositories with apt-get update? (y/n) " answer; fi
 case ${answer} in
 	1 | [Yy]* )
-		if ! apt-get update; then
+		if ! sudo apt-get update; then
 			printf " - APT update failed.\\n"
 			exit 1;
 		else
@@ -115,7 +115,7 @@ if [ "${COUNT}" -gt 1 ]; then
 	if [ $1 == 0 ]; then read -p "Do you wish to install these packages? (y/n) " answer; fi
 	case ${answer} in
 		1 | [Yy]* )
-			if ! apt-get -y install ${DEP}; then
+			if ! sudo apt-get -y install ${DEP}; then
 				printf " - APT dependency failed.\\n"
 				exit 1
 			else
@@ -136,7 +136,7 @@ printf "Checking CMAKE installation...\\n"
 if [ -z $CMAKE ]; then
 	printf "Installing CMAKE...\\n"
 	curl -LO https://cmake.org/files/v$CMAKE_VERSION_MAJOR.$CMAKE_VERSION_MINOR/cmake-$CMAKE_VERSION.tar.gz \
-	&& tar xf cmake-$CMAKE_VERSION.tar.gz \
+	&& tar -xzf cmake-$CMAKE_VERSION.tar.gz \
 	&& cd cmake-$CMAKE_VERSION \
 	&& ./bootstrap --prefix=$HOME \
 	&& make -j"${JOBS}" \
@@ -159,7 +159,7 @@ BOOSTVERSION=$( grep "#define BOOST_VERSION" "$HOME/opt/boost/include/boost/vers
 if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
 	printf "Installing Boost library...\\n"
 	curl -LO https://dl.bintray.com/boostorg/release/${BOOST_VERSION_MAJOR}.${BOOST_VERSION_MINOR}.${BOOST_VERSION_PATCH}/source/boost_$BOOST_VERSION.tar.bz2 \
-	&& tar -xvjf boost_$BOOST_VERSION.tar.bz2 \
+	&& tar -xjf boost_$BOOST_VERSION.tar.bz2 \
 	&& cd $BOOST_ROOT \
 	&& ./bootstrap.sh --prefix=$BOOST_ROOT \
 	&& ./b2 -q -j"${JOBS}" install \
@@ -182,7 +182,7 @@ printf "Checking MongoDB installation...\\n"
 if [ ! -d $MONGODB_ROOT ]; then
 	printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
 	curl -OL http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu$OS_MAJ$OS_MIN-$MONGODB_VERSION.tgz \
-	&& tar -xzvf mongodb-linux-x86_64-ubuntu$OS_MAJ$OS_MIN-$MONGODB_VERSION.tgz \
+	&& tar -xzf mongodb-linux-x86_64-ubuntu$OS_MAJ$OS_MIN-$MONGODB_VERSION.tgz \
 	&& mv $SRC_LOCATION/mongodb-linux-x86_64-ubuntu$OS_MAJ$OS_MIN-$MONGODB_VERSION $MONGODB_ROOT \
 	&& touch $MONGODB_LOG_LOCATION/mongod.log \
 	&& rm -f mongodb-linux-x86_64-ubuntu$OS_MAJ$OS_MIN-$MONGODB_VERSION.tgz \
@@ -202,7 +202,7 @@ printf "Checking MongoDB C driver installation...\\n"
 if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C driver...\\n"
 	curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-	&& tar -xf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+	&& tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
 	&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 	&& mkdir -p cmake-build \
 	&& cd cmake-build \
@@ -221,7 +221,7 @@ printf "Checking MongoDB C++ driver installation...\\n"
 if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C++ driver...\\n"
 	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
-	&& tar -xzvf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
+	&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
 	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
 	&& make -j"${JOBS}" VERBOSE=1 \
@@ -253,17 +253,6 @@ if [ $? -ne 0 ]; then exit -1; fi
 cd ..
 printf "\\n"
 
-function print_instructions()
-{
-printf "Please ensure the following in your ~/.bash_profile:\\n"
-	# HOME/bin first to load proper cmake version over the one in /usr/bin.
-	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang + We don't symlink into $HOME/bin
-	printf "export PATH=\$HOME/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
-	printf "export LD_LIBRARY_PATH=\$HOME/lib:\$HOME/lib64:\$LD_LIBRARY_PATH\\n" # libmongoc is installed into $HOME/lib64
-	printf "export CMAKE_MODULE_PATH=\$HOME/lib/cmake\\n"
-	printf "export CPATH=\$HOME/include:\$CPLUS_INCLUDE_PATH\\n" # libmongoc is installed into $HOME/include
-	printf "\\nThen, source the file (or restart the terminal) and run:\\n"
-	printf "$( command -v mongod ) --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
-	printf "cd ${BUILD_DIR} && make test\\n"
+function print_instructions() {
 	return 0
 }

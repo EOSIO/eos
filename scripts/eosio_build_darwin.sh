@@ -106,9 +106,6 @@ while read -r name tester testee brewname uri; do
 			continue
 		fi
 	fi
-	if [ "${brewname}" = "gettext" ]; then
-		PERMISSION_GETTEXT=1
-	fi
 	DEPS=$DEPS"${brewname},"
 	DISPLAY="${DISPLAY}${COUNT}. ${name}\\n"
 	printf " - %s ${bldred}NOT${txtrst} found.\\n" "${name}"
@@ -198,7 +195,7 @@ printf "Checking MongoDB installation...\\n"
 if [ ! -d $MONGODB_ROOT ]; then
 	printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
 	curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
-	&& tar -xzvf mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
+	&& tar -xzf mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
 	&& mv $SRC_LOCATION/mongodb-osx-x86_64-$MONGODB_VERSION $MONGODB_ROOT \
 	&& touch $MONGODB_LOG_LOCATION/mongod.log \
 	&& rm -f mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
@@ -218,7 +215,7 @@ printf "Checking MongoDB C driver installation...\\n"
 if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C driver...\\n"
 	curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-	&& tar -xzvf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+	&& tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
 	&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 	&& mkdir -p cmake-build \
 	&& cd cmake-build \
@@ -237,7 +234,7 @@ printf "Checking MongoDB C++ driver installation...\\n"
 if [ "$(grep "Version:" $HOME/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ]; then
 	printf "Installing MongoDB C++ driver...\\n"
 	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
-	&& tar -xzvf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
+	&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
 	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
 	&& make -j"${JOBS}" VERBOSE=1 \
@@ -268,10 +265,6 @@ fi
 cd ..
 printf "\\n"
 
-function print_instructions()
-{
-	printf "(Optional) Testing Instructions:\\n"
-	printf "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
-	printf "cd ./build && make test\\n"
+function print_instructions() {
 	return 0
 }
