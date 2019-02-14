@@ -1066,12 +1066,12 @@ namespace eosio {
          close_after_send = m.get<go_away_message>().reason;
       }
 
-      uint32_t payload_size = fc::raw::pack_size( m );
+      const uint32_t payload_size = fc::raw::pack_size( m );
 
-      char* header = reinterpret_cast<char*>(&payload_size); // avoid variable size encoding of uint32_t
+      const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
       constexpr size_t header_size = sizeof(payload_size);
       static_assert( header_size == message_header_size, "invalid message_header_size" );
-      size_t buffer_size = header_size + payload_size;
+      const size_t buffer_size = header_size + payload_size;
 
       auto send_buffer = std::make_shared<vector<char>>(buffer_size);
       fc::datastream<char*> ds( send_buffer->data(), buffer_size);
@@ -1084,13 +1084,13 @@ namespace eosio {
    template< typename T>
    static std::shared_ptr<std::vector<char>> create_send_buffer( uint32_t which, const T& v ) {
       // match net_message static_variant pack
-      uint32_t which_size = fc::raw::pack_size( unsigned_int( which ) );
-      uint32_t payload_size = which_size + fc::raw::pack_size( v );
+      const uint32_t which_size = fc::raw::pack_size( unsigned_int( which ) );
+      const uint32_t payload_size = which_size + fc::raw::pack_size( v );
 
-      char* header = reinterpret_cast<char*>(&payload_size); // avoid variable size encoding of uint32_t
+      const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
       constexpr size_t header_size = sizeof( payload_size );
       static_assert( header_size == message_header_size, "invalid message_header_size" );
-      size_t buffer_size = header_size + payload_size;
+      const size_t buffer_size = header_size + payload_size;
 
       auto send_buffer = std::make_shared<vector<char>>( buffer_size );
       fc::datastream<char*> ds( send_buffer->data(), buffer_size );
