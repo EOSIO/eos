@@ -177,7 +177,7 @@ namespace eosio { namespace testing {
          transaction_trace_ptr push_dummy(account_name from, const string& v = "blah", uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
          transaction_trace_ptr transfer( account_name from, account_name to, asset amount, string memo, account_name currency );
          transaction_trace_ptr transfer( account_name from, account_name to, string amount, string memo, account_name currency );
-         transaction_trace_ptr issue( account_name to, string amount, account_name currency );
+         transaction_trace_ptr issue( account_name to, string amount, account_name currency , string memo);
 
          template<typename ObjectType>
          const auto& get(const chainbase::oid< ObjectType >& key) {
