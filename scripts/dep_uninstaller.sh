@@ -9,7 +9,7 @@ if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [[ $1 =~ for
             if [ -d "$HOME/opt/eosio" ] || [[ $1 == "force-new" ]]; then
                if [ $( uname ) == "Darwin" ]; then
                   # gettext and other brew packages are not modified as they can be dependencies for things other than eosio
-                  brew uninstall mongo-c-driver mongo-cxx-driver llvm@4 --force
+                  brew uninstall llvm@4 --force
                fi
                rm -rf $HOME/opt/eosio
                rm -f $HOME/bin/eosio-launcher

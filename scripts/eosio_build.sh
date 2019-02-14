@@ -191,11 +191,7 @@ printf "\\nARCHITECTURE: %s\\n" "${ARCH}"
 
 popd &> /dev/null
 
-export CPATH=$HOME/include:/usr/include/llvm4.0:$CPATH # llvm4.0 for fedora package path inclusion
-export LD_LIBRARY_PATH=$HOME/lib:$HOME/lib64:$LD_LIBRARY_PATH
-export CMAKE_MODULE_PATH=$HOME/lib/cmake
 if [ "$ARCH" == "Linux" ]; then
-   export PATH=$HOME/bin:$PATH:$HOME/opt/mongodb/bin:$HOME/opt/llvm/bin
    export OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
    OPENSSL_ROOT_DIR=/usr/include/openssl
    if [ ! -e /etc/os-release ]; then
@@ -226,6 +222,7 @@ if [ "$ARCH" == "Linux" ]; then
          C_COMPILER=clang-4.0
       ;;
       "Fedora")
+         export CPATH=/usr/include/llvm4.0:$CPATH # llvm4.0 for fedora package path inclusion
          FILE="${REPO_ROOT}/scripts/eosio_build_fedora.sh"
          CXX_COMPILER=g++
          C_COMPILER=gcc
@@ -253,9 +250,6 @@ fi
 
 if [ "$ARCH" == "Darwin" ]; then
    export OS_NAME=MacOSX
-	# HOME/bin first to load proper cmake version over the one in /usr/bin.
-	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang
-   export PATH=$HOME/bin:/usr/local/opt/python/libexec/bin:$PATH:$HOME/opt/mongodb/bin:/usr/local/opt/gettext/bin:$HOME/opt/llvm/bin
    LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH=/usr/local/opt/gettext ${LOCAL_CMAKE_FLAGS}" # cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
    FILE="${REPO_ROOT}/scripts/eosio_build_darwin.sh"
    CXX_COMPILER=clang++
@@ -264,7 +258,7 @@ if [ "$ARCH" == "Darwin" ]; then
 fi
 
 # Cleanup old installation
-(. ./scripts/clean_old_install.sh)
+(. ./scripts/dep_uninstall.sh)
 if [ $? -ne 0 ]; then exit -1; fi # Stop if exit from script is not 0
 
 pushd $SRC_LOCATION &> /dev/null

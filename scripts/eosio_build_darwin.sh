@@ -289,7 +289,7 @@ printf "\\n"
 
 function print_instructions()
 {
-printf "Please ensure the following in your ~/.bash_profile:\\n"
+printf "(Optional) Testing Instruction:"
 	# HOME/bin first to load proper cmake version over the one in /usr/bin.
 	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang + We don't symlink into $HOME/bin
 	# /usr/local/opt/python/libexec/bin: brew install python installs python3, but doesn't symlink it as python into /usr/local/bin
@@ -297,8 +297,7 @@ printf "Please ensure the following in your ~/.bash_profile:\\n"
 	printf "export LD_LIBRARY_PATH=\$HOME/lib:\$LD_LIBRARY_PATH\\n"
 	printf "export CMAKE_MODULE_PATH=\$HOME/lib/cmake\\n"
 	printf "export CPATH=\$HOME/include:$(python-config --includes | awk '{print $1}' | cut -dI -f2):\$CPATH\\n"
-	printf "\\nThen, source the file (or restart the terminal) and run:\\n"
 	printf "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
-	printf "cd ${BUILD_DIR} && make test\\n"
+	printf "cd ./build && make test\\n"
 	return 0
 }
