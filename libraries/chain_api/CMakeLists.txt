@@ -18,7 +18,7 @@ set( HEADERS
 
 add_library( chain_api SHARED chain_api.cpp )
 
-target_link_libraries( chain_api fc)
+target_link_libraries( chain_api)
 
 target_include_directories( chain_api
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" 

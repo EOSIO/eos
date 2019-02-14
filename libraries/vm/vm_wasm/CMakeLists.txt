@@ -31,7 +31,7 @@ else()
     set(LINK_FLAGS "${LINK_FLAGS} -Wl,--version-script,\"${_version_script}\"")
 endif (APPLE)
 
-set(WASM_DEPEND_LIBS Logging IR WAST WASM Runtime Emscripten softfloat fc builtins eosiolib_native chain_api)
+set(WASM_DEPEND_LIBS Logging IR WAST WASM Runtime Emscripten softfloat builtins eosiolib_native chain_api)
 
 add_library( vm_wasm-1 SHARED ${SRCS} )
 target_link_libraries( vm_wasm-1 wabt ${WASM_DEPEND_LIBS} )
@@ -69,19 +69,3 @@ target_include_directories( vm_wasm-4
 target_compile_options(vm_wasm-4 PRIVATE -D_INDEX=4)
 set_target_properties(vm_wasm-4  PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
 
-
-if (APPLE)
-else()
-    # target_compile_options(builtins PRIVATE -fPIC)
-    # target_compile_options(softfloat PRIVATE -fPIC)
-    # target_compile_options(Logging PRIVATE -fPIC)
-    # target_compile_options(IR PRIVATE -fPIC)
-    # target_compile_options(WAST PRIVATE -fPIC)
-    # target_compile_options(WASM PRIVATE -fPIC)
-    # target_compile_options(Runtime PRIVATE -fPIC)
-    # target_compile_options(Emscripten PRIVATE -fPIC)
-    # target_compile_options(Platform PRIVATE -fPIC)
-    # target_compile_options(wabt PRIVATE -fPIC)
-    # target_compile_options(secp256k1 PRIVATE -fPIC)
-    # target_compile_options(chainbase PRIVATE -fPIC)
-endif()
