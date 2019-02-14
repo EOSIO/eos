@@ -1,8 +1,8 @@
 #! /bin/bash
 
 if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [[ $1 =~ force-* ]]; then # use force for running the script directly
-   printf "\nEOSIO installation already found...\n"
-   printf "Do you wish to remove this install?\n"
+   printf "\nEOSIO installation (AND DEPENDENCIES) already found...\n"
+   printf "Do you wish to remove this install (this includes dependencies)?\n"
    select yn in "Yes" "No"; do
       case $yn in
          [Yy]* )
