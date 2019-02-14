@@ -1,0 +1,65 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "increment",
+            "base": "",
+            "fields": [
+                {
+                    "name": "value",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "main_record",
+            "base": "",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "index_f64",
+                    "type": "float64"
+                },
+                {
+                    "name": "index_f128",
+                    "type": "float128"
+                },
+                {
+                    "name": "index_i64",
+                    "type": "uint64"
+                },
+                {
+                    "name": "index_i128",
+                    "type": "uint128"
+                },
+                {
+                    "name": "index_i256",
+                    "type": "checksum256"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "increment",
+            "type": "increment",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "data",
+            "type": "main_record",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "ricardian_clauses": [],
+    "variants": []
+}
