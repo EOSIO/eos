@@ -169,8 +169,7 @@ fi
 printf "\\n"
 
 printf "Checking CMAKE installation...\\n"
-CMAKE=$(command -v cmake 2>/dev/null)
-if [ -z $CMAKE ]; then
+if [ ! -f "$HOME/bin/cmake" ]; then
 	printf "Installing CMAKE...\\n"
 	curl -LO https://cmake.org/files/v$CMAKE_VERSION_MAJOR.$CMAKE_VERSION_MINOR/cmake-$CMAKE_VERSION.tar.gz \
 	&& tar xf cmake-$CMAKE_VERSION.tar.gz \
@@ -243,7 +242,7 @@ if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 	&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 	&& mkdir -p cmake-build \
 	&& cd cmake-build \
-	&& cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
+	&& $HOME/bin/cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
 	&& make -j"${JOBS}" \
 	&& make install \
 	&& cd ../.. \
@@ -260,7 +259,7 @@ if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
 	&& tar -xzvf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
-	&& cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
+	&& $HOME/bin/cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
 	&& make -j"${JOBS}" VERBOSE=1 \
 	&& make install \
 	&& cd ../.. \
@@ -283,7 +282,7 @@ if [ ! -d $LLVM_ROOT ]; then
 	&& git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \
 	&& mkdir build \
 	&& cd build \
-	&& cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="${LLVM_ROOT}" -DLLVM_TARGETS_TO_BUILD="host" -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE="Release" .. \
+	&& $HOME/bin/cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="${LLVM_ROOT}" -DLLVM_TARGETS_TO_BUILD="host" -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE="Release" .. \
 	&& make -j"${JOBS}" \
 	&& make install \
 	&& cd ../.. \
@@ -300,18 +299,11 @@ printf "\\n"
 
 function print_instructions()
 {
-	printf "Please ensure the following in your ~/.bash_profile:\\n"
+	printf "(Optional) Testing Instructions:"
 	printf "source /opt/rh/python33/enable\\n"
-	printf "CPATH=\$CPATH:/opt/rh/python33/root/usr/include/python3.3m\\n" # Boost has trouble finding pyconfig.h
+	# printf "CPATH=\$CPATH:/opt/rh/python33/root/usr/include/python3.3m\\n" # Boost has trouble finding pyconfig.h
 	printf "source /opt/rh/devtoolset-7/enable\\n"
-	# HOME/bin first to load proper cmake version over the one in /usr/bin.
-	# llvm/bin last to prevent llvm/bin/clang from being used over /usr/bin/clang (We don't symlink into $HOME/bin)
-	printf "export PATH=\$HOME/bin:\$PATH:$MONGODB_LINK_LOCATION/bin:\$HOME/opt/llvm/bin\\n"
-	printf "export LD_LIBRARY_PATH=\$HOME/lib:\$HOME/lib64:\$LD_LIBRARY_PATH\\n" # libmongoc is installed into $HOME/lib64
-	printf "export CMAKE_MODULE_PATH=\$HOME/lib/cmake\\n"
-	printf "export CPATH=\$HOME/include:\$CPLUS_INCLUDE_PATH\\n" # libmongoc is installed into $HOME/include
-	printf "\\nThen, source the file (or restart the terminal) and run:\\n"
 	printf "$( command -v mongod ) --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
-	printf "cd ${BUILD_DIR} && make test\\n"
+	printf "cd build && make test\\n"
 	return 0
 }
