@@ -152,5 +152,6 @@ int main(int argc, char** argv)
       return OTHER_FAIL;
    }
 
+   ilog("nodeos successfully exiting");
    return SUCCESS;
 }
