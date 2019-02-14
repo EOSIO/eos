@@ -16,7 +16,7 @@
       "new_type_name": "weight_type",
       "type": "uint16"
    }],
-   "____comment": "eosio.bios structs: set_account_limits, setpriv, set_global_limits, producer_key, set_producers, require_auth are provided so abi available for deserialization in future.",
+   "____comment": "eosio.bios structs: set_account_limits, set_global_limits, producer_key, set_producers, require_auth are provided so abi available for deserialization in future.",
    "structs": [{
       "name": "permission_level",
       "base": "",
@@ -328,13 +328,6 @@
         {"name":"owner",   "type":"account_name"}
       ]
     },{
-      "name": "setpriv",
-      "base": "",
-      "fields": [
-        {"name":"account",    "type":"account_name"},
-        {"name":"is_priv",    "type":"int8"}
-      ]
-    },{
       "name": "rmvproducer",
       "base": "",
       "fields": [
@@ -472,9 +465,6 @@
    },{
       "name": "claimrewards",
       "type": "claimrewards"
-   },{
-      "name": "setpriv",
-      "type": "setpriv"
    },{
       "name": "rmvproducer",
       "type": "rmvproducer"

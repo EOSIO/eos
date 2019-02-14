@@ -82,11 +82,6 @@ namespace eosiosystem {
       set_blockchain_parameters( params );
    }
 
-   void system_contract::setpriv( account_name account, uint8_t ispriv ) {
-      require_auth( _self );
-      set_privileged( account, ispriv );
-   }
-
    void system_contract::rmvproducer( account_name producer ) {
       require_auth( _self );
       auto prod = _producers.find( producer );
@@ -190,7 +185,7 @@ EOSIO_ABI( eosiosystem::system_contract,
      // native.hpp (newaccount definition is actually in eosio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
      // eosio.system.cpp
-     (setram)(setparams)(setpriv)(rmvproducer)(bidname)
+     (setram)(setparams)(rmvproducer)(bidname)
      // delegate_bandwidth.cpp
      (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(refund)
      // voting.cpp

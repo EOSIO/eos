@@ -8,11 +8,6 @@ namespace eosio {
       public:
          bios( action_name self ):contract(self){}
 
-         void setpriv( account_name account, uint8_t ispriv ) {
-            require_auth( _self );
-            set_privileged( account, ispriv );
-         }
-
          void setalimits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight ) {
             require_auth( _self );
             set_resource_limits( account, ram_bytes, net_weight, cpu_weight );

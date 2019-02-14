@@ -294,7 +294,6 @@ def stepCreateTokens():
 def stepSetSystemContract():
     retry(args.cleos + 'set contract cyber ' + args.contracts_dir + '/eosio.system/')
     sleep(1)
-    run(args.cleos + 'push action cyber setpriv' + jsonArg(['cyber.msig', 1]) + '-p cyber@active')
 def stepInitSystemContract():
     run(args.cleos + 'push action cyber init' + jsonArg(['0', '4,SYS']) + '-p cyber@active')
     sleep(1)

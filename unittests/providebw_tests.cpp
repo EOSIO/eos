@@ -82,12 +82,6 @@ public:
         return r;
     }
 
-    auto set_privileged( name account ) {
-       auto r = base_tester::push_action(config::system_account_name, N(setpriv), config::system_account_name,  mvo()("account", account)("is_priv", 1));
-       produce_block();
-       return r;
-    }
-
     asset get_balance( const account_name& act ) {
          return get_currency_balance(token_account_name, symbol(CORE_SYMBOL), act);
     }
@@ -113,7 +107,7 @@ BOOST_AUTO_TEST_SUITE(providebw_tests)
 BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
     try {
         // Create eosio.msig and eosio.token
-        create_accounts({msig_account_name, token_account_name, ram_account_name, ramfee_account_name,
+        create_accounts({token_account_name, ram_account_name, ramfee_account_name,
          stake_account_name, vpay_account_name, bpay_account_name, saving_account_name});
 
         // Set code for the following accounts:
@@ -124,14 +118,14 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
         set_code_abi(token_account_name, eosio_token_wast, eosio_token_abi); //, &eosio_active_pk);
 
         // Set privileged for eosio.msig and eosio.token
-        set_privileged(msig_account_name);
-        set_privileged(token_account_name);
+      //   set_privileged(msig_account_name);
+      //   set_privileged(token_account_name);
 
         // Verify eosio.msig and eosio.token is privileged
         const auto& eosio_msig_acc = get<account_object, by_name>(msig_account_name);
         BOOST_TEST(eosio_msig_acc.privileged == true);
         const auto& eosio_token_acc = get<account_object, by_name>(token_account_name);
-        BOOST_TEST(eosio_token_acc.privileged == true);
+      //   BOOST_TEST(eosio_token_acc.privileged == true);
 
 
         // Create SYS tokens in eosio.token, set its manager as eosio
