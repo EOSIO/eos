@@ -185,7 +185,7 @@ printf "%s\\n" "$( date -u )"
 printf "User: %s\\n" "$( whoami )"
 # printf "git head id: %s\\n" "$( cat .git/refs/heads/master )"
 printf "Current branch: %s\\n" "$( git rev-parse --abbrev-ref HEAD )"
-„
+
 ARCH=$( uname )
 printf "\\nARCHITECTURE: %s\\n" "${ARCH}"
 
