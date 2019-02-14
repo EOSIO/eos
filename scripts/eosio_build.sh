@@ -171,7 +171,7 @@ if [ ! -d "${REPO_ROOT}/.git" ]; then
    exit 1
 fi
 
-pushd "${REPO_ROOT}" &> /dev/null
+cd $REPO_ROOT
 
 STALE_SUBMODS=$(( $(git submodule status --recursive | grep -c "^[+\-]") ))
 if [ $STALE_SUBMODS -gt 0 ]; then
@@ -188,8 +188,6 @@ printf "Current branch: %s\\n" "$( git rev-parse --abbrev-ref HEAD )"
 
 ARCH=$( uname )
 printf "\\nARCHITECTURE: %s\\n" "${ARCH}"
-
-popd &> /dev/null
 
 # Find and use existing CMAKE
 export CMAKE=$(command -v cmake 2>/dev/null)
@@ -278,7 +276,7 @@ printf "## CMAKE_BUILD_TYPE=%s\\n" "${CMAKE_BUILD_TYPE}"
 printf "## ENABLE_COVERAGE_TESTING=%s\\n" "${ENABLE_COVERAGE_TESTING}"
 
 mkdir -p $BUILD_DIR
-pushd $BUILD_DIR &> /dev/null
+cd $BUILD_DIR
 
 $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
    -DCMAKE_C_COMPILER="${C_COMPILER}" -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
@@ -288,7 +286,8 @@ $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMP
 if [ $? -ne 0 ]; then exit -1; fi
 make -j"${JOBS}"
 if [ $? -ne 0 ]; then exit -1; fi
-popd &> /dev/null
+
+cd $REPO_ROOT
 
 TIME_END=$(( $(date -u +%s) - $TIME_BEGIN ))
 
