@@ -270,7 +270,7 @@ printf "\\n"
 
 function print_instructions()
 {
-	printf "(Optional) Testing Instructions:"
+	printf "(Optional) Testing Instructions:\\n"
 	printf "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
 	printf "cd ./build && make test\\n"
 	return 0

@@ -300,7 +300,7 @@ printf "\\n"
 
 function print_instructions()
 {
-	printf "(Optional) Testing Instructions:"
+	printf "(Optional) Testing Instructions:\\n"
 	printf "source /opt/rh/python33/enable\\n"
 	# printf "CPATH=\$CPATH:/opt/rh/python33/root/usr/include/python3.3m\\n" # Boost has trouble finding pyconfig.h
 	printf "source /opt/rh/devtoolset-7/enable\\n"
