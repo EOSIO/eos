@@ -22,7 +22,7 @@ if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [[ $1 =~ for
                rm -rf $HOME/share/aclocal/cmake*
                rm -rf $HOME/doc/cmake*
                rm -f $HOME/bin/nodeos $HOME/bin/keosd $HOME/bin/cleos $HOME/bin/ctest $HOME/bin/*cmake* $HOME/bin/cpack
-               
+               rm -rf $HOME/src/mongo*
             fi
 
             if [ -d "/usr/local/include/eosio" ] || [[ $1 == "force-old" ]]; then

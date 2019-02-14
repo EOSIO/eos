@@ -185,13 +185,18 @@ printf "%s\\n" "$( date -u )"
 printf "User: %s\\n" "$( whoami )"
 # printf "git head id: %s\\n" "$( cat .git/refs/heads/master )"
 printf "Current branch: %s\\n" "$( git rev-parse --abbrev-ref HEAD )"
-
+„
 ARCH=$( uname )
 printf "\\nARCHITECTURE: %s\\n" "${ARCH}"
 
 popd &> /dev/null
 
+# Find and use existing CMAKE
+export CMAKE=$(command -v cmake 2>/dev/null)
+
 if [ "$ARCH" == "Linux" ]; then
+   # Check if cmake is already installed or not and use source install location
+   if [ -z $CMAKE ]; then export CMAKE=$HOME/bin/cmake; fi
    export OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
    OPENSSL_ROOT_DIR=/usr/include/openssl
    if [ ! -e /etc/os-release ]; then
@@ -249,6 +254,8 @@ if [ "$ARCH" == "Linux" ]; then
 fi
 
 if [ "$ARCH" == "Darwin" ]; then
+   # Check if cmake is already installed or not and use source install location
+   if [ -z $CMAKE ]; then export CMAKE=/usr/local/bin/cmake; fi
    export OS_NAME=MacOSX
    LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH=/usr/local/opt/gettext ${LOCAL_CMAKE_FLAGS}" # cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
    FILE="${REPO_ROOT}/scripts/eosio_build_darwin.sh"
@@ -272,10 +279,6 @@ printf "## ENABLE_COVERAGE_TESTING=%s\\n" "${ENABLE_COVERAGE_TESTING}"
 
 mkdir -p $BUILD_DIR
 pushd $BUILD_DIR &> /dev/null
-
-if [ -z "${CMAKE}" ]; then
-  CMAKE=$( command -v cmake 2>/dev/null )
-fi
 
 $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
    -DCMAKE_C_COMPILER="${C_COMPILER}" -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
