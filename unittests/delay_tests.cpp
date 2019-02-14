@@ -78,7 +78,8 @@ BOOST_FIXTURE_TEST_CASE( delay_error_create_account, validating_tester) { try {
    produce_blocks(6);
 
    auto scheduled_trxs = get_scheduled_transactions();
-   BOOST_REQUIRE_EQUAL(scheduled_trxs.size(), 1);
+   BOOST_REQUIRE_EQUAL(scheduled_trxs.size(), 1u);
+
    auto dtrace = control->push_scheduled_transaction(scheduled_trxs.front(), fc::time_point::maximum());
    BOOST_REQUIRE_EQUAL(dtrace->except.valid(), true);
    BOOST_REQUIRE_EQUAL(dtrace->except->code(), missing_auth_exception::code_value);
@@ -142,7 +143,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
    auto gen_size = chain.control->db().get_index<generated_transaction_multi_index,by_trx_id>().size();
-   BOOST_REQUIRE_EQUAL(0, gen_size);
+   BOOST_REQUIRE_EQUAL(0u, gen_size);
 
    chain.produce_blocks();
 

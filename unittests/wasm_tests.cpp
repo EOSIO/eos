@@ -91,11 +91,11 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
       trx.sign( get_private_key( N(asserter), "active" ), control->get_chain_id() );
       auto result = push_transaction( trx );
       BOOST_CHECK_EQUAL(result->receipt->status, transaction_receipt::executed);
-      BOOST_CHECK_EQUAL(result->action_traces.size(), 1);
+      BOOST_CHECK_EQUAL(result->action_traces.size(), 1u);
       BOOST_CHECK_EQUAL(result->action_traces.at(0).receipt.receiver.to_string(),  name(N(asserter)).to_string() );
       BOOST_CHECK_EQUAL(result->action_traces.at(0).act.account.to_string(), name(N(asserter)).to_string() );
       BOOST_CHECK_EQUAL(result->action_traces.at(0).act.name.to_string(),  name(N(procassert)).to_string() );
-      BOOST_CHECK_EQUAL(result->action_traces.at(0).act.authorization.size(),  1 );
+      BOOST_CHECK_EQUAL(result->action_traces.at(0).act.authorization.size(),  1u );
       BOOST_CHECK_EQUAL(result->action_traces.at(0).act.authorization.at(0).actor.to_string(),  name(N(asserter)).to_string() );
       BOOST_CHECK_EQUAL(result->action_traces.at(0).act.authorization.at(0).permission.to_string(),  name(config::active_name).to_string() );
       no_assert_id = trx.id();

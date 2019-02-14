@@ -102,7 +102,7 @@ struct txn_test_gen_plugin_impl {
    void push_next_transaction(const std::shared_ptr<std::vector<signed_transaction>>& trxs, const std::function<void(const fc::exception_ptr&)>& next ) {
       chain_plugin& cp = app().get_plugin<chain_plugin>();
 
-      for (int i = 0; i < trxs->size(); ++i) {
+      for (size_t i = 0; i < trxs->size(); ++i) {
          cp.accept_transaction( packed_transaction(trxs->at(i)), [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
             if (result.contains<fc::exception_ptr>()) {
                next(result.get<fc::exception_ptr>());
