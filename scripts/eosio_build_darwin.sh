@@ -20,7 +20,6 @@ DISK_AVAIL=$((avail_blks / gbfactor ))
 export HOMEBREW_NO_AUTO_UPDATE=1
 
 COUNT=1
-PERMISSION_GETTEXT=0
 DISPLAY=""
 DEPS=""
 
