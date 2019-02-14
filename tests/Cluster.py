@@ -1289,19 +1289,16 @@ class Cluster(object):
                 match=re.match("stderr\..+\.txt", entry.name)
                 if match:
                     files.append(os.path.join(path, entry.name))
+        files.sort()
         return files
 
-    def dumpErrorDetails(self, allStderrFiles=False):
+    def dumpErrorDetails(self):
         fileName=os.path.join(Cluster.__configDir + Cluster.nodeExtensionToName("bios"), "config.ini")
         Cluster.dumpErrorDetailImpl(fileName)
         path=Cluster.__dataDir + Cluster.nodeExtensionToName("bios")
-        if not allStderrFiles:
-            fileName=os.path.join(path, "stderr.txt")
+        fileNames=Cluster.__findFiles(path)
+        for fileName in fileNames:
             Cluster.dumpErrorDetailImpl(fileName)
-        else:
-            fileNames=Cluster.__findFiles(path)
-            for fileName in fileNames:
-                Cluster.dumpErrorDetailImpl(fileName)
 
         for i in range(0, len(self.nodes)):
             configLocation=Cluster.__configDir + Cluster.nodeExtensionToName(i)
@@ -1310,13 +1307,9 @@ class Cluster(object):
             fileName=os.path.join(configLocation, "genesis.json")
             Cluster.dumpErrorDetailImpl(fileName)
             path=Cluster.__dataDir + Cluster.nodeExtensionToName(i)
-            if not allStderrFiles:
-                fileName=os.path.join(path, "stderr.txt")
+            fileNames=Cluster.__findFiles(path)
+            for fileName in fileNames:
                 Cluster.dumpErrorDetailImpl(fileName)
-            else:
-                fileNames=Cluster.__findFiles(path)
-                for fileName in fileNames:
-                    Cluster.dumpErrorDetailImpl(fileName)
 
         if self.useBiosBootFile:
             Cluster.dumpErrorDetailImpl(Cluster.__bootlog)
