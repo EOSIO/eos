@@ -14,7 +14,7 @@ if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [[ $1 =~ for
                rm -rf $HOME/opt/eosio
                rm -f $HOME/bin/eosio-launcher
                rm -rf $HOME/lib/cmake/eosios
-               rm -f $HOME/opt/llvm
+               rm -rf $HOME/opt/llvm
                rm -f $HOME/opt/boost
                rm -rf $HOME/src/boost_*
                rm -rf $HOME/src/cmake-*
