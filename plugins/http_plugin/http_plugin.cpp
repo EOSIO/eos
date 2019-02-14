@@ -301,13 +301,14 @@ namespace eosio {
                   con->defer_http_response();
                   bytes_in_flight += body.size();
                   app().post( appbase::priority::low,
-                              [&tp = *this->thread_pool, &bytes_in_flight = this->bytes_in_flight, handler_itr,
+                              [ioc = this->server_ioc, &bytes_in_flight = this->bytes_in_flight, handler_itr,
                                resource{std::move( resource )}, body{std::move( body )}, con]() {
                      try {
                         bytes_in_flight -= body.size();
-                        handler_itr->second( resource, body, [&tp, &bytes_in_flight, con]( int code, std::string response_body ) {
+                        handler_itr->second( resource, body,
+                              [ioc{std::move(ioc)}, &bytes_in_flight, con]( int code, std::string response_body ) {
                            bytes_in_flight += response_body.size();
-                           boost::asio::post( tp, [response_body{std::move( response_body )}, &bytes_in_flight, con, code]() {
+                           boost::asio::post( *ioc, [ioc, response_body{std::move( response_body )}, &bytes_in_flight, con, code]() {
                               size_t body_size = response_body.size();
                               con->set_body( std::move( response_body ) );
                               con->set_status( websocketpp::http::status_code::value( code ) );
@@ -504,8 +505,8 @@ namespace eosio {
          verbose_http_errors = options.at( "verbose-http-errors" ).as<bool>();
 
          my->thread_pool_size = options.at( "http-threads" ).as<uint16_t>();
-         EOS_ASSERT( my->thread_pool_size > 1, chain::plugin_config_exception,
-                     "http-threads ${num} must be greater than 1", ("num", my->thread_pool_size));
+         EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
+                     "http-threads ${num} must be greater than 0", ("num", my->thread_pool_size));
 
          my->max_bytes_in_flight = options.at( "http-max-bytes-in-flight-mb" ).as<uint32_t>() * 1024 * 1024;
 
@@ -518,8 +519,7 @@ namespace eosio {
       my->thread_pool.emplace( my->thread_pool_size );
       my->server_ioc = std::make_shared<boost::asio::io_context>();
       my->server_ioc_work.emplace( boost::asio::make_work_guard(*my->server_ioc) );
-      // post to half the threads
-      for( uint16_t i = 0; i < my->thread_pool_size; i += 2 ) {
+      for( uint16_t i = 0; i < my->thread_pool_size; ++i ) {
          boost::asio::post( *my->thread_pool, [ioc = my->server_ioc]() { ioc->run(); } );
       }
 
