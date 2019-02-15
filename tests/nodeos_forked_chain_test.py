@@ -321,6 +321,8 @@ try:
     #identify the earliest LIB to start identify the earliest block to check if divergent branches eventually reach concensus
     (headBlockNum, libNumAroundDivergence)=getMinHeadAndLib(prodNodes)
     Print("Tracking block producers from %d till divergence or %d. Head block is %d and lowest LIB is %d" % (preKillBlockNum, lastBlockNum, headBlockNum, libNumAroundDivergence))
+    transitionCount=0
+    missedTransitionBlock=None
     for blockNum in range(preKillBlockNum,lastBlockNum):
         #avoiding getting LIB until my current block passes the head from the last time I checked
         if blockNum>headBlockNum:
@@ -342,12 +344,24 @@ try:
         if not nextProdChange and prodChanged and blockProducer1==killAtProducer:
             nextProdChange=True
         elif nextProdChange and blockProducer1!=killAtProducer:
-            actualLastBlockNum=blockNum
-            break
+            nextProdChange=False
+            if blockProducer0!=blockProducer1:
+                Print("Divergence identified at block %s, node_00 producer: %s, node_01 producer: %s" % (blockNum, blockProducer0, blockProducer1))
+                actualLastBlockNum=blockNum
+                break
+            else:
+                missedTransitionBlock=blockNum
+                transitionCount+=1
+                # allow this to transition twice, in case the script was identifying an earlier transition than the bridge node received the kill command
+                if transitionCount>1:
+                    Print("At block %d and have passed producer: %s %d times and we have not diverged, stopping looking and letting errors report" % (blockNum, killAtProducer, transitionCount))
+                    actualLastBlockNum=blockNum
+                    break
 
         #if we diverge before identifying the actualLastBlockNum, then there is an ERROR
         if blockProducer0!=blockProducer1:
-            Utils.errorExit("Groups reported different block producers for block number %d. %s != %s." % (blockNum,blockProducer0,blockProducer1))
+            extra="" if transitionCount==0 else " Diverged after expected killAtProducer transition at block %d." % (missedTransitionBlock)
+            Utils.errorExit("Groups reported different block producers for block number %d.%s %s != %s." % (blockNum,extra,blockProducer0,blockProducer1))
 
     #verify that the non producing node is not alive (and populate the producer nodes with current getInfo data to report if
     #an error occurs)
@@ -405,6 +419,23 @@ try:
 
     #ensure that the nodes have enough time to get in concensus, so wait for 3 producers to produce their complete round
     time.sleep(inRowCountPerProducer * 3 / 2)
+    remainingChecks=20
+    match=False
+    checkHead=False
+    while remainingChecks>0:
+        checkMatchBlock=killBlockNum if not checkHead else prodNodes[0].getBlockNum()
+        blockProducer0=prodNodes[0].getBlockProducerByNum(checkMatchBlock)
+        blockProducer1=prodNodes[1].getBlockProducerByNum(checkMatchBlock)
+        match=blockProducer0==blockProducer1
+        if match:
+            if checkHead:
+                break
+            else:
+                checkHead=True
+                continue
+        Print("Fork has not resolved yet, wait a little more. Block %s has producer %s for node_00 and %s for node_01.  Original divergence was at block %s. Wait time remaining: %d" % (checkMatchBlock, blockProducer0, blockProducer1, killBlockNum, remainingChecks))
+        time.sleep(1)
+        remainingChecks-=1
 
     for prodNode in prodNodes:
         info=prodNode.getInfo()
@@ -426,12 +457,20 @@ try:
 
     analyzeBPs(blockProducers0, blockProducers1, expectDivergence=False)
 
+    resolvedKillBlockProducer=None
+    for prod in blockProducers0:
+        if prod["blockNum"]==killBlockNum:
+            resolvedKillBlockProducer = prod["prod"]
+    if resolvedKillBlockProducer is None:
+        Utils.errorExit("Did not find find block %s (the original divergent block) in blockProducers0, test setup is wrong.  blockProducers0: %s" % (killBlockNum, ", ".join(blockProducers)))
+    Print("Fork resolved and determined producer %s for block %s" % (resolvedKillBlockProducer, killBlockNum))
+
     blockProducers0=[]
     blockProducers1=[]
 
     testSuccessful=True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+    TestHelper.shutdown(cluster, walletMgr, testSuccessful=testSuccessful, killEosInstances=killEosInstances, killWallet=killWallet, keepLogs=keepLogs, cleanRun=killAll, dumpErrorDetails=dumpErrorDetails)
 
     if not testSuccessful:
         Print(Utils.FileDivider)
