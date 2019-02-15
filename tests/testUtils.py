@@ -34,6 +34,8 @@ class Utils:
 
     EosBlockLogPath="programs/eosio-blocklog/eosio-blocklog"
 
+    FileDivider="================================================================="
+
     @staticmethod
     def Print(*args, **kwargs):
         stackDepth=len(inspect.stack())-2

@@ -285,7 +285,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // No producers will be set, since the total activated stake is less than 150,000,000
         produce_blocks_for_n_rounds(2); // 2 rounds since new producer schedule is set when the first block of next round is irreversible
         auto active_schedule = control->head_block_state()->active_schedule;
-        BOOST_TEST(active_schedule.producers.size() == 1);
+        BOOST_TEST(active_schedule.producers.size() == 1u);
         BOOST_TEST(active_schedule.producers.front().producer_name == "eosio");
 
         // Spend some time so the producer pay pool is filled by the inflation rate

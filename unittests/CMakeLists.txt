@@ -6,13 +6,13 @@ include(ExternalProject)
 if( EOSIO_COMPILE_TEST_CONTRACTS )
    set(EOSIO_WASM_OLD_BEHAVIOR "Off")
    find_package(eosio.cdt REQUIRED)
-   
+
    message( STATUS "Building contracts in directory `eos/unittests/test-contracts/`" )
    ExternalProject_Add(
       test_contracts_project
       SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test-contracts
       BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/test-contracts
-      CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${EOSIO_CDT_ROOT}/lib/cmake/eosio.cdt/EosioWasmToolchain.cmake -DBoost_INCLUDE_DIRS=${Boost_INCLUDE_DIRS} -DEOSIO_COMPILE_TEST_CONTRACTS=${EOSIO_COMPILE_TEST_CONTRACTS}
+      CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${EOSIO_CDT_ROOT}/lib/cmake/eosio.cdt/EosioWasmToolchain.cmake -DEOSIO_COMPILE_TEST_CONTRACTS=${EOSIO_COMPILE_TEST_CONTRACTS}
       UPDATE_COMMAND ""
       PATCH_COMMAND ""
       TEST_COMMAND ""
@@ -37,7 +37,6 @@ set( CMAKE_CXX_STANDARD 14 )
 
 add_subdirectory(contracts)
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/config.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/include/config.hpp ESCAPE_QUOTES)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/contracts.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/include/contracts.hpp ESCAPE_QUOTES)
 
 ### BUILD UNIT TEST EXECUTABLE ###

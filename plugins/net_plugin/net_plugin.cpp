@@ -169,6 +169,16 @@ namespace eosio {
       void start_listen_loop();
       void start_read_message(const connection_ptr& c);
 
+      /** \brief Process the next message from the pending message buffer
+       *
+       * Process the next message from the pending_message_buffer.
+       * message_length is the already determined length of the data
+       * part of the message that will handle the message.
+       * Returns true is successful. Returns false if an error was
+       * encountered unpacking or processing the message.
+       */
+      bool process_next_message(const connection_ptr& conn, uint32_t message_length);
+
       void close(const connection_ptr& c);
       size_t count_open_sockets() const;
 
@@ -303,6 +313,8 @@ namespace eosio {
    constexpr auto     def_sync_fetch_span = 100;
 
    constexpr auto     message_header_size = 4;
+   constexpr uint32_t signed_block_which = 7;        // see protocol net_message
+   constexpr uint32_t packed_transaction_which = 8;  // see protocol net_message
 
    /**
     *  For a while, network version was a 16 bit value equal to the second set of 16 bits
@@ -484,6 +496,7 @@ namespace eosio {
       peer_block_state_index  blk_state;
       transaction_state_index trx_state;
       optional<sync_state>    peer_requested;  // this peer is requesting info from us
+      std::shared_ptr<boost::asio::io_context>  server_ioc; // keep ioc alive
       socket_ptr              socket;
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
@@ -594,17 +607,6 @@ namespace eosio {
                        std::function<void(boost::system::error_code, std::size_t)> callback,
                        bool to_sync_queue = false);
       void do_queue_write(int priority);
-
-      /** \brief Process the next message from the pending message buffer
-       *
-       * Process the next message from the pending_message_buffer.
-       * message_length is the already determined length of the data
-       * part of the message and impl in the net plugin implementation
-       * that will handle the message.
-       * Returns true is successful. Returns false if an error was
-       * encountered unpacking or processing the message.
-       */
-      bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
 
       bool add_peer_block(const peer_block_state& pbs);
       bool peer_has_block(const block_id_type& blkid);
@@ -726,6 +728,7 @@ namespace eosio {
       : blk_state(),
         trx_state(),
         peer_requested(),
+        server_ioc( my_impl->server_ioc ),
         socket( std::make_shared<tcp::socket>( std::ref( *my_impl->server_ioc ))),
         node_id(),
         last_handshake_recv(),
@@ -750,6 +753,7 @@ namespace eosio {
       : blk_state(),
         trx_state(),
         peer_requested(),
+        server_ioc( my_impl->server_ioc ),
         socket( s ),
         node_id(),
         last_handshake_recv(),
@@ -1065,11 +1069,12 @@ namespace eosio {
          close_after_send = m.get<go_away_message>().reason;
       }
 
-      uint32_t payload_size = fc::raw::pack_size( m );
+      const uint32_t payload_size = fc::raw::pack_size( m );
 
-      char* header = reinterpret_cast<char*>(&payload_size);
-      size_t header_size = sizeof(payload_size);
-      size_t buffer_size = header_size + payload_size;
+      const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
+      constexpr size_t header_size = sizeof(payload_size);
+      static_assert( header_size == message_header_size, "invalid message_header_size" );
+      const size_t buffer_size = header_size + payload_size;
 
       auto send_buffer = std::make_shared<vector<char>>(buffer_size);
       fc::datastream<char*> ds( send_buffer->data(), buffer_size);
@@ -1079,24 +1084,36 @@ namespace eosio {
       enqueue_buffer( send_buffer, trigger_send, priority::low, close_after_send );
    }
 
-   static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_ptr& sb ) {
-      // this implementation is to avoid copy of signed_block to net_message
-      int which = 7; // matches which of net_message for signed_block
+   template< typename T>
+   static std::shared_ptr<std::vector<char>> create_send_buffer( uint32_t which, const T& v ) {
+      // match net_message static_variant pack
+      const uint32_t which_size = fc::raw::pack_size( unsigned_int( which ) );
+      const uint32_t payload_size = which_size + fc::raw::pack_size( v );
 
-      uint32_t which_size = fc::raw::pack_size( unsigned_int( which ));
-      uint32_t payload_size = which_size + fc::raw::pack_size( *sb );
+      const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
+      constexpr size_t header_size = sizeof( payload_size );
+      static_assert( header_size == message_header_size, "invalid message_header_size" );
+      const size_t buffer_size = header_size + payload_size;
 
-      char* header = reinterpret_cast<char*>(&payload_size);
-      size_t header_size = sizeof(payload_size);
-      size_t buffer_size = header_size + payload_size;
-
-      auto send_buffer = std::make_shared<vector<char>>(buffer_size);
-      fc::datastream<char*> ds( send_buffer->data(), buffer_size);
+      auto send_buffer = std::make_shared<vector<char>>( buffer_size );
+      fc::datastream<char*> ds( send_buffer->data(), buffer_size );
       ds.write( header, header_size );
-      fc::raw::pack( ds, unsigned_int( which ));
-      fc::raw::pack( ds, *sb );
+      fc::raw::pack( ds, unsigned_int( which ) );
+      fc::raw::pack( ds, v );
 
       return send_buffer;
+   }
+
+   static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_ptr& sb ) {
+      // this implementation is to avoid copy of signed_block to net_message
+      // matches which of net_message for signed_block
+      return create_send_buffer( signed_block_which, *sb );
+   }
+
+   static std::shared_ptr<std::vector<char>> create_send_buffer( const packed_transaction& trx ) {
+      // this implementation is to avoid copy of packed_transaction to net_message
+      // matches which of net_message for packed_transaction
+      return create_send_buffer( packed_transaction_which, trx );
    }
 
    void connection::enqueue_block( const signed_block_ptr& sb, bool trigger_send, bool to_sync_queue) {
@@ -1200,27 +1217,6 @@ namespace eosio {
       sync_request_message srm = {start,end};
       enqueue( net_message(srm));
       sync_wait();
-   }
-
-   bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
-      try {
-         auto ds = pending_message_buffer.create_datastream();
-         net_message msg;
-         fc::raw::unpack(ds, msg);
-         msg_handler m(impl, shared_from_this() );
-         if( msg.contains<signed_block>() ) {
-            m( std::move( msg.get<signed_block>() ) );
-         } else if( msg.contains<packed_transaction>() ) {
-            m( std::move( msg.get<packed_transaction>() ) );
-         } else {
-            msg.visit( m );
-         }
-      } catch(  const fc::exception& e ) {
-         edump((e.to_detail_string() ));
-         impl.close( shared_from_this() );
-         return false;
-      }
-      return true;
    }
 
    bool connection::add_peer_block(const peer_block_state& entry) {
@@ -1675,21 +1671,7 @@ namespace eosio {
       time_point_sec trx_expiration = ptrx->packed_trx->expiration();
       const packed_transaction& trx = *ptrx->packed_trx;
 
-      // this implementation is to avoid copy of packed_transaction to net_message
-      int which = 8; // matches which of net_message for packed_transaction
-
-      uint32_t which_size = fc::raw::pack_size( unsigned_int( which ));
-      uint32_t payload_size = which_size + fc::raw::pack_size( trx );
-
-      char* header = reinterpret_cast<char*>(&payload_size);
-      size_t header_size = sizeof(payload_size);
-      size_t buffer_size = header_size + payload_size;
-
-      auto buff = std::make_shared<vector<char>>(buffer_size);
-      fc::datastream<char*> ds( buff->data(), buffer_size);
-      ds.write( header, header_size );
-      fc::raw::pack( ds, unsigned_int( which ));
-      fc::raw::pack( ds, trx );
+      auto buff = create_send_buffer( trx );
 
       node_transaction_state nts = {id, trx_expiration, 0, buff};
       my_impl->local_txns.insert(std::move(nts));
@@ -1925,8 +1907,8 @@ namespace eosio {
 
    void net_plugin_impl::start_listen_loop() {
       auto socket = std::make_shared<tcp::socket>( std::ref( *server_ioc ) );
-      acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
-            app().post( priority::low, [socket,this,ec]() {
+      acceptor->async_accept( *socket, [socket, this, ioc = server_ioc]( boost::system::error_code ec ) {
+            app().post( priority::low, [socket, this, ec, ioc{std::move(ioc)}]() {
             if( !ec ) {
                uint32_t visitors = 0;
                uint32_t from_addr = 0;
@@ -2089,7 +2071,7 @@ namespace eosio {
 
                            if (bytes_in_buffer >= total_message_bytes) {
                               conn->pending_message_buffer.advance_read_ptr(message_header_size);
-                              if (!conn->process_next_message(*this, message_length)) {
+                              if (!process_next_message(conn, message_length)) {
                                  return;
                               }
                            } else {
@@ -2137,6 +2119,45 @@ namespace eosio {
          elog( "Undefined exception handling reading ${p}",("p",pname) );
          close( conn );
       }
+   }
+
+   bool net_plugin_impl::process_next_message(const connection_ptr& conn, uint32_t message_length) {
+      try {
+         // if next message is a block we already have, exit early
+         auto peek_ds = conn->pending_message_buffer.create_peek_datastream();
+         unsigned_int which{};
+         fc::raw::unpack( peek_ds, which );
+         if( which == signed_block_which ) {
+            block_header bh;
+            fc::raw::unpack( peek_ds, bh );
+
+            controller& cc = chain_plug->chain();
+            block_id_type blk_id = bh.id();
+            uint32_t blk_num = bh.block_num();
+            if( cc.fetch_block_by_id( blk_id ) ) {
+               sync_master->recv_block( conn, blk_id, blk_num );
+               conn->pending_message_buffer.advance_read_ptr( message_length );
+               return true;
+            }
+         }
+
+         auto ds = conn->pending_message_buffer.create_datastream();
+         net_message msg;
+         fc::raw::unpack( ds, msg );
+         msg_handler m( *this, conn );
+         if( msg.contains<signed_block>() ) {
+            m( std::move( msg.get<signed_block>() ) );
+         } else if( msg.contains<packed_transaction>() ) {
+            m( std::move( msg.get<packed_transaction>() ) );
+         } else {
+            msg.visit( m );
+         }
+      } catch( const fc::exception& e ) {
+         edump( (e.to_detail_string()) );
+         close( conn );
+         return false;
+      }
+      return true;
    }
 
    size_t net_plugin_impl::count_open_sockets() const
@@ -3048,6 +3069,13 @@ namespace eosio {
          if( my->server_ioc_work )
             my->server_ioc_work->reset();
 
+         if( my->connector_check )
+            my->connector_check->cancel();
+         if( my->transaction_check )
+            my->transaction_check->cancel();
+         if( my->keepalive_timer )
+            my->keepalive_timer->cancel();
+
          my->done = true;
          if( my->acceptor ) {
             ilog( "close acceptor" );
@@ -3055,12 +3083,10 @@ namespace eosio {
             my->acceptor->close();
 
             ilog( "close ${s} connections",( "s",my->connections.size()) );
-            auto cons = my->connections;
-            for( auto con : cons ) {
-               my->close( con);
+            for( auto& con : my->connections ) {
+               my->close( con );
             }
-
-            my->acceptor.reset(nullptr);
+            my->connections.clear();
          }
 
          if( my->server_ioc )
