@@ -1,6 +1,7 @@
 #pragma once
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/stake_object.hpp>
 
 #include <eosio/chain/abi_def.hpp>
 #include <eosio/chain/snapshot.hpp>
@@ -10,7 +11,16 @@
 
 #include <cyberway/chaindb/common.hpp>
 
-namespace eosio { namespace chain { namespace resource_limits {
+
+
+namespace eosio { namespace chain { 
+    
+namespace config {
+    static constexpr auto _1percent = 100;
+    static constexpr auto _100percent = 100 * _1percent;
+}
+
+namespace resource_limits {
    namespace impl {
       template<typename T>
       struct ratio {
@@ -82,10 +92,39 @@ namespace eosio { namespace chain { namespace resource_limits {
          account_resource_limit get_account_net_limit_ex( const account_name& name, bool elastic = true) const;
 
          int64_t get_account_ram_usage( const account_name& name ) const;
+         
+         void update_proxied(int64_t now, symbol purpose_symbol, const account_name& account, int64_t frame_length, bool force);
+         void recall_proxied(int64_t now, account_name grantor_name, account_name agent_name, symbol_code token_code, symbol_code purpose_code, int16_t pct);
 
       private:
          chainbase::database& _db;
          cyberway::chaindb::chaindb_controller& _chaindb;
+         
+         using AgentsIdx = decltype(_db.get_mutable_index<stake_agent_index>().indices().get<stake_agent_object::by_key>());
+         using GrantsIdx = decltype(_db.get_mutable_index<stake_grant_index>().indices().get<stake_grant_object::by_key>());
+         
+         static auto agent_key(symbol purpose_symbol, const account_name& agent_name) {
+             return boost::make_tuple(purpose_symbol.decimals(), purpose_symbol.to_symbol_code(), agent_name);
+         }
+         static auto grant_key(symbol purpose_symbol, const account_name& grantor_name, const account_name& agent_name = account_name()) {
+             return boost::make_tuple(purpose_symbol.decimals(), purpose_symbol.to_symbol_code(), grantor_name, agent_name);
+         }
+         
+         static const stake_agent_object* get_agent(symbol purpose_symbol, const AgentsIdx& agents_idx, const account_name& agent_name) {
+            auto agent = agents_idx.find(agent_key(purpose_symbol, agent_name));
+            EOS_ASSERT(agent != agents_idx.end(), transaction_exception, "agent doesn't exist");
+            return &(*agent); 
+         }
+         
+         int64_t recall_proxied_traversal(symbol purpose_symbol, 
+            const AgentsIdx& agents_idx, const GrantsIdx& grants_idx, 
+            const account_name& agent_name, int64_t share, int16_t break_fee);
+        
+         void update_proxied_traversal(int64_t now, symbol purpose_symbol, 
+            const AgentsIdx& agents_idx, const GrantsIdx& grants_idx,
+            const stake_agent_object* agent, int64_t frame_length, bool force);
+         
+
    };
 } } } /// eosio::chain
 
