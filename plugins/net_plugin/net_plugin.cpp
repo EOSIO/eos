@@ -1928,8 +1928,8 @@ namespace eosio {
 
    void net_plugin_impl::start_listen_loop() {
       auto socket = std::make_shared<tcp::socket>( std::ref( *server_ioc ) );
-      acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
-            app().post( priority::low, [socket,this,ec]() {
+      acceptor->async_accept( *socket, [socket, this, ioc = server_ioc]( boost::system::error_code ec ) {
+            app().post( priority::low, [socket, this, ec, ioc{std::move(ioc)}]() {
             if( !ec ) {
                uint32_t visitors = 0;
                uint32_t from_addr = 0;
@@ -3051,13 +3051,18 @@ namespace eosio {
          if( my->server_ioc_work )
             my->server_ioc_work->reset();
 
+         if( my->connector_check )
+            my->connector_check->cancel();
+         if( my->transaction_check )
+            my->transaction_check->cancel();
+         if( my->keepalive_timer )
+            my->keepalive_timer->cancel();
+
          my->done = true;
          if( my->acceptor ) {
             ilog( "close acceptor" );
             my->acceptor->cancel();
             my->acceptor->close();
-
-            my->acceptor.reset(nullptr);
 
             ilog( "close ${s} connections",( "s",my->connections.size()) );
             for( auto& con : my->connections ) {
