@@ -13,7 +13,7 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
-
+message(STATUS "Current source directory ${CMAKE_CURRENT_SOURCE_DIR}")
 if (UNIX)
    if (APPLE)
       execute_process(COMMAND xcrun --show-sdk-path
