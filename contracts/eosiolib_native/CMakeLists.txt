@@ -1,4 +1,4 @@
-add_library(eosiolib_native STATIC 
+add_library(eosiolib_native SHARED 
 eosiolib.cpp
 action.cpp
 chain.cpp

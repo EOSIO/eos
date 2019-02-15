@@ -1716,9 +1716,12 @@ authorization_manager&         controller::get_mutable_authorization_manager()
    return my->authorization;
 }
 
+extern "C" void vm_api_init();
+
 controller::controller( const controller::config& cfg )
 :my( new controller_impl( cfg, *this ) )
 {
+   vm_api_init();
 }
 
 controller::~controller() {
