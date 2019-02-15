@@ -690,6 +690,8 @@ struct controller_impl {
       create_native_account( config::system_account_name, system_auth, system_auth, true );
       create_native_account(config::msig_account_name, system_auth, system_auth, true);
       create_native_account(config::domain_account_name, system_auth, system_auth);
+      create_native_account(config::govern_account_name, system_auth, system_auth, true);
+      create_native_account(config::stake_account_name, system_auth, system_auth, true);
 
       auto empty_authority = authority(1, {}, {});
       auto active_producers_authority = authority(1, {}, {});
@@ -1228,7 +1230,13 @@ struct controller_impl {
                   in_trx_requiring_checks = old_value;
                });
             in_trx_requiring_checks = true;
-            push_transaction( onbtrx, fc::time_point::maximum(), self.get_global_properties().configuration.min_transaction_cpu_usage, true );
+            auto trace = push_transaction( onbtrx, fc::time_point::maximum(), self.get_global_properties().configuration.min_transaction_cpu_usage, true );
+            
+            if(trace && trace->except) {
+               edump((*trace));
+               throw *trace->except;
+           }
+           
          } catch( const boost::interprocess::bad_alloc& e  ) {
             elog( "on block transaction failed due to a bad allocation" );
             throw;
@@ -1236,6 +1244,7 @@ struct controller_impl {
             wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
             edump((e.to_detail_string()));
          } catch( ... ) {
+             wlog( "on block transaction failed" );
          }
 
          clear_expired_input_transactions();
@@ -1648,6 +1657,7 @@ struct controller_impl {
       trx.actions.emplace_back(std::move(on_block_act));
       trx.set_reference_block(self.head_block_id());
       trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
+      
       return trx;
    }
 

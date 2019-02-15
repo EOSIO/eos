@@ -31,6 +31,10 @@ static uint64_t update_elastic_limit(uint64_t current_limit, uint64_t average_us
    return std::min(std::max(result, params.max), params.max * params.max_multiplier);
 }
 
+static int64_t get_prop(int64_t arg, int64_t numer, int64_t denom = config::_100percent) {
+    return static_cast<int64_t>((static_cast<int128_t>(arg) * numer) / denom);
+}
+
 void elastic_limit_parameters::validate()const {
    // At the very least ensure parameters are not set to values that will cause divide by zero errors later on.
    // Stricter checks for sensible values can be added later.
@@ -471,7 +475,7 @@ void resource_limits_manager::recall_proxied(int64_t now, account_name grantor_n
            (grant_itr->grantor_name == grantor_name))
     {
         if (grant_itr->agent_name == agent_name) {
-            auto to_recall = static_cast<int64_t>((static_cast<int128_t>(grant_itr->share) * pct) / config::_100percent);
+            auto to_recall = get_prop(grant_itr->share, pct);
             amount = recall_proxied_traversal(purpose_symbol, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
             if (grant_itr->pct || grant_itr->share > to_recall) {
                 _db.modify(*grant_itr, [&](auto& g) { g.share -= to_recall; });
@@ -482,6 +486,7 @@ void resource_limits_manager::recall_proxied(int64_t now, account_name grantor_n
                 ++grant_itr;
                 _db.remove(cur_grant);
             }
+            break;
         }
         else
             ++grant_itr;
@@ -495,7 +500,7 @@ void resource_limits_manager::recall_proxied(int64_t now, account_name grantor_n
 }
 
 int64_t resource_limits_manager::recall_proxied_traversal(symbol purpose_symbol, 
-                    const AgentsIdx& agents_idx, const GrantsIdx& grants_idx, 
+                    const agents_idx_t& agents_idx, const grants_idx_t& grants_idx, 
                     const account_name& agent_name, int64_t share, int16_t break_fee) {
     
     auto agent = get_agent(purpose_symbol, agents_idx, agent_name);
@@ -504,9 +509,9 @@ int64_t resource_limits_manager::recall_proxied_traversal(symbol purpose_symbol,
     EOS_ASSERT(share <= agent->shares_sum, transaction_exception, "SYSTEM: incorrect share val");
     if(share == 0)
         return 0;
-    auto share_fee = static_cast<int64_t>((static_cast<int128_t>(share) * std::min(agent->fee, break_fee)) / config::_100percent);
+    auto share_fee = get_prop(share, std::min(agent->fee, break_fee));
     auto share_net = share - share_fee;
-    auto balance_ret = static_cast<int64_t>((static_cast<int128_t>(share_net) * agent->balance) / agent->shares_sum);
+    auto balance_ret = get_prop(agent->balance, share_net, agent->shares_sum);
     EOS_ASSERT(balance_ret <= agent->balance, transaction_exception, "SYSTEM: incorrect balance_ret val");
     
     auto proxied_ret = 0;
@@ -516,7 +521,7 @@ int64_t resource_limits_manager::recall_proxied_traversal(symbol purpose_symbol,
            (grant_itr->token_code   == purpose_symbol.to_symbol_code()) &&
            (grant_itr->grantor_name == agent->account))
     {
-        auto to_recall = static_cast<int64_t>((static_cast<int128_t>(share_net) * grant_itr->share) / agent->shares_sum);
+        auto to_recall = get_prop(share_net, grant_itr->share, agent->shares_sum);
         proxied_ret += recall_proxied_traversal(purpose_symbol, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
         _db.modify(*grant_itr, [&](auto& g) { g.share -= to_recall; });
         ++grant_itr;
@@ -533,7 +538,7 @@ int64_t resource_limits_manager::recall_proxied_traversal(symbol purpose_symbol,
 }
 
 void resource_limits_manager::update_proxied_traversal(int64_t now, symbol purpose_symbol,
-                    const AgentsIdx& agents_idx, const GrantsIdx& grants_idx,
+                    const agents_idx_t& agents_idx, const grants_idx_t& grants_idx,
                     const stake_agent_object* agent, int64_t frame_length, bool force) {
 
     if ((now - agent->last_proxied_update.sec_since_epoch() >= frame_length) || force) {
@@ -555,7 +560,7 @@ void resource_limits_manager::update_proxied_traversal(int64_t now, symbol purpo
                 grant_itr->break_min_own_staked <= proxy_agent->min_own_staked) 
             {
                 if (proxy_agent->shares_sum)
-                    new_proxied += static_cast<int64_t>((static_cast<int128_t>(grant_itr->share) * proxy_agent->get_total_funds()) / proxy_agent->shares_sum);
+                    new_proxied += get_prop(proxy_agent->get_total_funds(), grant_itr->share, proxy_agent->shares_sum);
                 ++grant_itr;
             }
             else {

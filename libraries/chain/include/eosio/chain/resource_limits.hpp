@@ -100,8 +100,8 @@ namespace resource_limits {
          chainbase::database& _db;
          cyberway::chaindb::chaindb_controller& _chaindb;
          
-         using AgentsIdx = decltype(_db.get_mutable_index<stake_agent_index>().indices().get<stake_agent_object::by_key>());
-         using GrantsIdx = decltype(_db.get_mutable_index<stake_grant_index>().indices().get<stake_grant_object::by_key>());
+         using agents_idx_t = decltype(_db.get_mutable_index<stake_agent_index>().indices().get<stake_agent_object::by_key>());
+         using grants_idx_t = decltype(_db.get_mutable_index<stake_grant_index>().indices().get<stake_grant_object::by_key>());
          
          static auto agent_key(symbol purpose_symbol, const account_name& agent_name) {
              return boost::make_tuple(purpose_symbol.decimals(), purpose_symbol.to_symbol_code(), agent_name);
@@ -110,18 +110,18 @@ namespace resource_limits {
              return boost::make_tuple(purpose_symbol.decimals(), purpose_symbol.to_symbol_code(), grantor_name, agent_name);
          }
          
-         static const stake_agent_object* get_agent(symbol purpose_symbol, const AgentsIdx& agents_idx, const account_name& agent_name) {
+         static const stake_agent_object* get_agent(symbol purpose_symbol, const agents_idx_t& agents_idx, const account_name& agent_name) {
             auto agent = agents_idx.find(agent_key(purpose_symbol, agent_name));
             EOS_ASSERT(agent != agents_idx.end(), transaction_exception, "agent doesn't exist");
             return &(*agent); 
          }
          
          int64_t recall_proxied_traversal(symbol purpose_symbol, 
-            const AgentsIdx& agents_idx, const GrantsIdx& grants_idx, 
+            const agents_idx_t& agents_idx, const grants_idx_t& grants_idx, 
             const account_name& agent_name, int64_t share, int16_t break_fee);
         
          void update_proxied_traversal(int64_t now, symbol purpose_symbol, 
-            const AgentsIdx& agents_idx, const GrantsIdx& grants_idx,
+            const agents_idx_t& agents_idx, const grants_idx_t& grants_idx,
             const stake_agent_object* agent, int64_t frame_length, bool force);
          
 
