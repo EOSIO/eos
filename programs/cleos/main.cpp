@@ -1604,6 +1604,299 @@ struct canceldelay_subcommand {
    }
 };
 
+struct deposit_subcommand {
+   string owner_str;
+   string amount_str;
+
+   deposit_subcommand(CLI::App* actionRoot) {
+      auto deposit = actionRoot->add_subcommand("deposit", localized("Deposit into REX fund by transfering from owner's liquid token balance"));
+      deposit->add_option("owner",  owner_str,  localized("Account which owns the REX fund"))->required();
+      deposit->add_option("amount", amount_str, localized("Amount to be deposited into REX fund"))->required();
+      add_standard_transaction_options(deposit, "owner@active");
+      deposit->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+            ("owner",  owner_str)
+            ("amount", amount_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(deposit), act_payload)});
+      });
+   }
+};
+
+struct withdraw_subcommand {
+   string owner_str;
+   string amount_str;
+
+   withdraw_subcommand(CLI::App* actionRoot) {
+      auto withdraw = actionRoot->add_subcommand("withdraw", localized("Withdraw from REX fund by transfering to owner's liquid token balance"));
+      withdraw->add_option("owner",  owner_str,  localized("Account which owns the REX fund"))->required();
+      withdraw->add_option("amount", amount_str, localized("Amount to be withdrawn from REX fund"))->required();
+      add_standard_transaction_options(withdraw, "owner@active");
+      withdraw->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+            ("owner",  owner_str)
+            ("amount", amount_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(withdraw), act_payload)});
+      });
+   }
+};
+
+struct buyrex_subcommand {
+   string from_str;
+   string amount_str;
+
+   buyrex_subcommand(CLI::App* actionRoot) {
+      auto buyrex = actionRoot->add_subcommand("buyrex", localized("Buy REX tokens"));
+      buyrex->add_option("from",   from_str,   localized("Account buying REX tokens"))->required();
+      buyrex->add_option("amount", amount_str, localized("Amount to be taken from REX fund and used in buying REX tokens"))->required();
+      add_standard_transaction_options(buyrex, "owner@active");
+      buyrex->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+            ("from",   from_str)
+            ("amount", amount_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(buyrex), act_payload)});
+      });
+   }
+};
+
+struct unstaketorex_subcommand {
+   string owner_str;
+   string receiver_str;
+   string from_net_str;
+   string from_cpu_str;
+
+   unstaketorex_subcommand(CLI::App* actionRoot) {
+      auto unstaketorex = actionRoot->add_subcommand("unstaketorex", localized("Buy REX using staked tokens"));
+      unstaketorex->add_option("owner",    owner_str,    localized("Account buying REX tokens"))->required();
+      unstaketorex->add_option("receiver", receiver_str, localized("Account tokens have been staked to"))->required();
+      unstaketorex->add_option("from_net", from_net_str, localized("Amount to be unstaked from CPU resources and used in REX purchase"))->required();
+      unstaketorex->add_option("from_cpu", from_cpu_str, localized("Amount to be unstaked from Net resources and used in REX purchase"))->required();
+      add_standard_transaction_options(unstaketorex, "owner@active");
+      unstaketorex->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+            ("owner",    owner_str)
+            ("receiver", receiver_str)
+            ("from_net", from_net_str)
+            ("from_cpu", from_cpu_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(unstaketorex), act_payload)});
+      });
+   }
+};
+
+struct sellrex_subcommand {
+   string from_str;
+   string rex_str;
+
+   sellrex_subcommand(CLI::App* actionRoot) {
+      auto sellrex = actionRoot->add_subcommand("sellrex", localized("Sell REX tokens"));
+      sellrex->add_option("from", from_str, localized("Account selling REX tokens"))->required();
+      sellrex->add_option("rex",  rex_str,  localized("Amount of REX tokens to be sold"))->required();
+      add_standard_transaction_options(sellrex, "from@active");
+      sellrex->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+            ("from", from_str)
+            ("rex",  rex_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(sellrex), act_payload)});
+      });
+   }
+};
+
+struct cancelrexorder_subcommand {
+   string owner_str;
+
+   cancelrexorder_subcommand(CLI::App* actionRoot) {
+      auto cancelrexoder = actionRoot->add_subcommand("cancelrexorder", localized("Cancel queued REX sell order if one exists"));
+      cancelrexoder->add_option("owner", owner_str, localized("Owner account of sell order"))->required();
+      add_standard_transaction_options(cancelrexoder, "owner@active");
+      cancelrexoder->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()("owner", owner_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(cnclrexorder), act_payload)});
+      });
+   }
+};
+
+struct rentcpu_subcommand {
+   string from_str;
+   string receiver_str;
+   string loan_payment_str;
+   string loan_fund_str;
+
+   rentcpu_subcommand(CLI::App* actionRoot) {
+      auto rentcpu = actionRoot->add_subcommand("rentcpu", localized("Rent CPU bandwidth for 30 days"));
+      rentcpu->add_option("from",         from_str,         localized("Account paying rent fees"))->required();
+      rentcpu->add_option("receiver",     receiver_str,     localized("Account to whom rented CPU bandwidth is staked"))->required();
+      rentcpu->add_option("loan_payment", loan_payment_str, localized("Loan fee, used to calculate amount of rented bandwidth"))->required();
+      rentcpu->add_option("loan_fund",    loan_fund_str,    localized("Optional loan fund to be used in automatic renewal"))->required();
+      add_standard_transaction_options(rentcpu, "from@active");
+      rentcpu->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+            ("from",         from_str)
+            ("receiver",     receiver_str)
+            ("loan_payment", loan_payment_str)
+            ("loan_fund",    loan_fund_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(rentcpu), act_payload)});
+      });
+   }
+};
+
+struct rentnet_subcommand {
+   string from_str;
+   string receiver_str;
+   string loan_payment_str;
+   string loan_fund_str;
+
+   rentnet_subcommand(CLI::App* actionRoot) {
+      auto rentnet = actionRoot->add_subcommand("rentnet", localized("Rent Network bandwidth for 30 days"));
+      rentnet->add_option("from",         from_str,         localized("Account paying rent fees"))->required();
+      rentnet->add_option("receiver",     receiver_str,     localized("Account to whom rented Network bandwidth is staked"))->required();
+      rentnet->add_option("loan_payment", loan_payment_str, localized("Loan fee, used to calculate amount of rented bandwidth"))->required();
+      rentnet->add_option("loan_fund",    loan_fund_str,    localized("Optional loan fund to be used in automatic renewal"))->required();
+      add_standard_transaction_options(rentnet, "from@active");
+      rentnet->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+            ("from",         from_str)
+            ("receiver",     receiver_str)
+            ("loan_payment", loan_payment_str)
+            ("loan_fund",    loan_fund_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(rentnet), act_payload)});
+      });
+   }
+};
+
+struct fundcpuloan_subcommand {
+   string from_str;
+   string loan_num_str;
+   string payment_str;
+
+   fundcpuloan_subcommand(CLI::App* actionRoot) {
+      auto fundcpuloan = actionRoot->add_subcommand("fundcpuloan", localized("Deposit into a CPU loan fund"));
+      fundcpuloan->add_option("from",     from_str,     localized("Loan owner"))->required();
+      fundcpuloan->add_option("loan_num", loan_num_str, localized("Loan ID"))->required();
+      fundcpuloan->add_option("payment",  payment_str,  localized("Amount to be deposited"))->required();
+      add_standard_transaction_options(fundcpuloan, "from@active");
+      fundcpuloan->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+            ("from",         from_str)
+            ("loan_num",     loan_num_str)
+            ("payment", payment_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(fundcpuloan), act_payload)});
+      });
+   }
+};
+
+struct fundnetloan_subcommand {
+   string from_str;
+   string loan_num_str;
+   string payment_str;
+
+   fundnetloan_subcommand(CLI::App* actionRoot) {
+      auto fundnetloan = actionRoot->add_subcommand("fundnetloan", localized("Deposit into a Network loan fund"));
+      fundnetloan->add_option("from",     from_str,     localized("Loan owner"))->required();
+      fundnetloan->add_option("loan_num", loan_num_str, localized("Loan ID"))->required();
+      fundnetloan->add_option("payment",  payment_str,  localized("Amount to be deposited"))->required();
+      add_standard_transaction_options(fundnetloan, "from@active");
+      fundnetloan->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+            ("from",         from_str)
+            ("loan_num",     loan_num_str)
+            ("payment", payment_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(fundnetloan), act_payload)});
+      });
+   }
+};
+
+struct mvtosavings_subcommand {
+   string owner_str;
+   string rex_str;
+
+   mvtosavings_subcommand(CLI::App* actionRoot) {
+      auto mvtosavings = actionRoot->add_subcommand("mvtosavings", localized("Move REX tokens to savings bucket"));
+      mvtosavings->add_option("owner", owner_str, localized("REX owner"))->required();
+      mvtosavings->add_option("rex",   rex_str,   localized("Amount of REX to be moved to savings bucket"))->required();
+      add_standard_transaction_options(mvtosavings, "owner@active");
+      mvtosavings->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+            ("owner", owner_str)
+            ("rex",   rex_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(mvtosavings), act_payload)});
+      });
+   }
+};
+
+struct mvfrsavings_subcommand {
+   string owner_str;
+   string rex_str;
+
+   mvfrsavings_subcommand(CLI::App* actionRoot) {
+      auto mvfrsavings = actionRoot->add_subcommand("mvfromsavings", localized("Move REX tokens out of savings bucket"));
+      mvfrsavings->add_option("owner", owner_str, localized("REX owner"))->required();
+      mvfrsavings->add_option("rex",   rex_str,   localized("Amount of REX to be moved out of savings bucket"))->required();
+      add_standard_transaction_options(mvfrsavings, "owner@active");
+      mvfrsavings->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+            ("owner", owner_str)
+            ("rex",   rex_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(mvfrsavings), act_payload)});
+      });
+   }
+};
+
+struct updaterex_subcommand {
+   string owner_str;
+
+   updaterex_subcommand(CLI::App* actionRoot) {
+      auto updaterex = actionRoot->add_subcommand("updaterex", localized("Update REX owner vote stake and vote weight"));
+      updaterex->add_option("owner", owner_str, localized("REX owner"))->required();
+      add_standard_transaction_options(updaterex, "owner@active");
+      updaterex->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()("owner", owner_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(updaterex), act_payload)});
+      });
+   }
+};
+
+struct consolidate_subcommand {
+   string owner_str;
+
+   consolidate_subcommand(CLI::App* actionRoot) {
+      auto consolidate = actionRoot->add_subcommand("consolidate", localized("Consolidate REX maturity buckets into one that matures in 4 days"));
+      consolidate->add_option("owner", owner_str, localized("REX owner"))->required();
+      add_standard_transaction_options(consolidate, "owner@active");
+      consolidate->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()("owner", owner_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(consolidate), act_payload)});
+      });
+   }
+};
+
+struct closerex_subcommand {
+      string owner_str;
+
+      closerex_subcommand(CLI::App* actionRoot) {
+         auto closerex = actionRoot->add_subcommand("closerex", localized("Delete unused REX-related user table entries"));
+         closerex->add_option("owner", owner_str, localized("REX owner"))->required();
+         add_standard_transaction_options(closerex, "owner@active");
+         closerex->set_callback([this] {
+               fc::variant act_payload = fc::mutable_variant_object()("owner", owner_str);
+               auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
+               send_actions({create_action(accountPermissions, config::system_account_name, N(closerex), act_payload)});
+            });
+      }
+};
+
 void get_account( const string& accountName, const string& coresym, bool json_format ) {
    fc::variant json;
    if (coresym.empty()) {
@@ -3450,6 +3743,24 @@ int main( int argc, char** argv ) {
    auto unregProxy = unregproxy_subcommand(system);
 
    auto cancelDelay = canceldelay_subcommand(system);
+
+   auto rex = system->add_subcommand("rex", localized("Actions related to REX (the resource exchange)"));
+   rex->require_subcommand();
+   auto deposit        = deposit_subcommand(rex);
+   auto withdraw       = withdraw_subcommand(rex);
+   auto buyrex         = buyrex_subcommand(rex);
+   auto unstaketorex   = unstaketorex_subcommand(rex);
+   auto sellrex        = sellrex_subcommand(rex);
+   auto cancelrexorder = cancelrexorder_subcommand(rex);
+   auto mvtosavings    = mvtosavings_subcommand(rex);
+   auto mvfromsavings  = mvfrsavings_subcommand(rex);
+   auto rentcpu        = rentcpu_subcommand(rex);
+   auto autorentcpu    = rentnet_subcommand(rex);
+   auto consolidate    = consolidate_subcommand(rex);
+   auto updaterex      = updaterex_subcommand(rex);
+   auto closerex       = closerex_subcommand(rex);
+   
+
 
    try {
        app.parse(argc, argv);
