@@ -38,17 +38,15 @@ echo "class Eosio < Formula
    revision 0
    url \"https://github.com/eosio/eos/archive/v${VERSION}.tar.gz\"
    version \"${VERSION}\"
-   
+
    option :universal
 
-   depends_on \"gmp\" 
+   depends_on \"gmp\"
    depends_on \"gettext\"
    depends_on \"openssl\"
-   depends_on \"gmp\"
-   depends_on :xcode
    depends_on :macos => :high_sierra
    depends_on :arch =>  :intel
-  
+
    bottle do
       root_url \"https://github.com/eosio/eos/releases/download/v${VERSION}\"
       sha256 \"${hash}\" => :${MAC_VERSION}
