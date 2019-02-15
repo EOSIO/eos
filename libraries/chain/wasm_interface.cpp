@@ -196,13 +196,6 @@ class privileged_api : public context_aware_api {
          return context.db.get<account_object, by_name>( n ).privileged;
       }
 
-      void set_privileged( account_name n, bool is_priv ) {
-         const auto& a = context.db.get<account_object, by_name>( n );
-         context.db.modify( a, [&]( auto& ma ){
-            ma.privileged = is_priv;
-         });
-      }
-
 };
 
 class softfloat_api : public context_aware_api {
@@ -1762,7 +1755,6 @@ REGISTER_INTRINSICS(privileged_api,
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )
-   (set_privileged,                   void(int64_t, int)                    )
 );
 
 REGISTER_INJECTED_INTRINSICS(transaction_context,

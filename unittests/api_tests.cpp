@@ -1989,7 +1989,7 @@ BOOST_FIXTURE_TEST_CASE(new_api_feature_tests, TESTER) { try {
          return expect_assert_message(e, "testapi does not have permission to call this API");
       });
 
-   // change privilege
+   // change privilege. TODO: fix, there is no such feature in Cyberway
    push_action(config::system_account_name, N(setpriv), config::system_account_name,  mutable_variant_object()
                                                        ("account", "testapi")
                                                        ("is_priv", 1));

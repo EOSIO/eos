@@ -439,6 +439,9 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( abi_file_not_found,          contract_exception,
                                     3160010, "No abi file found" )
 
+      FC_DECLARE_DERIVED_EXCEPTION(protected_contract_code,    contract_exception,
+         3160011, "Can't change code/abi of protected contract")
+
    FC_DECLARE_DERIVED_EXCEPTION( producer_exception,           chain_exception,
                                  3170000, "Producer exception" )
       FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,   producer_exception,

@@ -410,16 +410,11 @@ public:
    abi_serializer initialize_multisig() {
       abi_serializer msig_abi_ser;
       {
-         create_account_with_resources(config::msig_account_name, config::system_account_name);
+         // it's now created by system, TODO: fix resources
+         // create_account_with_resources(config::msig_account_name, config::system_account_name);
          BOOST_REQUIRE_EQUAL(success(),
             buyram(config::system_account_name, config::msig_account_name, core_from_string("5000.0000")));
          produce_block();
-
-         auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
-                                               config::system_account_name,  mutable_variant_object()
-                                               ("account", config::msig_account_name)
-                                               ("is_priv", 1)
-         );
 
          set_code(config::msig_account_name, eosio_msig_wast);
          set_abi(config::msig_account_name, eosio_msig_abi);

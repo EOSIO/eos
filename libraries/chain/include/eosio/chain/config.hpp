@@ -24,6 +24,7 @@ const static auto default_state_guard_size      =    128*1024*1024ll;
 
 
 const static uint64_t system_account_name    = N(cyber);
+const static uint64_t msig_account_name      = N(cyber.msig);
 const static uint64_t null_account_name      = N(cyber.null);
 const static uint64_t producers_account_name = N(cyber.prods);
 const static uint64_t domain_account_name    = N(cyber.domain);

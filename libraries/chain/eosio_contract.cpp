@@ -132,6 +132,11 @@ void apply_cyber_newaccount(apply_context& context) {
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
+// system account and accounts with system prefix (cyber.*) are protected
+bool is_protected_account(name acc) {
+    return acc == config::system_account_name || name{acc}.to_string().find(system_prefix()) == 0;
+}
+
 void apply_cyber_setcode(apply_context& context) {
    const auto& cfg = context.control.get_global_properties().configuration;
 
@@ -156,6 +161,10 @@ void apply_cyber_setcode(apply_context& context) {
    int64_t new_size  = code_size * config::setcode_ram_bytes_multiplier;
 
    EOS_ASSERT( account.code_version != code_id, set_exact_code, "contract is already running this version of code" );
+    if (is_protected_account(act.account)) {
+        // TODO: add ability to change with hardfork
+        EOS_ASSERT(account.code_version == fc::sha256(), protected_contract_code, "can't change code of protected account");
+    }
 
    db.modify( account, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
@@ -190,6 +199,11 @@ void apply_cyber_setabi(apply_context& context) {
 
    int64_t old_size = (int64_t)account.abi.size();
    int64_t new_size = abi_size;
+
+    if (is_protected_account(act.account)) {
+        // TODO: add ability to change with hardfork
+        // EOS_ASSERT(old_size == 0, protected_contract_code, "can't change abi of protected account");
+    }
 
    db.modify( account, [&]( auto& a ) {
       a.abi.resize( abi_size );

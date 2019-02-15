@@ -1,3 +1,3 @@
 #include <eosio.bios/eosio.bios.hpp>
 
-EOSIO_ABI( eosio::bios, (setpriv)(setalimits)(setglimits)(setprods)(setparams)(reqauth) )
+EOSIO_ABI( eosio::bios, (setalimits)(setglimits)(setprods)(setparams)(reqauth) )

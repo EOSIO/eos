@@ -84,7 +84,6 @@ prisyskey=`grep "^Private key:" $logfile | tail -1 | sed "s/^Private key://"`
 echo cyber.* keys: $prisyskey $pubsyskey >> $logfile
 wcmd import -n ignition --private-key $prisyskey
 ecmd create account cyber cyber.bpay $pubsyskey $pubsyskey
-ecmd create account cyber cyber.msig $pubsyskey $pubsyskey
 ecmd create account cyber cyber.names $pubsyskey $pubsyskey
 ecmd create account cyber cyber.ram $pubsyskey $pubsyskey
 ecmd create account cyber cyber.ramfee $pubsyskey $pubsyskey
@@ -92,11 +91,9 @@ ecmd create account cyber cyber.saving $pubsyskey $pubsyskey
 ecmd create account cyber cyber.stake $pubsyskey $pubsyskey
 ecmd create account cyber cyber.token $pubsyskey $pubsyskey
 ecmd create account cyber cyber.vpay $pubsyskey $pubsyskey
-ecmd create account cyber cyber.sudo $pubsyskey $pubsyskey
 
 ecmd set contract cyber.token contracts/eosio.token eosio.token.wasm eosio.token.abi
 ecmd set contract cyber.msig contracts/eosio.msig eosio.msig.wasm eosio.msig.abi
-ecmd set contract cyber.sudo contracts/eosio.sudo eosio.sudo.wasm eosio.sudo.abi
 
 echo ===== Start: $step ============ >> $logfile
 echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action cyber.token create '["cyber", "10000000000.0000 SYS"]' -p cyber.token | tee -a $logfile
