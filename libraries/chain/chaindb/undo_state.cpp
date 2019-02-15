@@ -611,7 +611,7 @@ namespace cyberway { namespace chaindb {
             // | +------------+------------+------------+------------+------------+
             // | | upd(was=X) | N/A        | upd(was=X)A| del(was=X)C| upd(was=X)A|
             // A +------------+------------+------------+------------+------------+
-            // | | del(was=X) | N/A        | N/A        | N/A        | del(was=X)A|
+            // | | del(was=X) | upd(was=X) | N/A        | N/A        | del(was=X)A|
             // | +------------+------------+------------+------------+------------+
             // \ | nop        | new       B| upd(was=Y)B| del(was=Y)B| nop      AB|
             //   +------------+------------+------------+------------+------------+
@@ -670,14 +670,26 @@ namespace cyberway { namespace chaindb {
             // *+new, but we assume the N/A cases don't happen, leaving type B nop+new -> new
             for (auto& obj: state.new_values_) {
                 const auto pk = obj.second.pk();
-                
-                journal_.write(ctx,
-                    write_operation::revision(state.revision_, obj.second.clone_service()),
-                    write_operation::revision(state.revision_, obj.second.clone_service()));
 
-                obj.second.set_revision(prev_state.revision_);
-                
-                prev_state.new_values_.emplace(pk, std::move(obj.second));
+                // upd(was=X) + del(was=Y) -> del(was=X)
+                auto ritr = prev_state.removed_values_.find(pk);
+                if (ritr != prev_state.removed_values_.end()) {
+                    journal_.write_undo(ctx, write_operation::remove(state.revision_, obj.second.clone_service()));
+
+                    ritr->second.set_undo_rec(undo_record::OldValue);
+                    journal_.write_undo(ctx, write_operation::insert(ritr->second));
+
+                    prev_state.old_values_.emplace(std::move(*ritr));
+                    prev_state.removed_values_.erase(ritr);
+                } else {
+                    journal_.write(ctx,
+                        write_operation::revision(state.revision_, obj.second.clone_service()),
+                        write_operation::revision(state.revision_, obj.second.clone_service()));
+
+                    obj.second.set_revision(prev_state.revision_);
+
+                    prev_state.new_values_.emplace(pk, std::move(obj.second));
+                }
             }
 
             // *+del
@@ -856,8 +868,6 @@ namespace cyberway { namespace chaindb {
             }
             return undo_pk_++;
         }
-
-
 
         using index_t_ = table_object::index<table_undo_stack>;
 
