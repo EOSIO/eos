@@ -24,6 +24,8 @@
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 
+extern "C" void vm_api_init();
+void chain_api_init(eosio::chain::controller *ctrl, eosio::chain::controller::config *cfg);
 
 namespace eosio { namespace chain {
 
@@ -1716,12 +1718,11 @@ authorization_manager&         controller::get_mutable_authorization_manager()
    return my->authorization;
 }
 
-extern "C" void vm_api_init();
-
 controller::controller( const controller::config& cfg )
 :my( new controller_impl( cfg, *this ) )
 {
    vm_api_init();
+   chain_api_init(this, &my->conf);
 }
 
 controller::~controller() {

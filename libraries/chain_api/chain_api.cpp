@@ -7,7 +7,7 @@ void register_chain_api_cpp(struct chain_api_cpp* api) {
 
 struct chain_api_cpp* get_chain_api_cpp(void) {
    if (!s_api) {
-      throw std::runtime_error("vm api not specified!");
+      throw std::runtime_error("chain api not specified!");
    }
    return s_api;
 }

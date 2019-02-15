@@ -31,7 +31,7 @@ else()
     set(LINK_FLAGS "${LINK_FLAGS} -Wl,--version-script,\"${_version_script}\"")
 endif (APPLE)
 
-set(WASM_DEPEND_LIBS Logging IR WAST WASM Runtime Emscripten softfloat builtins eosiolib_native chain_api)
+set(WASM_DEPEND_LIBS Logging IR WAST WASM Runtime Emscripten softfloat builtins eosiolib_native chain_api fc)
 
 add_library( vm_wasm-1 SHARED ${SRCS} )
 target_link_libraries( vm_wasm-1 wabt ${WASM_DEPEND_LIBS} )
