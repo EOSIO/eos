@@ -171,7 +171,7 @@ BOOSTVERSION=$( grep "#define BOOST_VERSION" "$HOME/opt/boost/include/boost/vers
 if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
 	printf "Installing Boost library...\\n"
 	curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
-	&& tar -xvf boost_$BOOST_VERSION.tar.bz2 \
+	&& tar -xjf boost_$BOOST_VERSION.tar.bz2 \
 	&& cd $BOOST_ROOT \
 	&& ./bootstrap.sh --prefix=$BOOST_ROOT \
 	&& ./b2 -q -j$(sysctl -in machdep.cpu.core_count) install \
