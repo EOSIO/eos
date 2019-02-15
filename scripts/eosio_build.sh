@@ -305,10 +305,9 @@ printf "(_______/(_______)\_______)\_______/(_______)\n\n${txtrst}"
 printf "\\nEOSIO has been successfully built. %02d:%02d:%02d\\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
 printf "==============================================================================================\\n${bldred}"
 printf "(Optional) Testing Instructions:\\n"
-printf "export PATH=\$PATH:$HOME/opt/mongodb/bin\\n" # Needed for python mongodb tests
 print_instructions
 printf "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
-printf "cd ./build && make test\\n"
+printf "cd ./build && PATH=\$PATH:$HOME/opt/mongodb/bin make test\\n" # PATH is set as currently 'mongo' binary is required for the mongodb test
 printf "${txtrst}==============================================================================================\\n"
 printf "For more information:\\n"
 printf "EOSIO website: https://eos.io\\n"
