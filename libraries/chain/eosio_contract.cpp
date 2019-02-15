@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/chain/eosio_contract.hpp>
+#include <eosio/chain/system_contracts.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 
 #include <eosio/chain/controller.hpp>
@@ -134,8 +135,28 @@ void apply_cyber_newaccount(apply_context& context) {
 
 // system account and accounts with system prefix (cyber.*) are protected
 bool is_protected_account(name acc) {
+    // TODO: prefix can be checked without string using binary AND
     return acc == config::system_account_name || name{acc}.to_string().find(system_prefix()) == 0;
 }
+
+fc::sha256 bytes_hash(bytes data) {
+    fc::sha256 h;
+    if (data.size() > 0) {
+        h = fc::sha256::hash(data.data(), data.size());
+    }
+    return h;
+}
+
+bool check_hash_for_accseq(const digest_type& hash, const contract_hashes_map& map, name account, uint64_t sequence) {
+    auto hashes = map.find(account);
+    bool valid =
+        hashes != map.end() &&
+        sequence < hashes->second.size() &&
+        hash == hashes->second[sequence];
+    return valid;
+}
+
+#define ALLOW_INITIAL_CONTRACT_SET  // TODO: check testnet/mainnet?
 
 void apply_cyber_setcode(apply_context& context) {
    const auto& cfg = context.control.get_global_properties().configuration;
@@ -161,9 +182,17 @@ void apply_cyber_setcode(apply_context& context) {
    int64_t new_size  = code_size * config::setcode_ram_bytes_multiplier;
 
    EOS_ASSERT( account.code_version != code_id, set_exact_code, "contract is already running this version of code" );
+    const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
     if (is_protected_account(act.account)) {
-        // TODO: add ability to change with hardfork
-        EOS_ASSERT(account.code_version == fc::sha256(), protected_contract_code, "can't change code of protected account");
+        const auto seq = account_sequence.code_sequence;
+        bool allowed = false;
+#ifdef ALLOW_INITIAL_CONTRACT_SET
+        allowed = seq == 0 && account.code_version == fc::sha256();   // 1st set is allowed
+#endif
+        if (!allowed) {
+            allowed = check_hash_for_accseq(code_id, allowed_code_hashes, act.account, seq);
+        }
+        EOS_ASSERT(allowed, protected_contract_code, "can't change code of protected account");
     }
 
    db.modify( account, [&]( auto& a ) {
@@ -177,7 +206,6 @@ void apply_cyber_setcode(apply_context& context) {
 
    });
 
-   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
    db.modify( account_sequence, [&]( auto& aso ) {
       aso.code_sequence += 1;
    });
@@ -200,9 +228,18 @@ void apply_cyber_setabi(apply_context& context) {
    int64_t old_size = (int64_t)account.abi.size();
    int64_t new_size = abi_size;
 
+    const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
+    auto hash = bytes_hash(act.abi);
     if (is_protected_account(act.account)) {
-        // TODO: add ability to change with hardfork
-        // EOS_ASSERT(old_size == 0, protected_contract_code, "can't change abi of protected account");
+        const auto seq = account_sequence.abi_sequence;
+        bool allowed = false;
+#ifdef ALLOW_INITIAL_CONTRACT_SET
+        allowed = seq == 0 && old_size == 0;  // auto-enable initial set
+#endif
+        if (!allowed) {
+            allowed = check_hash_for_accseq(hash, allowed_abi_hashes, act.account, seq);
+        }
+        EOS_ASSERT(allowed, protected_contract_code, "can't change abi of protected account");
     }
 
    db.modify( account, [&]( auto& a ) {
@@ -211,7 +248,6 @@ void apply_cyber_setabi(apply_context& context) {
          memcpy( const_cast<char*>(a.abi.data()), act.abi.data(), abi_size );
    });
 
-   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
    db.modify( account_sequence, [&]( auto& aso ) {
       aso.abi_sequence += 1;
    });

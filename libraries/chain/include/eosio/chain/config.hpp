@@ -27,6 +27,7 @@ const static uint64_t system_account_name    = N(cyber);
 const static uint64_t msig_account_name      = N(cyber.msig);
 const static uint64_t null_account_name      = N(cyber.null);
 const static uint64_t producers_account_name = N(cyber.prods);
+const static uint64_t token_account_name     = N(cyber.token);
 const static uint64_t domain_account_name    = N(cyber.domain);
 
 // Active permission of producers account requires greater than 2/3 of the producers to authorize
