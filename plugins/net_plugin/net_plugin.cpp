@@ -866,13 +866,7 @@ namespace eosio {
             fc_dlog(logger, "maybe truncating branch at  = ${h}:${id}",("h",remote_head_num)("id",remote_head_id));
          }
 
-         // base our branch off of the last handshake we sent the peer instead of our current
-         // LIB which could have moved forward in time as packets were in flight.
-         if (last_handshake_sent.generation >= 1) {
-            lib_id = last_handshake_sent.last_irreversible_block_id;
-         } else {
-            lib_id = cc.last_irreversible_block_id();
-         }
+         lib_id = last_handshake_recv.last_irreversible_block_id;
          head_id = cc.fork_db_head_block_id();
       }
       catch (const assert_exception& ex) {
