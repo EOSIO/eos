@@ -74,6 +74,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
 
+option(BUILD_DEPS_INLINE "Build all dependent projects inline before configure step" FALSE)
+if(BUILD_DEPS_INLINE)
+  include( BuildDepsInline )
+endif()
+
 # add defaults for openssl
 if ("${OPENSSL_ROOT_DIR}" STREQUAL "")
    if (NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
