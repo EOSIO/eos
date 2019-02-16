@@ -30,34 +30,6 @@ namespace eosio { namespace chain {
       }
    }
 
-   template<typename Container>
-   class end_insert_iterator : public std::iterator< std::output_iterator_tag, void, void, void, void >
-   {
-   protected:
-      Container* container;
-
-   public:
-      using container_type = Container;
-
-      explicit end_insert_iterator( Container& c )
-      :container(&c)
-      {}
-
-      end_insert_iterator& operator=( typename Container::const_reference value ) {
-         container->insert( container->cend(), value );
-         return *this;
-      }
-
-      end_insert_iterator& operator*() { return *this; }
-      end_insert_iterator& operator++() { return *this; }
-      end_insert_iterator  operator++(int) { return *this; }
-   };
-
-   template<typename Container>
-   inline end_insert_iterator<Container> end_inserter( Container& c ) {
-      return end_insert_iterator<Container>( c );
-   }
-
    protocol_feature_activation_set::protocol_feature_activation_set(
                                        const protocol_feature_activation_set& orig_pfa_set,
                                        vector<digest_type> additional_features,

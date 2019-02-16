@@ -84,8 +84,10 @@ namespace eosio { namespace testing {
 
          void              init(bool push_genesis = true, db_read_mode read_mode = db_read_mode::SPECULATIVE);
          void              init(controller::config config, const snapshot_reader_ptr& snapshot = nullptr);
+         void              init(controller::config config, protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot = nullptr);
 
          void              close();
+         void              open( protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot );
          void              open( const snapshot_reader_ptr& snapshot );
          bool              is_same_chain( base_tester& other );
 
@@ -295,6 +297,10 @@ namespace eosio { namespace testing {
 
       tester(controller::config config) {
          init(config);
+      }
+
+      tester(controller::config config, protocol_feature_manager&& pfm) {
+         init(config, std::move(pfm));
       }
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ )override {

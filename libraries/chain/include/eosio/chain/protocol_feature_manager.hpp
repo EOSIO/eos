@@ -18,23 +18,36 @@ enum class builtin_protocol_feature_t : uint32_t {
 
 struct protocol_feature_subjective_restrictions {
    time_point             earliest_allowed_activation_time;
-   bool                   preactivation_required = false;
-   bool                   enabled = false;
+   bool                   preactivation_required = true;
+   bool                   enabled = true;
 };
+
+struct builtin_protocol_feature_spec {
+   const char*                               codename = nullptr;
+   digest_type                               description_digest;
+   flat_set<builtin_protocol_feature_t>      builtin_dependencies;
+   protocol_feature_subjective_restrictions  subjective_restrictions;
+};
+
+const char* builtin_protocol_feature_codename( builtin_protocol_feature_t );
 
 class protocol_feature_base {
 public:
    protocol_feature_base() = default;
 
    protocol_feature_base( protocol_feature_t feature_type,
+                          const digest_type& description_digest,
+                          flat_set<digest_type>&& dependencies,
                           const protocol_feature_subjective_restrictions& restrictions );
 
    void reflector_init();
 
+   protocol_feature_t get_type() { return _type; }
+
 public:
    std::string                               protocol_feature_type;
-   flat_set<digest_type>                     dependencies;
    digest_type                               description_digest;
+   flat_set<digest_type>                     dependencies;
    protocol_feature_subjective_restrictions  subjective_restrictions;
 protected:
    protocol_feature_t                        _type;
@@ -47,11 +60,15 @@ public:
    builtin_protocol_feature() = default;
 
    builtin_protocol_feature( builtin_protocol_feature_t codename,
+                             const digest_type& description_digest,
+                             flat_set<digest_type>&& dependencies,
                              const protocol_feature_subjective_restrictions& restrictions );
 
    void reflector_init();
 
    digest_type digest()const;
+
+   builtin_protocol_feature_t get_codename() { return _codename; }
 
    friend class protocol_feature_manager;
 
@@ -60,6 +77,8 @@ public:
 protected:
    builtin_protocol_feature_t  _codename;
 };
+
+extern const std::unordered_map<builtin_protocol_feature_t, builtin_protocol_feature_spec> builtin_protocol_feature_codenames;
 
 class protocol_feature_manager {
 public:
@@ -101,8 +120,12 @@ public:
 
    bool is_builtin_activated( builtin_protocol_feature_t feature_codename, uint32_t current_block_num )const;
 
+   optional<digest_type> get_builtin_digest( builtin_protocol_feature_t feature_codename )const;
+
    bool validate_dependencies( const digest_type& feature_digest,
                                const std::function<bool(const digest_type&)>& validator )const;
+
+   builtin_protocol_feature make_default_builtin_protocol_feature( builtin_protocol_feature_t codename )const;
 
    void add_feature( const builtin_protocol_feature& f );
 

@@ -223,6 +223,34 @@ namespace eosio { namespace chain {
    typedef vector<std::pair<uint16_t,vector<char>>> extensions_type;
 
 
+   template<typename Container>
+   class end_insert_iterator : public std::iterator< std::output_iterator_tag, void, void, void, void >
+   {
+   protected:
+      Container* container;
+
+   public:
+      using container_type = Container;
+
+      explicit end_insert_iterator( Container& c )
+      :container(&c)
+      {}
+
+      end_insert_iterator& operator=( typename Container::const_reference value ) {
+         container->insert( container->cend(), value );
+         return *this;
+      }
+
+      end_insert_iterator& operator*() { return *this; }
+      end_insert_iterator& operator++() { return *this; }
+      end_insert_iterator  operator++(int) { return *this; }
+   };
+
+   template<typename Container>
+   inline end_insert_iterator<Container> end_inserter( Container& c ) {
+      return end_insert_iterator<Container>( c );
+   }
+
 } }  // eosio::chain
 
 FC_REFLECT( eosio::chain::void_t, )

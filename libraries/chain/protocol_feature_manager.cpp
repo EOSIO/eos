@@ -11,12 +11,34 @@
 
 namespace eosio { namespace chain {
 
-   const std::unordered_map<builtin_protocol_feature_t, const char*> builtin_codenames = boost::assign::map_list_of
-      (builtin_protocol_feature_t::preactivate_feature, "PREACTIVATE_FEATURE");
+   const std::unordered_map<builtin_protocol_feature_t, builtin_protocol_feature_spec>
+   builtin_protocol_feature_codenames =
+      boost::assign::map_list_of<builtin_protocol_feature_t, builtin_protocol_feature_spec>
+         ( builtin_protocol_feature_t::preactivate_feature, {
+            "PREACTIVATE_FEATURE",
+            digest_type{},
+            {},
+            {time_point{}, false, true} // enabled without preactivation and ready to go at any time
+         } )
+   ;
+
+
+   const char* builtin_protocol_feature_codename( builtin_protocol_feature_t codename ) {
+      auto itr = builtin_protocol_feature_codenames.find( codename );
+      EOS_ASSERT( itr != builtin_protocol_feature_codenames.end(), protocol_feature_validation_exception,
+                  "Unsupported builtin_protocol_feature_t passed to builtin_protocol_feature_codename: ${codename}",
+                  ("codename", static_cast<uint32_t>(codename)) );
+
+      return itr->second.codename;
+   }
 
    protocol_feature_base::protocol_feature_base( protocol_feature_t feature_type,
+                                                 const digest_type& description_digest,
+                                                 flat_set<digest_type>&& dependencies,
                                                  const protocol_feature_subjective_restrictions& restrictions )
-   :subjective_restrictions( restrictions )
+   :description_digest( description_digest )
+   ,dependencies( std::move(dependencies) )
+   ,subjective_restrictions( restrictions )
    ,_type( feature_type )
    {
       switch( feature_type ) {
@@ -46,23 +68,32 @@ namespace eosio { namespace chain {
    }
 
    builtin_protocol_feature::builtin_protocol_feature( builtin_protocol_feature_t codename,
+                                                       const digest_type& description_digest,
+                                                       flat_set<digest_type>&& dependencies,
                                                        const protocol_feature_subjective_restrictions& restrictions )
-   :protocol_feature_base( protocol_feature_t::builtin, restrictions )
+   :protocol_feature_base( protocol_feature_t::builtin, description_digest, std::move(dependencies), restrictions )
    ,_codename(codename)
    {
-      auto itr = builtin_codenames.find( codename );
-      EOS_ASSERT( itr != builtin_codenames.end(), protocol_feature_validation_exception,
+      auto itr = builtin_protocol_feature_codenames.find( codename );
+      EOS_ASSERT( itr != builtin_protocol_feature_codenames.end(), protocol_feature_validation_exception,
                   "Unsupported builtin_protocol_feature_t passed to constructor: ${codename}",
                   ("codename", static_cast<uint32_t>(codename)) );
 
-      builtin_feature_codename = itr->second;
+      builtin_feature_codename = itr->second.codename;
    }
 
    void builtin_protocol_feature::reflector_init() {
       protocol_feature_base::reflector_init();
 
-      for( const auto& p : builtin_codenames ) {
-         if( builtin_feature_codename.compare( p.second ) == 0 ) {
+      auto codename = get_codename();
+      for( const auto& p : builtin_protocol_feature_codenames ) {
+         if( p.first ==  codename ) {
+            EOS_ASSERT( builtin_feature_codename == p.second.codename,
+                        protocol_feature_validation_exception,
+                        "Deserialized protocol feature has invalid codename. Expected: ${expected}. Actual: ${actual}.",
+                        ("expected", p.second.codename)
+                        ("actual", protocol_feature_type)
+            );
             _codename = p.first;
             return;
          }
@@ -83,7 +114,7 @@ namespace eosio { namespace chain {
    }
 
    protocol_feature_manager::protocol_feature_manager() {
-      _builtin_protocol_features.reserve( builtin_codenames.size() );
+      _builtin_protocol_features.reserve( builtin_protocol_feature_codenames.size() );
    }
 
    protocol_feature_manager::recognized_t
@@ -127,6 +158,20 @@ namespace eosio { namespace chain {
       return (_builtin_protocol_features[indx].activation_block_num <= current_block_num);
    }
 
+   optional<digest_type>
+   protocol_feature_manager::get_builtin_digest( builtin_protocol_feature_t feature_codename )const
+   {
+      uint32_t indx = static_cast<uint32_t>( feature_codename );
+
+      if( indx >= _builtin_protocol_features.size() )
+         return {};
+
+      if( _builtin_protocol_features[indx].iterator_to_protocol_feature == _recognized_protocol_features.end() )
+         return {};
+
+      return _builtin_protocol_features[indx].iterator_to_protocol_feature->feature_digest;
+   }
+
    bool protocol_feature_manager::validate_dependencies(
                                     const digest_type& feature_digest,
                                     const std::function<bool(const digest_type&)>& validator
@@ -142,10 +187,40 @@ namespace eosio { namespace chain {
       return true;
    }
 
+   builtin_protocol_feature
+   protocol_feature_manager::make_default_builtin_protocol_feature( builtin_protocol_feature_t codename )const
+   {
+      auto itr = builtin_protocol_feature_codenames.find( codename );
+
+      EOS_ASSERT( itr != builtin_protocol_feature_codenames.end(), protocol_feature_validation_exception,
+                  "Unsupported builtin_protocol_feature_t: ${codename}",
+                  ("codename", static_cast<uint32_t>(codename)) );
+
+      flat_set<digest_type> dependencies;
+      dependencies.reserve( itr->second.builtin_dependencies.size() );
+
+      for( const auto& d : itr->second.builtin_dependencies ) {
+         auto dependency_digest = get_builtin_digest( d );
+         EOS_ASSERT( dependency_digest, protocol_feature_exception,
+                     "cannot make default builtin protocol feature with codename '${codename}' since it has a dependency that has not been added yet: ${dependency_codename}",
+                     ("codename", static_cast<uint32_t>(itr->first))
+                     ("dependency_codename", static_cast<uint32_t>(d))
+         );
+         dependencies.insert( *dependency_digest );
+      }
+
+      return {itr->first, itr->second.description_digest, std::move(dependencies), itr->second.subjective_restrictions};
+   }
+
    void protocol_feature_manager::add_feature( const builtin_protocol_feature& f ) {
       EOS_ASSERT( _head_of_builtin_activation_list == builtin_protocol_feature_entry::no_previous,
                   protocol_feature_exception,
                   "new builtin protocol features cannot be added after a protocol feature has already been activated" );
+
+      auto builtin_itr = builtin_protocol_feature_codenames.find( f._codename );
+      EOS_ASSERT( builtin_itr != builtin_protocol_feature_codenames.end(), protocol_feature_validation_exception,
+                  "Builtin protocol feature has unsupported builtin_protocol_feature_t: ${codename}",
+                  ("codename", static_cast<uint32_t>( f._codename )) );
 
       uint32_t indx = static_cast<uint32_t>( f._codename );
 
@@ -157,6 +232,52 @@ namespace eosio { namespace chain {
       }
 
       auto feature_digest = f.digest();
+
+      const auto& expected_builtin_dependencies = builtin_itr->second.builtin_dependencies;
+      flat_set<builtin_protocol_feature_t> satisfied_builtin_dependencies;
+      satisfied_builtin_dependencies.reserve( expected_builtin_dependencies.size() );
+
+      for( const auto& d : f.dependencies ) {
+         auto itr = _recognized_protocol_features.find( d );
+         EOS_ASSERT( itr != _recognized_protocol_features.end(), protocol_feature_exception,
+            "builtin protocol feature with codename '${codename}' and digest of ${digest} has a dependency on a protocol feature with digest ${dependency_digest} that is not recognized",
+            ("codename", f.builtin_feature_codename)
+            ("digest",  feature_digest)
+            ("dependency_digest", d )
+         );
+
+         if( itr->builtin_feature
+             && expected_builtin_dependencies.find( *itr->builtin_feature )
+                  != expected_builtin_dependencies.end() )
+         {
+            satisfied_builtin_dependencies.insert( *itr->builtin_feature );
+         }
+      }
+
+      if( expected_builtin_dependencies.size() > satisfied_builtin_dependencies.size() ) {
+         flat_set<builtin_protocol_feature_t> missing_builtins;
+         missing_builtins.reserve( expected_builtin_dependencies.size() - satisfied_builtin_dependencies.size() );
+         std::set_difference( expected_builtin_dependencies.begin(), expected_builtin_dependencies.end(),
+                              satisfied_builtin_dependencies.begin(), satisfied_builtin_dependencies.end(),
+                              end_inserter( missing_builtins )
+         );
+
+         vector<string> missing_builtins_with_names;
+         missing_builtins_with_names.reserve( missing_builtins.size() );
+         for( const auto& builtin_codename : missing_builtins ) {
+            auto itr = builtin_protocol_feature_codenames.find( builtin_codename );
+            EOS_ASSERT( itr != builtin_protocol_feature_codenames.end(),
+                        protocol_feature_exception,
+                        "Unexpected error"
+            );
+            missing_builtins_with_names.emplace_back( itr->second.codename );
+         }
+
+         EOS_THROW(  protocol_feature_validation_exception,
+                     "Not all the builtin dependencies of the builtin protocol feature with codename '${codename}' and digest of ${digest} were satisfied.",
+                     ("missing_dependencies", missing_builtins_with_names)
+         );
+      }
 
       auto res = _recognized_protocol_features.insert( protocol_feature{
          feature_digest,

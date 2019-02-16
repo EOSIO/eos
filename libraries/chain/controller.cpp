@@ -274,7 +274,7 @@ struct controller_impl {
       apply_handlers[receiver][make_pair(contract,action)] = v;
    }
 
-   controller_impl( const controller::config& cfg, controller& s  )
+   controller_impl( const controller::config& cfg, controller& s, protocol_feature_manager&& pfm  )
    :self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
@@ -287,6 +287,7 @@ struct controller_impl {
     wasmif( cfg.wasm_runtime ),
     resource_limits( db ),
     authorization( s, db ),
+    protocol_features( std::move(pfm) ),
     conf( cfg ),
     chain_id( cfg.genesis.compute_chain_id() ),
     read_mode( cfg.read_mode ),
@@ -2043,7 +2044,12 @@ authorization_manager&         controller::get_mutable_authorization_manager()
 }
 
 controller::controller( const controller::config& cfg )
-:my( new controller_impl( cfg, *this ) )
+:my( new controller_impl( cfg, *this, protocol_feature_manager{} ) )
+{
+}
+
+controller::controller( const config& cfg, protocol_feature_manager&& pfm )
+:my( new controller_impl( cfg, *this, std::move(pfm) ) )
 {
 }
 
@@ -2707,7 +2713,7 @@ bool controller::is_builtin_activated( builtin_protocol_feature_t f )const {
       ++current_block_num;
    }
 
-   my->protocol_features.is_builtin_activated( f, current_block_num );
+   return my->protocol_features.is_builtin_activated( f, current_block_num );
 }
 
 bool controller::is_known_unexpired_transaction( const transaction_id_type& id) const {

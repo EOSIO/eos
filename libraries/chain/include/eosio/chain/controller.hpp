@@ -92,6 +92,7 @@ namespace eosio { namespace chain {
          };
 
          explicit controller( const config& cfg );
+         controller( const config& cfg, protocol_feature_manager&& pfm );
          ~controller();
 
          void add_indices();

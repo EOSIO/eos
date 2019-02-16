@@ -208,6 +208,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
    cfg.add_options()
          ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the blocks directory (absolute path or relative to application data dir)")
+         ("protocol-features-dir", bpo::value<bfs::path>()->default_value("protocol_features"),
+          "the location of the protocol_features directory (absolute path or relative to application config dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/wabt"), "Override default WASM runtime")
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
@@ -329,6 +331,83 @@ void clear_directory_contents( const fc::path& p ) {
    }
 }
 
+optional<builtin_protocol_feature> read_builtin_protocol_feature( const fc::path& p  ) {
+   return {};
+}
+
+protocol_feature_manager initialize_protocol_features( const fc::path& p, bool populate_missing_builtins = true ) {
+   using boost::filesystem::directory_iterator;
+
+   protocol_feature_manager pfm;
+
+   if( !fc::is_directory( p ) )
+      return pfm;
+
+   map<builtin_protocol_feature_t, fc::path>  found_builtin_protocol_features;
+   map<digest_type, std::pair<builtin_protocol_feature, bool> > builtin_protocol_features_to_add;
+   // The bool in the pair is set to true if the builtin protocol feature has already been visited to add
+
+   // Read all builtin protocol features
+   for( directory_iterator enditr, itr{p}; itr != enditr; ++itr ) {
+      auto file_path = itr->path();
+      if( !fc::is_regular_file( file_path ) || file_path.extension().generic_string() == ".json" ) continue;
+
+      auto f = read_builtin_protocol_feature( file_path );
+
+      if( !f ) continue;
+
+      auto res = found_builtin_protocol_features.emplace( f->get_codename(), file_path );
+
+      EOS_ASSERT( res.second, plugin_exception,
+                  "Builtin protocol feature '${codename}' was already included from a previous_file",
+                  ("codename", builtin_protocol_feature_codename(f->get_codename()))
+                  ("current_file", file_path.generic_string())
+                  ("previous_file", res.first->second.generic_string())
+      );
+
+      builtin_protocol_features_to_add.emplace( std::piecewise_construct,
+                                               std::forward_as_tuple( f->digest() ),
+                                               std::forward_as_tuple( *f, false ) );
+      //pfm.add_feature( *f );
+   }
+
+   // Add builtin protocol features to the protocol feature manager in the right order (to satisfy dependencies)
+   using itr_type = map<digest_type, std::pair<builtin_protocol_feature, bool>>::iterator;
+   std::function<void(const itr_type&)> add_protocol_feature =
+   [&pfm, &builtin_protocol_features_to_add, &add_protocol_feature]( const itr_type& itr ) -> void {
+      if( itr->second.second ) {
+         return;
+      } else {
+         itr->second.second = true;
+      }
+
+      for( const auto& d : itr->second.first.dependencies ) {
+         auto itr2 = builtin_protocol_features_to_add.find( d );
+         if( itr2 != builtin_protocol_features_to_add.end() ) {
+            add_protocol_feature( itr2 );
+         }
+      }
+
+      pfm.add_feature( itr->second.first );
+   };
+
+   for( auto itr = builtin_protocol_features_to_add.begin(); itr != builtin_protocol_features_to_add.end(); ++itr ) {
+      add_protocol_feature( itr );
+   }
+
+   if( populate_missing_builtins ) {
+      for( const auto& p : builtin_protocol_feature_codenames ) {
+         auto itr = found_builtin_protocol_features.find( p.first );
+         if( itr != found_builtin_protocol_features.end() ) continue;
+
+         pfm.make_default_builtin_protocol_feature( p.first );
+         // TODO: write it out to the protocol-features directory
+      }
+   }
+
+   return pfm;
+}
+
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
@@ -377,6 +456,18 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             my->blocks_dir = app().data_dir() / bld;
          else
             my->blocks_dir = bld;
+      }
+
+      protocol_feature_manager pfm;
+      {
+         fc::path protocol_features_dir;
+         auto pfd = options.at( "protocol-features-dir" ).as<bfs::path>();
+         if( pfd.is_relative())
+            protocol_features_dir = app().config_dir() / pfd;
+         else
+            protocol_features_dir = pfd;
+
+         pfm = initialize_protocol_features( protocol_features_dir );
       }
 
       if( options.count("checkpoint") ) {
@@ -635,7 +726,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->block_validation_mode = options.at("validation-mode").as<validation_mode>();
       }
 
-      my->chain.emplace( *my->chain_config );
+      my->chain.emplace( *my->chain_config, std::move(pfm) );
       my->chain_id.emplace( my->chain->get_chain_id());
 
       // set up method providers

@@ -113,6 +113,11 @@ namespace eosio { namespace testing {
       open(snapshot);
    }
 
+   void base_tester::init(controller::config config, protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot ) {
+      cfg = config;
+      open(std::move(pfm), snapshot);
+   }
+
 
    void base_tester::close() {
       control.reset();
@@ -121,7 +126,11 @@ namespace eosio { namespace testing {
 
 
    void base_tester::open( const snapshot_reader_ptr& snapshot) {
-      control.reset( new controller(cfg) );
+      open( protocol_feature_manager{}, snapshot );
+   }
+
+   void base_tester::open( protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot ) {
+      control.reset( new controller(cfg, std::move(pfm)) );
       control->add_indices();
       control->startup( []() { return false; }, snapshot);
       chain_transactions.clear();
