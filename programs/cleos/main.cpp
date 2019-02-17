@@ -1783,9 +1783,9 @@ struct fundcpuloan_subcommand {
       add_standard_transaction_options(fundcpuloan, "from@active");
       fundcpuloan->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
-            ("from",         from_str)
-            ("loan_num",     loan_num_str)
-            ("payment", payment_str);
+            ("from",     from_str)
+            ("loan_num", loan_num_str)
+            ("payment",  payment_str);
          auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
          send_actions({create_action(accountPermissions, config::system_account_name, N(fundcpuloan), act_payload)});
       });
@@ -1805,11 +1805,55 @@ struct fundnetloan_subcommand {
       add_standard_transaction_options(fundnetloan, "from@active");
       fundnetloan->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
-            ("from",         from_str)
-            ("loan_num",     loan_num_str)
-            ("payment", payment_str);
+            ("from",     from_str)
+            ("loan_num", loan_num_str)
+            ("payment",  payment_str);
          auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
          send_actions({create_action(accountPermissions, config::system_account_name, N(fundnetloan), act_payload)});
+      });
+   }
+};
+
+struct defcpuloan_subcommand {
+   string from_str;
+   string loan_num_str;
+   string amount_str;
+
+   defcpuloan_subcommand(CLI::App* actionRoot) {
+      auto defcpuloan = actionRoot->add_subcommand("defundcpuloan", localized("Withdraw from a CPU loan fund"));
+      defcpuloan->add_option("from",     from_str,     localized("Loan owner"))->required();
+      defcpuloan->add_option("loan_num", loan_num_str, localized("Loan ID"))->required();
+      defcpuloan->add_option("amount",   amount_str,  localized("Amount to be withdrawn"))->required();
+      add_standard_transaction_options(defcpuloan, "from@active");
+      defcpuloan->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+            ("from",     from_str)
+            ("loan_num", loan_num_str)
+            ("amount",   amount_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(defcpuloan), act_payload)});
+      });
+   }
+};
+
+struct defnetloan_subcommand {
+   string from_str;
+   string loan_num_str;
+   string amount_str;
+
+   defnetloan_subcommand(CLI::App* actionRoot) {
+      auto defnetloan = actionRoot->add_subcommand("defundnetloan", localized("Withdraw from a Net loan fund"));
+      defnetloan->add_option("from",     from_str,     localized("Loan owner"))->required();
+      defnetloan->add_option("loan_num", loan_num_str, localized("Loan ID"))->required();
+      defnetloan->add_option("amount",   amount_str,  localized("Amount to be withdrawn"))->required();
+      add_standard_transaction_options(defnetloan, "from@active");
+      defnetloan->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+            ("from",     from_str)
+            ("loan_num", loan_num_str)
+            ("amount",   amount_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(defnetloan), act_payload)});
       });
    }
 };
@@ -1882,19 +1926,38 @@ struct consolidate_subcommand {
    }
 };
 
-struct closerex_subcommand {
-      string owner_str;
+struct rexexec_subcommand {
+   string user_str;
+   string max_str;
 
-      closerex_subcommand(CLI::App* actionRoot) {
-         auto closerex = actionRoot->add_subcommand("closerex", localized("Delete unused REX-related user table entries"));
-         closerex->add_option("owner", owner_str, localized("REX owner"))->required();
-         add_standard_transaction_options(closerex, "owner@active");
-         closerex->set_callback([this] {
-               fc::variant act_payload = fc::mutable_variant_object()("owner", owner_str);
-               auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
-               send_actions({create_action(accountPermissions, config::system_account_name, N(closerex), act_payload)});
-            });
-      }
+   rexexec_subcommand(CLI::App* actionRoot) {
+      auto rexexec = actionRoot->add_subcommand("rexexec", localized("Perform REX maintenance by processing expired loans and unfilled sell orders"));
+      rexexec->add_option("user", user_str, localized("User executing the action"))->required();
+      rexexec->add_option("max",  max_str,  localized("Maximum number of CPU loans, Net loans, and sell orders to be processed"))->required();
+      add_standard_transaction_options(rexexec, "user@active");
+      rexexec->set_callback([this] {
+            fc::variant act_payload = fc::mutable_variant_object()
+               ("user", user_str)
+               ("max",  max_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {user_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(rexexec), act_payload)});
+      });
+   }
+};
+
+struct closerex_subcommand {
+   string owner_str;
+
+   closerex_subcommand(CLI::App* actionRoot) {
+      auto closerex = actionRoot->add_subcommand("closerex", localized("Delete unused REX-related user table entries"));
+      closerex->add_option("owner", owner_str, localized("REX owner"))->required();
+      add_standard_transaction_options(closerex, "owner@active");
+      closerex->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()("owner", owner_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(closerex), act_payload)});
+      });
+   }
 };
 
 void get_account( const string& accountName, const string& coresym, bool json_format ) {
@@ -3755,9 +3818,14 @@ int main( int argc, char** argv ) {
    auto mvtosavings    = mvtosavings_subcommand(rex);
    auto mvfromsavings  = mvfrsavings_subcommand(rex);
    auto rentcpu        = rentcpu_subcommand(rex);
-   auto autorentcpu    = rentnet_subcommand(rex);
+   auto rentnet        = rentnet_subcommand(rex);
+   auto fundcpuloan    = fundcpuloan_subcommand(rex);
+   auto fundnetloan    = fundnetloan_subcommand(rex);
+   auto defcpuloan     = defcpuloan_subcommand(rex);
+   auto defnetloan     = defnetloan_subcommand(rex);
    auto consolidate    = consolidate_subcommand(rex);
    auto updaterex      = updaterex_subcommand(rex);
+   auto rexexec        = rexexec_subcommand(rex);
    auto closerex       = closerex_subcommand(rex);
    
 
