@@ -60,13 +60,30 @@ then
 fi
 printf " - XCode installation found @ ${XCODESELECT}\\n"
 
-printf "Checking Ruby installation...\\n"
-if ! RUBY=$( command -v ruby)
-then
-	printf " - Ruby must be installed in order to proceed!\\n"
-	exit 1
-fi
-printf " - Ruby installation found @ ${RUBY}\\n"
+	printf "\\tChecking Home Brew installation\\n"
+	if ! BREW=$( command -v brew )
+	then
+		printf "\\tHomebrew must be installed to compile EOS.IO\\n\\n"
+		printf "\\tDo you wish to install Home Brew?\\n"
+		if is_noninteractive; then exec <<< "1"; fi
+		select yn in "Yes" "No"; do
+			case "${yn}" in
+				[Yy]* )
+				"${XCODESELECT}" --install 2>/dev/null;
+				if ! "${RUBY}" -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+				then
+					echo "Unable to install homebrew at this time. Exiting now."
+					exit 1;
+				else
+					BREW=$( command -v brew )
+				fi
+				break;;
+				[Nn]* ) echo "User aborted homebrew installation. Exiting now.";
+						exit 1;;
+				* ) echo "Please enter 1 for yes or 2 for no.";;
+			esac
+		done
+	fi
 
 printf "Checking Home Brew installation...\\n"
 if ! BREW=$( command -v brew )
@@ -112,24 +129,38 @@ while read -r name tester testee brewname uri; do
 done < "${REPO_ROOT}/scripts/eosio_build_darwin_deps"
 IFS="${var_ifs}"
 
-if [ ! -d /usr/local/Frameworks ]; then
-	printf "\\n${bldred}/usr/local/Frameworks is necessary to brew install python@3. Run the following commands as sudo and try again:${txtrst}\\n"
-	printf "sudo mkdir /usr/local/Frameworks && sudo chown $(whoami):admin /usr/local/Frameworks\\n\\n"
-	exit 1;
-fi
-
-if [ $COUNT -gt 1 ]; then
-	printf "\\nThe following dependencies are required to install EOSIO:\\n"
-	printf "${DISPLAY}\\n\\n"
-	if [ $ANSWER != 1 ]; then read -p "Do you wish to install these packages? (y/n) " ANSWER; fi
-	case $ANSWER in
-		1 | [Yy]* )
-			"${XCODESELECT}" --install 2>/dev/null;
-			if [ $1 == 0 ]; then read -p "Do you wish to update homebrew packages first? (y/n) " ANSWER; fi
-			case $ANSWER in
-				1 | [Yy]* )
-					if ! brew update; then
-						printf " - Brew update failed.\\n"
+	if [ $COUNT -gt 1 ]; then
+		printf "\\n\\tThe following dependencies are required to install EOSIO.\\n"
+		printf "\\n\\t${DISPLAY}\\n\\n"
+		echo "Do you wish to install these packages?"
+		if is_noninteractive; then exec <<< "1"; fi
+		select yn in "Yes" "No"; do
+			case $yn in
+				[Yy]* )
+					if [ $PERMISSION_GETTEXT -eq 1 ]; then
+						sudo chown -R "$(whoami)" /usr/local/share
+					fi
+					"${XCODESELECT}" --install 2>/dev/null;
+					printf "\\tUpdating Home Brew.\\n"
+					if ! brew update
+					then
+						printf "\\tUnable to update Home Brew at this time.\\n"
+						printf "\\tExiting now.\\n\\n"
+						exit 1;
+					fi
+					printf "\\tInstalling Dependencies.\\n"
+					if ! "${BREW}" install --force ${DEP}
+					then
+						printf "\\tHomebrew exited with the above errors.\\n"
+						printf "\\tExiting now.\\n\\n"
+						exit 1;
+					fi
+                                        if [[ "$DEP" == "llvm@4" ]]; then
+                                                "${BREW}" unlink ${DEP}
+					elif ! "${BREW}" unlink ${DEP} && "${BREW}" link --force ${DEP}
+					then
+						printf "\\tHomebrew exited with the above errors.\\n"
+						printf "\\tExiting now.\\n\\n"
 						exit 1;
 					else
 						printf " - Brew update complete.\\n"
@@ -169,6 +200,7 @@ fi
 			printf "\\tFound Boost Version %s.\\n" "${BVERSION}"
 			printf "\\tEOS.IO requires Boost version 1.67.\\n"
 			printf "\\tWould you like to uninstall version %s and install Boost version 1.67.\\n" "${BVERSION}"
+			if is_noninteractive; then exec <<< "1"; fi
 			select yn in "Yes" "No"; do
 				case $yn in
 					[Yy]* )
