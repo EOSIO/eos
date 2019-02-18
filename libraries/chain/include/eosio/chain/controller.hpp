@@ -18,6 +18,7 @@ namespace boost { namespace asio {
 namespace eosio { namespace chain {
 
    class authorization_manager;
+   class vm_manager;
 
    namespace resource_limits {
       class resource_limits_manager;
@@ -254,7 +255,7 @@ namespace eosio { namespace chain {
          */
 
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
-         wasm_interface& get_wasm_interface();
+         vm_manager& get_vm_manager();
 
 
          optional<abi_serializer> get_abi_serializer( account_name n, const fc::microseconds& max_serialization_time )const {

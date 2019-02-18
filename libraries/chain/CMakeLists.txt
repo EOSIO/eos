@@ -29,16 +29,16 @@ add_library( eosio_chain
 #             chain_config.cpp
 #             block_trace.cpp
               wast_to_wasm.cpp
-              wasm_interface.cpp
-              wasm_eosio_validation.cpp
-              wasm_eosio_injection.cpp
+#              wasm_interface.cpp
+#              wasm_eosio_validation.cpp
+#              wasm_eosio_injection.cpp
               apply_context.cpp
               abi_serializer.cpp
               asset.cpp
               snapshot.cpp
 
-             webassembly/wavm.cpp
-             webassembly/wabt.cpp
+#             webassembly/wavm.cpp
+#             webassembly/wabt.cpp
 
 #             get_config.cpp
 #             global_property_object.cpp
@@ -55,7 +55,7 @@ add_library( eosio_chain
              )
 
 target_link_libraries( eosio_chain fc chainbase Logging IR WAST WASM Runtime
-                       softfloat builtins wabt chain_api eosiolib_native
+                       softfloat builtins wabt chain_api eosiolib_native vm_manager
                      )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
@@ -66,6 +66,7 @@ target_include_directories( eosio_chain
                               PRIVATE "${CMAKE_SOURCE_DIR}/contracts"
                               PRIVATE "${CMAKE_BINARY_DIR}/contracts"
                               PRIVATE ${CMAKE_SOURCE_DIR}/externals/magic_get/include
+                              PRIVATE "${CMAKE_SOURCE_DIR}/libraries/vm/vm_manager"
                         )
 
 install( TARGETS eosio_chain

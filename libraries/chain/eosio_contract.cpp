@@ -23,6 +23,7 @@
 
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <vm_manager.hpp>
 
 namespace eosio { namespace chain {
 
@@ -132,19 +133,21 @@ void apply_eosio_setcode(apply_context& context) {
    auto  act = context.act.data_as<setcode>();
    context.require_authorization(act.account);
 
-   EOS_ASSERT( act.vmtype == 0, invalid_contract_vm_type, "code should be 0" );
+//   EOS_ASSERT( act.vmtype == 0, invalid_contract_vm_type, "code should be 0" );
    EOS_ASSERT( act.vmversion == 0, invalid_contract_vm_version, "version should be 0" );
 
    fc::sha256 code_id; /// default ID == 0
+   bytes output;
 
    if( act.code.size() > 0 ) {
      code_id = fc::sha256::hash( act.code.data(), (uint32_t)act.code.size() );
-     wasm_interface::validate(act.code);
+//      wasm_interface::validate(act.code);
+     vm_manager::get().setcode(act.vmtype, act.account, act.code, output);
    }
 
    const auto& account = db.get<account_object,by_name>(act.account);
 
-   int64_t code_size = (int64_t)act.code.size();
+   int64_t code_size = (int64_t)output.size();
    int64_t old_size  = (int64_t)account.code.size() * config::setcode_ram_bytes_multiplier;
    int64_t new_size  = code_size * config::setcode_ram_bytes_multiplier;
 
@@ -153,10 +156,11 @@ void apply_eosio_setcode(apply_context& context) {
    db.modify( account, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       // TODO: update setcode message to include the hash, then validate it in validate
+      a.vm_type = act.vmtype;
       a.last_code_update = context.control.pending_block_time();
       a.code_version = code_id;
       if ( code_size > 0 ) {
-         a.code.assign(act.code.data(), code_size);
+         a.code.assign(output.data(), code_size);
       } else {
          a.code.resize(0);
       }

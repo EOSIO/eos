@@ -1917,4 +1917,20 @@ chain::symbol read_only::extract_core_symbol()const {
 } // namespace chain_apis
 } // namespace eosio
 
+namespace eosio {
+   namespace chain {
+      std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
+         std::string s;
+         in >> s;
+         if (s == "wavm")
+            runtime = eosio::chain::wasm_interface::vm_type::wavm;
+         else if (s == "wabt")
+            runtime = eosio::chain::wasm_interface::vm_type::wabt;
+         else
+            in.setstate(std::ios_base::failbit);
+         return in;
+      }
+   }
+}
+
 FC_REFLECT( eosio::chain_apis::detail::ram_market_exchange_state_t, (ignore1)(ignore2)(ignore3)(core_symbol)(ignore4) )

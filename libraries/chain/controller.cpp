@@ -23,6 +23,7 @@
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
+#include <vm_manager.hpp>
 
 extern "C" void vm_api_init();
 void chain_api_init(eosio::chain::controller *ctrl, eosio::chain::controller::config *cfg);
@@ -123,7 +124,7 @@ struct controller_impl {
    optional<pending_state>        pending;
    block_state_ptr                head;
    fork_database                  fork_db;
-   wasm_interface                 wasmif;
+   vm_manager                     vmm;
    resource_limits_manager        resource_limits;
    authorization_manager          authorization;
    controller::config             conf;
@@ -181,7 +182,7 @@ struct controller_impl {
         cfg.reversible_cache_size ),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
-    wasmif( cfg.wasm_runtime ),
+    vmm( ),
     resource_limits( db ),
     authorization( s, db ),
     conf( cfg ),
@@ -2114,8 +2115,9 @@ const apply_handler* controller::find_apply_handler( account_name receiver, acco
    }
    return nullptr;
 }
-wasm_interface& controller::get_wasm_interface() {
-   return my->wasmif;
+
+vm_manager& controller::get_vm_manager() {
+   return my->vmm;
 }
 
 const account_object& controller::get_account( account_name name )const
