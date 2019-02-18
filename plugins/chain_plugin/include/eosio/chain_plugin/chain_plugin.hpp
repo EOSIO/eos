@@ -608,8 +608,11 @@ public:
      static auto function() {
         return [](const input_type& v) {
             chain::key256_t k;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
             k[0] = ((uint128_t *)&v._hash)[0]; //0-127
             k[1] = ((uint128_t *)&v._hash)[1]; //127-256
+#pragma GCC diagnostic pop
             return k;
         };
      }

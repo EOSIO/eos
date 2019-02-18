@@ -564,7 +564,7 @@ namespace eosio { namespace testing {
    }
 
 
-   transaction_trace_ptr base_tester::issue( account_name to, string amount, account_name currency ) {
+   transaction_trace_ptr base_tester::issue( account_name to, string amount, account_name currency, string memo ) {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
@@ -578,6 +578,7 @@ namespace eosio { namespace testing {
                ("data", fc::mutable_variant_object()
                   ("to", to)
                   ("quantity", amount)
+                  ("memo", memo)
                )
             })
          );
@@ -811,7 +812,8 @@ namespace eosio { namespace testing {
          return other.sync_with(*this);
 
       auto sync_dbs = [](base_tester& a, base_tester& b) {
-         for( int i = 1; i <= a.control->head_block_num(); ++i ) {
+         for( uint32_t i = 1; i <= a.control->head_block_num(); ++i ) {
+
             auto block = a.control->fetch_block_by_number(i);
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
                auto bs = b.control->create_block_state_future( block );

@@ -1212,7 +1212,7 @@ class Node(object):
         assert self.popenProc is not None, "node: \"%s\" does not have a popenProc, this may be because it is only set after a relaunch." % (self.cmd)
         self.popenProc.send_signal(signal.SIGINT)
         try:
-            outs, _ = self.popenProc.communicate(timeout=1)
+            outs, _ = self.popenProc.communicate(timeout=15)
             assert self.popenProc.returncode == 0, "Expected terminating \"%s\" to have an exit status of 0, but got %d" % (self.cmd, self.popenProc.returncode)
         except subprocess.TimeoutExpired:
             Utils.errorExit("Terminate call failed on node: %s" % (self.cmd))
