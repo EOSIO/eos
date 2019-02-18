@@ -34,8 +34,12 @@
 
    function usage()
    {
-      printf "\\tUsage: %s \\n\\t[Build Option -o <Debug|Release|RelWithDebInfo|MinSizeRel>] \\n\\t[CodeCoverage -c] \\n\\t[Doxygen -d] \\n\\t[CoreSymbolName -s <1-7 characters>] \\n\\t[Avoid Compiling -a]\\n\\n" "$0" 1>&2
+      printf "\\tUsage: %s \\n\\t[Build Option -o <Debug|Release|RelWithDebInfo|MinSizeRel>] \\n\\t[CodeCoverage -c] \\n\\t[Doxygen -d] \\n\\t[CoreSymbolName -s <1-7 characters>] \\n\\t[Avoid Compiling -a]\\n\\t[Noninteractive -y]\\n\\n" "$0" 1>&2
       exit 1
+   }
+
+   is_noninteractive() {
+      [[ -n "${EOSIO_BUILD_NONINTERACTIVE+1}" ]]
    }
 
    ARCH=$( uname )
@@ -66,7 +70,7 @@
    txtrst=$(tput sgr0)
 
    if [ $# -ne 0 ]; then
-      while getopts ":cdo:s:ah" opt; do
+      while getopts ":cdo:s:ahy" opt; do
          case "${opt}" in
             o )
                options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
@@ -99,6 +103,9 @@
             h)
                usage
                exit 1
+            ;;
+            y)
+               EOSIO_BUILD_NONINTERACTIVE=1
             ;;
             \? )
                printf "\\n\\tInvalid Option: %s\\n" "-${OPTARG}" 1>&2
