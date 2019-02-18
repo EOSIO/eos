@@ -102,6 +102,33 @@ BOOST_AUTO_TEST_CASE(json_from_string_test)
   BOOST_CHECK_EQUAL(exc_found, true);
 }
 
+BOOST_AUTO_TEST_CASE(variant_format_string_limited)
+{
+   const string format = "${a} ${b} ${c}";
+   {
+      fc::mutable_variant_object mu;
+      mu( "a", string( 1024, 'a' ) );
+      mu( "b", string( 1024, 'b' ) );
+      mu( "c", string( 1024, 'c' ) );
+      string result = fc::format_string( format, mu, true );
+      BOOST_CHECK_EQUAL( result, string( 256, 'a' ) + "... " + string( 256, 'b' ) + "... " + string( 256, 'c' ) + "..." );
+   }
+   {
+      fc::mutable_variant_object mu;
+      signed_block a;
+      blob b;
+      for( int i = 0; i < 1024; ++i)
+         b.data.push_back('b');
+      variants c;
+      c.push_back(variant(a));
+      mu( "a", a );
+      mu( "b", b );
+      mu( "c", c );
+      string result = fc::format_string( format, mu, true );
+      BOOST_CHECK_EQUAL( result, "${a} ${b} ${c}");
+   }
+}
+
 // Test overflow handling in asset::from_string
 BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
 {
