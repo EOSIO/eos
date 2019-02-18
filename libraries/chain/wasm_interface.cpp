@@ -935,7 +935,7 @@ class console_api : public context_aware_api {
           */
 
          if ( !ignore ) {
-            auto& console = context.get_console_stream();
+            auto& console = get_chain_api_cpp()->get_console_stream();
             auto orig_prec = console.precision();
 
 #ifdef __x86_64__
@@ -944,12 +944,12 @@ class console_api : public context_aware_api {
             f128M_to_extF80M(&val, &val_approx);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
-            context.console_append( *(long double*)(&val_approx) );
+            get_chain_api_cpp()->console_append( *(long double*)(&val_approx) );
 #pragma GCC diagnostic pop
 #else
             console.precision( std::numeric_limits<double>::digits10 );
             double val_approx = from_softfloat64( f128M_to_f64(&val) );
-            context.console_append(val_approx);
+            get_chain_api_cpp()->console_append(val_approx);
 #endif
             console.precision( orig_prec );
          }

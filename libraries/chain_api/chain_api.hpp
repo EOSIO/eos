@@ -28,6 +28,9 @@ struct chain_api_cpp
    void (*pause_billing_timer)(void);
    bool (*is_producing_block)();
 
+   std::ostringstream& (*get_console_stream)();
+   void (*console_append)( long double var );
+
 //vm_exceptions.cpp
    void (*throw_exception)(int type, const char* fmt, ...);
 

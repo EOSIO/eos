@@ -72,6 +72,14 @@ bool is_producing_block() {
    return s_ctrl->is_producing_block();
 }
 
+std::ostringstream& get_console_stream() {
+   return ctx().get_console_stream();
+}
+
+void console_append( long double var ) {
+   return ctx().console_append(var);
+}
+
 //vm_exceptions.cpp
 void vm_throw_exception(int type, const char* fmt, ...);
 
@@ -95,6 +103,8 @@ void chain_api_init(controller *ctrl, controller::config *cfg) {
     s_api.pause_billing_timer = pause_billing_timer;
     s_api.is_producing_block = is_producing_block;
     s_api.throw_exception = vm_throw_exception;
+    s_api.get_console_stream = get_console_stream;
+    s_api.console_append = console_append;
 
     register_chain_api_cpp(&s_api);
 }
