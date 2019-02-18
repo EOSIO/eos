@@ -123,7 +123,7 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
       std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
       EOS_ASSERT( allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
                   "transaction includes more than one signature signed using the same key associated with public key: ${key}",
-                  ("key", recov) );
+                  ("key", (std::string)recov) );
    }
 
    lock.lock();
@@ -286,7 +286,7 @@ bytes packed_transaction::get_raw_transaction() const
          default:
             EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
+   } FC_RETHROW_EXCEPTIONS(warn, "{c}", ("c",(std::string)compression) )
 }
 
 packed_transaction::packed_transaction( bytes&& packed_txn, vector<signature_type>&& sigs, bytes&& packed_cfd, compression_type _compression )
@@ -348,7 +348,7 @@ void packed_transaction::local_unpack_transaction(vector<bytes>&& context_free_d
          default:
             EOS_THROW( unknown_transaction_compression, "Unknown transaction compression algorithm" );
       }
-   } FC_CAPTURE_AND_RETHROW( (compression) )
+   } FC_RETHROW_EXCEPTIONS(warn, "{c}", ("c",(std::string)compression) )
 }
 
 void packed_transaction::local_unpack_context_free_data()
@@ -365,7 +365,7 @@ void packed_transaction::local_unpack_context_free_data()
          default:
             EOS_THROW( unknown_transaction_compression, "Unknown transaction compression algorithm" );
       }
-   } FC_CAPTURE_AND_RETHROW( (compression) )
+   } FC_RETHROW_EXCEPTIONS(warn, "{c}", ("c",(std::string)compression) )
 }
 
 void packed_transaction::local_pack_transaction()
@@ -381,7 +381,7 @@ void packed_transaction::local_pack_transaction()
          default:
             EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((compression))
+   } FC_RETHROW_EXCEPTIONS(warn, "{c}", ("c",(std::string)compression) )
 }
 
 void packed_transaction::local_pack_context_free_data()
@@ -397,7 +397,7 @@ void packed_transaction::local_pack_context_free_data()
          default:
             EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((compression))
+   } FC_RETHROW_EXCEPTIONS(warn, "{c}", ("c",(std::string)compression) )
 }
 
 

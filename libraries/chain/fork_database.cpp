@@ -130,7 +130,8 @@ namespace eosio { namespace chain {
       if( !skip_validate_previous ) {
          auto prior = my->index.find( n->block->previous );
          EOS_ASSERT( prior != my->index.end(), unlinkable_block_exception,
-                     "unlinkable block", ("id", n->block->id())("previous", n->block->previous) );
+                     "unlinkable block id: {id}, previous: {previous}",
+                     ("id", n->block->id().str())("previous", n->block->previous.str()) );
       }
 
       auto inserted = my->index.insert(n);
@@ -299,7 +300,7 @@ namespace eosio { namespace chain {
 
    void fork_database::add( const header_confirmation& c ) {
       auto b = get_block( c.block_id );
-      EOS_ASSERT( b, fork_db_block_not_found, "unable to find block id ${id}", ("id",c.block_id));
+      EOS_ASSERT( b, fork_db_block_not_found, "unable to find block id ${id}", ("id",c.block_id.str()));
       b->add_confirmation( c );
 
       if( b->bft_irreversible_blocknum < b->block_num &&

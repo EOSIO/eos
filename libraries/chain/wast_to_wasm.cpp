@@ -34,7 +34,7 @@ namespace eosio { namespace chain {
             ss << error.locus.sourceLine << std::endl;
             ss << std::setw(error.locus.column(8)) << "^" << std::endl;
          }
-         EOS_ASSERT( false, wasm_exception, "error parsing wast: ${msg}", ("msg",ss.str()) );
+         EOS_ASSERT( false, wasm_exception, "error parsing wast: {msg}", ("msg",ss.str()) );
       }
 
       for(auto sectionIt = module.userSections.begin();sectionIt != module.userSections.end();++sectionIt)
@@ -60,7 +60,7 @@ namespace eosio { namespace chain {
          EOS_ASSERT( false, wasm_exception, "error converting to wasm: ${msg}", ("msg",ss.get()) );
       }
 
-   } FC_CAPTURE_AND_RETHROW( (wast) ) }  /// wast_to_wasm
+   } FC_RETHROW_EXCEPTIONS( warn, "" ) }  /// wast_to_wasm
 
    std::string     wasm_to_wast( const std::vector<uint8_t>& wasm, bool strip_names ) {
       return wasm_to_wast( wasm.data(), wasm.size(), strip_names );
@@ -75,7 +75,7 @@ namespace eosio { namespace chain {
           module.userSections.clear();
         // Print the module to WAST.
        return WAST::print(module);
-   } FC_CAPTURE_AND_RETHROW() } /// wasm_to_wast
+   } FC_RETHROW_EXCEPTIONS(warn, "" ) } /// wasm_to_wast
 
 
 } } // eosio::chain

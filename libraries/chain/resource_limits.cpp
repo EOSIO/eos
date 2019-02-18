@@ -148,8 +148,9 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
 
          EOS_ASSERT( cpu_used_in_window <= max_user_use_in_window,
                      tx_cpu_usage_exceeded,
-                     "authorizing account '${n}' has insufficient cpu resources for this transaction",
-                     ("n", name(a))
+                     "authorizing account '{n}' has insufficient cpu resources for this transaction, "
+                     "cpu_used_in_window: {cpu_used_in_window}, max_user_use_in_window: {max_user_use_in_window}",
+                     ("n", a.to_string())
                      ("cpu_used_in_window",cpu_used_in_window)
                      ("max_user_use_in_window",max_user_use_in_window) );
       }
@@ -167,8 +168,9 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
 
          EOS_ASSERT( net_used_in_window <= max_user_use_in_window,
                      tx_net_usage_exceeded,
-                     "authorizing account '${n}' has insufficient net resources for this transaction",
-                     ("n", name(a))
+                     "authorizing account '{n}' has insufficient net resources for this transaction, "
+                     "net_used_in_window: {net_used_in_window}, max_user_use_in_window: {max_user_use_in_window}",
+                     ("n", a.to_string())
                      ("net_used_in_window",net_used_in_window)
                      ("max_user_use_in_window",max_user_use_in_window) );
 
@@ -209,8 +211,8 @@ void resource_limits_manager::verify_account_ram_usage( const account_name accou
 
    if( ram_bytes >= 0 ) {
       EOS_ASSERT( usage.ram_usage <= static_cast<uint64_t>(ram_bytes), ram_usage_exceeded,
-                  "account ${account} has insufficient ram; needs ${needs} bytes has ${available} bytes",
-                  ("account", account)("needs",usage.ram_usage)("available",ram_bytes)              );
+                  "account {account} has insufficient ram; needs {needs} bytes has {available} bytes",
+                  ("account", account.to_string())("needs",usage.ram_usage)("available",ram_bytes)              );
    }
 }
 

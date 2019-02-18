@@ -50,12 +50,11 @@ namespace eosio { namespace chain {
       void set( const char* str );
 
       template<typename T>
-      name( T v ):value(v){}
-      name(){}
+      explicit name( T v ):value(v){}
+      name() = default;
 
-      explicit operator string()const;
-
-      string to_string() const { return string(*this); }
+      uint64_t to_uint64_t()const { return value; }
+      string to_string()const;
 
       name& operator=( uint64_t v ) {
          value = v;
@@ -72,7 +71,7 @@ namespace eosio { namespace chain {
       }
 
       friend std::ostream& operator << ( std::ostream& out, const name& n ) {
-         return out << string(n);
+         return out << n.to_string();
       }
 
       friend bool operator < ( const name& a, const name& b ) { return a.value < b.value; }
@@ -86,9 +85,7 @@ namespace eosio { namespace chain {
 
       friend bool operator != ( const name& a, const name& b ) { return a.value != b.value; }
 
-      operator bool()const            { return value; }
-      operator uint64_t()const        { return value; }
-      operator unsigned __int128()const       { return value; }
+      explicit operator bool()const            { return value; }
    };
 
 } } // eosio::chain
@@ -110,5 +107,19 @@ namespace fc {
   void from_variant(const fc::variant& v, eosio::chain::name& check);
 } // fc
 
-
 FC_REFLECT( eosio::chain::name, (value) )
+
+#include <fmt/format.h>
+
+namespace fmt {
+template<>
+struct formatter<eosio::chain::name> {
+   template<typename ParseContext>
+   constexpr auto parse( ParseContext& ctx ) { return ctx.begin(); }
+
+   template<typename FormatContext>
+   auto format( const eosio::chain::name& v, FormatContext& ctx ) {
+      return format_to( ctx.out(), "{}", v.to_string() );
+   }
+};
+}

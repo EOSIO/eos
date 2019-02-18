@@ -41,7 +41,7 @@ namespace eosio { namespace chain {
 
          EOS_ASSERT( false, wasm_exception, "${module}.${export} unresolveable", ("module",mod_name)("export",export_name) );
          return false;
-      } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
+      } FC_RETHROW_EXCEPTIONS( warn, "{module}.{export}", ("module",mod_name)("export",export_name) ) }
       };
    } }
 

@@ -369,7 +369,7 @@ namespace eosio { namespace chain {
    fc::path block_log::repair_log( const fc::path& data_dir, uint32_t truncate_at_block ) {
       ilog("Recovering Block Log...");
       EOS_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
-                 "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
+                 "Block log not found in '{blocks_dir}'", ("blocks_dir", data_dir.string()) );
 
       auto now = fc::time_point::now();
 
@@ -383,16 +383,17 @@ namespace eosio { namespace chain {
       backup_dir = backup_dir / blocks_dir_name.generic_string().append("-").append( now );
 
       EOS_ASSERT( !fc::exists(backup_dir), block_log_backup_dir_exist,
-                 "Cannot move existing blocks directory to already existing directory '${new_blocks_dir}'",
-                 ("new_blocks_dir", backup_dir) );
+                 "Cannot move existing blocks directory to already existing directory '{new_blocks_dir}'",
+                 ("new_blocks_dir", backup_dir.string()) );
 
       fc::rename( blocks_dir, backup_dir );
-      ilog( "Moved existing blocks directory to backup location: '${new_blocks_dir}'", ("new_blocks_dir", backup_dir) );
+      ilog( "Moved existing blocks directory to backup location: '{new_blocks_dir}'",
+            ("new_blocks_dir", backup_dir.string()) );
 
       fc::create_directories(blocks_dir);
       auto block_log_path = blocks_dir / "blocks.log";
 
-      ilog( "Reconstructing '${new_block_log}' from backed up block log", ("new_block_log", block_log_path) );
+      ilog( "Reconstructing '{new_block_log}' from backed up block log", ("new_block_log", block_log_path.string()) );
 
       std::fstream  old_block_stream;
       std::fstream  new_block_stream;
@@ -408,7 +409,7 @@ namespace eosio { namespace chain {
       old_block_stream.read( (char*)&version, sizeof(version) );
       EOS_ASSERT( version > 0, block_log_exception, "Block log was not setup properly" );
       EOS_ASSERT( version >= min_supported_version && version <= max_supported_version, block_log_unsupported_version,
-                 "Unsupported version of block log. Block log version is ${version} while code supports version(s) [${min},${max}]",
+                 "Unsupported version of block log. Block log version is {version} while code supports version(s) [{min},{max}]",
                  ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version) );
 
       new_block_stream.write( (char*)&version, sizeof(version) );
@@ -459,14 +460,14 @@ namespace eosio { namespace chain {
 
          auto id = tmp.id();
          if( block_header::num_from_id(previous) + 1 != block_header::num_from_id(id) ) {
-            elog( "Block ${num} (${id}) skips blocks. Previous block in block log is block ${prev_num} (${previous})",
-                  ("num", block_header::num_from_id(id))("id", id)
-                  ("prev_num", block_header::num_from_id(previous))("previous", previous) );
+            elog( "Block {num} ({id}) skips blocks. Previous block in block log is block {prev_num} ({previous})",
+                  ("num", block_header::num_from_id(id))("id", id.str())
+                  ("prev_num", block_header::num_from_id(previous))("previous", previous.str()) );
          }
          if( previous != tmp.previous ) {
-            elog( "Block ${num} (${id}) does not link back to previous block. "
-                  "Expected previous: ${expected}. Actual previous: ${actual}.",
-                  ("num", block_header::num_from_id(id))("id", id)("expected", previous)("actual", tmp.previous) );
+            elog( "Block {num} ({id}) does not link back to previous block. "
+                  "Expected previous: {expected}. Actual previous: {actual}.",
+                  ("num", block_header::num_from_id(id))("id", id.str())("expected", previous.str())("actual", tmp.previous.str()) );
          }
          previous = id;
 
@@ -491,8 +492,8 @@ namespace eosio { namespace chain {
       }
 
       if( bad_block.valid() ) {
-         ilog( "Recovered only up to block number ${num}. Last block in block log was not properly committed:\n${last_block}",
-               ("num", block_num)("last_block", *bad_block) );
+         ilog( "Recovered only up to block number {num}. Last block in block log was not properly committed:\n{last_block}",
+               ("num", block_num)("last_block", bad_block->id().str()) );
       } else if( except_ptr ) {
          std::string error_msg;
 
@@ -516,14 +517,14 @@ namespace eosio { namespace chain {
             tail_stream.open( tail_path.generic_string().c_str(), LOG_WRITE );
             tail_stream.write( incomplete_block_data.data(), incomplete_block_data.size() );
 
-            ilog( "Data at tail end of block log which should contain the (incomplete) serialization of block ${num} "
-                  "has been written out to '${tail_path}'.",
-                  ("num", block_num+1)("tail_path", tail_path) );
+            ilog( "Data at tail end of block log which should contain the (incomplete) serialization of block {num} "
+                  "has been written out to '{tail_path}'.",
+                  ("num", block_num+1)("tail_path", tail_path.string()) );
          }
       } else if( block_num == truncate_at_block && pos < end_pos ) {
          ilog( "Stopped recovery of block log early at specified block number: ${stop}.", ("stop", truncate_at_block) );
       } else {
-         ilog( "Existing block log was undamaged. Recovered all irreversible blocks up to block number ${num}.", ("num", block_num) );
+         ilog( "Existing block log was undamaged. Recovered all irreversible blocks up to block number {num}.", ("num", block_num) );
       }
 
       return backup_dir;
@@ -531,7 +532,7 @@ namespace eosio { namespace chain {
 
    genesis_state block_log::extract_genesis_state( const fc::path& data_dir ) {
       EOS_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
-                 "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
+                 "Block log not found in '{blocks_dir}'", ("blocks_dir", data_dir.string()) );
 
       std::fstream  block_stream;
       block_stream.open( (data_dir / "blocks.log").generic_string().c_str(), LOG_READ );
@@ -540,7 +541,7 @@ namespace eosio { namespace chain {
       block_stream.read( (char*)&version, sizeof(version) );
       EOS_ASSERT( version > 0, block_log_exception, "Block log was not setup properly." );
       EOS_ASSERT( version >= min_supported_version && version <= max_supported_version, block_log_unsupported_version,
-                 "Unsupported version of block log. Block log version is ${version} while code supports version(s) [${min},${max}]",
+                 "Unsupported version of block log. Block log version is {version} while code supports version(s) [{min},{max}]",
                  ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version) );
 
       uint32_t first_block_num = 1;

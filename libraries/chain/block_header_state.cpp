@@ -142,7 +142,7 @@ namespace eosio { namespace chain {
    *  If the header specifies new_producers then apply them accordingly.
    */
   block_header_state block_header_state::next( const signed_block_header& h, bool skip_validate_signee )const {
-    EOS_ASSERT( h.timestamp != block_timestamp_type(), block_validate_exception, "", ("h",h) );
+    EOS_ASSERT( h.timestamp != block_timestamp_type(), block_validate_exception, "{slot}", ("slot",h.timestamp.slot) );
     EOS_ASSERT( h.header_extensions.size() == 0, block_validate_exception, "no supported extensions" );
 
     EOS_ASSERT( h.timestamp > header.timestamp, block_validate_exception, "block must be later in time" );
@@ -153,7 +153,7 @@ namespace eosio { namespace chain {
 
     auto itr = producer_to_last_produced.find(h.producer);
     if( itr != producer_to_last_produced.end() ) {
-       EOS_ASSERT( itr->second < result.block_num - h.confirmed, producer_double_confirm, "producer ${prod} double-confirming known range", ("prod", h.producer) );
+       EOS_ASSERT( itr->second < result.block_num - h.confirmed, producer_double_confirm, "producer {prod} double-confirming known range", ("prod", h.producer.to_string()) );
     }
 
     // FC_ASSERT( result.header.block_mroot == h.block_mroot, "mismatch block merkle root" );
@@ -234,8 +234,9 @@ namespace eosio { namespace chain {
   }
 
   void block_header_state::verify_signee( const public_key_type& signee )const {
-     EOS_ASSERT( block_signing_key == signee, wrong_signing_key, "block not signed by expected key",
-                 ("block_signing_key", block_signing_key)( "signee", signee ) );
+     EOS_ASSERT( block_signing_key == signee, wrong_signing_key,
+                 "block not signed by expected key {block_signing_key}, signee {signee}",
+                 ("block_signing_key", (std::string)block_signing_key)( "signee", (std::string)signee ) );
   }
 
   void block_header_state::add_confirmation( const header_confirmation& conf ) {

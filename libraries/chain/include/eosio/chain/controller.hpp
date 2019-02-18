@@ -264,7 +264,7 @@ namespace eosio { namespace chain {
                   abi_def abi;
                   if( abi_serializer::to_abi( a.abi, abi ))
                      return abi_serializer( abi, max_serialization_time );
-               } FC_CAPTURE_AND_LOG((n))
+               } FC_LOG_AND_DROP("{n}", ("n", n.to_string()))
             }
             return optional<abi_serializer>();
          }

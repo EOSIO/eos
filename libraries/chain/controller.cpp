@@ -397,7 +397,7 @@ struct controller_impl {
 
       if( report_integrity_hash ) {
          const auto hash = calculate_integrity_hash();
-         ilog( "database initialized with hash: ${hash}", ("hash", hash) );
+         ilog( "database initialized with hash: {hash}", ("hash", hash.str()) );
       }
 
    }
@@ -1096,7 +1096,7 @@ struct controller_impl {
          emit( self.applied_transaction, trace );
 
          return trace;
-      } FC_CAPTURE_AND_RETHROW((trace))
+      } FC_RETHROW_EXCEPTIONS( warn, "trx {id}", ("id", trx->id.str()) )
    } /// push_transaction
 
 
@@ -1139,10 +1139,11 @@ struct controller_impl {
             {
                // Promote proposed schedule to pending schedule.
                if( !replaying ) {
-                  ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+                  ilog( "promoting proposed schedule (set in block {proposed_num}) to pending; "
+                        "current block: {n} lib: {lib} schedule: {schedule} ",
                         ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
                         ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)
-                        ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
+                        ("schedule", fc::json::to_string(static_cast<producer_schedule_type>(gpo.proposed_schedule) )) );
                }
                pending->_pending_block_state->set_new_producers( gpo.proposed_schedule );
                db.modify( gpo, [&]( auto& gp ) {
@@ -1164,7 +1165,7 @@ struct controller_impl {
             throw;
          } catch( const fc::exception& e ) {
             wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
-            edump((e.to_detail_string()));
+            elog(e.to_detail_string());
          } catch( ... ) {
          }
 
@@ -1220,30 +1221,33 @@ struct controller_impl {
             bool transaction_failed =  trace && trace->except;
             bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail && receipt.trx.contains<transaction_id_type>();
             if( transaction_failed && !transaction_can_fail) {
-               edump((*trace));
                throw *trace->except;
             }
 
             EOS_ASSERT( pending->_pending_block_state->block->transactions.size() > 0,
-                        block_validate_exception, "expected a receipt",
-                        ("block", *b)("expected_receipt", receipt)
+                        block_validate_exception, "expected a receipt for block {block_num} {block_id}: {receipt}",
+                        ("block_id", producer_block_id)("block_num", b->block_num())("expected_receipt", fc::json::to_string(receipt))
                       );
             EOS_ASSERT( pending->_pending_block_state->block->transactions.size() == num_pending_receipts + 1,
-                        block_validate_exception, "expected receipt was not added",
-                        ("block", *b)("expected_receipt", receipt)
+                        block_validate_exception, "expected receipt was not added for block {block_num} {block_id}: {receipt}",
+                        ("block_id", producer_block_id)("block_num", b->block_num())("expected_receipt", fc::json::to_string(receipt))
                       );
             const transaction_receipt_header& r = pending->_pending_block_state->block->transactions.back();
             EOS_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
-                        block_validate_exception, "receipt does not match",
-                        ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back()) );
+                        block_validate_exception, "receipt does not match for block {block_num} {block_id}, "
+                        "producer_receipt: {producer_receipt}\nvalidator_receipt: {validator_receipt} ",
+                        ("block_id", producer_block_id.str())("block_num", b->block_num())
+                        ("producer_receipt", fc::json::to_string(receipt))
+                        ("validator_receipt", fc::json::to_string(pending->_pending_block_state->block->transactions.back())) );
          }
 
          finalize_block();
 
          // this implicitly asserts that all header fields (less the signature) are identical
          EOS_ASSERT(producer_block_id == pending->_pending_block_state->header.id(),
-                   block_validate_exception, "Block ID does not match",
-                   ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id()));
+                   block_validate_exception, "Block ID does not match, {producer_block_id} != {validator_block_id}",
+                   ("producer_block_id",producer_block_id.str())
+                   ("validator_block_id",pending->_pending_block_state->header.id().str()));
 
          // We need to fill out the pending block state's block because that gets serialized in the reversible block log
          // in the future we can optimize this by serializing the original and not the copy
@@ -1258,7 +1262,7 @@ struct controller_impl {
          commit_block(false);
          return;
       } catch ( const fc::exception& e ) {
-         edump((e.to_detail_string()));
+         elog(e.to_detail_string());
          abort_block();
          throw;
       }

@@ -14,6 +14,7 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <boost/tuple/tuple_io.hpp>
 #include <eosio/chain/database_utils.hpp>
+#include <fc/io/json.hpp>
 
 
 namespace eosio { namespace chain {
@@ -219,13 +220,15 @@ namespace eosio { namespace chain {
    { try {
       EOS_ASSERT( !level.actor.empty() && !level.permission.empty(), invalid_permission, "Invalid permission" );
       return _db.find<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
-   } EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: ${level}", ("level", level) ) }
+   } EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: {actor} {permission}",
+                             ("actor", level.actor.to_string())("permission", level.permission.to_string()) ) }
 
    const permission_object&  authorization_manager::get_permission( const permission_level& level )const
    { try {
       EOS_ASSERT( !level.actor.empty() && !level.permission.empty(), invalid_permission, "Invalid permission" );
       return _db.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
-   } EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: ${level}", ("level", level) ) }
+      } EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: {actor} {permission}",
+                                ("actor", level.actor.to_string())("permission", level.permission.to_string()) ) }
 
    optional<permission_name> authorization_manager::lookup_linked_permission( account_name authorizer_account,
                                                                               account_name scope,
@@ -249,7 +252,9 @@ namespace eosio { namespace chain {
          return optional<permission_name>();
 
        //  return optional<permission_name>();
-      } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
+      } FC_RETHROW_EXCEPTIONS( warn, "authorizer_account: {authorizer_account}, scope: {scope}, act_name: {act_name}",
+                               ( "authorizer_account", authorizer_account.to_string() )( "scope", scope.to_string() )
+                               ( "act_name", act_name.to_string() ) )
    }
 
    optional<permission_name> authorization_manager::lookup_minimum_permission( account_name authorizer_account,
@@ -277,7 +282,9 @@ namespace eosio { namespace chain {
             return optional<permission_name>();
 
          return linked_permission;
-      } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
+      } FC_RETHROW_EXCEPTIONS( warn, "authorizer_account: {authorizer_account}, scope: {scope}, act_name: {act_name}",
+                               ( "authorizer_account", authorizer_account.to_string() )( "scope", scope.to_string() )
+                               ( "act_name", act_name.to_string() ) )
    }
 
    void authorization_manager::check_updateauth_authorization( const updateauth& update,
@@ -298,8 +305,9 @@ namespace eosio { namespace chain {
       EOS_ASSERT( get_permission(auth).satisfies( *min_permission,
                                                   _db.get_index<permission_index>().indices() ),
                   irrelevant_auth_exception,
-                  "updateauth action declares irrelevant authority '${auth}'; minimum authority is ${min}",
-                  ("auth", auth)("min", permission_level{update.account, min_permission->name}) );
+                  "updateauth action declares irrelevant authority '{auth}'; minimum authority is {min}",
+                  ("auth", fc::json::to_string(auth))
+                  ("min", fc::json::to_string(permission_level{update.account, min_permission->name})) );
    }
 
    void authorization_manager::check_deleteauth_authorization( const deleteauth& del,
@@ -317,8 +325,9 @@ namespace eosio { namespace chain {
       EOS_ASSERT( get_permission(auth).satisfies( min_permission,
                                                   _db.get_index<permission_index>().indices() ),
                   irrelevant_auth_exception,
-                  "updateauth action declares irrelevant authority '${auth}'; minimum authority is ${min}",
-                  ("auth", auth)("min", permission_level{min_permission.owner, min_permission.name}) );
+                  "updateauth action declares irrelevant authority '{auth}'; minimum authority is {min}",
+                  ("auth", fc::json::to_string(auth))
+                  ("min", fc::json::to_string(permission_level{min_permission.owner, min_permission.name})) );
    }
 
    void authorization_manager::check_linkauth_authorization( const linkauth& link,
@@ -350,8 +359,9 @@ namespace eosio { namespace chain {
       EOS_ASSERT( get_permission(auth).satisfies( get_permission({link.account, *linked_permission_name}),
                                                   _db.get_index<permission_index>().indices()              ),
                   irrelevant_auth_exception,
-                  "link action declares irrelevant authority '${auth}'; minimum authority is ${min}",
-                  ("auth", auth)("min", permission_level{link.account, *linked_permission_name}) );
+                  "link action declares irrelevant authority '{auth}'; minimum authority is {min}",
+                  ("auth", fc::json::to_string(auth))
+                  ("min", fc::json::to_string(permission_level{link.account, *linked_permission_name})) );
    }
 
    void authorization_manager::check_unlinkauth_authorization( const unlinkauth& unlink,
@@ -366,8 +376,8 @@ namespace eosio { namespace chain {
 
       const auto unlinked_permission_name = lookup_linked_permission(unlink.account, unlink.code, unlink.type);
       EOS_ASSERT( unlinked_permission_name.valid(), transaction_exception,
-                  "cannot unlink non-existent permission link of account '${account}' for actions matching '${code}::${action}'",
-                  ("account", unlink.account)("code", unlink.code)("action", unlink.type) );
+                  "cannot unlink non-existent permission link of account '{account}' for actions matching '{code}::{action}'",
+                  ("account", unlink.account.to_string())("code", unlink.code.to_string())("action", unlink.type.to_string()) );
 
       if( *unlinked_permission_name == config::eosio_any_name )
          return;
@@ -375,8 +385,9 @@ namespace eosio { namespace chain {
       EOS_ASSERT( get_permission(auth).satisfies( get_permission({unlink.account, *unlinked_permission_name}),
                                                   _db.get_index<permission_index>().indices()                  ),
                   irrelevant_auth_exception,
-                  "unlink action declares irrelevant authority '${auth}'; minimum authority is ${min}",
-                  ("auth", auth)("min", permission_level{unlink.account, *unlinked_permission_name}) );
+                  "unlink action declares irrelevant authority '{auth}'; minimum authority is {min}",
+                  ("auth", fc::json::to_string(auth))
+                  ("min", fc::json::to_string(permission_level{unlink.account, *unlinked_permission_name})) );
    }
 
    fc::microseconds authorization_manager::check_canceldelay_authorization( const canceldelay& cancel,
@@ -390,8 +401,8 @@ namespace eosio { namespace chain {
       EOS_ASSERT( get_permission(auth).satisfies( get_permission(cancel.canceling_auth),
                                                   _db.get_index<permission_index>().indices() ),
                   irrelevant_auth_exception,
-                  "canceldelay action declares irrelevant authority '${auth}'; specified authority to satisfy is ${min}",
-                  ("auth", auth)("min", cancel.canceling_auth) );
+                  "canceldelay action declares irrelevant authority '{auth}'; specified authority to satisfy is {min}",
+                  ("auth", fc::json::to_string(auth))("min", fc::json::to_string(cancel.canceling_auth)) );
 
       const auto& trx_id = cancel.trx_id;
 
@@ -400,8 +411,8 @@ namespace eosio { namespace chain {
       const auto& itr = generated_index.lower_bound(trx_id);
       EOS_ASSERT( itr != generated_index.end() && itr->sender == account_name() && itr->trx_id == trx_id,
                   tx_not_found,
-                 "cannot cancel trx_id=${tid}, there is no deferred transaction with that transaction id",
-                 ("tid", trx_id) );
+                 "cannot cancel trx_id={tid}, there is no deferred transaction with that transaction id",
+                 ("tid", trx_id.str()) );
 
       auto trx = fc::raw::unpack<transaction>(itr->packed_trx.data(), itr->packed_trx.size());
       bool found = false;
@@ -484,8 +495,9 @@ namespace eosio { namespace chain {
                   EOS_ASSERT( get_permission(declared_auth).satisfies( min_permission,
                                                                        _db.get_index<permission_index>().indices() ),
                               irrelevant_auth_exception,
-                              "action declares irrelevant authority '${auth}'; minimum authority is ${min}",
-                              ("auth", declared_auth)("min", permission_level{min_permission.owner, min_permission.name}) );
+                              "action declares irrelevant authority '{auth}'; minimum authority is {min}",
+                              ("auth", fc::json::to_string(declared_auth))
+                              ("min", fc::json::to_string(permission_level{min_permission.owner, min_permission.name})) );
                }
             }
 
@@ -508,14 +520,14 @@ namespace eosio { namespace chain {
       for( const auto& p : permissions_to_satisfy ) {
          checktime(); // TODO: this should eventually move into authority_checker instead
          EOS_ASSERT( checker.satisfied( p.first, p.second ), unsatisfied_authorization,
-                     "transaction declares authority '${auth}', "
-                     "but does not have signatures for it under a provided delay of ${provided_delay} ms, "
-                     "provided permissions ${provided_permissions}, provided keys ${provided_keys}, "
-                     "and a delay max limit of ${delay_max_limit_ms} ms",
-                     ("auth", p.first)
+                     "transaction declares authority '{auth}', "
+                     "but does not have signatures for it under a provided delay of {provided_delay} ms, "
+                     "provided permissions {provided_permissions}, provided keys {provided_keys}, "
+                     "and a delay max limit of {delay_max_limit_ms} ms",
+                     ("auth", fc::json::to_string(p.first))
                      ("provided_delay", provided_delay.count()/1000)
-                     ("provided_permissions", provided_permissions)
-                     ("provided_keys", provided_keys)
+                     ("provided_permissions", fc::json::to_string(provided_permissions))
+                     ("provided_keys", fc::json::to_string(provided_keys))
                      ("delay_max_limit_ms", delay_max_limit.count()/1000)
                    );
 
@@ -523,8 +535,8 @@ namespace eosio { namespace chain {
 
       if( !allow_unused_keys ) {
          EOS_ASSERT( checker.all_keys_used(), tx_irrelevant_sig,
-                     "transaction bears irrelevant signatures from these keys: ${keys}",
-                     ("keys", checker.unused_keys()) );
+                     "transaction bears irrelevant signatures from these keys: {keys}",
+                     ("keys", fc::json::to_string(checker.unused_keys())) );
       }
    }
 
@@ -551,20 +563,20 @@ namespace eosio { namespace chain {
                                       );
 
       EOS_ASSERT( checker.satisfied({account, permission}), unsatisfied_authorization,
-                  "permission '${auth}' was not satisfied under a provided delay of ${provided_delay} ms, "
-                  "provided permissions ${provided_permissions}, provided keys ${provided_keys}, "
-                  "and a delay max limit of ${delay_max_limit_ms} ms",
-                  ("auth", permission_level{account, permission})
+                  "permission '{auth}' was not satisfied under a provided delay of {provided_delay} ms, "
+                  "provided permissions {provided_permissions}, provided keys {provided_keys}, "
+                  "and a delay max limit of {delay_max_limit_ms} ms",
+                  ("auth", fc::json::to_string(permission_level{account, permission}))
                   ("provided_delay", provided_delay.count()/1000)
-                  ("provided_permissions", provided_permissions)
-                  ("provided_keys", provided_keys)
+                  ("provided_permissions", fc::json::to_string(provided_permissions))
+                  ("provided_keys", fc::json::to_string(provided_keys))
                   ("delay_max_limit_ms", delay_max_limit.count()/1000)
                 );
 
       if( !allow_unused_keys ) {
          EOS_ASSERT( checker.all_keys_used(), tx_irrelevant_sig,
-                     "irrelevant keys provided: ${keys}",
-                     ("keys", checker.unused_keys()) );
+                     "irrelevant keys provided: {keys}",
+                     ("keys", fc::json::to_string(checker.unused_keys())) );
       }
    }
 
@@ -584,8 +596,8 @@ namespace eosio { namespace chain {
       for (const auto& act : trx.actions ) {
          for (const auto& declared_auth : act.authorization) {
             EOS_ASSERT( checker.satisfied(declared_auth), unsatisfied_authorization,
-                        "transaction declares authority '${auth}', but does not have signatures for it.",
-                        ("auth", declared_auth) );
+                        "transaction declares authority '{auth}', but does not have signatures for it.",
+                        ("auth", fc::json::to_string(declared_auth)) );
          }
       }
 

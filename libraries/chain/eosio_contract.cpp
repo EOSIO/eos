@@ -23,6 +23,7 @@
 
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <fc/io/json.hpp>
 
 namespace eosio { namespace chain {
 
@@ -37,8 +38,8 @@ void validate_authority_precondition( const apply_context& context, const author
    for(const auto& a : auth.accounts) {
       auto* acct = context.db.find<account_object, by_name>(a.permission.actor);
       EOS_ASSERT( acct != nullptr, action_validate_exception,
-                  "account '${account}' does not exist",
-                  ("account", a.permission.actor)
+                  "account '{account}' does not exist",
+                  ("account", a.permission.actor.to_string())
                 );
 
       if( a.permission.permission == config::owner_name || a.permission.permission == config::active_name )
@@ -51,8 +52,8 @@ void validate_authority_precondition( const apply_context& context, const author
          context.control.get_authorization_manager().get_permission({a.permission.actor, a.permission.permission});
       } catch( const permission_query_exception& ) {
          EOS_THROW( action_validate_exception,
-                    "permission '${perm}' does not exist",
-                    ("perm", a.permission)
+                    "permission '{actor} {permission}' does not exist",
+                    ("actor", a.permission.actor.to_string())("permission",a.permission.permission.to_string())
                   );
       }
    }
@@ -93,8 +94,8 @@ void apply_eosio_newaccount(apply_context& context) {
 
    auto existing_account = db.find<account_object, by_name>(create.name);
    EOS_ASSERT(existing_account == nullptr, account_name_exists_exception,
-              "Cannot create account named ${name}, as that name is already taken",
-              ("name", create.name));
+              "Cannot create account named {name}, as that name is already taken",
+              ("name", create.name.to_string()));
 
    const auto& new_account = db.create<account_object>([&](auto& a) {
       a.name = create.name;
@@ -123,7 +124,9 @@ void apply_eosio_newaccount(apply_context& context) {
 
    context.add_ram_usage(create.name, ram_delta);
 
-} FC_CAPTURE_AND_RETHROW( (create) ) }
+} FC_RETHROW_EXCEPTIONS( warn, "{creator}->{name}",
+                         ("creator", create.creator.to_string())("name", create.name.to_string()) )
+}
 
 void apply_eosio_setcode(apply_context& context) {
    const auto& cfg = context.control.get_global_properties().configuration;
@@ -217,9 +220,10 @@ void apply_eosio_updateauth(apply_context& context) {
    EOS_ASSERT(update.permission != update.parent, action_validate_exception, "Cannot set an authority as its own parent");
    db.get<account_object, by_name>(update.account);
    EOS_ASSERT(validate(update.auth), action_validate_exception,
-              "Invalid authority: ${auth}", ("auth", update.auth));
+              "Invalid authority: {auth}", ("auth", fc::json::to_string(update.auth)));
    if( update.permission == config::active_name )
-      EOS_ASSERT(update.parent == config::owner_name, action_validate_exception, "Cannot change active authority's parent from owner", ("update.parent", update.parent) );
+      EOS_ASSERT(update.parent == config::owner_name, action_validate_exception,
+                 "Cannot change active authority's parent '{parent}' from owner", ("parent", update.parent.to_string()) );
    if (update.permission == config::owner_name)
       EOS_ASSERT(update.parent.empty(), action_validate_exception, "Cannot change owner authority's parent");
    else
@@ -228,7 +232,7 @@ void apply_eosio_updateauth(apply_context& context) {
    if( update.auth.waits.size() > 0 ) {
       auto max_delay = context.control.get_global_properties().configuration.max_transaction_delay;
       EOS_ASSERT( update.auth.waits.back().wait_sec <= max_delay, action_validate_exception,
-                  "Cannot set delay longer than max_transacton_delay, which is ${max_delay} seconds",
+                  "Cannot set delay longer than max_transacton_delay, which is {max_delay} seconds",
                   ("max_delay", max_delay) );
    }
 
@@ -285,8 +289,8 @@ void apply_eosio_deleteauth(apply_context& context) {
       const auto& index = db.get_index<permission_link_index, by_permission_name>();
       auto range = index.equal_range(boost::make_tuple(remove.account, remove.permission));
       EOS_ASSERT(range.first == range.second, action_validate_exception,
-                 "Cannot delete a linked authority. Unlink the authority first. This authority is linked to ${code}::${type}.",
-                 ("code", string(range.first->code))("type", string(range.first->message_type)));
+                 "Cannot delete a linked authority. Unlink the authority first. This authority is linked to {code}::{type}.",
+                 ("code", range.first->code)("type", range.first->message_type));
    }
 
    const auto& permission = authorization.get_permission({remove.account, remove.permission});
@@ -310,14 +314,14 @@ void apply_eosio_linkauth(apply_context& context) {
       auto& db = context.db;
       const auto *account = db.find<account_object, by_name>(requirement.account);
       EOS_ASSERT(account != nullptr, account_query_exception,
-                 "Failed to retrieve account: ${account}", ("account", requirement.account)); // Redundant?
+                 "Failed to retrieve account: {account}", ("account", requirement.account.to_string())); // Redundant?
       const auto *code = db.find<account_object, by_name>(requirement.code);
       EOS_ASSERT(code != nullptr, account_query_exception,
-                 "Failed to retrieve code for account: ${account}", ("account", requirement.code));
+                 "Failed to retrieve code for account: {account}", ("account", requirement.code.to_string()));
       if( requirement.requirement != config::eosio_any_name ) {
          const auto *permission = db.find<permission_object, by_name>(requirement.requirement);
          EOS_ASSERT(permission != nullptr, permission_query_exception,
-                    "Failed to retrieve permission: ${permission}", ("permission", requirement.requirement));
+                    "Failed to retrieve permission: {permission}", ("permission", requirement.requirement.to_string()));
       }
 
       auto link_key = boost::make_tuple(requirement.account, requirement.code, requirement.type);
@@ -343,7 +347,7 @@ void apply_eosio_linkauth(apply_context& context) {
          );
       }
 
-  } FC_CAPTURE_AND_RETHROW((requirement))
+  } FC_RETHROW_EXCEPTIONS(warn, "linkauth: {requirement}", ("requirement", fc::json::to_string(requirement)))
 }
 
 void apply_eosio_unlinkauth(apply_context& context) {

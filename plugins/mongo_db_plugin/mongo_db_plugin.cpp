@@ -670,7 +670,7 @@ optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name 
                return entry.serializer;
             }
          }
-      } FC_CAPTURE_AND_LOG((n))
+      } FC_LOG_AND_DROP("{n}", ("n", n))
    }
    return optional<abi_serializer>();
 }
