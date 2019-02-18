@@ -61,6 +61,7 @@ void logging_conf_loop()
             ::detail::configure_logging(config_path);
          for(auto iter : fc::get_appender_map())
             iter.second->initialize(app().get_io_service());
+         app().initialize_logging();
          logging_conf_loop();
       }
    });
