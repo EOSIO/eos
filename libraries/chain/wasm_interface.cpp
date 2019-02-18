@@ -1163,7 +1163,7 @@ class console_api : public context_aware_api {
 
 #define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
-         return context.IDX.store( scope, table, payer, id, secondary );\
+         return context.IDX.store( name(scope), name(table,) name(payer), id, secondary );\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
          return context.IDX.update( iterator, payer, secondary );\
@@ -1172,19 +1172,19 @@ class console_api : public context_aware_api {
          return context.IDX.remove( iterator );\
       }\
       int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
-         return context.IDX.find_secondary(code, scope, table, secondary, primary);\
+         return context.IDX.find_secondary(name(code), name(scope), name(table), secondary, primary);\
       }\
       int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t primary ) {\
-         return context.IDX.find_primary(code, scope, table, secondary, primary);\
+         return context.IDX.find_primary(name(code), name(scope), name(table), secondary, primary);\
       }\
       int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
-         return context.IDX.lowerbound_secondary(code, scope, table, secondary, primary);\
+         return context.IDX.lowerbound_secondary(name(code), name(scope), name(table), secondary, primary);\
       }\
       int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
-         return context.IDX.upperbound_secondary(code, scope, table, secondary, primary);\
+         return context.IDX.upperbound_secondary(name(code), name(scope), name(table), secondary, primary);\
       }\
       int db_##IDX##_end( uint64_t code, uint64_t scope, uint64_t table ) {\
-         return context.IDX.end_secondary(code, scope, table);\
+         return context.IDX.end_secondary(name(code), name(scope), name(table));\
       }\
       int db_##IDX##_next( int iterator, uint64_t& primary  ) {\
          return context.IDX.next_secondary(iterator, primary);\
@@ -1291,10 +1291,10 @@ class database_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
       int db_store_i64( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const char> buffer, size_t buffer_size ) {
-         return context.db_store_i64( scope, table, payer, id, buffer, buffer_size );
+         return context.db_store_i64( name(scope), name(table), name(payer), id, buffer, buffer_size );
       }
       void db_update_i64( int itr, uint64_t payer, array_ptr<const char> buffer, size_t buffer_size ) {
-         context.db_update_i64( itr, payer, buffer, buffer_size );
+         context.db_update_i64( itr, name(payer), buffer, buffer_size );
       }
       void db_remove_i64( int itr ) {
          context.db_remove_i64( itr );
@@ -1309,16 +1309,16 @@ class database_api : public context_aware_api {
          return context.db_previous_i64(itr, primary);
       }
       int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-         return context.db_find_i64( code, scope, table, id );
+         return context.db_find_i64( name(code), name(scope), name(table), id );
       }
       int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-         return context.db_lowerbound_i64( code, scope, table, id );
+         return context.db_lowerbound_i64( name(code), name(scope), name(table), id );
       }
       int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-         return context.db_upperbound_i64( code, scope, table, id );
+         return context.db_upperbound_i64( name(code), name(scope), name(table), id );
       }
       int db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
-         return context.db_end_i64( code, scope, table );
+         return context.db_end_i64( name(code), name(scope), name(table) );
       }
 
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)

@@ -16,7 +16,7 @@ struct newaccount {
    authority                        active;
 
    static account_name get_account() {
-      return account_name( config::system_account_name );
+      return config::system_account_name;
    }
 
    static action_name get_name() {
@@ -31,7 +31,7 @@ struct setcode {
    bytes                            code;
 
    static account_name get_account() {
-      return account_name( config::system_account_name );
+      return config::system_account_name;
    }
 
    static action_name get_name() {
@@ -44,7 +44,7 @@ struct setabi {
    bytes                            abi;
 
    static account_name get_account() {
-      return account_name( config::system_account_name );
+      return config::system_account_name;
    }
 
    static action_name get_name() {
@@ -60,7 +60,7 @@ struct updateauth {
    authority                         auth;
 
    static account_name get_account() {
-      return account_name( config::system_account_name );
+      return config::system_account_name;
    }
 
    static action_name get_name() {
@@ -78,7 +78,7 @@ struct deleteauth {
    permission_name                   permission;
 
    static account_name get_account() {
-      return account_name( config::system_account_name );
+      return config::system_account_name;
    }
 
    static action_name get_name() {
@@ -98,7 +98,7 @@ struct linkauth {
    permission_name                   requirement;
 
    static account_name get_account() {
-      return account_name( config::system_account_name );
+      return config::system_account_name;
    }
 
    static action_name get_name() {
@@ -117,7 +117,7 @@ struct unlinkauth {
    action_name                       type;
 
    static account_name get_account() {
-      return account_name( config::system_account_name );
+      return config::system_account_name;
    }
 
    static action_name get_name() {
@@ -130,7 +130,7 @@ struct canceldelay {
    transaction_id_type   trx_id;
 
    static account_name get_account() {
-      return account_name( config::system_account_name );
+      return config::system_account_name;
    }
 
    static action_name get_name() {
@@ -146,7 +146,7 @@ struct onerror {
    :sender_id(sid),sent_trx(data,data+len){}
 
    static account_name get_account() {
-      return account_name( config::system_account_name );
+      return config::system_account_name;
    }
 
    static action_name get_name() {
