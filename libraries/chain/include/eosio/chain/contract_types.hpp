@@ -16,11 +16,11 @@ struct newaccount {
    authority                        active;
 
    static account_name get_account() {
-      return config::system_account_name;
+      return account_name( config::system_account_name );
    }
 
    static action_name get_name() {
-      return N(newaccount);
+      return action_name( N(newaccount) );
    }
 };
 
@@ -31,11 +31,11 @@ struct setcode {
    bytes                            code;
 
    static account_name get_account() {
-      return config::system_account_name;
+      return account_name( config::system_account_name );
    }
 
    static action_name get_name() {
-      return N(setcode);
+      return action_name( N(setcode) );
    }
 };
 
@@ -44,11 +44,11 @@ struct setabi {
    bytes                            abi;
 
    static account_name get_account() {
-      return config::system_account_name;
+      return account_name( config::system_account_name );
    }
 
    static action_name get_name() {
-      return N(setabi);
+      return action_name( N(setabi) );
    }
 };
 
@@ -60,11 +60,11 @@ struct updateauth {
    authority                         auth;
 
    static account_name get_account() {
-      return config::system_account_name;
+      return account_name( config::system_account_name );
    }
 
    static action_name get_name() {
-      return N(updateauth);
+      return action_name( N(updateauth) );
    }
 };
 
@@ -78,11 +78,11 @@ struct deleteauth {
    permission_name                   permission;
 
    static account_name get_account() {
-      return config::system_account_name;
+      return account_name( config::system_account_name );
    }
 
    static action_name get_name() {
-      return N(deleteauth);
+      return action_name( N(deleteauth) );
    }
 };
 
@@ -98,11 +98,11 @@ struct linkauth {
    permission_name                   requirement;
 
    static account_name get_account() {
-      return config::system_account_name;
+      return account_name( config::system_account_name );
    }
 
    static action_name get_name() {
-      return N(linkauth);
+      return action_name( N(linkauth) );
    }
 };
 
@@ -117,11 +117,11 @@ struct unlinkauth {
    action_name                       type;
 
    static account_name get_account() {
-      return config::system_account_name;
+      return account_name( config::system_account_name );
    }
 
    static action_name get_name() {
-      return N(unlinkauth);
+      return action_name( N(unlinkauth) );
    }
 };
 
@@ -130,11 +130,11 @@ struct canceldelay {
    transaction_id_type   trx_id;
 
    static account_name get_account() {
-      return config::system_account_name;
+      return account_name( config::system_account_name );
    }
 
    static action_name get_name() {
-      return N(canceldelay);
+      return action_name( N(canceldelay) );
    }
 };
 
@@ -146,11 +146,11 @@ struct onerror {
    :sender_id(sid),sent_trx(data,data+len){}
 
    static account_name get_account() {
-      return config::system_account_name;
+      return account_name( config::system_account_name );
    }
 
    static action_name get_name() {
-      return N(onerror);
+      return action_name( N(onerror) );
    }
 };
 
