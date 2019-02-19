@@ -62,7 +62,6 @@ static const auto token_account_name   = N(cyber.token);
 static const auto names_account_name   = N(cyber.names);
 static const auto ram_account_name     = N(cyber.ram);
 static const auto ramfee_account_name  = N(cyber.ramfee);
-static const auto stake_account_name   = N(cyber.stake);
 static const auto bpay_account_name    = N(cyber.bpay);
 static const auto vpay_account_name    = N(cyber.vpay);
 static const auto saving_account_name  = N(cyber.saving);

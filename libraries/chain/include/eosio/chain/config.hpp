@@ -28,6 +28,8 @@ const static uint64_t msig_account_name      = N(cyber.msig);
 const static uint64_t null_account_name      = N(cyber.null);
 const static uint64_t producers_account_name = N(cyber.prods);
 const static uint64_t domain_account_name    = N(cyber.domain);
+const static uint64_t govern_account_name    = N(cyber.govern);
+const static uint64_t stake_account_name     = N(cyber.stake);
 
 // Active permission of producers account requires greater than 2/3 of the producers to authorize
 const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
