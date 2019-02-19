@@ -669,6 +669,7 @@ try:
                 errorExit("mongo get block by id %s" % blockId)
 
     Print("Request invalid block numbered %d. This will generate an expected error message." % (currentBlockNum+1000))
+    currentBlockNum=node.getHeadBlockNum() # If the tests take too long, we could be far beyond currentBlockNum+1000 and that'll cause a block to be found.
     block=node.getBlock(currentBlockNum+1000, silentErrors=True)
     if block is not None:
         errorExit("ERROR: Received block where not expected")
