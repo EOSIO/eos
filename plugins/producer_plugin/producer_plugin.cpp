@@ -339,10 +339,12 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
 
          if( fc::time_point::now() - block->timestamp < fc::minutes(5) || (block->block_num() % 1000 == 0) ) {
-            ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, conf: ${confs}, latency: ${latency} ms]",
-                 ("p",block->producer)("id",fc::variant(block->id()).as_string().substr(8,16))
-                 ("n",block_header::num_from_id(block->id()))("t",block->timestamp)
-                 ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", block->confirmed)("latency", (fc::time_point::now() - block->timestamp).count()/1000 ) );
+            auto id = block->id();
+            ilog("Received block {id}... #{n} @ {t} signed by {p} [trxs: {count}, lib: {lib}, conf: {confs}, latency: {latency} ms]",
+                 ("p",block->producer)("id",id.str().substr(8,16))
+                 ("n",block_header::num_from_id(id))("t",block->timestamp.to_time_point())
+                 ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())
+                 ("confs", block->confirmed)("latency", (fc::time_point::now() - block->timestamp).count()/1000 ) );
          }
       }
 
@@ -529,7 +531,9 @@ void producer_plugin::set_program_options(
           "ID of producer controlled by this node (e.g. inita; may specify multiple times)")
          ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "(DEPRECATED - Use signature-provider instead) Tuple of [public key, WIF private key] (may specify multiple times)")
-         ("signature-provider", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value({std::string(default_priv_key.get_public_key()) + "=KEY:" + std::string(default_priv_key)}, std::string(default_priv_key.get_public_key()) + "=KEY:" + std::string(default_priv_key)),
+         ("signature-provider", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value(
+               {default_priv_key.get_public_key().str() + "=KEY:" + default_priv_key.str()},
+                default_priv_key.get_public_key().str() + "=KEY:" + default_priv_key.str()),
           "Key=Value pairs in the form <public-key>=<provider-spec>\n"
           "Where:\n"
           "   <public-key>    \tis a string form of a vaild EOSIO public key\n\n"
@@ -635,7 +639,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
          try {
             auto key_id_to_wif_pair = dejsonify<std::pair<public_key_type, private_key_type>>(key_id_to_wif_pair_string);
             my->_signature_providers[key_id_to_wif_pair.first] = make_key_signature_provider(key_id_to_wif_pair.second);
-            auto blanked_privkey = std::string(std::string(key_id_to_wif_pair.second).size(), '*' );
+            auto blanked_privkey = std::string(key_id_to_wif_pair.second.str().size(), '*' );
             wlog("\"private-key\" is DEPRECATED, use \"signature-provider=${pub}=KEY:${priv}\"", ("pub",key_id_to_wif_pair.first)("priv", blanked_privkey));
          } catch ( fc::exception& e ) {
             elog("Malformed private key pair");
@@ -708,13 +712,13 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){
       try {
          my->on_incoming_block(block);
-      } FC_LOG_AND_DROP();
+      } FC_LOG_AND_DROP("");
    });
 
    my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe([this](const transaction_metadata_ptr& trx){
       try {
          my->on_incoming_transaction_async(trx, false, [](const auto&){});
-      } FC_LOG_AND_DROP();
+      } FC_LOG_AND_DROP("");
    });
 
    my->_incoming_block_sync_provider = app().get_method<incoming::methods::block_sync>().register_provider([this](const signed_block_ptr& block){
@@ -1124,7 +1128,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
       chain.abort_block();
       chain.start_block(block_time, blocks_to_confirm);
-   } FC_LOG_AND_DROP();
+   } FC_LOG_AND_DROP("");
 
    const auto& pbs = chain.pending_block_state();
    if (pbs) {
@@ -1251,7 +1255,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                      } catch ( const guard_exception& e ) {
                         chain_plug->handle_guard_exception(e);
                         return start_block_result::failed;
-                     } FC_LOG_AND_DROP();
+                     } FC_LOG_AND_DROP("");
                   }
 
                   itr = itr_next;
@@ -1365,7 +1369,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                } catch ( const guard_exception& e ) {
                   chain_plug->handle_guard_exception(e);
                   return start_block_result::failed;
-               } FC_LOG_AND_DROP();
+               } FC_LOG_AND_DROP("");
 
                _incoming_trx_weight += _incoming_defer_ratio;
                if (!orig_pending_txn_size) _incoming_trx_weight = 0.0;
@@ -1507,7 +1511,7 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
    }
 
    if (wake_up_time) {
-      fc_dlog(_log, "Scheduling Speculative/Production Change at ${time}", ("time", wake_up_time));
+      fc_dlog(_log, "Scheduling Speculative/Production Change at {time}", ("time", *wake_up_time));
       static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
       _timer.expires_at(epoch + boost::posix_time::microseconds(wake_up_time->time_since_epoch().count()));
       _timer.async_wait( app().get_priority_queue().wrap( priority::high,
@@ -1535,7 +1539,7 @@ bool producer_plugin_impl::maybe_produce_block() {
       } catch ( const guard_exception& e ) {
          chain_plug->handle_guard_exception(e);
          return false;
-      } FC_LOG_AND_DROP();
+      } FC_LOG_AND_DROP("");
    } catch ( boost::interprocess::bad_alloc&) {
       raise(SIGUSR1);
       return false;
@@ -1587,10 +1591,11 @@ void producer_plugin_impl::produce_block() {
    block_state_ptr new_bs = chain.head_block_state();
    _producer_watermarks[new_bs->header.producer] = chain.head_block_num();
 
-   ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
-        ("p",new_bs->header.producer)("id",fc::variant(new_bs->id).as_string().substr(0,16))
-        ("n",new_bs->block_num)("t",new_bs->header.timestamp)
-        ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
+   ilog("Produced block {id}... #{n} @ {t} signed by {p} [trxs: {count}, lib: {lib}, confirmed: {confs}]",
+        ("p",new_bs->header.producer)("id",new_bs->id.str().substr(0,16))
+        ("n",new_bs->block_num)("t",new_bs->header.timestamp.to_time_point())
+        ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())
+        ("confs", new_bs->header.confirmed));
 
 }
 

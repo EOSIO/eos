@@ -50,13 +50,13 @@ public:
       act.name    = name;
       act.data    = abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
 
-      return base_tester::push_action( std::move(act), uint64_t(signer));
+      return base_tester::push_action( std::move(act), signer);
    }
 
    fc::variant get_stats( const string& symbolname )
    {
       auto symb = eosio::chain::symbol::from_string(symbolname);
-      auto symbol_code = symb.to_symbol_code().value;
+      name symbol_code { symb.to_symbol_code().value };
       vector<char> data = get_row_by_account( N(eosio.token), symbol_code, N(stat), symbol_code );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "currency_stats", data, abi_serializer_max_time );
    }
@@ -64,7 +64,7 @@ public:
    fc::variant get_account( account_name acc, const string& symbolname)
    {
       auto symb = eosio::chain::symbol::from_string(symbolname);
-      auto symbol_code = symb.to_symbol_code().value;
+      name symbol_code { symb.to_symbol_code().value };
       vector<char> data = get_row_by_account( N(eosio.token), acc, N(accounts), symbol_code );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "account", data, abi_serializer_max_time );
    }

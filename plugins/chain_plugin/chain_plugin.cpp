@@ -808,16 +808,16 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
 
       EOS_ASSERT( !fc::exists(backup_dir),
                   reversible_blocks_backup_dir_exist,
-                 "Cannot move existing reversible directory to already existing directory '${backup_dir}'",
-                 ("backup_dir", backup_dir) );
+                 "Cannot move existing reversible directory to already existing directory '{backup_dir}'",
+                 ("backup_dir", backup_dir.string()) );
 
       fc::rename( reversible_dir, backup_dir );
-      ilog( "Moved existing reversible directory to backup location: '${new_db_dir}'", ("new_db_dir", backup_dir) );
+      ilog( "Moved existing reversible directory to backup location: '{new_db_dir}'", ("new_db_dir", backup_dir.string()) );
    }
 
    fc::create_directories( reversible_dir );
 
-   ilog( "Reconstructing '${reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir) );
+   ilog( "Reconstructing '{reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir.string()) );
 
    chainbase::database  old_reversible( backup_dir, database::read_only, 0, true );
    chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
@@ -837,13 +837,14 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
       end = start - 1;
    }
    if( truncate_at_block > 0 && start > truncate_at_block ) {
-      ilog( "Did not recover any reversible blocks since the specified block number to stop at (${stop}) is less than first block in the reversible database (${start}).", ("stop", truncate_at_block)("start", start) );
+      ilog( "Did not recover any reversible blocks since the specified block number to stop at ({stop}) is "
+            "less than first block in the reversible database ({start}).", ("stop", truncate_at_block)("start", start) );
       return true;
    }
    try {
       for( ; itr != ubi.end(); ++itr ) {
          EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
-                     "gap in reversible block database between ${end} and ${blocknum}",
+                     "gap in reversible block database between {end} and {blocknum}",
                      ("end", end)("blocknum", itr->blocknum)
                    );
          reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
@@ -861,14 +862,14 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    } catch( ... ) {}
 
    if( end == truncate_at_block )
-      ilog( "Stopped recovery of reversible blocks early at specified block number: ${stop}", ("stop", truncate_at_block) );
+      ilog( "Stopped recovery of reversible blocks early at specified block number: {stop}", ("stop", truncate_at_block) );
 
    if( num == 0 )
       ilog( "There were no recoverable blocks in the reversible block database" );
    else if( num == 1 )
-      ilog( "Recovered 1 block from reversible block database: block ${start}", ("start", start) );
+      ilog( "Recovered 1 block from reversible block database: block {start}", ("start", start) );
    else
-      ilog( "Recovered ${num} blocks from reversible block database: blocks ${start} to ${end}",
+      ilog( "Recovered ${num} blocks from reversible block database: blocks {start} to {end}",
             ("num", num)("start", start)("end", end) );
 
    return true;
@@ -899,7 +900,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
             start = num;
          } else {
             EOS_ASSERT( num == end + 1, gap_in_reversible_blocks_db,
-                        "gap in reversible block database between ${end} and ${num}",
+                        "gap in reversible block database between {end} and {num}",
                         ("end", end)("num", num)
                       );
          }
@@ -911,11 +912,11 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
          end = num;
       }
    } catch( gap_in_reversible_blocks_db& e ) {
-      wlog( "${details}", ("details", e.to_detail_string()) );
+      wlog( "{details}", ("details", e.to_detail_string()) );
       FC_RETHROW_EXCEPTION( e, warn, "rethrow" );
    } catch( ... ) {}
 
-   ilog( "Imported blocks ${start} to ${end}", ("start", start)("end", end));
+   ilog( "Imported blocks {start} to {end}", ("start", start)("end", end));
 
    if( num == 0 || end != num )
       return false;
@@ -1043,9 +1044,9 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
 uint64_t read_only::get_table_index_name(const read_only::get_table_rows_params& p, bool& primary) {
    using boost::algorithm::starts_with;
    // see multi_index packing of index name
-   const uint64_t table = p.table;
-   uint64_t index = table & 0xFFFFFFFFFFFFFFF0ULL;
-   EOS_ASSERT( index == table, chain::contract_table_query_exception, "Unsupported table name: ${n}", ("n", p.table) );
+   const name table = p.table;
+   uint64_t index = table.to_uint64_t() & 0xFFFFFFFFFFFFFFF0ULL;
+   EOS_ASSERT( index == table.to_uint64_t(), chain::contract_table_query_exception, "Unsupported table name: ${n}", ("n", p.table) );
 
    primary = false;
    uint64_t pos = 0;
@@ -1158,7 +1159,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
       if( table_type == KEYi64 || p.key_type == "i64" || p.key_type == "name" ) {
          return get_table_rows_ex<key_value_index>(p,abi);
       }
-      EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
+      EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type {type}", ("type",table_type));
    } else {
       EOS_ASSERT( !p.key_type.empty(), chain::contract_table_query_exception, "key type required for non-primary index" );
 
@@ -1202,7 +1203,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
          using  conv = keytype_converter<chain_apis::ripemd160,chain_apis::hex>;
          return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
       }
-      EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: ${t}", ("t", p.key_type));
+      EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: {t}", ("t", p.key_type));
    }
 #pragma GCC diagnostic pop
 }
@@ -1212,9 +1213,9 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
    const auto& d = db.db();
 
    const auto& idx = d.get_index<chain::table_id_multi_index, chain::by_code_scope_table>();
-   auto lower_bound_lookup_tuple = std::make_tuple( p.code.value, std::numeric_limits<uint64_t>::lowest(), p.table.value );
-   auto upper_bound_lookup_tuple = std::make_tuple( p.code.value, std::numeric_limits<uint64_t>::max(),
-                                                    (p.table.empty() ? std::numeric_limits<uint64_t>::max() : p.table.value) );
+   auto lower_bound_lookup_tuple = std::make_tuple( p.code, name(0), p.table );
+   auto upper_bound_lookup_tuple = std::make_tuple( p.code, name(std::numeric_limits<uint64_t>::max()),
+                                                    (p.table.empty() ? name(std::numeric_limits<uint64_t>::max()) : p.table) );
 
    if( p.lower_bound.size() ) {
       uint64_t scope = convert_to_type<uint64_t>(p.lower_bound, "lower_bound scope");
@@ -1240,7 +1241,7 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
          ++count;
       }
       if( itr != end_itr ) {
-         result.more = string(itr->scope);
+         result.more = itr->scope.to_string();
       }
    };
 
@@ -1289,7 +1290,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
 
    uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
 
-   walk_key_value_table(p.code, scope, N(stat), [&](const key_value_object& obj){
+   walk_key_value_table(p.code, name(scope), N(stat), [&](const key_value_object& obj){
       EOS_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
 
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
@@ -1314,7 +1315,7 @@ fc::variant get_global_row( const database& db, const abi_def& abi, const abi_se
    EOS_ASSERT(table_id, chain::contract_table_query_exception, "Missing table global");
 
    const auto& kv_index = db.get_index<key_value_index, by_scope_primary>();
-   const auto it = kv_index.find(boost::make_tuple(table_id->id, N(global)));
+   const auto it = kv_index.find(boost::make_tuple(table_id->id, N(global).to_uint64_t()));
    EOS_ASSERT(it != kv_index.end(), chain::contract_table_query_exception, "Missing row in table global");
 
    vector<char> data;
@@ -1335,7 +1336,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
            boost::make_tuple(config::system_account_name, config::system_account_name, N(producers)));
    const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
-           boost::make_tuple(config::system_account_name, config::system_account_name, N(producers) | secondary_index_num));
+           boost::make_tuple(config::system_account_name, config::system_account_name, name( N(producers).to_uint64_t() | secondary_index_num)));
    EOS_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
 
    const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
@@ -1767,7 +1768,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
@@ -1778,7 +1779,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(delband) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
@@ -1789,7 +1790,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(refunds) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
@@ -1800,7 +1801,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
@@ -1822,24 +1823,28 @@ static variant action_abi_to_variant( const abi_def& abi, type_name action_type 
 read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const try {
    abi_json_to_bin_result result;
    const auto code_account = db.db().find<account_object,by_name>( params.code );
-   EOS_ASSERT(code_account != nullptr, contract_query_exception, "Contract can't be found ${contract}", ("contract", params.code));
+   EOS_ASSERT(code_account != nullptr, contract_query_exception, "Contract can't be found {contract}", ("contract", params.code));
 
    abi_def abi;
    if( abi_serializer::to_abi(code_account->abi, abi) ) {
       abi_serializer abis( abi, abi_serializer_max_time );
       auto action_type = abis.get_action_type(params.action);
-      EOS_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action} in contract ${contract}", ("action", params.action)("contract", params.code));
+      EOS_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action {action} in contract {contract}",
+                 ("action", params.action)("contract", params.code));
       try {
          result.binargs = abis.variant_to_binary( action_type, params.args, abi_serializer_max_time, shorten_abi_errors );
       } EOS_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
-                                "'${args}' is invalid args for action '${action}' code '${code}'. expected '${proto}'",
-                                ("args", params.args)("action", params.action)("code", params.code)("proto", action_abi_to_variant(abi, action_type)))
+                               "'{args}' is invalid args for action '{action}' code '{code}'. expected '{proto}'",
+                               ("args", shorten_abi_errors ? "{args}" : fc::json::to_string(params.args))
+                               ("action", params.action)("code", params.code)
+                               ("proto", shorten_abi_errors ? "{proto}" : fc::json::to_string(action_abi_to_variant(abi, action_type))))
    } else {
-      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
+      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for {contract}", ("contract", params.code));
    }
    return result;
-} FC_RETHROW_EXCEPTIONS( warn, "code: ${code}, action: ${action}, args: ${args}",
-                         ("code", params.code)( "action", params.action )( "args", params.args ))
+} FC_RETHROW_EXCEPTIONS( warn, "code: {code}, action: {action}, args: {args}",
+                         ("code", params.code)( "action", params.action )
+                         ("args", shorten_abi_errors ? "{args}" : fc::json::to_string(params.args)) )
 
 read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::abi_bin_to_json_params& params )const {
    abi_bin_to_json_result result;
@@ -1849,7 +1854,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
       abi_serializer abis( abi, abi_serializer_max_time );
       result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs, abi_serializer_max_time, shorten_abi_errors );
    } else {
-      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for ${contract}", ("contract", params.code));
+      EOS_ASSERT(false, abi_not_found_exception, "No ABI found for {contract}", ("contract", params.code));
    }
    return result;
 }

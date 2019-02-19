@@ -236,7 +236,7 @@ namespace eosio { namespace chain {
   void block_header_state::verify_signee( const public_key_type& signee )const {
      EOS_ASSERT( block_signing_key == signee, wrong_signing_key,
                  "block not signed by expected key {block_signing_key}, signee {signee}",
-                 ("block_signing_key", (std::string)block_signing_key)( "signee", (std::string)signee ) );
+                 ("block_signing_key", block_signing_key)( "signee", signee ) );
   }
 
   void block_header_state::add_confirmation( const header_confirmation& conf ) {

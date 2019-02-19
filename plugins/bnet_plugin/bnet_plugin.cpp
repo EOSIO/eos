@@ -81,29 +81,30 @@ const fc::string logger_name("bnet_plugin");
 fc::logger plugin_logger;
 std::string peer_log_format;
 
-#define peer_dlog( PEER, FORMAT, ... ) \
-  FC_MULTILINE_MACRO_BEGIN \
-   if( plugin_logger.is_enabled( fc::log_level::debug ) ) \
-      plugin_logger.log( FC_LOG_MESSAGE( debug, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
-  FC_MULTILINE_MACRO_END
+// todo
+#define peer_dlog( PEER, FORMAT, ... )
+//  FC_MULTILINE_MACRO_BEGIN \
+//   if( plugin_logger.is_enabled( fc::log_level::debug ) ) \
+//      plugin_logger.log( FC_LOG_MESSAGE( debug, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+//  FC_MULTILINE_MACRO_END
 
-#define peer_ilog( PEER, FORMAT, ... ) \
-  FC_MULTILINE_MACRO_BEGIN \
-   if( plugin_logger.is_enabled( fc::log_level::info ) ) \
-      plugin_logger.log( FC_LOG_MESSAGE( info, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
-  FC_MULTILINE_MACRO_END
+#define peer_ilog( PEER, FORMAT, ... )
+//  FC_MULTILINE_MACRO_BEGIN \
+//   if( plugin_logger.is_enabled( fc::log_level::info ) ) \
+//      plugin_logger.log( FC_LOG_MESSAGE( info, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+//  FC_MULTILINE_MACRO_END
 
-#define peer_wlog( PEER, FORMAT, ... ) \
-  FC_MULTILINE_MACRO_BEGIN \
-   if( plugin_logger.is_enabled( fc::log_level::warn ) ) \
-      plugin_logger.log( FC_LOG_MESSAGE( warn, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
-  FC_MULTILINE_MACRO_END
+#define peer_wlog( PEER, FORMAT, ... )
+//  FC_MULTILINE_MACRO_BEGIN \
+//   if( plugin_logger.is_enabled( fc::log_level::warn ) ) \
+//      plugin_logger.log( FC_LOG_MESSAGE( warn, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+//  FC_MULTILINE_MACRO_END
 
-#define peer_elog( PEER, FORMAT, ... ) \
-  FC_MULTILINE_MACRO_BEGIN \
-   if( plugin_logger.is_enabled( fc::log_level::error ) ) \
-      plugin_logger.log( FC_LOG_MESSAGE( error, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant())) ); \
-  FC_MULTILINE_MACRO_END
+#define peer_elog( PEER, FORMAT, ... )
+//  FC_MULTILINE_MACRO_BEGIN \
+//   if( plugin_logger.is_enabled( fc::log_level::error ) ) \
+//      plugin_logger.log( FC_LOG_MESSAGE( error, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant())) ); \
+//  FC_MULTILINE_MACRO_END
 
 
 using eosio::public_key_type;
@@ -1295,7 +1296,7 @@ namespace eosio {
          ("bnet-threads", bpo::value<uint32_t>(), "the number of threads to use to process network messages" )
          ("bnet-connect", bpo::value<vector<string>>()->composing(), "remote endpoint of other node to connect to; Use multiple bnet-connect options as needed to compose a network" )
          ("bnet-no-trx", bpo::bool_switch()->default_value(false), "this peer will request no pending transactions from other nodes" )
-         ("bnet-peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]" ),
+         ("bnet-peer-log-format", bpo::value<string>()->default_value( "[\"{_name}\" {_ip}:{_port}]" ),
            "The string used to format peers when logging messages about them.  Variables are escaped with ${<variable name>}.\n"
            "Available Variables:\n"
            "   _name  \tself-reported name\n\n"

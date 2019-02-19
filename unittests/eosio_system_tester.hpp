@@ -237,7 +237,7 @@ public:
          act.name = name;
          act.data = abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
 
-         return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : signer == N(bob111111111) ? N(alice1111111) : N(bob111111111) );
+         return base_tester::push_action( std::move(act), auth ? signer : signer == N(bob111111111) ? N(alice1111111) : N(bob111111111) );
    }
 
    action_result stake( const account_name& from, const account_name& to, const asset& net, const asset& cpu ) {
@@ -335,7 +335,7 @@ public:
    }
 
    asset get_balance( const account_name& act ) {
-      vector<char> data = get_row_by_account( N(eosio.token), act, N(accounts), symbol(CORE_SYMBOL).to_symbol_code().value );
+      vector<char> data = get_row_by_account( N(eosio.token), act, N(accounts), name(symbol(CORE_SYMBOL).to_symbol_code().value) );
       return data.empty() ? asset(0, symbol(CORE_SYMBOL)) : token_abi_ser.binary_to_variant("account", data, abi_serializer_max_time)["balance"].as<asset>();
    }
 
@@ -389,7 +389,7 @@ public:
 
    fc::variant get_stats( const string& symbolname ) {
       auto symb = eosio::chain::symbol::from_string(symbolname);
-      auto symbol_code = symb.to_symbol_code().value;
+      name symbol_code { symb.to_symbol_code().value };
       vector<char> data = get_row_by_account( N(eosio.token), symbol_code, N(stat), symbol_code );
       return data.empty() ? fc::variant() : token_abi_ser.binary_to_variant( "currency_stats", data, abi_serializer_max_time );
    }

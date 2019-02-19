@@ -350,7 +350,7 @@ namespace eosio { namespace testing {
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
       return r;
-   } FC_RETHROW_EXCEPTIONS( warn, "transaction_header: ${header}", ("header", transaction_header(trx.get_transaction()) )) }
+   } FC_RETHROW_EXCEPTIONS( warn, "transaction_header: {header}", ("header", fc::json::to_string( transaction_header(trx.get_transaction()) ))) }
 
    transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx,
                                                         fc::time_point deadline,
@@ -370,10 +370,10 @@ namespace eosio { namespace testing {
       if( r->except)  throw *r->except;
       return r;
    } FC_RETHROW_EXCEPTIONS( warn, "transaction_header: ${header}, billed_cpu_time_us: ${billed}",
-                            ("header", transaction_header(trx) ) ("billed", billed_cpu_time_us))
+                            ("header", fc::json::to_string(transaction_header(trx)) ) ("billed", billed_cpu_time_us))
    }
 
-   typename base_tester::action_result base_tester::push_action(action&& act, uint64_t authorizer) {
+   typename base_tester::action_result base_tester::push_action(action&& act, name authorizer) {
       signed_transaction trx;
       if (authorizer) {
          act.authorization = vector<permission_level>{{authorizer, config::active_name}};
@@ -442,7 +442,7 @@ namespace eosio { namespace testing {
       }
 
       return push_transaction( trx );
-   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(auths)(data)(expiration)(delay_sec) ) }
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(expiration)(delay_sec) ) }
 
    action base_tester::get_action( account_name code, action_name acttype, vector<permission_level> auths,
                                    const variant_object& data )const { try {
@@ -638,7 +638,7 @@ namespace eosio { namespace testing {
       }
 
       push_transaction( trx );
-   } FC_CAPTURE_AND_RETHROW( (account)(perm)(auth)(parent) ) }
+   } FC_CAPTURE_AND_RETHROW( (account)(perm)(parent) ) }
 
 
    void base_tester::set_authority( account_name account,
@@ -750,7 +750,7 @@ namespace eosio { namespace testing {
    }
 
 
-   vector<char> base_tester::get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act ) const {
+   vector<char> base_tester::get_row_by_account( name code, name scope, name table, const account_name& act ) const {
       vector<char> data;
       const auto& db = control->db();
       const auto* t_id = db.find<chain::table_id_object, chain::by_code_scope_table>( boost::make_tuple( code, scope, table ) );
@@ -761,7 +761,7 @@ namespace eosio { namespace testing {
 
       const auto& idx = db.get_index<chain::key_value_index, chain::by_scope_primary>();
 
-      auto itr = idx.lower_bound( boost::make_tuple( t_id->id, act ) );
+      auto itr = idx.lower_bound( boost::make_tuple( t_id->id, act.to_uint64_t() ) );
       if ( itr == idx.end() || itr->t_id != t_id->id || act.value != itr->primary_key ) {
          return data;
       }

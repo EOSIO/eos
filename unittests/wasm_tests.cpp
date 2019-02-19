@@ -383,23 +383,23 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
    int count = 0;
    auto check = [&](const char *wast_template, const char *op, const char *param) -> bool {
       count+=16;
-      create_accounts( {N(f_tests)+count} );
+      create_accounts( {name(N(f_tests).to_uint64_t()+count)} );
       produce_blocks(1);
       std::vector<char> wast;
       wast.resize(strlen(wast_template) + 128);
       sprintf(&(wast[0]), wast_template, op, param);
-      set_code(N(f_tests)+count, &(wast[0]));
+      set_code(name(N(f_tests).to_uint64_t()+count), &(wast[0]));
       produce_blocks(10);
 
       signed_transaction trx;
       action act;
-      act.account = N(f_tests)+count;
+      act.account = name(N(f_tests).to_uint64_t()+count);
       act.name = N();
-      act.authorization = vector<permission_level>{{N(f_tests)+count,config::active_name}};
+      act.authorization = vector<permission_level>{{name(N(f_tests).to_uint64_t()+count),config::active_name}};
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key( N(f_tests)+count, "active" ), control->get_chain_id());
+      trx.sign(get_private_key( name(N(f_tests).to_uint64_t()+count), "active" ), control->get_chain_id());
 
       try {
          push_transaction(trx);

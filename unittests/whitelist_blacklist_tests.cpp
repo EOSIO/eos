@@ -64,7 +64,6 @@ class whitelist_blacklist_tester {
          cfg.action_blacklist = action_blacklist;
 
          chain.emplace(cfg);
-         wdump((last_produced_block));
          chain->set_last_produced_block_map( last_produced_block );
 
          if( !bootstrap ) return;
@@ -87,7 +86,6 @@ class whitelist_blacklist_tester {
       void shutdown() {
          FC_ASSERT( chain.valid(), "chain is not up" );
          last_produced_block = chain->get_last_produced_block_map();
-         wdump((last_produced_block));
          chain.reset();
       }
 

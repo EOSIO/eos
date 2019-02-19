@@ -61,7 +61,7 @@ namespace eosio { namespace chain {
       id_type               id;
       table_id              t_id;
       uint64_t              primary_key;
-      account_name          payer = 0;
+      account_name          payer{0};
       shared_blob           value;
    };
 
@@ -92,7 +92,7 @@ namespace eosio { namespace chain {
          typename chainbase::object<ObjectTypeId,index_object>::id_type       id;
          table_id      t_id;
          uint64_t      primary_key;
-         account_name  payer = 0;
+         account_name  payer{0};
          SecondaryKey  secondary_key;
       };
 

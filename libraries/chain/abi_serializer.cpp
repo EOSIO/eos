@@ -215,7 +215,7 @@ namespace eosio { namespace chain {
 
    const struct_def& abi_serializer::get_struct(const type_name& type)const {
       auto itr = structs.find(resolve_type(type) );
-      EOS_ASSERT( itr != structs.end(), invalid_type_inside_abi, "Unknown struct ${type}", ("type",type) );
+      EOS_ASSERT( itr != structs.end(), invalid_type_inside_abi, "Unknown struct {type}", ("type",type) );
       return itr->second;
    }
 
@@ -231,7 +231,7 @@ namespace eosio { namespace chain {
          }
       } FC_CAPTURE_AND_RETHROW( (t) ) }
       for( const auto& t : typedefs ) { try {
-         EOS_ASSERT(_is_type(t.second, ctx), invalid_type_inside_abi, "${type}", ("type",t.second) );
+         EOS_ASSERT(_is_type(t.second, ctx), invalid_type_inside_abi, "{type}", ("type",t.second) );
       } FC_CAPTURE_AND_RETHROW( (t) ) }
       for( const auto& s : structs ) { try {
          if( s.second.base != type_name() ) {
@@ -247,24 +247,24 @@ namespace eosio { namespace chain {
          }
          for( const auto& field : s.second.fields ) { try {
             ctx.check_deadline();
-            EOS_ASSERT(_is_type(_remove_bin_extension(field.type), ctx), invalid_type_inside_abi, "${type}", ("type",field.type) );
-         } FC_CAPTURE_AND_RETHROW( (field) ) }
-      } FC_CAPTURE_AND_RETHROW( (s) ) }
+            EOS_ASSERT(_is_type(_remove_bin_extension(field.type), ctx), invalid_type_inside_abi, "{type}", ("type",field.type) );
+         } FC_CAPTURE_AND_RETHROW( (field.name)(field.type) ) }
+      } FC_CAPTURE_AND_RETHROW( (s.first) ) }
       for( const auto& s : variants ) { try {
          for( const auto& type : s.second.types ) { try {
             ctx.check_deadline();
-            EOS_ASSERT(_is_type(type, ctx), invalid_type_inside_abi, "${type}", ("type",type) );
+            EOS_ASSERT(_is_type(type, ctx), invalid_type_inside_abi, "{type}", ("type",type) );
          } FC_CAPTURE_AND_RETHROW( (type) ) }
-      } FC_CAPTURE_AND_RETHROW( (s) ) }
+      } FC_CAPTURE_AND_RETHROW( (s.first) ) }
       for( const auto& a : actions ) { try {
         ctx.check_deadline();
-        EOS_ASSERT(_is_type(a.second, ctx), invalid_type_inside_abi, "${type}", ("type",a.second) );
-      } FC_CAPTURE_AND_RETHROW( (a)  ) }
+        EOS_ASSERT(_is_type(a.second, ctx), invalid_type_inside_abi, "{type}", ("type",a.second) );
+      } FC_CAPTURE_AND_RETHROW( (a.first)  ) }
 
       for( const auto& t : tables ) { try {
         ctx.check_deadline();
-        EOS_ASSERT(_is_type(t.second, ctx), invalid_type_inside_abi, "${type}", ("type",t.second) );
-      } FC_CAPTURE_AND_RETHROW( (t)  ) }
+        EOS_ASSERT(_is_type(t.second, ctx), invalid_type_inside_abi, "{type}", ("type",t.second) );
+      } FC_CAPTURE_AND_RETHROW( (t.first)  ) }
    }
 
    type_name abi_serializer::resolve_type(const type_name& type)const {
@@ -284,7 +284,7 @@ namespace eosio { namespace chain {
    {
       auto h = ctx.enter_scope();
       auto s_itr = structs.find(type);
-      EOS_ASSERT( s_itr != structs.end(), invalid_type_inside_abi, "Unknown type ${type}", ("type",ctx.maybe_shorten(type)) );
+      EOS_ASSERT( s_itr != structs.end(), invalid_type_inside_abi, "Unknown type {type}", ("type",ctx.maybe_shorten(type)) );
       ctx.hint_struct_type_if_in_array( s_itr );
       const auto& st = s_itr->second;
       if( st.base != type_name() ) {
@@ -452,7 +452,7 @@ namespace eosio { namespace chain {
                const auto& field = st.fields[i];
                if( vo.contains( string(field.name).c_str() ) ) {
                   if( disallow_additional_fields )
-                     EOS_THROW( pack_exception, "Unexpected field '${f}' found in input object while processing struct '${p}'",
+                     EOS_THROW( pack_exception, "Unexpected field '{f}' found in input object while processing struct '{p}'",
                                 ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
                   {
                      auto h1 = ctx.push_to_path( impl::field_path_item{ .parent_struct_itr = s_itr, .field_ordinal = i } );
@@ -462,17 +462,17 @@ namespace eosio { namespace chain {
                } else if( ends_with(field.type, "$") && ctx.extensions_allowed() ) {
                   disallow_additional_fields = true;
                } else if( disallow_additional_fields ) {
-                  EOS_THROW( abi_exception, "Encountered field '${f}' without binary extension designation while processing struct '${p}'",
+                  EOS_THROW( abi_exception, "Encountered field '{f}' without binary extension designation while processing struct '{p}'",
                              ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
                } else {
-                  EOS_THROW( pack_exception, "Missing field '${f}' in input object while processing struct '${p}'",
+                  EOS_THROW( pack_exception, "Missing field '{f}' in input object while processing struct '{p}'",
                              ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()) );
                }
             }
          } else if( var.is_array() ) {
             const auto& va = var.get_array();
             EOS_ASSERT( st.base == type_name(), invalid_type_inside_abi,
-                        "Using input array to specify the fields of the derived struct '${p}'; input arrays are currently only allowed for structs without a base",
+                        "Using input array to specify the fields of the derived struct '{p}'; input arrays are currently only allowed for structs without a base",
                         ("p",ctx.get_path_string()) );
             for( uint32_t i = 0; i < st.fields.size(); ++i ) {
                const auto& field = st.fields[i];
@@ -483,17 +483,17 @@ namespace eosio { namespace chain {
                } else if( ends_with(field.type, "$") && ctx.extensions_allowed() ) {
                   break;
                } else {
-                  EOS_THROW( pack_exception, "Early end to input array specifying the fields of struct '${p}'; require input for field '${f}'",
+                  EOS_THROW( pack_exception, "Early end to input array specifying the fields of struct '{p}'; require input for field '{f}'",
                              ("p", ctx.get_path_string())("f", ctx.maybe_shorten(field.name)) );
                }
             }
          } else {
-            EOS_THROW( pack_exception, "Unexpected input encountered while processing struct '${p}'", ("p",ctx.get_path_string()) );
+            EOS_THROW( pack_exception, "Unexpected input encountered while processing struct '{p}'", ("p",ctx.get_path_string()) );
          }
       } else {
-         EOS_THROW( invalid_type_inside_abi, "Unknown type ${type}", ("type",ctx.maybe_shorten(type)) );
+         EOS_THROW( invalid_type_inside_abi, "Unknown type {type}", ("type",ctx.maybe_shorten(type)) );
       }
-   } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
+   } FC_CAPTURE_AND_RETHROW( (type) ) }
 
    bytes abi_serializer::_variant_to_binary( const type_name& type, const fc::variant& var, impl::variant_to_binary_context& ctx )const
    { try {
@@ -507,7 +507,7 @@ namespace eosio { namespace chain {
       _variant_to_binary(type, var, ds, ctx);
       temp.resize(ds.tellp());
       return temp;
-   } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
+   } FC_CAPTURE_AND_RETHROW( (type) ) }
 
    bytes abi_serializer::variant_to_binary( const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time, bool short_path )const {
       impl::variant_to_binary_context ctx(*this, max_serialization_time, type);

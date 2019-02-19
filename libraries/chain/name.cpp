@@ -9,7 +9,7 @@ namespace eosio { namespace chain {
    void name::set( const char* str ) {
       const auto len = strnlen(str, 14);
       EOS_ASSERT(len <= 13, name_type_exception, "Name is longer than 13 characters ({name}) ", ("name", string(str)));
-      value = string_to_name(str);
+      value = string_to_name(str).value;
       EOS_ASSERT(to_string() == string(str), name_type_exception,
                  "Name not properly normalized (name: {name}, normalized: {normalized}) ",
                  ("name", string(str))("normalized", to_string()));

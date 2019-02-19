@@ -491,7 +491,7 @@ void print_result( const fc::variant& result ) { try {
       } else {
          cerr << fc::json::to_pretty_string( result ) << endl;
       }
-} FC_CAPTURE_AND_RETHROW( (result) ) }
+} FC_CAPTURE_AND_RETHROW() }
 
 using std::cout;
 void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
@@ -684,7 +684,8 @@ asset to_asset( account_name code, const string& s ) {
       auto factor = expected_symbol.precision() / a.precision();
       a = asset( a.get_amount() * factor, expected_symbol );
    } else if ( a.decimals() > expected_symbol.decimals() ) {
-      EOS_THROW(symbol_type_exception, "Too many decimal digits in ${a}, only ${d} supported", ("a", a)("d", expected_symbol.decimals()));
+      EOS_THROW(symbol_type_exception, "Too many decimal digits in {a}, only {d} supported",
+                ("a", a.to_string())("d", expected_symbol.decimals()));
    } // else precision matches
    return a;
 }
@@ -1649,11 +1650,11 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          std::cout << indent << std::string(depth*3, ' ') << name << ' ' << std::setw(5) << p.required_auth.threshold << ":    ";
          const char *sep = "";
          for ( auto it = p.required_auth.keys.begin(); it != p.required_auth.keys.end(); ++it ) {
-            std::cout << sep << it->weight << ' ' << string(it->key);
+            std::cout << sep << it->weight << ' ' << it->key.str();
             sep = ", ";
          }
          for ( auto& acc : p.required_auth.accounts ) {
-            std::cout << sep << acc.weight << ' ' << string(acc.permission.actor) << '@' << string(acc.permission.permission);
+            std::cout << sep << acc.weight << ' ' << acc.permission.actor.to_string() << '@' << acc.permission.permission.to_string();
             sep = ", ";
          }
          std::cout << std::endl;
@@ -1928,8 +1929,8 @@ int main( int argc, char** argv ) {
       }
 
       auto pk    = r1 ? private_key_type::generate_r1() : private_key_type::generate();
-      auto privs = string(pk);
-      auto pubs  = string(pk.get_public_key());
+      auto privs = pk.str();
+      auto pubs  = pk.get_public_key().str();
       if (print_console) {
          std::cout << localized("Private key: ${key}", ("key",  privs) ) << std::endl;
          std::cout << localized("Public key: ${key}", ("key", pubs ) ) << std::endl;
@@ -2766,7 +2767,7 @@ int main( int argc, char** argv ) {
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
       call(wallet_url, wallet_import_key, vs);
-      std::cout << localized("imported private key for: ${pubkey}", ("pubkey", std::string(pubkey))) << std::endl;
+      std::cout << localized("imported private key for: ${pubkey}", ("pubkey", pubkey)) << std::endl;
    });
 
    // remove keys from wallet
@@ -2999,12 +3000,14 @@ int main( int argc, char** argv ) {
       vector<permission_level> reqperm;
       try {
          reqperm = requested_perm_var.as<vector<permission_level>>();
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_perm_var));
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '{data}'",
+                               ("data", fc::json::to_string(requested_perm_var)));
 
       vector<permission_level> trxperm;
       try {
          trxperm = transaction_perm_var.as<vector<permission_level>>();
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong transaction permissions format: '${data}'", ("data",transaction_perm_var));
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong transaction permissions format: '{data}'",
+                               ("data", fc::json::to_string(transaction_perm_var)));
 
       auto accountPermissions = get_account_permissions(tx_permission);
       if (accountPermissions.empty()) {

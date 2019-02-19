@@ -688,13 +688,13 @@ void abi_serializer::to_variant( const T& o, variant& vo, Resolver resolver, con
    impl::abi_traverse_context ctx(max_serialization_time);
    impl::abi_to_variant::add(mvo, "_", o, resolver, ctx);
    vo = std::move(mvo["_"]);
-} FC_RETHROW_EXCEPTIONS(error, "Failed to serialize type", ("object",o))
+} FC_RETHROW_EXCEPTIONS(error, "Failed to serialize type", ("object",fc::format_string("${o}", variant_object("o", o))))
 
 template<typename T, typename Resolver>
 void abi_serializer::from_variant( const variant& v, T& o, Resolver resolver, const fc::microseconds& max_serialization_time ) try {
    impl::abi_traverse_context ctx(max_serialization_time);
    impl::abi_from_variant::extract(v, o, resolver, ctx);
-} FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant",v))
+} FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant",fc::format_string("${v}", variant_object("v", v))))
 
 
 } } // eosio::chain

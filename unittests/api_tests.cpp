@@ -60,10 +60,10 @@ static constexpr unsigned long long WASM_TEST_ACTION(const char* cls, const char
 
 struct dummy_action {
    static uint64_t get_name() {
-      return N(dummyaction);
+      return N(dummyaction).to_uint64_t();
    }
    static uint64_t get_account() {
-      return N(testapi);
+      return N(testapi).to_uint64_t();
    }
 
   char a; //1
@@ -77,10 +77,10 @@ struct u128_action {
 
 struct cf_action {
    static uint64_t get_name() {
-      return N(cfaction);
+      return N(cfaction).to_uint64_t();
    }
    static uint64_t get_account() {
-      return N(testapi);
+      return N(testapi).to_uint64_t();
    }
 
    uint32_t       payload = 100;
@@ -93,13 +93,13 @@ struct dtt_action {
       return WASM_TEST_ACTION("test_transaction", "send_deferred_tx_with_dtt_action");
    }
    static uint64_t get_account() {
-      return N(testapi);
+      return N(testapi).to_uint64_t();
    }
 
-   uint64_t       payer = N(testapi);
-   uint64_t       deferred_account = N(testapi);
+   uint64_t       payer = N(testapi).to_uint64_t();
+   uint64_t       deferred_account = N(testapi).to_uint64_t();
    uint64_t       deferred_action = WASM_TEST_ACTION("test_transaction", "deferred_print");
-   uint64_t       permission_name = N(active);
+   uint64_t       permission_name = N(active).to_uint64_t();
    uint32_t       delay_sec = 2;
 };
 
@@ -596,13 +596,13 @@ BOOST_FIXTURE_TEST_CASE(ram_billing_in_notify_tests, TESTER) { try {
    set_code( N(testapi2), contracts::test_api_wasm() );
    produce_blocks(1);
 
-   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | N(testapi) ) ),
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2).to_uint64_t() << 64) | N(testapi).to_uint64_t() ) ),
                           subjective_block_production_exception, fc_exception_message_is("Cannot charge RAM to other accounts during notify.") );
 
 
-   CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | 0 ) );
+   CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2).to_uint64_t() << 64) | 0 ) );
 
-   CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | N(testapi2) ) );
+   CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2).to_uint64_t() << 64) | N(testapi2).to_uint64_t() ) );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -1234,15 +1234,15 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       // Trigger a tx which in turn sends a deferred tx with payer != receiver
       // Payer is alice in this case, this tx should fail since we don't have the authorization of alice
       dtt_action dtt_act1;
-      dtt_act1.payer = N(alice);
+      dtt_act1.payer = N(alice).to_uint64_t();
       BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act1)), missing_auth_exception);
 
       // Send a tx which in turn sends a deferred tx with the deferred tx's receiver != this tx receiver
       // This will include the authorization of the receiver, and impose any related delay associated with the authority
       // We set the authorization delay to be 10 sec here, and since the deferred tx delay is set to be 5 sec, so this tx should fail
       dtt_action dtt_act2;
-      dtt_act2.deferred_account = N(testapi2);
-      dtt_act2.permission_name = N(additional);
+      dtt_act2.deferred_account = N(testapi2).to_uint64_t();
+      dtt_act2.permission_name = N(additional).to_uint64_t();
       dtt_act2.delay_sec = 5;
 
       auto auth = authority(get_public_key("testapi", name(dtt_act2.permission_name).to_string()), 10);
@@ -1268,8 +1268,8 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       // If the deferred tx receiver == this tx receiver, the authorization checking would originally be bypassed.
       // But not anymore. Now it should subjectively fail because testapi@additional permission is not unilaterally satisfied by testapi@eosio.code.
       dtt_action dtt_act3;
-      dtt_act3.deferred_account = N(testapi);
-      dtt_act3.permission_name = N(additional);
+      dtt_act3.deferred_account = N(testapi).to_uint64_t();
+      dtt_act3.permission_name = N(additional).to_uint64_t();
       push_action(config::system_account_name, linkauth::get_name(), "testapi", fc::mutable_variant_object()
             ("account", "testapi")
             ("code", name(dtt_act3.deferred_account))

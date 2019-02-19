@@ -87,14 +87,14 @@ class currency_tester : public TESTER {
                  ("can_recall", 0)
                  ("can_whitelist", 0)
          );
-         wdump((result));
+         wlog("{result}", ("result", fc::json::to_string(result)));
 
          result = push_action(N(eosio.token), N(issue), mutable_variant_object()
                  ("to",       eosio_token)
                  ("quantity", "1000000.0000 CUR")
                  ("memo", "gggggggggggg")
          );
-         wdump((result));
+         wlog("{result}", ("result", fc::json::to_string(result)));
          produce_block();
       }
 

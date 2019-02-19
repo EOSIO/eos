@@ -4,6 +4,8 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/exceptions.hpp>
 
+#include <fc/io/json.hpp>
+
 #include "IR/Module.h"
 #include "Platform/Platform.h"
 #include "WAST/WAST.h"
@@ -30,9 +32,9 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       {}
 
       void apply(apply_context& context) override {
-         vector<Value> args = {Value(uint64_t(context.receiver)),
-	                       Value(uint64_t(context.act.account)),
-                               Value(uint64_t(context.act.name))};
+         vector<Value> args = {Value(context.receiver.to_uint64_t()),
+	                            Value(context.act.account.to_uint64_t()),
+                               Value(context.act.name.to_uint64_t())};
 
          call("apply", args, context);
       }
@@ -67,9 +69,9 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
          } catch( const wasm_exit& e ) {
          } catch( const Runtime::Exception& e ) {
              FC_THROW_EXCEPTION(wasm_execution_error,
-                         "cause: ${cause}\n${callstack}",
+                         "cause: {cause}\n{callstack}",
                          ("cause", string(describeExceptionCause(e.cause)))
-                         ("callstack", e.callStack));
+                         ("callstack", fc::json::to_string(e.callStack)));
          } FC_CAPTURE_AND_RETHROW()
       }
 

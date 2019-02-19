@@ -92,9 +92,9 @@ public:
          ++suffix;
          dest_path = destination_filename + "-" + std::to_string( suffix ) + _wallet_filename_extension;
       }
-      wlog( "backing up wallet ${src} to ${dest}",
-            ("src", src_path)
-            ("dest", dest_path) );
+      wlog( "backing up wallet {src} to {dest}",
+            ("src", src_path.string())
+            ("dest", dest_path.string()) );
 
       fc::path dest_parent = fc::absolute(dest_path).parent_path();
       try
@@ -187,8 +187,8 @@ public:
       else
          EOS_THROW(chain::unsupported_key_type_exception, "Key type \"${kt}\" not supported by software wallet", ("kt", key_type));
 
-      import_key((string)priv_key);
-      return (string)priv_key.get_public_key();
+      import_key(priv_key.str());
+      return priv_key.get_public_key().str();
    }
 
    bool load_wallet_file(string wallet_filename = "")

@@ -31,7 +31,8 @@ namespace eosio
 using namespace chain;
 using namespace std;
 
-static constexpr uint64_t name_suffix( uint64_t n ) {
+static uint64_t name_suffix( name nam ) {
+   uint64_t n = nam.to_uint64_t();
    uint32_t remaining_bits_after_last_actual_dot = 0;
    uint32_t tmp = 0;
    for( int32_t remaining_bits = 59; remaining_bits >= 4; remaining_bits -= 5 ) { // Note: remaining_bits must remain signed integer
@@ -65,7 +66,7 @@ BOOST_AUTO_TEST_SUITE(misc_tests)
 
 BOOST_AUTO_TEST_CASE(name_suffix_tests)
 {
-   BOOST_CHECK_EQUAL( name{name_suffix(0)}, name{0} );
+   BOOST_CHECK_EQUAL( name{name_suffix(name(0))}, name{0} );
    BOOST_CHECK_EQUAL( name{name_suffix(N(abcdehijklmn))}, name{N(abcdehijklmn)} );
    BOOST_CHECK_EQUAL( name{name_suffix(N(abcdehijklmn1))}, name{N(abcdehijklmn1)} );
    BOOST_CHECK_EQUAL( name{name_suffix(N(abc.def))}, name{N(def)} );

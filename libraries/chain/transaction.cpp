@@ -122,8 +122,8 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
       bool successful_insertion = false;
       std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
       EOS_ASSERT( allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
-                  "transaction includes more than one signature signed using the same key associated with public key: ${key}",
-                  ("key", (std::string)recov) );
+                  "transaction includes more than one signature signed using the same key associated with public key: {key}",
+                  ("key", recov) );
    }
 
    lock.lock();
@@ -132,7 +132,7 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
    lock.unlock();
 
    return sig_cpu_usage;
-} FC_CAPTURE_AND_RETHROW() }
+} FC_RETHROW_EXCEPTIONS(warn, "") }
 
 
 const signature_type& signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id) {

@@ -1153,7 +1153,7 @@ void mongo_db_plugin_impl::add_pub_keys( const vector<chain::key_weight>& keys, 
       auto find_doc = bsoncxx::builder::basic::document();
 
       find_doc.append( kvp( "account", name.to_string()),
-                       kvp( "public_key", pub_key_weight.key.operator string()),
+                       kvp( "public_key", pub_key_weight.key.str()),
                        kvp( "permission", permission.to_string()) );
 
       auto update_doc = make_document( kvp( "$set", make_document( bsoncxx::builder::concatenate_doc{find_doc.view()},

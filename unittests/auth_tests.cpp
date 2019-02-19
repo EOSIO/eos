@@ -70,18 +70,18 @@ BOOST_FIXTURE_TEST_CASE( delegate_auth, TESTER ) { try {
                           });
 
    auto original_auth = static_cast<authority>(control->get_authorization_manager().get_permission({N(alice), config::active_name}).auth);
-   wdump((original_auth));
+   wlog("{original_auth}", ("original_auth", fc::json::to_string(original_auth)));
 
    set_authority( N(alice), config::active_name,  delegated_auth );
 
    auto new_auth = static_cast<authority>(control->get_authorization_manager().get_permission({N(alice), config::active_name}).auth);
-   wdump((new_auth));
+   wlog("{new_auth}", ("new_auth", fc::json::to_string(new_auth)));
    BOOST_CHECK_EQUAL((new_auth == delegated_auth), true);
 
    produce_block( fc::milliseconds(config::block_interval_ms*2) );
 
    auto auth = static_cast<authority>(control->get_authorization_manager().get_permission({N(alice), config::active_name}).auth);
-   wdump((auth));
+   wlog("{auth}", ("auth", fc::json::to_string(auth)));
    BOOST_CHECK_EQUAL((new_auth == auth), true);
 
    /// execute nonce from alice signed by bob
@@ -305,14 +305,14 @@ try {
    BOOST_TEST(joe_owner_authority.auth.threshold == 1u);
    BOOST_TEST(joe_owner_authority.auth.accounts.size() == 1u);
    BOOST_TEST(joe_owner_authority.auth.keys.size() == 1u);
-   BOOST_TEST(string(joe_owner_authority.auth.keys[0].key) == string(chain.get_public_key("joe", "owner")));
+   BOOST_TEST(joe_owner_authority.auth.keys[0].key.str() == chain.get_public_key("joe", "owner").str());
    BOOST_TEST(joe_owner_authority.auth.keys[0].weight == 1u);
 
    const auto& joe_active_authority = chain.get<permission_object, by_owner>(boost::make_tuple("joe", "active"));
    BOOST_TEST(joe_active_authority.auth.threshold == 1u);
    BOOST_TEST(joe_active_authority.auth.accounts.size() == 1u);
    BOOST_TEST(joe_active_authority.auth.keys.size() == 1u);
-   BOOST_TEST(string(joe_active_authority.auth.keys[0].key) == string(chain.get_public_key("joe", "active")));
+   BOOST_TEST(joe_active_authority.auth.keys[0].key.str() == chain.get_public_key("joe", "active").str());
    BOOST_TEST(joe_active_authority.auth.keys[0].weight == 1u);
 
    // Create duplicate name

@@ -262,29 +262,30 @@ namespace eosio {
    fc::logger logger;
    std::string peer_log_format;
 
-#define peer_dlog( PEER, FORMAT, ... ) \
-  FC_MULTILINE_MACRO_BEGIN \
-   if( logger.is_enabled( fc::log_level::debug ) ) \
-      logger.log( FC_LOG_MESSAGE( debug, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
-  FC_MULTILINE_MACRO_END
+   //todo
+#define peer_dlog( PEER, FORMAT, ... )
+//  FC_MULTILINE_MACRO_BEGIN \
+//   if( logger.is_enabled( fc::log_level::debug ) ) \
+//      logger.log( FC_LOG_MESSAGE( debug, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+//  FC_MULTILINE_MACRO_END
 
-#define peer_ilog( PEER, FORMAT, ... ) \
-  FC_MULTILINE_MACRO_BEGIN \
-   if( logger.is_enabled( fc::log_level::info ) ) \
-      logger.log( FC_LOG_MESSAGE( info, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
-  FC_MULTILINE_MACRO_END
+#define peer_ilog( PEER, FORMAT, ... )
+//  FC_MULTILINE_MACRO_BEGIN \
+//   if( logger.is_enabled( fc::log_level::info ) ) \
+//      logger.log( FC_LOG_MESSAGE( info, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+//  FC_MULTILINE_MACRO_END
 
-#define peer_wlog( PEER, FORMAT, ... ) \
-  FC_MULTILINE_MACRO_BEGIN \
-   if( logger.is_enabled( fc::log_level::warn ) ) \
-      logger.log( FC_LOG_MESSAGE( warn, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
-  FC_MULTILINE_MACRO_END
+#define peer_wlog( PEER, FORMAT, ... )
+//  FC_MULTILINE_MACRO_BEGIN \
+//   if( logger.is_enabled( fc::log_level::warn ) ) \
+//      logger.log( FC_LOG_MESSAGE( warn, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+//  FC_MULTILINE_MACRO_END
 
-#define peer_elog( PEER, FORMAT, ... ) \
-  FC_MULTILINE_MACRO_BEGIN \
-   if( logger.is_enabled( fc::log_level::error ) ) \
-      logger.log( FC_LOG_MESSAGE( error, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant())) ); \
-  FC_MULTILINE_MACRO_END
+#define peer_elog( PEER, FORMAT, ... )
+//  FC_MULTILINE_MACRO_BEGIN \
+//   if( logger.is_enabled( fc::log_level::error ) ) \
+//      logger.log( FC_LOG_MESSAGE( error, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant())) ); \
+//  FC_MULTILINE_MACRO_END
 
 
    template<class enum_type, class=typename std::enable_if<std::is_enum<enum_type>::value>::type>

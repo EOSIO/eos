@@ -320,7 +320,7 @@ bool yubihsm_wallet::import_key(string wif_key) {
 }
 
 string yubihsm_wallet::create_key(string key_type) {
-   return (string)my->create();
+   return my->create().str();
 }
 
 bool yubihsm_wallet::remove_key(string key) {
