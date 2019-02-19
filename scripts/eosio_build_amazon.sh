@@ -8,19 +8,64 @@ DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
 DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
 DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
 
-if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
-	DEP_ARRAY=( 
-		sudo procps util-linux which gcc72 gcc72-c++ autoconf automake libtool make doxygen graphviz \
-		bzip2 bzip2-devel openssl-devel gmp gmp-devel libstdc++72 python27 python27-devel python34 python34-devel \
-		libedit-devel ncurses-devel swig wget file libcurl-devel libusb1-devel
-	)
-else
-	DEP_ARRAY=( 
-		git procps-ng util-linux gcc gcc-c++ autoconf automake libtool make bzip2 \
-		bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel libusbx-devel \
-		python3 python3-devel python-devel libedit-devel doxygen graphviz 
-	)
-fi
+	printf "\\n\\tOS name: %s\\n" "${OS_NAME}"
+	printf "\\tOS Version: %s\\n" "${OS_VER}"
+	printf "\\tCPU speed: %sMhz\\n" "${CPU_SPEED}"
+	printf "\\tCPU cores: %s\\n" "${CPU_CORE}"
+	printf "\\tPhysical Memory: %sMgb\\n" "${MEM_MEG}"
+	printf "\\tDisk space total: %sGb\\n" "${DISK_TOTAL}"
+	printf "\\tDisk space available: %sG\\n" "${DISK_AVAIL}"
+
+	if [ "${MEM_MEG}" -lt 7000 ]; then
+		printf "\\tYour system must have 7 or more Gigabytes of physical memory installed.\\n"
+		printf "\\texiting now.\\n"
+		exit 1
+	fi
+
+	if [[ "${OS_NAME}" == "Amazon Linux AMI" && "${OS_VER}" -lt 2017 ]]; then
+		printf "\\tYou must be running Amazon Linux 2017.09 or higher to install EOSIO.\\n"
+		printf "\\texiting now.\\n"
+		exit 1
+	fi
+
+	if [ "${DISK_AVAIL}" -lt "${DISK_MIN}" ]; then
+		printf "\\tYou must have at least %sGB of available storage to install EOSIO.\\n" "${DISK_MIN}"
+		printf "\\texiting now.\\n"
+		exit 1
+	fi
+
+	printf "\\n\\tChecking Yum installation.\\n"
+	if ! YUM=$( command -v yum 2>/dev/null )
+	then
+		printf "\\n\\tYum must be installed to compile EOS.IO.\\n"
+		printf "\\n\\tExiting now.\\n"
+		exit 1
+	fi
+	
+	printf "\\tYum installation found at %s.\\n" "${YUM}"
+	printf "\\tUpdating YUM.\\n"
+	if ! UPDATE=$( sudo "$YUM" -y update )
+	then
+		printf "\\n\\tYUM update failed.\\n"
+		printf "\\n\\tExiting now.\\n"
+		exit 1
+	fi
+	printf "\\t%s\\n" "${UPDATE}"
+
+	if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
+		DEP_ARRAY=( git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 \
+		bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++72.x86_64 \
+		python27.x86_64 python27-devel.x86_64 python36-devel.x86_64 libedit-devel.x86_64 doxygen.x86_64 graphviz.x86_64)
+	else
+		DEP_ARRAY=( git gcc gcc-c++ autoconf automake libtool make bzip2 \
+		bzip2-devel openssl-devel gmp-devel libstdc++ \
+		python3 python3-devel python-devel libedit-devel doxygen graphviz)
+	fi
+	COUNT=1
+	DISPLAY=""
+	DEP=""
+
+	printf "\\n\\tChecking YUM for installed dependencies.\\n\\n"
 
 COUNT=1
 DISPLAY=""
