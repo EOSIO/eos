@@ -58,7 +58,6 @@ namespace boost { namespace test_tools { namespace tt_detail {
 // list common system names here to avoid "magic values" in tests
 namespace eosio { namespace chain { namespace config {
 
-static const auto token_account_name   = N(cyber.token);
 static const auto names_account_name   = N(cyber.names);
 static const auto ram_account_name     = N(cyber.ram);
 static const auto ramfee_account_name  = N(cyber.ramfee);
