@@ -56,11 +56,11 @@
 	if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
 		DEP_ARRAY=( git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 \
 		bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++72.x86_64 \
-		python27.x86_64 python36-devel.x86_64 libedit-devel.x86_64 doxygen.x86_64 graphviz.x86_64)
+		python27.x86_64 python27-devel.x86_64 python36-devel.x86_64 libedit-devel.x86_64 doxygen.x86_64 graphviz.x86_64)
 	else
 		DEP_ARRAY=( git gcc gcc-c++ autoconf automake libtool make bzip2 \
 		bzip2-devel openssl-devel gmp-devel libstdc++ \
-		python3 python3-devel libedit-devel doxygen graphviz)
+		python3 python3-devel python-devel libedit-devel doxygen graphviz)
 	fi
 	COUNT=1
 	DISPLAY=""
