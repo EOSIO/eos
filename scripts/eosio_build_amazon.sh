@@ -21,7 +21,7 @@ DEP_ARRAY=(
 )
 if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
 	DEP_ARRAY+=(libusb1-devel)
-elif
+else
 	DEP_ARRAY+=(libusbx-devel)
 fi
 
