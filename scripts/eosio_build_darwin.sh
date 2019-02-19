@@ -161,13 +161,12 @@
 						printf "\\tExiting now.\\n\\n"
 						exit 1;
 					fi
-                                        if [[ "$DEP" == "llvm@4" ]]; then
-                                                "${BREW}" unlink ${DEP}
-					elif ! "${BREW}" unlink ${DEP} && "${BREW}" link --force ${DEP}
-					then
-						printf "\\tHomebrew exited with the above errors.\\n"
-						printf "\\tExiting now.\\n\\n"
-						exit 1;
+					if [ $PERMISSION_GETTEXT -eq 1 ]; then
+						if ! "${BREW}" link --force gettext; then
+							printf "\\tHomebrew exited with the above errors.\\n"
+							printf "\\tExiting now.\\n\\n"
+							exit 1;
+						fi
 					fi
 				break;;
 				[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
