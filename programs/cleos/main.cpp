@@ -1607,9 +1607,10 @@ struct canceldelay_subcommand {
 struct deposit_subcommand {
    string owner_str;
    string amount_str;
+   const name act_name{ N(deposit) };
 
    deposit_subcommand(CLI::App* actionRoot) {
-      auto deposit = actionRoot->add_subcommand("deposit", localized("Deposit into REX fund by transfering from owner's liquid token balance"));
+      auto deposit = actionRoot->add_subcommand("deposit", localized("Deposit into owner's REX fund by transfering from owner's liquid token balance"));
       deposit->add_option("owner",  owner_str,  localized("Account which owns the REX fund"))->required();
       deposit->add_option("amount", amount_str, localized("Amount to be deposited into REX fund"))->required();
       add_standard_transaction_options(deposit, "owner@active");
@@ -1618,7 +1619,7 @@ struct deposit_subcommand {
             ("owner",  owner_str)
             ("amount", amount_str);
          auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(deposit), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
@@ -1626,9 +1627,10 @@ struct deposit_subcommand {
 struct withdraw_subcommand {
    string owner_str;
    string amount_str;
+   const name act_name{ N(withdraw) };
 
    withdraw_subcommand(CLI::App* actionRoot) {
-      auto withdraw = actionRoot->add_subcommand("withdraw", localized("Withdraw from REX fund by transfering to owner's liquid token balance"));
+      auto withdraw = actionRoot->add_subcommand("withdraw", localized("Withdraw from owner's REX fund by transfering to owner's liquid token balance"));
       withdraw->add_option("owner",  owner_str,  localized("Account which owns the REX fund"))->required();
       withdraw->add_option("amount", amount_str, localized("Amount to be withdrawn from REX fund"))->required();
       add_standard_transaction_options(withdraw, "owner@active");
@@ -1637,7 +1639,7 @@ struct withdraw_subcommand {
             ("owner",  owner_str)
             ("amount", amount_str);
          auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(withdraw), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
@@ -1645,18 +1647,44 @@ struct withdraw_subcommand {
 struct buyrex_subcommand {
    string from_str;
    string amount_str;
+   const name act_name{ N(buyrex) };
 
    buyrex_subcommand(CLI::App* actionRoot) {
-      auto buyrex = actionRoot->add_subcommand("buyrex", localized("Buy REX tokens"));
+      auto buyrex = actionRoot->add_subcommand("buyrex", localized("Buy REX using tokens in owner's REX fund"));
       buyrex->add_option("from",   from_str,   localized("Account buying REX tokens"))->required();
-      buyrex->add_option("amount", amount_str, localized("Amount to be taken from REX fund and used in buying REX tokens"))->required();
+      buyrex->add_option("amount", amount_str, localized("Amount to be taken from REX fund and used in buying REX"))->required();
       add_standard_transaction_options(buyrex, "owner@active");
       buyrex->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
             ("from",   from_str)
             ("amount", amount_str);
          auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(buyrex), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
+      });
+   }
+};
+
+struct lendrex_subcommand {
+   string from_str;
+   string amount_str;
+   const name act_name1{ N(deposit) };
+   const name act_name2{ N(buyrex) };
+
+   lendrex_subcommand(CLI::App* actionRoot) {
+      auto lendrex = actionRoot->add_subcommand("lendrex", localized("Deposit tokens to REX fund and use the tokens to buy REX"));
+      lendrex->add_option("from",   from_str,   localized("Account buying REX tokens"))->required();
+      lendrex->add_option("amount", amount_str, localized("Amount of liquid tokens to be used in buying REX"))->required();
+      add_standard_transaction_options(lendrex, "owner@active");
+      lendrex->set_callback([this] {
+         fc::variant act_payload1 = fc::mutable_variant_object()
+            ("owner",  from_str)
+            ("amount", amount_str);
+         fc::variant act_payload2 = fc::mutable_variant_object()
+            ("from",   from_str)
+            ("amount", amount_str);
+         auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name1, act_payload1),
+                       create_action(accountPermissions, config::system_account_name, act_name2, act_payload2)});
       });
    }
 };
@@ -1666,11 +1694,12 @@ struct unstaketorex_subcommand {
    string receiver_str;
    string from_net_str;
    string from_cpu_str;
+   const name act_name{ N(unstaketorex) };
 
    unstaketorex_subcommand(CLI::App* actionRoot) {
       auto unstaketorex = actionRoot->add_subcommand("unstaketorex", localized("Buy REX using staked tokens"));
       unstaketorex->add_option("owner",    owner_str,    localized("Account buying REX tokens"))->required();
-      unstaketorex->add_option("receiver", receiver_str, localized("Account tokens have been staked to"))->required();
+      unstaketorex->add_option("receiver", receiver_str, localized("Account that tokens have been staked to"))->required();
       unstaketorex->add_option("from_net", from_net_str, localized("Amount to be unstaked from CPU resources and used in REX purchase"))->required();
       unstaketorex->add_option("from_cpu", from_cpu_str, localized("Amount to be unstaked from Net resources and used in REX purchase"))->required();
       add_standard_transaction_options(unstaketorex, "owner@active");
@@ -1681,7 +1710,7 @@ struct unstaketorex_subcommand {
             ("from_net", from_net_str)
             ("from_cpu", from_cpu_str);
          auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(unstaketorex), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
@@ -1689,6 +1718,7 @@ struct unstaketorex_subcommand {
 struct sellrex_subcommand {
    string from_str;
    string rex_str;
+   const name act_name{ N(sellrex) };
 
    sellrex_subcommand(CLI::App* actionRoot) {
       auto sellrex = actionRoot->add_subcommand("sellrex", localized("Sell REX tokens"));
@@ -1700,13 +1730,14 @@ struct sellrex_subcommand {
             ("from", from_str)
             ("rex",  rex_str);
          auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(sellrex), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
 
 struct cancelrexorder_subcommand {
    string owner_str;
+   const name act_name{ N(cnclrexorder) };
 
    cancelrexorder_subcommand(CLI::App* actionRoot) {
       auto cancelrexoder = actionRoot->add_subcommand("cancelrexorder", localized("Cancel queued REX sell order if one exists"));
@@ -1715,7 +1746,7 @@ struct cancelrexorder_subcommand {
       cancelrexoder->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()("owner", owner_str);
          auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(cnclrexorder), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
@@ -1725,13 +1756,14 @@ struct rentcpu_subcommand {
    string receiver_str;
    string loan_payment_str;
    string loan_fund_str;
+   const name act_name{ N(rentcpu) };
 
    rentcpu_subcommand(CLI::App* actionRoot) {
       auto rentcpu = actionRoot->add_subcommand("rentcpu", localized("Rent CPU bandwidth for 30 days"));
       rentcpu->add_option("from",         from_str,         localized("Account paying rent fees"))->required();
       rentcpu->add_option("receiver",     receiver_str,     localized("Account to whom rented CPU bandwidth is staked"))->required();
-      rentcpu->add_option("loan_payment", loan_payment_str, localized("Loan fee, used to calculate amount of rented bandwidth"))->required();
-      rentcpu->add_option("loan_fund",    loan_fund_str,    localized("Optional loan fund to be used in automatic renewal"))->required();
+      rentcpu->add_option("loan_payment", loan_payment_str, localized("Loan fee to be paid, used to calculate amount of rented bandwidth"))->required();
+      rentcpu->add_option("loan_fund",    loan_fund_str,    localized("Loan fund to be used in automatic renewal, can be 0 tokens"))->required();
       add_standard_transaction_options(rentcpu, "from@active");
       rentcpu->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -1740,7 +1772,7 @@ struct rentcpu_subcommand {
             ("loan_payment", loan_payment_str)
             ("loan_fund",    loan_fund_str);
          auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(rentcpu), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
@@ -1750,13 +1782,14 @@ struct rentnet_subcommand {
    string receiver_str;
    string loan_payment_str;
    string loan_fund_str;
+   const name act_name{ N(rentnet) };
 
    rentnet_subcommand(CLI::App* actionRoot) {
       auto rentnet = actionRoot->add_subcommand("rentnet", localized("Rent Network bandwidth for 30 days"));
       rentnet->add_option("from",         from_str,         localized("Account paying rent fees"))->required();
       rentnet->add_option("receiver",     receiver_str,     localized("Account to whom rented Network bandwidth is staked"))->required();
-      rentnet->add_option("loan_payment", loan_payment_str, localized("Loan fee, used to calculate amount of rented bandwidth"))->required();
-      rentnet->add_option("loan_fund",    loan_fund_str,    localized("Optional loan fund to be used in automatic renewal"))->required();
+      rentnet->add_option("loan_payment", loan_payment_str, localized("Loan fee to be paid, used to calculate amount of rented bandwidth"))->required();
+      rentnet->add_option("loan_fund",    loan_fund_str,    localized("Loan fund to be used in automatic renewal, can be 0 tokens"))->required();
       add_standard_transaction_options(rentnet, "from@active");
       rentnet->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -1765,7 +1798,7 @@ struct rentnet_subcommand {
             ("loan_payment", loan_payment_str)
             ("loan_fund",    loan_fund_str);
          auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(rentnet), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
@@ -1774,6 +1807,7 @@ struct fundcpuloan_subcommand {
    string from_str;
    string loan_num_str;
    string payment_str;
+   const name act_name{ N(fundcpuloan) };
 
    fundcpuloan_subcommand(CLI::App* actionRoot) {
       auto fundcpuloan = actionRoot->add_subcommand("fundcpuloan", localized("Deposit into a CPU loan fund"));
@@ -1787,7 +1821,7 @@ struct fundcpuloan_subcommand {
             ("loan_num", loan_num_str)
             ("payment",  payment_str);
          auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(fundcpuloan), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
@@ -1796,6 +1830,7 @@ struct fundnetloan_subcommand {
    string from_str;
    string loan_num_str;
    string payment_str;
+   const name act_name{ N(fundnetloan) };
 
    fundnetloan_subcommand(CLI::App* actionRoot) {
       auto fundnetloan = actionRoot->add_subcommand("fundnetloan", localized("Deposit into a Network loan fund"));
@@ -1809,7 +1844,7 @@ struct fundnetloan_subcommand {
             ("loan_num", loan_num_str)
             ("payment",  payment_str);
          auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(fundnetloan), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
@@ -1818,6 +1853,7 @@ struct defcpuloan_subcommand {
    string from_str;
    string loan_num_str;
    string amount_str;
+   const name act_name{ N(defcpuloan) };
 
    defcpuloan_subcommand(CLI::App* actionRoot) {
       auto defcpuloan = actionRoot->add_subcommand("defundcpuloan", localized("Withdraw from a CPU loan fund"));
@@ -1831,7 +1867,7 @@ struct defcpuloan_subcommand {
             ("loan_num", loan_num_str)
             ("amount",   amount_str);
          auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(defcpuloan), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
@@ -1840,9 +1876,10 @@ struct defnetloan_subcommand {
    string from_str;
    string loan_num_str;
    string amount_str;
+   const name act_name{ N(defnetloan) };
 
    defnetloan_subcommand(CLI::App* actionRoot) {
-      auto defnetloan = actionRoot->add_subcommand("defundnetloan", localized("Withdraw from a Net loan fund"));
+      auto defnetloan = actionRoot->add_subcommand("defundnetloan", localized("Withdraw from a Network loan fund"));
       defnetloan->add_option("from",     from_str,     localized("Loan owner"))->required();
       defnetloan->add_option("loan_num", loan_num_str, localized("Loan ID"))->required();
       defnetloan->add_option("amount",   amount_str,  localized("Amount to be withdrawn"))->required();
@@ -1853,7 +1890,7 @@ struct defnetloan_subcommand {
             ("loan_num", loan_num_str)
             ("amount",   amount_str);
          auto accountPermissions = get_account_permissions(tx_permission, {from_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(defnetloan), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
@@ -1861,6 +1898,7 @@ struct defnetloan_subcommand {
 struct mvtosavings_subcommand {
    string owner_str;
    string rex_str;
+   const name act_name{ N(mvtosavings) };
 
    mvtosavings_subcommand(CLI::App* actionRoot) {
       auto mvtosavings = actionRoot->add_subcommand("mvtosavings", localized("Move REX tokens to savings bucket"));
@@ -1872,7 +1910,7 @@ struct mvtosavings_subcommand {
             ("owner", owner_str)
             ("rex",   rex_str);
          auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(mvtosavings), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
@@ -1880,6 +1918,7 @@ struct mvtosavings_subcommand {
 struct mvfrsavings_subcommand {
    string owner_str;
    string rex_str;
+   const name act_name{ N(mvfrsavings) };
 
    mvfrsavings_subcommand(CLI::App* actionRoot) {
       auto mvfrsavings = actionRoot->add_subcommand("mvfromsavings", localized("Move REX tokens out of savings bucket"));
@@ -1891,13 +1930,14 @@ struct mvfrsavings_subcommand {
             ("owner", owner_str)
             ("rex",   rex_str);
          auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(mvfrsavings), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
 
 struct updaterex_subcommand {
    string owner_str;
+   const name act_name{ N(updaterex) };
 
    updaterex_subcommand(CLI::App* actionRoot) {
       auto updaterex = actionRoot->add_subcommand("updaterex", localized("Update REX owner vote stake and vote weight"));
@@ -1906,13 +1946,14 @@ struct updaterex_subcommand {
       updaterex->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()("owner", owner_str);
          auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(updaterex), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
 
 struct consolidate_subcommand {
    string owner_str;
+   const name act_name{ N(consolidate) };
 
    consolidate_subcommand(CLI::App* actionRoot) {
       auto consolidate = actionRoot->add_subcommand("consolidate", localized("Consolidate REX maturity buckets into one that matures in 4 days"));
@@ -1921,7 +1962,7 @@ struct consolidate_subcommand {
       consolidate->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()("owner", owner_str);
          auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(consolidate), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
@@ -1929,24 +1970,26 @@ struct consolidate_subcommand {
 struct rexexec_subcommand {
    string user_str;
    string max_str;
+   const name act_name{ N(rexexec) };
 
    rexexec_subcommand(CLI::App* actionRoot) {
       auto rexexec = actionRoot->add_subcommand("rexexec", localized("Perform REX maintenance by processing expired loans and unfilled sell orders"));
       rexexec->add_option("user", user_str, localized("User executing the action"))->required();
-      rexexec->add_option("max",  max_str,  localized("Maximum number of CPU loans, Net loans, and sell orders to be processed"))->required();
+      rexexec->add_option("max",  max_str,  localized("Maximum number of CPU loans, Network loans, and sell orders to be processed"))->required();
       add_standard_transaction_options(rexexec, "user@active");
       rexexec->set_callback([this] {
             fc::variant act_payload = fc::mutable_variant_object()
                ("user", user_str)
                ("max",  max_str);
          auto accountPermissions = get_account_permissions(tx_permission, {user_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(rexexec), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
 
 struct closerex_subcommand {
    string owner_str;
+   const name act_name{ N(closerex) };
 
    closerex_subcommand(CLI::App* actionRoot) {
       auto closerex = actionRoot->add_subcommand("closerex", localized("Delete unused REX-related user table entries"));
@@ -1955,7 +1998,7 @@ struct closerex_subcommand {
       closerex->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()("owner", owner_str);
          auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(closerex), act_payload)});
+         send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
       });
    }
 };
@@ -3812,6 +3855,7 @@ int main( int argc, char** argv ) {
    auto deposit        = deposit_subcommand(rex);
    auto withdraw       = withdraw_subcommand(rex);
    auto buyrex         = buyrex_subcommand(rex);
+   auto lendrex        = lendrex_subcommand(rex);
    auto unstaketorex   = unstaketorex_subcommand(rex);
    auto sellrex        = sellrex_subcommand(rex);
    auto cancelrexorder = cancelrexorder_subcommand(rex);
@@ -3827,7 +3871,6 @@ int main( int argc, char** argv ) {
    auto updaterex      = updaterex_subcommand(rex);
    auto rexexec        = rexexec_subcommand(rex);
    auto closerex       = closerex_subcommand(rex);
-   
 
 
    try {
