@@ -175,8 +175,6 @@ struct test_transaction {
    static void send_cf_action_fail();
    static void stateful_api();
    static void context_free_api();
-   static void new_feature();
-   static void active_new_feature();
    static void repeat_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action);
 };
 

@@ -32,7 +32,6 @@ class Cluster(object):
     __bootlog="eosio-ignition-wd/bootlog.txt"
     __configDir="etc/eosio/"
     __dataDir="var/lib/"
-    __fileDivider="================================================================="
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
@@ -1272,7 +1271,7 @@ class Cluster(object):
 
     @staticmethod
     def dumpErrorDetailImpl(fileName):
-        Utils.Print(Cluster.__fileDivider)
+        Utils.Print(Utils.FileDivider)
         Utils.Print("Contents of %s:" % (fileName))
         if os.path.exists(fileName):
             with open(fileName, "r") as f:
@@ -1289,19 +1288,16 @@ class Cluster(object):
                 match=re.match("stderr\..+\.txt", entry.name)
                 if match:
                     files.append(os.path.join(path, entry.name))
+        files.sort()
         return files
 
-    def dumpErrorDetails(self, allStderrFiles=False):
+    def dumpErrorDetails(self):
         fileName=os.path.join(Cluster.__configDir + Cluster.nodeExtensionToName("bios"), "config.ini")
         Cluster.dumpErrorDetailImpl(fileName)
         path=Cluster.__dataDir + Cluster.nodeExtensionToName("bios")
-        if not allStderrFiles:
-            fileName=os.path.join(path, "stderr.txt")
+        fileNames=Cluster.__findFiles(path)
+        for fileName in fileNames:
             Cluster.dumpErrorDetailImpl(fileName)
-        else:
-            fileNames=Cluster.__findFiles(path)
-            for fileName in fileNames:
-                Cluster.dumpErrorDetailImpl(fileName)
 
         for i in range(0, len(self.nodes)):
             configLocation=Cluster.__configDir + Cluster.nodeExtensionToName(i)
@@ -1310,13 +1306,9 @@ class Cluster(object):
             fileName=os.path.join(configLocation, "genesis.json")
             Cluster.dumpErrorDetailImpl(fileName)
             path=Cluster.__dataDir + Cluster.nodeExtensionToName(i)
-            if not allStderrFiles:
-                fileName=os.path.join(path, "stderr.txt")
+            fileNames=Cluster.__findFiles(path)
+            for fileName in fileNames:
                 Cluster.dumpErrorDetailImpl(fileName)
-            else:
-                fileNames=Cluster.__findFiles(path)
-                for fileName in fileNames:
-                    Cluster.dumpErrorDetailImpl(fileName)
 
         if self.useBiosBootFile:
             Cluster.dumpErrorDetailImpl(Cluster.__bootlog)
@@ -1467,8 +1459,8 @@ class Cluster(object):
 
     def printBlockLog(self):
         blockLogBios=self.getBlockLog("bios")
-        Utils.Print(Cluster.__fileDivider)
-        Utils.Print("Block log from %s:\n%s" % (blockLogDir, json.dumps(blockLogBios, indent=1)))
+        Utils.Print(Utils.FileDivider)
+        Utils.Print("Block log from %s:\n%s" % ("bios", json.dumps(blockLogBios, indent=1)))
 
         if not hasattr(self, "nodes"):
             return
@@ -1477,8 +1469,8 @@ class Cluster(object):
         for i in range(numNodes):
             node=self.nodes[i]
             blockLog=self.getBlockLog(i)
-            Utils.Print(Cluster.__fileDivider)
-            Utils.Print("Block log from %s:\n%s" % (blockLogDir, json.dumps(blockLog, indent=1)))
+            Utils.Print(Utils.FileDivider)
+            Utils.Print("Block log from node %s:\n%s" % (i, json.dumps(blockLog, indent=1)))
 
 
     def compareBlockLogs(self):
@@ -1554,11 +1546,11 @@ class Cluster(object):
                 if ret is not None:
                     blockLogDir1=Cluster.__dataDir + Cluster.nodeExtensionToName(commonBlockNameExtensions[0]) + "/blocks/"
                     blockLogDir2=Cluster.__dataDir + Cluster.nodeExtensionToName(commonBlockNameExtensions[i]) + "/blocks/"
-                    Utils.Print(Cluster.__fileDivider)
+                    Utils.Print(Utils.FileDivider)
                     Utils.Print("Block log from %s:\n%s" % (blockLogDir1, json.dumps(commonBlockLogs[0], indent=1)))
-                    Utils.Print(Cluster.__fileDivider)
+                    Utils.Print(Utils.FileDivider)
                     Utils.Print("Block log from %s:\n%s" % (blockLogDir2, json.dumps(commonBlockLogs[i], indent=1)))
-                    Utils.Print(Cluster.__fileDivider)
+                    Utils.Print(Utils.FileDivider)
                     Utils.errorExit("Block logs do not match, difference description -> %s" % (ret))
 
             return True

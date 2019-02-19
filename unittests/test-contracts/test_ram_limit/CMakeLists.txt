@@ -1,4 +1,4 @@
-if( ${eosio.cdt_FOUND} )
+if( EOSIO_COMPILE_TEST_CONTRACTS )
    message(STATUS "Not building test_ram_limit, read README.txt in eos/unittests/test-contracts/test_ram_limit")
    configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/test_ram_limit.wasm ${CMAKE_CURRENT_BINARY_DIR}/test_ram_limit.wasm COPYONLY )
    configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/test_ram_limit.abi ${CMAKE_CURRENT_BINARY_DIR}/test_ram_limit.abi COPYONLY )

@@ -5,7 +5,9 @@ VARIANT=$1
 VERSION_NO_SUFFIX="@VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@"
 VERSION_SUFFIX="@VERSION_SUFFIX@"
 VERSION="@VERSION_FULL@"
-BUILD_DIR="@CMAKE_BINARY_DIR@"
+
+# Using CMAKE_BINARY_DIR uses an absolute path and will break cross-vm building/download/make functionality
+BUILD_DIR="../../build"
 
 VENDOR="@VENDOR@"
 PROJECT="@PROJECT_NAME@"
@@ -23,21 +25,17 @@ export DESC
 export URL
 export EMAIL
 
-mkdir tmp
+mkdir -p tmp
 
 if [[ ${VARIANT} == "brew" ]]; then
-   bash generate_bottle.sh
+   . ./generate_bottle.sh
 elif [[ ${VARIANT} == "deb" ]]; then
-   bash generate_deb.sh
+   . ./generate_deb.sh
 elif [[ ${VARIANT} == "rpm" ]]; then
-   bash generate_rpm.sh
+   . ./generate_rpm.sh
 else
    echo "Error, unknown package type. Use either ['brew', 'deb', 'rpm']."
    exit -1
 fi
 
-BUILDSTATUS=$?
-
-rm -r tmp
-
-exit $BUILDSTATUS
+rm -r tmp || exit 1
