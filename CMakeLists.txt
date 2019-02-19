@@ -19,15 +19,13 @@ if (UNIX)
       execute_process(COMMAND xcrun --show-sdk-path
                       OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
                       OUTPUT_STRIP_TRAILING_WHITESPACE)
+      if (LLVM_DIR STREQUAL "" OR NOT LLVM_DIR)
+         set(LLVM_DIR "/usr/local/opt/llvm@4/lib/cmake/llvm")
+      endif()
+      if (Intl_INCLUDE_DIR STREQUAL "" OR NOT Intl_INCLUDE_DIR)
+         set(Intl_INCLUDE_DIR "/usr/local/opt/gettext/include")
+      endif()
    endif()
-endif()
-
-if (LLVM_DIR STREQUAL "" OR NOT LLVM_DIR)
-    set(LLVM_DIR "$ENV{HOME}/opt/llvm/lib/cmake/llvm")
-endif()
-
-if (BOOST_ROOT STREQUAL "" OR NOT BOOST_ROOT)
-    set(BOOST_ROOT "$ENV{HOME}/opt/boost")
 endif()
 
 include( GNUInstallDirs )
