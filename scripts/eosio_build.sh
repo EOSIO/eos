@@ -101,18 +101,14 @@ fi
 
 function usage()
 {
-   printf "Usage: %s \\n[Build Option -o <Debug|Release|RelWithDebInfo|MinSizeRel>] \\n[CodeCoverage -c] \\n[Doxygen -d] \\n[CoreSymbolName -s <1-7 characters>] \\n[Avoid Compiling -a]\\n\\n" "$0" 1>&2
+   printf "Usage: %s \\n[Build Option -o <Debug|Release|RelWithDebInfo|MinSizeRel>] \\n[CodeCoverage -c] \\n[Doxygen -d] \\n[CoreSymbolName -s <1-7 characters>] \\n[Avoid Compiling -a]\\n[Noninteractive -y]\\n\\n" "$0" 1>&2
    exit 1
 }
 
-if [[ $1 == "noninteractive" ]]; then
-  NONINTERACTIVE=1
-else
-  NONINTERACTIVE=0
-fi
+NONINTERACTIVE=0
 
 if [ $# -ne 0 ]; then
-   while getopts ":cdo:s:ah" opt; do
+   while getopts ":cdo:s:ahy" opt; do
       case "${opt}" in
          o )
             options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
@@ -145,6 +141,9 @@ if [ $# -ne 0 ]; then
          h)
             usage
             exit 1
+         ;;
+         y)
+            NONINTERACTIVE=1
          ;;
          \? )
             printf "\\nInvalid Option: %s\\n" "-${OPTARG}" 1>&2
