@@ -645,6 +645,10 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    ds2.seekp(0);
    packed_transaction pkt4;
    fc::raw::unpack(ds2, pkt4);
+   // to/from variant
+   fc::variant pkt_v( pkt3 );
+   packed_transaction pkt5;
+   fc::from_variant(pkt_v, pkt5);
 
    bytes raw3 = pkt3.get_raw_transaction();
    bytes raw4 = pkt4.get_raw_transaction();
@@ -654,6 +658,7 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(true, std::equal(raw.begin(), raw.end(), raw4.begin()));
    BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt3.get_signed_transaction().id());
    BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt4.get_signed_transaction().id());
+   BOOST_CHECK_EQUAL(pkt.get_signed_transaction().id(), pkt5.get_signed_transaction().id()); // failure indicates reflector_init not working
    BOOST_CHECK_EQUAL(pkt.id(), pkt4.get_signed_transaction().id());
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.expiration());
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt4.get_signed_transaction().expiration);
