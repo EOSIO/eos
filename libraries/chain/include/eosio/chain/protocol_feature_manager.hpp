@@ -29,6 +29,8 @@ struct builtin_protocol_feature_spec {
    protocol_feature_subjective_restrictions  subjective_restrictions;
 };
 
+extern const std::unordered_map<builtin_protocol_feature_t, builtin_protocol_feature_spec> builtin_protocol_feature_codenames;
+
 const char* builtin_protocol_feature_codename( builtin_protocol_feature_t );
 
 class protocol_feature_base {
@@ -42,7 +44,7 @@ public:
 
    void reflector_init();
 
-   protocol_feature_t get_type() { return _type; }
+   protocol_feature_t get_type()const { return _type; }
 
 public:
    std::string                               protocol_feature_type;
@@ -68,7 +70,7 @@ public:
 
    digest_type digest()const;
 
-   builtin_protocol_feature_t get_codename() { return _codename; }
+   builtin_protocol_feature_t get_codename()const { return _codename; }
 
    friend class protocol_feature_manager;
 
@@ -77,8 +79,6 @@ public:
 protected:
    builtin_protocol_feature_t  _codename;
 };
-
-extern const std::unordered_map<builtin_protocol_feature_t, builtin_protocol_feature_spec> builtin_protocol_feature_codenames;
 
 class protocol_feature_manager {
 public:
@@ -125,7 +125,10 @@ public:
    bool validate_dependencies( const digest_type& feature_digest,
                                const std::function<bool(const digest_type&)>& validator )const;
 
-   builtin_protocol_feature make_default_builtin_protocol_feature( builtin_protocol_feature_t codename )const;
+   builtin_protocol_feature make_default_builtin_protocol_feature(
+                              builtin_protocol_feature_t codename,
+                              const std::function<void(builtin_protocol_feature_t dependency)>& handle_dependency
+                            )const;
 
    void add_feature( const builtin_protocol_feature& f );
 

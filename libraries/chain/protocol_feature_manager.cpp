@@ -83,24 +83,18 @@ namespace eosio { namespace chain {
    }
 
    void builtin_protocol_feature::reflector_init() {
-      protocol_feature_base::reflector_init();
+      //protocol_feature_base::reflector_init();
 
-      auto codename = get_codename();
       for( const auto& p : builtin_protocol_feature_codenames ) {
-         if( p.first ==  codename ) {
-            EOS_ASSERT( builtin_feature_codename == p.second.codename,
-                        protocol_feature_validation_exception,
-                        "Deserialized protocol feature has invalid codename. Expected: ${expected}. Actual: ${actual}.",
-                        ("expected", p.second.codename)
-                        ("actual", protocol_feature_type)
-            );
+         if( builtin_feature_codename.compare( p.second.codename ) == 0 ) {
             _codename = p.first;
             return;
          }
       }
 
       EOS_THROW( protocol_feature_validation_exception,
-                  "Unsupported protocol feature type: ${type}", ("type", protocol_feature_type) );
+                 "Unsupported builtin protocol feature codename: ${codename}",
+                 ("codename", builtin_feature_codename) );
    }
 
 
@@ -188,8 +182,10 @@ namespace eosio { namespace chain {
    }
 
    builtin_protocol_feature
-   protocol_feature_manager::make_default_builtin_protocol_feature( builtin_protocol_feature_t codename )const
-   {
+   protocol_feature_manager::make_default_builtin_protocol_feature(
+      builtin_protocol_feature_t codename,
+      const std::function<void(builtin_protocol_feature_t dependency)>& handle_dependency
+   )const {
       auto itr = builtin_protocol_feature_codenames.find( codename );
 
       EOS_ASSERT( itr != builtin_protocol_feature_codenames.end(), protocol_feature_validation_exception,
@@ -200,6 +196,7 @@ namespace eosio { namespace chain {
       dependencies.reserve( itr->second.builtin_dependencies.size() );
 
       for( const auto& d : itr->second.builtin_dependencies ) {
+         handle_dependency( d );
          auto dependency_digest = get_builtin_digest( d );
          EOS_ASSERT( dependency_digest, protocol_feature_exception,
                      "cannot make default builtin protocol feature with codename '${codename}' since it has a dependency that has not been added yet: ${dependency_codename}",

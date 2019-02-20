@@ -332,7 +332,11 @@ void clear_directory_contents( const fc::path& p ) {
 }
 
 optional<builtin_protocol_feature> read_builtin_protocol_feature( const fc::path& p  ) {
-   return {};
+   try {
+      return fc::json::from_file<builtin_protocol_feature>( p );
+   } catch( ... ) {
+      return {};
+   }
 }
 
 protocol_feature_manager initialize_protocol_features( const fc::path& p, bool populate_missing_builtins = true ) {
@@ -340,45 +344,60 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
 
    protocol_feature_manager pfm;
 
-   if( !fc::is_directory( p ) )
-      return pfm;
+   bool directory_exists = true;
+
+   if( fc::exists( p ) ) {
+      EOS_ASSERT( fc::is_directory( p ), plugin_exception,
+                  "Path to protocol-features is not a directory: ${path}",
+                  ("path", p.generic_string())
+      );
+   } else {
+      if( populate_missing_builtins )
+         bfs::create_directory( p );
+      else
+         directory_exists = false;
+   }
 
    map<builtin_protocol_feature_t, fc::path>  found_builtin_protocol_features;
    map<digest_type, std::pair<builtin_protocol_feature, bool> > builtin_protocol_features_to_add;
    // The bool in the pair is set to true if the builtin protocol feature has already been visited to add
+   set<builtin_protocol_feature_t> visited_builtins;
 
    // Read all builtin protocol features
-   for( directory_iterator enditr, itr{p}; itr != enditr; ++itr ) {
-      auto file_path = itr->path();
-      if( !fc::is_regular_file( file_path ) || file_path.extension().generic_string() == ".json" ) continue;
+   if( directory_exists ) {
+      for( directory_iterator enditr, itr{p}; itr != enditr; ++itr ) {
+         auto file_path = itr->path();
+         if( !fc::is_regular_file( file_path ) || file_path.extension().generic_string().compare( ".json" ) != 0 )
+            continue;
 
-      auto f = read_builtin_protocol_feature( file_path );
+         auto f = read_builtin_protocol_feature( file_path );
 
-      if( !f ) continue;
+         if( !f ) continue;
 
-      auto res = found_builtin_protocol_features.emplace( f->get_codename(), file_path );
+         auto res = found_builtin_protocol_features.emplace( f->get_codename(), file_path );
 
-      EOS_ASSERT( res.second, plugin_exception,
-                  "Builtin protocol feature '${codename}' was already included from a previous_file",
-                  ("codename", builtin_protocol_feature_codename(f->get_codename()))
-                  ("current_file", file_path.generic_string())
-                  ("previous_file", res.first->second.generic_string())
-      );
+         EOS_ASSERT( res.second, plugin_exception,
+                     "Builtin protocol feature '${codename}' was already included from a previous_file",
+                     ("codename", builtin_protocol_feature_codename(f->get_codename()))
+                     ("current_file", file_path.generic_string())
+                     ("previous_file", res.first->second.generic_string())
+         );
 
-      builtin_protocol_features_to_add.emplace( std::piecewise_construct,
-                                               std::forward_as_tuple( f->digest() ),
-                                               std::forward_as_tuple( *f, false ) );
-      //pfm.add_feature( *f );
+         builtin_protocol_features_to_add.emplace( std::piecewise_construct,
+                                                   std::forward_as_tuple( f->digest() ),
+                                                   std::forward_as_tuple( *f, false ) );
+      }
    }
 
    // Add builtin protocol features to the protocol feature manager in the right order (to satisfy dependencies)
    using itr_type = map<digest_type, std::pair<builtin_protocol_feature, bool>>::iterator;
    std::function<void(const itr_type&)> add_protocol_feature =
-   [&pfm, &builtin_protocol_features_to_add, &add_protocol_feature]( const itr_type& itr ) -> void {
+   [&pfm, &builtin_protocol_features_to_add, &visited_builtins, &add_protocol_feature]( const itr_type& itr ) -> void {
       if( itr->second.second ) {
          return;
       } else {
          itr->second.second = true;
+         visited_builtins.insert( itr->second.first.get_codename() );
       }
 
       for( const auto& d : itr->second.first.dependencies ) {
@@ -395,14 +414,49 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
       add_protocol_feature( itr );
    }
 
-   if( populate_missing_builtins ) {
-      for( const auto& p : builtin_protocol_feature_codenames ) {
-         auto itr = found_builtin_protocol_features.find( p.first );
-         if( itr != found_builtin_protocol_features.end() ) continue;
+   auto output_protocol_feature = [&p]( const builtin_protocol_feature& f ) {
+      static constexpr int max_tries = 10;
 
-         pfm.make_default_builtin_protocol_feature( p.first );
-         // TODO: write it out to the protocol-features directory
-      }
+      string filename_base( "BUILTIN-" );
+      filename_base += builtin_protocol_feature_codename( f.get_codename() );
+
+      string filename = filename_base + ".json";
+      int i = 0;
+      for( ;
+           i < max_tries && fc::exists( p / filename );
+           ++i, filename = filename_base + "-" + std::to_string(i) + ".json" )
+         ;
+
+      EOS_ASSERT( i < max_tries, plugin_exception,
+                  "Could not save builtin protocol feature with codename '${codename}' due to file name conflicts",
+                  ("codename", builtin_protocol_feature_codename( f.get_codename() ))
+      );
+
+      fc::json::save_to_file( f, p / filename );
+   };
+
+   std::function<void(builtin_protocol_feature_t)> add_missing_builtins =
+   [&pfm, &visited_builtins, &output_protocol_feature, &add_missing_builtins, populate_missing_builtins]
+   ( builtin_protocol_feature_t codename ) -> void {
+      auto res = visited_builtins.emplace( codename );
+      if( !res.second ) return;
+
+      auto f = pfm.make_default_builtin_protocol_feature( codename,
+      [&add_missing_builtins]( builtin_protocol_feature_t d ) {
+         add_missing_builtins( d );
+      } );
+
+      pfm.add_feature( f );
+
+      if( populate_missing_builtins )
+         output_protocol_feature( f );
+   };
+
+   for( const auto& p : builtin_protocol_feature_codenames ) {
+      auto itr = found_builtin_protocol_features.find( p.first );
+      if( itr != found_builtin_protocol_features.end() ) continue;
+
+      add_missing_builtins( p.first );
    }
 
    return pfm;
