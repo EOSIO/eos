@@ -65,7 +65,7 @@ struct final_reflect : public derived_reflect {
 private:
    friend struct fc::reflector<final_reflect>;
    friend struct fc::reflector_init_visitor<final_reflect>;
-   friend struct fc::has_reflector_init<derived_reflect>;
+   friend struct fc::has_reflector_init<final_reflect>;
    void reflector_init() {
       BOOST_CHECK_EQUAL( bv, 42 ); // should be deserialized before called, set by test
       BOOST_CHECK_EQUAL( dv, 52 ); // should be deserialized before called, set by test
