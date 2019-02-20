@@ -65,6 +65,11 @@ static const auto bpay_account_name    = N(cyber.bpay);
 static const auto vpay_account_name    = N(cyber.vpay);
 static const auto saving_account_name  = N(cyber.saving);
 
+static const std::set<account_name> native_accounts = {
+    system_account_name, msig_account_name, domain_account_name, govern_account_name, stake_account_name 
+};
+
+
 }}};
 
 namespace eosio { namespace testing {
@@ -197,7 +202,12 @@ namespace eosio { namespace testing {
 
          template< typename KeyType = fc::ecc::private_key_shim >
          static private_key_type get_private_key( name keyname, string role = "owner" ) {
-            return private_key_type::regenerate<KeyType>(fc::sha256::hash(string(keyname)+role));
+            return private_key_type::regenerate<KeyType>(
+                fc::sha256::hash(string(
+                    config::native_accounts.find(keyname) != config::native_accounts.end() ? 
+                        name(config::system_account_name) : 
+                        keyname
+                    )+role));
          }
 
          template< typename KeyType = fc::ecc::private_key_shim >

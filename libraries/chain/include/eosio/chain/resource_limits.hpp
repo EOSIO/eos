@@ -11,8 +11,6 @@
 
 #include <cyberway/chaindb/common.hpp>
 
-
-
 namespace eosio { namespace chain { 
     
 namespace config {
@@ -48,7 +46,12 @@ namespace resource_limits {
       int64_t used = 0; ///< quantity used in current window
       int64_t available = 0; ///< quantity available in current window (based upon fractional reserve)
       int64_t max = 0; ///< max per window under current congestion
+      int64_t staked_virtual_balance = 0;
    };
+   
+   static auto const cpu_code = symbol(0,"CPU").to_symbol_code();
+   static auto const net_code = symbol(0,"NET").to_symbol_code();
+   static auto const ram_code = symbol(0,"RAM").to_symbol_code();
 
    class resource_limits_manager {
       public:
@@ -69,13 +72,7 @@ namespace resource_limits {
          void add_transaction_usage( const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t ordinal );
 
          void add_pending_ram_usage( const account_name account, int64_t ram_delta );
-         void verify_account_ram_usage( const account_name accunt )const;
 
-         /// set_account_limits returns true if new ram_bytes limit is more restrictive than the previously set one
-         bool set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
-         void get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight) const;
-
-         void process_account_limit_updates();
          void process_block_usage( uint32_t block_num );
 
          // accessors
@@ -85,11 +82,7 @@ namespace resource_limits {
          uint64_t get_block_cpu_limit() const;
          uint64_t get_block_net_limit() const;
 
-         int64_t get_account_cpu_limit( const account_name& name, bool elastic = true) const;
-         int64_t get_account_net_limit( const account_name& name, bool elastic = true) const;
-
-         account_resource_limit get_account_cpu_limit_ex( const account_name& name, bool elastic = true) const;
-         account_resource_limit get_account_net_limit_ex( const account_name& name, bool elastic = true) const;
+         account_resource_limit get_account_limit_ex(int64_t now, const account_name& account, symbol_code purpose_code) const;
 
          int64_t get_account_ram_usage( const account_name& name ) const;
          
@@ -109,6 +102,9 @@ namespace resource_limits {
          static auto grant_key(symbol_code purpose_code, symbol_code token_code, const account_name& grantor_name, const account_name& agent_name = account_name()) {
              return boost::make_tuple(purpose_code, token_code, grantor_name, agent_name);
          }
+         static auto stat_key(symbol_code purpose_code, symbol_code token_code) {
+             return boost::make_tuple(purpose_code, token_code);
+         }
          
          static const stake_agent_object* get_agent(symbol_code purpose_code, symbol_code token_code, const agents_idx_t& agents_idx, const account_name& agent_name) {
             auto agent = agents_idx.find(agent_key(purpose_code, token_code, agent_name));
@@ -118,11 +114,11 @@ namespace resource_limits {
          
          int64_t recall_proxied_traversal(symbol_code purpose_code, symbol_code token_code,
             const agents_idx_t& agents_idx, const grants_idx_t& grants_idx, 
-            const account_name& agent_name, int64_t share, int16_t break_fee);
+            const account_name& agent_name, int64_t share, int16_t break_fee) const;
         
          void update_proxied_traversal(int64_t now, symbol_code purpose_code, symbol_code token_code, 
             const agents_idx_t& agents_idx, const grants_idx_t& grants_idx,
-            const stake_agent_object* agent, int64_t frame_length, bool force);
+            const stake_agent_object* agent, int64_t frame_length, bool force) const;
          
 
    };
@@ -130,5 +126,5 @@ namespace resource_limits {
 
 FC_REFLECT( eosio::chain::resource_limits::ratio, (numerator)(denominator))
 FC_REFLECT( eosio::chain::resource_limits::elastic_limit_parameters, (target)(max)(periods)(max_multiplier)(contract_rate)(expand_rate))
-FC_REFLECT( eosio::chain::resource_limits::account_resource_limit, (used)(available)(max) )
+FC_REFLECT( eosio::chain::resource_limits::account_resource_limit, (used)(available)(max)(staked_virtual_balance) )
 

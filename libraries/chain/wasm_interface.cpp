@@ -128,28 +128,6 @@ class privileged_api : public context_aware_api {
       void activate_feature( int64_t feature_name ) {
          EOS_ASSERT( false, unsupported_feature, "Unsupported Hardfork Detected" );
       }
-
-      /**
-       * update the resource limits associated with an account.  Note these new values will not take effect until the
-       * next resource "tick" which is currently defined as a cycle boundary inside a block.
-       *
-       * @param account - the account whose limits are being modified
-       * @param ram_bytes - the limit for ram bytes
-       * @param net_weight - the weight for determining share of network capacity
-       * @param cpu_weight - the weight for determining share of compute capacity
-       */
-      void set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
-         EOS_ASSERT(ram_bytes >= -1, wasm_execution_error, "invalid value for ram resource limit expected [-1,INT64_MAX]");
-         EOS_ASSERT(net_weight >= -1, wasm_execution_error, "invalid value for net resource weight expected [-1,INT64_MAX]");
-         EOS_ASSERT(cpu_weight >= -1, wasm_execution_error, "invalid value for cpu resource weight expected [-1,INT64_MAX]");
-         if( context.control.get_mutable_resource_limits_manager().set_account_limits(account, ram_bytes, net_weight, cpu_weight) ) {
-            context.trx_context.validate_ram_usage.insert( account );
-         }
-      }
-
-      void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) {
-         context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
-      }
       
       void update_stake_proxied(uint64_t purpose_code_raw, uint64_t token_code_raw, account_name account, int64_t frame_length, int force) {
           int64_t now = context.control.pending_block_time().sec_since_epoch();
@@ -1762,8 +1740,6 @@ REGISTER_INTRINSICS(compiler_builtins,
 REGISTER_INTRINSICS(privileged_api,
    (is_feature_active,                int(int64_t)                          )
    (activate_feature,                 void(int64_t)                         )
-   (get_resource_limits,              void(int64_t,int,int,int)             )
-   (set_resource_limits,              void(int64_t,int64_t,int64_t,int64_t) )
    (update_stake_proxied,             void(int64_t,int64_t,int64_t,int64_t,int))
    (recall_stake_proxied,             void(int64_t,int64_t,int64_t,int64_t,int32_t))
    (set_proposed_producers,           int64_t(int,int)                      )

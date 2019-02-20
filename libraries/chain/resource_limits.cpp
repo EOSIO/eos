@@ -7,11 +7,11 @@
 #include <eosio/chain/database_utils.hpp>
 #include <algorithm>
 #include <eosio/chain/stake_object.hpp>
+#include <eosio/chain/account_object.hpp>
 
 namespace eosio { namespace chain { namespace resource_limits {
 
 using resource_index_set = index_set<
-   resource_limits_index,
    resource_usage_index,
    resource_limits_state_index,
    resource_limits_config_index,
@@ -33,8 +33,12 @@ static uint64_t update_elastic_limit(uint64_t current_limit, uint64_t average_us
    return std::min(std::max(result, params.max), params.max * params.max_multiplier);
 }
 
-static int64_t get_prop(int64_t arg, int64_t numer, int64_t denom = config::_100percent) {
-    return static_cast<int64_t>((static_cast<int128_t>(arg) * numer) / denom);
+static int64_t safe_prop(int64_t arg, int64_t numer, int64_t denom) {
+    return !arg || !numer ? 0 : impl::downgrade_cast<int64_t>((static_cast<int128_t>(arg) * numer) / denom);
+}
+
+static int64_t safe_pct(int64_t arg, int64_t total) {
+    return safe_prop(arg, total, config::_100percent);
 }
 
 void elastic_limit_parameters::validate()const {
@@ -64,7 +68,6 @@ void resource_limits_manager::initialize_database() {
    const auto& config = _db.create<resource_limits_config_object>([](resource_limits_config_object& config){
       // see default settings in the declaration
    });
-
    _db.create<resource_limits_state_object>([&config](resource_limits_state_object& state){
       // see default settings in the declaration
 
@@ -72,6 +75,7 @@ void resource_limits_manager::initialize_database() {
       state.virtual_cpu_limit = config.cpu_limit_parameters.max;
       state.virtual_net_limit = config.net_limit_parameters.max;
    });
+
 }
 
 void resource_limits_manager::add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
@@ -98,10 +102,6 @@ void resource_limits_manager::read_from_snapshot( const snapshot_reader_ptr& sna
 }
 
 void resource_limits_manager::initialize_account(const account_name& account) {
-   _db.create<resource_limits_object>([&]( resource_limits_object& bl ) {
-      bl.owner = account;
-   });
-
    _db.create<resource_usage_object>([&]( resource_usage_object& bu ) {
       bu.owner = account;
    });
@@ -135,54 +135,13 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
    for( const auto& a : accounts ) {
 
       const auto& usage = _db.get<resource_usage_object,by_owner>( a );
-      int64_t unused;
-      int64_t net_weight;
-      int64_t cpu_weight;
-      get_account_limits( a, unused, net_weight, cpu_weight );
 
       _db.modify( usage, [&]( auto& bu ){
           bu.net_usage.add( net_usage, time_slot, config.account_net_usage_average_window );
           bu.cpu_usage.add( cpu_usage, time_slot, config.account_cpu_usage_average_window );
       });
-
-      if( cpu_weight >= 0 && state.total_cpu_weight > 0 ) {
-         uint128_t window_size = config.account_cpu_usage_average_window;
-         auto virtual_network_capacity_in_window = (uint128_t)state.virtual_cpu_limit * window_size;
-         auto cpu_used_in_window                 = ((uint128_t)usage.cpu_usage.value_ex * window_size) / (uint128_t)config::rate_limiting_precision;
-
-         uint128_t user_weight     = (uint128_t)cpu_weight;
-         uint128_t all_user_weight = state.total_cpu_weight;
-
-         auto max_user_use_in_window = (virtual_network_capacity_in_window * user_weight) / all_user_weight;
-
-         EOS_ASSERT( cpu_used_in_window <= max_user_use_in_window,
-                     tx_cpu_usage_exceeded,
-                     "authorizing account '${n}' has insufficient cpu resources for this transaction",
-                     ("n", name(a))
-                     ("cpu_used_in_window",cpu_used_in_window)
-                     ("max_user_use_in_window",max_user_use_in_window) );
-      }
-
-      if( net_weight >= 0 && state.total_net_weight > 0) {
-
-         uint128_t window_size = config.account_net_usage_average_window;
-         auto virtual_network_capacity_in_window = (uint128_t)state.virtual_net_limit * window_size;
-         auto net_used_in_window                 = ((uint128_t)usage.net_usage.value_ex * window_size) / (uint128_t)config::rate_limiting_precision;
-
-         uint128_t user_weight     = (uint128_t)net_weight;
-         uint128_t all_user_weight = state.total_net_weight;
-
-         auto max_user_use_in_window = (virtual_network_capacity_in_window * user_weight) / all_user_weight;
-
-         EOS_ASSERT( net_used_in_window <= max_user_use_in_window,
-                     tx_net_usage_exceeded,
-                     "authorizing account '${n}' has insufficient net resources for this transaction",
-                     ("n", name(a))
-                     ("net_used_in_window",net_used_in_window)
-                     ("max_user_use_in_window",max_user_use_in_window) );
-
-      }
    }
+   //redundant "Should never fail" checks removed
 
    // account for this transaction in the block and do not exceed those limits either
    _db.modify(state, [&](resource_limits_state_object& rls){
@@ -210,123 +169,8 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
    });
 }
 
-void resource_limits_manager::verify_account_ram_usage( const account_name account )const {
-   int64_t ram_bytes; int64_t net_weight; int64_t cpu_weight;
-   get_account_limits( account, ram_bytes, net_weight, cpu_weight );
-   const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
-
-   if( ram_bytes >= 0 ) {
-      EOS_ASSERT( usage.ram_usage <= ram_bytes, ram_usage_exceeded,
-                  "account ${account} has insufficient ram; needs ${needs} bytes has ${available} bytes",
-                  ("account", account)("needs",usage.ram_usage)("available",ram_bytes)              );
-   }
-}
-
 int64_t resource_limits_manager::get_account_ram_usage( const account_name& name )const {
    return _db.get<resource_usage_object,by_owner>( name ).ram_usage;
-}
-
-bool resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
-   //const auto& usage = _db.get<resource_usage_object,by_owner>( account );
-   /*
-    * Since we need to delay these until the next resource limiting boundary, these are created in a "pending"
-    * state or adjusted in an existing "pending" state.  The chain controller will collapse "pending" state into
-    * the actual state at the next appropriate boundary.
-    */
-   auto find_or_create_pending_limits = [&]() -> const resource_limits_object& {
-      const auto* pending_limits = _db.find<resource_limits_object, by_owner>( boost::make_tuple(true, account) );
-      if (pending_limits == nullptr) {
-         const auto& limits = _db.get<resource_limits_object, by_owner>( boost::make_tuple(false, account));
-         return _db.create<resource_limits_object>([&](resource_limits_object& pending_limits){
-            pending_limits.owner = limits.owner;
-            pending_limits.ram_bytes = limits.ram_bytes;
-            pending_limits.net_weight = limits.net_weight;
-            pending_limits.cpu_weight = limits.cpu_weight;
-            pending_limits.pending = true;
-         });
-      } else {
-         return *pending_limits;
-      }
-   };
-
-   // update the users weights directly
-   auto& limits = find_or_create_pending_limits();
-
-   bool decreased_limit = false;
-
-   if( ram_bytes >= 0 ) {
-
-      decreased_limit = ( (limits.ram_bytes < 0) || (ram_bytes < limits.ram_bytes) );
-
-      /*
-      if( limits.ram_bytes < 0 ) {
-         EOS_ASSERT(ram_bytes >= usage.ram_usage, wasm_execution_error, "converting unlimited account would result in overcommitment [commit=${c}, desired limit=${l}]", ("c", usage.ram_usage)("l", ram_bytes));
-      } else {
-         EOS_ASSERT(ram_bytes >= usage.ram_usage, wasm_execution_error, "attempting to release committed ram resources [commit=${c}, desired limit=${l}]", ("c", usage.ram_usage)("l", ram_bytes));
-      }
-      */
-   }
-
-   _db.modify( limits, [&]( resource_limits_object& pending_limits ){
-      pending_limits.ram_bytes = ram_bytes;
-      pending_limits.net_weight = net_weight;
-      pending_limits.cpu_weight = cpu_weight;
-   });
-
-   return decreased_limit;
-}
-
-void resource_limits_manager::get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) const {
-   const auto* pending_buo = _db.find<resource_limits_object,by_owner>( boost::make_tuple(true, account) );
-   if (pending_buo) {
-      ram_bytes  = pending_buo->ram_bytes;
-      net_weight = pending_buo->net_weight;
-      cpu_weight = pending_buo->cpu_weight;
-   } else {
-      const auto& buo = _db.get<resource_limits_object,by_owner>( boost::make_tuple( false, account ) );
-      ram_bytes  = buo.ram_bytes;
-      net_weight = buo.net_weight;
-      cpu_weight = buo.cpu_weight;
-   }
-}
-
-void resource_limits_manager::process_account_limit_updates() {
-   auto& multi_index = _db.get_mutable_index<resource_limits_index>();
-   const auto& by_owner_index = multi_index.indices().get<by_owner>();
-
-   // convenience local lambda to reduce clutter
-   auto update_state_and_value = [](uint64_t &total, int64_t &value, int64_t pending_value, const char* debug_which) -> void {
-      if (value > 0) {
-         EOS_ASSERT(total >= value, rate_limiting_state_inconsistent, "underflow when reverting old value to ${which}", ("which", debug_which));
-         total -= value;
-      }
-
-      if (pending_value > 0) {
-         EOS_ASSERT(UINT64_MAX - total >= pending_value, rate_limiting_state_inconsistent, "overflow when applying new value to ${which}", ("which", debug_which));
-         total += pending_value;
-      }
-
-      value = pending_value;
-   };
-
-   const auto& state = _db.get<resource_limits_state_object>();
-   _db.modify(state, [&](resource_limits_state_object& rso){
-      while(!by_owner_index.empty()) {
-         const auto& itr = by_owner_index.lower_bound(boost::make_tuple(true));
-         if (itr == by_owner_index.end() || itr->pending!= true) {
-            break;
-         }
-
-         const auto& actual_entry = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, itr->owner));
-         _db.modify(actual_entry, [&](resource_limits_object& rlo){
-            update_state_and_value(rso.total_ram_bytes,  rlo.ram_bytes,  itr->ram_bytes, "ram_bytes");
-            update_state_and_value(rso.total_cpu_weight, rlo.cpu_weight, itr->cpu_weight, "cpu_weight");
-            update_state_and_value(rso.total_net_weight, rlo.net_weight, itr->net_weight, "net_weight");
-         });
-
-         multi_index.remove(*itr);
-      }
-   });
 }
 
 void resource_limits_manager::process_block_usage(uint32_t block_num) {
@@ -344,7 +188,6 @@ void resource_limits_manager::process_block_usage(uint32_t block_num) {
       state.pending_net_usage = 0;
 
    });
-
 }
 
 uint64_t resource_limits_manager::get_virtual_block_cpu_limit() const {
@@ -369,82 +212,73 @@ uint64_t resource_limits_manager::get_block_net_limit() const {
    return config.net_limit_parameters.max - state.pending_net_usage;
 }
 
-int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name, bool elastic ) const {
-   auto arl = get_account_cpu_limit_ex(name, elastic);
-   return arl.available;
-}
+account_resource_limit resource_limits_manager::get_account_limit_ex(int64_t now, const account_name& account, symbol_code purpose_code) const{
+        
+    static constexpr account_resource_limit no_limits{-1, -1, -1};
+    
+    EOS_ASSERT(purpose_code == cpu_code || purpose_code == net_code || purpose_code == ram_code, chain_exception,
+        "SYSTEM: incorrect purpose_code");
+    
+    symbol_code token_code { symbol(CORE_SYMBOL).to_symbol_code() };
+    
+    const stake_param_object* param = nullptr;
+    const stake_stat_object* stat = nullptr;
+    
+    if (_db.get<account_object, by_name>(account).privileged || //assignments:
+        !(param = _db.find<stake_param_object, by_id>(token_code.value)) || 
+        !(stat  = _db.find<stake_stat_object, stake_stat_object::by_key>(stat_key(purpose_code, token_code))) || 
+        !stat->enabled || stat->total_staked == 0) {
+            
+        return no_limits;
+    }
+    
+    EOS_ASSERT(stat->total_staked > 0, chain_exception, "SYSTEM: incorrect total_staked");
 
-account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, bool elastic) const {
-
-   const auto& state = _db.get<resource_limits_state_object>();
-   const auto& usage = _db.get<resource_usage_object, by_owner>(name);
-   const auto& config = _db.get<resource_limits_config_object>();
-
-   int64_t cpu_weight, x, y;
-   get_account_limits( name, x, y, cpu_weight );
-
-   if( cpu_weight < 0 || state.total_cpu_weight == 0 ) {
-      return { -1, -1, -1 };
-   }
-
-   account_resource_limit arl;
-
-   uint128_t window_size = config.account_cpu_usage_average_window;
-
-   uint128_t virtual_cpu_capacity_in_window = (uint128_t)(elastic ? state.virtual_cpu_limit : config.cpu_limit_parameters.max) * window_size;
-   uint128_t user_weight     = (uint128_t)cpu_weight;
-   uint128_t all_user_weight = (uint128_t)state.total_cpu_weight;
-
-   auto max_user_use_in_window = (virtual_cpu_capacity_in_window * user_weight) / all_user_weight;
-   auto cpu_used_in_window  = impl::integer_divide_ceil((uint128_t)usage.cpu_usage.value_ex * window_size, (uint128_t)config::rate_limiting_precision);
-
-   if( max_user_use_in_window <= cpu_used_in_window )
-      arl.available = 0;
-   else
-      arl.available = impl::downgrade_cast<int64_t>(max_user_use_in_window - cpu_used_in_window);
-
-   arl.used = impl::downgrade_cast<int64_t>(cpu_used_in_window);
-   arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
-   return arl;
-}
-
-int64_t resource_limits_manager::get_account_net_limit( const account_name& name, bool elastic) const {
-   auto arl = get_account_net_limit_ex(name, elastic);
-   return arl.available;
-}
-
-account_resource_limit resource_limits_manager::get_account_net_limit_ex( const account_name& name, bool elastic) const {
-   const auto& config = _db.get<resource_limits_config_object>();
-   const auto& state  = _db.get<resource_limits_state_object>();
-   const auto& usage  = _db.get<resource_usage_object, by_owner>(name);
-
-   int64_t net_weight, x, y;
-   get_account_limits( name, x, net_weight, y );
-
-   if( net_weight < 0 || state.total_net_weight == 0) {
-      return { -1, -1, -1 };
-   }
-
-   account_resource_limit arl;
-
-   uint128_t window_size = config.account_net_usage_average_window;
-
-   uint128_t virtual_network_capacity_in_window = (uint128_t)(elastic ? state.virtual_net_limit : config.net_limit_parameters.max) * window_size;
-   uint128_t user_weight     = (uint128_t)net_weight;
-   uint128_t all_user_weight = (uint128_t)state.total_net_weight;
-
-
-   auto max_user_use_in_window = (virtual_network_capacity_in_window * user_weight) / all_user_weight;
-   auto net_used_in_window  = impl::integer_divide_ceil((uint128_t)usage.net_usage.value_ex * window_size, (uint128_t)config::rate_limiting_precision);
-
-   if( max_user_use_in_window <= net_used_in_window )
-      arl.available = 0;
-   else
-      arl.available = impl::downgrade_cast<int64_t>(max_user_use_in_window - net_used_in_window);
-
-   arl.used = impl::downgrade_cast<int64_t>(net_used_in_window);
-   arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
-   return arl;
+    const auto& agents_idx = _db.get_mutable_index<stake_agent_index>().indices().get<stake_agent_object::by_key>();
+    
+    int64_t staked = 0;
+    auto agent = agents_idx.find(agent_key(purpose_code, token_code, account));
+    if (agent != agents_idx.end()) {
+        const auto& grants_idx = _db.get_mutable_index<stake_grant_index>().indices().get<stake_grant_object::by_key>();
+        update_proxied_traversal(now, purpose_code, token_code, agents_idx, grants_idx, &*agent, param->frame_length, false);
+        auto total_funds = agent->get_total_funds();
+        staked = safe_prop(total_funds, agent->own_share, agent->shares_sum);
+        EOS_ASSERT(staked >= 0, chain_exception, "SYSTEM: incorrect staked value");
+    }
+    const auto& config = _db.get<resource_limits_config_object>();
+    const auto& state  = _db.get<resource_limits_state_object>();
+    const auto& usage  = _db.get<resource_usage_object, by_owner>(account);
+    int64_t capacity = 0;
+    int64_t used = 0;
+    if (purpose_code == cpu_code || purpose_code == net_code) {
+        bool cpu = (purpose_code == cpu_code);
+        int128_t window_size = cpu ? config.account_cpu_usage_average_window : config.account_net_usage_average_window;
+        
+        EOS_ASSERT(cpu ? state.virtual_cpu_limit : state.virtual_net_limit <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), 
+            chain_exception, "SYSTEM: incorrect virtual_ram_limit");
+        capacity = static_cast<int64_t>(cpu ? state.virtual_cpu_limit : state.virtual_net_limit);
+        
+        used = impl::downgrade_cast<int64_t>(impl::integer_divide_ceil(
+            static_cast<int128_t>(cpu ? usage.cpu_usage.value_ex : usage.net_usage.value_ex) * window_size, 
+            static_cast<int128_t>(config::rate_limiting_precision)));
+    }
+    else {
+        EOS_ASSERT(state.virtual_ram_limit <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), 
+            chain_exception, "SYSTEM: incorrect virtual_ram_limit");
+        EOS_ASSERT(usage.ram_usage <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), 
+            chain_exception, "SYSTEM: incorrect ram_usage");
+        capacity = static_cast<int64_t>(state.virtual_ram_limit);
+        used = static_cast<int64_t>(usage.ram_usage);
+    }
+    auto max_use = safe_prop(capacity, staked, stat->total_staked);
+     
+    int64_t diff_use = max_use - used;
+    return account_resource_limit {
+        .used = used,
+        .available = std::max(diff_use, int64_t(0)),
+        .max = max_use,
+        .staked_virtual_balance = safe_prop(stat->total_staked, diff_use, capacity)
+    };
 }
 
 void resource_limits_manager::update_proxied(int64_t now, symbol_code purpose_code, symbol_code token_code, const account_name& account, int64_t frame_length, bool force) {
@@ -477,7 +311,7 @@ void resource_limits_manager::recall_proxied(int64_t now, symbol_code purpose_co
            (grant_itr->grantor_name == grantor_name))
     {
         if (grant_itr->agent_name == agent_name) {
-            auto to_recall = get_prop(grant_itr->share, pct);
+            auto to_recall = safe_pct(pct, grant_itr->share);
             amount = recall_proxied_traversal(purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
             if (grant_itr->pct || grant_itr->share > to_recall) {
                 _db.modify(*grant_itr, [&](auto& g) { g.share -= to_recall; });
@@ -503,7 +337,7 @@ void resource_limits_manager::recall_proxied(int64_t now, symbol_code purpose_co
 
 int64_t resource_limits_manager::recall_proxied_traversal(symbol_code purpose_code, symbol_code token_code, 
                     const agents_idx_t& agents_idx, const grants_idx_t& grants_idx, 
-                    const account_name& agent_name, int64_t share, int16_t break_fee) {
+                    const account_name& agent_name, int64_t share, int16_t break_fee) const{
     
     auto agent = get_agent(purpose_code, token_code, agents_idx, agent_name);
 
@@ -511,9 +345,11 @@ int64_t resource_limits_manager::recall_proxied_traversal(symbol_code purpose_co
     EOS_ASSERT(share <= agent->shares_sum, transaction_exception, "SYSTEM: incorrect share val");
     if(share == 0)
         return 0;
-    auto share_fee = get_prop(share, std::min(agent->fee, break_fee));
+        
+    //TODO: fee should be taken _from the profit_
+    auto share_fee = safe_pct(std::min(agent->fee, break_fee), share);
     auto share_net = share - share_fee;
-    auto balance_ret = get_prop(agent->balance, share_net, agent->shares_sum);
+    auto balance_ret = safe_prop(agent->balance, share_net, agent->shares_sum);
     EOS_ASSERT(balance_ret <= agent->balance, transaction_exception, "SYSTEM: incorrect balance_ret val");
     
     auto proxied_ret = 0;
@@ -523,7 +359,7 @@ int64_t resource_limits_manager::recall_proxied_traversal(symbol_code purpose_co
            (grant_itr->token_code   == token_code) &&
            (grant_itr->grantor_name == agent->account))
     {
-        auto to_recall = get_prop(share_net, grant_itr->share, agent->shares_sum);
+        auto to_recall = safe_prop(share_net, grant_itr->share, agent->shares_sum);
         proxied_ret += recall_proxied_traversal(purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
         _db.modify(*grant_itr, [&](auto& g) { g.share -= to_recall; });
         ++grant_itr;
@@ -541,7 +377,7 @@ int64_t resource_limits_manager::recall_proxied_traversal(symbol_code purpose_co
 
 void resource_limits_manager::update_proxied_traversal(int64_t now, symbol_code purpose_code, symbol_code token_code,
                     const agents_idx_t& agents_idx, const grants_idx_t& grants_idx,
-                    const stake_agent_object* agent, int64_t frame_length, bool force) {
+                    const stake_agent_object* agent, int64_t frame_length, bool force) const{
 
     if ((now - agent->last_proxied_update.sec_since_epoch() >= frame_length) || force) {
         int64_t new_proxied = 0;
@@ -562,7 +398,7 @@ void resource_limits_manager::update_proxied_traversal(int64_t now, symbol_code 
                 grant_itr->break_min_own_staked <= proxy_agent->min_own_staked) 
             {
                 if (proxy_agent->shares_sum)
-                    new_proxied += get_prop(proxy_agent->get_total_funds(), grant_itr->share, proxy_agent->shares_sum);
+                    new_proxied += safe_prop(proxy_agent->get_total_funds(), grant_itr->share, proxy_agent->shares_sum);
                 ++grant_itr;
             }
             else {

@@ -421,16 +421,13 @@ namespace bacc = boost::accumulators;
              }
           }
        }
-
+       int64_t block_time = control.pending_block_time().sec_since_epoch();
        auto& rl = control.get_mutable_resource_limits_manager();
-       for( auto a : validate_ram_usage ) {
-          rl.verify_account_ram_usage( a );
-       }
 
        // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
        int64_t account_net_limit = 0;
        int64_t account_cpu_limit = 0;
-       std::tie(account_net_limit, account_cpu_limit) = max_bandwidth_billed_accounts_can_pay();
+       std::tie(account_net_limit, account_cpu_limit) = max_bandwidth_billed_accounts_can_pay(true);
 
        // Possibly lower net_limit to what the billed accounts can pay
        if( static_cast<uint64_t>(account_net_limit) <= net_limit ) {
@@ -579,7 +576,7 @@ namespace bacc = boost::accumulators;
       return static_cast<uint32_t>(billed_cpu_time_us);
    }
 
-   std::tuple<int64_t, int64_t> transaction_context::max_bandwidth_billed_accounts_can_pay() const{
+   std::tuple<int64_t, int64_t> transaction_context::max_bandwidth_billed_accounts_can_pay(bool check_staked_virtual_balance) const{
       // Assumes rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot ) was already called prior
 
       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
@@ -587,19 +584,82 @@ namespace bacc = boost::accumulators;
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
       int64_t account_net_limit = large_number_no_overflow;
       int64_t account_cpu_limit = large_number_no_overflow;
+      int64_t block_time = control.pending_block_time().sec_since_epoch();
+      
+      std::map<account_name, int64_t> providers_virtual_balances;
+      if (check_staked_virtual_balance) {
+          for ( const auto& a : bill_to_accounts ) {
+             const auto provided_bw_it = provided_bandwith_.find(a);
+             if (provided_bw_it != provided_bandwith_.end()) {
+                providers_virtual_balances[provided_bw_it->second.get_provider()] = 0;
+             }
+          }
+      }
+      
       for( const auto& a : bill_to_accounts ) {
          // CYBERWAY: there is no greylists, so it's always elastic
-         bool elastic = true; //force_elastic_limits || !(control.is_producing_block() && false);
+
+          auto ram_limit_ex = rl.get_account_limit_ex(block_time, a, resource_limits::ram_code);
+             EOS_ASSERT(ram_limit_ex.available < 0 ||
+                validate_ram_usage.find(a) == validate_ram_usage.end() || ram_limit_ex.used <= ram_limit_ex.max, 
+                ram_usage_exceeded,
+                "account ${account} has insufficient ram; needs ${needs} bytes has ${available} bytes",
+                ("account", a)("needs",ram_limit_ex.used)("available",ram_limit_ex.max)
+             );
+         
          const auto provided_bw_it = provided_bandwith_.find(a);
          const auto is_bw_provided = provided_bw_it != provided_bandwith_.end() && provided_bw_it->second.is_confirmed();
-         auto net_limit = is_bw_provided ? provided_bw_it->second.get_net_limit() : rl.get_account_net_limit(a, elastic);
+         
+         int64_t net_limit = 0;
+         int64_t cpu_limit = 0;
+         if (is_bw_provided) {
+             net_limit = provided_bw_it->second.get_net_limit();
+             cpu_limit = provided_bw_it->second.get_cpu_limit();
+             if (check_staked_virtual_balance && ram_limit_ex.available >= 0 && ram_limit_ex.staked_virtual_balance < 0) {
+                 providers_virtual_balances[provided_bw_it->second.get_provider()] += ram_limit_ex.staked_virtual_balance;
+             }
+         }
+         else {
+
+             auto net_limit_ex = rl.get_account_limit_ex(block_time, a, resource_limits::net_code);
+             auto cpu_limit_ex = rl.get_account_limit_ex(block_time, a, resource_limits::cpu_code);
+             net_limit = net_limit_ex.available;
+             cpu_limit = cpu_limit_ex.available;
+             
+             if (check_staked_virtual_balance) {
+                int64_t staked_virtual_balance = 
+                    ram_limit_ex.staked_virtual_balance + 
+                    net_limit_ex.staked_virtual_balance + 
+                    cpu_limit_ex.staked_virtual_balance;
+                 EOS_ASSERT(ram_limit_ex.available < 0 || staked_virtual_balance >= 0, ram_usage_exceeded,
+                    "account ${account} has insufficient ram; current staked virtual balance is ${staked_virtual_balance}",
+                    ("account", a)("staked_virtual_balance",staked_virtual_balance)
+                 );
+                 
+                 auto virtual_balance_itr = providers_virtual_balances.find(a);
+                 if (virtual_balance_itr != providers_virtual_balances.end()) {
+                    if (ram_limit_ex.available < 0) // no limit
+                       virtual_balance_itr->second = large_number_no_overflow;
+                    else 
+                       virtual_balance_itr->second += staked_virtual_balance;
+                 }
+             }
+         }
+         
          if( net_limit >= 0 ) {
             account_net_limit = std::min( account_net_limit, net_limit );
          }
-         auto cpu_limit = is_bw_provided ? provided_bw_it->second.get_cpu_limit() : rl.get_account_cpu_limit(a, elastic);
          if( cpu_limit >= 0 ) {
             account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
          }
+      }
+      if (check_staked_virtual_balance) {
+          for (auto& provider_virtual_balance : providers_virtual_balances) {
+             EOS_ASSERT(provider_virtual_balance.second >= 0, ram_usage_exceeded,
+                "provider ${account} has insufficient staked tokens; current staked virtual balance is ${staked_virtual_balance}",
+                ("account", provider_virtual_balance.first)("staked_virtual_balance",provider_virtual_balance.second)
+             );
+          }
       }
 
       return std::make_tuple(account_net_limit, account_cpu_limit);

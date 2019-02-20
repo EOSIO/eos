@@ -664,7 +664,6 @@ struct controller_impl {
       ram_delta += active_permission.auth.get_billable_size();
 
       resource_limits.add_pending_ram_usage(name, ram_delta);
-      resource_limits.verify_account_ram_usage(name);
    }
 
    void initialize_database() {
@@ -1533,8 +1532,6 @@ struct controller_impl {
             );
       */
 
-      // Update resource limits:
-      resource_limits.process_account_limit_updates();
       const auto& chain_config = self.get_global_properties().configuration;
       uint32_t max_virtual_mult = 1000;
       uint64_t CPU_TARGET = EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct);
