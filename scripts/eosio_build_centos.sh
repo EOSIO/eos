@@ -122,7 +122,7 @@ DEP_ARRAY=(
 	git autoconf automake libtool make bzip2 doxygen graphviz \
 	bzip2-devel openssl-devel gmp-devel \
 	ocaml libicu-devel python python-devel python33 \
-	gettext-devel file sudo
+	gettext-devel file sudo libusbx-devel libcurl-devel
  )
 COUNT=1
 DISPLAY=""

@@ -37,7 +37,7 @@ Version: ${VERSION_NO_SUFFIX}
 License: MIT
 Vendor: ${VENDOR} 
 Source: ${URL} 
-Requires: openssl, gmp, libstdc++, bzip2, libcurl
+Requires: openssl, gmp, libstdc++, bzip2, libcurl, libusbx
 URL: ${URL} 
 Packager: ${VENDOR} <${EMAIL}>
 Summary: ${DESC}
