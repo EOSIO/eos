@@ -26,13 +26,14 @@ using namespace eosio::testing;
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 
-struct base_reflect {
+struct base_reflect : fc::reflect_init {
    int bv = 0;
    bool base_reflect_initialized = false;
    int base_reflect_called = 0;
 protected:
    friend struct fc::reflector<base_reflect>;
    friend struct fc::reflector_init_visitor<base_reflect>;
+   friend struct fc::has_reflector_init<base_reflect>;
    void reflector_init() {
       BOOST_CHECK_EQUAL( bv, 42 ); // should be deserialized before called, set by test
       ++base_reflect_called;
@@ -47,6 +48,7 @@ struct derived_reflect : public base_reflect {
 protected:
    friend struct fc::reflector<derived_reflect>;
    friend struct fc::reflector_init_visitor<derived_reflect>;
+   friend struct fc::has_reflector_init<derived_reflect>;
    void reflector_init() {
       BOOST_CHECK_EQUAL( bv, 42 ); // should be deserialized before called, set by test
       BOOST_CHECK_EQUAL( dv, 52 ); // should be deserialized before called, set by test
@@ -63,6 +65,7 @@ struct final_reflect : public derived_reflect {
 private:
    friend struct fc::reflector<final_reflect>;
    friend struct fc::reflector_init_visitor<final_reflect>;
+   friend struct fc::has_reflector_init<derived_reflect>;
    void reflector_init() {
       BOOST_CHECK_EQUAL( bv, 42 ); // should be deserialized before called, set by test
       BOOST_CHECK_EQUAL( dv, 52 ); // should be deserialized before called, set by test
