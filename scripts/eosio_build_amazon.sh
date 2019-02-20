@@ -17,7 +17,7 @@ if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
 else
 	DEP_ARRAY=( 
 		git procps util-linux gcc gcc-c++ autoconf automake libtool make bzip2 \
-		bzip2-devel openssl-devel gmp-devel libstdc++ \
+		bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
 		python3 python3-devel python-devel libedit-devel doxygen graphviz
 	)
 fi
