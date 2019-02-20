@@ -234,7 +234,7 @@ void apply_cyber_setabi(apply_context& context) {
         const auto seq = account_sequence.abi_sequence;
         bool allowed = false;
 #ifdef ALLOW_INITIAL_CONTRACT_SET
-        allowed = seq == 0 && old_size == 0;  // auto-enable initial set
+        allowed = seq == 0;  // auto-enable initial set
 #endif
         if (!allowed) {
             allowed = check_hash_for_accseq(hash, allowed_abi_hashes, act.account, seq);
