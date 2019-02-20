@@ -31,12 +31,6 @@ COUNT=1
 DISPLAY=""
 DEP=""
 
-if [ "${MEM_MEG}" -lt 7000 ]; then
-	printf "Your system must have 7 or more Gigabytes of physical memory installed.\\n"
-	printf "exiting now.\\n"
-	exit 1
-fi
-
 if [[ "${OS_NAME}" == "Amazon Linux AMI" && "${OS_VER}" -lt 2017 ]]; then
 	printf "You must be running Amazon Linux 2017.09 or higher to install EOSIO.\\n"
 	printf "exiting now.\\n"
@@ -105,6 +99,14 @@ else
 	printf " - No required YUM dependencies to install.\\n"
 fi
 
+# util-linux includes lscpu
+# procps includes free -m
+MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 )
+CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
+CPU_CORE=$( nproc )
+MEM_GIG=$(( ((MEM_MEG / 1000) / 2) ))
+export JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
+
 printf "\\nOS name: %s\\n" "${OS_NAME}"
 printf "OS Version: %s\\n" "${OS_VER}"
 printf "CPU speed: %sMhz\\n" "${CPU_SPEED}"
@@ -113,13 +115,11 @@ printf "Physical Memory: %sMgb\\n" "${MEM_MEG}"
 printf "Disk space total: %sGb\\n" "${DISK_TOTAL}"
 printf "Disk space available: %sG\\n" "${DISK_AVAIL}"
 
-# util-linux includes lscpu
-# procps includes free -m
-MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 )
-CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
-CPU_CORE=$( nproc )
-MEM_GIG=$(( ((MEM_MEG / 1000) / 2) ))
-export JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
+if [ "${MEM_MEG}" -lt 7000 ]; then
+	printf "Your system must have 7 or more Gigabytes of physical memory installed.\\n"
+	printf "exiting now.\\n"
+	exit 1
+fi
 
 printf "\\n"
 
