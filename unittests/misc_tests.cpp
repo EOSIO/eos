@@ -27,23 +27,30 @@ using namespace eosio::testing;
 #include <boost/random/uniform_int_distribution.hpp>
 
 struct base_reflect {
-   int bv = 42;
+   int bv = 0;
    bool base_reflect_initialized = false;
+   int base_reflect_called = 0;
 protected:
    friend struct fc::reflector<base_reflect>;
    friend struct fc::reflector_init_visitor<base_reflect>;
    void reflector_init() {
+      BOOST_CHECK_EQUAL( bv, 42 ); // should be deserialized before called, set by test
+      ++base_reflect_called;
       base_reflect_initialized = true;
    }
 };
 
 struct derived_reflect : public base_reflect {
-   int dv = 52;
+   int dv = 0;
    bool derived_reflect_initialized = false;
+   int derived_reflect_called = 0;
 private:
    friend struct fc::reflector<derived_reflect>;
    friend struct fc::reflector_init_visitor<derived_reflect>;
    void reflector_init() {
+      BOOST_CHECK_EQUAL( bv, 42 ); // should be deserialized before called, set by test
+      BOOST_CHECK_EQUAL( dv, 52 ); // should be deserialized before called, set by test
+      ++derived_reflect_called;
       base_reflect::reflector_init();
       derived_reflect_initialized = true;
    }
@@ -808,7 +815,10 @@ BOOST_AUTO_TEST_CASE(reflector_init_test) {
    try {
 
       base_reflect br;
+      br.bv = 42;
       derived_reflect dr;
+      dr.bv = 42;
+      dr.dv = 52;
       BOOST_CHECK_EQUAL( br.base_reflect_initialized, false );
       BOOST_CHECK_EQUAL( dr.derived_reflect_initialized, false );
 
@@ -838,10 +848,13 @@ BOOST_AUTO_TEST_CASE(reflector_init_test) {
 
          BOOST_CHECK_EQUAL( br2.bv, 42 );
          BOOST_CHECK_EQUAL( br2.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( br2.base_reflect_called, 1 );
          BOOST_CHECK_EQUAL( br3.bv, 42 );
          BOOST_CHECK_EQUAL( br3.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( br3.base_reflect_called, 1 );
          BOOST_CHECK_EQUAL( br4.bv, 42 );
          BOOST_CHECK_EQUAL( br4.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( br4.base_reflect_called, 1 );
       }
       { // derived
          // pack
@@ -869,17 +882,23 @@ BOOST_AUTO_TEST_CASE(reflector_init_test) {
 
          BOOST_CHECK_EQUAL( dr2.bv, 42 );
          BOOST_CHECK_EQUAL( dr2.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr2.base_reflect_called, 1 );
          BOOST_CHECK_EQUAL( dr3.bv, 42 );
          BOOST_CHECK_EQUAL( dr3.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr3.base_reflect_called, 1 );
          BOOST_CHECK_EQUAL( dr4.bv, 42 );
          BOOST_CHECK_EQUAL( dr4.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr4.base_reflect_called, 1 );
 
          BOOST_CHECK_EQUAL( dr2.dv, 52 );
          BOOST_CHECK_EQUAL( dr2.derived_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr2.derived_reflect_called, 1 );
          BOOST_CHECK_EQUAL( dr3.dv, 52 );
          BOOST_CHECK_EQUAL( dr3.derived_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr3.derived_reflect_called, 1 );
          BOOST_CHECK_EQUAL( dr4.dv, 52 );
          BOOST_CHECK_EQUAL( dr4.derived_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr4.derived_reflect_called, 1 );
       }
 
    } FC_LOG_AND_RETHROW()
