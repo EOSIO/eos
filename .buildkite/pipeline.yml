@@ -84,7 +84,7 @@ steps:
         workdir: /data/job
     timeout: 60
 
-    - command: |
+  - command: |
         echo "+++ :hammer: Building" && \
         ./scripts/eosio_build.sh -y && \
         echo "--- :compression: Compressing build directory" && \
