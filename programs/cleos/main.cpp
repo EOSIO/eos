@@ -1653,7 +1653,7 @@ struct buyrex_subcommand {
       auto buyrex = actionRoot->add_subcommand("buyrex", localized("Buy REX using tokens in owner's REX fund"));
       buyrex->add_option("from",   from_str,   localized("Account buying REX tokens"))->required();
       buyrex->add_option("amount", amount_str, localized("Amount to be taken from REX fund and used in buying REX"))->required();
-      add_standard_transaction_options(buyrex, "owner@active");
+      add_standard_transaction_options(buyrex, "from@active");
       buyrex->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
             ("from",   from_str)
@@ -1740,10 +1740,10 @@ struct cancelrexorder_subcommand {
    const name act_name{ N(cnclrexorder) };
 
    cancelrexorder_subcommand(CLI::App* actionRoot) {
-      auto cancelrexoder = actionRoot->add_subcommand("cancelrexorder", localized("Cancel queued REX sell order if one exists"));
-      cancelrexoder->add_option("owner", owner_str, localized("Owner account of sell order"))->required();
-      add_standard_transaction_options(cancelrexoder, "owner@active");
-      cancelrexoder->set_callback([this] {
+      auto cancelrexorder = actionRoot->add_subcommand("cancelrexorder", localized("Cancel queued REX sell order if one exists"));
+      cancelrexorder->add_option("owner", owner_str, localized("Owner account of sell order"))->required();
+      add_standard_transaction_options(cancelrexorder, "owner@active");
+      cancelrexorder->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()("owner", owner_str);
          auto accountPermissions = get_account_permissions(tx_permission, {owner_str, config::active_name});
          send_actions({create_action(accountPermissions, config::system_account_name, act_name, act_payload)});
@@ -3840,7 +3840,7 @@ int main( int argc, char** argv ) {
    auto bidname = bidname_subcommand(system);
    auto bidnameinfo = bidname_info_subcommand(system);
 
-   auto biyram = buyram_subcommand(system);
+   auto buyram = buyram_subcommand(system);
    auto sellram = sellram_subcommand(system);
 
    auto claimRewards = claimrewards_subcommand(system);
