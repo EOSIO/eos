@@ -26,6 +26,32 @@ using namespace eosio::testing;
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 
+struct base_reflect {
+   int bv = 42;
+   bool base_reflect_initialized = false;
+protected:
+   friend struct fc::reflector<base_reflect>;
+   friend struct fc::reflector_init_visitor<base_reflect>;
+   void reflector_init() {
+      base_reflect_initialized = true;
+   }
+};
+
+struct derived_reflect : public base_reflect {
+   int dv = 52;
+   bool derived_reflect_initialized = false;
+private:
+   friend struct fc::reflector<derived_reflect>;
+   friend struct fc::reflector_init_visitor<derived_reflect>;
+   void reflector_init() {
+      base_reflect::reflector_init();
+      derived_reflect_initialized = true;
+   }
+};
+
+FC_REFLECT( base_reflect, (bv) )
+FC_REFLECT_DERIVED( derived_reflect, (base_reflect), (dv) )
+
 namespace eosio
 {
 using namespace chain;
@@ -777,6 +803,87 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
 
 
 } FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(reflector_init_test) {
+   try {
+
+      base_reflect br;
+      derived_reflect dr;
+      BOOST_CHECK_EQUAL( br.base_reflect_initialized, false );
+      BOOST_CHECK_EQUAL( dr.derived_reflect_initialized, false );
+
+      { // base
+         // pack
+         uint32_t pack_size = fc::raw::pack_size( br );
+         vector<char> buf( pack_size );
+         fc::datastream<char*> ds( buf.data(), pack_size );
+
+         fc::raw::pack( ds, br );
+         // unpack
+         ds.seekp( 0 );
+         base_reflect br2;
+         fc::raw::unpack( ds, br2 );
+         // pack again
+         pack_size = fc::raw::pack_size( br2 );
+         fc::datastream<char*> ds2( buf.data(), pack_size );
+         fc::raw::pack( ds2, br2 );
+         // unpack
+         ds2.seekp( 0 );
+         base_reflect br3;
+         fc::raw::unpack( ds2, br3 );
+         // to/from variant
+         fc::variant pkt_v( br3 );
+         base_reflect br4;
+         fc::from_variant( pkt_v, br4 );
+
+         BOOST_CHECK_EQUAL( br2.bv, 42 );
+         BOOST_CHECK_EQUAL( br2.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( br3.bv, 42 );
+         BOOST_CHECK_EQUAL( br3.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( br4.bv, 42 );
+         BOOST_CHECK_EQUAL( br4.base_reflect_initialized, true );
+      }
+      { // derived
+         // pack
+         uint32_t pack_size = fc::raw::pack_size( dr );
+         vector<char> buf( pack_size );
+         fc::datastream<char*> ds( buf.data(), pack_size );
+
+         fc::raw::pack( ds, dr );
+         // unpack
+         ds.seekp( 0 );
+         derived_reflect dr2;
+         fc::raw::unpack( ds, dr2 );
+         // pack again
+         pack_size = fc::raw::pack_size( dr2 );
+         fc::datastream<char*> ds2( buf.data(), pack_size );
+         fc::raw::pack( ds2, dr2 );
+         // unpack
+         ds2.seekp( 0 );
+         derived_reflect dr3;
+         fc::raw::unpack( ds2, dr3 );
+         // to/from variant
+         fc::variant pkt_v( dr3 );
+         derived_reflect dr4;
+         fc::from_variant( pkt_v, dr4 );
+
+         BOOST_CHECK_EQUAL( dr2.bv, 42 );
+         BOOST_CHECK_EQUAL( dr2.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr3.bv, 42 );
+         BOOST_CHECK_EQUAL( dr3.base_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr4.bv, 42 );
+         BOOST_CHECK_EQUAL( dr4.base_reflect_initialized, true );
+
+         BOOST_CHECK_EQUAL( dr2.dv, 52 );
+         BOOST_CHECK_EQUAL( dr2.derived_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr3.dv, 52 );
+         BOOST_CHECK_EQUAL( dr3.derived_reflect_initialized, true );
+         BOOST_CHECK_EQUAL( dr4.dv, 52 );
+         BOOST_CHECK_EQUAL( dr4.derived_reflect_initialized, true );
+      }
+
+   } FC_LOG_AND_RETHROW()
+}
 
 
 BOOST_AUTO_TEST_SUITE_END()
