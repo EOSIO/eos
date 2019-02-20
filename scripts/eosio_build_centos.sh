@@ -63,6 +63,7 @@
 	SCL=$( rpm -qa | grep -E 'centos-release-scl-[0-9].*' )
 	if [ -z "${SCL}" ]; then
 		printf "\\t - Do you wish to install and enable this repository?\\n"
+		if is_noninteractive; then exec <<< "1"; fi
 		select yn in "Yes" "No"; do
 			case $yn in
 				[Yy]* )
@@ -87,6 +88,7 @@
         DEVTOOLSET=$( rpm -qa | grep -E 'devtoolset-7-[0-9].*' )
         if [ -z "${DEVTOOLSET}" ]; then
                 printf "\\tDo you wish to install devtoolset-7?\\n"
+                if is_noninteractive; then exec <<< "1"; fi
                 select yn in "Yes" "No"; do
                         case $yn in
                                 [Yy]* )
@@ -118,6 +120,7 @@
         PYTHON33=$( rpm -qa | grep -E 'python33-[0-9].*' )
         if [ -z "${PYTHON33}" ]; then
                 printf "\\tDo you wish to install python33?\\n"
+                if is_noninteractive; then exec <<< "1"; fi
                 select yn in "Yes" "No"; do
                         case $yn in
                                 [Yy]* )
@@ -170,6 +173,7 @@
 		printf "\\tThe following dependencies are required to install EOSIO.\\n"
 		printf "\\t${DISPLAY}\\n\\n"
 		printf "\\tDo you wish to install these dependencies?\\n"
+		if is_noninteractive; then exec <<< "1"; fi
 		select yn in "Yes" "No"; do
 			case $yn in
 				[Yy]* )

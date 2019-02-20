@@ -398,6 +398,7 @@ steps:
       - "os=high-sierra"
     artifact_paths:
       - "build/packages/*.tar.gz"
+      - "build/packages/*.rb"
     timeout: 60
 
   - command: |
@@ -412,6 +413,7 @@ steps:
       - "os=mojave"
     artifact_paths:
       - "build/packages/*.tar.gz"
+      - "build/packages/*.rb"
     timeout: 60
 
   - command: |
@@ -506,4 +508,19 @@ steps:
     env:
       OS: "el7"
       PKGTYPE: "rpm"
+    timeout: 60
+
+  - wait
+
+  - command: |
+        echo "--- :arrow_down: Downloading brew files" && \
+        buildkite-agent artifact download "build/packages/eosio.rb" . --step ":darwin: High Sierra Package Builder" && \
+        mv build/packages/eosio.rb build/packages/eosio_highsierra.rb && \
+        buildkite-agent artifact download "build/packages/eosio.rb" . --step ":darwin: Mojave Package Builder"
+    label: ":darwin: Brew Updater"
+    agents:
+      queue: "automation-large-builder-fleet"
+    artifact_paths:
+      - "build/packages/eosio_highsierra.rb"
+      - "build/packages/eosio.rb"
     timeout: 60
