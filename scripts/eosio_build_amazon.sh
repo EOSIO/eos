@@ -15,10 +15,23 @@ DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
 DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
 
 DEP_ARRAY=( 
-	sudo procps which gcc72 gcc72-c++ autoconf automake libtool make doxygen graphviz \
-	bzip2 bzip2-devel openssl-devel gmp gmp-devel libstdc++72 python27 python27-devel python34 python34-devel \
-	libedit-devel ncurses-devel swig wget file libcurl-devel
+
 )
+
+if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
+	DEP_ARRAY=( 
+		sudo procps which gcc72 gcc72-c++ autoconf automake libtool make doxygen graphviz \
+		bzip2 bzip2-devel openssl-devel gmp gmp-devel libstdc++72 python27 python27-devel python34 python34-devel \
+		libedit-devel ncurses-devel swig wget file libcurl-devel
+	)
+else
+	DEP_ARRAY=( 
+		git gcc gcc-c++ autoconf automake libtool make bzip2 \
+		bzip2-devel openssl-devel gmp-devel libstdc++ \
+		python3 python3-devel python-devel libedit-devel doxygen graphviz
+	)
+fi
+
 if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
 	DEP_ARRAY+=(libusb1-devel)
 else
