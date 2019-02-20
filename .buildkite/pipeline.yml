@@ -416,7 +416,7 @@ steps:
         ln -s "$(pwd)" /data/job && cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":darwin: High Sierra Tests"
     agents:
-      - "role=tester-v2"
+      - "role=tester-v2-1"
       - "os=high-sierra"
     artifact_paths:
       - "mongod.log"
@@ -434,7 +434,7 @@ steps:
         ln -s "$(pwd)" /data/job && cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":darwin: High Sierra NP Tests"
     agents:
-      - "role=tester-v2"
+      - "role=tester-v2-1"
       - "os=high-sierra"
     artifact_paths:
       - "mongod.log"
@@ -452,7 +452,7 @@ steps:
         ln -s "$(pwd)" /data/job && cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":darwin: Mojave Tests"
     agents:
-      - "role=tester-v2"
+      - "role=tester-v2-1"
       - "os=mojave"
     artifact_paths:
       - "mongod.log"
@@ -470,7 +470,7 @@ steps:
         ln -s "$(pwd)" /data/job && cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":darwin: Mojave NP Tests"
     agents:
-      - "role=tester-v2"
+      - "role=tester-v2-1"
       - "os=mojave"
     artifact_paths:
       - "mongod.log"
