@@ -114,7 +114,7 @@ steps:
       tar -pczf build.tar.gz build/
     label: ":darwin: Mojave Build"
     agents:
-      - "role=builder-v2"
+      - "role=builder-v2-1"
       - "os=mojave"
     artifact_paths: "build.tar.gz"
     timeout: 60
@@ -128,7 +128,7 @@ steps:
       tar -pczf build.tar.gz build/
     label: ":darwin: High Sierra Build"
     agents:
-      - "role=builder-v2"
+      - "role=builder-v2-1"
       - "os=high-sierra"
     artifact_paths: "build.tar.gz"
     timeout: 60
@@ -488,7 +488,7 @@ steps:
         ln -s "$(pwd)" /data/job && cd /data/job/build/packages && bash generate_package.sh brew
     label: ":darwin: High Sierra Package Builder"
     agents:
-      - "role=builder-v2"
+      - "role=builder-v2-1"
       - "os=high-sierra"
     artifact_paths:
       - "build/packages/*.tar.gz"
@@ -503,7 +503,7 @@ steps:
         ln -s "$(pwd)" /data/job && cd /data/job/build/packages && bash generate_package.sh brew
     label: ":darwin: Mojave Package Builder"
     agents:
-      - "role=builder-v2"
+      - "role=builder-v2-1"
       - "os=mojave"
     artifact_paths:
       - "build/packages/*.tar.gz"
