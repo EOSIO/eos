@@ -1342,8 +1342,7 @@ namespace eosio {
    }
 
    void bnet_plugin::plugin_startup() {
-      if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
-         plugin_logger = fc::get_logger_map()[logger_name];
+      handle_sighup(); // Sets logger
 
       wlog( "bnet startup " );
 
@@ -1438,6 +1437,11 @@ namespace eosio {
       });
 
       // lifetime of _ioc is guarded by shared_ptr of bnet_plugin_impl
+   }
+
+   void bnet_plugin::handle_sighup() {
+      if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
+         plugin_logger = fc::get_logger_map()[logger_name];
    }
 
 
