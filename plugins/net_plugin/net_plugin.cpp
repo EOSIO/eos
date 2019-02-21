@@ -3056,7 +3056,10 @@ namespace eosio {
       for( auto seed_node : my->supplied_peers ) {
          connect( seed_node );
       }
+      handle_sighup();
+   }
 
+   void net_plugin::handle_sighup() {
       if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
          logger = fc::get_logger_map()[logger_name];
    }

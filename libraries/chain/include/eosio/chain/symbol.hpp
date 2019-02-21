@@ -58,7 +58,7 @@ namespace eosio {
          operator uint64_t()const { return value; }
       };
 
-      class symbol {
+      class symbol : fc::reflect_init {
          public:
 
             static constexpr uint8_t max_precision = 18;
