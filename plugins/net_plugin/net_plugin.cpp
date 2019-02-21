@@ -745,7 +745,7 @@ namespace eosio {
         fork_head_num(0),
         last_req()
    {
-      fc_wlog( logger, "created connection to ${n}", ("n", endpoint) );
+      fc_ilog( logger, "created connection to ${n}", ("n", endpoint) );
       initialize();
    }
 
@@ -770,7 +770,7 @@ namespace eosio {
         fork_head_num(0),
         last_req()
    {
-      fc_wlog( logger, "accepted network connection" );
+      fc_ilog( logger, "accepted network connection" );
       initialize();
    }
 
@@ -987,10 +987,10 @@ namespace eosio {
                if(ec) {
                   string pname = conn ? conn->peer_name() : "no connection name";
                   if( ec.value() != boost::asio::error::eof) {
-                     fc_elog( logger,"Error sending to peer ${p}: ${i}", ("p",pname)("i", ec.message()) );
+                     fc_elog( logger, "Error sending to peer ${p}: ${i}", ("p",pname)("i", ec.message()) );
                   }
                   else {
-                     fc_ilog( logger, "connection closure detected on write to ${p}",("p",pname) );
+                     fc_wlog( logger, "connection closure detected on write to ${p}",("p",pname) );
                   }
                   my_impl->close(conn);
                   return;
@@ -2316,8 +2316,8 @@ namespace eosio {
 
    void net_plugin_impl::handle_message(const connection_ptr& c, const go_away_message& msg) {
       string rsn = reason_str( msg.reason );
-      peer_ilog(c, "received go_away_message");
-      fc_ilog( logger, "received a go away message from ${p}, reason = ${r}",
+      peer_wlog(c, "received go_away_message");
+      fc_wlog( logger, "received a go away message from ${p}, reason = ${r}",
                ("p", c->peer_name())("r",rsn) );
       c->no_retry = msg.reason;
       if(msg.reason == duplicate ) {
@@ -2835,7 +2835,7 @@ namespace eosio {
             hello.last_irreversible_block_id = cc.get_block_id_for_num(hello.last_irreversible_block_num);
          }
          catch( const unknown_block_exception &ex) {
-            fc_ilog( logger, "caught unkown_block" );
+            fc_wlog( logger, "caught unkown_block" );
             hello.last_irreversible_block_num = 0;
          }
       }
@@ -3028,7 +3028,7 @@ namespace eosio {
          try {
            my->acceptor->bind(my->listen_endpoint);
          } catch (const std::exception& e) {
-           fc_ilog( logger, "net_plugin::plugin_startup failed to bind to port ${port}",
+           fc_elog( logger, "net_plugin::plugin_startup failed to bind to port ${port}",
                     ("port", my->listen_endpoint.port()));
            throw e;
          }
