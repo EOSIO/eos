@@ -25,7 +25,7 @@ namespace eosio { namespace chain {
    };
 
    struct by_block_id;
-   using block_summary_multi_index = cyberway::chaindb::shared_multi_index_container<
+   using block_summary_table = cyberway::chaindb::table_container<
       block_summary_object,
       cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(block_summary_object, block_summary_object::id_type, id)>
@@ -35,8 +35,7 @@ namespace eosio { namespace chain {
 
 } }
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::block_summary_object, eosio::chain::block_summary_multi_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::block_summary_object, eosio::chain::block_summary_table)
 CHAINDB_TAG(eosio::chain::block_summary_object, blocksum)
 
-//FC_REFLECT( chainbase::oid<eosio::chain::block_summary_object>, (_id));
 FC_REFLECT( eosio::chain::block_summary_object, (id)(block_id) )

@@ -6,7 +6,6 @@
 #include <eosio/chain/abi_def.hpp>
 #include <eosio/chain/snapshot.hpp>
 
-#include <chainbase/chainbase.hpp>
 #include <set>
 
 #include <cyberway/chaindb/common.hpp>
@@ -52,8 +51,8 @@ namespace resource_limits {
 
    class resource_limits_manager {
       public:
-         explicit resource_limits_manager(chainbase::database& db, cyberway::chaindb::chaindb_controller& chaindb)
-         :_db(db), _chaindb(chaindb)
+         explicit resource_limits_manager(cyberway::chaindb::chaindb_controller& chaindb)
+         :_chaindb(chaindb)
          {
          }
 
@@ -97,11 +96,7 @@ namespace resource_limits {
          void recall_proxied(int64_t now, symbol_code purpose_code, symbol_code token_code, account_name grantor_name, account_name agent_name, int16_t pct);
 
       private:
-         chainbase::database& _db;
          cyberway::chaindb::chaindb_controller& _chaindb;
-         
-         using agents_idx_t = decltype(_db.get_mutable_index<stake_agent_index>().indices().get<stake_agent_object::by_key>());
-         using grants_idx_t = decltype(_db.get_mutable_index<stake_grant_index>().indices().get<stake_grant_object::by_key>());
          
          static auto agent_key(symbol_code purpose_code, symbol_code token_code, const account_name& agent_name) {
              return boost::make_tuple(purpose_code, token_code, agent_name);
@@ -109,19 +104,22 @@ namespace resource_limits {
          static auto grant_key(symbol_code purpose_code, symbol_code token_code, const account_name& grantor_name, const account_name& agent_name = account_name()) {
              return boost::make_tuple(purpose_code, token_code, grantor_name, agent_name);
          }
-         
-         static const stake_agent_object* get_agent(symbol_code purpose_code, symbol_code token_code, const agents_idx_t& agents_idx, const account_name& agent_name) {
+
+         template<typename AgentIndex>
+         static const stake_agent_object* get_agent(symbol_code purpose_code, symbol_code token_code, const AgentIndex& agents_idx, const account_name& agent_name) {
             auto agent = agents_idx.find(agent_key(purpose_code, token_code, agent_name));
             EOS_ASSERT(agent != agents_idx.end(), transaction_exception, "agent doesn't exist");
             return &(*agent); 
          }
-         
+
+         template<typename AgentIndex, typename GrantIndex>
          int64_t recall_proxied_traversal(symbol_code purpose_code, symbol_code token_code,
-            const agents_idx_t& agents_idx, const grants_idx_t& grants_idx, 
+            const AgentIndex& agents_idx, const GrantIndex& grants_idx,
             const account_name& agent_name, int64_t share, int16_t break_fee);
-        
+
+         template<typename AgentIndex, typename GrantIndex>
          void update_proxied_traversal(int64_t now, symbol_code purpose_code, symbol_code token_code, 
-            const agents_idx_t& agents_idx, const grants_idx_t& grants_idx,
+            const AgentIndex& agents_idx, const GrantIndex& grants_idx,
             const stake_agent_object* agent, int64_t frame_length, bool force);
          
 

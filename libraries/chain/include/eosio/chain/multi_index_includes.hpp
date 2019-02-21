@@ -13,6 +13,23 @@
 #include <cyberway/chaindb/multi_index.hpp>
 #include <cyberway/chaindb/index_object.hpp>
 
+#define CHAINDB_TAG(_TYPE, _NAME)                   \
+    namespace cyberway { namespace chaindb {        \
+        template<> struct tag<_TYPE> {              \
+            using type = _TYPE;                     \
+            constexpr static uint64_t get_code() {  \
+                return N(_NAME);                    \
+            }                                       \
+        };                                          \
+    } }
+
+#define CHAINDB_SET_TABLE_TYPE(_OBJECT, _TABLE)     \
+   namespace cyberway { namespace chaindb {         \
+       template<> struct object_to_table<_OBJECT> { \
+           using type = _TABLE;                     \
+       };                                           \
+   } }
+
 namespace bmi = boost::multi_index;
 using bmi::indexed_by;
 using bmi::ordered_unique;
@@ -91,11 +108,10 @@ namespace cyberway { namespace chaindb {
     struct indexed_by {};
 
     template<typename Object, typename Items>
-    struct multi_index_container;
+    struct table_container_impl;
 
     struct object_id_extractor {
-        template<typename T>
-        uint64_t operator()(const T& o) const {
+        template<typename T> uint64_t operator()(const T& o) const {
             return o.id._id;
         }
     }; // struct object_id_extractor
@@ -106,125 +122,11 @@ namespace cyberway { namespace chaindb {
     }; // struct primary_index
 
     template<typename Object, typename... Items>
-    struct multi_index_container<Object, indexed_by<Items...>> {
-        using impl = multi_index<tag<Object>, primary_index, Object, Items...>;
+    struct table_container_impl<Object, indexed_by<Items...>> {
+        using type = multi_index<tag<Object>, primary_index, Object, Items...>;
     };
 
-   template<typename Object, typename IndexSpec>
-   struct shared_multi_index_container {
-       struct node_type {};
-       using value_type = Object;
-       using allocator_type = chainbase::allocator<value_type>;
-       using container_impl = typename multi_index_container<Object, IndexSpec>::impl;
-
-       container_impl impl;
-
-       using size_type = std::size_t;
-
-       template<typename Tag, typename Extractor>
-       struct index {
-           using index_impl = typename container_impl::template index<Tag, Extractor>;
-           struct type {
-               using iterator = typename index_impl::const_iterator;
-               
-               index_impl impl;
-
-               type(const shared_multi_index_container* midx)
-               : impl(&midx->impl)
-               { }
-
-               iterator begin() const {return impl.begin();}
-               iterator end() const {return impl.end();}
-
-               iterator rbegin() const {return impl.rbegin();}
-               iterator rend() const {return impl.rend();}
-
-               template<typename Key>
-               iterator find(const Key& key) const {return impl.find(key);}
-
-               template<typename Key>
-               iterator lower_bound(const Key& key) const {return impl.lower_bound(key);}
-
-               template<typename Key>
-               iterator upper_bound(const Key& key) const {return impl.upper_bound(key);}
-
-               template<typename Key>
-               std::pair<iterator, iterator> equal_range(const Key& key) const {return impl.equal_range(key);}
-
-               iterator iterator_to(const value_type& value) const {return impl.iterator_to(value);}
-
-               bool empty() const {return impl.begin() == impl.end();}
-               size_t size() const {return 0;} // TODO: ?
-           };
-       };
-
-       using iterator = typename container_impl::const_iterator;
-       using const_iterator = iterator;
-       using emplace_return_type = typename std::pair<iterator,bool>;
-
-       uint64_t available_primary_key() const {
-           return impl.available_primary_key();
-       }
-
-       template<typename Tag>
-       auto get() const {
-           auto idx = impl.template get_index<Tag>();
-           return typename index<cyberway::chaindb::tag<Tag>, typename decltype(idx)::extractor_type>::type(this);
-       }
-
-       template<typename Type>
-       iterator find(const chainbase::oid<Type>& k) const { return impl.find(k._id); }
-
-       template<typename Modifier>
-       bool modify(iterator position, Modifier&& mod) {
-           impl.modify(position, account_name(), std::forward<Modifier>(mod));
-           return true;
-       }
-
-       iterator erase(iterator position) { return impl.erase(position); }
-
-       template<typename Constructor, typename Allocator>
-       emplace_return_type emplace(Constructor&& constructor, Allocator&&) {
-           try {
-               auto iter = impl.emplace(account_name(), std::forward<Constructor>(constructor));
-               return std::make_pair(std::move(iter), true);
-           } catch (const fc::exception& err) {
-               return std::make_pair(end(), false);
-           }
-       }
-
-       emplace_return_type emplace(value_type) {
-           return std::make_pair(end(), false);
-       }
-
-       iterator iterator_to(const value_type& x) const {
-           return impl.iterator_to(x);
-       }
-
-       size_type size() const { return 0; } // TODO: ?
-       iterator begin() {return impl.begin(); }
-       const_iterator begin() const { return impl.begin(); }
-       iterator end()  {return impl.end(); }
-       const_iterator end() const { return impl.end(); }
-
-       allocator_type get_allocator() const { return allocator; }
-
-       template<typename Tag, typename IteratorType>
-       auto project(IteratorType it) {
-           return get<Tag>().iterator_to(*it);
-       }
-
-       template<typename Tag, typename IteratorType>
-       auto project(IteratorType it) const {
-           return get<Tag>().iterator_to(*it);
-       }
-
-       explicit shared_multi_index_container(allocator_type& al, chaindb_controller& controller)
-       : impl(controller), allocator(al)
-       { }
-
-   private:
-       allocator_type& allocator;
-   };
+    template<typename Object, typename IndexSpec>
+    using table_container = typename table_container_impl<Object, IndexSpec>::type;
 
 } } // namespace cyberway::chaindb

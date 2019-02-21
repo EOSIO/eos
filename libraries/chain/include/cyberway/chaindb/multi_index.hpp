@@ -50,18 +50,8 @@ fc::datastream<T>& operator<<(fc::datastream<T>& stream, const boost::tuple<Indi
 
 namespace cyberway { namespace chaindb {
     template<class> struct tag;
+    template<class> struct object_to_index;
 } }
-
-#define CHAINDB_TAG(_TYPE, _NAME)                   \
-    namespace cyberway { namespace chaindb {        \
-        template<> struct tag<_TYPE> {              \
-            using type = _TYPE;                     \
-            constexpr static uint64_t get_code() {  \
-                return N(_NAME);                    \
-            }                                       \
-        };                                          \
-    } }
-
 
 namespace cyberway { namespace chaindb {
     namespace uninitilized_cursor {
@@ -111,7 +101,7 @@ void safe_allocate(const Size size, const char* error_msg, Lambda&& callback) {
 
 using boost::multi_index::const_mem_fun;
 
-namespace _detail {
+namespace _multi_detail {
     template <typename T> constexpr T& min(T& a, T& b) {
         return a > b ? b : a;
     }
@@ -138,7 +128,7 @@ namespace _detail {
     template<int I> struct converter_helper<I, I> {
         template<typename... L> void operator()(L&&...) const { }
     }; // struct converter_helper
-} // namespace _detail
+} // namespace _multi_detail
 
 template<typename Key>
 struct key_comparator {
@@ -159,7 +149,7 @@ struct key_comparator<boost::tuple<Indices...>> {
     template<typename... Values>
     static bool compare_eq(const key_type& left, const boost::tuple<Values...>& value) {
         using value_type = boost::tuple<Values...>;
-        using namespace _detail;
+        using namespace _multi_detail;
         using boost::tuples::length;
 
         return comparator_helper<0, min(length<value_type>::value, length<key_type>::value)>()(left, value);
@@ -186,7 +176,7 @@ struct key_converter<boost::tuple<Indices...>> {
 
     template<typename... Values>
     static key_type convert(const boost::tuple<Values...>& value) {
-        using namespace _detail;
+        using namespace _multi_detail;
         using boost::tuples::length;
         using value_type = boost::tuple<Values...>;
 
@@ -196,30 +186,29 @@ struct key_converter<boost::tuple<Indices...>> {
     }
 }; // struct key_converter
 
-template<typename C>
-struct code_extractor;
+template<typename C> struct code_extractor;
 
-template<typename C>
-struct code_extractor<tag<C>> {
+template<typename C> struct code_extractor<tag<C>> {
     constexpr static uint64_t get_code() {
         return tag<C>::get_code();
     }
 }; // struct code_extractor
 
-template<uint64_t N>
-struct code_extractor<std::integral_constant<uint64_t, N>> {
-    constexpr static uint64_t get_code() {return N;}
+template<typename C> struct code_extractor: public code_extractor<tag<C>> {
+    constexpr static uint64_t get_code() {
+        return tag<C>::get_code();
+    }
 }; // struct code_extractor
 
 template<typename TableName, typename Index, typename T, typename... Indices>
-struct multi_index {
+struct multi_index final {
 public:
     template<typename IndexName, typename Extractor> class index;
 
 private:
     static_assert(sizeof...(Indices) <= 16, "multi_index only supports a maximum of 16 secondary indices");
 
-    struct item_data: public cache_item_data {
+    struct item_data final: public cache_item_data {
         struct item_type: public T {
             template<typename Constructor>
             item_type(cache_item& cache, Constructor&& constructor)
@@ -248,9 +237,9 @@ private:
 
     chaindb_controller& controller_;
 
-    struct variant_converter: public cache_converter_interface {
-        variant_converter() = default;
-        ~variant_converter() = default;
+    struct cache_converter_ final: public cache_converter_interface {
+        cache_converter_() = default;
+        ~cache_converter_() = default;
 
         cache_item_data_ptr convert_variant(cache_item& itm, const object_value& obj) const override {
             auto ptr = std::make_unique<item_data>(itm, [&](auto& o) {
@@ -264,12 +253,12 @@ private:
                 "invalid primary key ${pk} for the object ${obj}", ("pk", obj.pk())("obj", obj.value));
             return ptr;
         }
-    } variant_converter_;
+    }; // struct cache_converter_
 
     using primary_key_extractor_type = typename Index::extractor;
 
     template<typename IndexName>
-    class const_iterator_impl: public std::iterator<std::bidirectional_iterator_tag, const T> {
+    class const_iterator_impl final: public std::iterator<std::bidirectional_iterator_tag, const T> {
     public:
         friend bool operator == (const const_iterator_impl& a, const const_iterator_impl& b) {
             a.lazy_open();
@@ -437,8 +426,8 @@ private:
             CYBERWAY_INDEX_ASSERT(is_cursor_initialized(), "unable to open cursor");
         }
 
-        table_request get_table_request() const {
-            return {get_code(), get_scope(), table_name()};
+        static table_request& get_table_request() {
+            return multi_index::get_table_request();
         }
 
         index_request get_index_request() const {
@@ -506,9 +495,6 @@ public:
         const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
         const_reverse_iterator rend() const  { return crend(); }
 
-        const_iterator find(key_type&& key) const {
-            return find(key);
-        }
         template<typename Value>
         const_iterator find(const Value& value) const {
             auto key = key_converter<key_type>::convert(value);
@@ -526,9 +512,6 @@ public:
             return itr;
         }
 
-        const_iterator require_find(key_type&& key, const char* error_msg = "unable to find key") const {
-            return require_find(key, error_msg);
-        }
         const_iterator require_find(const key_type& key, const char* error_msg = "unable to find key") const {
             auto itr = lower_bound(key);
             CYBERWAY_INDEX_ASSERT(itr != cend(), error_msg);
@@ -536,18 +519,12 @@ public:
             return itr;
         }
 
-        const T& get(key_type&& key, const char* error_msg = "unable to find key") const {
-            return get(key, error_msg);
-        }
         const T& get(const key_type& key, const char* error_msg = "unable to find key") const {
             auto itr = find(key);
             CYBERWAY_INDEX_ASSERT(itr != cend(), error_msg);
             return *itr;
         }
 
-        const_iterator lower_bound(key_type&& key) const {
-            return lower_bound(key);
-        }
         const_iterator lower_bound(const key_type& key) const {
             find_info info;
             safe_allocate(fc::raw::pack_size(key), "invalid size of key", [&](auto& data, auto& size) {
@@ -561,9 +538,6 @@ public:
         const_iterator lower_bound(const Value& value) const {
             return lower_bound(key_converter<key_type>::convert(value));
         }
-        const_iterator upper_bound(key_type&& key) const {
-            return upper_bound(key);
-        }
         const_iterator upper_bound(const key_type& key) const {
             find_info info;
             safe_allocate(fc::raw::pack_size(key), "invalid size of key", [&](auto& data, auto& size) {
@@ -573,9 +547,6 @@ public:
             return const_iterator(multidx_, info.cursor, info.pk);
         }
 
-        std::pair<const_iterator,const_iterator> equal_range(key_type&& key) const {
-            return upper_bound(key);
-        }
         std::pair<const_iterator,const_iterator> equal_range(const key_type& key) const {
             return make_pair(lower_bound(key), upper_bound(key));
         }
@@ -607,17 +578,12 @@ public:
         }
 
         template<typename Lambda>
-        void modify(const const_iterator& itr, const account_name& payer, Lambda&& updater) const {
-            CYBERWAY_INDEX_ASSERT(itr != cend(), "cannot pass end iterator to modify");
-            multidx_().modify(*itr, payer, std::forward<Lambda&&>(updater));
+        void modify(const T& obj, const account_name& payer, Lambda&& updater) const {
+            multidx().modify(obj, payer, std::forward<Lambda>(updater));
         }
 
-        const_iterator erase(const_iterator itr) const {
-            CYBERWAY_INDEX_ASSERT(itr != cend(), "cannot pass end iterator to erase");
-            const auto& obj = *itr;
-            ++itr;
-            multidx_->erase(obj);
-            return itr;
+        void erase(const T& obj) const {
+            multidx().erase(obj);
         }
 
         static auto extract_key(const T& obj) { return extractor_type()(obj); }
@@ -632,8 +598,9 @@ public:
             return multidx().controller_;
         }
 
-        index_request get_index_request() const {
-            return {get_code(), get_scope(), table_name(), index_name()};
+        static index_request& get_index_request() {
+            static index_request request{get_code(), get_scope(), table_name(), index_name()};
+            return request;
         }
 
         const multi_index* const multidx_ = nullptr;
@@ -646,15 +613,20 @@ public:
     multi_index(chaindb_controller& controller)
     : controller_(controller),
       primary_idx_(this) {
-        controller_.set_cache_converter(get_table_request(), variant_converter_);
     }
 
     constexpr static table_name_t   table_name() { return code_extractor<TableName>::get_code(); }
     constexpr static account_name_t get_code()   { return 0; }
     constexpr static account_name_t get_scope()  { return 0; }
 
-    table_request get_table_request() const {
-        return {get_code(), get_scope(), table_name()};
+    static table_request& get_table_request() {
+        static table_request request{get_code(), get_scope(), table_name()};
+        return request;
+    }
+
+    static void set_cache_converter(chaindb_controller& controller) {
+        static cache_converter_ converter;
+        controller.set_cache_converter(get_table_request(), converter);
     }
 
     const_iterator cbegin() const { return primary_idx_.cbegin(); }
@@ -704,8 +676,8 @@ public:
         try {
             auto pk = itm->pk();
             itm->data = std::make_unique<item_data>(*itm.get(), [&](auto& o) {
-                constructor(static_cast<T&>(o));
                 o.id = pk;
+                constructor(static_cast<T&>(o));
             });
 
             auto& obj = item_data::get_T(itm);
@@ -724,9 +696,8 @@ public:
     }
 
     template<typename Lambda>
-    void modify(const_iterator itr, const account_name& payer, Lambda&& updater) const {
-        CYBERWAY_INDEX_ASSERT(itr != end(), "cannot pass end iterator to modify");
-        modify(*itr, payer, std::forward<Lambda&&>(updater));
+    const_iterator emplace(Lambda&& constructor) const {
+        return emplace(account_name(), std::forward<Lambda>(constructor));
     }
 
     template<typename Lambda>
@@ -748,27 +719,23 @@ public:
         CYBERWAY_INDEX_ASSERT(upk == pk, "unable to update object");
     }
 
-    const T& get(const primary_key_t pk, const char* error_msg = "unable to find key") const {
+    template<typename Lambda>
+    void modify(const T& obj, Lambda&& updater) const {
+        modify(obj, account_name(), std::forward<Lambda>(updater));
+    }
+
+    const T& get(const primary_key_t pk = 0, const char* error_msg = "unable to find key") const {
         auto itr = find(pk);
         CYBERWAY_INDEX_ASSERT(itr != cend(), error_msg);
         return *itr;
     }
 
-    const_iterator find(const primary_key_t pk) const {
+    const_iterator find(const primary_key_t pk = 0) const {
         return primary_idx_.find(pk);
     }
 
-    const_iterator require_find(const primary_key_t pk, const char* error_msg = "unable to find key") const {
+    const_iterator require_find(const primary_key_t pk = 0, const char* error_msg = "unable to find key") const {
         return primary_idx_.require_find(pk, error_msg);
-    }
-
-    const_iterator erase(const_iterator itr) const {
-        CYBERWAY_INDEX_ASSERT(itr != end(), "cannot pass end iterator to erase");
-
-        const auto& obj = *itr;
-        ++itr;
-        erase(obj);
-        return itr;
     }
 
     void erase(const T& obj) const {
@@ -778,6 +745,10 @@ public:
         auto pk = primary_key_extractor_type()(obj);
         auto dpk = controller_.remove(itm);
         CYBERWAY_INDEX_ASSERT(dpk == pk, "unable to delete object");
+    }
+
+    void erase(const primary_key_t pk) const {
+        erase(get(pk));
     }
 }; // struct multi_index
 

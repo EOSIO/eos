@@ -199,14 +199,14 @@ class privileged_api : public context_aware_api {
          chain::chain_config cfg;
          fc::raw::unpack(ds, cfg);
          cfg.validate();
-         context.db.modify( context.control.get_global_properties(),
+         context.chaindb.modify( context.control.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.configuration = cfg;
          });
       }
 
       bool is_privileged( account_name n )const {
-         return context.db.get<account_object, by_name>( n ).privileged;
+         return context.chaindb.get<account_object, by_name>( n ).privileged;
       }
 
 };
@@ -843,7 +843,7 @@ class permission_api : public context_aware_api {
       };
 
       int64_t get_account_creation_time( account_name account ) {
-         auto* acct = context.db.find<account_object, by_name>(account);
+         auto* acct = context.chaindb.find<account_object, by_name>(account);
          EOS_ASSERT( acct != nullptr, action_validate_exception,
                      "account '${account}' does not exist", ("account", account) );
          return time_point(acct->creation_date).time_since_epoch().count();

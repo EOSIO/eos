@@ -26,7 +26,7 @@ namespace eosio { namespace chain {
       public:
          using permission_id_type = permission_object::id_type;
 
-         explicit authorization_manager(controller& c, chainbase::database& d);
+         explicit authorization_manager(controller& c, cyberway::chaindb::chaindb_controller&);
 
          void add_indices();
          void initialize_database();
@@ -121,8 +121,8 @@ namespace eosio { namespace chain {
          static std::function<void()> _noop_checktime;
 
       private:
-         const controller&    _control;
-         chainbase::database& _db;
+         controller&    _control;
+         cyberway::chaindb::chaindb_controller& _chaindb;
 
          void             check_updateauth_authorization( const updateauth& update, const vector<permission_level>& auths )const;
          void             check_deleteauth_authorization( const deleteauth& del, const vector<permission_level>& auths )const;

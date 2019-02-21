@@ -11,7 +11,7 @@
 
 namespace cyberway { namespace chaindb {
 
-    template<typename T> class oid {
+    template<typename Object> class oid {
     public:
         oid(uint64_t i = 0)
         : _id(i) {
@@ -39,14 +39,13 @@ namespace cyberway { namespace chaindb {
         }
 
         friend std::ostream& operator<<(std::ostream& s, const oid& id) {
-            s << boost::core::demangle(typeid(oid<T>).name()) << '(' << id._id << ')'; return s;
+            s << boost::core::demangle(typeid(oid).name()) << '(' << id._id << ')'; return s;
         }
 
         uint64_t _id = 0;
     }; // class oid
 
-    template<uint16_t TypeNumber, typename Derived> struct object
-    {
+    template<uint16_t TypeNumber, typename Derived> struct object {
         typedef oid<Derived> id_type;
         static constexpr uint16_t type_id = TypeNumber;
     }; // struct object

@@ -32,15 +32,15 @@ namespace eosio { namespace chain {
 using resource_limits::resource_limits_manager;
 
 using controller_index_set = index_set<
-   account_index,
-   account_sequence_index,
-   global_property_multi_index,
-   dynamic_global_property_multi_index,
-   block_summary_multi_index,
-   transaction_multi_index,
-   generated_transaction_multi_index,
-   domain_index,
-   username_index
+   account_table,
+   account_sequence_table,
+   global_property_table,
+   dynamic_global_property_table,
+   block_summary_table,
+   transaction_table,
+   generated_transaction_table,
+   domain_table,
+   username_table
 >;
 
 class maybe_session {
@@ -217,8 +217,8 @@ struct controller_impl {
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),
-    resource_limits( db, chaindb ),
-    authorization( s, db ),
+    resource_limits( chaindb ),
+    authorization( s, chaindb ),
     conf( cfg ),
     chain_id( cfg.genesis.compute_chain_id() ),
     read_mode( cfg.read_mode ),
@@ -484,7 +484,7 @@ struct controller_impl {
 
       reversible_blocks.add_index<reversible_block_index>();
 
-      controller_index_set::add_indices(db, chaindb);
+      controller_index_set::add_indices(chaindb);
 
       authorization.add_indices();
       resource_limits.add_indices();
@@ -504,89 +504,15 @@ struct controller_impl {
       });
    }
 
-   void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
-      snapshot->write_section("contract_tables", []( auto& section ) {
-      });
-   }
-
-   void read_contract_tables_from_snapshot( const snapshot_reader_ptr& snapshot ) {
-      snapshot->read_section("contract_tables", []( auto& section ) {
-      });
-   }
-
    void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
-      snapshot->write_section<chain_snapshot_header>([this]( auto &section ){
-         section.add_row(chain_snapshot_header(), db);
-      });
-
-      snapshot->write_section<genesis_state>([this]( auto &section ){
-         section.add_row(conf.genesis, db);
-      });
-
-      snapshot->write_section<block_state>([this]( auto &section ){
-         section.template add_row<block_header_state>(*fork_db.head(), db);
-      });
-
-      controller_index_set::walk_indices([this, &snapshot]( auto utils ){
-         using value_t = typename decltype(utils)::index_t::value_type;
-
-         // skip the table_id_object as its inlined with contract tables section
-         if (std::is_same<value_t, table_id_object>::value) {
-            return;
-         }
-
-         snapshot->write_section<value_t>([this]( auto& section ){
-            decltype(utils)::walk(db, [this, &section]( const auto &row ) {
-               section.add_row(row, db);
-            });
-         });
-      });
-
-      add_contract_tables_to_snapshot(snapshot);
+      // TODO: Removed by CyberWay
 
       authorization.add_to_snapshot(snapshot);
       resource_limits.add_to_snapshot(snapshot);
    }
 
    void read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
-      snapshot->read_section<chain_snapshot_header>([this]( auto &section ){
-         chain_snapshot_header header;
-         section.read_row(header, db);
-         header.validate();
-      });
-
-
-      snapshot->read_section<block_state>([this]( auto &section ){
-         block_header_state head_header_state;
-         section.read_row(head_header_state, db);
-
-         auto head_state = std::make_shared<block_state>(head_header_state);
-         fork_db.set(head_state);
-         fork_db.set_validity(head_state, true);
-         fork_db.mark_in_current_chain(head_state, true);
-         head = head_state;
-         snapshot_head_block = head->block_num;
-      });
-
-      controller_index_set::walk_indices([this, &snapshot]( auto utils ){
-         using value_t = typename decltype(utils)::index_t::value_type;
-
-         // skip the table_id_object as its inlined with contract tables section
-         if (std::is_same<value_t, table_id_object>::value) {
-            return;
-         }
-
-         snapshot->read_section<value_t>([this]( auto& section ) {
-            bool more = !section.empty();
-            while(more) {
-               decltype(utils)::create(db, [this, &section, &more]( auto &row ) {
-                  more = section.read_row(row, db);
-               });
-            }
-         });
-      });
-
-      read_contract_tables_from_snapshot(snapshot);
+      // TODO: Removed by CyberWay
 
       authorization.read_from_snapshot(snapshot);
       resource_limits.read_from_snapshot(snapshot);
@@ -630,7 +556,7 @@ struct controller_impl {
    }
 
    void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
-      db.create<account_object>([&](auto& a) {
+      chaindb.emplace<account_object>([&](auto& a) {
          a.name = name;
          a.creation_date = conf.genesis.initial_timestamp;
          a.privileged = is_privileged;
@@ -641,11 +567,11 @@ struct controller_impl {
             a.set_abi(domain_contract_abi());
          }
       });
-      db.create<account_sequence_object>([&](auto & a) {
+      chaindb.emplace<account_sequence_object>([&](auto & a) {
         a.name = name;
       });
       // to test domain names table, create records in it; TODO: remove
-      db.create<domain_object>([&](auto& a) {
+      chaindb.emplace<domain_object>([&](auto& a) {
          a.owner = name;
          a.creation_date = conf.genesis.initial_timestamp;
          a.name = string(name);
@@ -669,19 +595,20 @@ struct controller_impl {
 
    void initialize_database() {
       // Initialize block summary index
+      auto blocksum_table = chaindb.get_table<block_summary_object>();
       for (int i = 0; i < 0x10000; i++)
-         db.create<block_summary_object>([&](block_summary_object&) {});
+         blocksum_table.emplace([&](block_summary_object&) {});
 
-      const auto& tapos_block_summary = db.get<block_summary_object>(1);
-      db.modify( tapos_block_summary, [&]( auto& bs ) {
+      const auto& tapos_block_summary = blocksum_table.get(1);
+      blocksum_table.modify( tapos_block_summary, [&]( auto& bs ) {
         bs.block_id = head->id;
       });
 
       conf.genesis.initial_configuration.validate();
-      db.create<global_property_object>([&](auto& gpo ){
+      chaindb.emplace<global_property_object>([&](auto& gpo ){
         gpo.configuration = conf.genesis.initial_configuration;
       });
-      db.create<dynamic_global_property_object>([](auto&){});
+      chaindb.emplace<dynamic_global_property_object>([](auto&){});
 
       authorization.initialize_database();
       resource_limits.initialize_database();
@@ -821,7 +748,7 @@ struct controller_impl {
       );
       // No need to verify_account_ram_usage since we are only reducing memory
 
-      db.remove( gto );
+      chaindb.erase( gto );
    }
 
    bool failure_is_subjective( const fc::exception& e ) const {
@@ -840,7 +767,8 @@ struct controller_impl {
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false ) {
-      const auto& idx = db.get_index<generated_transaction_multi_index,by_trx_id>();
+      auto table = chaindb.get_table<generated_transaction_object>();
+      const auto idx = table.get_index<by_trx_id>();
       auto itr = idx.find( trxid );
       EOS_ASSERT( itr != idx.end(), unknown_transaction_exception, "unknown transaction" );
       return push_scheduled_transaction( *itr, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
@@ -1202,7 +1130,8 @@ struct controller_impl {
       //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
 
-         const auto& gpo = db.get<global_property_object>();
+         auto global_table = chaindb.get_table<global_property_object>();
+         const auto& gpo = global_table.get();
          if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
              ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
              pending->_pending_block_state->pending_schedule.producers.size() == 0 && // ... and there is room for a new pending schedule ...
@@ -1217,7 +1146,7 @@ struct controller_impl {
                         ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
                }
                pending->_pending_block_state->set_new_producers( gpo.proposed_schedule );
-               db.modify( gpo, [&]( auto& gp ) {
+               global_table.modify( gpo, [&]( auto& gp ) {
                      gp.proposed_schedule_block_num = optional<block_num_type>();
                      gp.proposed_schedule.clear();
                   });
@@ -1564,7 +1493,7 @@ struct controller_impl {
          }
 
          if( static_cast<authority>(permission.auth) != auth ) { // TODO: use a more efficient way to check that authority has not changed
-            db.modify(permission, [&]( auto& po ) {
+            chaindb.modify(permission, [&]( auto& po ) {
                po.auth = auth;
             });
          }
@@ -1593,7 +1522,8 @@ struct controller_impl {
    void create_block_summary(const block_id_type& id) {
       auto block_num = block_header::num_from_id(id);
       auto sid = block_num & 0xffff;
-      db.modify( db.get<block_summary_object,by_id>(sid), [&](block_summary_object& bso ) {
+      auto blocksum_table = chaindb.get_table<block_summary_object>();
+      blocksum_table.modify( blocksum_table.get(sid), [&](block_summary_object& bso ) {
           bso.block_id = id;
       });
    }
@@ -1601,11 +1531,15 @@ struct controller_impl {
 
    void clear_expired_input_transactions() {
       //Look for expired transactions in the deduplication list, and remove them.
-      auto& transaction_idx = db.get_mutable_index<transaction_multi_index>();
-      const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
+      auto trx_table = chaindb.get_table<transaction_object>();
+      auto dedupe_idx = trx_table.get_index<by_expiration>();
       auto now = self.pending_block_time();
-      while( (!dedupe_index.empty()) && ( now > fc::time_point(dedupe_index.begin()->expiration) ) ) {
-         transaction_idx.remove(*dedupe_index.begin());
+      for (auto itr = dedupe_idx.begin(), etr = dedupe_idx.end(); etr != itr; ) {
+         auto& trx = *itr;
+         if (now <= fc::time_point(trx.expiration)) break;
+
+         ++itr;
+         trx_table.erase(trx);
       }
    }
 
@@ -1705,10 +1639,6 @@ void controller::startup( std::function<bool()> shutdown, const snapshot_reader_
    }
    my->init(shutdown, snapshot);
 }
-
-const chainbase::database& controller::db()const { return my->db; }
-
-chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
 
@@ -1822,7 +1752,7 @@ uint32_t controller::last_irreversible_block_num() const {
 
 block_id_type controller::last_irreversible_block_id() const {
    auto lib_num = last_irreversible_block_num();
-   const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)lib_num);
+   const auto& tapos_block_summary = chaindb().get<block_summary_object>((uint16_t)lib_num);
 
    if( block_header::num_from_id(tapos_block_summary.block_id) == lib_num )
       return tapos_block_summary.block_id;
@@ -1832,10 +1762,10 @@ block_id_type controller::last_irreversible_block_id() const {
 }
 
 const dynamic_global_property_object& controller::get_dynamic_global_properties()const {
-  return my->db.get<dynamic_global_property_object>();
+  return my->chaindb.get<dynamic_global_property_object>();
 }
 const global_property_object& controller::get_global_properties()const {
-  return my->db.get<global_property_object>();
+  return my->chaindb.get<global_property_object>();
 }
 
 signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
@@ -1929,7 +1859,7 @@ int64_t controller::set_proposed_producers( vector<producer_key> producers ) {
 
    int64_t version = sch.version;
 
-   my->db.modify( gpo, [&]( auto& gp ) {
+   my->chaindb.modify( gpo, [&]( auto& gp ) {
       gp.proposed_schedule_block_num = cur_block_num;
       gp.proposed_schedule = std::move(sch);
    });
@@ -2033,17 +1963,17 @@ wasm_interface& controller::get_wasm_interface() {
 
 const account_object& controller::get_account( account_name name )const
 { try {
-   return my->db.get<account_object, by_name>(name);
+   return my->chaindb.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
 const domain_object& controller::get_domain(const domain_name& name) const { try {
-    const auto* d = my->db.find<domain_object, by_name>(name);
+    const auto* d = my->chaindb.find<domain_object, by_name>(name);
     EOS_ASSERT(d != nullptr, chain::domain_query_exception, "domain `${name}` not found", ("name", name));
     return *d;
 } FC_CAPTURE_AND_RETHROW((name)) }
 
 const username_object& controller::get_username(account_name scope, const username& name) const { try {
-    const auto* user = my->db.find<username_object, by_scope_name>(boost::make_tuple(scope,name));
+    const auto* user = my->chaindb.find<username_object, by_scope_name>(boost::make_tuple(scope,name));
     EOS_ASSERT(user != nullptr, username_query_exception,
         "username `${name}` not found in scope `${scope}`", ("name",name)("scope",scope));
     return *user;
@@ -2071,17 +2001,19 @@ void controller::drop_all_unapplied_transactions() {
 }
 
 vector<transaction_id_type> controller::get_scheduled_transactions() const {
-   const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
+   auto trx_table = chaindb().get_table<generated_transaction_object>();
+   auto delay_idx = trx_table.get_index<by_delay>();
 
    vector<transaction_id_type> result;
 
-   static const size_t max_reserve = 64;
-   result.reserve(std::min(idx.size(), max_reserve));
+   static const size_t max_reserve = 1024;
+   result.reserve(max_reserve);
 
-   auto itr = idx.begin();
-   while( itr != idx.end() && itr->delay_until <= pending_block_time() ) {
+   auto itr = delay_idx.begin();
+   auto etr = delay_idx.end();
+   auto stop_time = pending_block_time();
+   for (; etr != itr && itr->delay_until <= stop_time; ++itr) {
       result.emplace_back(itr->trx_id);
-      ++itr;
    }
    return result;
 }
@@ -2129,7 +2061,7 @@ void controller::validate_expiration( const transaction& trx )const { try {
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 void controller::validate_tapos( const transaction& trx )const { try {
-   const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)trx.ref_block_num);
+   const auto& tapos_block_summary = chaindb().get<block_summary_object>((uint16_t)trx.ref_block_num);
 
    //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
    EOS_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), invalid_ref_block_exception,
@@ -2138,9 +2070,7 @@ void controller::validate_tapos( const transaction& trx )const { try {
 } FC_CAPTURE_AND_RETHROW() }
 
 void controller::validate_db_available_size() const {
-   const auto free = db().get_segment_manager()->get_free_memory();
-   const auto guard = my->conf.state_guard_size;
-   EOS_ASSERT(free >= guard, database_guard_exception, "database free: ${f}, guard size: ${g}", ("f", free)("g",guard));
+   // TODO: Removed by CyberWay
 }
 
 void controller::validate_reversible_available_size() const {
@@ -2150,7 +2080,7 @@ void controller::validate_reversible_available_size() const {
 }
 
 bool controller::is_known_unexpired_transaction( const transaction_id_type& id) const {
-   return db().find<transaction_object, by_trx_id>(id);
+   return chaindb().find<transaction_object, by_trx_id>(id);
 }
 
 void controller::set_subjective_cpu_leeway(fc::microseconds leeway) {

@@ -25,6 +25,8 @@ namespace cyberway { namespace chaindb {
     using cursor_t = int32_t;
     static constexpr cursor_t invalid_cursor = (0);
 
+    template<class> struct object_to_table;
+
     struct index_request final {
         const account_name code;
         const account_name scope;
@@ -65,6 +67,90 @@ namespace cyberway { namespace chaindb {
 
         chaindb_controller(chaindb_type, string);
         ~chaindb_controller();
+
+        template<typename Object>
+        typename object_to_table<Object>::type get_table() {
+            return typename object_to_table<Object>::type(*this);
+        }
+
+        template<typename Object>
+        const Object* find(const primary_key_t pk) {
+            auto midx = get_table<Object>();
+            auto itr = midx.find(pk);
+            if (midx.end() == itr) {
+                return nullptr;
+            }
+            // should not be critical - object is stored in cache map
+            return &*itr;
+        }
+
+        template<typename Object>
+        const Object* find(const oid<Object>& id = oid<Object>()) {
+            return find<Object>(id._id);
+        }
+
+        template<typename Object, typename ByIndex, typename Key>
+        const Object* find(Key&& key) {
+            auto midx = get_table<Object>();
+            auto idx = midx.template get_index<ByIndex>();
+            auto itr = idx.find(std::forward<Key>(key));
+            if (idx.end() == itr) {
+                return nullptr;
+            }
+            // should not be critical - object is stored in cache map
+            return &*itr;
+        }
+
+        template<typename Object>
+        const Object& get(const primary_key_t pk) {
+            auto midx = get_table<Object>();
+            // should not be critical - object is stored in cache map
+            return midx.get(pk);
+        }
+
+        template<typename Object>
+        const Object& get(const oid<Object>& id = oid<Object>()) {
+            return get<Object>(id._id);
+        }
+
+        template<typename Object, typename ByIndex, typename Key>
+        const Object& get(Key&& key) {
+            auto midx = get_table<Object>();
+            auto idx = midx.template get_index<ByIndex>();
+            // should not be critical - object is stored in cache map
+            return idx.get(std::forward<Key>(key));
+        }
+
+        template<typename Object, typename Lambda>
+        const Object& emplace(Lambda&& constructor) {
+            auto midx = get_table<Object>();
+            auto itr = midx.emplace(std::forward<Lambda>(constructor));
+            // should not be critical - object is stored in cache map
+            return *itr;
+        }
+
+        template<typename Object, typename Lambda>
+        void modify(const Object& obj, Lambda&& updater) {
+            auto midx = get_table<Object>();
+            midx.modify(obj, std::forward<Lambda>(updater));
+        }
+
+        template<typename Object>
+        void erase(const Object& obj) {
+            auto midx = get_table<Object>();
+            midx.erase(obj);
+        }
+
+        template<typename Object>
+        void erase(const primary_key_t pk) {
+            auto midx = get_table<Object>();
+            midx.erase(pk);
+        }
+
+        template<typename Object>
+        void erase(const oid<Object>& id) {
+            erase<Object>(id._id);
+        }
 
         void restore_db();
         void drop_db();

@@ -128,7 +128,7 @@ namespace eosio { namespace chain { namespace resource_limits {
     * Every account that authorizes a transaction is billed for the full size of that transaction. This object
     * tracks the average usage of that account.
     */
-   struct resource_limits_object : public chainbase::object<resource_limits_object_type, resource_limits_object> {
+   struct resource_limits_object : public cyberway::chaindb::object<resource_limits_object_type, resource_limits_object> {
 
       OBJECT_CTOR(resource_limits_object)
 
@@ -145,7 +145,7 @@ namespace eosio { namespace chain { namespace resource_limits {
    struct by_owner;
    struct by_dirty;
 
-   using resource_limits_index = cyberway::chaindb::shared_multi_index_container<
+   using resource_limits_table = cyberway::chaindb::table_container<
       resource_limits_object,
       cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_limits_object, resource_limits_object::id_type, id)>,
@@ -158,7 +158,7 @@ namespace eosio { namespace chain { namespace resource_limits {
       >
    >;
 
-   struct resource_usage_object : public chainbase::object<resource_usage_object_type, resource_usage_object> {
+   struct resource_usage_object : public cyberway::chaindb::object<resource_usage_object_type, resource_usage_object> {
       OBJECT_CTOR(resource_usage_object)
 
       id_type id;
@@ -170,7 +170,7 @@ namespace eosio { namespace chain { namespace resource_limits {
       uint64_t                 ram_usage = 0;
    };
 
-   using resource_usage_index = cyberway::chaindb::shared_multi_index_container<
+   using resource_usage_table = cyberway::chaindb::table_container<
       resource_usage_object,
        cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_usage_object, resource_usage_object::id_type, id)>,
@@ -178,7 +178,7 @@ namespace eosio { namespace chain { namespace resource_limits {
       >
    >;
 
-   class resource_limits_config_object : public chainbase::object<resource_limits_config_object_type, resource_limits_config_object> {
+   class resource_limits_config_object : public cyberway::chaindb::object<resource_limits_config_object_type, resource_limits_config_object> {
       OBJECT_CTOR(resource_limits_config_object);
       id_type id;
 
@@ -196,14 +196,14 @@ namespace eosio { namespace chain { namespace resource_limits {
       uint32_t account_net_usage_average_window = config::account_net_usage_average_window_ms / config::block_interval_ms;
    };
 
-   using resource_limits_config_index = cyberway::chaindb::shared_multi_index_container<
+   using resource_limits_config_table = cyberway::chaindb::table_container<
       resource_limits_config_object,
       cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_limits_config_object, resource_limits_config_object::id_type, id)>
       >
    >;
 
-   class resource_limits_state_object : public chainbase::object<resource_limits_state_object_type, resource_limits_state_object> {
+   class resource_limits_state_object : public cyberway::chaindb::object<resource_limits_state_object_type, resource_limits_state_object> {
       OBJECT_CTOR(resource_limits_state_object);
       id_type id;
 
@@ -251,7 +251,7 @@ namespace eosio { namespace chain { namespace resource_limits {
 
    };
 
-   using resource_limits_state_index = cyberway::chaindb::shared_multi_index_container<
+   using resource_limits_state_table = cyberway::chaindb::table_container<
       resource_limits_state_object,
       cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_limits_state_object, resource_limits_state_object::id_type, id)>
@@ -260,10 +260,10 @@ namespace eosio { namespace chain { namespace resource_limits {
 
 } } } /// eosio::chain::resource_limits
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_object,        eosio::chain::resource_limits::resource_limits_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_usage_object,         eosio::chain::resource_limits::resource_usage_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_config_object, eosio::chain::resource_limits::resource_limits_config_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_state_object,  eosio::chain::resource_limits::resource_limits_state_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_limits_object,        eosio::chain::resource_limits::resource_limits_table)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_usage_object,         eosio::chain::resource_limits::resource_usage_table)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_limits_config_object, eosio::chain::resource_limits::resource_limits_config_table)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_limits_state_object,  eosio::chain::resource_limits::resource_limits_state_table)
 
 CHAINDB_TAG(eosio::chain::resource_limits::resource_limits_object,        reslimit)
 CHAINDB_TAG(eosio::chain::resource_limits::resource_usage_object,         resusage)

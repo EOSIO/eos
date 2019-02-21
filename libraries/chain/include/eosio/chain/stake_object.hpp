@@ -11,7 +11,7 @@
 
 namespace eosio { namespace chain {
 
-class stake_agent_object : public chainbase::object<stake_agent_object_type, stake_agent_object> {
+class stake_agent_object : public cyberway::chaindb::object<stake_agent_object_type, stake_agent_object> {
     OBJECT_CTOR(stake_agent_object)
     id_type id;  
     symbol_code purpose_code;
@@ -32,7 +32,7 @@ class stake_agent_object : public chainbase::object<stake_agent_object_type, sta
     struct by_ultimate {};
 };
 
-using stake_agent_index = cyberway::chaindb::shared_multi_index_container<
+using stake_agent_table = cyberway::chaindb::table_container<
     stake_agent_object,
     cyberway::chaindb::indexed_by<
         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, 
@@ -53,7 +53,7 @@ using stake_agent_index = cyberway::chaindb::shared_multi_index_container<
     >
 >;
 
-class stake_grant_object : public chainbase::object<stake_grant_object_type, stake_grant_object> {
+class stake_grant_object : public cyberway::chaindb::object<stake_grant_object_type, stake_grant_object> {
     OBJECT_CTOR(stake_grant_object)
     id_type id;
     symbol_code purpose_code;
@@ -68,7 +68,7 @@ class stake_grant_object : public chainbase::object<stake_grant_object_type, sta
     struct by_key {};
 };
 
-using stake_grant_index = cyberway::chaindb::shared_multi_index_container<
+using stake_grant_table = cyberway::chaindb::table_container<
     stake_grant_object,
     cyberway::chaindb::indexed_by<
         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>,
@@ -83,7 +83,7 @@ using stake_grant_index = cyberway::chaindb::shared_multi_index_container<
     >
 >;
     
-class stake_param_object : public chainbase::object<stake_param_object_type, stake_param_object> {
+class stake_param_object : public cyberway::chaindb::object<stake_param_object_type, stake_param_object> {
     OBJECT_CTOR(stake_param_object)
     id_type id;
     symbol token_symbol;
@@ -94,14 +94,14 @@ class stake_param_object : public chainbase::object<stake_param_object_type, sta
     uint16_t payout_steps_num;  //--/--  depend on the purposes
 };
 
-using stake_param_index = cyberway::chaindb::shared_multi_index_container<
+using stake_param_table = cyberway::chaindb::table_container<
     stake_param_object,
     cyberway::chaindb::indexed_by<
         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(stake_param_object, stake_param_object::id_type, id)>
     >
 >;
     
-class stake_stat_object : public chainbase::object<stake_stat_object_type, stake_stat_object> {
+class stake_stat_object : public cyberway::chaindb::object<stake_stat_object_type, stake_stat_object> {
     OBJECT_CTOR(stake_stat_object)
     id_type id;
     symbol_code purpose_code;
@@ -110,7 +110,7 @@ class stake_stat_object : public chainbase::object<stake_stat_object_type, stake
     struct by_key {};
 };
 
-using stake_stat_index = cyberway::chaindb::shared_multi_index_container<
+using stake_stat_table = cyberway::chaindb::table_container<
     stake_stat_object,
     cyberway::chaindb::indexed_by<
         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, 
@@ -125,19 +125,19 @@ using stake_stat_index = cyberway::chaindb::shared_multi_index_container<
 
 } } // eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::stake_agent_object, eosio::chain::stake_agent_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::stake_agent_object, eosio::chain::stake_agent_table)
 CHAINDB_TAG(eosio::chain::stake_agent_object::by_key, bykey)
 CHAINDB_TAG(eosio::chain::stake_agent_object::by_ultimate, byultimate)
 CHAINDB_TAG(eosio::chain::stake_agent_object, stake.agent)
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::stake_grant_object, eosio::chain::stake_grant_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::stake_grant_object, eosio::chain::stake_grant_table)
 CHAINDB_TAG(eosio::chain::stake_grant_object::by_key, bykey)
 CHAINDB_TAG(eosio::chain::stake_grant_object, stake.grant)
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::stake_param_object, eosio::chain::stake_param_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::stake_param_object, eosio::chain::stake_param_table)
 CHAINDB_TAG(eosio::chain::stake_param_object, stake.param)
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::stake_stat_object, eosio::chain::stake_stat_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::stake_stat_object, eosio::chain::stake_stat_table)
 CHAINDB_TAG(eosio::chain::stake_stat_object::by_key, bykey)
 CHAINDB_TAG(eosio::chain::stake_stat_object, stake.stat)
 

@@ -363,9 +363,8 @@ namespace cyberway { namespace chaindb {
             CYBERWAY_SESSION_ASSERT(start_revision >= revision_ && start_revision >= tail_revision_,
                 "Wrong state on restore");
 
-            chainbase::allocator<eosio::chain::account_object>* alloc = nullptr;
-            eosio::chain::account_index account_table(*alloc /*isn't used*/, controller_);
-            auto account_idx = account_table.get<eosio::chain::by_name>();
+            auto account_table = controller_.get_table<eosio::chain::account_object>();
+            auto account_idx = account_table.get_index<eosio::chain::by_name>();
             auto& abi_map = controller_.get_abi_map();
 
             auto get_system_table_def = [&](const auto& service) -> table_def {
