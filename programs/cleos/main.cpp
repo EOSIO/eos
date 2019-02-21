@@ -1674,7 +1674,7 @@ struct lendrex_subcommand {
       auto lendrex = actionRoot->add_subcommand("lendrex", localized("Deposit tokens to REX fund and use the tokens to buy REX"));
       lendrex->add_option("from",   from_str,   localized("Account buying REX tokens"))->required();
       lendrex->add_option("amount", amount_str, localized("Amount of liquid tokens to be used in buying REX"))->required();
-      add_standard_transaction_options(lendrex, "owner@active");
+      add_standard_transaction_options(lendrex, "from@active");
       lendrex->set_callback([this] {
          fc::variant act_payload1 = fc::mutable_variant_object()
             ("owner",  from_str)
