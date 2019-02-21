@@ -738,14 +738,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
 void producer_plugin::plugin_startup()
 { try {
-   auto& logger_map = fc::get_logger_map();
-   if(logger_map.find(logger_name) != logger_map.end()) {
-      _log = logger_map[logger_name];
-   }
-
-   if( logger_map.find(trx_trace_logger_name) != logger_map.end()) {
-      _trx_trace_log = logger_map[trx_trace_logger_name];
-   }
+   handle_sighup(); // Sets loggers
 
    ilog("producer plugin:  plugin_startup() begin");
 
@@ -797,6 +790,16 @@ void producer_plugin::plugin_shutdown() {
    }
    my->_accepted_block_connection.reset();
    my->_irreversible_block_connection.reset();
+}
+
+void producer_plugin::handle_sighup() {
+   auto& logger_map = fc::get_logger_map();
+   if(logger_map.find(logger_name) != logger_map.end()) {
+      _log = logger_map[logger_name];
+   }
+   if( logger_map.find(trx_trace_logger_name) != logger_map.end()) {
+      _trx_trace_log = logger_map[trx_trace_logger_name];
+   }
 }
 
 void producer_plugin::pause() {
