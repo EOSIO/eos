@@ -10,6 +10,8 @@ if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [[ $1 =~ for
                if [ $( uname ) == "Darwin" ]; then
                   # gettext and other brew packages are not modified as they can be dependencies for things other than eosio
                   brew uninstall llvm@4 --force
+                  brew uninstall doxygen --force
+                  brew uninstall graphviz --force
                fi
                rm -rf $HOME/opt/eosio
                rm -f $HOME/bin/eosio-launcher
