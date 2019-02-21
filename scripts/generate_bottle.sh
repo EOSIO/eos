@@ -44,6 +44,7 @@ echo "class Eosio < Formula
    depends_on \"gmp\"
    depends_on \"gettext\"
    depends_on \"openssl\"
+   depends_on \"libusb\"
    depends_on :macos => :high_sierra
    depends_on :arch =>  :intel
 
