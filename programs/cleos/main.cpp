@@ -28,7 +28,7 @@ Options:
                               the http/https URL where keosd is running
   -r,--header                 pass specific HTTP header, repeat this option to pass multiple headers
   -n,--no-verify              don't verify peer certificate when using HTTPS
-  -v,--verbose                output verbose actions on error
+  -v,--verbose                output verbose errors and action output
 
 Subcommands:
   version                     Retrieve version information
@@ -182,6 +182,7 @@ bool   tx_print_json = false;
 bool   print_request = false;
 bool   print_response = false;
 bool   no_auto_keosd = false;
+bool   verbose = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
@@ -373,8 +374,10 @@ void print_action( const fc::variant& at ) {
    if( console.size() ) {
       std::stringstream ss(console);
       string line;
-      std::getline( ss, line );
-      cout << ">> " << line << "\n";
+      while( std::getline( ss, line ) ) {
+         cout << ">> " << line << "\n";
+         if( !verbose ) break;
+      }
    }
 }
 
@@ -2300,8 +2303,7 @@ int main( int argc, char** argv ) {
    app.add_flag( "--no-auto-keosd", no_auto_keosd, localized("don't automatically launch a keosd if one is not currently running"));
    app.set_callback([&app]{ ensure_keosd_running(&app);});
 
-   bool verbose_errors = false;
-   app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
+   app.add_flag( "-v,--verbose", verbose, localized("output verbose errors and action console output"));
    app.add_flag("--print-request", print_request, localized("print HTTP request to STDERR"));
    app.add_flag("--print-response", print_response, localized("print HTTP response to STDERR"));
 
@@ -2774,8 +2776,10 @@ int main( int argc, char** argv ) {
                     stringstream out;
                     std::stringstream ss(console);
                     string line;
-                    std::getline( ss, line );
-                    out << ">> " << line << "\n";
+                    while( std::getline( ss, line ) ) {
+                       out << ">> " << line << "\n";
+                       if( !fullact ) break;
+                    }
                     cerr << out.str(); //ilog( "\r${m}                                   ", ("m",out.str()) );
                  }
               }
@@ -3880,16 +3884,16 @@ int main( int argc, char** argv ) {
    } catch (const explained_exception& e) {
       return 1;
    } catch (connection_exception& e) {
-      if (verbose_errors) {
+      if (verbose) {
          elog("connect error: ${e}", ("e", e.to_detail_string()));
       }
       return 1;
    } catch (const fc::exception& e) {
       // attempt to extract the error code if one is present
-      if (!print_recognized_errors(e, verbose_errors)) {
+      if (!print_recognized_errors(e, verbose)) {
          // Error is not recognized
-         if (!print_help_text(e) || verbose_errors) {
-            elog("Failed with error: ${e}", ("e", verbose_errors ? e.to_detail_string() : e.to_string()));
+         if (!print_help_text(e) || verbose) {
+            elog("Failed with error: ${e}", ("e", verbose ? e.to_detail_string() : e.to_string()));
          }
       }
       return 1;
