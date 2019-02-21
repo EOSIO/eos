@@ -1,4 +1,4 @@
-if [ $1 == 1 ]; then answer=1; fi # NONINTERACTIVE
+if [ $1 == 1 ]; then ANSWER=1; else ANSWER=0; fi
 
 CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 CPU_CORE=$( nproc )
@@ -60,8 +60,8 @@ fi
 printf " - Yum installation found at %s.\\n" "${YUM}"
 
 
-if [ $1 == 0 ]; then read -p "Do you wish to update YUM repositories? (y/n) " answer; fi
-case ${answer} in
+if [ $ANSWER != 1 ]; then read -p "Do you wish to update YUM repositories? (y/n) " ANSWER; fi
+case $ANSWER in
 	1 | [Yy]* )
 		if ! sudo $YUM -y update; then
 			printf " - YUM update failed.\\n"
@@ -71,7 +71,7 @@ case ${answer} in
 		fi
 	;;
 	[Nn]* ) echo " - Proceeding without update!";;
-	* ) echo "Please type 'y' for yes or 'n' for no.";;
+	* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 esac
 
 printf "Checking RPM for installed dependencies...\\n"
@@ -90,8 +90,8 @@ done
 if [ "${COUNT}" -gt 1 ]; then
 	printf "\\nThe following dependencies are required to install EOSIO:\\n"
 	printf "${DISPLAY}\\n\\n"
-	if [ $1 == 0 ]; then read -p "Do you wish to install these dependencies? (y/n) " answer; fi
-	case ${answer} in
+	if [ $ANSWER != 1 ]; then read -p "Do you wish to install these dependencies? (y/n) " ANSWER; fi
+	case $ANSWER in
 		1 | [Yy]* )
 			if ! sudo $YUM -y install ${DEP}; then
 				printf " - YUM dependency installation failed!\\n"
@@ -101,7 +101,7 @@ if [ "${COUNT}" -gt 1 ]; then
 			fi
 		;;
 		[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
-		* ) echo "Please type 'y' for yes or 'n' for no.";;
+		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
 else
 	printf " - No required YUM dependencies to install.\\n"

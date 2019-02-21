@@ -1,4 +1,4 @@
-if [ $1 == 1 ]; then answer=1; fi # NONINTERACTIVE
+if [ $1 == 1 ]; then ANSWER=1; else ANSWER=0; fi
 
 OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' \
 | cut -d'.' -f1 )
@@ -53,8 +53,8 @@ if ! YUM=$( command -v yum 2>/dev/null ); then
 fi
 printf " - Yum installation found at %s.\\n" "${YUM}"
 
-if [ $1 == 0 ]; then read -p "Do you wish to update YUM repositories? (y/n) " answer; fi
-case ${answer} in
+if [ $ANSWER != 1 ]; then read -p "Do you wish to update YUM repositories? (y/n) " ANSWER; fi
+case $ANSWER in
 	1 | [Yy]* )
 		if ! "${YUM}" -y update; then
 			printf " - YUM update failed.\\n"
@@ -64,14 +64,14 @@ case ${answer} in
 		fi
 	;;
 	[Nn]* ) echo " - Proceeding without update!";;
-	* ) echo "Please type 'y' for yes or 'n' for no.";;
+	* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 esac
 
 printf "Checking installation of Centos Software Collections Repository...\\n"
 SCL=$( rpm -qa | grep -E 'centos-release-scl-[0-9].*' )
 if [ -z "${SCL}" ]; then
-	if [ $1 == 0 ]; then read -p "Do you wish to install and enable this repository? (y/n)? " answer; fi
-	case ${answer} in
+	if [ $ANSWER != 1 ]; then read -p "Do you wish to install and enable this repository? (y/n)? " ANSWER; fi
+	case $ANSWER in
 		1 | [Yy]* )
 			printf "Installing SCL...\\n"
 			if ! "${YUM}" -y --enablerepo=extras install centos-release-scl 2>/dev/null; then
@@ -83,7 +83,7 @@ if [ -z "${SCL}" ]; then
 			fi
 		;;
 		[Nn]* ) echo "User aborting installation of required Centos Software Collections Repository, Exiting now."; exit;;
-		* ) echo "Please type 'y' for yes or 'n' for no.";;
+	* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
 else
 	printf " - ${SCL} found.\\n"
@@ -92,8 +92,8 @@ fi
 printf "Checking installation of devtoolset-7...\\n"
 DEVTOOLSET=$( rpm -qa | grep -E 'devtoolset-7-[0-9].*' )
 if [ -z "${DEVTOOLSET}" ]; then
-	if [ $1 == 0 ]; then read -p "Do you wish to install devtoolset-7? (y/n)? " answer; fi
-	case ${answer} in
+	if [ $ANSWER != 1 ]; then read -p "Do you wish to install devtoolset-7? (y/n)? " ANSWER; fi
+	case $ANSWER in
 		1 | [Yy]* )
 			printf "Installing devtoolset-7...\\n"
 			if ! "${YUM}" install -y devtoolset-7; then
@@ -105,7 +105,7 @@ if [ -z "${DEVTOOLSET}" ]; then
 			fi
 		;;
 		[Nn]* ) echo "User aborting installation of devtoolset-7. Exiting now."; exit;;
-		* ) echo "Please type 'y' for yes or 'n' for no.";;
+		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
 else
 	printf " - ${DEVTOOLSET} found.\\n"
@@ -143,8 +143,8 @@ done
 if [ "${COUNT}" -gt 1 ]; then
 	printf "\\nThe following dependencies are required to install EOSIO:\\n"
 	printf "${DISPLAY}\\n\\n"
-	if [ $1 == 0 ]; then read -p "Do you wish to install these dependencies? (y/n) " answer; fi
-	case ${answer} in
+	if [ $ANSWER != 1 ]; then read -p "Do you wish to install these dependencies? (y/n) " ANSWER; fi
+	case $ANSWER in
 		1 | [Yy]* )
 			if ! "${YUM}" -y install ${DEP}; then
 				printf " - YUM dependency installation failed!\\n"
@@ -154,7 +154,7 @@ if [ "${COUNT}" -gt 1 ]; then
 			fi
 		;;
 		[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
-		* ) echo "Please type 'y' for yes or 'n' for no.";;
+		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
 else
 	printf " - No required YUM dependencies to install.\\n"
