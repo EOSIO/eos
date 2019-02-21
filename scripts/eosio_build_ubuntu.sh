@@ -1,4 +1,4 @@
-if [ $1 == 1 ]; then answer=1; fi # NONINTERACTIVE
+if [ $1 == 1 ]; then ANSWER=1; else ANSWER=0; fi
 
 OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' )
 OS_MAJ=$(echo "${OS_VER}" | cut -d'.' -f1)
@@ -82,8 +82,8 @@ if [[ "${ENABLE_CODE_COVERAGE}" == true ]]; then
 	DEP_ARRAY+=(lcov)
 fi
 
-if [ $1 == 0 ]; then read -p "Do you wish to update repositories with apt-get update? (y/n) " answer; fi
-case ${answer} in
+if [ $ANSWER != 1 ]; then read -p "Do you wish to update repositories with apt-get update? (y/n) " ANSWER; fi
+case $ANSWER in
 	1 | [Yy]* )
 		if ! sudo apt-get update; then
 			printf " - APT update failed.\\n"
@@ -93,7 +93,7 @@ case ${answer} in
 		fi
 	;;
 	[Nn]* ) echo "Proceeding without update!";;
-	* ) echo "Please type 'y' for yes or 'n' for no.";;
+	* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 esac
 
 printf "\\nChecking for installed dependencies...\\n"
@@ -112,8 +112,8 @@ done
 if [ "${COUNT}" -gt 1 ]; then
 	printf "\\nThe following dependencies are required to install EOSIO:\\n"
 	printf "${DISPLAY}\\n\\n" 
-	if [ $1 == 0 ]; then read -p "Do you wish to install these packages? (y/n) " answer; fi
-	case ${answer} in
+	if [ $ANSWER != 1 ]; then read -p "Do you wish to install these packages? (y/n) " ANSWER; fi
+	case $ANSWER in
 		1 | [Yy]* )
 			if ! sudo apt-get -y install ${DEP}; then
 				printf " - APT dependency failed.\\n"
@@ -123,7 +123,7 @@ if [ "${COUNT}" -gt 1 ]; then
 			fi
 		;;
 		[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
-		* ) echo "Please type 'y' for yes or 'n' for no.";;
+		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
 else 
 	printf " - No required APT dependencies to install."

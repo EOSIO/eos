@@ -1,4 +1,4 @@
-if [ $1 == 1 ]; then answer=1; fi # NONINTERACTIVE
+if [ $1 == 1 ]; then ANSWER=1; else ANSWER=0; fi
 
 OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' | cut -d'.' -f1 )
 
@@ -12,19 +12,14 @@ if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
 	DEP_ARRAY=( 
 		sudo procps util-linux which gcc72 gcc72-c++ autoconf automake libtool make doxygen graphviz \
 		bzip2 bzip2-devel openssl-devel gmp gmp-devel libstdc++72 python27 python27-devel python34 python34-devel \
-		libedit-devel ncurses-devel swig wget file libcurl-devel
+		libedit-devel ncurses-devel swig wget file libcurl-devel libusb1-devel
 	)
 else
 	DEP_ARRAY=( 
 		git procps-ng util-linux gcc gcc-c++ autoconf automake libtool make bzip2 \
-		bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
-		python3 python3-devel python-devel libedit-devel doxygen graphviz
+		bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel libusbx-devel \
+		python3 python3-devel python-devel libedit-devel doxygen graphviz 
 	)
-fi
-if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
-	DEP_ARRAY+=(libusb1-devel)
-else
-	DEP_ARRAY+=(libusbx-devel)
 fi
 
 COUNT=1
@@ -52,8 +47,8 @@ then
 fi
 printf "Yum installation found at ${YUM}.\\n"
 
-if [ $1 == 0 ]; then read -p "Do you wish to update YUM repositories? (y/n) " answer; fi
-case ${answer} in
+if [ $ANSWER != 1 ]; then read -p "Do you wish to update YUM repositories? (y/n) " ANSWER; fi
+case $ANSWER in
 	1 | [Yy]* )
 		if ! sudo $YUM -y update; then
 			printf " - YUM update failed.\\n"
@@ -63,7 +58,7 @@ case ${answer} in
 		fi
 	;;
 	[Nn]* ) echo " - Proceeding without update!";;
-	* ) echo "Please type 'y' for yes or 'n' for no.";;
+	* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 esac
 
 printf "Checking RPM for installed dependencies...\\n"
@@ -82,8 +77,8 @@ done
 if [ "${COUNT}" -gt 1 ]; then
 	printf "\\nThe following dependencies are required to install EOSIO:\\n"
 	printf "${DISPLAY}\\n\\n"
-	if [ $1 == 0 ]; then read -p "Do you wish to install these dependencies? (y/n) " answer; fi
-	case ${answer} in
+	if [ $ANSWER != 1 ]; then read -p "Do you wish to install these dependencies? (y/n) " ANSWER; fi
+	case $ANSWER in
 		1 | [Yy]* )
 			if ! sudo $YUM -y install ${DEP}; then
 				printf " - YUM dependency installation failed!\\n"
@@ -93,7 +88,7 @@ if [ "${COUNT}" -gt 1 ]; then
 			fi
 		;;
 		[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
-		* ) echo "Please type 'y' for yes or 'n' for no.";;
+		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
 else
 	printf " - No required YUM dependencies to install.\\n"
