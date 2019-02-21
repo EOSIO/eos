@@ -16,7 +16,9 @@ using resource_index_set = index_set<
    resource_limits_state_index,
    resource_limits_config_index,
    stake_agent_index,
-   stake_grant_index
+   stake_grant_index,
+   stake_param_index,
+   stake_stat_index
 >;
 
 static_assert( config::rate_limiting_precision > 0, "config::rate_limiting_precision must be positive" );
@@ -445,38 +447,38 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
    return arl;
 }
 
-void resource_limits_manager::update_proxied(int64_t now, symbol purpose_symbol, const account_name& account, int64_t frame_length, bool force) {
+void resource_limits_manager::update_proxied(int64_t now, symbol_code purpose_code, symbol_code token_code, const account_name& account, int64_t frame_length, bool force) {
     const auto& agents_idx = _db.get_mutable_index<stake_agent_index>().indices().get<stake_agent_object::by_key>();
     const auto& grants_idx = _db.get_mutable_index<stake_grant_index>().indices().get<stake_grant_object::by_key>();
-    update_proxied_traversal(now, purpose_symbol, agents_idx, grants_idx, get_agent(purpose_symbol, agents_idx, account), 
+    update_proxied_traversal(now, purpose_code, token_code, agents_idx, grants_idx, get_agent(purpose_code, token_code, agents_idx, account), 
         frame_length, force);
 }
 
-void resource_limits_manager::recall_proxied(int64_t now, account_name grantor_name, account_name agent_name, 
-                    symbol_code token_code, symbol_code purpose_code, int16_t pct) {
+void resource_limits_manager::recall_proxied(int64_t now, symbol_code purpose_code, symbol_code token_code, 
+                                            account_name grantor_name, account_name agent_name, int16_t pct) {
                         
     EOS_ASSERT(1 <= pct && pct <= config::_100percent, transaction_exception, "pct must be between 0.01% and 100% (1-10000)");
     const auto* param = _db.find<stake_param_object, by_id>(token_code.value);
     EOS_ASSERT(param, transaction_exception, "no staking for token");
-    auto purpose_symbol = param->get_purpose_symbol(token_code, purpose_code);
+    EOS_ASSERT(std::find(param->purposes.begin(), param->purposes.end(), purpose_code) != param->purposes.end(), transaction_exception, "unknown purpose");
     
     const auto& agents_idx = _db.get_mutable_index<stake_agent_index>().indices().get<stake_agent_object::by_key>();
     const auto& grants_idx = _db.get_mutable_index<stake_grant_index>().indices().get<stake_grant_object::by_key>();
 
-    auto grantor_as_agent = get_agent(purpose_symbol, agents_idx, grantor_name);
+    auto grantor_as_agent = get_agent(purpose_code, token_code, agents_idx, grantor_name);
     
-    update_proxied_traversal(now, purpose_symbol, agents_idx, grants_idx, grantor_as_agent, param->frame_length, false);
+    update_proxied_traversal(now, purpose_code, token_code, agents_idx, grants_idx, grantor_as_agent, param->frame_length, false);
     
     int64_t amount = 0;
-    auto grant_itr = grants_idx.lower_bound(grant_key(purpose_symbol, grantor_name));
+    auto grant_itr = grants_idx.lower_bound(grant_key(purpose_code, token_code, grantor_name));
     while ((grant_itr != grants_idx.end()) &&
-           (grant_itr->purpose_id   == purpose_symbol.decimals()) &&
-           (grant_itr->token_code   == purpose_symbol.to_symbol_code()) &&
+           (grant_itr->purpose_code   == purpose_code) &&
+           (grant_itr->token_code   == token_code) &&
            (grant_itr->grantor_name == grantor_name))
     {
         if (grant_itr->agent_name == agent_name) {
             auto to_recall = get_prop(grant_itr->share, pct);
-            amount = recall_proxied_traversal(purpose_symbol, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
+            amount = recall_proxied_traversal(purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
             if (grant_itr->pct || grant_itr->share > to_recall) {
                 _db.modify(*grant_itr, [&](auto& g) { g.share -= to_recall; });
                 ++grant_itr;
@@ -499,11 +501,11 @@ void resource_limits_manager::recall_proxied(int64_t now, account_name grantor_n
     });
 }
 
-int64_t resource_limits_manager::recall_proxied_traversal(symbol purpose_symbol, 
+int64_t resource_limits_manager::recall_proxied_traversal(symbol_code purpose_code, symbol_code token_code, 
                     const agents_idx_t& agents_idx, const grants_idx_t& grants_idx, 
                     const account_name& agent_name, int64_t share, int16_t break_fee) {
     
-    auto agent = get_agent(purpose_symbol, agents_idx, agent_name);
+    auto agent = get_agent(purpose_code, token_code, agents_idx, agent_name);
 
     EOS_ASSERT(share >= 0, transaction_exception, "SYSTEM: share can't be negative");
     EOS_ASSERT(share <= agent->shares_sum, transaction_exception, "SYSTEM: incorrect share val");
@@ -515,14 +517,14 @@ int64_t resource_limits_manager::recall_proxied_traversal(symbol purpose_symbol,
     EOS_ASSERT(balance_ret <= agent->balance, transaction_exception, "SYSTEM: incorrect balance_ret val");
     
     auto proxied_ret = 0;
-    auto grant_itr = grants_idx.lower_bound(grant_key(purpose_symbol, agent->account));
+    auto grant_itr = grants_idx.lower_bound(grant_key(purpose_code, token_code, agent->account));
     while ((grant_itr != grants_idx.end()) &&
-           (grant_itr->purpose_id   == purpose_symbol.decimals()) &&
-           (grant_itr->token_code   == purpose_symbol.to_symbol_code()) &&
+           (grant_itr->purpose_code   == purpose_code) &&
+           (grant_itr->token_code   == token_code) &&
            (grant_itr->grantor_name == agent->account))
     {
         auto to_recall = get_prop(share_net, grant_itr->share, agent->shares_sum);
-        proxied_ret += recall_proxied_traversal(purpose_symbol, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
+        proxied_ret += recall_proxied_traversal(purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
         _db.modify(*grant_itr, [&](auto& g) { g.share -= to_recall; });
         ++grant_itr;
     }
@@ -537,7 +539,7 @@ int64_t resource_limits_manager::recall_proxied_traversal(symbol purpose_symbol,
     return balance_ret + proxied_ret;
 }
 
-void resource_limits_manager::update_proxied_traversal(int64_t now, symbol purpose_symbol,
+void resource_limits_manager::update_proxied_traversal(int64_t now, symbol_code purpose_code, symbol_code token_code,
                     const agents_idx_t& agents_idx, const grants_idx_t& grants_idx,
                     const stake_agent_object* agent, int64_t frame_length, bool force) {
 
@@ -545,15 +547,15 @@ void resource_limits_manager::update_proxied_traversal(int64_t now, symbol purpo
         int64_t new_proxied = 0;
         int64_t unstaked = 0;
 
-        auto grant_itr = grants_idx.lower_bound(grant_key(purpose_symbol, agent->account));
+        auto grant_itr = grants_idx.lower_bound(grant_key(purpose_code, token_code, agent->account));
         
         while ((grant_itr != grants_idx.end()) &&
-               (grant_itr->purpose_id   == purpose_symbol.decimals()) &&
-               (grant_itr->token_code   == purpose_symbol.to_symbol_code()) &&
+               (grant_itr->purpose_code == purpose_code) &&
+               (grant_itr->token_code   == token_code) &&
                (grant_itr->grantor_name == agent->account))
         {
-            auto proxy_agent = get_agent(purpose_symbol, agents_idx, grant_itr->agent_name);
-            update_proxied_traversal(now, purpose_symbol, agents_idx, grants_idx, proxy_agent, frame_length, force);
+            auto proxy_agent = get_agent(purpose_code, token_code, agents_idx, grant_itr->agent_name);
+            update_proxied_traversal(now, purpose_code, token_code, agents_idx, grants_idx, proxy_agent, frame_length, force);
             
             if (proxy_agent->proxy_level < agent->proxy_level && 
                 grant_itr->break_fee >= proxy_agent->fee &&
@@ -564,7 +566,7 @@ void resource_limits_manager::update_proxied_traversal(int64_t now, symbol purpo
                 ++grant_itr;
             }
             else {
-                unstaked += recall_proxied_traversal(purpose_symbol, agents_idx, grants_idx, grant_itr->agent_name, grant_itr->share, grant_itr->break_fee);
+                unstaked += recall_proxied_traversal(purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, grant_itr->share, grant_itr->break_fee);
                 const auto &cur_grant = *grant_itr;
                 ++grant_itr;
                 _db.remove(cur_grant);
