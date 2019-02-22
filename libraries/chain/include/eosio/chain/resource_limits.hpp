@@ -93,8 +93,8 @@ namespace resource_limits {
 
          int64_t get_account_ram_usage( const account_name& name ) const;
          
-         void update_proxied(int64_t now, symbol purpose_symbol, const account_name& account, int64_t frame_length, bool force);
-         void recall_proxied(int64_t now, account_name grantor_name, account_name agent_name, symbol_code token_code, symbol_code purpose_code, int16_t pct);
+         void update_proxied(int64_t now, symbol_code purpose_code, symbol_code token_code, const account_name& account, int64_t frame_length, bool force);
+         void recall_proxied(int64_t now, symbol_code purpose_code, symbol_code token_code, account_name grantor_name, account_name agent_name, int16_t pct);
 
       private:
          chainbase::database& _db;
@@ -103,24 +103,24 @@ namespace resource_limits {
          using agents_idx_t = decltype(_db.get_mutable_index<stake_agent_index>().indices().get<stake_agent_object::by_key>());
          using grants_idx_t = decltype(_db.get_mutable_index<stake_grant_index>().indices().get<stake_grant_object::by_key>());
          
-         static auto agent_key(symbol purpose_symbol, const account_name& agent_name) {
-             return boost::make_tuple(purpose_symbol.decimals(), purpose_symbol.to_symbol_code(), agent_name);
+         static auto agent_key(symbol_code purpose_code, symbol_code token_code, const account_name& agent_name) {
+             return boost::make_tuple(purpose_code, token_code, agent_name);
          }
-         static auto grant_key(symbol purpose_symbol, const account_name& grantor_name, const account_name& agent_name = account_name()) {
-             return boost::make_tuple(purpose_symbol.decimals(), purpose_symbol.to_symbol_code(), grantor_name, agent_name);
+         static auto grant_key(symbol_code purpose_code, symbol_code token_code, const account_name& grantor_name, const account_name& agent_name = account_name()) {
+             return boost::make_tuple(purpose_code, token_code, grantor_name, agent_name);
          }
          
-         static const stake_agent_object* get_agent(symbol purpose_symbol, const agents_idx_t& agents_idx, const account_name& agent_name) {
-            auto agent = agents_idx.find(agent_key(purpose_symbol, agent_name));
+         static const stake_agent_object* get_agent(symbol_code purpose_code, symbol_code token_code, const agents_idx_t& agents_idx, const account_name& agent_name) {
+            auto agent = agents_idx.find(agent_key(purpose_code, token_code, agent_name));
             EOS_ASSERT(agent != agents_idx.end(), transaction_exception, "agent doesn't exist");
             return &(*agent); 
          }
          
-         int64_t recall_proxied_traversal(symbol purpose_symbol, 
+         int64_t recall_proxied_traversal(symbol_code purpose_code, symbol_code token_code,
             const agents_idx_t& agents_idx, const grants_idx_t& grants_idx, 
             const account_name& agent_name, int64_t share, int16_t break_fee);
         
-         void update_proxied_traversal(int64_t now, symbol purpose_symbol, 
+         void update_proxied_traversal(int64_t now, symbol_code purpose_code, symbol_code token_code, 
             const agents_idx_t& agents_idx, const grants_idx_t& grants_idx,
             const stake_agent_object* agent, int64_t frame_length, bool force);
          
