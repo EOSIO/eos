@@ -31,7 +31,6 @@ class Cluster(object):
     __LauncherCmdArr=[]
     __bootlog="eosio-ignition-wd/bootlog.txt"
     __configDir="etc/eosio/"
-    __dataDir="var/lib/"
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
@@ -128,11 +127,12 @@ class Cluster(object):
     # pylint: disable=too-many-return-statements
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
-    def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", p2pPlugin="net", delay=1, onlyBios=False, dontBootstrap=False,
+    def launch(self, pnodes=1, unstartedNodes=0, totalNodes=1, prodCount=1, topo="mesh", p2pPlugin="net", delay=1, onlyBios=False, dontBootstrap=False,
                totalProducers=None, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None, alternateVersionLabelsFile=None,
                associatedNodeLabels=None):
         """Launch cluster.
         pnodes: producer nodes count
+        unstartedNodes: non-producer nodes that are configured into the launch, but not started
         totalNodes: producer + non-producer nodes count
         prodCount: producers per producer node count
         topo: cluster topology (as defined by launcher, and "bridge" shape that is specific to this launch method)
@@ -169,6 +169,8 @@ class Cluster(object):
 
         if pnodes > totalNodes:
             raise RuntimeError("totalNodes (%d) must be equal to or greater than pnodes(%d)." % (totalNodes, pnodes))
+        if pnodes + unstartedNodes > totalNodes:
+            raise RuntimeError("totalNodes (%d) must be equal to or greater than pnodes(%d) + unstartedNodes(%d)." % (totalNodes, pnodes, unstartedNodes))
 
         if self.walletMgr is None:
             self.walletMgr=WalletMgr(True)
@@ -807,15 +809,6 @@ class Cluster(object):
         return int(m.group(1))
 
     @staticmethod
-    def nodeExtensionToName(ext):
-        r"""Convert node extension (bios, 0, 1, etc) to node name. """
-        prefix="node_"
-        if ext == "bios":
-            return prefix + ext
-
-        return "node_%02d" % (ext)
-
-    @staticmethod
     def parseProducerKeys(configFile, nodeName):
         """Parse node config file for producer keys. Returns dictionary. (Keys: account name; Values: dictionary objects (Keys: ["name", "node", "private","public"]; Values: account name, node id returned by nodeNameToId(nodeName), private key(string)and public key(string)))."""
 
@@ -852,7 +845,7 @@ class Cluster(object):
     def parseProducers(nodeNum):
         """Parse node config file for producers."""
 
-        configFile=Cluster.__configDir + Cluster.nodeExtensionToName(nodeNum) + "/config.ini"
+        configFile=Cluster.__configDir + Utils.nodeExtensionToName(nodeNum) + "/config.ini"
         if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
         configStr=None
         with open(configFile, 'r') as f:
@@ -870,7 +863,7 @@ class Cluster(object):
     def parseClusterKeys(totalNodes):
         """Parse cluster config file. Updates producer keys data members."""
 
-        nodeName=Cluster.nodeExtensionToName("bios")
+        nodeName=Utils.nodeExtensionToName("bios")
         configFile=Cluster.__configDir + nodeName + "/config.ini"
         if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
         producerKeys=Cluster.parseProducerKeys(configFile, nodeName)
@@ -879,7 +872,7 @@ class Cluster(object):
             return None
 
         for i in range(0, totalNodes):
-            nodeName=Cluster.nodeExtensionToName(i)
+            nodeName=Utils.nodeExtensionToName(i)
             configFile=Cluster.__configDir + nodeName + "/config.ini"
             if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
 
@@ -1254,7 +1247,7 @@ class Cluster(object):
 
     @staticmethod
     def pgrepEosServerPattern(nodeInstance):
-        dataLocation=Cluster.__dataDir + Cluster.nodeExtensionToName(nodeInstance)
+        dataLocation=Utils.getNodeDataDir(nodeInstance)
         return r"[\n]?(\d+) (.* --data-dir %s .*)\n" % (dataLocation)
 
     # Populates list of EosInstanceInfo objects, matched to actual running instances
@@ -1272,17 +1265,29 @@ class Cluster(object):
             psOutDisplay=psOut[:6660]+"..."
         if Utils.Debug: Utils.Print("pgrep output: \"%s\"" % psOutDisplay)
         for i in range(0, totalNodes):
-            pattern=Cluster.pgrepEosServerPattern(i)
-            m=re.search(pattern, psOut, re.MULTILINE)
-            if m is None:
-                Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
+            instance=self.discoverLocalNode(i, psOut)
+            if instance is None:
                 break
-            instance=Node(self.host, self.port + i, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
-            if Utils.Debug: Utils.Print("Node>", instance)
             nodes.append(instance)
 
         if Utils.Debug: Utils.Print("Found %d nodes" % (len(nodes)))
         return nodes
+
+    # Populate a node matched to actual running instance
+    def discoverLocalNode(self, nodeNum, psOut=None):
+        if psOut is None:
+            psOut=Cluster.pgrepEosServers(timeout)
+        if psOut is None:
+            Utils.Print("ERROR: No nodes discovered.")
+            return nodes
+        pattern=Cluster.pgrepEosServerPattern(nodeNum)
+        m=re.search(pattern, psOut, re.MULTILINE)
+        if m is None:
+            Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
+            return None
+        instance=Node(self.host, self.port + nodeNum, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+        if Utils.Debug: Utils.Print("Node>", instance)
+        return instance
 
     def discoverBiosNodePid(self, timeout=None):
         psOut=Cluster.pgrepEosServers(timeout=timeout)
@@ -1348,20 +1353,20 @@ class Cluster(object):
         return files
 
     def dumpErrorDetails(self):
-        fileName=os.path.join(Cluster.__configDir + Cluster.nodeExtensionToName("bios"), "config.ini")
+        fileName=os.path.join(Cluster.__configDir + Utils.nodeExtensionToName("bios"), "config.ini")
         Cluster.dumpErrorDetailImpl(fileName)
-        path=Cluster.__dataDir + Cluster.nodeExtensionToName("bios")
+        path=Utils.getNodeDataDir("bios")
         fileNames=Cluster.__findFiles(path)
         for fileName in fileNames:
             Cluster.dumpErrorDetailImpl(fileName)
 
         for i in range(0, len(self.nodes)):
-            configLocation=Cluster.__configDir + Cluster.nodeExtensionToName(i)
+            configLocation=Cluster.__configDir + Utils.nodeExtensionToName(i)
             fileName=os.path.join(configLocation, "config.ini")
             Cluster.dumpErrorDetailImpl(fileName)
             fileName=os.path.join(configLocation, "genesis.json")
             Cluster.dumpErrorDetailImpl(fileName)
-            path=Cluster.__dataDir + Cluster.nodeExtensionToName(i)
+            path=Utils.getNodeDataDir(i)
             fileNames=Cluster.__findFiles(path)
             for fileName in fileNames:
                 Cluster.dumpErrorDetailImpl(fileName)
@@ -1435,7 +1440,7 @@ class Cluster(object):
         return node.waitForNextBlock(timeout)
 
     def cleanup(self):
-        for f in glob.glob(Cluster.__dataDir + "node_*"):
+        for f in glob.glob(Utils.DataDir + "node_*"):
             shutil.rmtree(f)
         for f in glob.glob(Cluster.__configDir + "node_*"):
             shutil.rmtree(f)
@@ -1510,7 +1515,7 @@ class Cluster(object):
         self.printBlockLog()
 
     def getBlockLog(self, nodeExtension):
-        blockLogDir=Cluster.__dataDir + Cluster.nodeExtensionToName(nodeExtension) + "/blocks/"
+        blockLogDir=os.path.join(Utils.getNodeDataDir(nodeExtension), "blocks", "")
         return Utils.getBlockLog(blockLogDir, exitOnError=False)
 
     def printBlockLog(self):
@@ -1600,8 +1605,8 @@ class Cluster(object):
                 if Utils.Debug: Utils.Print("context=%s" % (context))
                 ret=Utils.compare(commonBlockLogs[0], commonBlockLogs[i], context)
                 if ret is not None:
-                    blockLogDir1=Cluster.__dataDir + Cluster.nodeExtensionToName(commonBlockNameExtensions[0]) + "/blocks/"
-                    blockLogDir2=Cluster.__dataDir + Cluster.nodeExtensionToName(commonBlockNameExtensions[i]) + "/blocks/"
+                    blockLogDir1=Utils.DataDir + Utils.nodeExtensionToName(commonBlockNameExtensions[0]) + "/blocks/"
+                    blockLogDir2=Utils.DataDir + Utils.nodeExtensionToName(commonBlockNameExtensions[i]) + "/blocks/"
                     Utils.Print(Utils.FileDivider)
                     Utils.Print("Block log from %s:\n%s" % (blockLogDir1, json.dumps(commonBlockLogs[0], indent=1)))
                     Utils.Print(Utils.FileDivider)

@@ -1334,8 +1334,7 @@ class Node(object):
 
         dataDir="var/lib/node_%02d" % (nodeId)
         dt = datetime.datetime.now()
-        dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
-            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+        dateStr=Utils.getDateString(dt)
         stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
         stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
         with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:

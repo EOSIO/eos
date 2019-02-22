@@ -36,6 +36,7 @@ class Utils:
     EosBlockLogPath="programs/eosio-blocklog/eosio-blocklog"
 
     FileDivider="================================================================="
+    DataDir="var/lib/"
 
     @staticmethod
     def Print(*args, **kwargs):
@@ -64,6 +65,24 @@ class Utils:
     @staticmethod
     def setSystemWaitTimeout(timeout):
         Utils.systemWaitTimeout=timeout
+
+    @staticmethod
+    def getDateString(dt):
+        return "%d_%02d_%02d_%02d_%02d_%02d" % (
+            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+
+    @staticmethod
+    def nodeExtensionToName(ext):
+        r"""Convert node extension (bios, 0, 1, etc) to node name. """
+        prefix="node_"
+        if ext == "bios":
+            return prefix + ext
+
+        return "node_%02d" % (ext)
+
+    @staticmethod
+    def getNodeDataDir(ext):
+        return os.path.join(Utils.DataDir, Utils.nodeExtensionToName(ext))
 
     @staticmethod
     def getChainStrategies():
@@ -180,7 +199,8 @@ class Utils:
 
     @staticmethod
     def runCmdReturnStr(cmd, trace=False):
-        retStr=Utils.checkOutput(cmd.split())
+        cmdArr=shlex.split(cmd)
+        retStr=Utils.checkOutput(cmdArr)
         if trace: Utils.Print ("RAW > %s" % (retStr))
         return retStr
 
