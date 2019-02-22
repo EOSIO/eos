@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/chain/eosio_contract.hpp>
+#include <eosio/chain/system_contracts.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 
 #include <eosio/chain/controller.hpp>
@@ -46,7 +47,7 @@ void validate_authority_precondition( const apply_context& context, const author
       if( a.permission.permission == config::owner_name || a.permission.permission == config::active_name )
          continue; // account was already checked to exist, so its owner and active permissions should exist
 
-      if( a.permission.permission == config::eosio_code_name ) // virtual eosio.code permission does not really exist but is allowed
+      if( a.permission.permission == config::eosio_code_name ) // virtual cyber.code permission does not really exist but is allowed
          continue;
 
       try {
@@ -66,10 +67,15 @@ void validate_authority_precondition( const apply_context& context, const author
    }
 }
 
+const string& system_prefix() {
+   static const string prefix = name{config::system_account_name}.to_string() + '.';
+   return prefix;
+}
+
 /**
  *  This method is called assuming precondition_system_newaccount succeeds a
  */
-void apply_eosio_newaccount(apply_context& context) {
+void apply_cyber_newaccount(apply_context& context) {
    auto create = context.act.data_as<newaccount>();
    try {
    context.require_authorization(create.creator);
@@ -89,8 +95,8 @@ void apply_eosio_newaccount(apply_context& context) {
    // Check if the creator is privileged
    const auto &creator = db.get<account_object, by_name>(create.creator);
    if( !creator.privileged ) {
-      EOS_ASSERT( name_str.find( "eosio." ) != 0, action_validate_exception,
-                  "only privileged accounts can have names that start with 'eosio.'" );
+      EOS_ASSERT(name_str.find(system_prefix()) != 0, action_validate_exception,
+         "only privileged accounts can have names that start with '${prefix}'", ("prefix", system_prefix()));
    }
 
    auto existing_account = db.find<account_object, by_name>(create.name);
@@ -127,7 +133,32 @@ void apply_eosio_newaccount(apply_context& context) {
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
-void apply_eosio_setcode(apply_context& context) {
+// system account and accounts with system prefix (cyber.*) are protected
+bool is_protected_account(name acc) {
+    // TODO: prefix can be checked without string using binary AND
+    return acc == config::system_account_name || name{acc}.to_string().find(system_prefix()) == 0;
+}
+
+fc::sha256 bytes_hash(bytes data) {
+    fc::sha256 h;
+    if (data.size() > 0) {
+        h = fc::sha256::hash(data.data(), data.size());
+    }
+    return h;
+}
+
+bool check_hash_for_accseq(const digest_type& hash, const contract_hashes_map& map, name account, uint64_t sequence) {
+    auto hashes = map.find(account);
+    bool valid =
+        hashes != map.end() &&
+        sequence < hashes->second.size() &&
+        hash == hashes->second[sequence];
+    return valid;
+}
+
+#define ALLOW_INITIAL_CONTRACT_SET  // TODO: check testnet/mainnet?
+
+void apply_cyber_setcode(apply_context& context) {
    const auto& cfg = context.control.get_global_properties().configuration;
 
    auto& db = context.db;
@@ -151,6 +182,18 @@ void apply_eosio_setcode(apply_context& context) {
    int64_t new_size  = code_size * config::setcode_ram_bytes_multiplier;
 
    EOS_ASSERT( account.code_version != code_id, set_exact_code, "contract is already running this version of code" );
+    const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
+    if (is_protected_account(act.account)) {
+        const auto seq = account_sequence.code_sequence;
+        bool allowed = false;
+#ifdef ALLOW_INITIAL_CONTRACT_SET
+        allowed = seq == 0 && account.code_version == fc::sha256();   // 1st set is allowed
+#endif
+        if (!allowed) {
+            allowed = check_hash_for_accseq(code_id, allowed_code_hashes, act.account, seq);
+        }
+        EOS_ASSERT(allowed, protected_contract_code, "can't change code of protected account");
+    }
 
    db.modify( account, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
@@ -163,7 +206,6 @@ void apply_eosio_setcode(apply_context& context) {
 
    });
 
-   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
    db.modify( account_sequence, [&]( auto& aso ) {
       aso.code_sequence += 1;
    });
@@ -173,7 +215,7 @@ void apply_eosio_setcode(apply_context& context) {
    }
 }
 
-void apply_eosio_setabi(apply_context& context) {
+void apply_cyber_setabi(apply_context& context) {
    auto& db  = context.db;
    auto  act = context.act.data_as<setabi>();
 
@@ -186,13 +228,26 @@ void apply_eosio_setabi(apply_context& context) {
    int64_t old_size = (int64_t)account.abi.size();
    int64_t new_size = abi_size;
 
+    const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
+    auto hash = bytes_hash(act.abi);
+    if (is_protected_account(act.account)) {
+        const auto seq = account_sequence.abi_sequence;
+        bool allowed = false;
+#ifdef ALLOW_INITIAL_CONTRACT_SET
+        allowed = seq == 0;  // auto-enable initial set
+#endif
+        if (!allowed) {
+            allowed = check_hash_for_accseq(hash, allowed_abi_hashes, act.account, seq);
+        }
+        EOS_ASSERT(allowed, protected_contract_code, "can't change abi of protected account");
+    }
+
    db.modify( account, [&]( auto& a ) {
       a.abi.resize( abi_size );
       if( abi_size > 0 )
          memcpy( const_cast<char*>(a.abi.data()), act.abi.data(), abi_size );
    });
 
-   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
    db.modify( account_sequence, [&]( auto& aso ) {
       aso.abi_sequence += 1;
    });
@@ -204,7 +259,7 @@ void apply_eosio_setabi(apply_context& context) {
    }
 }
 
-void apply_eosio_updateauth(apply_context& context) {
+void apply_cyber_updateauth(apply_context& context) {
 
    auto update = context.act.data_as<updateauth>();
    context.require_authorization(update.account); // only here to mark the single authority on this action as used
@@ -213,8 +268,8 @@ void apply_eosio_updateauth(apply_context& context) {
    auto& db = context.db;
 
    EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
-   EOS_ASSERT( update.permission.to_string().find( "eosio." ) != 0, action_validate_exception,
-               "Permission names that start with 'eosio.' are reserved" );
+   EOS_ASSERT( update.permission.to_string().find(system_prefix()) != 0, action_validate_exception,
+      "Permission names that start with '${prefix}' are reserved", ("prefix", system_prefix()));
    EOS_ASSERT(update.permission != update.parent, action_validate_exception, "Cannot set an authority as its own parent");
    db.get<account_object, by_name>(update.account);
    EOS_ASSERT(validate(update.auth), action_validate_exception,
@@ -268,7 +323,7 @@ void apply_eosio_updateauth(apply_context& context) {
    }
 }
 
-void apply_eosio_deleteauth(apply_context& context) {
+void apply_cyber_deleteauth(apply_context& context) {
 //   context.require_write_lock( config::eosio_auth_scope );
 
    auto remove = context.act.data_as<deleteauth>();
@@ -299,7 +354,7 @@ void apply_eosio_deleteauth(apply_context& context) {
 
 }
 
-void apply_eosio_linkauth(apply_context& context) {
+void apply_cyber_linkauth(apply_context& context) {
 //   context.require_write_lock( config::eosio_auth_scope );
 
    auto requirement = context.act.data_as<linkauth>();
@@ -347,7 +402,7 @@ void apply_eosio_linkauth(apply_context& context) {
   } FC_CAPTURE_AND_RETHROW((requirement))
 }
 
-void apply_eosio_unlinkauth(apply_context& context) {
+void apply_cyber_unlinkauth(apply_context& context) {
 //   context.require_write_lock( config::eosio_auth_scope );
 
    auto& db = context.db;
@@ -366,22 +421,22 @@ void apply_eosio_unlinkauth(apply_context& context) {
    db.remove(*link);
 }
 
-void apply_eosio_providebw(apply_context& context) {
+void apply_cyber_providebw(apply_context& context) {
    auto args = context.act.data_as<providebw>();
    context.require_authorization(args.provider);
 }
 
-void apply_eosio_requestbw(apply_context& context) {
+void apply_cyber_requestbw(apply_context& context) {
    auto args = context.act.data_as<requestbw>();
    context.require_authorization(args.account);
 }
 
-void apply_eosio_provideram(apply_context& context) {
+void apply_cyber_provideram(apply_context& context) {
    auto args = context.act.data_as<provideram>();
    context.require_authorization(args.provider);
 }
 
-void apply_eosio_canceldelay(apply_context& context) {
+void apply_cyber_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
    context.require_authorization(cancel.canceling_auth.actor); // only here to mark the single authority on this action as used
 

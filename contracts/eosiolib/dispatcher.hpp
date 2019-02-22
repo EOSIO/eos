@@ -122,8 +122,8 @@ extern "C" { \
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) { \
       auto self = receiver; \
       if( action == N(onerror)) { \
-         /* onerror is only valid if it is for the "eosio" code account and authorized by "eosio"'s "active permission */ \
-         eosio_assert(code == N(eosio), "onerror action's are only valid from the \"eosio\" system account"); \
+         /* onerror is only valid if it is for the system code account and authorized by system's active permission */ \
+         eosio_assert(code == SYSTEM_ACC, "onerror action's are only valid from the system account"); \
       } \
       if( code == self || action == N(onerror) ) { \
          TYPE thiscontract( self ); \

@@ -9,6 +9,8 @@
 
 namespace eosiosystem {
 
+   static constexpr auto names_account = N(cyber.names);
+
    system_contract::system_contract( account_name s )
    :native(s),
     _voters(_self,_self),
@@ -22,7 +24,7 @@ namespace eosiosystem {
       auto itr = _rammarket.find(S(4,RAMCORE));
 
       if( itr == _rammarket.end() ) {
-         auto system_token_supply   = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
+         auto system_token_supply   = eosio::token(TOKEN_ACC).get_supply(eosio::symbol_type(system_token_symbol).name()).amount;
          if( system_token_supply > 0 ) {
             itr = _rammarket.emplace( _self, [&]( auto& m ) {
                m.supply.amount = 100000000000000ll;
@@ -74,15 +76,10 @@ namespace eosiosystem {
    }
 
    void system_contract::setparams( const eosio::blockchain_parameters& params ) {
-      require_auth( N(eosio) );
+      require_auth(SYSTEM_ACC);
       (eosio::blockchain_parameters&)(_gstate) = params;
       eosio_assert( 3 <= _gstate.max_authority_depth, "max_authority_depth should be at least 3" );
       set_blockchain_parameters( params );
-   }
-
-   void system_contract::setpriv( account_name account, uint8_t ispriv ) {
-      require_auth( _self );
-      set_privileged( account, ispriv );
    }
 
    void system_contract::rmvproducer( account_name producer ) {
@@ -104,8 +101,8 @@ namespace eosiosystem {
       eosio_assert( bid.symbol == asset().symbol, "asset must be system token" );
       eosio_assert( bid.amount > 0, "insufficient bid" );
 
-      INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {bidder,N(active)},
-                                                    { bidder, N(eosio.names), bid, std::string("bid name ")+(name{newname}).to_string()  } );
+      INLINE_ACTION_SENDER(eosio::token, transfer)(TOKEN_ACC, {bidder,N(active)},
+         {bidder, names_account, bid, std::string("bid name ")+(name{newname}).to_string()});
 
       name_bid_table bids(_self,_self);
       print( name{bidder}, " bid ", bid, " on ", name{newname}, "\n" );
@@ -122,9 +119,9 @@ namespace eosiosystem {
          eosio_assert( bid.amount - current->high_bid > (current->high_bid / 10), "must increase bid by 10%" );
          eosio_assert( current->high_bidder != bidder, "account is already highest bidder" );
 
-         INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio.names),N(active)},
-                                                       { N(eosio.names), current->high_bidder, asset(current->high_bid),
-                                                       std::string("refund bid on name ")+(name{newname}).to_string()  } );
+         INLINE_ACTION_SENDER(eosio::token, transfer)(TOKEN_ACC, {names_account,N(active)},
+            {names_account, current->high_bidder, asset(current->high_bid),
+               std::string("refund bid on name ")+(name{newname}).to_string()});
 
          bids.modify( current, bidder, [&]( auto& b ) {
             b.high_bidder = bidder;
@@ -188,7 +185,7 @@ EOSIO_ABI( eosiosystem::system_contract,
      // native.hpp (newaccount definition is actually in eosio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)
      // eosio.system.cpp
-     (setram)(setparams)(setpriv)(rmvproducer)(bidname)
+     (setram)(setparams)(rmvproducer)(bidname)
      // delegate_bandwidth.cpp
      (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(refund)
      // voting.cpp

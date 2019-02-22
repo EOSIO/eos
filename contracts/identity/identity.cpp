@@ -1,7 +1,6 @@
 #include "common.hpp"
 
-#include <eosiolib/contract.hpp>
-#include <eosiolib/dispatcher.hpp>
+#include <eosiolib/eosio.hpp>
 #include <eosiolib/vector.hpp>
 
 namespace identity {

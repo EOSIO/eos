@@ -226,7 +226,7 @@ if ("${EOSIO_ROOT_KEY}" STREQUAL "")
    set(EOSIO_ROOT_KEY "GLS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV")
 endif()
 
-message( STATUS "Using '${EOSIO_ROOT_KEY}' as public key for 'eosio' account" )
+message( STATUS "Using '${EOSIO_ROOT_KEY}' as public key for 'cyber' account" )
 
 include(wasm)
 add_subdirectory( libraries )

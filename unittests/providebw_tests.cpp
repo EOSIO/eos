@@ -26,6 +26,7 @@
 
 using namespace eosio;
 using namespace eosio::chain;
+using namespace eosio::chain::config;
 using namespace eosio::testing;
 using namespace fc;
 
@@ -81,14 +82,8 @@ public:
         return r;
     }
 
-    auto set_privileged( name account ) {
-       auto r = base_tester::push_action(config::system_account_name, N(setpriv), config::system_account_name,  mvo()("account", account)("is_priv", 1));
-       produce_block();
-       return r;
-    }
-
     asset get_balance( const account_name& act ) {
-         return get_currency_balance(N(eosio.token), symbol(CORE_SYMBOL), act);
+         return get_currency_balance(token_account_name, symbol(CORE_SYMBOL), act);
     }
 
     void set_code_abi(const account_name& account, const char* wast, const char* abi, const private_key_type* signer = nullptr) {
@@ -112,32 +107,33 @@ BOOST_AUTO_TEST_SUITE(providebw_tests)
 BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
     try {
         // Create eosio.msig and eosio.token
-        create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+        create_accounts({token_account_name, ram_account_name, ramfee_account_name,
+         stake_account_name, vpay_account_name, bpay_account_name, saving_account_name});
 
         // Set code for the following accounts:
         //  - eosio (code: eosio.bios) (already set by tester constructor)
         //  - eosio.msig (code: eosio.msig)
         //  - eosio.token (code: eosio.token)
-        set_code_abi(N(eosio.msig), eosio_msig_wast, eosio_msig_abi);//, &eosio_active_pk);
-        set_code_abi(N(eosio.token), eosio_token_wast, eosio_token_abi); //, &eosio_active_pk);
+        set_code_abi(msig_account_name, eosio_msig_wast, eosio_msig_abi);//, &eosio_active_pk);
+        set_code_abi(token_account_name, eosio_token_wast, eosio_token_abi); //, &eosio_active_pk);
 
         // Set privileged for eosio.msig and eosio.token
-        set_privileged(N(eosio.msig));
-        set_privileged(N(eosio.token));
+      //   set_privileged(msig_account_name);
+      //   set_privileged(token_account_name);
 
         // Verify eosio.msig and eosio.token is privileged
-        const auto& eosio_msig_acc = get<account_object, by_name>(N(eosio.msig));
+        const auto& eosio_msig_acc = get<account_object, by_name>(msig_account_name);
         BOOST_TEST(eosio_msig_acc.privileged == true);
-        const auto& eosio_token_acc = get<account_object, by_name>(N(eosio.token));
-        BOOST_TEST(eosio_token_acc.privileged == true);
+        const auto& eosio_token_acc = get<account_object, by_name>(token_account_name);
+      //   BOOST_TEST(eosio_token_acc.privileged == true);
 
 
         // Create SYS tokens in eosio.token, set its manager as eosio
         auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
         auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
-        create_currency(N(eosio.token), config::system_account_name, max_supply);
+        create_currency(token_account_name, system_account_name, max_supply);
         // Issue the genesis supply of 1 billion SYS tokens to eosio.system
-        issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
+        issue(token_account_name, system_account_name, system_account_name, initial_supply);
 
         auto actual = get_balance(config::system_account_name);
         BOOST_REQUIRE_EQUAL(initial_supply, actual);
@@ -151,7 +147,7 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
             auto r = buyram(config::system_account_name, N(provider), asset(1000));
             BOOST_REQUIRE( !r->except_ptr );
 
-            r = delegate_bandwidth(N(eosio.stake), N(provider), asset(1000000), asset(100000));
+            r = delegate_bandwidth(stake_account_name, N(provider), asset(1000000), asset(100000));
             BOOST_REQUIRE( !r->except_ptr );
 
             r = buyram(config::system_account_name, N(user), asset(1000));

@@ -556,22 +556,22 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    variant pretty_trx = fc::mutable_variant_object()
       ("actions", fc::variants({
          fc::mutable_variant_object()
-            ("account", "eosio")
+            ("account", config::system_account_name)
             ("name", "reqauth")
             ("authorization", fc::variants({
                fc::mutable_variant_object()
-                  ("actor", "eosio")
+                  ("actor", config::system_account_name)
                   ("permission", "active")
             }))
             ("data", fc::mutable_variant_object()
-               ("from", "eosio")
+               ("from", config::system_account_name)
             )
          })
       )
       // lets also push a context free action, the multi chain test will then also include a context free action
       ("context_free_actions", fc::variants({
          fc::mutable_variant_object()
-            ("account", "eosio")
+            ("account", config::system_account_name)
             ("name", "nonce")
             ("data", fc::raw::pack(std::string("dummy")))
          })

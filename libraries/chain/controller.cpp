@@ -228,23 +228,24 @@ struct controller_impl {
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
-   SET_APP_HANDLER( eosio, eosio, newaccount );
-   SET_APP_HANDLER( eosio, eosio, setcode );
-   SET_APP_HANDLER( eosio, eosio, setabi );
-   SET_APP_HANDLER( eosio, eosio, updateauth );
-   SET_APP_HANDLER( eosio, eosio, deleteauth );
-   SET_APP_HANDLER( eosio, eosio, linkauth );
-   SET_APP_HANDLER( eosio, eosio, unlinkauth );
+   SET_APP_HANDLER(cyber, cyber, newaccount);
+   SET_APP_HANDLER(cyber, cyber, setcode);
+   SET_APP_HANDLER(cyber, cyber, setabi);
+   SET_APP_HANDLER(cyber, cyber, updateauth);
+   SET_APP_HANDLER(cyber, cyber, deleteauth);
+   SET_APP_HANDLER(cyber, cyber, linkauth);
+   SET_APP_HANDLER(cyber, cyber, unlinkauth);
 
-   SET_APP_HANDLER( eosio, eosio, providebw );
-   SET_APP_HANDLER( eosio, eosio, requestbw );
+   SET_APP_HANDLER(cyber, cyber, providebw);
+   SET_APP_HANDLER(cyber, cyber, requestbw);
+   SET_APP_HANDLER(cyber, cyber, provideram);
 /*
-   SET_APP_HANDLER( eosio, eosio, postrecovery );
-   SET_APP_HANDLER( eosio, eosio, passrecovery );
-   SET_APP_HANDLER( eosio, eosio, vetorecovery );
+   SET_APP_HANDLER(cyber, cyber, postrecovery);
+   SET_APP_HANDLER(cyber, cyber, passrecovery);
+   SET_APP_HANDLER(cyber, cyber, vetorecovery);
 */
 
-   SET_APP_HANDLER( eosio, eosio, canceldelay );
+   SET_APP_HANDLER(cyber, cyber, canceldelay);
 
 #define SET_CONTRACT_HANDLER(contract, action, function) set_apply_handler(contract, contract, #action, function);
 #define SET_DOTCONTRACT_HANDLER(base, sub, action) SET_CONTRACT_HANDLER(#base "." #sub, action, \
@@ -636,7 +637,7 @@ struct controller_impl {
 
          if (name == config::system_account_name) {
             a.set_abi(eosio_contract_abi());
-         } else if (name == config::domain_account_name ) {
+         } else if (name == config::domain_account_name) {
             a.set_abi(domain_contract_abi());
          }
       });
@@ -687,7 +688,10 @@ struct controller_impl {
 
       authority system_auth(conf.genesis.initial_key);
       create_native_account( config::system_account_name, system_auth, system_auth, true );
+      create_native_account(config::msig_account_name, system_auth, system_auth, true);
       create_native_account(config::domain_account_name, system_auth, system_auth);
+      create_native_account(config::govern_account_name, system_auth, system_auth, true);
+      create_native_account(config::stake_account_name, system_auth, system_auth, true);
 
       auto empty_authority = authority(1, {}, {});
       auto active_producers_authority = authority(1, {}, {});
@@ -860,9 +864,13 @@ struct controller_impl {
         signed_transaction call_provide_trx;
         transaction_context trx_context( self, call_provide_trx, call_provide_trx.id());
         for (const auto& action : actions) {
-            if (action.account == N(eosio) && action.name == N(requestbw)) {
+            if (action.account == config::system_account_name && action.name == config::request_bw_action) {
                 const auto request_bw = action.data_as<requestbw>();
-                call_provide_trx.actions.emplace_back(vector<permission_level>{{request_bw.provider, config::active_name}}, request_bw.provider, N(approvebw), fc::raw::pack(approvebw( request_bw.account)));
+                call_provide_trx.actions.emplace_back(
+                    vector<permission_level>{{request_bw.provider, config::active_name}},
+                    request_bw.provider,
+                    config::approve_bw_action,
+                    fc::raw::pack(approvebw(request_bw.account)));
             }
         }
 
@@ -1222,7 +1230,13 @@ struct controller_impl {
                   in_trx_requiring_checks = old_value;
                });
             in_trx_requiring_checks = true;
-            push_transaction( onbtrx, fc::time_point::maximum(), self.get_global_properties().configuration.min_transaction_cpu_usage, true );
+            auto trace = push_transaction( onbtrx, fc::time_point::maximum(), self.get_global_properties().configuration.min_transaction_cpu_usage, true );
+            
+            if(trace && trace->except) {
+               edump((*trace));
+               throw *trace->except;
+           }
+           
          } catch( const boost::interprocess::bad_alloc& e  ) {
             elog( "on block transaction failed due to a bad allocation" );
             throw;
@@ -1230,6 +1244,7 @@ struct controller_impl {
             wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
             edump((e.to_detail_string()));
          } catch( ... ) {
+             wlog( "on block transaction failed" );
          }
 
          clear_expired_input_transactions();
@@ -1642,6 +1657,7 @@ struct controller_impl {
       trx.actions.emplace_back(std::move(on_block_act));
       trx.set_reference_block(self.head_block_id());
       trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
+      
       return trx;
    }
 

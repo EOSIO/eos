@@ -152,7 +152,7 @@ struct providebw {
     }
 
     static action_name get_name() {
-        return N(providebw);
+        return config::provide_bw_action;
     }
 };
 
@@ -170,7 +170,7 @@ struct requestbw {
     }
 
     static action_name get_name() {
-        return N(requestbw);
+        return config::request_bw_action;
     }
 };
 
@@ -189,7 +189,7 @@ struct provideram {
     }
 
     static action_name get_name() {
-        return N(providebw);
+        return N(provideram);
     }
 };
 
@@ -262,7 +262,7 @@ struct approvebw {
     }
 
     static action_name get_name() {
-        return N(approvebw);
+        return config::approve_bw_action;
     }
 };
 

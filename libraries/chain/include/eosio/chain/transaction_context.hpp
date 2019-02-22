@@ -109,6 +109,8 @@ namespace eosio { namespace chain {
 
          void validate_referenced_accounts(const transaction& trx) const;
 
+         account_name get_ram_provider(account_name running_contract, account_name user) const;
+
       private:
 
          friend struct controller_impl;
@@ -181,9 +183,9 @@ namespace eosio { namespace chain {
 
          std::map<account_name, provided_bandwith> provided_bandwith_;
 
-         using provider_for_user = std::map<account_name, account_name>;
+         using contract_for_user = std::pair<account_name, account_name>;
 
-         std::map<account_name, provider_for_user> ram_providers_;
+         std::map<contract_for_user, account_name> ram_providers_;
     };
 
 } }
