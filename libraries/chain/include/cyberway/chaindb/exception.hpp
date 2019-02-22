@@ -6,8 +6,29 @@
 
 namespace cyberway { namespace chaindb {
 
-    FC_DECLARE_DERIVED_EXCEPTION(chaindb_exception, eosio::chain::chain_exception,
-                                 3700000, "CyberWay ChainDB exception")
+    /**
+     *  chaindb_midx_exception -
+     *
+     *
+     *   |- chaindb_midx_logic_exception
+     *   |- chaindb_midx_pk_exception
+     *   |- chaindb_midx_find_exception
+     */
+
+    /**
+     *  chain
+     */
+    FC_DECLARE_EXCEPTION(chaindb_midx_exception,
+                         3800000, "CyberWay ChainDB multi-index exception" )
+
+        FC_DECLARE_DERIVED_EXCEPTION(chaindb_midx_logic_exception, chaindb_midx_exception,
+                                     3800001, "Internal unknown exception in ChainDB multi-index")
+
+        FC_DECLARE_DERIVED_EXCEPTION(chaindb_midx_pk_exception, chaindb_midx_exception,
+                                     3800002, "Bad primary key in ChainDB multi-index")
+
+        FC_DECLARE_DERIVED_EXCEPTION(chaindb_midx_find_exception, chaindb_midx_exception,
+                                     3800003, "Unable to find key in ChainDB multi-index")
 
     /**
      *  chaindb_exception
@@ -16,6 +37,9 @@ namespace cyberway { namespace chaindb {
      *   |- chaindb_contract_exception
      *   |- chaindb_object_exception
      */
+
+    FC_DECLARE_DERIVED_EXCEPTION(chaindb_exception, eosio::chain::chain_exception,
+                                 3700000, "CyberWay ChainDB exception")
 
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_internal_exception, chaindb_exception,
                                  3710000, "Internal ChainDB exception")
