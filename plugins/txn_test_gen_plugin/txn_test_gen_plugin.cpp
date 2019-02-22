@@ -118,7 +118,7 @@ struct txn_test_gen_plugin_impl {
 
    void push_transactions( std::vector<signed_transaction>&& trxs, const std::function<void(fc::exception_ptr)>& next ) {
       auto trxs_copy = std::make_shared<std::decay_t<decltype(trxs)>>(std::move(trxs));
-      app().post(priority::low, [this, trxs_copy, next]() {
+      app().post(priority::low, "push_next_trx", [this, trxs_copy, next]() {
          push_next_transaction(trxs_copy, next);
       });
    }
