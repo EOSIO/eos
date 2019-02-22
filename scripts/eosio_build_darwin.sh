@@ -138,11 +138,8 @@ if [ $COUNT -gt 1 ]; then
 				[Nn]* ) echo "Proceeding without update!";;
 				* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 			esac
-			brew tap eosio/eosio # Required to install mongo-cxx-driver with static library
+			brew tap eosio/eosio
 			printf "\\nInstalling Dependencies...\\n"
-			# Ignore cmake so we don't install a newer version.
-			# Build from source to use local cmake; see homebrew-eosio repo for examples
-			# DON'T INSTALL llvm@4 WITH --force!
 			OIFS="$IFS"
 			IFS=$','
 			for DEP in $DEPS; do
