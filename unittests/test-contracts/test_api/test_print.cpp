@@ -17,11 +17,8 @@ void test_print::test_prints_l() {
 
 void test_print::test_prints() {
    prints("ab");
-   prints(nullptr);
    prints("c\0test_prints");
-   prints(0);
    prints("efg");
-   prints(0);
 }
 
 void test_print::test_printi() {
@@ -68,14 +65,14 @@ void test_print::test_printn() {
    printn(eosio::name{"5"}.value);
    printn(eosio::name{"a"}.value);
    printn(eosio::name{"z"}.value);
-   
+
    printn(eosio::name{"abc"}.value);
    printn(eosio::name{"123"}.value);
-   
+
    printn(eosio::name{"abc.123"}.value);
    printn(eosio::name{"123.abc"}.value);
 
-   printn(eosio::name{"12345abcdefgj"}.value);  
+   printn(eosio::name{"12345abcdefgj"}.value);
    printn(eosio::name{"ijklmnopqrstj"}.value);
    printn(eosio::name{"vwxyz.12345aj"}.value);
 

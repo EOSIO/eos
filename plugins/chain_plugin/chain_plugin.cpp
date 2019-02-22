@@ -881,7 +881,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
    reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::in | std::ios::binary );
 
    reversible_blocks.seekg( 0, std::ios::end );
-   uint64_t end_pos = reversible_blocks.tellg();
+   auto end_pos = reversible_blocks.tellg();
    reversible_blocks.seekg( 0 );
 
    uint32_t num = 0;
@@ -1149,7 +1149,8 @@ string get_table_type( const abi_def& abi, const name& table_name ) {
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
    const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
    bool primary = false;
    auto table_with_index = get_table_index_name( p, primary );
    if( primary ) {
@@ -1204,6 +1205,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
       }
       EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: ${t}", ("t", p.key_type));
    }
+#pragma GCC diagnostic pop
 }
 
 read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_only::get_table_by_scope_params& p )const {
@@ -1305,12 +1307,6 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    return results;
 }
 
-// TODO: move this and similar functions to a header. Copied from wasm_interface.cpp.
-// TODO: fix strict aliasing violation
-static float64_t to_softfloat64( double d ) {
-   return *reinterpret_cast<float64_t*>(&d);
-}
-
 fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms, bool shorten_abi_errors ) {
    const auto table_type = get_table_type(abi, N(global));
    EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
@@ -1327,7 +1323,7 @@ fc::variant get_global_row( const database& db, const abi_def& abi, const abi_se
    return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_ms, shorten_abi_errors );
 }
 
-read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
+read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const try {
    const abi_def abi = eosio::chain_apis::get_abi(db, config::system_account_name);
    const auto table_type = get_table_type(abi, N(producers));
    const abi_serializer abis{ abi, abi_serializer_max_time };
@@ -1375,6 +1371,20 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    }
 
    result.total_producer_vote_weight = get_global_row(d, abi, abis, abi_serializer_max_time, shorten_abi_errors)["total_producer_vote_weight"].as_double();
+   return result;
+} catch (...) {
+   read_only::get_producers_result result;
+
+   for (auto p : db.active_producers().producers) {
+      fc::variant row = fc::mutable_variant_object()
+         ("owner", p.producer_name)
+         ("producer_key", p.block_signing_key)
+         ("url", "")
+         ("total_votes", 0.0f);
+
+      result.rows.push_back(row);
+   }
+
    return result;
 }
 
@@ -1588,7 +1598,7 @@ static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_w
          results->emplace_back( r );
       }
 
-      int next_index = index + 1;
+      size_t next_index = index + 1;
       if (next_index < params->size()) {
          push_recurse(rw, next_index, params, results, next );
       } else {
