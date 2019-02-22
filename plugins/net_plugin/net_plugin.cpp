@@ -1124,7 +1124,8 @@ namespace eosio {
                      connection_ptr conn = weak_this.lock();
                      if (conn) {
                         if (close_after_send != no_reason) {
-                           elog ("sent a go away message: ${r}, closing connection to ${p}",("r", reason_str(close_after_send))("p", conn->peer_name()));
+                           fc_elog( logger, "sent a go away message: ${r}, closing connection to ${p}",
+                                    ("r", reason_str(close_after_send))("p", conn->peer_name()) );
                            my_impl->close(conn);
                            return;
                         }
@@ -1189,6 +1190,13 @@ namespace eosio {
       }
       if( !peer_addr.empty() ) {
          return peer_addr;
+      }
+      if( socket != nullptr ) {
+         boost::system::error_code ec;
+         auto rep = socket->remote_endpoint(ec);
+         if( !ec ) {
+            return rep.address().to_string() + ':' + std::to_string( rep.port() );
+         }
       }
       return "connecting client";
    }
