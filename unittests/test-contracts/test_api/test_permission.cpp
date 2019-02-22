@@ -5,7 +5,6 @@
 #include <limits>
 
 #include <eosiolib/action.hpp>
-#include <eosiolib/compiler_builtins.h>
 #include <eosiolib/db.h>
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/permission.h>

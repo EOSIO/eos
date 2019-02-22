@@ -124,8 +124,16 @@ namespace impl {
 
    struct abi_traverse_context {
       abi_traverse_context( fc::microseconds max_serialization_time )
-      : max_serialization_time( max_serialization_time ), deadline( fc::time_point::now() + max_serialization_time ), recursion_depth(0)
-      {}
+      : max_serialization_time( max_serialization_time ),
+        deadline( fc::time_point::now() ), // init to now, updated below
+        recursion_depth(0)
+      {
+         if( max_serialization_time > fc::microseconds::maximum() - deadline.time_since_epoch() ) {
+            deadline = fc::time_point::maximum();
+         } else {
+            deadline += max_serialization_time;
+         }
+      }
 
       abi_traverse_context( fc::microseconds max_serialization_time, fc::time_point deadline )
       : max_serialization_time( max_serialization_time ), deadline( deadline ), recursion_depth(0)
@@ -625,7 +633,7 @@ namespace impl {
     * @tparam Reslover - callable with the signature (const name& code_account) -> optional<abi_def>
     */
    template<typename T, typename Resolver>
-   class abi_from_variant_visitor : reflector_init_visitor<T>
+   class abi_from_variant_visitor : public reflector_init_visitor<T>
    {
       public:
          abi_from_variant_visitor( const variant_object& _vo, T& v, Resolver _resolver, abi_traverse_context& _ctx )

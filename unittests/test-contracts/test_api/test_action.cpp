@@ -4,7 +4,6 @@
  */
 #include <eosiolib/action.hpp>
 #include <eosiolib/chain.h>
-#include <eosiolib/compiler_builtins.h>
 #include <eosiolib/crypto.h>
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/db.h>
@@ -110,9 +109,6 @@ void test_action::test_cf_action() {
       float f1 = 1.0f, f2 = 2.0f;
       float f3 = f1 + f2;
       eosio_assert( f3 >  2.0f, "Unable to add float.");
-      // verify compiler builtin api access
-      __int128 ret;
-      __divti3( ret, 2, 2, 2, 2 );
       // verify context_free_system_api
       eosio_assert( true, "verify eosio_assert can be called" );
 

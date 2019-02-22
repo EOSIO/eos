@@ -15,3 +15,6 @@
 [submodule "libraries/wabt"]
 	path = libraries/wabt
 	url = https://github.com/EOSIO/wabt
+[submodule "libraries/yubihsm"]
+	path = libraries/yubihsm
+	url = https://github.com/Yubico/yubihsm-shell
