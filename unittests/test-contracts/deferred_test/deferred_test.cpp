@@ -2,62 +2,32 @@
  *  @file
  *  @copyright defined in eos/LICENSE
  */
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/dispatcher.hpp>
-#include <eosiolib/transaction.hpp>
+#include "deferred_test.hpp"
+#include <eosio/transaction.hpp>
 
 using namespace eosio;
 
-CONTRACT deferred_test : public contract {
-   public:
-      using contract::contract;
+void deferred_test::defercall( name payer, uint64_t sender_id, name contract, uint64_t payload ) {
+   print( "defercall called on ", get_self(), "\n" );
+   require_auth( payer );
 
-      struct deferfunc_args {
-         uint64_t payload;
-      };
-
-      ACTION defercall( name payer, uint64_t sender_id, name contract, uint64_t payload ) {
-         print( "defercall called on ", name{_self}, "\n" );
-         require_auth( payer );
-
-         print( "deferred send of deferfunc action to ", name{contract}, " by ", name{payer}, " with sender id ", sender_id );
-         transaction trx;
-         deferfunc_args a = {.payload = payload};
-         trx.actions.emplace_back(permission_level{_self, name{"active"}}, contract, name{"deferfunc"}, a);
-         trx.send( (static_cast<uint128_t>(payer.value) << 64) | sender_id, payer);
-      }
-
-      ACTION deferfunc( uint64_t payload ) {
-         print("deferfunc called on ", name{_self}, " with payload = ", payload, "\n");
-         eosio_assert( payload != 13, "value 13 not allowed in payload" );
-      }
-
-      ACTION inlinecall( name contract, name authorizer, uint64_t payload ) {
-         action a( {permission_level{authorizer, "active"_n}}, contract, "deferfunc"_n, payload );
-         a.send();
-      }
-
-   private:
-};
-
-void apply_onerror(uint64_t receiver, const onerror& error ) {
-   print("onerror called on ", name{receiver}, "\n");
+   print( "deferred send of deferfunc action to ", contract, " by ", payer, " with sender id ", sender_id );
+   transaction trx;
+   deferfunc_action a( contract, {get_self(), "active"_n} );
+   trx.actions.emplace_back( a.to_action( payload ) );
+   trx.send( (static_cast<uint128_t>(payer.value) << 64) | sender_id, payer );
 }
 
-extern "C" {
-    /// The apply method implements the dispatch of events to this contract
-    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-       if( code == name{"eosio"}.value && action == name{"onerror"}.value ) {
-         apply_onerror( receiver, onerror::from_current_action() );
-      } else if( code == receiver ) {
-          deferred_test thiscontract( name{receiver}, name{code}, eosio::datastream<const char*>{nullptr, 0} );
-         if( action == name{"defercall"}.value ) {
-            execute_action( name{receiver}, name{code}, &deferred_test::defercall );
-         } else if( action == name{"deferfunc"}.value ) {
-            execute_action( name{receiver}, name{code}, &deferred_test::deferfunc );
-         } else if(action == name{"inlinecall"}.value) {
-            execute_action( name{receiver}, name{code}, &deferred_test::inlinecall );
-         }
-      }
-   }
+void deferred_test::deferfunc( uint64_t payload ) {
+   print( "deferfunc called on ", get_self(), " with payload = ", payload, "\n" );
+   check( payload != 13, "value 13 not allowed in payload" );
+}
+
+void deferred_test::inlinecall( name contract, name authorizer, uint64_t payload ) {
+   deferfunc_action a( contract, {authorizer, "active"_n} );
+   a.send( payload );
+}
+
+void deferred_test::on_error( uint128_t sender_id, ignore<std::vector<char>> sent_trx ) {
+   print( "onerror called on ", get_self(), "\n" );
 }

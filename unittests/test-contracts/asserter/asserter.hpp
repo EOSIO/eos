@@ -2,13 +2,17 @@
  *  @file
  *  @copyright defined in eos/LICENSE
  */
-#include <eosiolib/eosio.hpp>
+#pragma once
 
-namespace asserter {
-   TABLE assertdef {
-      int8_t      condition;
-      std::string message;
+#include <eosio/eosio.hpp>
 
-      EOSLIB_SERIALIZE( assertdef, (condition)(message) )
-   };
-} /// asserter
+class [[eosio::contract]] asserter : public eosio::contract {
+public:
+   using eosio::contract::contract;
+
+   [[eosio::action]]
+   void procassert( int8_t condition, std::string message );
+
+   [[eosio::action]]
+   void provereset();
+};

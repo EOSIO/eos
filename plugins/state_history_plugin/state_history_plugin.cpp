@@ -511,8 +511,9 @@ void state_history_plugin::set_program_options(options_description& cli, options
    cli.add_options()("delete-state-history", bpo::bool_switch()->default_value(false), "clear state history files");
    options("trace-history", bpo::bool_switch()->default_value(false), "enable trace history");
    options("chain-state-history", bpo::bool_switch()->default_value(false), "enable chain state history");
-   options("state-history-endpoint", bpo::value<string>()->default_value("0.0.0.0:8080"),
-           "the endpoint upon which to listen for incoming connections");
+   options("state-history-endpoint", bpo::value<string>()->default_value("127.0.0.1:8080"),
+           "the endpoint upon which to listen for incoming connections. Caution: only expose this port to "
+           "your internal network.");
 }
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {

@@ -997,6 +997,19 @@ class Node(object):
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
+    def undelegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, waitForTransBlock=False, exitOnError=False):
+        if toAccount is None:
+            toAccount=fromAccount
+
+        cmdDesc="system undelegatebw"
+        cmd="%s -j %s %s \"%s %s\" \"%s %s\"" % (
+            cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL)
+        msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        self.trackCmdTransaction(trans)
+
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
+
     def regproducer(self, producer, url, location, waitForTransBlock=False, exitOnError=False):
         cmdDesc="system regproducer"
         cmd="%s -j %s %s %s %s" % (
@@ -1212,7 +1225,7 @@ class Node(object):
         assert self.popenProc is not None, "node: \"%s\" does not have a popenProc, this may be because it is only set after a relaunch." % (self.cmd)
         self.popenProc.send_signal(signal.SIGINT)
         try:
-            outs, _ = self.popenProc.communicate(timeout=1)
+            outs, _ = self.popenProc.communicate(timeout=15)
             assert self.popenProc.returncode == 0, "Expected terminating \"%s\" to have an exit status of 0, but got %d" % (self.cmd, self.popenProc.returncode)
         except subprocess.TimeoutExpired:
             Utils.errorExit("Terminate call failed on node: %s" % (self.cmd))
@@ -1220,6 +1233,8 @@ class Node(object):
     def verifyAlive(self, silent=False):
         if not silent and Utils.Debug: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
         if self.killed or self.pid is None:
+            self.killed=True
+            self.pid=None
             return False
 
         try:
@@ -1231,8 +1246,8 @@ class Node(object):
             return False
         except PermissionError as ex:
             return True
-        else:
-            return True
+
+        return True
 
     def getBlockProducerByNum(self, blockNum, timeout=None, waitForBlock=True, exitOnError=True):
         if waitForBlock:
@@ -1280,7 +1295,7 @@ class Node(object):
 
     # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
-    def relaunch(self, nodeId, chainArg, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None):
+    def relaunch(self, nodeId, chainArg, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None, cachePopen=False):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1326,8 +1341,10 @@ class Node(object):
         with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
             cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
             Utils.Print("cmd: %s" % (cmd))
-            self.popenProc=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
-            self.pid=self.popenProc.pid
+            popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
+            if cachePopen:
+                self.popenProc=popen
+            self.pid=popen.pid
             if Utils.Debug: Utils.Print("restart Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
 
         def isNodeAlive():
