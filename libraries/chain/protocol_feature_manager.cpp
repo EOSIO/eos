@@ -83,7 +83,7 @@ namespace eosio { namespace chain {
    }
 
    void builtin_protocol_feature::reflector_init() {
-      //protocol_feature_base::reflector_init();
+      protocol_feature_base::reflector_init();
 
       for( const auto& p : builtin_protocol_feature_codenames ) {
          if( builtin_feature_codename.compare( p.second.codename ) == 0 ) {

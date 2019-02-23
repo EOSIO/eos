@@ -334,9 +334,12 @@ void clear_directory_contents( const fc::path& p ) {
 optional<builtin_protocol_feature> read_builtin_protocol_feature( const fc::path& p  ) {
    try {
       return fc::json::from_file<builtin_protocol_feature>( p );
+   } catch( const protocol_feature_exception& e ) {
+      wlog( "problem encountered while reading '${path}':\n${details}",
+            ("path", p.generic_string())("details",e.to_detail_string()) );
    } catch( ... ) {
-      return {};
    }
+   return {};
 }
 
 protocol_feature_manager initialize_protocol_features( const fc::path& p, bool populate_missing_builtins = true ) {
@@ -357,6 +360,43 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
       else
          directory_exists = false;
    }
+
+   auto log_recognized_protocol_feature = []( const builtin_protocol_feature& f, const digest_type& feature_digest ) {
+      if( f.subjective_restrictions.enabled ) {
+         if( f.subjective_restrictions.preactivation_required ) {
+            if( f.subjective_restrictions.earliest_allowed_activation_time == time_point{} ) {
+               ilog( "Support for builtin protocol feature '${codename}' (with digest of '${digest}') is enabled with preactivation required",
+                     ("codename", builtin_protocol_feature_codename(f.get_codename()))
+                     ("digest", feature_digest)
+               );
+            } else {
+               ilog( "Support for builtin protocol feature '${codename}' (with digest of '${digest}') is enabled with preactivation required and with an earliest allowed activation time of ${earliest_time}",
+                     ("codename", builtin_protocol_feature_codename(f.get_codename()))
+                     ("digest", feature_digest)
+                     ("earliest_time", f.subjective_restrictions.earliest_allowed_activation_time)
+               );
+            }
+         } else {
+            if( f.subjective_restrictions.earliest_allowed_activation_time == time_point{} ) {
+               ilog( "Support for builtin protocol feature '${codename}' (with digest of '${digest}') is enabled without activation restrictions",
+                     ("codename", builtin_protocol_feature_codename(f.get_codename()))
+                     ("digest", feature_digest)
+               );
+            } else {
+               ilog( "Support for builtin protocol feature '${codename}' (with digest of '${digest}') is enabled without preactivation required but with an earliest allowed activation time of ${earliest_time}",
+                     ("codename", builtin_protocol_feature_codename(f.get_codename()))
+                     ("digest", feature_digest)
+                     ("earliest_time", f.subjective_restrictions.earliest_allowed_activation_time)
+               );
+            }
+         }
+      } else {
+         ilog( "Recognized builtin protocol feature '${codename}' (with digest of '${digest}') but support for it is not enabled",
+               ("codename", builtin_protocol_feature_codename(f.get_codename()))
+               ("digest", feature_digest)
+         );
+      }
+   };
 
    map<builtin_protocol_feature_t, fc::path>  found_builtin_protocol_features;
    map<digest_type, std::pair<builtin_protocol_feature, bool> > builtin_protocol_features_to_add;
@@ -383,8 +423,10 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
                      ("previous_file", res.first->second.generic_string())
          );
 
+         const auto feature_digest = f->digest();
+
          builtin_protocol_features_to_add.emplace( std::piecewise_construct,
-                                                   std::forward_as_tuple( f->digest() ),
+                                                   std::forward_as_tuple( feature_digest ),
                                                    std::forward_as_tuple( *f, false ) );
       }
    }
@@ -392,7 +434,7 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
    // Add builtin protocol features to the protocol feature manager in the right order (to satisfy dependencies)
    using itr_type = map<digest_type, std::pair<builtin_protocol_feature, bool>>::iterator;
    std::function<void(const itr_type&)> add_protocol_feature =
-   [&pfm, &builtin_protocol_features_to_add, &visited_builtins, &add_protocol_feature]( const itr_type& itr ) -> void {
+   [&pfm, &builtin_protocol_features_to_add, &visited_builtins, &log_recognized_protocol_feature, &add_protocol_feature]( const itr_type& itr ) -> void {
       if( itr->second.second ) {
          return;
       } else {
@@ -408,23 +450,32 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
       }
 
       pfm.add_feature( itr->second.first );
+
+      log_recognized_protocol_feature( itr->second.first, itr->first );
    };
 
    for( auto itr = builtin_protocol_features_to_add.begin(); itr != builtin_protocol_features_to_add.end(); ++itr ) {
       add_protocol_feature( itr );
    }
 
-   auto output_protocol_feature = [&p]( const builtin_protocol_feature& f ) {
+   auto output_protocol_feature = [&p]( const builtin_protocol_feature& f, const digest_type& feature_digest ) {
       static constexpr int max_tries = 10;
+
+      string digest_string("-");
+      {
+         fc::variant v;
+         to_variant( feature_digest, v );
+         digest_string += v.get_string();
+      }
 
       string filename_base( "BUILTIN-" );
       filename_base += builtin_protocol_feature_codename( f.get_codename() );
 
-      string filename = filename_base + ".json";
+      string filename = filename_base + digest_string + ".json";
       int i = 0;
       for( ;
            i < max_tries && fc::exists( p / filename );
-           ++i, filename = filename_base + "-" + std::to_string(i) + ".json" )
+           ++i, filename = filename_base + digest_string + "-" + std::to_string(i) + ".json" )
          ;
 
       EOS_ASSERT( i < max_tries, plugin_exception,
@@ -433,10 +484,16 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
       );
 
       fc::json::save_to_file( f, p / filename );
+
+      ilog( "Saved default specification for builtin protocol feature '${codename}' (with digest of '${digest}') to: ${path}",
+            ("codename", builtin_protocol_feature_codename(f.get_codename()))
+            ("digest", feature_digest)
+            ("path", (p / filename).generic_string())
+      );
    };
 
    std::function<void(builtin_protocol_feature_t)> add_missing_builtins =
-   [&pfm, &visited_builtins, &output_protocol_feature, &add_missing_builtins, populate_missing_builtins]
+   [&pfm, &visited_builtins, &output_protocol_feature, &log_recognized_protocol_feature, &add_missing_builtins, populate_missing_builtins]
    ( builtin_protocol_feature_t codename ) -> void {
       auto res = visited_builtins.emplace( codename );
       if( !res.second ) return;
@@ -446,10 +503,17 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
          add_missing_builtins( d );
       } );
 
+      if( !populate_missing_builtins )
+         f.subjective_restrictions.enabled = false;
+
       pfm.add_feature( f );
 
+      const auto feature_digest = f.digest();
+
+      log_recognized_protocol_feature( f, feature_digest );
+
       if( populate_missing_builtins )
-         output_protocol_feature( f );
+         output_protocol_feature( f, feature_digest );
    };
 
    for( const auto& p : builtin_protocol_feature_codenames ) {

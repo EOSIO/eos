@@ -18,22 +18,22 @@ enum class builtin_protocol_feature_t : uint32_t {
 
 struct protocol_feature_subjective_restrictions {
    time_point             earliest_allowed_activation_time;
-   bool                   preactivation_required = true;
-   bool                   enabled = true;
+   bool                   preactivation_required = false;
+   bool                   enabled = false;
 };
 
 struct builtin_protocol_feature_spec {
    const char*                               codename = nullptr;
    digest_type                               description_digest;
    flat_set<builtin_protocol_feature_t>      builtin_dependencies;
-   protocol_feature_subjective_restrictions  subjective_restrictions;
+   protocol_feature_subjective_restrictions  subjective_restrictions{time_point{}, true, true};
 };
 
 extern const std::unordered_map<builtin_protocol_feature_t, builtin_protocol_feature_spec> builtin_protocol_feature_codenames;
 
 const char* builtin_protocol_feature_codename( builtin_protocol_feature_t );
 
-class protocol_feature_base {
+class protocol_feature_base : public fc::reflect_init {
 public:
    protocol_feature_base() = default;
 

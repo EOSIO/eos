@@ -8,9 +8,19 @@
 
 namespace eosio { namespace chain {
 
-struct protocol_feature_activation {
+struct protocol_feature_activation : fc::reflect_init {
    static constexpr uint16_t extension_id() { return 0; }
    static constexpr bool     enforce_unique() { return true; }
+
+   protocol_feature_activation() = default;
+
+   protocol_feature_activation( const vector<digest_type>& pf )
+   :protocol_features( pf )
+   {}
+
+   protocol_feature_activation( vector<digest_type>&& pf )
+   :protocol_features( std::move(pf) )
+   {}
 
    void reflector_init();
 
