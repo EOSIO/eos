@@ -54,8 +54,9 @@ class maybe_session {
       {
       }
 
-      explicit maybe_session(database& db, chaindb_controller& chaindb) {
+      explicit maybe_session(chaindb_controller& chaindb) {
 // TODO: removed by CyberWay
+//      explicit maybe_session(database& db, chaindb_controller& chaindb) {
 //         _session = db.start_undo_session(true);
          _chaindb_session = chaindb.start_undo_session(true);
       }
@@ -146,7 +147,6 @@ struct pending_state {
 struct controller_impl {
    controller&                    self;
    chaindb_controller             chaindb;
-   chainbase::database            db;
    chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
    optional<pending_state>        pending;
@@ -208,9 +208,10 @@ struct controller_impl {
    controller_impl( const controller::config& cfg, controller& s  )
    :self(s),
     chaindb(cfg.chaindb_address_type, cfg.chaindb_address),
-    db( cfg.state_dir,
-        cfg.read_only ? database::read_only : database::read_write,
-        cfg.state_size ),
+// TODO: removed by CyberWay
+//    db( cfg.state_dir,
+//        cfg.read_only ? database::read_only : database::read_write,
+//        cfg.state_size ),
     reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size ),
@@ -490,19 +491,19 @@ struct controller_impl {
       resource_limits.add_indices();
    }
 
-   void clear_all_undo() {
-      // Rewind the database to the last irreversible block
-      db.with_write_lock([&] {
 // TODO: removed by CyberWay
+//   void clear_all_undo() {
+//      // Rewind the database to the last irreversible block
+//       db.with_write_lock([&] {
 //         db.undo_all();
-         chaindb.undo_all();
-         /*
-         FC_ASSERT(db.revision() == self.head_block_num(),
-                   "Chainbase revision does not match head block num",
-                   ("rev", db.revision())("head_block", self.head_block_num()));
-                   */
-      });
-   }
+//         chaindb.undo_all();
+//         /*
+//         FC_ASSERT(db.revision() == self.head_block_num(),
+//                   "Chainbase revision does not match head block num",
+//                   ("rev", db.revision())("head_block", self.head_block_num()));
+//                   */
+//      });
+//   }
 
    void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
       // TODO: Removed by CyberWay
@@ -814,7 +815,7 @@ struct controller_impl {
    try {
       maybe_session undo_session;
       if ( !self.skip_db_sessions() )
-         undo_session = maybe_session(db, chaindb);
+         undo_session = maybe_session(chaindb);
 
       auto gtrx = generated_transaction(gto);
 
@@ -1113,7 +1114,7 @@ struct controller_impl {
          EOS_ASSERT(chaindb.revision() == head->block_num, database_exception, "chaibdb revision is not on par with head block",
                      ("chaindb.revision()", chaindb.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-         pending.emplace(maybe_session(db, chaindb));
+         pending.emplace(maybe_session(chaindb));
       } else {
          pending.emplace(maybe_session());
       }
