@@ -1,6 +1,8 @@
 #include "golos_objects.hpp"
 #include "data_format.hpp"
 #include <eosio/chain/config.hpp>
+#include <cyberway/chaindb/controller.hpp>
+
 #include <fc/variant.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/program_options.hpp>
