@@ -725,7 +725,7 @@ public:
 
             fc::variant value;
             fc::to_variant(obj, value);
-            controller_.insert(*itm.get(), std::move(value), payer);
+            controller_.insert(*itm.get(), std::move(value));
 
             return const_iterator(this, uninitilized_cursor::find_by_pk, pk, std::move(itm));
         } catch (...) {
@@ -758,7 +758,7 @@ public:
 
         fc::variant value;
         fc::to_variant(obj, value);
-        controller_.update(itm, std::move(value), payer);
+        controller_.update(itm, std::move(value));
     }
 
     template<typename Lambda>

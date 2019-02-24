@@ -29,10 +29,6 @@ namespace cyberway { namespace chaindb {
         : pk(pk), code(table.code), scope(table.scope), table(table.table->name) {
         }
 
-        service_state(const table_info& table, primary_key_t pk, const account_name& payer)
-        : pk(pk), payer(payer), code(table.code), scope(table.scope), table(table.table->name) {
-        }
-
         service_state(const table_info& table, primary_key_t undo_pk, undo_record rec, revision_t rev)
         : code(table.code), scope(table.scope), table(table.table->name),
           undo_pk(undo_pk), undo_rec(rec), revision(rev) {

@@ -92,8 +92,11 @@ namespace eosio { namespace chain {
             account_name_t code, account_name_t scope, table_name_t table,
             account_name_t payer, primary_key_t pk, array_ptr<const char> data, size_t size
         ) {
+            EOS_ASSERT(account_name(payer) != account_name(), invalid_table_payer,
+                "must specify a valid account to pay for new record");
             context.lazy_init_chaindb_abi(code);
-            return context.chaindb.insert(context, {code, scope, table}, payer, pk, data, size);
+            context.chaindb.insert({context, payer}, {code, scope, table}, pk, data, size);
+            return pk;
         }
 
         primary_key_t chaindb_update(
@@ -101,14 +104,16 @@ namespace eosio { namespace chain {
             account_name_t payer, primary_key_t pk, array_ptr<const char> data, size_t size
         ) {
             context.lazy_init_chaindb_abi(code);
-            return context.chaindb.update(context, {code, scope, table}, payer, pk, data, size);
+            context.chaindb.update({context, payer}, {code, scope, table}, pk, data, size);
+            return pk;
         }
 
         primary_key_t chaindb_delete(
             account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk
         ) {
             context.lazy_init_chaindb_abi(code);
-            return context.chaindb.remove(context, {code, scope, table}, pk);
+            context.chaindb.remove({context}, {code, scope, table}, pk);
+            return pk;
         }
 
     }; // class chaindb_api

@@ -58,7 +58,21 @@ namespace cyberway { namespace chaindb {
     struct find_info final {
         cursor_t      cursor = invalid_cursor;
         primary_key_t pk     = end_primary_key;
-    };
+    }; // struct find_info
+
+    struct ram_payer_info final {
+        apply_context* ctx   = nullptr; // maybe unavailable - see eosio controller
+        account_name   payer;
+        size_t         precalc_size = 0;
+
+        ram_payer_info() = default;
+
+        ram_payer_info(apply_context& c, account_name p = account_name(), const size_t s = 0)
+        : ctx(&c), payer(std::move(p)), precalc_size(s) {
+        }
+
+        void add_usage(const account_name, const int64_t delta) const;
+    }; // struct ram_payer_info
 
     class chaindb_controller final {
     public:
@@ -197,13 +211,13 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t available_pk(const table_request&);
 
-        primary_key_t insert(apply_context&, const table_request&, const account_name&, primary_key_t, const char*, size_t);
-        primary_key_t update(apply_context&, const table_request&, const account_name&, primary_key_t, const char*, size_t);
-        primary_key_t remove(apply_context&, const table_request&, primary_key_t);
+        int64_t insert(const ram_payer_info&, const table_request&, primary_key_t, const char*, size_t);
+        int64_t update(const ram_payer_info&, const table_request&, primary_key_t, const char*, size_t);
+        int64_t remove(const ram_payer_info&, const table_request&, primary_key_t);
 
-        primary_key_t insert(cache_item&, variant, const account_name&);
-        primary_key_t update(cache_item&, variant, const account_name&);
-        primary_key_t remove(cache_item&);
+        int64_t insert(cache_item&, variant);
+        int64_t update(cache_item&, variant);
+        int64_t remove(cache_item&);
 
         variant value_by_pk(const table_request& request, primary_key_t pk);
         variant value_at_cursor(const cursor_request& request);
