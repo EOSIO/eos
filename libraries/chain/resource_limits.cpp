@@ -477,13 +477,13 @@ void resource_limits_manager::recall_proxied(int64_t now, symbol_code purpose_co
             auto to_recall = get_prop(grant_itr->share, pct);
             amount = recall_proxied_traversal(purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
             if (grant_itr->pct || grant_itr->share > to_recall) {
-                grants_table.modify(*grant_itr, [&](auto& g) { g.share -= to_recall; });
+                grants_table.modify(*grant_itr, {}, [&](auto& g) { g.share -= to_recall; });
                 ++grant_itr;
             }
             else {
                 const auto &cur_grant = *grant_itr;
                 ++grant_itr;
-                grants_table.erase(cur_grant);
+                grants_table.erase(cur_grant, {});
             }
             break;
         }
@@ -492,7 +492,7 @@ void resource_limits_manager::recall_proxied(int64_t now, symbol_code purpose_co
     }
     
     EOS_ASSERT(amount > 0, transaction_exception, "amount to recall must be positive");
-    agents_table.modify(*grantor_as_agent, [&](auto& a) {
+    agents_table.modify(*grantor_as_agent, {}, [&](auto& a) {
         a.balance += amount;
         a.proxied -= amount;
     });
@@ -524,12 +524,12 @@ int64_t resource_limits_manager::recall_proxied_traversal(symbol_code purpose_co
     {
         auto to_recall = get_prop(share_net, grant_itr->share, agent->shares_sum);
         proxied_ret += recall_proxied_traversal(purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
-        grants_idx.modify(*grant_itr, account_name(), [&](auto& g) { g.share -= to_recall; });
+        grants_idx.modify(*grant_itr, {}, [&](auto& g) { g.share -= to_recall; });
         ++grant_itr;
     }
     EOS_ASSERT(proxied_ret <= agent->proxied, transaction_exception, "SYSTEM: incorrect proxied_ret val");
     
-    agents_idx.modify(*agent, account_name(), [&](auto& a) {
+    agents_idx.modify(*agent, {}, [&](auto& a) {
         a.balance -= balance_ret;
         a.proxied -= proxied_ret;
         a.own_share += share_fee;
@@ -569,10 +569,10 @@ void resource_limits_manager::update_proxied_traversal(int64_t now, symbol_code 
                 unstaked += recall_proxied_traversal(purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, grant_itr->share, grant_itr->break_fee);
                 const auto &cur_grant = *grant_itr;
                 ++grant_itr;
-                grants_idx.erase(cur_grant);
+                grants_idx.erase(cur_grant, {});
             }
         }
-        agents_idx.modify(*agent, account_name(), [&](auto& a) {
+        agents_idx.modify(*agent, {}, [&](auto& a) {
             a.balance += unstaked;
             a.proxied = new_proxied;
             a.last_proxied_update = time_point_sec(now);

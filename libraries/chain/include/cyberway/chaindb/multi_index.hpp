@@ -22,6 +22,7 @@
 
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/exception.hpp>
+#include <cyberway/chaindb/ram_payer_info.hpp>
 
 namespace boost { namespace tuples {
 
@@ -602,11 +603,11 @@ public:
         }
 
         template<typename Lambda>
-        void modify(const T& obj, const account_name& payer, Lambda&& updater) const {
-            multidx().modify(obj, payer, std::forward<Lambda>(updater));
+        void modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
+            multidx().modify(obj, ram, std::forward<Lambda>(updater));
         }
 
-        void erase(const T& obj) const {
+        void erase(const T& obj, const ram_payer_info& ram) const {
             multidx().erase(obj);
         }
 
@@ -708,7 +709,7 @@ public:
     }
 
     template<typename Lambda>
-    const_iterator emplace(const account_name& payer, Lambda&& constructor) const {
+    const_iterator emplace(const ram_payer_info& ram, Lambda&& constructor) const {
         auto itm = controller_.create_cache_item(get_table_request());
         try {
             auto pk = itm->pk();
@@ -725,7 +726,7 @@ public:
 
             fc::variant value;
             fc::to_variant(obj, value);
-            controller_.insert(*itm.get(), std::move(value));
+            controller_.insert(ram, *itm.get(), std::move(value));
 
             return const_iterator(this, uninitilized_cursor::find_by_pk, pk, std::move(itm));
         } catch (...) {
@@ -736,11 +737,11 @@ public:
 
     template<typename Lambda>
     const_iterator emplace(Lambda&& constructor) const {
-        return emplace(account_name(), std::forward<Lambda>(constructor));
+        return emplace({}, std::forward<Lambda>(constructor));
     }
 
     template<typename Lambda>
-    void modify(const T& obj, const account_name& payer, Lambda&& updater) const {
+    void modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
         auto& itm = item_data::get_cache(obj);
         CYBERWAY_ASSERT(itm.is_valid_table(table_name()), chaindb_midx_logic_exception,
             "Object ${obj} passed to modify is not from the index ${index}",
@@ -758,25 +759,25 @@ public:
 
         fc::variant value;
         fc::to_variant(obj, value);
-        controller_.update(itm, std::move(value));
+        controller_.update(ram, itm, std::move(value));
     }
 
     template<typename Lambda>
     void modify(const T& obj, Lambda&& updater) const {
-        modify(obj, account_name(), std::forward<Lambda>(updater));
+        modify(obj, {}, std::forward<Lambda>(updater));
     }
 
-    void erase(const T& obj) const {
+    void erase(const T& obj, const ram_payer_info& ram) const {
         auto& itm = item_data::get_cache(obj);
         CYBERWAY_ASSERT(itm.is_valid_table(table_name()), chaindb_midx_logic_exception,
             "Object ${obj} passed to erase is not from the index ${index}",
             ("obj", obj)("index", get_index_name()));
 
-        controller_.remove(itm);
+        controller_.remove(ram, itm);
     }
 
-    void erase(const primary_key_t pk) const {
-        erase(get(pk));
+    void erase(const T& obj) const {
+        erase(obj, {});
     }
 }; // struct multi_index
 

@@ -585,13 +585,16 @@ struct controller_impl {
 
       resource_limits.initialize_account(name);
 
-      int64_t ram_delta = config::overhead_per_account_ram_bytes;
-      ram_delta += 2*config::billable_size_v<permission_object>;
-      ram_delta += owner_permission.auth.get_billable_size();
-      ram_delta += active_permission.auth.get_billable_size();
+      // Does exist any reason to calculate ram usage for system accounts?
 
-      resource_limits.add_pending_ram_usage(name, ram_delta);
-      resource_limits.verify_account_ram_usage(name);
+// TODO: Removed by CyberWay
+//      int64_t ram_delta = config::overhead_per_account_ram_bytes;
+//      ram_delta += 2*config::billable_size_v<permission_object>;
+//      ram_delta += owner_permission.auth.get_billable_size();
+//      ram_delta += active_permission.auth.get_billable_size();
+//
+//      resource_limits.add_pending_ram_usage(name, ram_delta);
+//      resource_limits.verify_account_ram_usage(name);
    }
 
    void initialize_database() {

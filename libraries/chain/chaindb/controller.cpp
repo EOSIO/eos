@@ -8,6 +8,7 @@
 #include <cyberway/chaindb/mongo_driver.hpp>
 #include <cyberway/chaindb/abi_info.hpp>
 #include <cyberway/chaindb/ram_calculator.hpp>
+#include <cyberway/chaindb/ram_payer_info.hpp>
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/symbol.hpp>
@@ -722,16 +723,16 @@ namespace cyberway { namespace chaindb {
         return impl_->remove(ram, request, pk);
     }
 
-    int64_t chaindb_controller::insert(cache_item& itm, variant data) {
-        return impl_->insert(ram_payer_info(), itm, std::move(data));
+    int64_t chaindb_controller::insert(const ram_payer_info& ram, cache_item& itm, variant data) {
+        return impl_->insert(ram, itm, std::move(data));
     }
 
-    int64_t chaindb_controller::update(cache_item& itm, variant data) {
-        return impl_->update(ram_payer_info(), itm, std::move(data));
+    int64_t chaindb_controller::update(const ram_payer_info& ram, cache_item& itm, variant data) {
+        return impl_->update(ram, itm, std::move(data));
     }
 
-    int64_t chaindb_controller::remove(cache_item& itm) {
-        return impl_->remove(ram_payer_info(), itm);
+    int64_t chaindb_controller::remove(const ram_payer_info& ram, cache_item& itm) {
+        return impl_->remove(ram, itm);
     }
 
     variant chaindb_controller::value_by_pk(const table_request& request, primary_key_t pk) {

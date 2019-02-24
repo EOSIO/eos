@@ -6,16 +6,12 @@
 
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/chaindb/cache_item.hpp>
-
-namespace eosio { namespace chain {
-    class apply_context;
-} } // namespace eosio::chain
+#include <cyberway/chaindb/ram_payer_info.hpp>
 
 namespace cyberway { namespace chaindb {
     using fc::microseconds;
     using fc::variant;
 
-    using eosio::chain::apply_context;
     using eosio::chain::abi_def;
 
     using table_name_t = eosio::chain::table_name::value_type;
@@ -26,6 +22,7 @@ namespace cyberway { namespace chaindb {
     static constexpr cursor_t invalid_cursor = (0);
 
     template<class> struct object_to_table;
+    struct ram_payer_info;
 
     struct index_request final {
         const account_name code;
@@ -59,20 +56,6 @@ namespace cyberway { namespace chaindb {
         cursor_t      cursor = invalid_cursor;
         primary_key_t pk     = end_primary_key;
     }; // struct find_info
-
-    struct ram_payer_info final {
-        apply_context* ctx   = nullptr; // maybe unavailable - see eosio controller
-        account_name   payer;
-        size_t         precalc_size = 0;
-
-        ram_payer_info() = default;
-
-        ram_payer_info(apply_context& c, account_name p = account_name(), const size_t s = 0)
-        : ctx(&c), payer(std::move(p)), precalc_size(s) {
-        }
-
-        void add_usage(const account_name, const int64_t delta) const;
-    }; // struct ram_payer_info
 
     class chaindb_controller final {
     public:
@@ -144,21 +127,35 @@ namespace cyberway { namespace chaindb {
         }
 
         template<typename Object, typename Lambda>
+        const Object& emplace(const ram_payer_info& ram, Lambda&& constructor) {
+            auto midx = get_table<Object>();
+            auto itr = midx.emplace(ram, std::forward<Lambda>(constructor));
+            // should not be critical - object is stored in cache map
+            return *itr;
+        }
+
+        template<typename Object, typename Lambda>
         void modify(const Object& obj, Lambda&& updater) {
             auto midx = get_table<Object>();
             midx.modify(obj, std::forward<Lambda>(updater));
         }
 
-        template<typename Object>
-        void erase(const Object& obj) {
+        template<typename Object, typename Lambda>
+        void modify(const Object& obj, const ram_payer_info& ram, Lambda&& updater) {
             auto midx = get_table<Object>();
-            midx.erase(obj);
+            midx.modify(obj, ram, std::forward<Lambda>(updater));
+        }
+
+        template<typename Object>
+        void erase(const Object& obj, const ram_payer_info& ram = {}) {
+            auto midx = get_table<Object>();
+            midx.erase(obj, ram);
         }
 
         template<typename Object>
         void erase(const primary_key_t pk) {
             auto midx = get_table<Object>();
-            midx.erase(pk);
+            midx.erase(midx.get(pk));
         }
 
         template<typename Object>
@@ -215,9 +212,9 @@ namespace cyberway { namespace chaindb {
         int64_t update(const ram_payer_info&, const table_request&, primary_key_t, const char*, size_t);
         int64_t remove(const ram_payer_info&, const table_request&, primary_key_t);
 
-        int64_t insert(cache_item&, variant);
-        int64_t update(cache_item&, variant);
-        int64_t remove(cache_item&);
+        int64_t insert(const ram_payer_info&, cache_item&, variant);
+        int64_t update(const ram_payer_info&, cache_item&, variant);
+        int64_t remove(const ram_payer_info&, cache_item&);
 
         variant value_by_pk(const table_request& request, primary_key_t pk);
         variant value_at_cursor(const cursor_request& request);

@@ -385,10 +385,11 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       EOS_ASSERT( !control.is_producing_block(), subjective_block_production_exception,
                   "Replacing a deferred transaction is temporarily disabled." );
 
-      // TODO: The logic of the next line needs to be incorporated into the next hard fork.
-      // add_ram_usage( ptr->payer, -(config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size()) );
+// TODO: Removed by CyberWay
+//      // TODO: The logic of the next line needs to be incorporated into the next hard fork.
+//      // add_ram_usage( ptr->payer, -(config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size()) );
 
-      chaindb.modify( *ptr, [&]( auto& gtx ) {
+      chaindb.modify( *ptr, {*this, payer}, [&]( auto& gtx ) {
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
             gtx.payer       = payer;
@@ -399,7 +400,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
             trx_size = gtx.set( trx );
          });
    } else {
-      chaindb.emplace<generated_transaction_object>( [&]( auto& gtx ) {
+      chaindb.emplace<generated_transaction_object>( {*this, payer}, [&]( auto& gtx ) {
             gtx.trx_id      = trx.id();
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
@@ -412,17 +413,19 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          });
    }
 
-   EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account) || (receiver == payer) || privileged,
-               subjective_block_production_exception, "Cannot charge RAM to other accounts during notify." );
-   add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
+// TODO: Removed by CyberWay
+//   EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account) || (receiver == payer) || privileged,
+//               subjective_block_production_exception, "Cannot charge RAM to other accounts during notify." );
+//   add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
 }
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
    auto trx_table = chaindb.get_table<generated_transaction_object>();
    const auto* gto = chaindb.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
    if ( gto ) {
-      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
-      trx_table.erase(*gto);
+// TODO: Removed by CyberWay
+//      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
+      trx_table.erase(*gto, {*this});
    }
    return gto;
 }

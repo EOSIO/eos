@@ -104,12 +104,14 @@ void apply_cyber_newaccount(apply_context& context) {
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
 
-   chaindb.emplace<account_object>([&](auto& a) {
+   context.control.get_mutable_resource_limits_manager().initialize_account(create.name);
+
+   chaindb.emplace<account_object>({context, create.name}, [&](auto& a) {
       a.name = create.name;
       a.creation_date = context.control.pending_block_time();
    });
 
-   chaindb.emplace<account_sequence_object>([&](auto& a) {
+   chaindb.emplace<account_sequence_object>({context, create.name}, [&](auto& a) {
       a.name = create.name;
    });
 
@@ -122,14 +124,13 @@ void apply_cyber_newaccount(apply_context& context) {
    const auto& active_permission = authorization.create_permission( create.name, config::active_name, owner_permission.id,
                                                                     std::move(create.active) );
 
-   context.control.get_mutable_resource_limits_manager().initialize_account(create.name);
-
-   int64_t ram_delta = config::overhead_per_account_ram_bytes;
-   ram_delta += 2*config::billable_size_v<permission_object>;
-   ram_delta += owner_permission.auth.get_billable_size();
-   ram_delta += active_permission.auth.get_billable_size();
-
-   context.add_ram_usage(create.name, ram_delta);
+// TODO: Removed by CyberWay
+//   int64_t ram_delta = config::overhead_per_account_ram_bytes;
+//   ram_delta += 2*config::billable_size_v<permission_object>;
+//   ram_delta += owner_permission.auth.get_billable_size();
+//   ram_delta += active_permission.auth.get_billable_size();
+//
+//   context.add_ram_usage(create.name, ram_delta);
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
@@ -195,7 +196,7 @@ void apply_cyber_setcode(apply_context& context) {
         EOS_ASSERT(allowed, protected_contract_code, "can't change code of protected account");
     }
 
-   chaindb.modify( account, [&]( auto& a ) {
+   chaindb.modify( account, {context}, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       // TODO: update setcode message to include the hash, then validate it in validate
       a.last_code_update = context.control.pending_block_time();
@@ -210,9 +211,10 @@ void apply_cyber_setcode(apply_context& context) {
       aso.code_sequence += 1;
    });
 
-   if (new_size != old_size) {
-      context.add_ram_usage( act.account, new_size - old_size );
-   }
+// TODO: Removed by CyberWay
+//   if (new_size != old_size) {
+//      context.add_ram_usage( act.account, new_size - old_size );
+//   }
 }
 
 void apply_cyber_setabi(apply_context& context) {
@@ -242,7 +244,7 @@ void apply_cyber_setabi(apply_context& context) {
         EOS_ASSERT(allowed, protected_contract_code, "can't change abi of protected account");
     }
 
-   chaindb.modify( account, [&]( auto& a ) {
+   chaindb.modify( account, {context}, [&]( auto& a ) {
       a.abi.resize( abi_size );
       if( abi_size > 0 )
          memcpy( const_cast<char*>(a.abi.data()), act.abi.data(), abi_size );
@@ -254,9 +256,10 @@ void apply_cyber_setabi(apply_context& context) {
 
    context.control.set_abi(act.account, account.get_abi());
 
-   if (new_size != old_size) {
-      context.add_ram_usage( act.account, new_size - old_size );
-   }
+// TODO: Removed by CyberWay
+//   if (new_size != old_size) {
+//      context.add_ram_usage( act.account, new_size - old_size );
+//   }
 }
 
 void apply_cyber_updateauth(apply_context& context) {
@@ -383,21 +386,22 @@ void apply_cyber_linkauth(apply_context& context) {
       if( link ) {
          EOS_ASSERT(link->required_permission != requirement.requirement, action_validate_exception,
                     "Attempting to update required authority, but new requirement is same as old");
-         chaindb.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
+         chaindb.modify(*link, {context}, [requirement = requirement.requirement](permission_link_object& link) {
              link.required_permission = requirement;
          });
       } else {
-         chaindb.emplace<permission_link_object>([&requirement](permission_link_object& link) {
+         chaindb.emplace<permission_link_object>({context, requirement.account}, [&requirement](permission_link_object& link) {
             link.account = requirement.account;
             link.code = requirement.code;
             link.message_type = requirement.type;
             link.required_permission = requirement.requirement;
          });
 
-         context.add_ram_usage(
-            requirement.account,
-            (int64_t)(config::billable_size_v<permission_link_object>)
-         );
+// TODO: Removed by CyberWay
+//         context.add_ram_usage(
+//            requirement.account,
+//            (int64_t)(config::billable_size_v<permission_link_object>)
+//         );
       }
 
   } FC_CAPTURE_AND_RETHROW((requirement))
@@ -414,12 +418,13 @@ void apply_cyber_unlinkauth(apply_context& context) {
    auto link_key = boost::make_tuple(unlink.account, unlink.code, unlink.type);
    auto link = chaindb.find<permission_link_object, by_action_name>(link_key);
    EOS_ASSERT(link != nullptr, action_validate_exception, "Attempting to unlink authority, but no link found");
-   context.add_ram_usage(
-      link->account,
-      -(int64_t)(config::billable_size_v<permission_link_object>)
-   );
+// TODO: Removed by CyberWay
+//   context.add_ram_usage(
+//      link->account,
+//      -(int64_t)(config::billable_size_v<permission_link_object>)
+//   );
 
-   chaindb.erase(*link);
+   chaindb.erase(*link, {context});
 }
 
 void apply_cyber_providebw(apply_context& context) {
@@ -456,12 +461,11 @@ void apply_cyber_domain_newdomain(apply_context& context) {
       auto exists = chaindb.find<domain_object, by_name>(op.name);
       EOS_ASSERT(exists == nullptr, domain_exists_exception,
          "Cannot create domain named ${n}, as that name is already taken", ("n", op.name));
-      chaindb.emplace<domain_object>([&](auto& d) {
+      chaindb.emplace<domain_object>({context, op.creator}, [&](auto& d) {
          d.owner = op.creator;
          d.creation_date = context.control.pending_block_time();
          d.name = op.name;
       });
-      context.add_ram_usage(op.creator, sizeof(domain_object) + op.name.size());    // TODO: fix
 } FC_CAPTURE_AND_RETHROW((op)) }
 
 void apply_cyber_domain_passdomain(apply_context& context) {
@@ -471,10 +475,9 @@ void apply_cyber_domain_passdomain(apply_context& context) {
       validate_domain_name(op.name);
       const auto& domain = context.control.get_domain(op.name);
       EOS_ASSERT(op.from == domain.owner, action_validate_exception, "Only owner can pass domain name");
-      context.chaindb.modify(domain, [&](auto& d) {
+      context.chaindb.modify(domain, {context, op.to}, [&](auto& d) {
          d.owner = op.to;
       });
-      // TODO: move ram usage to new owner
 } FC_CAPTURE_AND_RETHROW((op)) }
 
 void apply_cyber_domain_linkdomain(apply_context& context) {
@@ -485,10 +488,9 @@ void apply_cyber_domain_linkdomain(apply_context& context) {
       const auto& domain = context.control.get_domain(op.name);
       EOS_ASSERT(op.owner == domain.owner, action_validate_exception, "Only owner can change domain link");
       EOS_ASSERT(op.to != domain.linked_to, action_validate_exception, "Domain name already linked to the same account");
-      context.chaindb.modify(domain, [&](auto& d) {
+      context.chaindb.modify(domain, {context, domain.owner}, [&](auto& d) {
          d.linked_to = op.to;
       });
-      // ram usage unchanged
 } FC_CAPTURE_AND_RETHROW((op)) }
 
 void apply_cyber_domain_unlinkdomain(apply_context& context) {
@@ -499,10 +501,9 @@ void apply_cyber_domain_unlinkdomain(apply_context& context) {
       const auto& domain = context.control.get_domain(op.name);
       EOS_ASSERT(op.owner == domain.owner, action_validate_exception, "Only owner can unlink domain");
       EOS_ASSERT(domain.linked_to != account_name(), action_validate_exception, "Domain name already unlinked");
-      context.chaindb.modify(domain, [&](auto& d) {
+      context.chaindb.modify(domain, {context, domain.owner}, [&](auto& d) {
          d.linked_to = account_name();
       });
-      // ram usage unchanged
 } FC_CAPTURE_AND_RETHROW((op)) }
 
 void apply_cyber_domain_newusername(apply_context& context) {
@@ -516,12 +517,11 @@ void apply_cyber_domain_newusername(apply_context& context) {
          "Cannot create username ${n} in scope ${s}, as it's already taken", ("n", op.name)("s", op.creator));
       auto owner = chaindb.find<account_object, by_name>(op.owner);
       EOS_ASSERT(owner, account_name_exists_exception, "Username owner (${o}) must exist", ("o", op.owner));
-      chaindb.emplace<username_object>([&](auto& d) {
+      chaindb.emplace<username_object>({context, op.creator}, [&](auto& d) {
          d.owner = op.owner;
          d.scope = op.creator;
          d.name = op.name;
       });
-      context.add_ram_usage(op.creator, sizeof(username_object) + op.name.size());     // TODO: fix
 } FC_CAPTURE_AND_RETHROW((op)) }
 
 
