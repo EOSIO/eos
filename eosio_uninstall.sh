@@ -1,5 +1,9 @@
 #! /bin/bash
 
+txtbld=$(tput bold)
+bldred=${txtbld}$(tput setaf 1)
+txtrst=$(tput sgr0)
+
 binaries=(cleos
           eosio-abigen
           eosio-launcher
@@ -24,7 +28,12 @@ if [ -d "/usr/local/eosio" ]; then
             rm -rf eosio
             pushd bin &> /dev/null
             for binary in ${binaries[@]}; do
-               rm ${binary}
+               if [ -f "${binary}" ] || [ -L "${binary}" ]; then
+                  printf "\t${txtbld}${binary}${txtrst} found, ${bldred}removing...${txtrst}\n"
+                  rm ${binary}
+               else
+                  printf "\t${txtbld}${binary}${txtrst} not found, skipping...\n"
+               fi
             done
             # Handle cleanup of directories created from installation
             if [ "$1" == "--full" ]; then
@@ -39,3 +48,5 @@ if [ -d "/usr/local/eosio" ]; then
       esac
    done
 fi
+
+printf "\nEOSIO is successfully removed\n"
