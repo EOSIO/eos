@@ -220,16 +220,15 @@ class Utils:
 
     @staticmethod
     def pgrepCmd(serverName):
-        pgrepOpts="-fl"
         # pylint: disable=deprecated-method
         # pgrep differs on different platform (amazonlinux1 and 2 for example). We need to check if pgrep -h has -a available and add that if so:
         try:
             pgrepHelp = re.search('-a', subprocess.Popen("pgrep --help 2>/dev/null", shell=True, stdout=subprocess.PIPE).stdout.read())
-	        pgrepHelp.group(0)
+	        pgrepOutput = pgrepHelp.group(0)
             pgrepOpts="-a"
         except AttributeError as error:
             # If no -a, AttributeError: 'NoneType' object has no attribute 'group'
-            pass
+            pgrepOpts="-fl"
 
         return "pgrep %s %s" % (pgrepOpts, serverName)
 
