@@ -229,14 +229,14 @@ bool resource_limits_manager::set_account_limits( const account_name& account, i
       auto pitr = owner_idx.find( boost::make_tuple(true, account) );
       if (owner_idx.end() == pitr) {
          const auto& limits = owner_idx.get( boost::make_tuple(false, account) );
-         auto itr = limit_table.emplace([&](resource_limits_object& pending_limits){
+         auto res = limit_table.emplace([&](resource_limits_object& pending_limits){
             pending_limits.owner = limits.owner;
             pending_limits.ram_bytes = limits.ram_bytes;
             pending_limits.net_weight = limits.net_weight;
             pending_limits.cpu_weight = limits.cpu_weight;
             pending_limits.pending = true;
          });
-         return *itr;
+         return *res.pos;
       } else {
          return *pitr;
       }
@@ -440,17 +440,127 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
    return arl;
 }
 
-void resource_limits_manager::update_proxied(int64_t now, symbol_code purpose_code, symbol_code token_code, const account_name& account, int64_t frame_length, bool force) {
+static inline auto agent_key(symbol_code purpose_code, symbol_code token_code, const account_name& agent_name) {
+    return boost::make_tuple(purpose_code, token_code, agent_name);
+}
+static inline auto grant_key(
+    symbol_code purpose_code, symbol_code token_code, const account_name& grantor_name,
+    const account_name& agent_name = account_name()
+) {
+    return boost::make_tuple(purpose_code, token_code, grantor_name, agent_name);
+}
+
+template<typename AgentIndex>
+static const stake_agent_object* get_agent(
+    symbol_code purpose_code, symbol_code token_code, const AgentIndex& agents_idx, const account_name& agent_name
+) {
+    auto agent = agents_idx.find(agent_key(purpose_code, token_code, agent_name));
+    EOS_ASSERT(agent != agents_idx.end(), transaction_exception, "agent doesn't exist");
+    return &(*agent);
+}
+
+template<typename AgentIndex, typename GrantIndex>
+int64_t recall_proxied_traversal(
+    const ram_payer_info& ram, symbol_code purpose_code, symbol_code token_code,
+    const AgentIndex& agents_idx, const GrantIndex& grants_idx,
+    const account_name& agent_name, int64_t share, int16_t break_fee
+) {
+
+    auto agent = get_agent(purpose_code, token_code, agents_idx, agent_name);
+
+    EOS_ASSERT(share >= 0, transaction_exception, "SYSTEM: share can't be negative");
+    EOS_ASSERT(share <= agent->shares_sum, transaction_exception, "SYSTEM: incorrect share val");
+    if(share == 0)
+        return 0;
+    auto share_fee = get_prop(share, std::min(agent->fee, break_fee));
+    auto share_net = share - share_fee;
+    auto balance_ret = get_prop(agent->balance, share_net, agent->shares_sum);
+    EOS_ASSERT(balance_ret <= agent->balance, transaction_exception, "SYSTEM: incorrect balance_ret val");
+
+    auto proxied_ret = 0;
+    auto grant_itr = grants_idx.lower_bound(grant_key(purpose_code, token_code, agent->account));
+    while ((grant_itr != grants_idx.end()) &&
+           (grant_itr->purpose_code   == purpose_code) &&
+           (grant_itr->token_code   == token_code) &&
+           (grant_itr->grantor_name == agent->account))
+    {
+        auto to_recall = get_prop(share_net, grant_itr->share, agent->shares_sum);
+        proxied_ret += recall_proxied_traversal(ram, purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
+        grants_idx.modify(*grant_itr, [&](auto& g) { g.share -= to_recall; });
+        ++grant_itr;
+    }
+    EOS_ASSERT(proxied_ret <= agent->proxied, transaction_exception, "SYSTEM: incorrect proxied_ret val");
+
+    agents_idx.modify(*agent, [&](auto& a) {
+        a.balance -= balance_ret;
+        a.proxied -= proxied_ret;
+        a.own_share += share_fee;
+        a.shares_sum -= share_net;
+    });
+    return balance_ret + proxied_ret;
+}
+
+template<typename AgentIndex, typename GrantIndex>
+void update_proxied_traversal(
+    const ram_payer_info& ram, int64_t now, symbol_code purpose_code, symbol_code token_code,
+    const AgentIndex& agents_idx, const GrantIndex& grants_idx,
+    const stake_agent_object* agent, int64_t frame_length, bool force
+) {
+
+    if ((now - agent->last_proxied_update.sec_since_epoch() >= frame_length) || force) {
+        int64_t new_proxied = 0;
+        int64_t unstaked = 0;
+
+        auto grant_itr = grants_idx.lower_bound(grant_key(purpose_code, token_code, agent->account));
+
+        while ((grant_itr != grants_idx.end()) &&
+               (grant_itr->purpose_code == purpose_code) &&
+               (grant_itr->token_code   == token_code) &&
+               (grant_itr->grantor_name == agent->account))
+        {
+            auto proxy_agent = get_agent(purpose_code, token_code, agents_idx, grant_itr->agent_name);
+            update_proxied_traversal(ram, now, purpose_code, token_code, agents_idx, grants_idx, proxy_agent, frame_length, force);
+
+            if (proxy_agent->proxy_level < agent->proxy_level &&
+                grant_itr->break_fee >= proxy_agent->fee &&
+                grant_itr->break_min_own_staked <= proxy_agent->min_own_staked)
+            {
+                if (proxy_agent->shares_sum)
+                    new_proxied += get_prop(proxy_agent->get_total_funds(), grant_itr->share, proxy_agent->shares_sum);
+                ++grant_itr;
+            }
+            else {
+                unstaked += recall_proxied_traversal(ram, purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, grant_itr->share, grant_itr->break_fee);
+                const auto &cur_grant = *grant_itr;
+                ++grant_itr;
+                grants_idx.erase(cur_grant, ram);
+            }
+        }
+        agents_idx.modify(*agent, [&](auto& a) {
+            a.balance += unstaked;
+            a.proxied = new_proxied;
+            a.last_proxied_update = time_point_sec(now);
+        });
+    }
+}
+
+void resource_limits_manager::update_proxied(
+    const ram_payer_info& ram, int64_t now, symbol_code purpose_code, symbol_code token_code,
+    const account_name& account, int64_t frame_length, bool force
+) {
     auto agents_table = _chaindb.get_table<stake_agent_object>();
     auto grants_table = _chaindb.get_table<stake_grant_object>();
     auto agents_idx = agents_table.get_index<stake_agent_object::by_key>();
     auto grants_idx = grants_table.get_index<stake_grant_object::by_key>();
-    update_proxied_traversal(now, purpose_code, token_code, agents_idx, grants_idx, get_agent(purpose_code, token_code, agents_idx, account),
+    update_proxied_traversal(ram, now, purpose_code, token_code, agents_idx, grants_idx,
+        get_agent(purpose_code, token_code, agents_idx, account),
         frame_length, force);
 }
 
-void resource_limits_manager::recall_proxied(int64_t now, symbol_code purpose_code, symbol_code token_code, 
-                                            account_name grantor_name, account_name agent_name, int16_t pct) {
+void resource_limits_manager::recall_proxied(
+    const ram_payer_info& ram, int64_t now, symbol_code purpose_code, symbol_code token_code,
+    account_name grantor_name, account_name agent_name, int16_t pct
+) {
                         
     EOS_ASSERT(1 <= pct && pct <= config::_100percent, transaction_exception, "pct must be between 0.01% and 100% (1-10000)");
     const auto* param = _chaindb.find<stake_param_object, by_id>(token_code.value);
@@ -464,7 +574,7 @@ void resource_limits_manager::recall_proxied(int64_t now, symbol_code purpose_co
 
     auto grantor_as_agent = get_agent(purpose_code, token_code, agents_idx, grantor_name);
     
-    update_proxied_traversal(now, purpose_code, token_code, agents_idx, grants_idx, grantor_as_agent, param->frame_length, false);
+    update_proxied_traversal(ram, now, purpose_code, token_code, agents_idx, grants_idx, grantor_as_agent, param->frame_length, false);
     
     int64_t amount = 0;
     auto grant_itr = grants_idx.lower_bound(grant_key(purpose_code, token_code, grantor_name));
@@ -475,15 +585,15 @@ void resource_limits_manager::recall_proxied(int64_t now, symbol_code purpose_co
     {
         if (grant_itr->agent_name == agent_name) {
             auto to_recall = get_prop(grant_itr->share, pct);
-            amount = recall_proxied_traversal(purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
+            amount = recall_proxied_traversal(ram, purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
             if (grant_itr->pct || grant_itr->share > to_recall) {
-                grants_table.modify(*grant_itr, {}, [&](auto& g) { g.share -= to_recall; });
+                grants_table.modify(*grant_itr, [&](auto& g) { g.share -= to_recall; });
                 ++grant_itr;
             }
             else {
                 const auto &cur_grant = *grant_itr;
                 ++grant_itr;
-                grants_table.erase(cur_grant, {});
+                grants_table.erase(cur_grant, ram);
             }
             break;
         }
@@ -492,92 +602,11 @@ void resource_limits_manager::recall_proxied(int64_t now, symbol_code purpose_co
     }
     
     EOS_ASSERT(amount > 0, transaction_exception, "amount to recall must be positive");
-    agents_table.modify(*grantor_as_agent, {}, [&](auto& a) {
+    agents_table.modify(*grantor_as_agent, [&](auto& a) {
         a.balance += amount;
         a.proxied -= amount;
     });
 }
 
-
-template<typename AgentIndex, typename GrantIndex>
-int64_t resource_limits_manager::recall_proxied_traversal(symbol_code purpose_code, symbol_code token_code,
-                    const AgentIndex& agents_idx, const GrantIndex& grants_idx,
-                    const account_name& agent_name, int64_t share, int16_t break_fee) {
-    
-    auto agent = get_agent(purpose_code, token_code, agents_idx, agent_name);
-
-    EOS_ASSERT(share >= 0, transaction_exception, "SYSTEM: share can't be negative");
-    EOS_ASSERT(share <= agent->shares_sum, transaction_exception, "SYSTEM: incorrect share val");
-    if(share == 0)
-        return 0;
-    auto share_fee = get_prop(share, std::min(agent->fee, break_fee));
-    auto share_net = share - share_fee;
-    auto balance_ret = get_prop(agent->balance, share_net, agent->shares_sum);
-    EOS_ASSERT(balance_ret <= agent->balance, transaction_exception, "SYSTEM: incorrect balance_ret val");
-    
-    auto proxied_ret = 0;
-    auto grant_itr = grants_idx.lower_bound(grant_key(purpose_code, token_code, agent->account));
-    while ((grant_itr != grants_idx.end()) &&
-           (grant_itr->purpose_code   == purpose_code) &&
-           (grant_itr->token_code   == token_code) &&
-           (grant_itr->grantor_name == agent->account))
-    {
-        auto to_recall = get_prop(share_net, grant_itr->share, agent->shares_sum);
-        proxied_ret += recall_proxied_traversal(purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
-        grants_idx.modify(*grant_itr, {}, [&](auto& g) { g.share -= to_recall; });
-        ++grant_itr;
-    }
-    EOS_ASSERT(proxied_ret <= agent->proxied, transaction_exception, "SYSTEM: incorrect proxied_ret val");
-    
-    agents_idx.modify(*agent, {}, [&](auto& a) {
-        a.balance -= balance_ret;
-        a.proxied -= proxied_ret;
-        a.own_share += share_fee;
-        a.shares_sum -= share_net;
-    });
-    return balance_ret + proxied_ret;
-}
-
-template<typename AgentIndex, typename GrantIndex>
-void resource_limits_manager::update_proxied_traversal(int64_t now, symbol_code purpose_code, symbol_code token_code,
-                    const AgentIndex& agents_idx, const GrantIndex& grants_idx,
-                    const stake_agent_object* agent, int64_t frame_length, bool force) {
-
-    if ((now - agent->last_proxied_update.sec_since_epoch() >= frame_length) || force) {
-        int64_t new_proxied = 0;
-        int64_t unstaked = 0;
-
-        auto grant_itr = grants_idx.lower_bound(grant_key(purpose_code, token_code, agent->account));
-        
-        while ((grant_itr != grants_idx.end()) &&
-               (grant_itr->purpose_code == purpose_code) &&
-               (grant_itr->token_code   == token_code) &&
-               (grant_itr->grantor_name == agent->account))
-        {
-            auto proxy_agent = get_agent(purpose_code, token_code, agents_idx, grant_itr->agent_name);
-            update_proxied_traversal(now, purpose_code, token_code, agents_idx, grants_idx, proxy_agent, frame_length, force);
-            
-            if (proxy_agent->proxy_level < agent->proxy_level && 
-                grant_itr->break_fee >= proxy_agent->fee &&
-                grant_itr->break_min_own_staked <= proxy_agent->min_own_staked) 
-            {
-                if (proxy_agent->shares_sum)
-                    new_proxied += get_prop(proxy_agent->get_total_funds(), grant_itr->share, proxy_agent->shares_sum);
-                ++grant_itr;
-            }
-            else {
-                unstaked += recall_proxied_traversal(purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, grant_itr->share, grant_itr->break_fee);
-                const auto &cur_grant = *grant_itr;
-                ++grant_itr;
-                grants_idx.erase(cur_grant, {});
-            }
-        }
-        agents_idx.modify(*agent, {}, [&](auto& a) {
-            a.balance += unstaked;
-            a.proxied = new_proxied;
-            a.last_proxied_update = time_point_sec(now);
-        });
-    }
-}
 
 } } } /// eosio::chain::resource_limits

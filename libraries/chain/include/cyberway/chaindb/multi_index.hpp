@@ -603,12 +603,17 @@ public:
         }
 
         template<typename Lambda>
-        void modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
-            multidx().modify(obj, ram, std::forward<Lambda>(updater));
+        int64_t modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
+            return multidx().modify(obj, ram, std::forward<Lambda>(updater));
         }
 
-        void erase(const T& obj, const ram_payer_info& ram) const {
-            multidx().erase(obj);
+        template<typename Lambda>
+        int64_t modify(const T& obj, Lambda&& updater) const {
+            return modify(obj, {}, std::forward<Lambda>(updater));
+        }
+
+        int64_t erase(const T& obj, const ram_payer_info& ram = {}) const {
+            return multidx().erase(obj);
         }
 
         static auto extract_key(const T& obj) { return extractor_type()(obj); }
@@ -638,6 +643,11 @@ public:
 
     using const_iterator = typename primary_index_type::const_iterator;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+    struct emplace_result final {
+        const_iterator pos;
+        int64_t        delta;
+    }; // struct emplace_result
 
 public:
     multi_index(chaindb_controller& controller)
@@ -709,7 +719,7 @@ public:
     }
 
     template<typename Lambda>
-    const_iterator emplace(const ram_payer_info& ram, Lambda&& constructor) const {
+    emplace_result emplace(const ram_payer_info& ram, Lambda&& constructor) const {
         auto itm = controller_.create_cache_item(get_table_request());
         try {
             auto pk = itm->pk();
@@ -726,9 +736,9 @@ public:
 
             fc::variant value;
             fc::to_variant(obj, value);
-            controller_.insert(ram, *itm.get(), std::move(value));
+            auto delta = controller_.insert(*itm.get(), std::move(value), ram);
 
-            return const_iterator(this, uninitilized_cursor::find_by_pk, pk, std::move(itm));
+            return {const_iterator(this, uninitilized_cursor::find_by_pk, pk, std::move(itm)), delta};
         } catch (...) {
             itm->mark_deleted();
             throw;
@@ -736,12 +746,12 @@ public:
     }
 
     template<typename Lambda>
-    const_iterator emplace(Lambda&& constructor) const {
+    emplace_result emplace(Lambda&& constructor) const {
         return emplace({}, std::forward<Lambda>(constructor));
     }
 
     template<typename Lambda>
-    void modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
+    int64_t modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
         auto& itm = item_data::get_cache(obj);
         CYBERWAY_ASSERT(itm.is_valid_table(table_name()), chaindb_midx_logic_exception,
             "Object ${obj} passed to modify is not from the index ${index}",
@@ -759,25 +769,21 @@ public:
 
         fc::variant value;
         fc::to_variant(obj, value);
-        controller_.update(ram, itm, std::move(value));
+        return controller_.update(itm, std::move(value), ram);
     }
 
     template<typename Lambda>
-    void modify(const T& obj, Lambda&& updater) const {
-        modify(obj, {}, std::forward<Lambda>(updater));
+    int64_t modify(const T& obj, Lambda&& updater) const {
+        return modify(obj, {}, std::forward<Lambda>(updater));
     }
 
-    void erase(const T& obj, const ram_payer_info& ram) const {
+    int64_t erase(const T& obj, const ram_payer_info& ram = {}) const {
         auto& itm = item_data::get_cache(obj);
         CYBERWAY_ASSERT(itm.is_valid_table(table_name()), chaindb_midx_logic_exception,
             "Object ${obj} passed to erase is not from the index ${index}",
             ("obj", obj)("index", get_index_name()));
 
-        controller_.remove(ram, itm);
-    }
-
-    void erase(const T& obj) const {
-        erase(obj, {});
+        return controller_.remove(itm, ram);
     }
 }; // struct multi_index
 

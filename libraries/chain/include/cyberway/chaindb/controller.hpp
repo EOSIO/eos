@@ -120,47 +120,44 @@ namespace cyberway { namespace chaindb {
 
         template<typename Object, typename Lambda>
         const Object& emplace(Lambda&& constructor) {
-            auto midx = get_table<Object>();
-            auto itr = midx.emplace(std::forward<Lambda>(constructor));
-            // should not be critical - object is stored in cache map
-            return *itr;
+            return emplace<Object>({}, std::forward<Lambda>(constructor));
         }
 
         template<typename Object, typename Lambda>
         const Object& emplace(const ram_payer_info& ram, Lambda&& constructor) {
             auto midx = get_table<Object>();
-            auto itr = midx.emplace(ram, std::forward<Lambda>(constructor));
+            auto res = midx.emplace(ram, std::forward<Lambda>(constructor));
             // should not be critical - object is stored in cache map
-            return *itr;
+            return *res.pos;
         }
 
         template<typename Object, typename Lambda>
-        void modify(const Object& obj, Lambda&& updater) {
+        int64_t modify(const Object& obj, Lambda&& updater) {
             auto midx = get_table<Object>();
-            midx.modify(obj, std::forward<Lambda>(updater));
+            return midx.modify(obj, std::forward<Lambda>(updater));
         }
 
         template<typename Object, typename Lambda>
-        void modify(const Object& obj, const ram_payer_info& ram, Lambda&& updater) {
+        int64_t modify(const Object& obj, const ram_payer_info& ram, Lambda&& updater) {
             auto midx = get_table<Object>();
-            midx.modify(obj, ram, std::forward<Lambda>(updater));
+            return midx.modify(obj, ram, std::forward<Lambda>(updater));
         }
 
         template<typename Object>
-        void erase(const Object& obj, const ram_payer_info& ram = {}) {
+        int64_t erase(const Object& obj, const ram_payer_info& ram = {}) {
             auto midx = get_table<Object>();
-            midx.erase(obj, ram);
+            return midx.erase(obj, ram);
         }
 
         template<typename Object>
-        void erase(const primary_key_t pk) {
+        int64_t erase(const primary_key_t pk, const ram_payer_info& ram = {}) {
             auto midx = get_table<Object>();
-            midx.erase(midx.get(pk));
+            return midx.erase(midx.get(pk), ram);
         }
 
         template<typename Object>
-        void erase(const oid<Object>& id) {
-            erase<Object>(id._id);
+        int64_t erase(const oid<Object>& id, const ram_payer_info& ram = {}) {
+            return erase<Object>(id._id, ram);
         }
 
         void restore_db();
@@ -208,13 +205,13 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t available_pk(const table_request&);
 
-        int64_t insert(const ram_payer_info&, const table_request&, primary_key_t, const char*, size_t);
-        int64_t update(const ram_payer_info&, const table_request&, primary_key_t, const char*, size_t);
-        int64_t remove(const ram_payer_info&, const table_request&, primary_key_t);
+        int64_t insert(const table_request&, const ram_payer_info&, primary_key_t, const char*, size_t);
+        int64_t update(const table_request&, const ram_payer_info&, primary_key_t, const char*, size_t);
+        int64_t remove(const table_request&, const ram_payer_info&, primary_key_t);
 
-        int64_t insert(const ram_payer_info&, cache_item&, variant);
-        int64_t update(const ram_payer_info&, cache_item&, variant);
-        int64_t remove(const ram_payer_info&, cache_item&);
+        int64_t insert(cache_item&, variant, const ram_payer_info&);
+        int64_t update(cache_item&, variant, const ram_payer_info&);
+        int64_t remove(cache_item&, const ram_payer_info&);
 
         variant value_by_pk(const table_request& request, primary_key_t pk);
         variant value_at_cursor(const cursor_request& request);

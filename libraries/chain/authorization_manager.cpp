@@ -43,10 +43,11 @@ namespace eosio { namespace chain {
       // TODO: Removed by CyberWay
    }
 
-   const permission_object& authorization_manager::create_permission( account_name account,
+   const permission_object& authorization_manager::create_permission( const ram_payer_info& ram,
+                                                                      account_name account,
                                                                       permission_name name,
                                                                       permission_id_type parent,
-                                                                      const authority& auth,
+                                                                      authority auth,
                                                                       time_point initial_creation_time
                                                                     )
    {
@@ -55,38 +56,11 @@ namespace eosio { namespace chain {
          creation_time = _control.pending_block_time();
       }
 
-      const auto& perm_usage = _chaindb.emplace<permission_usage_object>([&](auto& p) {
+      const auto& perm_usage = _chaindb.emplace<permission_usage_object>(ram, [&](auto& p) {
          p.last_used = creation_time;
       });
 
-      const auto& perm = _chaindb.emplace<permission_object>([&](auto& p) {
-         p.usage_id     = perm_usage.id;
-         p.parent       = parent;
-         p.owner        = account;
-         p.name         = name;
-         p.last_updated = creation_time;
-         p.auth         = auth;
-      });
-      return perm;
-   }
-
-   const permission_object& authorization_manager::create_permission( account_name account,
-                                                                      permission_name name,
-                                                                      permission_id_type parent,
-                                                                      authority&& auth,
-                                                                      time_point initial_creation_time
-                                                                    )
-   {
-      auto creation_time = initial_creation_time;
-      if( creation_time == time_point() ) {
-         creation_time = _control.pending_block_time();
-      }
-
-      const auto& perm_usage = _chaindb.emplace<permission_usage_object>([&](auto& p) {
-         p.last_used = creation_time;
-      });
-
-      const auto& perm = _chaindb.emplace<permission_object>([&](auto& p) {
+      const auto& perm = _chaindb.emplace<permission_object>(ram, [&](auto& p) {
          p.usage_id     = perm_usage.id;
          p.parent       = parent;
          p.owner        = account;
@@ -97,22 +71,22 @@ namespace eosio { namespace chain {
       return perm;
    }
 
-   void authorization_manager::modify_permission( const permission_object& permission, const authority& auth ) {
-      _chaindb.modify( permission, [&](permission_object& po) {
+   void authorization_manager::modify_permission( const permission_object& permission, const ram_payer_info& ram, const authority& auth ) {
+      _chaindb.modify( permission, ram, [&](permission_object& po) {
          po.auth = auth;
          po.last_updated = _control.pending_block_time();
       });
    }
 
-   void authorization_manager::remove_permission( const permission_object& permission ) {
+   void authorization_manager::remove_permission( const permission_object& permission, const ram_payer_info& ram ) {
       auto perm_table = _chaindb.get_table<permission_object>();
       auto parent_idx = perm_table.get_index<by_parent>();
       auto range = parent_idx.equal_range(permission.id._id);
       EOS_ASSERT( range.first == range.second, action_validate_exception,
                   "Cannot remove a permission which has children. Remove the children first.");
 
-      _chaindb.erase( permission.usage_id );
-      perm_table.erase( permission );
+      _chaindb.erase( permission.usage_id, ram );
+      perm_table.erase( permission, ram );
    }
 
    void authorization_manager::update_permission_usage( const permission_object& permission ) {

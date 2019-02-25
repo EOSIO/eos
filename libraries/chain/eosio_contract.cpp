@@ -119,9 +119,11 @@ void apply_cyber_newaccount(apply_context& context) {
       validate_authority_precondition( context, auth );
    }
 
-   const auto& owner_permission  = authorization.create_permission( create.name, config::owner_name, 0,
+   const auto& owner_permission  = authorization.create_permission( {context, create.name},
+                                                                    create.name, config::owner_name, 0,
                                                                     std::move(create.owner) );
-   const auto& active_permission = authorization.create_permission( create.name, config::active_name, owner_permission.id,
+   const auto& active_permission = authorization.create_permission( {context, create.name},
+                                                                    create.name, config::active_name, owner_permission.id,
                                                                     std::move(create.active) );
 
 // TODO: Removed by CyberWay
@@ -310,19 +312,23 @@ void apply_cyber_updateauth(apply_context& context) {
                  "Changing parent authority is not currently supported");
 
 
-      int64_t old_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
+// TODO: Removed by CyberWay
+//      int64_t old_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
 
-      authorization.modify_permission( *permission, update.auth );
+      authorization.modify_permission( *permission, {context}, update.auth );
 
-      int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
-
-      context.add_ram_usage( permission->owner, new_size - old_size );
+// TODO: Removed by CyberWay
+//      int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
+//      context.add_ram_usage( permission->owner, new_size - old_size );
    } else {
-      const auto& p = authorization.create_permission( update.account, update.permission, parent_id, update.auth );
+// TODO: Removed by CyberWay
+//      const auto& p =
 
-      int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + p.auth.get_billable_size());
+      authorization.create_permission( {context, update.account}, update.account, update.permission, parent_id, update.auth );
 
-      context.add_ram_usage( update.account, new_size );
+// TODO: Removed by CyberWay
+//      int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + p.auth.get_billable_size());
+//      context.add_ram_usage( update.account, new_size );
    }
 }
 
@@ -350,11 +356,13 @@ void apply_cyber_deleteauth(apply_context& context) {
    }
 
    const auto& permission = authorization.get_permission({remove.account, remove.permission});
-   int64_t old_size = config::billable_size_v<permission_object> + permission.auth.get_billable_size();
+// TODO: Removed by CyberWay
+//   int64_t old_size = config::billable_size_v<permission_object> + permission.auth.get_billable_size();
 
-   authorization.remove_permission( permission );
+   authorization.remove_permission( permission, {context} );
 
-   context.add_ram_usage( remove.account, -old_size );
+// TODO: Removed by CyberWay
+//   context.add_ram_usage( remove.account, -old_size );
 
 }
 

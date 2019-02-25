@@ -578,9 +578,9 @@ struct controller_impl {
          a.name = string(name);
       });
 
-      const auto& owner_permission  = authorization.create_permission(name, config::owner_name, 0,
+      const auto& owner_permission  = authorization.create_permission({}, name, config::owner_name, 0,
                                                                       owner, conf.genesis.initial_timestamp );
-      const auto& active_permission = authorization.create_permission(name, config::active_name, owner_permission.id,
+      const auto& active_permission = authorization.create_permission({}, name, config::active_name, owner_permission.id,
                                                                       active, conf.genesis.initial_timestamp );
 
       resource_limits.initialize_account(name);
@@ -631,12 +631,14 @@ struct controller_impl {
       create_native_account( config::null_account_name, empty_authority, empty_authority );
       create_native_account( config::producers_account_name, empty_authority, active_producers_authority );
       const auto& active_permission       = authorization.get_permission({config::producers_account_name, config::active_name});
-      const auto& majority_permission     = authorization.create_permission( config::producers_account_name,
+      const auto& majority_permission     = authorization.create_permission( {},
+                                                                             config::producers_account_name,
                                                                              config::majority_producers_permission_name,
                                                                              active_permission.id,
                                                                              active_producers_authority,
                                                                              conf.genesis.initial_timestamp );
-      const auto& minority_permission     = authorization.create_permission( config::producers_account_name,
+      const auto& minority_permission     = authorization.create_permission( {},
+                                                                             config::producers_account_name,
                                                                              config::minority_producers_permission_name,
                                                                              majority_permission.id,
                                                                              active_producers_authority,
@@ -746,13 +748,16 @@ struct controller_impl {
    }
 
    void remove_scheduled_transaction( const generated_transaction_object& gto ) {
-      resource_limits.add_pending_ram_usage(
-         gto.payer,
-         -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size())
-      );
+// TODO: Removed by CyberWay
+//      resource_limits.add_pending_ram_usage(
+//         gto.payer,
+//         -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size())
+//      );
       // No need to verify_account_ram_usage since we are only reducing memory
 
-      chaindb.erase( gto );
+      auto payer = gto.payer;
+      auto delta = chaindb.erase( gto );
+      resource_limits.add_pending_ram_usage(payer, delta);
    }
 
    bool failure_is_subjective( const fc::exception& e ) const {

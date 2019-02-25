@@ -154,14 +154,14 @@ class privileged_api : public context_aware_api {
       void update_stake_proxied(uint64_t purpose_code_raw, uint64_t token_code_raw, account_name account, int64_t frame_length, int force) {
           int64_t now = context.control.pending_block_time().sec_since_epoch();
           context.control.get_mutable_resource_limits_manager().update_proxied(
-            now, symbol_code{purpose_code_raw}, symbol_code{token_code_raw}, account, frame_length, static_cast<bool>(force));
+            {context}, now, symbol_code{purpose_code_raw}, symbol_code{token_code_raw}, account, frame_length, static_cast<bool>(force));
       }
 
       void recall_stake_proxied(uint64_t purpose_code_raw, uint64_t token_code_raw, 
                                 account_name grantor_name, account_name agent_name, int32_t pct) {
           int64_t now = context.control.pending_block_time().sec_since_epoch();
           context.control.get_mutable_resource_limits_manager().recall_proxied(
-              now, symbol_code{purpose_code_raw}, symbol_code{token_code_raw}, grantor_name, agent_name, pct);
+              {context}, now, symbol_code{purpose_code_raw}, symbol_code{token_code_raw}, grantor_name, agent_name, pct);
       }
 
       int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {

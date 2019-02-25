@@ -669,7 +669,8 @@ namespace bacc = boost::accumulators;
 
       uint32_t trx_size = 0;
       auto& chaindb = control.chaindb();
-      const auto& cgto = chaindb.emplace<generated_transaction_object>( [&]( auto& gto ) {
+      auto trx_table = chaindb.get_table<generated_transaction_object>();
+      auto res = trx_table.emplace( [&]( auto& gto ) {
         gto.trx_id      = id;
         gto.payer       = first_auth;
         gto.sender      = account_name(); /// delayed transactions have no sender
@@ -680,7 +681,9 @@ namespace bacc = boost::accumulators;
         trx_size = gto.set( trx );
       });
 
-      add_ram_usage( cgto.payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
+      add_ram_usage( first_auth, res.delta );
+// TODO: Removed by CyberWay
+//      add_ram_usage( cgto.payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
    }
 
    void transaction_context::record_transaction( const transaction_id_type& id, fc::time_point_sec expire ) {
