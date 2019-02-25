@@ -1311,7 +1311,12 @@ struct get_transaction_id_subcommand {
          try {
             auto trx_var = json_from_file_or_string(trx_to_check);
             auto trx = trx_var.as<transaction>();
-            std::cout << string(trx.id()) << std::endl;
+            transaction_id_type id = trx.id();
+            if( id == transaction().id() ) {
+               std::cerr << "file/string does not represent a transaction" << std::endl;
+            } else {
+               std::cout << string( id ) << std::endl;
+            }
          } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_check))
       });
    }
