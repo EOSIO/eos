@@ -130,6 +130,8 @@ struct txn_test_gen_plugin_impl {
       try {
          name newaccountA("txn.test.a");
          name newaccountB("txn.test.b");
+         name newaccountA1("txn.test.a1");
+         name newaccountB1("txn.test.b1");
          name newaccountC("txn.test.t");
          name creator(init_name);
 
@@ -142,8 +144,11 @@ struct txn_test_gen_plugin_impl {
          abi_serializer eosio_token_serializer{fc::json::from_string(contracts::eosio_token_abi().data()).as<abi_def>(), abi_serializer_max_time};
 
          fc::crypto::private_key txn_test_receiver_A_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
+         ilog("a priv key: ${k}", ("k", txn_test_receiver_A_priv_key) );
          fc::crypto::private_key txn_test_receiver_B_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
+         ilog("b priv key: ${k}", ("k", txn_test_receiver_B_priv_key) );
          fc::crypto::private_key txn_test_receiver_C_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'c')));
+         ilog("creator priv key: ${k}", ("k", txn_test_receiver_C_priv_key) );
          fc::crypto::public_key  txn_text_receiver_A_pub_key = txn_test_receiver_A_priv_key.get_public_key();
          fc::crypto::public_key  txn_text_receiver_B_pub_key = txn_test_receiver_B_priv_key.get_public_key();
          fc::crypto::public_key  txn_text_receiver_C_pub_key = txn_test_receiver_C_priv_key.get_public_key();
@@ -166,6 +171,20 @@ struct txn_test_gen_plugin_impl {
             auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
 
             trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountB, owner_auth, active_auth});
+            }
+            //create "A1" account
+            {
+               auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
+               auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
+
+               trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountA1, owner_auth, active_auth});
+            }
+            //create "B1" account
+            {
+               auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
+               auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
+
+               trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountB1, owner_auth, active_auth});
             }
             //create "txn.test.t" account
             {
@@ -213,7 +232,7 @@ struct txn_test_gen_plugin_impl {
                act.account = N(txn.test.t);
                act.name = N(issue);
                act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-               act.data = eosio_token_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"txn.test.t\",\"quantity\":\"60000.0000 CUR\",\"memo\":\"\"}"), abi_serializer_max_time);
+               act.data = eosio_token_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"txn.test.t\",\"quantity\":\"80000.0000 CUR\",\"memo\":\"\"}"), abi_serializer_max_time);
                trx.actions.push_back(act);
             }
             {
@@ -230,6 +249,22 @@ struct txn_test_gen_plugin_impl {
                act.name = N(transfer);
                act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
                act.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.t\",\"to\":\"txn.test.b\",\"quantity\":\"20000.0000 CUR\",\"memo\":\"\"}"), abi_serializer_max_time);
+               trx.actions.push_back(act);
+            }
+            {
+               action act;
+               act.account = N(txn.test.t);
+               act.name = N(transfer);
+               act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
+               act.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.t\",\"to\":\"txn.test.a1\",\"quantity\":\"20000.0000 CUR\",\"memo\":\"\"}"), abi_serializer_max_time);
+               trx.actions.push_back(act);
+            }
+            {
+               action act;
+               act.account = N(txn.test.t);
+               act.name = N(transfer);
+               act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
+               act.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.t\",\"to\":\"txn.test.b1\",\"quantity\":\"20000.0000 CUR\",\"memo\":\"\"}"), abi_serializer_max_time);
                trx.actions.push_back(act);
             }
 
