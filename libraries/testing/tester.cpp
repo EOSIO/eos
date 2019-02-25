@@ -73,11 +73,6 @@ namespace eosio { namespace testing {
       return res;
    }
 
-   void copy_row(const chain::key_value_object& obj, vector<char>& data) {
-      data.resize( obj.value.size() );
-      memcpy( data.data(), obj.value.data(), obj.value.size() );
-   }
-
    bool base_tester::is_same_chain( base_tester& other ) {
      return control->head_block_id() == other.control->head_block_id();
    }
@@ -829,11 +824,6 @@ namespace eosio { namespace testing {
 
       return push_action( config::system_account_name, N(setprods), config::system_account_name,
                           fc::mutable_variant_object()("schedule", schedule));
-   }
-
-   const table_id_object* base_tester::find_table( name code, name scope, name table ) {
-      auto tid = control->db().find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
-      return tid;
    }
 
    bool fc_exception_message_is::operator()( const fc::exception& ex ) {
