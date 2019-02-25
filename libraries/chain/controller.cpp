@@ -220,7 +220,7 @@ struct controller_impl {
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
-   map< builtin_protocol_feature_t, std::function<void(controller_impl&)> > protocol_feature_activation_handlers;
+   unordered_map< builtin_protocol_feature_t, std::function<void(controller_impl&)>, enum_hash<builtin_protocol_feature_t> > protocol_feature_activation_handlers;
 
    /**
     *  Transactions that were undone by pop_block or abort_block, transactions
@@ -1251,11 +1251,12 @@ struct controller_impl {
       {
          const auto& gpo = db.get<global_property_object>();
 
-         bool handled_all_preactivated_features = (gpo.preactivated_protocol_features.size() == 0);
+         auto num_preactivated_protocol_features = gpo.preactivated_protocol_features.size();
+         bool handled_all_preactivated_features = (num_preactivated_protocol_features == 0);
 
          if( new_protocol_feature_activations.size() > 0 ) {
             flat_map<digest_type, bool> preactivated_protocol_features;
-            preactivated_protocol_features.reserve( gpo.preactivated_protocol_features.size() );
+            preactivated_protocol_features.reserve( num_preactivated_protocol_features );
             for( const auto& feature_digest : gpo.preactivated_protocol_features ) {
                preactivated_protocol_features.emplace( feature_digest, false );
             }
@@ -1281,7 +1282,7 @@ struct controller_impl {
                ++bb._num_new_protocol_features_that_have_activated;
             }
 
-            if( num_preactivated_features_that_have_activated == gpo.preactivated_protocol_features.size() ) {
+            if( num_preactivated_features_that_have_activated == num_preactivated_protocol_features ) {
                handled_all_preactivated_features = true;
             }
          }

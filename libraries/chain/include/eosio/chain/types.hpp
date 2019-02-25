@@ -251,6 +251,20 @@ namespace eosio { namespace chain {
       return end_insert_iterator<Container>( c );
    }
 
+   template<typename T>
+   struct enum_hash
+   {
+      static_assert( std::is_enum<T>::value, "enum_hash can only be used on enumeration types" );
+
+      using underlying_type = typename std::underlying_type<T>::type;
+
+      std::size_t operator()(T t) const
+      {
+           return std::hash<underlying_type>{}( static_cast<underlying_type>(t) );
+      }
+   };
+   // enum_hash needed to support old gcc compiler of Ubuntu 16.04
+
 } }  // eosio::chain
 
 FC_REFLECT( eosio::chain::void_t, )
