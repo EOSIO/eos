@@ -221,8 +221,14 @@ class Utils:
     def pgrepCmd(serverName):
         pgrepOpts="-fl"
         # pylint: disable=deprecated-method
-        if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
+        # pgrep differs on different platform (amazonlinux1 and 2 for example). We need to check if pgrep -h has -a available and add that if so:
+        pgrep-output = re.search('-a', subprocess.Popen("pgrep -h", shell=True, stdout=subprocess.PIPE).stdout.read())
+        try:
+	        pgrepresult.group(0)
             pgrepOpts="-a"
+        except AttributeError as error:
+            # If no -a, AttributeError: 'NoneType' object has no attribute 'group'
+            pass
 
         return "pgrep %s %s" % (pgrepOpts, serverName)
 
