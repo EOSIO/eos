@@ -30,7 +30,6 @@ class Cluster(object):
     __BiosPort=8788
     __LauncherCmdArr=[]
     __bootlog="eosio-ignition-wd/bootlog.txt"
-    __configDir="etc/eosio/"
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
@@ -845,7 +844,7 @@ class Cluster(object):
     def parseProducers(nodeNum):
         """Parse node config file for producers."""
 
-        configFile=Cluster.__configDir + Utils.nodeExtensionToName(nodeNum) + "/config.ini"
+        configFile=Utils.getNodeConfigDir(nodeNum, "config.ini")
         if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
         configStr=None
         with open(configFile, 'r') as f:
@@ -863,19 +862,19 @@ class Cluster(object):
     def parseClusterKeys(totalNodes):
         """Parse cluster config file. Updates producer keys data members."""
 
-        nodeName=Utils.nodeExtensionToName("bios")
-        configFile=Cluster.__configDir + nodeName + "/config.ini"
+        configFile=Utils.getNodeConfigDir("bios", "config.ini")
         if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
+        nodeName=Utils.nodeExtensionToName("bios")
         producerKeys=Cluster.parseProducerKeys(configFile, nodeName)
         if producerKeys is None:
             Utils.Print("ERROR: Failed to parse eosio private keys from cluster config files.")
             return None
 
         for i in range(0, totalNodes):
-            nodeName=Utils.nodeExtensionToName(i)
-            configFile=Cluster.__configDir + nodeName + "/config.ini"
+            configFile=Utils.getNodeConfigDir(i, "config.ini")
             if Utils.Debug: Utils.Print("Parsing config file %s" % configFile)
 
+            nodeName=Utils.nodeExtensionToName(i)
             keys=Cluster.parseProducerKeys(configFile, nodeName)
             if keys is not None:
                 producerKeys.update(keys)
@@ -1353,7 +1352,7 @@ class Cluster(object):
         return files
 
     def dumpErrorDetails(self):
-        fileName=os.path.join(Cluster.__configDir + Utils.nodeExtensionToName("bios"), "config.ini")
+        fileName=Utils.getNodeConfigDir("bios", "config.ini")
         Cluster.dumpErrorDetailImpl(fileName)
         path=Utils.getNodeDataDir("bios")
         fileNames=Cluster.__findFiles(path)
@@ -1361,7 +1360,7 @@ class Cluster(object):
             Cluster.dumpErrorDetailImpl(fileName)
 
         for i in range(0, len(self.nodes)):
-            configLocation=Cluster.__configDir + Utils.nodeExtensionToName(i)
+            configLocation=Utils.getNodeConfigDir(i)
             fileName=os.path.join(configLocation, "config.ini")
             Cluster.dumpErrorDetailImpl(fileName)
             fileName=os.path.join(configLocation, "genesis.json")
@@ -1442,7 +1441,7 @@ class Cluster(object):
     def cleanup(self):
         for f in glob.glob(Utils.DataDir + "node_*"):
             shutil.rmtree(f)
-        for f in glob.glob(Cluster.__configDir + "node_*"):
+        for f in glob.glob(Utils.ConfigDir + "node_*"):
             shutil.rmtree(f)
 
         for f in self.filesToCleanup:
@@ -1515,7 +1514,7 @@ class Cluster(object):
         self.printBlockLog()
 
     def getBlockLog(self, nodeExtension):
-        blockLogDir=os.path.join(Utils.getNodeDataDir(nodeExtension), "blocks", "")
+        blockLogDir=Utils.getNodeDataDir(nodeExtension, "blocks")
         return Utils.getBlockLog(blockLogDir, exitOnError=False)
 
     def printBlockLog(self):

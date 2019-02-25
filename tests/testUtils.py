@@ -37,6 +37,7 @@ class Utils:
 
     FileDivider="================================================================="
     DataDir="var/lib/"
+    ConfigDir="etc/eosio/"
 
     @staticmethod
     def Print(*args, **kwargs):
@@ -81,8 +82,22 @@ class Utils:
         return "node_%02d" % (ext)
 
     @staticmethod
-    def getNodeDataDir(ext):
-        return os.path.join(Utils.DataDir, Utils.nodeExtensionToName(ext))
+    def getNodeDataDir(ext, relativeDir=None, trailingSlash=False):
+        path=os.path.join(Utils.DataDir, Utils.nodeExtensionToName(ext))
+        if relativeDir is not None:
+           path=os.path.join(path, relativeDir)
+        if trailingSlash:
+           path=os.path.join(path, "")
+        return path
+
+    @staticmethod
+    def getNodeConfigDir(ext, relativeDir=None, trailingSlash=False):
+        path=os.path.join(Utils.ConfigDir, Utils.nodeExtensionToName(ext))
+        if relativeDir is not None:
+           path=os.path.join(path, relativeDir)
+        if trailingSlash:
+           path=os.path.join(path, "")
+        return path
 
     @staticmethod
     def getChainStrategies():
