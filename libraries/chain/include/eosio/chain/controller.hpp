@@ -99,6 +99,8 @@ namespace eosio { namespace chain {
          void add_indices();
          void startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot = nullptr );
 
+         void preactivate_feature( const digest_type& feature_digest );
+
          vector<digest_type> get_preactivated_protocol_features()const;
 
          /**
@@ -162,6 +164,7 @@ namespace eosio { namespace chain {
          resource_limits_manager&              get_mutable_resource_limits_manager();
          const authorization_manager&          get_authorization_manager()const;
          authorization_manager&                get_mutable_authorization_manager();
+         const protocol_feature_manager&       get_protocol_feature_manager()const;
 
          const flat_set<account_name>&   get_actor_whitelist() const;
          const flat_set<account_name>&   get_actor_blacklist() const;

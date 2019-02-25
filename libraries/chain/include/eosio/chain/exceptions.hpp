@@ -527,4 +527,6 @@ namespace eosio { namespace chain {
                                  3250000, "Protocol feature exception" )
       FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_validation_exception, snapshot_exception,
                                     3250001, "Protocol feature validation exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_bad_block_exception, snapshot_exception,
+                                    3250002, "Protocol feature exception (invalid block)" )
 } } // eosio::chain

@@ -884,6 +884,8 @@ struct controller_impl {
          trx_context.squash();
          restore.cancel();
          return trace;
+      } catch( const protocol_feature_bad_block_exception& ) {
+         throw;
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
          trace->except = e;
@@ -1016,6 +1018,8 @@ struct controller_impl {
          restore.cancel();
 
          return trace;
+      } catch( const protocol_feature_bad_block_exception& ) {
+         throw;
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
          trace->except = e;
@@ -1309,15 +1313,15 @@ struct controller_impl {
 
             pending->_block_stage.get<building_block>()._new_pending_producer_schedule = gpo.proposed_schedule;
             db.modify( gpo, [&]( auto& gp ) {
-                  gp.proposed_schedule_block_num = optional<block_num_type>();
-                  gp.proposed_schedule.clear();
-                  if( gp.preactivated_protocol_features.size() > 0 ) {
-                     gp.preactivated_protocol_features.clear();
-                  }
+               gp.proposed_schedule_block_num = optional<block_num_type>();
+               gp.proposed_schedule.clear();
+               if( gp.preactivated_protocol_features.size() > 0 ) {
+                  gp.preactivated_protocol_features.clear();
+               }
             });
          } else if( gpo.preactivated_protocol_features.size() > 0 ) {
             db.modify( gpo, [&]( auto& gp ) {
-                  gp.preactivated_protocol_features.clear();
+               gp.preactivated_protocol_features.clear();
             });
          }
 
@@ -2043,6 +2047,11 @@ authorization_manager&         controller::get_mutable_authorization_manager()
    return my->authorization;
 }
 
+const protocol_feature_manager& controller::get_protocol_feature_manager()const
+{
+   return my->protocol_features;
+}
+
 controller::controller( const controller::config& cfg )
 :my( new controller_impl( cfg, *this, protocol_feature_manager{} ) )
 {
@@ -2093,6 +2102,92 @@ const chainbase::database& controller::db()const { return my->db; }
 chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
+
+void controller::preactivate_feature( const digest_type& feature_digest ) {
+   auto cur_time = pending_block_time();
+   auto status = my->protocol_features.is_recognized( feature_digest, cur_time );
+   switch( status ) {
+      case protocol_feature_manager::recognized_t::unrecognized:
+         if( is_producing_block() ) {
+            EOS_THROW( subjective_block_production_exception,
+                       "protocol feature with digest '${digest}' is unrecognized", ("digest", feature_digest) );
+         } else {
+            EOS_THROW( protocol_feature_bad_block_exception,
+                       "protocol feature with digest '${digest}' is unrecognized", ("digest", feature_digest) );
+         }
+      break;
+      case protocol_feature_manager::recognized_t::disabled:
+         if( is_producing_block() ) {
+            EOS_THROW( subjective_block_production_exception,
+                       "protocol feature with digest '${digest}' is disabled", ("digest", feature_digest) );
+         } else {
+            EOS_THROW( protocol_feature_bad_block_exception,
+                       "protocol feature with digest '${digest}' is disabled", ("digest", feature_digest) );
+         }
+      break;
+      case protocol_feature_manager::recognized_t::too_early:
+         if( is_producing_block() ) {
+            EOS_THROW( subjective_block_production_exception,
+                       "${timestamp} is too early for the earliest allowed activation time of the protocol feature with digest '${digest}'", ("digest", feature_digest)("timestamp", cur_time) );
+         } else {
+            EOS_THROW( protocol_feature_bad_block_exception,
+                       "${timestamp} is too early for the earliest allowed activation time of the protocol feature with digest '${digest}'", ("digest", feature_digest)("timestamp", cur_time) );
+         }
+      break;
+      case protocol_feature_manager::recognized_t::ready_if_preactivated:
+      case protocol_feature_manager::recognized_t::ready:
+      break;
+      default:
+         if( is_producing_block() ) {
+            EOS_THROW( subjective_block_production_exception, "unexpected recognized_t status" );
+         } else {
+            EOS_THROW( protocol_feature_bad_block_exception, "unexpected recognized_t status" );
+         }
+      break;
+   }
+
+   // The above failures depend on subjective information.
+   // Because of deferred transactions, this complicates things considerably.
+
+   // If producing a block, we throw a subjective failure if the feature is not properly recognized in order
+   // to try to avoid retiring into a block a deferred transacton driven by subjective information.
+
+   // But it is still possible for a producer to retire a deferred transaction that deals with this subjective
+   // information. If they recognized the feature, they would retire it successfully, but a validator that
+   // does not recognize the feature should reject the entire block (not just fail the deferred transaction).
+   // Even if they don't recognize the feature, the producer could change their nodeos code to treat it like an
+   // objective failure thus leading the deferred transaction to retire with soft_fail or hard_fail.
+   // In this case, validators that don't recognize the feature would reject the whole block immediately, and
+   // validators that do recognize the feature would likely lead to a different retire status which would
+   // ultimately cause a validation failure and thus rejection of the block.
+   // In either case, it results in rejection of the block which is the desired behavior in this scenario.
+
+   // If the feature is properly recognized by producer and validator, we have dealt with the subjectivity and
+   // now only consider the remaining failure modes which are deterministic and objective.
+   // Thus the exceptions that can be thrown below can be regular objective exceptions
+   // that do not cause immediate rejection of the block.
+
+   EOS_ASSERT( !is_protocol_feature_activated( feature_digest ),
+               protocol_feature_exception,
+               "protocol feature with digest '${digest}' is already activated",
+               ("digest", feature_digest)
+   );
+
+   const auto& gpo = my->db.get<global_property_object>();
+
+   EOS_ASSERT( std::find( gpo.preactivated_protocol_features.begin(),
+                          gpo.preactivated_protocol_features.end(),
+                          feature_digest
+               ) == gpo.preactivated_protocol_features.end(),
+               protocol_feature_exception,
+               "protocol feature with digest '${digest}' is already pre-activated",
+               ("digest", feature_digest)
+   );
+
+   my->db.modify( gpo, [&]( auto& gp ) {
+      gp.preactivated_protocol_features.push_back( feature_digest );
+   } );
+}
 
 vector<digest_type> controller::get_preactivated_protocol_features()const {
    const auto& gpo = my->db.get<global_property_object>();

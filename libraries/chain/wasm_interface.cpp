@@ -131,6 +131,22 @@ class privileged_api : public context_aware_api {
       }
 
       /**
+       * Returns true if the specified protocol feature is activated, false if not.
+       */
+      bool is_feature_activated( const digest_type& feature_digest ) {
+         return context.control.is_protocol_feature_activated( feature_digest );
+      }
+
+      /**
+       *  Pre-activates the specified protocol feature.
+       *  Fails if the feature is unrecognized, disabled, or not allowed to be activated at the current time.
+       *  Also fails if the feature was already activated or pre-activated.
+       */
+      void preactivate_feature( const digest_type& feature_digest ) {
+         context.control.preactivate_feature( feature_digest );
+      }
+
+      /**
        * update the resource limits associated with an account.  Note these new values will not take effect until the
        * next resource "tick" which is currently defined as a cycle boundary inside a block.
        *
