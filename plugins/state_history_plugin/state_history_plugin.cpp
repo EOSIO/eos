@@ -320,7 +320,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             return;
          if (ec) {
             if (ec == boost::system::errc::too_many_files_open)
-               catch_and_log([&] { do_accept(); });
+               catch_and_log([&] { this->do_accept(); }); // gcc defect https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67274
             return;
          }
          catch_and_log([&] {
@@ -328,7 +328,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             sessions[s.get()] = s;
             s->start(std::move(*socket));
          });
-         catch_and_log([&] { do_accept(); });
+         catch_and_log([&] { this->do_accept(); });
       });
    }
 

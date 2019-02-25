@@ -133,9 +133,9 @@ struct yubihsm_wallet_impl {
          yh_cmd resp_cmd;
          size_t resp_sz = 1;
          if(yh_send_secure_msg(session, YHC_ECHO, &data, 1, &resp_cmd, &resp, &resp_sz))
-            lock();
+            this->lock(); // gcc defect https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67274
          else
-            prime_keepalive_timer();
+            this->prime_keepalive_timer();
       });
    }
 
