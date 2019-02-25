@@ -1,3 +1,4 @@
+import re
 import errno
 import subprocess
 import time
@@ -222,9 +223,9 @@ class Utils:
         pgrepOpts="-fl"
         # pylint: disable=deprecated-method
         # pgrep differs on different platform (amazonlinux1 and 2 for example). We need to check if pgrep -h has -a available and add that if so:
-        pgrep-output = re.search('-a', subprocess.Popen("pgrep -h", shell=True, stdout=subprocess.PIPE).stdout.read())
         try:
-	        pgrepresult.group(0)
+            pgrepHelp = re.search('-a', subprocess.Popen("pgrep --help 2>/dev/null", shell=True, stdout=subprocess.PIPE).stdout.read())
+	        pgrepHelp.group(0)
             pgrepOpts="-a"
         except AttributeError as error:
             # If no -a, AttributeError: 'NoneType' object has no attribute 'group'
