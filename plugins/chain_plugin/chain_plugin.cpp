@@ -560,10 +560,25 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          });
          infile.close();
 
-         EOS_ASSERT( options.count( "genesis-json" ) == 0 &&  options.count( "genesis-timestamp" ) == 0,
+         EOS_ASSERT( options.count( "genesis-timestamp" ) == 0,
                  plugin_config_exception,
-                 "--snapshot is incompatible with --genesis-json and --genesis-timestamp as the snapshot contains genesis information");
+                 "--snapshot is incompatible with --genesis-timestamp as the snapshot contains genesis information");
 
+         if( options.count( "genesis-json" )) {
+            auto genesis_path = options.at( "genesis-json" ).as<bfs::path>();
+            if( genesis_path.is_relative() ) {
+               genesis_path = bfs::current_path() / genesis_path;
+            }
+            EOS_ASSERT( fc::is_regular_file( genesis_path ),
+                        plugin_config_exception,
+                        "Specified genesis file '${genesis}' does not exist.",
+                        ("genesis", genesis_path.generic_string()));
+            auto genesis_file = fc::json::from_file( genesis_path ).as<genesis_state>();
+            EOS_ASSERT( my->chain_config->genesis == genesis_file, plugin_config_exception,
+                        "Genesis state provided via command line arguments does not match the existing genesis state in the snapshot. "
+                        "It is not necessary to provide a genesis state argument when loading a snapshot."
+                      );
+         }
          auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
          EOS_ASSERT( !fc::exists(shared_mem_path),
                  plugin_config_exception,
