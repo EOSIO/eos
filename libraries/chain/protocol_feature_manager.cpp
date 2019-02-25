@@ -11,7 +11,7 @@
 
 namespace eosio { namespace chain {
 
-   const std::unordered_map<builtin_protocol_feature_t, builtin_protocol_feature_spec>
+   const std::unordered_map<builtin_protocol_feature_t, builtin_protocol_feature_spec, enum_hash<builtin_protocol_feature_t>>
    builtin_protocol_feature_codenames =
       boost::assign::map_list_of<builtin_protocol_feature_t, builtin_protocol_feature_spec>
          ( builtin_protocol_feature_t::preactivate_feature, {

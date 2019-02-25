@@ -29,7 +29,22 @@ struct builtin_protocol_feature_spec {
    protocol_feature_subjective_restrictions  subjective_restrictions{time_point{}, true, true};
 };
 
-extern const std::unordered_map<builtin_protocol_feature_t, builtin_protocol_feature_spec> builtin_protocol_feature_codenames;
+template<typename T>
+struct enum_hash
+{
+   static_assert( std::is_enum<T>::value, "enum_hash can only be used on enumeration types" );
+   
+   using underlying_type = typename std::underlying_type<T>::type;
+
+   std::size_t operator()(T t) const
+   {
+        return std::hash<underlying_type>{}( static_cast<underlying_type>(t) );
+   }
+};
+
+// enum_hash needed to support old gcc compiler of Ubuntu 16.04
+
+extern const std::unordered_map<builtin_protocol_feature_t, builtin_protocol_feature_spec, enum_hash<builtin_protocol_feature_t>> builtin_protocol_feature_codenames;
 
 const char* builtin_protocol_feature_codename( builtin_protocol_feature_t );
 
