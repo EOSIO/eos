@@ -23,9 +23,10 @@ namespace eosio { namespace chain {
       /// 2/3 must be greater, so if I go 1/3 into the list sorted from low to high, then 2/3 are greater
 
       if( blocknums.size() == 0 ) return 0;
-      /// TODO: update to nth_element
-      std::sort( blocknums.begin(), blocknums.end() );
-      return blocknums[ (blocknums.size()-1) / 3 ];
+
+      std::size_t index = (blocknums.size()-1) / 3;
+      std::nth_element( blocknums.begin(),  blocknums.begin() + index, blocknums.end() );
+      return blocknums[ index ];
    }
 
    pending_block_header_state  block_header_state::next( block_timestamp_type when,
