@@ -161,7 +161,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 16.04 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":ubuntu: 16.04 Tests"
@@ -188,7 +188,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 16.04 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
     label: ":ubuntu: 16.04 NP Tests"
@@ -215,7 +215,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":ubuntu: 18.04 Tests"
@@ -242,7 +242,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
     label: ":ubuntu: 18.04 NP Tests"
@@ -270,7 +270,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":centos: 7 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":centos: 7 Tests"
@@ -297,7 +297,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":centos: 7 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
     label: ":centos: 7 NP Tests"
@@ -324,7 +324,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":aws: 1 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":aws: 1 Tests"
@@ -351,7 +351,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":aws: 1 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
     label: ":aws: 1 NP Tests"
@@ -378,7 +378,7 @@ steps:
   #       buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build" && \
   #       tar -zxf build.tar.gz && \
   #       echo "--- :m: Starting MongoDB" && \
-  #       mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+  #       ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
   #       echo "+++ :microscope: Running tests" && \
   #       cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
   #   label: ":aws: 2 Tests"
@@ -405,7 +405,7 @@ steps:
   #       buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build" && \
   #       tar -zxf build.tar.gz && \
   #       echo "--- :m: Starting MongoDB" && \
-  #       mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+  #       ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
   #       echo "+++ :microscope: Running tests" && \
   #       cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
   #   label: ":aws: 2 NP Tests"
@@ -432,7 +432,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":fedora: 27 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":fedora: 27 Tests"
@@ -459,7 +459,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":fedora: 27 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
     label: ":fedora: 27 NP Tests"
@@ -486,7 +486,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":darwin: High Sierra Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":darwin: High Sierra Tests"
@@ -504,7 +504,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":darwin: High Sierra Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
     label: ":darwin: High Sierra NP Tests"
@@ -522,7 +522,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
     label: ":darwin: Mojave Tests"
@@ -540,7 +540,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
-        mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
         ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
     label: ":darwin: Mojave NP Tests"
