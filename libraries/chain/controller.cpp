@@ -172,10 +172,10 @@ struct controller_impl {
    :self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.state_size ),
+        cfg.state_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.reversible_cache_size ),
+        cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),
@@ -404,9 +404,6 @@ struct controller_impl {
 
    ~controller_impl() {
       pending.reset();
-
-      db.flush();
-      reversible_blocks.flush();
    }
 
    void add_indices() {
@@ -421,14 +418,12 @@ struct controller_impl {
 
    void clear_all_undo() {
       // Rewind the database to the last irreversible block
-      db.with_write_lock([&] {
-         db.undo_all();
-         /*
-         FC_ASSERT(db.revision() == self.head_block_num(),
-                   "Chainbase revision does not match head block num",
-                   ("rev", db.revision())("head_block", self.head_block_num()));
-                   */
-      });
+      db.undo_all();
+      /*
+      FC_ASSERT(db.revision() == self.head_block_num(),
+                  "Chainbase revision does not match head block num",
+                  ("rev", db.revision())("head_block", self.head_block_num()));
+                  */
    }
 
    void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
