@@ -163,7 +163,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":ubuntu: 16.04 Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -190,7 +190,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":ubuntu: 16.04 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -217,7 +217,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":ubuntu: 18.04 Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -244,7 +244,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":ubuntu: 18.04 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -272,7 +272,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":centos: 7 Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -299,7 +299,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":centos: 7 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -326,7 +326,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":aws: 1 Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -353,7 +353,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":aws: 1 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -380,7 +380,7 @@ steps:
   #       echo "--- :m: Starting MongoDB" && \
   #       ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
   #       echo "+++ :microscope: Running tests" && \
-  #       cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+  #       cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
   #   label: ":aws: 2 Tests"
   #   agents:
   #     queue: "automation-large-builder-fleet"
@@ -407,7 +407,7 @@ steps:
   #       echo "--- :m: Starting MongoDB" && \
   #       ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
   #       echo "+++ :microscope: Running tests" && \
-  #       cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+  #       cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
   #   label: ":aws: 2 NP Tests"
   #   agents:
   #     queue: "automation-large-builder-fleet"
@@ -434,7 +434,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":fedora: 27 Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -461,7 +461,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":fedora: 27 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -488,7 +488,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        ln -s "$(pwd)" /data/job && cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":darwin: High Sierra Tests"
     agents:
       - "role=tester-v2-1"
@@ -506,7 +506,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        ln -s "$(pwd)" /data/job && cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":darwin: High Sierra NP Tests"
     agents:
       - "role=tester-v2-1"
@@ -524,7 +524,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -j8 -LE _tests --output-on-failure
+        ln -s "$(pwd)" /data/job && cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":darwin: Mojave Tests"
     agents:
       - "role=tester-v2-1"
@@ -542,7 +542,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure
+        ln -s "$(pwd)" /data/job && cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":darwin: Mojave NP Tests"
     agents:
       - "role=tester-v2-1"
