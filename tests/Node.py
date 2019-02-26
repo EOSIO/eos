@@ -1332,19 +1332,8 @@ class Node(object):
 
             myCmd=" ".join(cmdArr)
 
-        dataDir="var/lib/node_%02d" % (nodeId)
-        dt = datetime.datetime.now()
-        dateStr=Utils.getDateString(dt)
-        stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
-        stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
-        with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
-            cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
-            Utils.Print("cmd: %s" % (cmd))
-            popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
-            if cachePopen:
-                self.popenProc=popen
-            self.pid=popen.pid
-            if Utils.Debug: Utils.Print("restart Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
+        cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
+        self.launchCmd(cmd, nodeId)
 
         def isNodeAlive():
             """wait for node to be responsive."""
@@ -1365,6 +1354,20 @@ class Node(object):
         self.cmd=cmd
         self.killed=False
         return True
+
+    def launchCmd(self, cmd, nodeId):
+        dataDir=Utils.getNodeDataDir(nodeId)
+        dt = datetime.datetime.now()
+        dateStr=Utils.getDateString(dt)
+        stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
+        stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
+        with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
+            Utils.Print("cmd: %s" % (cmd))
+            popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
+            if cachePopen:
+                self.popenProc=popen
+            self.pid=popen.pid
+            if Utils.Debug: Utils.Print("restart Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
 
     def trackCmdTransaction(self, trans, ignoreNonTrans=False):
         if trans is None:
