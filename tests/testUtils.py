@@ -223,8 +223,8 @@ class Utils:
         # pylint: disable=deprecated-method
         # pgrep differs on different platform (amazonlinux1 and 2 for example). We need to check if pgrep -h has -a available and add that if so:
         try:
-            pgrepHelp = re.search('-a', subprocess.Popen("pgrep --help 2>/dev/null", shell=True, stdout=subprocess.PIPE).stdout.read())
-	        pgrepOutput = pgrepHelp.group(0)
+            pgrepHelp = re.search('-a', subprocess.Popen("pgrep --help 2>/dev/null", shell=True, stdout=subprocess.PIPE).stdout.read().decode('utf-8'))
+            pgrepHelp.group(0) # group() errors if -a is not found, so we don't need to do anything else special here.
             pgrepOpts="-a"
         except AttributeError as error:
             # If no -a, AttributeError: 'NoneType' object has no attribute 'group'
