@@ -205,8 +205,8 @@ struct controller_impl {
 
    SET_APP_HANDLER( eosio, eosio, canceldelay );
 
-   fork_db.irreversible.connect( [&]( auto b ) {
-                                 this->on_irreversible(b); // gcc defect https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67274
+   fork_db.irreversible.connect( [&]( const block_state_ptr& b ) {
+                                 on_irreversible(b);
                                  });
 
    }

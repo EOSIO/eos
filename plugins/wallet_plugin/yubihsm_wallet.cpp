@@ -125,7 +125,7 @@ struct yubihsm_wallet_impl {
 
    void prime_keepalive_timer() {
       keepalive_timer.expires_at(std::chrono::steady_clock::now() + std::chrono::seconds(20));
-      keepalive_timer.async_wait([this](auto ec){
+      keepalive_timer.async_wait([this](const boost::system::error_code& ec){
          if(ec || !session)
             return;
 
@@ -133,9 +133,9 @@ struct yubihsm_wallet_impl {
          yh_cmd resp_cmd;
          size_t resp_sz = 1;
          if(yh_send_secure_msg(session, YHC_ECHO, &data, 1, &resp_cmd, &resp, &resp_sz))
-            this->lock(); // gcc defect https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67274
+            lock();
          else
-            this->prime_keepalive_timer();
+            prime_keepalive_timer();
       });
    }
 
