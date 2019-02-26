@@ -686,7 +686,7 @@ namespace eosio {
 
       chain_plugin* chain_plug = nullptr;
 
-      constexpr auto stage_str(stages s );
+      constexpr static auto stage_str(stages s);
 
    public:
       explicit sync_manager(uint32_t span);
