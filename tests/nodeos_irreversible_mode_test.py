@@ -77,18 +77,27 @@ def ensureHeadLibAndForkDbHeadIsAdvancing(nodeToTest):
 # headLibAndForkDbHeadBeforeSwitchMode should be only passed IF production is disabled, otherwise it provides erroneous check
 # When comparing with the the state before node is switched:
 # - head == libBeforeSwitchMode == lib and forkDbHead == headBeforeSwitchMode == forkDbHeadBeforeSwitchMode
-def confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode=None):
+def confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode=None, isReversibleBlocksDeleted=False):
    # In irreversible mode, head should be equal to lib and not equal to fork Db blk num
    head, lib, forkDbHead = getHeadLibAndForkDbHead(nodeToTest)
    assert head == lib, "Head ({}) should be equal to lib ({})".format(head, lib)
-   assert forkDbHead > head, "Fork db head ({}) should be larger than the head ({})".format(forkDbHead, head)
+
+   # Fork db can be equal to the head if there is no reversible blocks
+   if not isReversibleBlocksDeleted:
+      assert forkDbHead > head, "Fork db head ({}) should be larger to the head ({}) when there's reversible blocks".format(forkDbHead, head)
+   else:
+      assert forkDbHead == head, "Fork db head ({}) should be larger or equal to the head ({}) when there's no reversible blocks".format(forkDbHead, head)
 
    if headLibAndForkDbHeadBeforeSwitchMode:
       headBeforeSwitchMode, libBeforeSwitchMode, forkDbHeadBeforeSwitchMode = headLibAndForkDbHeadBeforeSwitchMode
       assert head == libBeforeSwitchMode, "Head ({}) should be equal to lib before switch mode ({})".format(head, libBeforeSwitchMode)
       assert lib == libBeforeSwitchMode, "Lib ({}) should be equal to lib before switch mode ({})".format(lib, libBeforeSwitchMode)
-      assert forkDbHead == headBeforeSwitchMode and forkDbHead == forkDbHeadBeforeSwitchMode, \
-         "Fork db head ({}) should be equal to head before switch mode ({}) and fork db head before switch mode ({})".format(forkDbHead, headBeforeSwitchMode, forkDbHeadBeforeSwitchMode)
+      # Different case when reversible blocks are deleted
+      if not isReversibleBlocksDeleted:
+         assert forkDbHead == headBeforeSwitchMode and forkDbHead == forkDbHeadBeforeSwitchMode, \
+            "Fork db head ({}) should be equal to head before switch mode ({}) and fork db head before switch mode ({})".format(forkDbHead, headBeforeSwitchMode, forkDbHeadBeforeSwitchMode)
+      else:
+         assert forkDbHead == libBeforeSwitchMode, "Fork db head ({}) should be equal to lib before switch mode ({}) when there's no reversible blocks".format(forkDbHead, libBeforeSwitchMode)
 
 # Confirm the head lib and fork db of speculative mode
 # Under any condition of irreversible mode:
@@ -200,7 +209,7 @@ try:
       relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --read-mode irreversible --replay")
 
       # Ensure the node condition is as expected after relaunch
-      confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode)
+      confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode, True)
 
    # 3rd test case: Switch mode speculative -> irreversible without replay
    # Expectation: Node switches mode successfully
