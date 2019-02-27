@@ -2169,6 +2169,7 @@ namespace eosio {
                }
 
                if( close_connection ) {
+                  connection_wptr weak_conn = conn;
                   app().post( priority::medium, [this, weak_conn]() {
                      auto conn = weak_conn.lock();
                      if( !conn ) return;
@@ -2601,6 +2602,50 @@ namespace eosio {
          if( cc.fetch_block_by_id(blk_id) ) {
             sync_master->recv_block(c, blk_id, blk_num);
             return;
+         }
+<<<<<<< HEAD
+=======
+         signed_block_ptr prev = msg ? cc.fetch_block_by_id( msg->previous ) : msg;
+         if( prev == nullptr ){ //&& sync_master->is_active(c) ) {
+            // see if top is ready
+            if( !sync_master->incoming_blocks.empty() ) {
+               prev = sync_master->incoming_blocks.top();
+               auto prev_prev = cc.fetch_block_by_id( prev->previous );
+               if( prev_prev != nullptr ) {
+                  sync_master->incoming_blocks.pop();
+                  if(msg) sync_master->incoming_blocks.emplace( msg );
+                  msg = prev;
+                  blk_id = msg->id();
+                  blk_num = msg->block_num();
+                  connection_wptr weak = c;
+                  app().post(priority::medium, [this, weak](){
+                     connection_ptr c = weak.lock();
+                     if( c ) handle_message( c, signed_block_ptr() );
+                  });
+               } else {
+                  if( msg ) {
+                     sync_master->incoming_blocks.emplace( msg );
+
+                     connection_wptr weak = c;
+                     app().post( priority::medium, [this, weak]() {
+                        connection_ptr c = weak.lock();
+                        if( c ) handle_message( c, signed_block_ptr() );
+                     } );
+                  }
+                  return;
+               }
+            } else {
+               if( msg ) {
+                  sync_master->incoming_blocks.emplace( msg );
+
+                  connection_wptr weak = c;
+                  app().post( priority::medium, [this, weak]() {
+                     connection_ptr c = weak.lock();
+                     if( c ) handle_message( c, signed_block_ptr() );
+                  } );
+               }
+               return;
+            }
          }
       } catch( ...) {
          // should this even be caught?
