@@ -75,6 +75,12 @@ namespace eosio {
       }
    };
 
+   struct block_greater {
+      bool operator()( const std::shared_ptr<signed_block>& lhs, const std::shared_ptr<signed_block>& rhs ) const {
+         return lhs->block_num() > rhs->block_num();
+      }
+   };
+
    typedef multi_index_container<
       node_transaction_state,
       indexed_by<
@@ -157,7 +163,7 @@ namespace eosio {
 
       channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
-      uint16_t                                  thread_pool_size = 1; // currently used by server_ioc
+      uint16_t                                  thread_pool_size = 4;
       optional<boost::asio::thread_pool>        thread_pool;
       std::shared_ptr<boost::asio::io_context>  server_ioc;
       optional<io_work_t>                       server_ioc_work;
@@ -501,12 +507,12 @@ namespace eosio {
       socket_ptr                                socket;
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
-      fc::optional<std::size_t>        outstanding_read_bytes;
+      std::atomic<std::size_t>         outstanding_read_bytes{0};
 
 
       queued_buffer           buffer_queue;
 
-      uint32_t                reads_in_flight = 0;
+      std::atomic<uint32_t>   reads_in_flight{0};
       uint32_t                trx_in_progress_size = 0;
       fc::sha256              node_id;
       handshake_message       last_handshake_recv;
@@ -639,9 +645,9 @@ namespace eosio {
    };
 
    struct msg_handler : public fc::visitor<void> {
-      net_plugin_impl &impl;
+      net_plugin_impl& impl;
       connection_ptr c;
-      msg_handler( net_plugin_impl &imp, const connection_ptr& conn) : impl(imp), c(conn) {}
+      msg_handler( net_plugin_impl& imp, const connection_ptr& conn) : impl(imp), c(conn) {}
 
       void operator()( const signed_block& msg ) const {
          EOS_ASSERT( false, plugin_config_exception, "operator()(signed_block&&) should be called" );
@@ -657,16 +663,30 @@ namespace eosio {
       }
 
       void operator()( signed_block&& msg ) const {
-         impl.handle_message( c, std::make_shared<signed_block>( std::move( msg ) ) );
+         shared_ptr<signed_block> ptr = std::make_shared<signed_block>( std::move( msg ) );
+         connection_wptr weak = c;
+         app().post(priority::high, "handle blk", [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
+            connection_ptr c = weak.lock();
+            if( c ) impl->handle_message( c, ptr );
+         });
       }
       void operator()( packed_transaction&& msg ) const {
-         impl.handle_message( c, std::make_shared<packed_transaction>( std::move( msg ) ) );
+         shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>( std::move( msg ) );
+         connection_wptr weak = c;
+         app().post(priority::low, "handle trx", [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
+            connection_ptr c = weak.lock();
+            if( c) impl->handle_message( c, ptr );
+         });
       }
 
       template <typename T>
       void operator()( T&& msg ) const
       {
-         impl.handle_message( c, std::forward<T>(msg) );
+         connection_wptr weak = c;
+         app().post(priority::low, "handle msg", [impl = &impl, msg{std::forward<T>(msg)}, weak{std::move(weak)}] {
+            connection_ptr c = weak.lock();
+            if(c) impl->handle_message( c, msg );
+         });
       }
    };
 
@@ -704,6 +724,8 @@ namespace eosio {
       void recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num);
       void recv_handshake(const connection_ptr& c, const handshake_message& msg);
       void recv_notice(const connection_ptr& c, const notice_message& msg);
+
+      std::priority_queue<std::shared_ptr<signed_block>, std::deque<std::shared_ptr<signed_block>>, block_greater> incoming_blocks;
    };
 
    class dispatch_manager {
@@ -778,7 +800,9 @@ namespace eosio {
       initialize();
    }
 
-   connection::~connection() {}
+   connection::~connection() {
+      pending_message_buffer.reset();
+   }
 
    void connection::initialize() {
       auto *rnd = node_id.data();
@@ -826,7 +850,6 @@ namespace eosio {
       fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
       cancel_wait();
       if( read_delay_timer ) read_delay_timer->cancel();
-      pending_message_buffer.reset();
    }
 
    void connection::txn_send_pending(const vector<transaction_id_type>& ids) {
@@ -1106,6 +1129,7 @@ namespace eosio {
    static std::shared_ptr<std::vector<char>> create_send_buffer( const signed_block_ptr& sb ) {
       // this implementation is to avoid copy of signed_block to net_message
       // matches which of net_message for signed_block
+      fc_dlog( logger, "sending block ${bn}", ("bn", sb->block_num()) );
       return create_send_buffer( signed_block_which, *sb );
    }
 
@@ -1921,7 +1945,9 @@ namespace eosio {
          return false;
       }
       else {
-         start_read_message( con );
+         boost::asio::post(*server_ioc, [this, con]() {
+            start_read_message( con );
+         });
          ++started_sessions;
          return true;
          // for now, we can just use the application main loop.
@@ -2006,7 +2032,7 @@ namespace eosio {
          }
          connection_wptr weak_conn = conn;
 
-         std::size_t minimum_read = conn->outstanding_read_bytes ? *conn->outstanding_read_bytes : message_header_size;
+         std::size_t minimum_read = conn->outstanding_read_bytes != 0 ? conn->outstanding_read_bytes.load() : message_header_size;
 
          if (use_socket_read_watermark) {
             const size_t max_socket_read_watermark = 4096;
@@ -2022,7 +2048,7 @@ namespace eosio {
                return minimum_read - bytes_transferred;
             }
          };
-
+/*
          if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ||
              conn->reads_in_flight > def_max_reads_in_flight   ||
              conn->trx_in_progress_size > def_max_trx_in_progress_size )
@@ -2031,7 +2057,7 @@ namespace eosio {
             if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ) {
                peer_wlog( conn, "write_queue full ${s} bytes", ("s", conn->buffer_queue.write_queue_size()) );
             } else if( conn->reads_in_flight > def_max_reads_in_flight ) {
-               peer_wlog( conn, "max reads in flight ${s}", ("s", conn->reads_in_flight) );
+               peer_wlog( conn, "max reads in flight ${s}", ("s", conn->reads_in_flight.load()) );
             } else {
                peer_wlog( conn, "max trx in progress ${s} bytes", ("s", conn->trx_in_progress_size) );
             }
@@ -2053,20 +2079,20 @@ namespace eosio {
             } ) );
             return;
          }
-
+*/
          ++conn->reads_in_flight;
          boost::asio::async_read(*conn->socket,
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
             boost::asio::bind_executor( conn->strand,
             [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
-            app().post( priority::medium, [this,weak_conn, ec, bytes_transferred]() {
                auto conn = weak_conn.lock();
                if (!conn) {
                   return;
                }
 
                --conn->reads_in_flight;
-               conn->outstanding_read_bytes.reset();
+               conn->outstanding_read_bytes = 0;
+               bool close_connection = false;
 
                try {
                   if( !ec ) {
@@ -2080,18 +2106,16 @@ namespace eosio {
                         uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
 
                         if (bytes_in_buffer < message_header_size) {
-                           conn->outstanding_read_bytes.emplace(message_header_size - bytes_in_buffer);
+                           conn->outstanding_read_bytes = message_header_size - bytes_in_buffer;
                            break;
                         } else {
                            uint32_t message_length;
                            auto index = conn->pending_message_buffer.read_index();
                            conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
                            if(message_length > def_send_buffer_size*2 || message_length == 0) {
-                              boost::system::error_code ec;
-                              fc_elog( logger,"incoming message length unexpected (${i}), from ${p}",
-                                       ("i", message_length)("p",boost::lexical_cast<std::string>(conn->socket->remote_endpoint(ec))) );
-                              close(conn);
-                              return;
+                              fc_elog( logger,"incoming message length unexpected (${i})", ("i", message_length) );
+                              close_connection = true;
+                              break;
                            }
 
                            auto total_message_bytes = message_length + message_header_size;
@@ -2108,38 +2132,44 @@ namespace eosio {
                                  conn->pending_message_buffer.add_space( outstanding_message_bytes - available_buffer_bytes );
                               }
 
-                              conn->outstanding_read_bytes.emplace(outstanding_message_bytes);
+                              conn->outstanding_read_bytes = outstanding_message_bytes;
                               break;
                            }
                         }
                      }
-                     start_read_message(conn);
+                     if( !close_connection ) start_read_message( conn );
                   } else {
-                     auto pname = conn->peer_name();
                      if (ec.value() != boost::asio::error::eof) {
-                        fc_elog( logger, "Error reading message from ${p}: ${m}",("p",pname)( "m", ec.message() ) );
+                        fc_elog( logger, "Error reading message: ${m}", ( "m", ec.message() ) );
                      } else {
-                        fc_ilog( logger, "Peer ${p} closed connection",("p",pname) );
+                        fc_ilog( logger, "Peer closed connection" );
                      }
-                     close( conn );
+                     close_connection = true;
                   }
                }
                catch(const std::exception &ex) {
-                  fc_elog( logger, "Exception in handling read data from ${p}: ${s}",
-                           ("p",conn->peer_name())("s",ex.what()) );
-                  close( conn );
+                  fc_elog( logger, "Exception in handling read data: ${s}", ("s",ex.what()) );
+                  close_connection = true;
                }
                catch(const fc::exception &ex) {
-                  fc_elog( logger, "Exception in handling read data from ${p}: ${s}",
-                           ("p",conn->peer_name())("s",ex.to_string()) );
-                  close( conn );
+                  fc_elog( logger, "Exception in handling read data ${s}", ("s",ex.to_string()) );
+                  close_connection = true;
                }
                catch (...) {
-                  fc_elog( logger, "Undefined exception handling the read data from ${p}",( "p",conn->peer_name()) );
-                  close( conn );
+                  fc_elog( logger, "Undefined exception handling read data" );
+                  close_connection = true;
                }
-            });
-         }));
+
+               if( close_connection ) {
+                  connection_wptr weak_conn = conn;
+                  app().post( priority::medium, "close conn", [this, weak_conn]() {
+                     auto conn = weak_conn.lock();
+                     if( !conn ) return;
+                     fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
+                     close( conn );
+                  });
+               }
+         });
       } catch (...) {
          string pname = conn ? conn->peer_name() : "no connection name";
          fc_elog( logger, "Undefined exception handling reading ${p}",("p",pname) );
@@ -2150,6 +2180,7 @@ namespace eosio {
    bool net_plugin_impl::process_next_message(const connection_ptr& conn, uint32_t message_length) {
       try {
          // if next message is a block we already have, exit early
+/*
          auto peek_ds = conn->pending_message_buffer.create_peek_datastream();
          unsigned_int which{};
          fc::raw::unpack( peek_ds, which );
@@ -2166,7 +2197,7 @@ namespace eosio {
                return true;
             }
          }
-
+*/
          auto ds = conn->pending_message_buffer.create_datastream();
          net_message msg;
          fc::raw::unpack( ds, msg );
@@ -2547,17 +2578,60 @@ namespace eosio {
       });
    }
 
-   void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& msg) {
-      controller &cc = chain_plug->chain();
-      block_id_type blk_id = msg->id();
-      uint32_t blk_num = msg->block_num();
+   void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& m) {
+      signed_block_ptr msg = m;
+      controller& cc = chain_plug->chain();
+      block_id_type blk_id = msg ? msg->id() : block_id_type();
+      uint32_t blk_num = msg ? msg->block_num() : 0;
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
       c->cancel_wait();
 
       try {
-         if( cc.fetch_block_by_id(blk_id)) {
+         if( msg && cc.fetch_block_by_id(blk_id)) {
             sync_master->recv_block(c, blk_id, blk_num);
             return;
+         }
+         signed_block_ptr prev = msg ? cc.fetch_block_by_id( msg->previous ) : msg;
+         if( prev == nullptr ){ //&& sync_master->is_active(c) ) {
+            // see if top is ready
+            if( !sync_master->incoming_blocks.empty() ) {
+               prev = sync_master->incoming_blocks.top();
+               auto prev_prev = cc.fetch_block_by_id( prev->previous );
+               if( prev_prev != nullptr ) {
+                  sync_master->incoming_blocks.pop();
+                  if(msg) sync_master->incoming_blocks.emplace( msg );
+                  msg = prev;
+                  blk_id = msg->id();
+                  blk_num = msg->block_num();
+                  connection_wptr weak = c;
+                  app().post(priority::medium, "re post blk", [this, weak](){
+                     connection_ptr c = weak.lock();
+                     if( c ) handle_message( c, signed_block_ptr() );
+                  });
+               } else {
+                  if( msg ) {
+                     sync_master->incoming_blocks.emplace( msg );
+
+                     connection_wptr weak = c;
+                     app().post( priority::medium, "re post blk", [this, weak]() {
+                        connection_ptr c = weak.lock();
+                        if( c ) handle_message( c, signed_block_ptr() );
+                     } );
+                  }
+                  return;
+               }
+            } else {
+               if( msg ) {
+                  sync_master->incoming_blocks.emplace( msg );
+
+                  connection_wptr weak = c;
+                  app().post( priority::medium, "re post blk", [this, weak]() {
+                     connection_ptr c = weak.lock();
+                     if( c ) handle_message( c, signed_block_ptr() );
+                  } );
+               }
+               return;
+            }
          }
       } catch( ...) {
          // should this even be caught?
