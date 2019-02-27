@@ -218,6 +218,21 @@ namespace eosio { namespace chain {
       my->head = my->root;
    }
 
+   void fork_database::rollback_head_to_root() {
+      auto& by_id_idx = my->index.get<by_block_id>();
+
+      // root probably not exist in index
+      auto itr = by_id_idx.begin();
+      while (itr != by_id_idx.end()) {
+         by_id_idx.modify( itr, [&]( block_state_ptr& bsp ) {
+            bsp->validated = (bsp->id == my->root->id);
+         } );
+         ++itr;
+      }
+
+      my->head = my->root;
+   }
+
    void fork_database::advance_root( const block_id_type& id ) {
       EOS_ASSERT( my->root, fork_database_exception, "root not yet set" );
 
@@ -326,23 +341,35 @@ namespace eosio { namespace chain {
       auto first_branch = get_block(first);
       auto second_branch = get_block(second);
 
+      // need to handle a case where first or second is the root
+      if (!first_branch && my->root && first == my->root->id) first_branch = my->root;
+      if (!second_branch && my->root && second == my->root->id) second_branch = my->root;
+
       while( first_branch->block_num > second_branch->block_num )
       {
          result.first.push_back(first_branch);
+         auto prev = first_branch->header.previous;
          first_branch = get_block( first_branch->header.previous );
+
+         if (!first_branch && my->root && prev == my->root->id) first_branch = my->root;
+
          EOS_ASSERT( first_branch, fork_db_block_not_found,
                      "block ${id} does not exist",
-                     ("id", first_branch->header.previous) );
+                     ("id", prev) );
       }
 
       while( second_branch->block_num > first_branch->block_num )
       {
          result.second.push_back( second_branch );
+         auto prev = second_branch->header.previous;
          second_branch = get_block( second_branch->header.previous );
+         if (!second_branch && my->root && prev == my->root->id) second_branch = my->root;
          EOS_ASSERT( second_branch, fork_db_block_not_found,
                      "block ${id} does not exist",
-                     ("id", second_branch->header.previous) );
+                     ("id", prev) );
       }
+
+      if (first_branch->id == second_branch->id) return result;
 
       while( first_branch->header.previous != second_branch->header.previous )
       {

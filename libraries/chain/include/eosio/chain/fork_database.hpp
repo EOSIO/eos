@@ -37,6 +37,12 @@ namespace eosio { namespace chain {
          void            reset( const block_header_state& root_bhs );
 
          /**
+          * rollback head to root if read_mode changed from speculative to irreversible
+          * valid flag need to set to false to avoid head advancing
+          */
+         void            rollback_head_to_root();
+
+         /**
           *  Advance root block forward to some other block in the tree.
           */
          void            advance_root( const block_id_type& id );
