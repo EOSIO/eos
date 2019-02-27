@@ -75,6 +75,12 @@ namespace eosio {
       }
    };
 
+   struct block_greater {
+      bool operator()( const std::shared_ptr<signed_block>& lhs, const std::shared_ptr<signed_block>& rhs ) const {
+         return lhs->block_num() > rhs->block_num();
+      }
+   };
+
    typedef multi_index_container<
       node_transaction_state,
       indexed_by<
@@ -719,6 +725,8 @@ namespace eosio {
       void recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num);
       void recv_handshake(const connection_ptr& c, const handshake_message& msg);
       void recv_notice(const connection_ptr& c, const notice_message& msg);
+
+      std::priority_queue<std::shared_ptr<signed_block>, std::deque<std::shared_ptr<signed_block>>, block_greater> incoming_blocks;
    };
 
    class dispatch_manager {
@@ -2042,7 +2050,7 @@ namespace eosio {
                return minimum_read - bytes_transferred;
             }
          };
-
+/*
          if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ||
              conn->reads_in_flight > def_max_reads_in_flight   ||
              conn->trx_in_progress_size > def_max_trx_in_progress_size )
@@ -2082,7 +2090,7 @@ namespace eosio {
             } ) );
             return;
          }
-
+*/
          ++conn->reads_in_flight;
          boost::asio::async_read(*conn->socket,
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
@@ -2595,6 +2603,48 @@ namespace eosio {
          if( cc.fetch_block_by_id(blk_id) ) {
             sync_master->recv_block(c, blk_id, blk_num);
             return;
+         }
+         signed_block_ptr prev = msg ? cc.fetch_block_by_id( msg->previous ) : msg;
+         if( prev == nullptr ){ //&& sync_master->is_active(c) ) {
+            // see if top is ready
+            if( !sync_master->incoming_blocks.empty() ) {
+               prev = sync_master->incoming_blocks.top();
+               auto prev_prev = cc.fetch_block_by_id( prev->previous );
+               if( prev_prev != nullptr ) {
+                  sync_master->incoming_blocks.pop();
+                  if(msg) sync_master->incoming_blocks.emplace( msg );
+                  msg = prev;
+                  blk_id = msg->id();
+                  blk_num = msg->block_num();
+                  connection_wptr weak = c;
+                  app().post(priority::medium, "re post blk", [this, weak](){
+                     connection_ptr c = weak.lock();
+                     if( c ) handle_message( c, signed_block_ptr() );
+                  });
+               } else {
+                  if( msg ) {
+                     sync_master->incoming_blocks.emplace( msg );
+
+                     connection_wptr weak = c;
+                     app().post( priority::medium, "re post blk", [this, weak]() {
+                        connection_ptr c = weak.lock();
+                        if( c ) handle_message( c, signed_block_ptr() );
+                     } );
+                  }
+                  return;
+               }
+            } else {
+               if( msg ) {
+                  sync_master->incoming_blocks.emplace( msg );
+
+                  connection_wptr weak = c;
+                  app().post( priority::medium, "re post blk", [this, weak]() {
+                     connection_ptr c = weak.lock();
+                     if( c ) handle_message( c, signed_block_ptr() );
+                  } );
+               }
+               return;
+            }
          }
       } catch( ...) {
          // should this even be caught?
