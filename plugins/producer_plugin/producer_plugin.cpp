@@ -9,6 +9,7 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/snapshot.hpp>
+#include <eosio/chain/permission_object.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -219,7 +220,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          // since the watermark has to be set before a block is created, we are looking into the future to
          // determine the new schedule to identify producers that have become active
-         chain::controller& chain = chain_plug->chain();
          const auto hbn = bsp->block_num;
          auto new_block_header = bsp->header;
          new_block_header.timestamp = new_block_header.timestamp.next();
@@ -668,6 +668,20 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
          } catch (...) {
             elog("Malformed signature provider: \"${val}\", ignoring!", ("val", key_spec_pair));
          }
+      }
+   }
+
+   for (const auto& producer : my->_producers) {
+      chain::controller& chain = my->chain_plug->chain();
+      const auto& permissions = chain.db().get_index<permission_index,by_owner>();
+      auto perm = permissions.lower_bound( boost::make_tuple( producer ) );
+      while( perm != permissions.end() && perm->owner == producer ) {
+         if(perm->name == N(active)) {
+            for(const auto& keyweight : perm->auth.keys) {
+               EOS_ASSERT(is_producer_key(keyweight.key), plugin_config_exception, "Missing signature-provider for producer ${prod}", ("prod", producer));
+            }
+         }
+         ++perm;
       }
    }
 
@@ -1570,7 +1584,6 @@ void producer_plugin_impl::produce_block() {
    EOS_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
    chain::controller& chain = chain_plug->chain();
    const auto& pbs = chain.pending_block_state();
-   const auto& hbs = chain.head_block_state();
    EOS_ASSERT(pbs, missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");
    auto signature_provider_itr = _signature_providers.find( pbs->block_signing_key );
 
@@ -1584,7 +1597,7 @@ void producer_plugin_impl::produce_block() {
    } );
 
    chain.commit_block();
-   auto hbt = chain.head_block_time();
+   //auto hbt = chain.head_block_time();
    //idump((fc::time_point::now() - hbt));
 
    block_state_ptr new_bs = chain.head_block_state();
