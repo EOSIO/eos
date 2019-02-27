@@ -672,17 +672,17 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    }
 
    for (const auto& producer : my->_producers) {
+      bool signature_available = false;
       chain::controller& chain = my->chain_plug->chain();
       const auto& permissions = chain.db().get_index<permission_index,by_owner>();
       auto perm = permissions.lower_bound( boost::make_tuple( producer ) );
       while( perm != permissions.end() && perm->owner == producer ) {
-         if(perm->name == N(active)) {
-            for(const auto& keyweight : perm->auth.keys) {
-               EOS_ASSERT(is_producer_key(keyweight.key), plugin_config_exception, "Missing signature-provider for producer ${prod}", ("prod", producer));
-            }
+         for(const auto& keyweight : perm->auth.keys) {
+            signature_available |= is_producer_key(keyweight.key);
          }
          ++perm;
       }
+      EOS_ASSERT(signature_available, plugin_config_exception, "Missing signature-provider for producer ${prod}", ("prod", producer));
    }
 
    my->_keosd_provider_timeout_us = fc::milliseconds(options.at("keosd-provider-timeout").as<int32_t>());
