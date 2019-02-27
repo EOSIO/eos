@@ -302,7 +302,7 @@ namespace eosio {
                   bytes_in_flight += body.size();
                   app().post( appbase::priority::low, resource,
                               [ioc = this->server_ioc, &bytes_in_flight = this->bytes_in_flight, handler_itr,
-                               resource{std::move( resource )}, body{std::move( body )}, con]() {
+                               resource, body{std::move( body )}, con]() {
                      try {
                         bytes_in_flight -= body.size();
                         handler_itr->second( resource, body,
