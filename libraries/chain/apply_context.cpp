@@ -69,7 +69,7 @@ void apply_context::exec_one( action_trace& trace )
                control.get_wasm_interface().apply( a.code_version, a.code, *this );
             } catch( const wasm_exit& ) {}
          }
-      } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output.str()) )
+      } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output) )
    } catch( fc::exception& e ) {
       trace.receipt = r; // fill with known data
       trace.except = e;
@@ -104,8 +104,8 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
    trace.account_ram_deltas = std::move( _account_ram_deltas );
    _account_ram_deltas.clear();
 
-   trace.console = _pending_console_output.str();
-   reset_console();
+   trace.console = std::move( _pending_console_output );
+   _pending_console_output.clear();
 
    trace.elapsed = fc::time_point::now() - start;
 }
@@ -442,11 +442,6 @@ vector<account_name> apply_context::get_active_producers() const {
       accounts.push_back(producer.producer_name);
 
    return accounts;
-}
-
-void apply_context::reset_console() {
-   _pending_console_output = std::ostringstream();
-   _pending_console_output.setf( std::ios::scientific, std::ios::floatfield );
 }
 
 bytes apply_context::get_packed_transaction() {

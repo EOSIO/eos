@@ -979,7 +979,7 @@ class console_api : public context_aware_api {
       // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.
       void prints(null_terminated_ptr str) {
          if ( !ignore ) {
-            context.console_append<const char*>(str);
+            context.console_append( static_cast<const char*>(str) );
          }
       }
 
@@ -991,13 +991,17 @@ class console_api : public context_aware_api {
 
       void printi(int64_t val) {
          if ( !ignore ) {
-            context.console_append(val);
+            std::ostringstream oss;
+            oss << val;
+            context.console_append( oss.str() );
          }
       }
 
       void printui(uint64_t val) {
          if ( !ignore ) {
-            context.console_append(val);
+            std::ostringstream oss;
+            oss << val;
+            context.console_append( oss.str() );
          }
       }
 
@@ -1013,11 +1017,13 @@ class console_api : public context_aware_api {
 
             fc::uint128_t v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
 
+            string s;
             if( is_negative ) {
-               context.console_append("-");
+               s += '-';
             }
+            s += fc::variant(v).get_string();
 
-            context.console_append(fc::variant(v).get_string());
+            context.console_append( s );
          }
       }
 
@@ -1031,26 +1037,22 @@ class console_api : public context_aware_api {
       void printsf( float val ) {
          if ( !ignore ) {
             // Assumes float representation on native side is the same as on the WASM side
-            auto& console = context.get_console_stream();
-            auto orig_prec = console.precision();
-
-            console.precision( std::numeric_limits<float>::digits10 );
-            context.console_append(val);
-
-            console.precision( orig_prec );
+            std::ostringstream oss;
+            oss.setf( std::ios::scientific, std::ios::floatfield );
+            oss.precision( std::numeric_limits<float>::digits10 );
+            oss << val;
+            context.console_append( oss.str() );
          }
       }
 
       void printdf( double val ) {
          if ( !ignore ) {
             // Assumes double representation on native side is the same as on the WASM side
-            auto& console = context.get_console_stream();
-            auto orig_prec = console.precision();
-
-            console.precision( std::numeric_limits<double>::digits10 );
-            context.console_append(val);
-
-            console.precision( orig_prec );
+            std::ostringstream oss;
+            oss.setf( std::ios::scientific, std::ios::floatfield );
+            oss.precision( std::numeric_limits<double>::digits10 );
+            oss << val;
+            context.console_append( oss.str() );
          }
       }
 
@@ -1068,23 +1070,23 @@ class console_api : public context_aware_api {
           */
 
          if ( !ignore ) {
-            auto& console = context.get_console_stream();
-            auto orig_prec = console.precision();
+            std::ostringstream oss;
+            oss.setf( std::ios::scientific, std::ios::floatfield );
 
 #ifdef __x86_64__
-            console.precision( std::numeric_limits<long double>::digits10 );
+            oss.precision( std::numeric_limits<long double>::digits10 );
             extFloat80_t val_approx;
             f128M_to_extF80M(&val, &val_approx);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
-            context.console_append( *(long double*)(&val_approx) );
+            oss << *(long double*)(&val_approx);
 #pragma GCC diagnostic pop
 #else
-            console.precision( std::numeric_limits<double>::digits10 );
+            oss.precision( std::numeric_limits<double>::digits10 );
             double val_approx = from_softfloat64( f128M_to_f64(&val) );
-            context.console_append(val_approx);
+            oss << val_approx;
 #endif
-            console.precision( orig_prec );
+            context.console_append( oss.str() );
          }
       }
 
