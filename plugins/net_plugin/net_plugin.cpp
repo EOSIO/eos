@@ -77,6 +77,12 @@ namespace eosio {
       }
    };
 
+   struct block_greater {
+      bool operator()( const std::shared_ptr<signed_block>& lhs, const std::shared_ptr<signed_block>& rhs ) const {
+         return lhs->block_num() > rhs->block_num();
+      }
+   };
+
    typedef multi_index_container<
       node_transaction_state,
       indexed_by<
@@ -506,13 +512,21 @@ namespace eosio {
       socket_ptr                                socket;
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
+<<<<<<< HEAD
       std::atomic<std::size_t>         outstanding_read_bytes{0}; // accessed only from server_ioc threads
+=======
+      std::atomic<std::size_t>         outstanding_read_bytes{0};
+>>>>>>> Test of multi-threaded reading
 
 
       queued_buffer           buffer_queue;
 
       std::atomic<uint32_t>   reads_in_flight{0};
+<<<<<<< HEAD
       std::atomic<uint32_t>   trx_in_progress_size{0};
+=======
+      uint32_t                trx_in_progress_size = 0;
+>>>>>>> Test of multi-threaded reading
       fc::sha256              node_id;
       handshake_message       last_handshake_recv;
       handshake_message       last_handshake_sent;
@@ -665,21 +679,37 @@ namespace eosio {
       void operator()( signed_block&& msg ) const {
          shared_ptr<signed_block> ptr = std::make_shared<signed_block>( std::move( msg ) );
          connection_wptr weak = c;
+<<<<<<< HEAD
          app().post(priority::high, [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
+=======
+         app().post(priority::high, "handle blk", [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
+>>>>>>> Test of multi-threaded reading
             connection_ptr c = weak.lock();
             if( c ) impl->handle_message( c, ptr );
          });
       }
       void operator()( packed_transaction&& msg ) const {
          shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>( std::move( msg ) );
+<<<<<<< HEAD
          impl.handle_message( c, ptr );
+=======
+         connection_wptr weak = c;
+         app().post(priority::low, "handle trx", [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
+            connection_ptr c = weak.lock();
+            if( c) impl->handle_message( c, ptr );
+         });
+>>>>>>> Test of multi-threaded reading
       }
 
       template <typename T>
       void operator()( T&& msg ) const
       {
          connection_wptr weak = c;
+<<<<<<< HEAD
          app().post(priority::low, [impl = &impl, msg{std::forward<T>(msg)}, weak{std::move(weak)}] {
+=======
+         app().post(priority::low, "handle msg", [impl = &impl, msg{std::forward<T>(msg)}, weak{std::move(weak)}] {
+>>>>>>> Test of multi-threaded reading
             connection_ptr c = weak.lock();
             if(c) impl->handle_message( c, msg );
          });
@@ -720,6 +750,8 @@ namespace eosio {
       void recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num);
       void recv_handshake(const connection_ptr& c, const handshake_message& msg);
       void recv_notice(const connection_ptr& c, const notice_message& msg);
+
+      std::priority_queue<std::shared_ptr<signed_block>, std::deque<std::shared_ptr<signed_block>>, block_greater> incoming_blocks;
    };
 
    class dispatch_manager {
@@ -843,10 +875,14 @@ namespace eosio {
       my_impl->sync_master->reset_lib_num(shared_from_this());
       fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
       cancel_wait();
+<<<<<<< HEAD
       {
          std::lock_guard<std::mutex> g( read_delay_timer_mutex );
          if( read_delay_timer ) read_delay_timer->cancel();
       }
+=======
+      if( read_delay_timer ) read_delay_timer->cancel();
+>>>>>>> Test of multi-threaded reading
    }
 
    void connection::txn_send_pending(const vector<transaction_id_type>& ids) {
@@ -2054,9 +2090,13 @@ namespace eosio {
          }
          connection_wptr weak_conn = conn;
 
+<<<<<<< HEAD
          std::size_t minimum_read =
                std::atomic_exchange<decltype(conn->outstanding_read_bytes.load())>( &conn->outstanding_read_bytes, 0 );
          minimum_read = minimum_read != 0 ? minimum_read : message_header_size;
+=======
+         std::size_t minimum_read = conn->outstanding_read_bytes != 0 ? conn->outstanding_read_bytes.load() : message_header_size;
+>>>>>>> Test of multi-threaded reading
 
          if (use_socket_read_watermark) {
             const size_t max_socket_read_watermark = 4096;
@@ -2072,12 +2112,13 @@ namespace eosio {
                return minimum_read - bytes_transferred;
             }
          };
-
+/*
          if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ||
              conn->reads_in_flight > def_max_reads_in_flight   ||
              conn->trx_in_progress_size > def_max_trx_in_progress_size )
          {
             // too much queued up, reschedule
+<<<<<<< HEAD
             uint32_t write_queue_size = conn->buffer_queue.write_queue_size();
             uint32_t trx_in_progress_size = conn->trx_in_progress_size;
             uint32_t reads_in_flight = conn->reads_in_flight;
@@ -2085,6 +2126,12 @@ namespace eosio {
                peer_wlog( conn, "write_queue full ${s} bytes", ("s", write_queue_size) );
             } else if( reads_in_flight > def_max_reads_in_flight ) {
                peer_wlog( conn, "max reads in flight ${s}", ("s", reads_in_flight) );
+=======
+            if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ) {
+               peer_wlog( conn, "write_queue full ${s} bytes", ("s", conn->buffer_queue.write_queue_size()) );
+            } else if( conn->reads_in_flight > def_max_reads_in_flight ) {
+               peer_wlog( conn, "max reads in flight ${s}", ("s", conn->reads_in_flight.load()) );
+>>>>>>> Test of multi-threaded reading
             } else {
                peer_wlog( conn, "max trx in progress ${s} bytes", ("s", trx_in_progress_size) );
             }
@@ -2112,7 +2159,7 @@ namespace eosio {
             } ) );
             return;
          }
-
+*/
          ++conn->reads_in_flight;
          boost::asio::async_read(*conn->socket,
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
@@ -2124,6 +2171,10 @@ namespace eosio {
                }
 
                --conn->reads_in_flight;
+<<<<<<< HEAD
+=======
+               conn->outstanding_read_bytes = 0;
+>>>>>>> Test of multi-threaded reading
                bool close_connection = false;
 
                try {
@@ -2193,7 +2244,12 @@ namespace eosio {
                }
 
                if( close_connection ) {
+<<<<<<< HEAD
                   app().post( priority::medium, [this, weak_conn]() {
+=======
+                  connection_wptr weak_conn = conn;
+                  app().post( priority::medium, "close conn", [this, weak_conn]() {
+>>>>>>> Test of multi-threaded reading
                      auto conn = weak_conn.lock();
                      if( !conn ) return;
                      fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
@@ -2626,14 +2682,23 @@ namespace eosio {
       });
    }
 
+<<<<<<< HEAD
    void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& msg) {
       controller& cc = chain_plug->chain();
       block_id_type blk_id = msg->id();
       uint32_t blk_num = msg->block_num();
+=======
+   void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& m) {
+      signed_block_ptr msg = m;
+      controller& cc = chain_plug->chain();
+      block_id_type blk_id = msg ? msg->id() : block_id_type();
+      uint32_t blk_num = msg ? msg->block_num() : 0;
+>>>>>>> Test of multi-threaded reading
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
       c->cancel_wait();
 
       try {
+<<<<<<< HEAD
          if( cc.fetch_block_by_id(blk_id) ) {
             sync_master->recv_block(c, blk_id, blk_num);
             return;
@@ -2641,6 +2706,12 @@ namespace eosio {
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
+=======
+         if( msg && cc.fetch_block_by_id(blk_id)) {
+            sync_master->recv_block(c, blk_id, blk_num);
+            return;
+         }
+>>>>>>> Test of multi-threaded reading
          signed_block_ptr prev = msg ? cc.fetch_block_by_id( msg->previous ) : msg;
          if( prev == nullptr ){ //&& sync_master->is_active(c) ) {
             // see if top is ready
@@ -2654,7 +2725,11 @@ namespace eosio {
                   blk_id = msg->id();
                   blk_num = msg->block_num();
                   connection_wptr weak = c;
+<<<<<<< HEAD
                   app().post(priority::medium, [this, weak](){
+=======
+                  app().post(priority::medium, "re post blk", [this, weak](){
+>>>>>>> Test of multi-threaded reading
                      connection_ptr c = weak.lock();
                      if( c ) handle_message( c, signed_block_ptr() );
                   });
@@ -2663,7 +2738,11 @@ namespace eosio {
                      sync_master->incoming_blocks.emplace( msg );
 
                      connection_wptr weak = c;
+<<<<<<< HEAD
                      app().post( priority::medium, [this, weak]() {
+=======
+                     app().post( priority::medium, "re post blk", [this, weak]() {
+>>>>>>> Test of multi-threaded reading
                         connection_ptr c = weak.lock();
                         if( c ) handle_message( c, signed_block_ptr() );
                      } );
@@ -2675,7 +2754,11 @@ namespace eosio {
                   sync_master->incoming_blocks.emplace( msg );
 
                   connection_wptr weak = c;
+<<<<<<< HEAD
                   app().post( priority::medium, [this, weak]() {
+=======
+                  app().post( priority::medium, "re post blk", [this, weak]() {
+>>>>>>> Test of multi-threaded reading
                      connection_ptr c = weak.lock();
                      if( c ) handle_message( c, signed_block_ptr() );
                   } );
@@ -2683,8 +2766,11 @@ namespace eosio {
                return;
             }
          }
+<<<<<<< HEAD
 =======
 >>>>>>> Use appbase with FIFO priority queue. priority queue in net_plugin no longer needed.
+=======
+>>>>>>> Test of multi-threaded reading
       } catch( ...) {
          // should this even be caught?
          fc_elog( logger,"Caught an unknown exception trying to recall blockID" );
