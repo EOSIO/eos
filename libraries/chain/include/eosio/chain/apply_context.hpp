@@ -516,9 +516,6 @@ class apply_context {
    /// Console methods:
    public:
 
-      std::string& get_console()            { return _pending_console_output; }
-      const std::string& get_console()const { return _pending_console_output; }
-
       void console_append( const string& val ) {
          _pending_console_output += val;
       }
