@@ -588,7 +588,7 @@ namespace bacc = boost::accumulators;
       
       std::map<account_name, int64_t> providers_virtual_balances;
       if (check_staked_virtual_balance) {
-          for ( const auto& a : bill_to_accounts ) {
+          for (const auto& a : bill_to_accounts) {
              const auto provided_bw_it = provided_bandwith_.find(a);
              if (provided_bw_it != provided_bandwith_.end()) {
                 providers_virtual_balances[provided_bw_it->second.get_provider()] = 0;

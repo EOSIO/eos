@@ -128,7 +128,7 @@ void resource_limits_manager::update_account_usage(const flat_set<account_name>&
    }
 }
 
-void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot ) {
+void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot, int64_t now) {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& config = _db.get<resource_limits_config_object>();
 
@@ -140,8 +140,17 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
           bu.net_usage.add( net_usage, time_slot, config.account_net_usage_average_window );
           bu.cpu_usage.add( cpu_usage, time_slot, config.account_cpu_usage_average_window );
       });
+      
+      if (now >= 0) {
+          auto net_limit_ex = get_account_limit_ex(now, a, resource_limits::net_code);
+          EOS_ASSERT(net_limit_ex.used <= net_limit_ex.max, tx_net_usage_exceeded, 
+             "authorizing account '${n}' has insufficient net resources for this transaction", ("n", name(a))); 
+          
+          auto cpu_limit_ex = get_account_limit_ex(now, a, resource_limits::cpu_code);
+          EOS_ASSERT(cpu_limit_ex.used <= cpu_limit_ex.max, tx_cpu_usage_exceeded, 
+             "authorizing account '${n}' has insufficient cpu resources for this transaction", ("n", name(a)));
+      }
    }
-   //redundant "Should never fail" checks removed
 
    // account for this transaction in the block and do not exceed those limits either
    _db.modify(state, [&](resource_limits_state_object& rls){
@@ -254,8 +263,8 @@ account_resource_limit resource_limits_manager::get_account_limit_ex(int64_t now
         bool cpu = (purpose_code == cpu_code);
         int128_t window_size = cpu ? config.account_cpu_usage_average_window : config.account_net_usage_average_window;
         
-        EOS_ASSERT(cpu ? state.virtual_cpu_limit : state.virtual_net_limit <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), 
-            chain_exception, "SYSTEM: incorrect virtual_ram_limit");
+        EOS_ASSERT((cpu ? state.virtual_cpu_limit : state.virtual_net_limit) <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), 
+            chain_exception, cpu ? "SYSTEM: incorrect virtual_cpu_limit" : "SYSTEM: incorrect virtual_net_limit");
         capacity = static_cast<int64_t>(cpu ? state.virtual_cpu_limit : state.virtual_net_limit);
         
         used = impl::downgrade_cast<int64_t>(impl::integer_divide_ceil(
