@@ -2278,6 +2278,10 @@ namespace eosio {
                if( close_connection ) {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+                  connection_wptr weak_conn = conn;
+>>>>>>> Remove descriptions of tasks as not merged into develop yet
                   app().post( priority::medium, [this, weak_conn]() {
 =======
                   connection_wptr weak_conn = conn;
@@ -2782,6 +2786,7 @@ namespace eosio {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                   app().post(priority::medium, [this, weak](){
 =======
                   app().post(priority::medium, "re post blk", [this, weak](){
@@ -2792,6 +2797,9 @@ namespace eosio {
 =======
                   app().post(priority::medium, "re post blk", [this, weak](){
 >>>>>>> Test of multi-threaded reading
+=======
+                  app().post(priority::medium, [this, weak](){
+>>>>>>> Remove descriptions of tasks as not merged into develop yet
                      connection_ptr c = weak.lock();
                      if( c ) handle_message( c, signed_block_ptr() );
                   });
@@ -2803,6 +2811,7 @@ namespace eosio {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                      app().post( priority::medium, [this, weak]() {
 =======
                      app().post( priority::medium, "re post blk", [this, weak]() {
@@ -2813,6 +2822,9 @@ namespace eosio {
 =======
                      app().post( priority::medium, "re post blk", [this, weak]() {
 >>>>>>> Test of multi-threaded reading
+=======
+                     app().post( priority::medium, [this, weak]() {
+>>>>>>> Remove descriptions of tasks as not merged into develop yet
                         connection_ptr c = weak.lock();
                         if( c ) handle_message( c, signed_block_ptr() );
                      } );
@@ -2827,6 +2839,7 @@ namespace eosio {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                   app().post( priority::medium, [this, weak]() {
 =======
                   app().post( priority::medium, "re post blk", [this, weak]() {
@@ -2837,6 +2850,9 @@ namespace eosio {
 =======
                   app().post( priority::medium, "re post blk", [this, weak]() {
 >>>>>>> Test of multi-threaded reading
+=======
+                  app().post( priority::medium, [this, weak]() {
+>>>>>>> Remove descriptions of tasks as not merged into develop yet
                      connection_ptr c = weak.lock();
                      if( c ) handle_message( c, signed_block_ptr() );
                   } );
