@@ -666,21 +666,23 @@ namespace cyberway { namespace chaindb {
                 prev_state.old_values_.emplace(pk, std::move(obj.second));
             }
 
-            // *+new, but we assume the N/A cases don't happen, leaving type B nop+new -> new
             for (auto& obj: state.new_values_) {
                 const auto pk = obj.second.pk();
 
-                // upd(was=X) + del(was=Y) -> del(was=X)
                 auto ritr = prev_state.removed_values_.find(pk);
                 if (ritr != prev_state.removed_values_.end()) {
+                    // del(was=X) + ins(was=Y) -> up(was=X)
+
                     journal_.write_undo(ctx, write_operation::remove(state.revision_, obj.second.clone_service()));
 
                     ritr->second.set_undo_rec(undo_record::OldValue);
-                    journal_.write_undo(ctx, write_operation::insert(ritr->second));
+                    journal_.write_undo(ctx, write_operation::update(ritr->second));
 
                     prev_state.old_values_.emplace(std::move(*ritr));
                     prev_state.removed_values_.erase(ritr);
                 } else {
+                    // *+new, but we assume the N/A cases don't happen, leaving type B nop+new -> new
+
                     journal_.write(ctx,
                         write_operation::revision(state.revision_, obj.second.clone_service()),
                         write_operation::revision(state.revision_, obj.second.clone_service()));
