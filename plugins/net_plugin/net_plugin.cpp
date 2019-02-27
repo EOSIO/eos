@@ -665,7 +665,7 @@ namespace eosio {
       void operator()( signed_block&& msg ) const {
          shared_ptr<signed_block> ptr = std::make_shared<signed_block>( std::move( msg ) );
          connection_wptr weak = c;
-         app().post(priority::high, "handle blk", [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
+         app().post(priority::high, [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
             connection_ptr c = weak.lock();
             if( c ) impl->handle_message( c, ptr );
          });
@@ -673,7 +673,7 @@ namespace eosio {
       void operator()( packed_transaction&& msg ) const {
          shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>( std::move( msg ) );
          connection_wptr weak = c;
-         app().post(priority::low, "handle trx", [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
+         app().post(priority::low, [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
             connection_ptr c = weak.lock();
             if( c) impl->handle_message( c, ptr );
          });
@@ -683,7 +683,7 @@ namespace eosio {
       void operator()( T&& msg ) const
       {
          connection_wptr weak = c;
-         app().post(priority::low, "handle msg", [impl = &impl, msg{std::forward<T>(msg)}, weak{std::move(weak)}] {
+         app().post(priority::low, [impl = &impl, msg{std::forward<T>(msg)}, weak{std::move(weak)}] {
             connection_ptr c = weak.lock();
             if(c) impl->handle_message( c, msg );
          });
@@ -2162,7 +2162,7 @@ namespace eosio {
 
                if( close_connection ) {
                   connection_wptr weak_conn = conn;
-                  app().post( priority::medium, "close conn", [this, weak_conn]() {
+                  app().post( priority::medium, [this, weak_conn]() {
                      auto conn = weak_conn.lock();
                      if( !conn ) return;
                      fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
@@ -2604,7 +2604,7 @@ namespace eosio {
                   blk_id = msg->id();
                   blk_num = msg->block_num();
                   connection_wptr weak = c;
-                  app().post(priority::medium, "re post blk", [this, weak](){
+                  app().post(priority::medium, [this, weak](){
                      connection_ptr c = weak.lock();
                      if( c ) handle_message( c, signed_block_ptr() );
                   });
@@ -2613,7 +2613,7 @@ namespace eosio {
                      sync_master->incoming_blocks.emplace( msg );
 
                      connection_wptr weak = c;
-                     app().post( priority::medium, "re post blk", [this, weak]() {
+                     app().post( priority::medium, [this, weak]() {
                         connection_ptr c = weak.lock();
                         if( c ) handle_message( c, signed_block_ptr() );
                      } );
@@ -2625,7 +2625,7 @@ namespace eosio {
                   sync_master->incoming_blocks.emplace( msg );
 
                   connection_wptr weak = c;
-                  app().post( priority::medium, "re post blk", [this, weak]() {
+                  app().post( priority::medium, [this, weak]() {
                      connection_ptr c = weak.lock();
                      if( c ) handle_message( c, signed_block_ptr() );
                   } );
