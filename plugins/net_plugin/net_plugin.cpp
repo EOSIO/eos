@@ -2171,6 +2171,7 @@ namespace eosio {
                }
 
                if( close_connection ) {
+                  connection_wptr weak_conn = conn;
                   app().post( priority::medium, [this, weak_conn]() {
                      auto conn = weak_conn.lock();
                      if( !conn ) return;
@@ -2617,7 +2618,7 @@ namespace eosio {
                   blk_id = msg->id();
                   blk_num = msg->block_num();
                   connection_wptr weak = c;
-                  app().post(priority::medium, "re post blk", [this, weak](){
+                  app().post(priority::medium, [this, weak](){
                      connection_ptr c = weak.lock();
                      if( c ) handle_message( c, signed_block_ptr() );
                   });
@@ -2626,7 +2627,7 @@ namespace eosio {
                      sync_master->incoming_blocks.emplace( msg );
 
                      connection_wptr weak = c;
-                     app().post( priority::medium, "re post blk", [this, weak]() {
+                     app().post( priority::medium, [this, weak]() {
                         connection_ptr c = weak.lock();
                         if( c ) handle_message( c, signed_block_ptr() );
                      } );
@@ -2638,7 +2639,7 @@ namespace eosio {
                   sync_master->incoming_blocks.emplace( msg );
 
                   connection_wptr weak = c;
-                  app().post( priority::medium, "re post blk", [this, weak]() {
+                  app().post( priority::medium, [this, weak]() {
                      connection_ptr c = weak.lock();
                      if( c ) handle_message( c, signed_block_ptr() );
                   } );
