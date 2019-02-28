@@ -17,14 +17,12 @@
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
+#include <eosio/chain/thread_utils.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
-
-#include <boost/asio/thread_pool.hpp>
-#include <boost/asio/post.hpp>
 
 
 namespace eosio { namespace chain {
@@ -138,7 +136,7 @@ struct controller_impl {
    optional<fc::microseconds>     subjective_cpu_leeway;
    bool                           trusted_producer_light_validation = false;
    uint32_t                       snapshot_head_block = 0;
-   optional<boost::asio::thread_pool>  thread_pool;
+   boost::asio::thread_pool       thread_pool;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -148,15 +146,7 @@ struct controller_impl {
     *  are removed from this list if they are re-applied in other blocks. Producers
     *  can query this list when scheduling new transactions into blocks.
     */
-   map<digest_type, transaction_metadata_ptr>     unapplied_transactions;
-
-   // async on thread_pool and return future
-   template<typename F>
-   auto async_thread_pool( F&& f ) {
-      auto task = std::make_shared<std::packaged_task<decltype( f() )()>>( std::forward<F>( f ) );
-      boost::asio::post( *thread_pool, [task]() { (*task)(); } );
-      return task->get_future();
-   }
+   unapplied_transactions_type     unapplied_transactions;
 
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
@@ -197,7 +187,8 @@ struct controller_impl {
     authorization( s, db ),
     conf( cfg ),
     chain_id( cfg.genesis.compute_chain_id() ),
-    read_mode( cfg.read_mode )
+    read_mode( cfg.read_mode ),
+    thread_pool( cfg.thread_pool_size )
    {
 
 #define SET_APP_HANDLER( receiver, contract, action) \
@@ -352,8 +343,6 @@ struct controller_impl {
 
    void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
 
-      thread_pool.emplace( conf.thread_pool_size );
-
       bool report_integrity_hash = !!snapshot;
       if (snapshot) {
          EOS_ASSERT( !head, fork_database_exception, "" );
@@ -425,11 +414,6 @@ struct controller_impl {
 
    ~controller_impl() {
       pending.reset();
-
-      if( thread_pool ) {
-         thread_pool->join();
-         thread_pool->stop();
-      }
 
       db.flush();
       reversible_blocks.flush();
@@ -1106,7 +1090,19 @@ struct controller_impl {
 
       transaction_trace_ptr trace;
       try {
-         transaction_context trx_context(self, trx->trx, trx->id);
+         auto start = fc::time_point::now();
+         if( !explicit_billed_cpu_time ) {
+            fc::microseconds already_consumed_time( EOS_PERCENT(trx->sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
+
+            if( start.time_since_epoch() <  already_consumed_time ) {
+               start = fc::time_point();
+            } else {
+               start -= already_consumed_time;
+            }
+         }
+
+         const signed_transaction& trn = trx->packed_trx->get_signed_transaction();
+         transaction_context trx_context(self, trn, trx->id, start);
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
@@ -1119,18 +1115,16 @@ struct controller_impl {
                trx_context.init_for_implicit_trx();
                trx_context.enforce_whiteblacklist = false;
             } else {
-               bool skip_recording = replay_head_time && (time_point(trx->trx.expiration) <= *replay_head_time);
-               trx_context.init_for_input_trx( trx->packed_trx.get_unprunable_size(),
-                                               trx->packed_trx.get_prunable_size(),
-                                               trx->trx.signatures.size(),
+               bool skip_recording = replay_head_time && (time_point(trn.expiration) <= *replay_head_time);
+               trx_context.init_for_input_trx( trx->packed_trx->get_unprunable_size(),
+                                               trx->packed_trx->get_prunable_size(),
                                                skip_recording);
             }
-
-            trx_context.delay = fc::seconds(trx->trx.delay_sec);
+            trx_context.delay = fc::seconds(trn.delay_sec);
 
             if( !self.skip_auth_check() && !trx->implicit ) {
                authorization.check_authorization(
-                       trx->trx.actions,
+                       trn.actions,
                        trx->recover_keys( chain_id ),
                        {},
                        trx_context.delay,
@@ -1149,7 +1143,7 @@ struct controller_impl {
                transaction_receipt::status_enum s = (trx_context.delay == fc::seconds(0))
                                                     ? transaction_receipt::executed
                                                     : transaction_receipt::delayed;
-               trace->receipt = push_receipt(trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage);
+               trace->receipt = push_receipt(*trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage);
                pending->_pending_block_state->trxs.emplace_back(trx);
             } else {
                transaction_receipt_header r;
@@ -1296,15 +1290,9 @@ struct controller_impl {
          for( const auto& receipt : b->transactions ) {
             if( receipt.trx.contains<packed_transaction>()) {
                auto& pt = receipt.trx.get<packed_transaction>();
-               auto mtrx = std::make_shared<transaction_metadata>( pt );
+               auto mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( pt ) );
                if( !self.skip_auth_check() ) {
-                  std::weak_ptr<transaction_metadata> mtrx_wp = mtrx;
-                  mtrx->signing_keys_future = async_thread_pool( [chain_id = this->chain_id, mtrx_wp]() {
-                     auto mtrx = mtrx_wp.lock();
-                     return mtrx ?
-                            std::make_pair( chain_id, mtrx->trx.get_signature_keys( chain_id ) ) :
-                            std::make_pair( chain_id, decltype( mtrx->trx.get_signature_keys( chain_id ) ){} );
-                  } );
+                  transaction_metadata::create_signing_keys_future( mtrx, thread_pool, chain_id, microseconds::maximum() );
                }
                packed_transactions.emplace_back( std::move( mtrx ) );
             }
@@ -1385,7 +1373,7 @@ struct controller_impl {
       auto prev = fork_db.get_block( b->previous );
       EOS_ASSERT( prev, unlinkable_block_exception, "unlinkable block ${id}", ("id", id)("previous", b->previous) );
 
-      return async_thread_pool( [b, prev]() {
+      return async_thread_pool( thread_pool, [b, prev]() {
          const bool skip_validate_signee = false;
          return std::make_shared<block_state>( *prev, move( b ), skip_validate_signee );
       } );
@@ -1897,6 +1885,10 @@ void controller::abort_block() {
    my->abort_block();
 }
 
+boost::asio::thread_pool& controller::get_thread_pool() {
+   return my->thread_pool;
+}
+
 std::future<block_state_ptr> controller::create_block_state_future( const signed_block_ptr& b ) {
    return my->create_block_state_future( b );
 }
@@ -2241,41 +2233,12 @@ const account_object& controller::get_account( account_name name )const
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
-vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {
-   vector<transaction_metadata_ptr> result;
-   if ( my->read_mode == db_read_mode::SPECULATIVE ) {
-      result.reserve(my->unapplied_transactions.size());
-      for ( const auto& entry: my->unapplied_transactions ) {
-         result.emplace_back(entry.second);
-      }
-   } else {
-      EOS_ASSERT( my->unapplied_transactions.empty(), transaction_exception, "not empty unapplied_transactions in non-speculative mode" ); //should never happen
+unapplied_transactions_type& controller::get_unapplied_transactions() {
+   if ( my->read_mode != db_read_mode::SPECULATIVE ) {
+      EOS_ASSERT( my->unapplied_transactions.empty(), transaction_exception,
+                  "not empty unapplied_transactions in non-speculative mode" ); //should never happen
    }
-   return result;
-}
-
-void controller::drop_unapplied_transaction(const transaction_metadata_ptr& trx) {
-   my->unapplied_transactions.erase(trx->signed_id);
-}
-
-void controller::drop_all_unapplied_transactions() {
-   my->unapplied_transactions.clear();
-}
-
-vector<transaction_id_type> controller::get_scheduled_transactions() const {
-   const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
-
-   vector<transaction_id_type> result;
-
-   static const size_t max_reserve = 64;
-   result.reserve(std::min(idx.size(), max_reserve));
-
-   auto itr = idx.begin();
-   while( itr != idx.end() && itr->delay_until <= pending_block_time() ) {
-      result.emplace_back(itr->trx_id);
-      ++itr;
-   }
-   return result;
+   return my->unapplied_transactions;
 }
 
 bool controller::sender_avoids_whitelist_blacklist_enforcement( account_name sender )const {

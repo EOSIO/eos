@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #include <eosio/history_api_plugin/history_api_plugin.hpp>
 #include <eosio/chain/exceptions.hpp>
@@ -32,12 +32,15 @@ void history_api_plugin::plugin_initialize(const variables_map&) {}
        }}
 
 #define CHAIN_RO_CALL(call_name) CALL(history, ro_api, history_apis::read_only, call_name)
+//#define CHAIN_RW_CALL(call_name) CALL(history, rw_api, history_apis::read_write, call_name)
 
 void history_api_plugin::plugin_startup() {
    ilog( "starting history_api_plugin" );
    auto ro_api = app().get_plugin<history_plugin>().get_read_only_api();
+   //auto rw_api = app().get_plugin<history_plugin>().get_read_write_api();
 
    app().get_plugin<http_plugin>().add_api({
+//      CHAIN_RO_CALL(get_transaction),
       CHAIN_RO_CALL(get_actions),
       CHAIN_RO_CALL(get_transaction),
       CHAIN_RO_CALL(get_block_detail),
