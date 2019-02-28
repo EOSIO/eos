@@ -1550,7 +1550,6 @@ namespace eosio {
       // ilog( "recv trx ${n}", ("n", id) );
       if( p->expiration() < fc::time_point::now() ) return;
 
-      const auto& id = p->id();
 
       if( mark_transaction_known_by_peer( id ) )
         return;

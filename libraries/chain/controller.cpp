@@ -136,7 +136,6 @@ struct controller_impl {
    optional<fc::microseconds>     subjective_cpu_leeway;
    bool                           trusted_producer_light_validation = false;
    uint32_t                       snapshot_head_block = 0;
-   boost::asio::thread_pool       thread_pool;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -343,6 +342,8 @@ struct controller_impl {
 
    void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
 
+      thread_pool.emplace( conf.thread_pool_size );
+
       bool report_integrity_hash = !!snapshot;
       if (snapshot) {
          EOS_ASSERT( !head, fork_database_exception, "" );
@@ -414,6 +415,11 @@ struct controller_impl {
 
    ~controller_impl() {
       pending.reset();
+
+      if( thread_pool ) {
+         thread_pool->join();
+         thread_pool->stop();
+      }
 
       db.flush();
       reversible_blocks.flush();
@@ -1120,7 +1126,6 @@ struct controller_impl {
                                                trx->packed_trx->get_prunable_size(),
                                                skip_recording);
             }
-
             trx_context.delay = fc::seconds(trn.delay_sec);
 
             if( !self.skip_auth_check() && !trx->implicit ) {
@@ -2240,6 +2245,14 @@ unapplied_transactions_type& controller::get_unapplied_transactions() {
                   "not empty unapplied_transactions in non-speculative mode" ); //should never happen
    }
    return my->unapplied_transactions;
+}
+
+bool controller::sender_avoids_whitelist_blacklist_enforcement( account_name sender )const {
+   return my->sender_avoids_whitelist_blacklist_enforcement( sender );
+}
+
+void controller::check_actor_list( const flat_set<account_name>& actors )const {
+   my->check_actor_list( actors );
 }
 
 bool controller::sender_avoids_whitelist_blacklist_enforcement( account_name sender )const {

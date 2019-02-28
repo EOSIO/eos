@@ -1310,7 +1310,7 @@ chain::controller& chain = chain_plug->chain();
                   ++sch_itr;
                   continue; // do not allow schedule and execute in same block
                }
-               if( scheduled_trx_deadline <= fc::time_point::now() ) {
+                  if (block_time <= fc::time_point::now()) exhausted = true;
                   exhausted = true;
                   break;
                }
@@ -1331,7 +1331,6 @@ chain::controller& chain = chain_plug->chain();
                // configurable ratio of incoming txns vs deferred txns
                while (_incoming_trx_weight >= 1.0 && orig_pending_txn_size && _pending_incoming_transactions.size()) {
                   if (scheduled_trx_deadline <= fc::time_point::now()) break;
-
 
                   auto e = _pending_incoming_transactions.front();
                   _pending_incoming_transactions.pop_front();
@@ -1404,6 +1403,7 @@ chain::controller& chain = chain_plug->chain();
                   _pending_incoming_transactions.pop_front();
                   --orig_pending_txn_size;
                   process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+                  if (block_time <= fc::time_point::now()) return start_block_result::exhausted;
                }
             }
             return start_block_result::succeeded;
