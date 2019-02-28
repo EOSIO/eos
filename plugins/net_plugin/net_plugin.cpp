@@ -2571,16 +2571,15 @@ namespace eosio {
       });
    }
 
-   void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& m) {
-      signed_block_ptr msg = m;
+   void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& msg) {
       controller& cc = chain_plug->chain();
-      block_id_type blk_id = msg ? msg->id() : block_id_type();
-      uint32_t blk_num = msg ? msg->block_num() : 0;
+      block_id_type blk_id = msg->id();
+      uint32_t blk_num = msg->block_num();
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
       c->cancel_wait();
 
       try {
-         if( msg && cc.fetch_block_by_id(blk_id)) {
+         if( cc.fetch_block_by_id(blk_id) ) {
             sync_master->recv_block(c, blk_id, blk_num);
             return;
          }
