@@ -11,7 +11,9 @@
 namespace chainbase {
    class database;
 }
-
+namespace boost { namespace asio {
+   class thread_pool;
+}}
 
 namespace eosio { namespace chain {
 
@@ -32,6 +34,7 @@ namespace eosio { namespace chain {
    class account_object;
    using resource_limits::resource_limits_manager;
    using apply_handler = std::function<void(apply_context&)>;
+   using unapplied_transactions_type = map<transaction_id_type, transaction_metadata_ptr>;
 
    class fork_database;
 
@@ -79,6 +82,7 @@ namespace eosio { namespace chain {
             uint64_t                 state_guard_size       =  chain::config::default_state_guard_size;
             uint64_t                 reversible_cache_size  =  chain::config::default_reversible_cache_size;
             uint64_t                 reversible_guard_size  =  chain::config::default_reversible_guard_size;
+            uint32_t                 sig_cpu_bill_pct       =  chain::config::default_sig_cpu_bill_pct;
             uint16_t                 thread_pool_size       =  chain::config::default_controller_thread_pool_size;
             bool                     read_only              =  false;
             bool                     force_all_checks       =  false;
@@ -103,7 +107,7 @@ namespace eosio { namespace chain {
             incomplete  = 3, ///< this is an incomplete block (either being produced by a producer or speculatively produced by a node)
          };
 
-         controller( const config& cfg );
+         explicit controller( const config& cfg );
          ~controller();
 
          void add_indices();
@@ -124,22 +128,9 @@ namespace eosio { namespace chain {
           *  The caller is responsible for calling drop_unapplied_transaction on a failing transaction that
           *  they never intend to retry
           *
-          *  @return vector of transactions which have been unapplied
+          *  @return map of transactions which have been unapplied
           */
-         vector<transaction_metadata_ptr> get_unapplied_transactions() const;
-         void drop_unapplied_transaction(const transaction_metadata_ptr& trx);
-         void drop_all_unapplied_transactions();
-
-         /**
-          * These transaction IDs represent transactions available in the head chain state as scheduled
-          * or otherwise generated transactions.
-          *
-          * calling push_scheduled_transaction with these IDs will remove the associated transaction from
-          * the chain state IFF it succeeds or objectively fails
-          *
-          * @return
-          */
-         vector<transaction_id_type> get_scheduled_transactions() const;
+         unapplied_transactions_type& get_unapplied_transactions();
 
          /**
           *
@@ -159,6 +150,8 @@ namespace eosio { namespace chain {
 
          std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b );
          void push_block( std::future<block_state_ptr>& block_state_future );
+
+         boost::asio::thread_pool& get_thread_pool();
 
          const chainbase::database& db()const;
 

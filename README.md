@@ -32,8 +32,51 @@ As BOS continues to develop, developer rewards will be appropriately adjusted to
 
 BOSCore bases on EOSIO, so you can also referer:
 
-[Getting Started](https://developers.eos.io/eosio-nodeos/docs/overview-1)  
+
+#### Mac OS X Brew Install
+```sh
+$ brew tap eosio/eosio
+$ brew install eosio
+```
+#### Mac OS X Brew Uninstall
+```sh
+$ brew remove eosio
+```
+#### Ubuntu 18.04 Debian Package Install
+```sh
+$ wget https://github.com/eosio/eos/releases/download/v1.6.2/eosio_1.6.2-1-ubuntu-18.04_amd64.deb
+$ sudo apt install ./eosio_1.6.2-1-ubuntu-18.04_amd64.deb
+```
+#### Ubuntu 16.04 Debian Package Install
+```sh
+$ wget https://github.com/eosio/eos/releases/download/v1.6.2/eosio_1.6.2-1-ubuntu-16.04_amd64.deb
+$ sudo apt install ./eosio_1.6.2-1-ubuntu-16.04_amd64.deb
+```
+#### Debian Package Uninstall
+```sh
+$ sudo apt remove eosio
+```
+#### Centos RPM Package Install
+```sh
+$ wget https://github.com/eosio/eos/releases/download/v1.6.2/eosio-1.6.2-1.el7.x86_64.rpm
+$ sudo yum install ./eosio-1.6.2-1.el7.x86_64.rpm
+```
+#### Centos RPM Package Uninstall
+```sh
+$ sudo yum remove eosio.cdt
+```
+#### Fedora RPM Package Install
+```sh
+$ wget https://github.com/eosio/eos/releases/download/v1.6.2/eosio-1.6.2-1.fc27.x86_64.rpm
+$ sudo yum install ./eosio-1.6.2-1.fc27.x86_64.rpm
+```
+#### Fedora RPM Package Uninstall
+```sh
+$ sudo yum remove eosio.cdt
+```
 
 [EOSIO Developer Portal](https://developers.eos.io).
 
-
+<a name="gettingstarted"></a>
+## Getting Started
+Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found in [Getting Started](https://developers.eos.io/eosio-home/docs) on the [EOSIO Developer Portal](https://developers.eos.io).

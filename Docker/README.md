@@ -23,7 +23,7 @@ docker build . -t boscore/bos -s BOS
 The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the v2.0.1 tag, you could do the following:
 
 ```bash
-docker build -t boscore/bos:v2.0.1 --build-arg branch=v2.0.1 .
+docker build -t boscore/bos:v2.0.2 --build-arg branch=v2.0.2 .
 
 ```
 
@@ -133,46 +133,7 @@ docker volume rm keosd-data-volume
 ```
 
 ### Docker Hub
-
-Docker Hub image available from [docker hub](https://hub.docker.com/r/boscore/bos/).
-Create a new `docker-compose.yaml` file with the content below
-
-```bash
-version: "3"
-
-services:
-  nodeosd:
-    image: boscore/bos:latest
-    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e --http-alias=nodeosd:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888
-    hostname: nodeosd
-    ports:
-      - 8888:8888
-      - 9876:9876
-    expose:
-      - "8888"
-    volumes:
-      - nodeos-data-volume:/opt/eosio/bin/data-dir
-
-  keosd:
-    image: boscore/bos:latest
-    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900 --http-alias=localhost:8900 --http-alias=keosd:8900
-    hostname: keosd
-    links:
-      - nodeosd
-    volumes:
-      - keosd-data-volume:/opt/eosio/bin/data-dir
-
-volumes:
-  nodeos-data-volume:
-  keosd-data-volume:
-
-```
-
-*NOTE:* the default version is the latest, you can change it to what you want
-
-run `docker pull boscore/bos:latest`
-
-run `docker-compose up`
+Docker Hub images are now deprecated. New build images were discontinued on January 1st, 2019. The existing old images will be removed on June 1st, 2019.
 
 ### BOSCore Testnet
 
