@@ -10,6 +10,7 @@
 #include <eosio/testing/tester.hpp>
 
 #include <fc/io/json.hpp>
+#include <appbase/application.hpp>
 
 #include <boost/asio/thread_pool.hpp>
 #include <boost/test/unit_test.hpp>
@@ -1054,6 +1055,39 @@ BOOST_AUTO_TEST_CASE(reflector_init_test) {
       }
 
    } FC_LOG_AND_RETHROW()
+}
+
+// verify appbase::app().post() uses a stable priority queue so that jobs are executed in order, FIFO, as submitted.
+BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
+  try {
+     using namespace std::chrono_literals;
+
+     std::thread t( []() { appbase::app().exec(); } );
+     std::atomic<int> ran;
+     std::mutex mx;
+     std::vector<int> results;
+     for( int i = 0; i < 50; ++i ) {
+        appbase::app().post(appbase::priority::high, [&mx, &ran, &results, i](){
+           std::this_thread::sleep_for( 10us );
+           std::lock_guard<std::mutex> g(mx);
+           results.push_back( i );
+           ++ran;
+        });
+     }
+
+     std::this_thread::sleep_for( 50 * 10us ); // will take at least this long
+     while( ran < 50 ) std::this_thread::sleep_for( 5us );
+
+     appbase::app().quit();
+     t.join();
+
+     std::lock_guard<std::mutex> g(mx);
+     BOOST_CHECK_EQUAL( 50, results.size() );
+     for( int i = 0; i < 50; ++i ) {
+        BOOST_CHECK_EQUAL( i, results.at( i ) );
+     }
+
+  } FC_LOG_AND_RETHROW()
 }
 
 
