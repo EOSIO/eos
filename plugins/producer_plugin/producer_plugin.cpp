@@ -1047,7 +1047,7 @@ enum class tx_category {
 
 
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
-   chain::controller& chain = chain_plug->chain();
+chain::controller& chain = chain_plug->chain();
 
    if( chain.get_read_mode() == chain::db_read_mode::READ_ONLY )
       return start_block_result::waiting;
@@ -1120,8 +1120,13 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          }
       }
 
+      signature_provider_type signature_provider;
+      if (signature_provider_itr != _signature_providers.end()) {
+         signature_provider = signature_provider_itr->second;
+      }
+
       chain.abort_block();
-      chain.start_block(block_time, blocks_to_confirm);
+      chain.start_block(block_time, blocks_to_confirm, signature_provider);
    } FC_LOG_AND_DROP();
 
    const auto& pbs = chain.pending_block_state();
@@ -1217,6 +1222,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                         fc_dlog(_trx_trace_log, "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED : ${txid}",
                                ("txid", trx->id));
                      }
+
                      itr = unapplied_trxs.erase( itr ); // unapplied_trxs map has not been modified, so simply erase and continue
                      continue;
                   } else if (category == tx_category::PERSISTED ||
@@ -1325,6 +1331,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                // configurable ratio of incoming txns vs deferred txns
                while (_incoming_trx_weight >= 1.0 && orig_pending_txn_size && _pending_incoming_transactions.size()) {
                   if (scheduled_trx_deadline <= fc::time_point::now()) break;
+
 
                   auto e = _pending_incoming_transactions.front();
                   _pending_incoming_transactions.pop_front();

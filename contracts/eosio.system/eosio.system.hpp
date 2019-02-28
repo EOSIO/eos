@@ -172,7 +172,6 @@ namespace eosiosystem {
          void undelegatebw( account_name from, account_name receiver,
                             asset unstake_net_quantity, asset unstake_cpu_quantity );
 
-
          /**
           * Increases receiver's ram quota based upon current price and quantity of
           * tokens provided. An inline transfer from receiver to system contract of

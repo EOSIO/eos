@@ -1,6 +1,6 @@
 # Run in docker
 
-Simple and fast setup of EOS.IO on Docker is also available.
+Simple and fast setup of BOSCore on Docker is also available.
 
 ## Install Dependencies
 
@@ -12,30 +12,31 @@ Simple and fast setup of EOS.IO on Docker is also available.
 - At least 7GB RAM (Docker -> Preferences -> Advanced -> Memory -> 7GB or above)
 - If the build below fails, make sure you've adjusted Docker Memory settings and try again.
 
-## Build eos image
+## Build BOSCore image
 
 ```bash
-git clone https://github.com/EOSIO/eos.git --recursive  --depth 1
-cd eos/Docker
-docker build . -t eosio/eos
+git clone https://github.com/boscore/bos.git --recursive  --depth 1
+cd bos/Docker
+docker build . -t boscore/bos -s BOS
 ```
 
-The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the 1.6.2 tag, you could do the following:
+The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the v2.0.1 tag, you could do the following:
 
 ```bash
-docker build -t eosio/eos:v1.6.2 --build-arg branch=1.6.2 .
+docker build -t boscore/bos:v2.0.2 --build-arg branch=v2.0.2 .
+
 ```
 
 By default, the symbol in eosio.system is set to SYS. You can override this using the symbol argument while building the docker image.
 
 ```bash
-docker build -t eosio/eos --build-arg symbol=<symbol> .
+docker build -t boscore/bos --build-arg symbol=<symbol> .
 ```
 
 ## Start nodeos docker container only
 
 ```bash
-docker run --name nodeos -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh -e --http-alias=nodeos:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888 arg1 arg2
+docker run --name nodeos -p 8888:8888 -p 9876:9876 -t boscore/bos nodeosd.sh -e --http-alias=nodeos:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888 arg1 arg2
 ```
 
 By default, all data is persisted in a docker volume. It can be deleted if the data is outdated or corrupted:
@@ -49,7 +50,7 @@ $ docker volume rm fdc265730a4f697346fa8b078c176e315b959e79365fc9cbd11f090ea0cb5
 Alternately, you can directly mount host directory into the container
 
 ```bash
-docker run --name nodeos -v /path-to-data-dir:/opt/eosio/bin/data-dir -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh -e --http-alias=nodeos:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888 arg1 arg2
+docker run --name nodeos -v /path-to-data-dir:/opt/eosio/bin/data-dir -p 8888:8888 -p 9876:9876 -t boscore/bos nodeosd.sh -e --http-alias=nodeos:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888 arg1 arg2
 ```
 
 ## Get chain info
@@ -92,13 +93,13 @@ docker-compose stop keosd
 
 ### Develop/Build custom contracts
 
-Due to the fact that the eosio/eos image does not contain the required dependencies for contract development (this is by design, to keep the image size small), you will need to utilize the eosio/eos-dev image. This image contains both the required binaries and dependencies to build contracts using eosiocpp.
+Due to the fact that the boscore/bos image does not contain the required dependencies for contract development (this is by design, to keep the image size small), you will need to utilize the boscore/bos-dev image. This image contains both the required binaries and dependencies to build contracts using eosiocpp.
 
-You can either use the image available on [Docker Hub](https://hub.docker.com/r/eosio/eos-dev/) or navigate into the dev folder and build the image manually.
+You can either use the image available on [Docker Hub](https://hub.docker.com/r/boscore/bos-dev/) or navigate into the dev folder and build the image manually.
 
 ```bash
 cd dev
-docker build -t eosio/eos-dev .
+docker build -t boscore/bos-dev .
 ```
 
 ### Change default configuration
@@ -132,12 +133,11 @@ docker volume rm keosd-data-volume
 ```
 
 ### Docker Hub
-
 Docker Hub images are now deprecated. New build images were discontinued on January 1st, 2019. The existing old images will be removed on June 1st, 2019.
 
-### EOSIO Testnet
+### BOSCore Testnet
 
-We can easily set up a EOSIO local testnet using docker images. Just run the following commands:
+We can easily set up a BOSCore local testnet using docker images. Just run the following commands:
 
 Note: if you want to use the mongo db plugin, you have to enable it in your `data-dir/config.ini` first.
 

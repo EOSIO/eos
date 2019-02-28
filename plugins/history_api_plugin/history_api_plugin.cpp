@@ -32,17 +32,15 @@ void history_api_plugin::plugin_initialize(const variables_map&) {}
        }}
 
 #define CHAIN_RO_CALL(call_name) CALL(history, ro_api, history_apis::read_only, call_name)
-//#define CHAIN_RW_CALL(call_name) CALL(history, rw_api, history_apis::read_write, call_name)
 
 void history_api_plugin::plugin_startup() {
    ilog( "starting history_api_plugin" );
    auto ro_api = app().get_plugin<history_plugin>().get_read_only_api();
-   //auto rw_api = app().get_plugin<history_plugin>().get_read_write_api();
 
    app().get_plugin<http_plugin>().add_api({
-//      CHAIN_RO_CALL(get_transaction),
       CHAIN_RO_CALL(get_actions),
       CHAIN_RO_CALL(get_transaction),
+      CHAIN_RO_CALL(get_block_detail),
       CHAIN_RO_CALL(get_key_accounts),
       CHAIN_RO_CALL(get_controlled_accounts)
    });

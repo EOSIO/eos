@@ -43,4 +43,10 @@ namespace eosio { namespace chain {
                   "max authority depth should be at least 1" );
 }
 
+void chain_config2::validate() const{
+   EOS_ASSERT(std::numeric_limits<decltype(actor_blacklist.size())>::max() > actor_blacklist.size(), action_validate_exception, "Overflow in blacklist when adding actor blacklist!");
+   EOS_ASSERT(std::numeric_limits<decltype(contract_blacklist.size())>::max() > contract_blacklist.size(), action_validate_exception, "Overflow in blacklist when adding contract blacklist!");
+   EOS_ASSERT(std::numeric_limits<decltype(resource_greylist.size())>::max() > resource_greylist.size(), action_validate_exception, "Overflow in greylistwhen adding resource greylist!");
+}
+
 } } // namespace eosio::chain

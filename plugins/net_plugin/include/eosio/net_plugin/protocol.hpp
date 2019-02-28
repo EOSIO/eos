@@ -132,6 +132,14 @@ namespace eosio {
       uint32_t end_block;
    };
 
+struct request_p2p_message{
+     bool discoverable;
+   };
+
+   struct response_p2p_message{
+     bool discoverable;
+     string p2p_peer_list;
+   };
    using net_message = static_variant<handshake_message,
                                       chain_size_message,
                                       go_away_message,
@@ -139,9 +147,10 @@ namespace eosio {
                                       notice_message,
                                       request_message,
                                       sync_request_message,
-                                      signed_block,         // which = 7
-                                      packed_transaction>;  // which = 8
-
+                                      signed_block,       // which = 7
+                                      packed_transaction, // which = 8
+                                      response_p2p_message,
+                                      request_p2p_message>;
 } // namespace eosio
 
 FC_REFLECT( eosio::select_ids<fc::sha256>, (mode)(pending)(ids) )
@@ -159,7 +168,8 @@ FC_REFLECT( eosio::time_message, (org)(rec)(xmt)(dst) )
 FC_REFLECT( eosio::notice_message, (known_trx)(known_blocks) )
 FC_REFLECT( eosio::request_message, (req_trx)(req_blocks) )
 FC_REFLECT( eosio::sync_request_message, (start_block)(end_block) )
-
+FC_REFLECT( eosio::request_p2p_message, (discoverable) )
+FC_REFLECT( eosio::response_p2p_message, (discoverable)(p2p_peer_list) )
 /**
  *
 Goals of Network Code

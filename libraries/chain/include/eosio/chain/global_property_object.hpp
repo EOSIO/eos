@@ -34,6 +34,15 @@ namespace eosio { namespace chain {
       chain_config                      configuration;
    };
 
+   // *bos*
+   class global_property2_object : public chainbase::object<global_property2_object_type, global_property2_object>
+   {
+      OBJECT_CTOR(global_property2_object, (cfg))
+
+      id_type                       id;
+      chain_config2                 cfg;
+      guaranteed_minimum_resources    gmr;//guaranteed_minimum_resources
+   };
 
 
    /**
@@ -71,11 +80,22 @@ namespace eosio { namespace chain {
       >
    >;
 
+   // *bos*
+   using global_property2_multi_index = chainbase::shared_multi_index_container<
+      global_property2_object,
+      indexed_by<
+         ordered_unique<tag<by_id>,
+            BOOST_MULTI_INDEX_MEMBER(global_property2_object, global_property2_object::id_type, id)
+         >
+      >
+   >;
 }}
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::global_property_object, eosio::chain::global_property_multi_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::dynamic_global_property_object,
                          eosio::chain::dynamic_global_property_multi_index)
+// *bos*
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::global_property2_object, eosio::chain::global_property2_multi_index)
 
 FC_REFLECT(eosio::chain::dynamic_global_property_object,
            (global_action_sequence)
@@ -83,4 +103,8 @@ FC_REFLECT(eosio::chain::dynamic_global_property_object,
 
 FC_REFLECT(eosio::chain::global_property_object,
            (proposed_schedule_block_num)(proposed_schedule)(configuration)
+          )
+// *bos*
+FC_REFLECT(eosio::chain::global_property2_object,
+           (cfg)(gmr)
           )

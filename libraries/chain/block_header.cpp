@@ -28,5 +28,15 @@ namespace eosio { namespace chain {
       return result;
    }
 
+   void block_header::set_block_extensions_mroot(digest_type& mroot)
+   {
+      if (header_extensions.size() < 1)
+         header_extensions.emplace_back();
+
+      header_extensions[0].first = static_cast<uint16_t>(block_header_extensions_type::block_extensions_mroot);
+      header_extensions[0].second.resize(mroot.data_size());
+      std::copy(mroot.data(), mroot.data() + mroot.data_size(), header_extensions[0].second.data());
+   }
+
 
 } }
