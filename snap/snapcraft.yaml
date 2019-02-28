@@ -1,0 +1,70 @@
+name: eos
+base: core18
+version: '1.0'
+version-script: "echo `grep 'VERSION_MAJOR ' CMakeLists.txt | awk -F'[() ]' '{print $3}'`.`grep 'VERSION_MINOR ' CMakeLists.txt | awk -F'[() ]' '{print $3}'`.`grep 'VERSION_PATCH ' CMakeLists.txt | awk -F'[() ]' '{print $3}'`"
+summary: EOSIO - The Most Powerful Infrastructure for Decentralized Applications
+description: |
+  Welcome to the EOSIO source code repository! This software enables businesses to rapidly build and deploy high-performance and high-security blockchain-based applications.
+  Some of the groundbreaking features of EOSIO include:
+
+   1. Free Rate Limited Transactions
+   2. Low Latency Block confirmation (0.5 seconds)
+   3. Low-overhead Byzantine Fault Tolerant Finality
+   4. Designed for optional high-overhead, low-latency BFT finality
+   5. Smart contract platform powered by WebAssembly
+   6. Designed for Sparse Header Light Client Validation
+   7. Scheduled Recurring Transactions
+   8. Time Delay Security
+   9. Hierarchical Role Based Permissions
+  10. Support for Biometric Hardware Secured Keys (e.g. Apple Secure Enclave)
+  11. Designed for Parallel Execution of Context Free Validation Logic
+  12. Designed for Inter Blockchain Communication
+
+  EOSIO is released under the open source MIT license and is offered “AS IS” without warranty of any kind, express or implied. Any security provided by the EOSIO software depends in part on how it is used, configured, and deployed. EOSIO is built upon many third-party libraries such as Binaryen (Apache License) and WAVM  (BSD 3-clause) which are also provided “AS IS” without warranty of any kind. Without limiting the generality of the foregoing, Block.one makes no representation or guarantee that EOSIO or any third-party libraries will perform as intended or will be free of errors, bugs or faulty code. Both may fail in large or small ways that could completely or partially limit functionality or compromise computer systems. If you use or implement EOSIO, you do so at your own risk. In no event will Block.one be liable to any party for any damages whatsoever, even if it had been advised of the possibility of damage.
+
+  Block.one is neither launching nor operating any initial public blockchains based upon the EOSIO software. This release refers only to version 1.0 of our open source software. We caution those who wish to use blockchains built on EOSIO to carefully vet the companies and organizations launching blockchains based on EOSIO before disclosing any private keys to their derivative software.
+
+grade: stable
+confinement: strict
+
+apps:
+  cleos:
+    command: bin/cleos
+  keosd:
+    command: bin/keosd
+  nodeos:
+    command: bin/nodeos
+
+parts:
+  eos:
+    plugin: cmake
+    source: .
+    source-type: git
+    build-packages:
+      - git
+      - clang
+      - libz-dev
+      - libssl-dev
+      - libbz2-dev
+      - python-dev
+      - pkg-config
+      - libgmp3-dev
+      - build-essential
+      - libusb-1.0-0-dev
+      - libcurl4-openssl-dev
+    override-build: |
+      cd $SNAPCRAFT_PART_SRC
+      git submodule update --init --recursive
+      cd $SNAPCRAFT_PART_BUILD
+      cmake \
+        -DCMAKE_INSTALL_PREFIX=$SNAPCRAFT_PART_INSTALL \
+        -DBUILD_DEPS_INLINE=ON \
+        -DBUILD_MONGO_DB_PLUGIN=ON \
+        -DCMAKE_C_COMPILER=clang \
+        -DCMAKE_CXX_COMPILER=clang++ \
+        $SNAPCRAFT_PART_SRC
+      cmake --build . --target base-install
+    stage-packages:
+      - libcurl4
+      - libusb-1.0-0
+
