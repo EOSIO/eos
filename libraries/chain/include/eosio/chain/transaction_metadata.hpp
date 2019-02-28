@@ -6,7 +6,7 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/types.hpp>
 #include <future>
-#include <eosio/chain/trace.hpp>
+
 namespace boost { namespace asio {
    class thread_pool;
 }}
@@ -26,6 +26,7 @@ class transaction_metadata {
       packed_transaction_ptr                                     packed_trx;
       fc::microseconds                                           sig_cpu_usage;
       optional<pair<chain_id_type, flat_set<public_key_type>>>   signing_keys;
+      std::future<std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>>>
                                                                  signing_keys_future;
       bool                                                       accepted = false;
       bool                                                       implicit = false;
