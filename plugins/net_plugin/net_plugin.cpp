@@ -1641,6 +1641,7 @@ namespace eosio {
 
       uint32_t bnum = bs->block_num;
       peer_block_state pbstate{bs->id, bnum};
+      fc_dlog( logger, "bcast block ${b}", ("b", bnum) );
 
       std::shared_ptr<std::vector<char>> send_buffer;
       for( auto& cp : my_impl->connections ) {
@@ -1655,7 +1656,7 @@ namespace eosio {
             if( !send_buffer ) {
                send_buffer = create_send_buffer( bs->block );
             }
-            fc_dlog(logger, "bcast block ${b} to ${p}", ("b", bnum)("p", cp->peer_name()));
+            fc_dlog( logger, "bcast block ${b} to ${p}", ("b", bnum)( "p", cp->peer_name() ) );
             cp->enqueue_buffer( send_buffer, true, priority::high, no_reason );
          }
       }
