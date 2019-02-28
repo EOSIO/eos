@@ -161,7 +161,7 @@ if [ $COUNT -gt 1 ]; then
 		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
 else
-	printf "\\n - No required Home Brew dependencies to install.\\n"
+	printf " - No required Home Brew dependencies to install.\\n"
 fi
 
 
