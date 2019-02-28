@@ -2691,6 +2691,7 @@ namespace eosio {
    }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
    void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& msg) {
       controller& cc = chain_plug->chain();
       block_id_type blk_id = msg->id();
@@ -2702,10 +2703,17 @@ namespace eosio {
       block_id_type blk_id = msg ? msg->id() : block_id_type();
       uint32_t blk_num = msg ? msg->block_num() : 0;
 >>>>>>> Test of multi-threaded reading
+=======
+   void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& msg) {
+      controller& cc = chain_plug->chain();
+      block_id_type blk_id = msg->id();
+      uint32_t blk_num = msg->block_num();
+>>>>>>> Revert unneeded changes to handle_message
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
       c->cancel_wait();
 
       try {
+<<<<<<< HEAD
 <<<<<<< HEAD
          if( cc.fetch_block_by_id(blk_id) ) {
             sync_master->recv_block(c, blk_id, blk_num);
@@ -2716,6 +2724,9 @@ namespace eosio {
 =======
 =======
          if( msg && cc.fetch_block_by_id(blk_id)) {
+=======
+         if( cc.fetch_block_by_id(blk_id) ) {
+>>>>>>> Revert unneeded changes to handle_message
             sync_master->recv_block(c, blk_id, blk_num);
             return;
          }
