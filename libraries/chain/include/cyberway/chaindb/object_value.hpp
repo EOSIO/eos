@@ -21,9 +21,14 @@ namespace cyberway { namespace chaindb {
         account_name  scope;
         table_name    table;
 
+        revision_t    revision = impossible_revision;
+
         primary_key_t undo_pk  = unset_primary_key;
         undo_record   undo_rec = undo_record::Unknown;
-        revision_t    revision = impossible_revision;
+
+        revision_t    undo_revision = impossible_revision;
+        account_name  undo_payer;
+        size_t        undo_size     = 0;
 
         service_state(const table_info& table, primary_key_t pk)
         : pk(pk), code(table.code), scope(table.scope), table(table.table->name) {
@@ -31,7 +36,7 @@ namespace cyberway { namespace chaindb {
 
         service_state(const table_info& table, primary_key_t undo_pk, undo_record rec, revision_t rev)
         : code(table.code), scope(table.scope), table(table.table->name),
-          undo_pk(undo_pk), undo_rec(rec), revision(rev) {
+          revision(rev), undo_pk(undo_pk), undo_rec(rec) {
         }
 
         service_state() = default;
@@ -54,21 +59,6 @@ namespace cyberway { namespace chaindb {
             return value.get_type() == fc::variant::type_id::null_type;
         }
 
-        object_value& set_revision(const revision_t rev) {
-            service.revision = rev;
-            return *this;
-        }
-
-        object_value& set_undo_pk(const primary_key_t undo_pk) {
-            service.undo_pk = undo_pk;
-            return *this;
-        }
-
-        object_value& set_undo_rec(const undo_record undo_rec) {
-            service.undo_rec = undo_rec;
-            return *this;
-        }
-
         object_value clone_service() const {
             object_value obj;
             obj.service = service;
@@ -82,14 +72,6 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t pk() const {
             return service.pk;
-        }
-
-        primary_key_t undo_pk() const {
-            return service.undo_pk;
-        }
-
-        revision_t revision() const {
-            return service.revision;
         }
     }; // struct object_value
 

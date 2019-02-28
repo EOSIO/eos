@@ -28,19 +28,25 @@ namespace cyberway { namespace chaindb {
         Stack,
     }; // enum undo_stage
 
+    class table_undo_stack;
+
     struct undo_state final {
-        undo_state() = default;
-        undo_state(revision_t rev): revision_(rev) { }
+        undo_state(table_undo_stack& table, revision_t rev): table_(table), revision_(rev) { }
+
+        object_value next_pk_object(variant val = variant()) const;
 
         using pk_value_map_t_ = std::map<primary_key_t, object_value>;
 
-        primary_key_t   next_pk_      = unset_primary_key;
-        primary_key_t   undo_next_pk_ = unset_primary_key;
-        revision_t      revision_     = impossible_revision;
+        table_undo_stack& table_;
 
-        pk_value_map_t_ new_values_;
-        pk_value_map_t_ old_values_;
-        pk_value_map_t_ removed_values_;
+        primary_key_t     next_pk_      = unset_primary_key;
+        primary_key_t     undo_next_pk_ = unset_primary_key;
+        revision_t        revision_     = impossible_revision;
+
+        pk_value_map_t_   new_values_;
+        pk_value_map_t_   old_values_;
+        pk_value_map_t_   removed_values_;
+
     }; // struct undo_state
 
     class table_undo_stack final: public table_object::object {
@@ -82,7 +88,7 @@ namespace cyberway { namespace chaindb {
             switch (stage_) {
                 case undo_stage::New: {
                     stage_ = undo_stage::Stack;
-                    stack_.emplace_back(revision_);
+                    stack_.emplace_back(*this, revision_);
                 }
 
                 case undo_stage::Stack:
@@ -203,6 +209,10 @@ namespace cyberway { namespace chaindb {
         }
 
     }; // struct table_undo_stack
+
+    object_value undo_state::next_pk_object(variant val) const {
+        return object_value{{table_.info(), undo_next_pk_, undo_record::NextPk, revision_}, std::move(val)};
+    }
 
     struct undo_stack::undo_stack_impl_ final {
         undo_stack_impl_(chaindb_controller& controller, driver_interface& driver, journal& jrnl, cache_map& cache)
@@ -329,8 +339,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void insert(const table_info& table, object_value obj) {
-            obj.set_revision(revision_);
-
+            obj.service.revision = revision_;
             if (enabled()) {
                 insert(get_table(table), std::move(obj));
             } else {
@@ -339,9 +348,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void update(const table_info& table, object_value orig_obj, object_value obj) {
-            obj.set_revision(revision_);
-            orig_obj.set_revision(revision_);
-
+            obj.service.revision = revision_;
             if (enabled()) {
                 update(get_table(table), std::move(orig_obj), std::move(obj));
             } else {
@@ -350,8 +357,6 @@ namespace cyberway { namespace chaindb {
         }
 
         void remove(const table_info& table, object_value orig_obj) {
-            orig_obj.set_revision(revision_);
-
             if (enabled()) {
                 remove(get_table(table), std::move(orig_obj));
             } else {
@@ -359,7 +364,7 @@ namespace cyberway { namespace chaindb {
             }
         }
 
-        void restore() { try {
+        void restore() try {
             CYBERWAY_SESSION_ASSERT(start_revision >= revision_ && start_revision >= tail_revision_,
                 "Wrong state on restore");
 
@@ -415,9 +420,9 @@ namespace cyberway { namespace chaindb {
                 auto  pk    = obj.pk();
                 auto& state = get_state(obj.service);
 
-                if (obj.undo_pk()  >= undo_pk_      ) undo_pk_       = obj.undo_pk() + 1;
-                if (obj.revision() >  revision_     ) revision_      = obj.revision();
-                if (start_revision >= tail_revision_) tail_revision_ = obj.revision() - 1;
+                if (obj.service.undo_pk  >= undo_pk_ ) undo_pk_       = obj.service.undo_pk + 1;
+                if (obj.service.revision >  revision_) revision_      = obj.service.revision;
+                if (start_revision >= tail_revision_)  tail_revision_ = obj.service.revision - 1;
 
                 switch (obj.service.undo_rec) {
                     case undo_record::NewValue:
@@ -448,9 +453,15 @@ namespace cyberway { namespace chaindb {
             throw;
         } catch (const std::exception& e) {
             CYBERWAY_SESSION_ASSERT(false, e.what());
-        } }
+        }
 
     private:
+        void restore_undo_state(object_value& obj) {
+            obj.service.revision = obj.service.undo_revision;
+            obj.service.payer    = obj.service.undo_payer;
+            obj.service.size     = obj.service.undo_size;
+        }
+
         void undo(table_undo_stack& table, const revision_t undo_rev, const revision_t test_rev) {
             if (undo_rev > table.head_revision()) {
                 table.undo();
@@ -470,7 +481,7 @@ namespace cyberway { namespace chaindb {
             for (auto& obj: head.old_values_) {
                 auto undo_pk = obj.second.clone_service();
 
-                obj.second.set_revision(undo_rev - 1);
+                restore_undo_state(obj.second);
                 cache_.emplace(table.info(), obj.second);
 
                 journal_.write(ctx,
@@ -488,7 +499,7 @@ namespace cyberway { namespace chaindb {
             for (auto& obj: head.removed_values_) {
                 auto undo_pk = obj.second.clone_service();
 
-                obj.second.set_revision(undo_rev - 1);
+                restore_undo_state(obj.second);
                 cache_.emplace(table.info(), obj.second);
 
                 journal_.write(ctx,
@@ -513,37 +524,16 @@ namespace cyberway { namespace chaindb {
             for (auto& obj: state.removed_values_) write(false, obj.second, rev);
         }
 
-        object_value next_pk_object(
-            const table_undo_stack& table, const undo_state& state, variant val = variant()
-        ) const {
-            const auto upk = state.undo_next_pk_;
-            const auto rev = state.revision_;
-            return object_value{{table.info(), upk, undo_record::NextPk, rev}, std::move(val)};
-        }
-
         template <typename Ctx>
         void remove_next_pk(Ctx& ctx, const table_undo_stack& table, undo_state& state) const {
             if (state.next_pk_ != unset_primary_key) {
                 const auto rev = state.revision_;
 
-                journal_.write_undo(ctx, write_operation::remove(rev, next_pk_object(table, state)));
+                journal_.write_undo(ctx, write_operation::remove(rev, state.next_pk_object()));
 
                 state.next_pk_      = unset_primary_key;
                 state.undo_next_pk_ = unset_primary_key;
             }
-        }
-
-        void remove_state(table_undo_stack& table, undo_state& state) const {
-            auto ctx = journal_.create_ctx(table.info());
-
-            process_state(state, [&](bool has_data, auto& obj, auto& rev) {
-                if (has_data) journal_.write_data(ctx, write_operation::revision(rev, obj.clone_service()));
-                journal_.write_undo(ctx, write_operation::remove(rev, obj.clone_service()));
-             });
-
-            remove_next_pk(ctx, table, state);
-
-            table.undo();
         }
 
         void squash_state(table_undo_stack& table, undo_state& state) const {
@@ -552,11 +542,11 @@ namespace cyberway { namespace chaindb {
             process_state(state, [&](bool has_data, auto& obj, auto& rev) {
                 if (has_data) journal_.write_data(ctx, write_operation::revision(rev, obj.clone_service()));
                 journal_.write_undo(ctx, write_operation::revision(rev, obj.clone_service()));
-                obj.set_revision(rev - 1);
+                obj.service.revision = rev - 1;
             });
 
             if (state.next_pk_ != unset_primary_key) {
-                journal_.write_undo(ctx, write_operation::revision(state.revision_, next_pk_object(table, state)));
+                journal_.write_undo(ctx, write_operation::revision(state.revision_, state.next_pk_object()));
             }
 
             table.squash();
@@ -577,11 +567,12 @@ namespace cyberway { namespace chaindb {
 
             // Only one stack item
             if (table.size() == 1) {
-                if (state.revision_ > tail_revision_) {
-                    squash_state(table, state);
-                } else {
-                    remove_state(table, state);
-                }
+                CYBERWAY_SESSION_ASSERT(state.revision_ > tail_revision_,
+                    "Revision == tail_revision (${revision}) on squash table ${table} for the scope '${scope}",
+                    ("revision", state.revision_)
+                    ("table", get_full_table_name(table.info()))("scope", get_scope_name(table.info())));
+
+                squash_state(table, state);
                 return;
             }
 
@@ -639,15 +630,26 @@ namespace cyberway { namespace chaindb {
 
             for (auto& obj: state.old_values_) {
                 const auto pk = obj.second.pk();
+                bool  exists = false;
 
-                // 1. new+upd -> new,                        type A
-                // 2. upd(was=X) + upd(was=Y) -> upd(was=X), type A
-                if (prev_state.old_values_.count(pk) || prev_state.new_values_.count(pk)) {
+                // 1. new+upd -> new, type A
+                auto nitr = prev_state.new_values_.find(pk);
+                if (prev_state.new_values_.end() != nitr) {
+                    exists = true;
+                    copy_undo_object(nitr->second, obj.second);
+                } else {
+                    // 2. upd(was=X) + upd(was=Y) -> upd(was=X), type A
+                    auto oitr = prev_state.old_values_.find(pk);
+                    if (prev_state.old_values_.end() != oitr) {
+                        exists = true;
+                        copy_undo_object(oitr->second, obj.second);
+                    }
+                }
+
+                if (exists) {
                     journal_.write(ctx,
                         write_operation::revision(state.revision_, obj.second.clone_service()),
                         write_operation::remove(  state.revision_, obj.second.clone_service()));
-
-                    obj.second.set_revision(prev_state.revision_);
                     continue;
                 }
 
@@ -661,7 +663,7 @@ namespace cyberway { namespace chaindb {
                     write_operation::revision(state.revision_, obj.second.clone_service()),
                     write_operation::revision(state.revision_, obj.second.clone_service()));
 
-                obj.second.set_revision(prev_state.revision_);
+                obj.second.service.revision = prev_state.revision_;
                 
                 prev_state.old_values_.emplace(pk, std::move(obj.second));
             }
@@ -675,7 +677,7 @@ namespace cyberway { namespace chaindb {
 
                     journal_.write_undo(ctx, write_operation::remove(state.revision_, obj.second.clone_service()));
 
-                    ritr->second.set_undo_rec(undo_record::OldValue);
+                    ritr->second.service.undo_rec = undo_record::OldValue;
                     journal_.write_undo(ctx, write_operation::update(ritr->second));
 
                     prev_state.old_values_.emplace(std::move(*ritr));
@@ -687,7 +689,7 @@ namespace cyberway { namespace chaindb {
                         write_operation::revision(state.revision_, obj.second.clone_service()),
                         write_operation::revision(state.revision_, obj.second.clone_service()));
 
-                    obj.second.set_revision(prev_state.revision_);
+                    obj.second.service.revision = prev_state.revision_;
 
                     prev_state.new_values_.emplace(pk, std::move(obj.second));
                 }
@@ -724,7 +726,7 @@ namespace cyberway { namespace chaindb {
 
                 journal_.write_undo(ctx, write_operation::revision(state.revision_, obj.second.clone_service()));
                 
-                obj.second.set_revision(prev_state.revision_);
+                obj.second.service.revision = prev_state.revision_;
                 
                 prev_state.removed_values_.emplace(std::move(obj));
             }
@@ -762,57 +764,87 @@ namespace cyberway { namespace chaindb {
             }
         }
 
+        void copy_undo_object(object_value& dst, const object_value& src) {
+            dst.service.payer = src.service.payer;
+            dst.service.size  = src.service.size;
+        }
+
+        void copy_undo_object(object_value& dst, const object_value& src, const undo_record rec) {
+            copy_undo_object(dst, src);
+            dst.service.undo_rec = rec;
+        }
+
+        void init_undo_object(object_value& dst, undo_record rec) {
+            dst.service.undo_revision = dst.service.revision;
+            dst.service.undo_payer    = dst.service.payer;
+            dst.service.undo_size     = dst.service.size;
+
+            dst.service.revision      = revision_;
+            dst.service.undo_pk       = generate_undo_pk();
+            dst.service.undo_rec      = rec;
+        }
+
         void insert(table_undo_stack& table, object_value obj) {
             const auto pk = obj.pk();
             auto& head = table.head();
-            auto ctx = journal_.create_ctx(table.info());
+            auto  ctx = journal_.create_ctx(table.info());
 
-            obj.set_undo_pk(generate_undo_pk())
-               .set_undo_rec(undo_record::NewValue);
+            journal_.write_data(ctx, write_operation::insert(obj));
 
-            head.new_values_.emplace(pk, obj.clone_service());
+            auto ritr = head.removed_values_.find(pk);
+            if (head.removed_values_.end() != ritr) {
+                copy_undo_object(ritr->second, obj, undo_record::OldValue);
+                journal_.write_undo(ctx, write_operation::update(ritr->second.clone_service()));
 
-            auto undo_pk = obj.clone_service();
+                head.old_values_.emplace(std::move(*ritr));
+                head.removed_values_.erase(ritr);
+                return;
+            }
 
-            journal_.write(ctx,
-                write_operation::insert(std::move(obj)),
-                write_operation::insert(std::move(undo_pk)));
+            init_undo_object(obj, undo_record::NewValue);
+            journal_.write_undo(ctx, write_operation::insert(obj.clone_service()));
+            head.new_values_.emplace(pk, std::move(obj));
 
             if (unset_primary_key == head.next_pk_) {
                 head.next_pk_      = pk;
                 head.undo_next_pk_ = generate_undo_pk();
 
                 auto val = mutable_variant_object{names::next_pk_field, pk};
-                journal_.write_undo(ctx, write_operation::insert(next_pk_object(table, head, std::move(val))));
+                journal_.write_undo(ctx, write_operation::insert(head.next_pk_object(std::move(val))));
             }
         }
 
         void update(table_undo_stack& table, object_value orig_obj, object_value obj) {
             const auto pk = orig_obj.pk();
             auto& head = table.head();
+            auto  ctx = journal_.create_ctx(table.info());
 
-            auto ctx = journal_.create_ctx(table.info());
+            journal_.write_data(ctx, write_operation::update(obj));
 
-            if (head.new_values_.count(pk) || head.old_values_.count(pk)) {
+            auto nitr = head.new_values_.find(pk);
+            if (head.new_values_.end() != nitr) {
+                copy_undo_object(nitr->second, obj);
+                journal_.write_undo(ctx, write_operation::update(nitr->second.clone_service()));
+                return;
+            }
+
+            auto oitr = head.old_values_.find(pk);
+            if (head.old_values_.end() != oitr) {
+                copy_undo_object(oitr->second, obj);
                 journal_.write_data(ctx, write_operation::update(std::move(obj)));
                 return;
             }
 
-            orig_obj
-                .set_undo_pk(generate_undo_pk())
-                .set_undo_rec(undo_record::OldValue);
-
-            journal_.write(ctx,
-                write_operation::update(std::move(obj)),
-                write_operation::insert(orig_obj));
-
+            init_undo_object(orig_obj, undo_record::OldValue);
+            copy_undo_object(orig_obj, obj);
+            journal_.write_undo(ctx, write_operation::insert(orig_obj));
             head.old_values_.emplace(pk, std::move(orig_obj));
         }
 
         void remove(table_undo_stack& table, object_value orig_obj) {
-            auto& head = table.head();
             const auto pk = orig_obj.pk();
-            auto ctx = journal_.create_ctx(table.info());
+            auto& head = table.head();
+            auto  ctx = journal_.create_ctx(table.info());
 
             journal_.write_data(ctx, write_operation::remove(orig_obj.clone_service()));
 
@@ -825,17 +857,15 @@ namespace cyberway { namespace chaindb {
 
             auto oitr = head.old_values_.find(pk);
             if (oitr != head.old_values_.end()) {
-                oitr->second.set_undo_rec(undo_record::RemovedValue);
+                oitr->second.service.undo_rec = undo_record::RemovedValue;
                 journal_.write_undo(ctx, write_operation::update(oitr->second));
+
                 head.removed_values_.emplace(std::move(*oitr));
                 head.old_values_.erase(oitr);
                 return;
             }
 
-            orig_obj
-                .set_undo_pk(generate_undo_pk())
-                .set_undo_rec(undo_record::RemovedValue);
-
+            init_undo_object(orig_obj, undo_record::RemovedValue);
             journal_.write_undo(ctx, write_operation::insert(orig_obj));
             head.removed_values_.emplace(pk, std::move(orig_obj));
         }
@@ -850,7 +880,7 @@ namespace cyberway { namespace chaindb {
         }
 
         template <typename Lambda>
-        void for_tables(Lambda&& lambda) { try {
+        void for_tables(Lambda&& lambda) try {
             for (auto itr = tables_.begin(), etr = tables_.end(); etr != itr; ) {
                 auto& table = const_cast<table_undo_stack&>(*itr);
                 lambda(table);
@@ -861,7 +891,7 @@ namespace cyberway { namespace chaindb {
                     ++itr;
                 }
             }
-        } FC_LOG_AND_RETHROW() }
+        } FC_LOG_AND_RETHROW()
 
         primary_key_t generate_undo_pk() {
             if (undo_pk_ > 1'000'000'000) {

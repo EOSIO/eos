@@ -147,7 +147,7 @@ namespace cyberway { namespace chaindb {
 
     void journal::write_undo(write_ctx& ctx, write_operation undo) { try {
         auto& info = ctx.info(undo.object.pk());
-        const auto rev = undo.object.revision();
+        const auto rev = undo.object.service.revision;
         const auto find_rev = (impossible_revision != undo.find_revision) ? undo.find_revision : rev;
         auto itr = info.undo_map.find(find_rev);
 

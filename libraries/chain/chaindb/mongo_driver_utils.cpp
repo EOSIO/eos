@@ -231,7 +231,7 @@ namespace cyberway { namespace chaindb {
         bool has_size = false;
         bool has_payer = false;
         bool has_scope = false;
-        for (auto& itm: src) { try {
+        for (auto& itm: src) try {
             auto key = itm.key().to_string();
             auto key_type = itm.type();
             switch (key.front()) {
@@ -292,9 +292,16 @@ namespace cyberway { namespace chaindb {
                     break;
                 }
                 case 'u': {
-                    validate_field_name(names::undo_pk_field == key, src, itm);
-                    validate_field_type(type::k_decimal128 == key_type, src, itm);
-                    state.undo_pk = from_decimal128(itm.get_decimal128());
+                    if (key == names::undo_pk_field) {
+                        validate_field_type(type::k_decimal128 == key_type, src, itm);
+                        state.undo_pk = from_decimal128(itm.get_decimal128());
+                    } else if (key == names::undo_payer_field) {
+                        validate_field_type(type::k_utf8 == key_type, src, itm);
+                        state.undo_payer = account_name(itm.get_utf8().value.to_string());
+                    } else if (key == names::undo_size_field) {
+                        validate_field_type(type::k_int32 == key_type, src, itm);
+                        state.undo_size = itm.get_int32().value;
+                    }
                     break;
                 }
                 default:
@@ -307,7 +314,7 @@ namespace cyberway { namespace chaindb {
             throw;
         } catch(...) {
             validate_field_type(false, src, itm);
-        } }
+        }
         validate_exist_field(has_size, names::size_field, src);
         validate_exist_field(has_scope, names::scope_field, src);
         validate_exist_field(has_payer, names::payer_field, src);
@@ -537,6 +544,8 @@ namespace cyberway { namespace chaindb {
         doc.append(kvp(names::service_field, [&](sub_document serv_doc) {
             serv_doc.append(kvp(names::undo_pk_field, to_decimal128(obj.service.undo_pk)));
             serv_doc.append(kvp(names::undo_rec_field, fc::reflector<undo_record>::to_string(obj.service.undo_rec)));
+            serv_doc.append(kvp(names::undo_payer_field, get_payer_name(obj.service.undo_payer)));
+            serv_doc.append(kvp(names::undo_size_field, static_cast<int32_t>(obj.service.undo_size)));
             serv_doc.append(kvp(names::code_field, get_code_name(table)));
             serv_doc.append(kvp(names::table_field, get_table_name(table)));
             serv_doc.append(kvp(names::scope_field, get_scope_name(table)));
