@@ -13,6 +13,7 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/reversible_block_object.hpp>
+#include <eosio/chain/genesis_intrinsics.hpp>
 
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/authorization_manager.hpp>
@@ -792,12 +793,15 @@ struct controller_impl {
 
       const auto& tapos_block_summary = db.get<block_summary_object>(1);
       db.modify( tapos_block_summary, [&]( auto& bs ) {
-        bs.block_id = head->id;
+         bs.block_id = head->id;
       });
 
       conf.genesis.initial_configuration.validate();
       db.create<global_property_object>([&](auto& gpo ){
-        gpo.configuration = conf.genesis.initial_configuration;
+         gpo.configuration = conf.genesis.initial_configuration;
+         for( const auto& i : genesis_intrinsics ) {
+            gpo.add_intrinsic_to_whitelist( i );
+         }
       });
       db.create<dynamic_global_property_object>([](auto&){});
 
