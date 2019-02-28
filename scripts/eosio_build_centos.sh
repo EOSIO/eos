@@ -157,7 +157,7 @@ if [ "${COUNT}" -gt 1 ]; then
 		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
 else
-	printf " - No required YUM dependencies to install.\\n"
+	printf " - No required YUM dependencies to install.\\n\\n"
 fi
 
 if [ -d /opt/rh/python33 ]; then
