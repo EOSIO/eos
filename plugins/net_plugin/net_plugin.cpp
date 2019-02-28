@@ -1636,6 +1636,7 @@ namespace eosio {
 
       uint32_t bnum = bs->block_num;
       peer_block_state pbstate{bs->id, bnum};
+      fc_dlog( logger, "bcast block ${b}", ("b", bnum) );
 
       std::shared_ptr<std::vector<char>> send_buffer;
       for( auto& cp : my_impl->connections ) {
@@ -1650,7 +1651,7 @@ namespace eosio {
             if( !send_buffer ) {
                send_buffer = create_send_buffer( bs->block );
             }
-            fc_dlog(logger, "bcast block ${b} to ${p}", ("b", bnum)("p", cp->peer_name()));
+            fc_dlog( logger, "bcast block ${b} to ${p}", ("b", bnum)( "p", cp->peer_name() ) );
             cp->enqueue_buffer( send_buffer, true, priority::high, no_reason );
          }
       }
@@ -1672,7 +1673,7 @@ namespace eosio {
    }
 
    void dispatch_manager::rejected_block(const block_id_type& id) {
-      fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",id));
+      fc_dlog( logger, "rejected block ${id}", ("id", id) );
       auto range = received_blocks.equal_range(id);
       received_blocks.erase(range.first, range.second);
    }
