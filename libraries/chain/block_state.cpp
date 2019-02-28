@@ -10,9 +10,9 @@ namespace eosio { namespace chain {
       static_cast<block_header&>(*block) = header;
    }
 
-   block_state::block_state( const block_header_state& prev, signed_block_ptr b, bool trust )
-   :block_header_state( prev.next( *b, trust )), block( move(b) )
-   { } 
+   block_state::block_state( const block_header_state& prev, signed_block_ptr b, bool skip_validate_signee )
+   :block_header_state( prev.next( *b, skip_validate_signee )), block( move(b) )
+   { }
 
 
 

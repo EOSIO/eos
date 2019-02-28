@@ -91,12 +91,24 @@ namespace eosio { namespace testing {
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
          virtual signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
+         virtual signed_block_ptr finish_block() = 0;
          void                 produce_blocks( uint32_t n = 1, bool empty = false );
          void                 produce_blocks_until_end_of_round();
          void                 produce_blocks_for_n_rounds(const uint32_t num_of_rounds = 1);
          // Produce minimal number of blocks as possible to spend the given time without having any producer become inactive
          void                 produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(const fc::microseconds target_elapsed_time = fc::microseconds());
          signed_block_ptr     push_block(signed_block_ptr b);
+
+         /**
+          * These transaction IDs represent transactions available in the head chain state as scheduled
+          * or otherwise generated transactions.
+          *
+          * calling push_scheduled_transaction with these IDs will remove the associated transaction from
+          * the chain state IFF it succeeds or objectively fails
+          *
+          * @return
+          */
+         vector<transaction_id_type> get_scheduled_transactions() const;
 
          transaction_trace_ptr    push_transaction( packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
          transaction_trace_ptr    push_transaction( signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
@@ -271,6 +283,7 @@ namespace eosio { namespace testing {
       protected:
          signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false, uint32_t skip_flag = 0 );
          void             _start_block(fc::time_point block_time);
+         signed_block_ptr _finish_block();
 
       // Fields:
       protected:
@@ -302,6 +315,10 @@ namespace eosio { namespace testing {
       signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ )override {
          control->abort_block();
          return _produce_block(skip_time, true, skip_flag);
+      }
+
+      signed_block_ptr finish_block()override {
+         return _finish_block();
       }
 
       bool validate() { return true; }
@@ -351,7 +368,7 @@ namespace eosio { namespace testing {
 
          validating_node = std::make_unique<controller>(vcfg);
          validating_node->add_indices();
-         validating_node->startup();
+         validating_node->startup( []() { return false; } );
 
          init(true);
       }
@@ -366,14 +383,15 @@ namespace eosio { namespace testing {
 
          validating_node = std::make_unique<controller>(vcfg);
          validating_node->add_indices();
-         validating_node->startup();
+         validating_node->startup( []() { return false; } );
 
          init(config);
       }
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
          auto sb = _produce_block(skip_time, false, skip_flag | 2);
-         validating_node->push_block( sb );
+         auto bs = validating_node->create_block_state_future( sb );
+         validating_node->push_block( bs );
 
          return sb;
       }
@@ -383,17 +401,21 @@ namespace eosio { namespace testing {
       }
 
       void validate_push_block(const signed_block_ptr& sb) {
-         validating_node->push_block( sb );
+         auto bs = validating_node->create_block_state_future( sb );
+         validating_node->push_block( bs );
       }
 
       signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
          control->abort_block();
          auto sb = _produce_block(skip_time, true, skip_flag | 2);
-         validating_node->push_block( sb );
-
-
+         auto bs = validating_node->create_block_state_future( sb );
+         validating_node->push_block( bs );
 
          return sb;
+      }
+
+      signed_block_ptr finish_block()override {
+         return _finish_block();
       }
 
       bool validate() {
@@ -411,7 +433,7 @@ namespace eosio { namespace testing {
         validating_node.reset();
         validating_node = std::make_unique<controller>(vcfg);
         validating_node->add_indices();
-        validating_node->startup();
+        validating_node->startup( []() { return false; } );
 
         return ok;
       }

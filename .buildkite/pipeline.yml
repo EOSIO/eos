@@ -398,6 +398,7 @@ steps:
       - "os=high-sierra"
     artifact_paths:
       - "build/packages/*.tar.gz"
+      - "build/packages/*.rb"
     timeout: 60
 
   - command: |
@@ -412,6 +413,7 @@ steps:
       - "os=mojave"
     artifact_paths:
       - "build/packages/*.tar.gz"
+      - "build/packages/*.rb"
     timeout: 60
 
   - command: |
@@ -442,7 +444,7 @@ steps:
         cd /data/job/build/packages && bash generate_package.sh deb
     label: ":ubuntu: 18.04 Package builder"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "build/packages/*.deb"
     plugins:
@@ -469,7 +471,7 @@ steps:
         cd /data/job/build/packages && bash generate_package.sh rpm
     label: ":fedora: Package builder"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "build/packages/x86_64/*.rpm"
     plugins:
@@ -496,7 +498,7 @@ steps:
         cd /data/job/build/packages && bash generate_package.sh rpm
     label: ":centos: Package builder"
     agents:
-      - "role=linux-builder"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "build/packages/x86_64/*.rpm"
     plugins:
@@ -506,4 +508,19 @@ steps:
     env:
       OS: "el7"
       PKGTYPE: "rpm"
+    timeout: 60
+
+  - wait
+
+  - command: |
+        echo "--- :arrow_down: Downloading brew files" && \
+        buildkite-agent artifact download "build/packages/eosio.rb" . --step ":darwin: High Sierra Package Builder" && \
+        mv build/packages/eosio.rb build/packages/eosio_highsierra.rb && \
+        buildkite-agent artifact download "build/packages/eosio.rb" . --step ":darwin: Mojave Package Builder"
+    label: ":darwin: Brew Updater"
+    agents:
+      queue: "automation-large-builder-fleet"
+    artifact_paths:
+      - "build/packages/eosio_highsierra.rb"
+      - "build/packages/eosio.rb"
     timeout: 60

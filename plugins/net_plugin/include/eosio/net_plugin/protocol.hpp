@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 #pragma once
 #include <eosio/chain/block.hpp>
@@ -147,11 +147,10 @@ struct request_p2p_message{
                                       notice_message,
                                       request_message,
                                       sync_request_message,
-                                      signed_block,
-                                      packed_transaction,
+                                      signed_block,       // which = 7
+                                      packed_transaction, // which = 8
                                       response_p2p_message,
                                       request_p2p_message>;
-
 } // namespace eosio
 
 FC_REFLECT( eosio::select_ids<fc::sha256>, (mode)(pending)(ids) )

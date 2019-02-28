@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 
 #include <eosio/testing/tester.hpp>
@@ -28,8 +28,7 @@ BOOST_AUTO_TEST_SUITE(database_tests)
          TESTER test;
 
          // Bypass read-only restriction on state DB access for this unit test which really needs to mutate the DB to properly conduct its test.
-         // eosio::chain::database& db = const_cast<eosio::chain::database&>( test.control->db() );
-         chainbase::database &db = const_cast<chainbase::database &>(test.control->db());
+         eosio::chain::database& db = const_cast<eosio::chain::database&>( test.control->db() );
 
          auto ses = db.start_undo_session(true);
 

@@ -1,9 +1,7 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
-#include <eosio/utilities/key_conversion.hpp>
-#include <eosio/utilities/rand.hpp>
 #include <eosio/chain/genesis_state.hpp>
 #include <eosio/wallet_plugin/wallet.hpp>
 #include <eosio/wallet_plugin/wallet_manager.hpp>
@@ -20,7 +18,6 @@ BOOST_AUTO_TEST_SUITE(wallet_tests)
 BOOST_AUTO_TEST_CASE(wallet_test)
 { try {
    using namespace eosio::wallet;
-   using namespace eosio::utilities;
 
    wallet_data d;
    soft_wallet wallet(d);
@@ -176,7 +173,8 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    pubkeys.emplace(pkey1.get_public_key());
    pubkeys.emplace(pkey2.get_public_key());
    trx = wm.sign_transaction(trx, pubkeys, chain_id );
-   const auto& pks = trx.get_signature_keys(chain_id);
+   flat_set<public_key_type> pks;
+   trx.get_signature_keys(chain_id, fc::time_point::maximum(), pks);
    BOOST_CHECK_EQUAL(2, pks.size());
    BOOST_CHECK(find(pks.cbegin(), pks.cend(), pkey1.get_public_key()) != pks.cend());
    BOOST_CHECK(find(pks.cbegin(), pks.cend(), pkey2.get_public_key()) != pks.cend());

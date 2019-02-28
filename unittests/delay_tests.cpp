@@ -3,8 +3,6 @@
 #include <eosio/chain/producer_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
 
@@ -74,7 +72,7 @@ BOOST_FIXTURE_TEST_CASE( delay_error_create_account, validating_tester) { try {
 
    produce_blocks(6);
 
-   auto scheduled_trxs = control->get_scheduled_transactions();
+   auto scheduled_trxs = get_scheduled_transactions();
    BOOST_REQUIRE_EQUAL(scheduled_trxs.size(), 1);
    auto dtrace = control->push_scheduled_transaction(scheduled_trxs.front(), fc::time_point::maximum());
    BOOST_REQUIRE_EQUAL(dtrace->except.valid(), true);

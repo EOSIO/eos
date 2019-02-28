@@ -36,8 +36,6 @@ namespace spaceaction {
         }
     }
 
-
-
     std::string to_hex( const char* d, uint32_t s )
     {
         std::string r;

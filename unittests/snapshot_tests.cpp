@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in eos/LICENSE
  */
 
 #include <boost/test/unit_test.hpp>
@@ -58,6 +58,10 @@ public:
    signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ )override {
       control->abort_block();
       return _produce_block(skip_time, true, skip_flag);
+   }
+
+   signed_block_ptr finish_block()override {
+      return _finish_block();
    }
 
    bool validate() { return true; }
