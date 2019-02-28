@@ -676,6 +676,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       chain::controller& chain = my->chain_plug->chain();
       const auto& permissions = chain.db().get_index<permission_index,by_owner>();
       auto perm = permissions.lower_bound( boost::make_tuple( producer ) );
+      if( perm == permissions.end() || perm->owner != producer ) continue; // Account does not yet exist
       while( perm != permissions.end() && perm->owner == producer ) {
          for(const auto& keyweight : perm->auth.keys) {
             signature_available |= is_producer_key(keyweight.key);
