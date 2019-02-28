@@ -1204,7 +1204,7 @@ class Node(object):
             else:
                os.kill(self.pid, killSignal)
         except OSError as ex:
-            Utils.Print("ERROR: Failed to kill node (%d)." % (self.cmd), ex)
+            Utils.Print("ERROR: Failed to kill node (%s)." % (self.cmd), ex)
             return False
 
         # wait for kill validation
@@ -1365,8 +1365,9 @@ class Node(object):
         else:
             Utils.Print("ERROR: Node relaunch Failed.")
             # Ensure the node process is really killed
-            self.popenProc.send_signal(signal.SIGTERM)
-            self.popenProc.wait()
+            if self.popenProc:
+                self.popenProc.send_signal(signal.SIGTERM)
+                self.popenProc.wait()
             self.pid=None
             return False
 

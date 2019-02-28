@@ -120,7 +120,7 @@ def confirmHeadLibAndForkDbHeadOfSpecMode(nodeToTest, headLibAndForkDbHeadBefore
          "Fork db head ({}) should be equal to fork db head before switch mode ({}) ".format(forkDbHead, forkDbHeadBeforeSwitchMode)
 
 def relaunchNode(node: Node, nodeId, chainArg="", addOrSwapFlags=None, relaunchAssertMessage="Fail to relaunch"):
-   isRelaunchSuccess = node.relaunch(nodeId, chainArg=chainArg, addOrSwapFlags=addOrSwapFlags, timeout=relaunchTimeout)
+   isRelaunchSuccess = node.relaunch(nodeId, chainArg=chainArg, addOrSwapFlags=addOrSwapFlags, timeout=relaunchTimeout, cachePopen=True)
    assert isRelaunchSuccess, relaunchAssertMessage
    return isRelaunchSuccess
 
@@ -153,7 +153,7 @@ try:
 
    def startProdNode():
       if producingNode.killed:
-         producingNode.relaunch(producingNodeId, "", timeout=relaunchTimeout)
+         relaunchNode(producingNode, producingNodeId)
 
    # Give some time for it to produce, so lib is advancing
    waitForBlksProducedAndLibAdvanced()
