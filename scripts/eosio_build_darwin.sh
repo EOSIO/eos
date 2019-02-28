@@ -94,12 +94,6 @@ printf "\\nChecking dependencies...\\n"
 var_ifs="${IFS}"
 IFS=","
 while read -r name tester testee brewname uri; do
-	# For directories, we want to be able to wildcard match versions to prevent upgraded brew packages (minor or patch changes to python for example) from not being seen
-	if [ $tester == '-d' ] && [ $(echo $testee | grep -c '*') -gt 0 ]; then
-		for DIR in $testee; do
-			testee=$(echo $DIR | sed 's/\\//g')
-		done
-	fi
 	if [ $tester $testee ]; then
 		printf " - ${name} found!\\n"
 		continue
