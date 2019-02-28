@@ -11,6 +11,7 @@
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/incremental_merkle.hpp>
+#include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <chainbase/chainbase.hpp>
 #include "multi_index_includes.hpp"
 
@@ -29,30 +30,12 @@ namespace eosio { namespace chain {
       OBJECT_CTOR(global_property_object, (proposed_schedule)(preactivated_protocol_features)(whitelisted_intrinsics))
 
    public:
-
-      inline void add_intrinsic_to_whitelist( const char* name ) {
-         uint64_t h = static_cast<uint64_t>( std::hash<std::string>{}( std::string(name) ) );
-         whitelisted_intrinsics.emplace( std::piecewise_construct,
-                                         std::forward_as_tuple( h ),
-                                         std::forward_as_tuple( name, whitelisted_intrinsics.get_allocator() )
-         );
-      }
-
-      inline void add_intrinsic_to_whitelist( const std::string& name ) {
-         uint64_t h = static_cast<uint64_t>( std::hash<std::string>{}( name ) );
-         whitelisted_intrinsics.emplace( std::piecewise_construct,
-                                         std::forward_as_tuple( h ),
-                                         std::forward_as_tuple( name.c_str(), name.size(),
-                                                                whitelisted_intrinsics.get_allocator() )
-         );
-      }
-
-      id_type                                        id;
-      optional<block_num_type>                       proposed_schedule_block_num;
-      shared_producer_schedule_type                  proposed_schedule;
-      chain_config                                   configuration;
-      shared_vector<digest_type>                     preactivated_protocol_features;
-      shared_flat_multimap<uint64_t, shared_string>  whitelisted_intrinsics;
+      id_type                        id;
+      optional<block_num_type>       proposed_schedule_block_num;
+      shared_producer_schedule_type  proposed_schedule;
+      chain_config                   configuration;
+      shared_vector<digest_type>     preactivated_protocol_features;
+      whitelisted_intrinsics_type    whitelisted_intrinsics;
    };
 
 

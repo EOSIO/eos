@@ -50,6 +50,7 @@ add_library( eosio_chain
              protocol_feature_activation.cpp
              protocol_feature_manager.cpp
              genesis_intrinsics.cpp
+             whitelisted_intrinsics.cpp
              ${HEADERS}
              )
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include "Runtime/Linker.h"
 #include "Runtime/Runtime.h"
@@ -26,7 +27,7 @@ namespace eosio { namespace chain {
 
          root_resolver() {}
 
-         root_resolver( const shared_flat_multimap<uint64_t, shared_string>& whitelisted_intrinsics )
+         root_resolver( const whitelisted_intrinsics_type& whitelisted_intrinsics )
          :whitelisted_intrinsics(&whitelisted_intrinsics)
          {}
 
@@ -44,16 +45,8 @@ namespace eosio { namespace chain {
                            "importing from module that is not 'env': ${module}.${export}",
                            ("module",mod_name)("export",export_name) );
 
-               // Only consider imports that are in the whitelisted set of intrinsics:
-               uint64_t hash = static_cast<uint64_t>( std::hash<string>{}( export_name ) );
-               auto itr = whitelisted_intrinsics->lower_bound( hash );
-               fail = true;
-               for( const auto end = whitelisted_intrinsics->end(); itr != end && itr->first == hash; ++itr  ) {
-                  if( itr->second.compare( 0, itr->second.size(), export_name.c_str(), export_name.size() ) == 0 ) {
-                     fail = false;
-                     break;
-                  }
-               }
+               // Only consider imports that are in the whitelisted set of intrinsics
+               fail = !is_intrinsic_whitelisted( *whitelisted_intrinsics, export_name );
             }
 
             // Try to resolve an intrinsic first.
@@ -67,7 +60,7 @@ namespace eosio { namespace chain {
          } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
 
       protected:
-         const shared_flat_multimap<uint64_t, shared_string>* whitelisted_intrinsics = nullptr;
+         const whitelisted_intrinsics_type* whitelisted_intrinsics = nullptr;
       };
    } }
 

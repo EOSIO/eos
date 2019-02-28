@@ -14,6 +14,7 @@
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/reversible_block_object.hpp>
 #include <eosio/chain/genesis_intrinsics.hpp>
+#include <eosio/chain/whitelisted_intrinsics.hpp>
 
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/authorization_manager.hpp>
@@ -800,7 +801,7 @@ struct controller_impl {
       db.create<global_property_object>([&](auto& gpo ){
          gpo.configuration = conf.genesis.initial_configuration;
          for( const auto& i : genesis_intrinsics ) {
-            gpo.add_intrinsic_to_whitelist( i );
+            add_intrinsic_to_whitelist( gpo.whitelisted_intrinsics, i );
          }
       });
       db.create<dynamic_global_property_object>([](auto&){});
