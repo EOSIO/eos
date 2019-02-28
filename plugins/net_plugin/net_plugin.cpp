@@ -75,12 +75,6 @@ namespace eosio {
       }
    };
 
-   struct block_greater {
-      bool operator()( const std::shared_ptr<signed_block>& lhs, const std::shared_ptr<signed_block>& rhs ) const {
-         return lhs->block_num() > rhs->block_num();
-      }
-   };
-
    typedef multi_index_container<
       node_transaction_state,
       indexed_by<
@@ -507,7 +501,7 @@ namespace eosio {
       socket_ptr                                socket;
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
-      std::atomic<std::size_t>         outstanding_read_bytes{0};
+      std::atomic<std::size_t>         outstanding_read_bytes{0}; // accessed only from server_ioc threads
 
 
       queued_buffer           buffer_queue;
@@ -724,8 +718,6 @@ namespace eosio {
       void recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num);
       void recv_handshake(const connection_ptr& c, const handshake_message& msg);
       void recv_notice(const connection_ptr& c, const notice_message& msg);
-
-      std::priority_queue<std::shared_ptr<signed_block>, std::deque<std::shared_ptr<signed_block>>, block_greater> incoming_blocks;
    };
 
    class dispatch_manager {
@@ -2024,6 +2016,7 @@ namespace eosio {
       });
    }
 
+   // only called from server_ioc thread
    void net_plugin_impl::start_read_message(const connection_ptr& conn) {
 
       try {
@@ -2590,48 +2583,6 @@ namespace eosio {
          if( msg && cc.fetch_block_by_id(blk_id)) {
             sync_master->recv_block(c, blk_id, blk_num);
             return;
-         }
-         signed_block_ptr prev = msg ? cc.fetch_block_by_id( msg->previous ) : msg;
-         if( prev == nullptr ){ //&& sync_master->is_active(c) ) {
-            // see if top is ready
-            if( !sync_master->incoming_blocks.empty() ) {
-               prev = sync_master->incoming_blocks.top();
-               auto prev_prev = cc.fetch_block_by_id( prev->previous );
-               if( prev_prev != nullptr ) {
-                  sync_master->incoming_blocks.pop();
-                  if(msg) sync_master->incoming_blocks.emplace( msg );
-                  msg = prev;
-                  blk_id = msg->id();
-                  blk_num = msg->block_num();
-                  connection_wptr weak = c;
-                  app().post(priority::medium, [this, weak](){
-                     connection_ptr c = weak.lock();
-                     if( c ) handle_message( c, signed_block_ptr() );
-                  });
-               } else {
-                  if( msg ) {
-                     sync_master->incoming_blocks.emplace( msg );
-
-                     connection_wptr weak = c;
-                     app().post( priority::medium, [this, weak]() {
-                        connection_ptr c = weak.lock();
-                        if( c ) handle_message( c, signed_block_ptr() );
-                     } );
-                  }
-                  return;
-               }
-            } else {
-               if( msg ) {
-                  sync_master->incoming_blocks.emplace( msg );
-
-                  connection_wptr weak = c;
-                  app().post( priority::medium, [this, weak]() {
-                     connection_ptr c = weak.lock();
-                     if( c ) handle_message( c, signed_block_ptr() );
-                  } );
-               }
-               return;
-            }
          }
       } catch( ...) {
          // should this even be caught?
