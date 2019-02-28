@@ -94,20 +94,26 @@ printf "\\nChecking dependencies...\\n"
 var_ifs="${IFS}"
 IFS=","
 while read -r name tester testee brewname uri; do
-	if [ "${tester}" "${testee}" ]; then
-		printf " - %s found\\n" "${name}"
+	# For directories, we want to be able to wildcard match versions to prevent upgraded brew packages (minor or patch changes to python for example) from not being seen
+	if [ $tester == '-d' ] && [ $(echo $testee | grep -c '*') -gt 0 ]; then
+		for DIR in $testee; do
+			testee=$(echo $DIR | sed 's/\\//g')
+		done
+	fi
+	if [ $tester $testee ]; then
+		printf " - ${name} found!\\n"
 		continue
 	fi
 	# resolve conflict with homebrew glibtool and apple/gnu installs of libtool
 	if [ "${testee}" == "/usr/local/bin/glibtool" ]; then
 		if [ "${tester}" "/usr/local/bin/libtool" ]; then
-			printf " - %s found\\n" "${name}"
+			printf " - ${name} found!\\n"
 			continue
 		fi
 	fi
 	DEPS=$DEPS"${brewname},"
 	DISPLAY="${DISPLAY}${COUNT}. ${name}\\n"
-	printf " - %s ${bldred}NOT${txtrst} found.\\n" "${name}"
+	printf " - ${name} ${bldred}NOT${txtrst} found.\\n"
 	(( COUNT++ ))
 done < "${REPO_ROOT}/scripts/eosio_build_darwin_deps"
 IFS="${var_ifs}"
