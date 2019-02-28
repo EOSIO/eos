@@ -2604,6 +2604,7 @@ namespace eosio {
             return;
          }
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
          signed_block_ptr prev = msg ? cc.fetch_block_by_id( msg->previous ) : msg;
          if( prev == nullptr ){ //&& sync_master->is_active(c) ) {
@@ -2647,6 +2648,8 @@ namespace eosio {
                return;
             }
          }
+=======
+>>>>>>> Use appbase with FIFO priority queue. priority queue in net_plugin no longer needed.
       } catch( ...) {
          // should this even be caught?
          fc_elog( logger,"Caught an unknown exception trying to recall blockID" );
