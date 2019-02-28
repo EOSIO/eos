@@ -77,12 +77,6 @@ namespace eosio {
       }
    };
 
-   struct block_greater {
-      bool operator()( const std::shared_ptr<signed_block>& lhs, const std::shared_ptr<signed_block>& rhs ) const {
-         return lhs->block_num() > rhs->block_num();
-      }
-   };
-
    typedef multi_index_container<
       node_transaction_state,
       indexed_by<
@@ -513,10 +507,14 @@ namespace eosio {
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
 <<<<<<< HEAD
+<<<<<<< HEAD
       std::atomic<std::size_t>         outstanding_read_bytes{0}; // accessed only from server_ioc threads
 =======
       std::atomic<std::size_t>         outstanding_read_bytes{0};
 >>>>>>> Test of multi-threaded reading
+=======
+      std::atomic<std::size_t>         outstanding_read_bytes{0}; // accessed only from server_ioc threads
+>>>>>>> Use appbase with FIFO priority queue. priority queue in net_plugin no longer needed.
 
 
       queued_buffer           buffer_queue;
@@ -758,8 +756,6 @@ namespace eosio {
       void recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num);
       void recv_handshake(const connection_ptr& c, const handshake_message& msg);
       void recv_notice(const connection_ptr& c, const notice_message& msg);
-
-      std::priority_queue<std::shared_ptr<signed_block>, std::deque<std::shared_ptr<signed_block>>, block_greater> incoming_blocks;
    };
 
    class dispatch_manager {
@@ -2723,6 +2719,7 @@ namespace eosio {
             sync_master->recv_block(c, blk_id, blk_num);
             return;
          }
+<<<<<<< HEAD
 >>>>>>> Test of multi-threaded reading
          signed_block_ptr prev = msg ? cc.fetch_block_by_id( msg->previous ) : msg;
          if( prev == nullptr ){ //&& sync_master->is_active(c) ) {
@@ -2795,6 +2792,8 @@ namespace eosio {
 >>>>>>> Use appbase with FIFO priority queue. priority queue in net_plugin no longer needed.
 =======
 >>>>>>> Test of multi-threaded reading
+=======
+>>>>>>> Use appbase with FIFO priority queue. priority queue in net_plugin no longer needed.
       } catch( ...) {
          // should this even be caught?
          fc_elog( logger,"Caught an unknown exception trying to recall blockID" );
