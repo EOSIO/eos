@@ -1,7 +1,7 @@
 # BOSCore - Born for DApps. Born for Usability.
 
-## BOSCore Version: v2.0.1
-### Basic EOSIO Version: v1.5.3-patched
+## BOSCore Version: v2.0.2
+### Basic EOSIO Version: v1.6.2
 
 # Background
 The emergence of EOS has brought new imagination to the blockchain. In just a few months since the main network was launched, the version has undergone dozens of upgrades, not only the stability has been greatly improved, but also the new functions have been gradually realized. The node team is also actively involved in building the EOSIO ecosystem. What is even more exciting is that EOS has attracted more and more development teams. There are already hundreds of DApp running on the EOS main network. The transaction volume and circulation market value far exceed Ethereum, and the space for development is growing broader.
@@ -75,7 +75,25 @@ $ sudo yum install ./eosio-1.6.2-1.fc27.x86_64.rpm
 $ sudo yum remove eosio.cdt
 ```
 
-[EOSIO Developer Portal](https://developers.eos.io).
+## Supported Operating Systems
+EOSIO currently supports the following operating systems:  
+1. Amazon 2017.09 and higher
+2. Centos 7
+3. Fedora 25 and higher (Fedora 27 recommended)
+4. Mint 18
+5. Ubuntu 16.04 (Ubuntu 16.10 recommended)
+6. Ubuntu 18.04
+7. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended)
+
+## Resources
+1. [Website](https://eos.io)
+1. [Blog](https://medium.com/eosio)
+1. [Developer Portal](https://developers.eos.io)
+1. [StackExchange for Q&A](https://eosio.stackexchange.com/)
+1. [Community Telegram Group](https://t.me/EOSProject)
+1. [Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
+1. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
+1. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
 
 <a name="gettingstarted"></a>
 ## Getting Started
