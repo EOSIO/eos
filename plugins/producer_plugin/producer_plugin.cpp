@@ -1047,7 +1047,7 @@ enum class tx_category {
 
 
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
-chain::controller& chain = chain_plug->chain();
+   chain::controller& chain = chain_plug->chain();
 
    if( chain.get_read_mode() == chain::db_read_mode::READ_ONLY )
       return start_block_result::waiting;
@@ -1310,7 +1310,7 @@ chain::controller& chain = chain_plug->chain();
                   ++sch_itr;
                   continue; // do not allow schedule and execute in same block
                }
-                  if (block_time <= fc::time_point::now()) exhausted = true;
+               if( scheduled_trx_deadline <= fc::time_point::now() ) {
                   exhausted = true;
                   break;
                }
@@ -1403,7 +1403,6 @@ chain::controller& chain = chain_plug->chain();
                   _pending_incoming_transactions.pop_front();
                   --orig_pending_txn_size;
                   process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
-                  if (block_time <= fc::time_point::now()) return start_block_result::exhausted;
                }
             }
             return start_block_result::succeeded;

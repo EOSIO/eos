@@ -279,6 +279,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wlog( "now push dan's block to c1 but first corrupt it so it is a bad block" );
    signed_block bad_block = std::move(*b);
    bad_block.transaction_mroot = bad_block.previous;
+   auto bad_block_bs = c.control->create_block_state_future( std::make_shared<signed_block>(std::move(bad_block)) );
    c.control->abort_block();
    BOOST_REQUIRE_EXCEPTION(c.control->push_block( bad_block_bs ), fc::exception,
       [] (const fc::exception &ex)->bool {
