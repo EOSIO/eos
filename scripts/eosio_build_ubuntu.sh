@@ -126,7 +126,7 @@ if [ "${COUNT}" -gt 1 ]; then
 		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
 else 
-	printf " - No required APT dependencies to install."
+	printf " - No required APT dependencies to install.\\n"
 fi
 
 
