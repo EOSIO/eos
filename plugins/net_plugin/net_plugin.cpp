@@ -77,12 +77,6 @@ namespace eosio {
       }
    };
 
-   struct block_greater {
-      bool operator()( const std::shared_ptr<signed_block>& lhs, const std::shared_ptr<signed_block>& rhs ) const {
-         return lhs->block_num() > rhs->block_num();
-      }
-   };
-
    typedef multi_index_container<
       node_transaction_state,
       indexed_by<
@@ -766,8 +760,6 @@ namespace eosio {
       void recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num);
       void recv_handshake(const connection_ptr& c, const handshake_message& msg);
       void recv_notice(const connection_ptr& c, const notice_message& msg);
-
-      std::priority_queue<std::shared_ptr<signed_block>, std::deque<std::shared_ptr<signed_block>>, block_greater> incoming_blocks;
    };
 
    class dispatch_manager {
@@ -2767,6 +2759,7 @@ namespace eosio {
             return;
          }
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> Test of multi-threaded reading
 =======
 >>>>>>> Test of multi-threaded reading
@@ -2870,6 +2863,8 @@ namespace eosio {
 >>>>>>> Use appbase with FIFO priority queue. priority queue in net_plugin no longer needed.
 =======
 >>>>>>> Test of multi-threaded reading
+=======
+>>>>>>> Use appbase with FIFO priority queue. priority queue in net_plugin no longer needed.
       } catch( ...) {
          // should this even be caught?
          fc_elog( logger,"Caught an unknown exception trying to recall blockID" );
