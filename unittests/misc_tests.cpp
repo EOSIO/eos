@@ -10,7 +10,7 @@
 #include <eosio/testing/tester.hpp>
 
 #include <fc/io/json.hpp>
-#include <appbase/application.hpp>
+#include <appbase/execution_priority_queue.hpp>
 
 #include <boost/asio/thread_pool.hpp>
 #include <boost/test/unit_test.hpp>
@@ -1057,28 +1057,41 @@ BOOST_AUTO_TEST_CASE(reflector_init_test) {
    } FC_LOG_AND_RETHROW()
 }
 
-// verify appbase::app().post() uses a stable priority queue so that jobs are executed in order, FIFO, as submitted.
+// Verify appbase::execution_priority_queue uses a stable priority queue so that jobs are executed
+// in order, FIFO, as submitted.
 BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
   try {
      using namespace std::chrono_literals;
 
-     std::thread t( []() { appbase::app().exec(); } );
+     appbase::execution_priority_queue pri_queue;
+     auto io_serv = std::make_shared<boost::asio::io_service>();
+     auto work_ptr = std::make_unique<boost::asio::io_service::work>(*io_serv);
+
+     std::thread t( [io_serv, &pri_queue]() {
+        bool more = true;
+        while( more || io_serv->run_one() ) {
+           while( io_serv->poll_one() ) {}
+           // execute the highest priority item
+           more = pri_queue.execute_highest();
+        }
+     } );
      std::atomic<int> ran{0};
      std::mutex mx;
      std::vector<int> results;
      for( int i = 0; i < 50; ++i ) {
-        appbase::app().post(appbase::priority::high, [&mx, &ran, &results, i](){
+        boost::asio::post(*io_serv, pri_queue.wrap(appbase::priority::high, [io_serv, &mx, &ran, &results, i](){
            std::this_thread::sleep_for( 10us );
            std::lock_guard<std::mutex> g(mx);
            results.push_back( i );
            ++ran;
-        });
+        }));
      }
 
      std::this_thread::sleep_for( 50 * 10us ); // will take at least this long
      while( ran < 50 ) std::this_thread::sleep_for( 5us );
 
-     appbase::app().quit();
+     work_ptr.reset();
+     io_serv->stop();
      t.join();
 
      std::lock_guard<std::mutex> g(mx);
