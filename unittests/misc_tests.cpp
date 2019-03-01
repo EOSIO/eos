@@ -1063,7 +1063,7 @@ BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
      using namespace std::chrono_literals;
 
      std::thread t( []() { appbase::app().exec(); } );
-     std::atomic<int> ran;
+     std::atomic<int> ran{0};
      std::mutex mx;
      std::vector<int> results;
      for( int i = 0; i < 50; ++i ) {
