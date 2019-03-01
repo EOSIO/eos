@@ -39,6 +39,8 @@ namespace cyberway { namespace chaindb {
 
     ///----
 
+    string db_name_to_string(const uint64_t&);
+
     inline account_name get_system_code() {
         return account_name();
     }
@@ -51,8 +53,7 @@ namespace cyberway { namespace chaindb {
         if (is_system_code(code)) return names::system_code;
 
         string str;
-        str.append(names::system_code).append(code.to_string());
-        std::replace(str.begin(), str.end(), '.', '-');
+        str.append(names::system_code).append(db_name_to_string(code.value));
         return str;
     }
 
@@ -86,7 +87,7 @@ namespace cyberway { namespace chaindb {
 
     inline string get_table_name(const table_name& table) {
         if (!table.empty()) {
-            return table.to_string();
+            return db_name_to_string(table.value);
         }
         return names::unknown;
     }
@@ -125,7 +126,7 @@ namespace cyberway { namespace chaindb {
 
     inline string get_index_name(const index_name& index) {
         if (!index.empty()) {
-            return index.to_string();
+            return db_name_to_string(index.value);
         }
         return names::unknown;
     }
