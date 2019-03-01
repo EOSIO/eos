@@ -683,7 +683,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
          }
          ++perm;
       }
-      EOS_ASSERT(signature_available, plugin_config_exception, "Missing signature-provider for producer ${prod}", ("prod", producer));
+      if(!signature_available)
+         wlog("Missing signature-provider for producer ${prod}", ("prod", producer));
    }
 
    my->_keosd_provider_timeout_us = fc::milliseconds(options.at("keosd-provider-timeout").as<int32_t>());
