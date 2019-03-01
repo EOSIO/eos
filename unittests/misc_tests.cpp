@@ -1084,20 +1084,17 @@ BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
      std::vector<int> results;
      for( int i = 0; i < 50; ++i ) {
         boost::asio::post(*io_serv, pri_queue.wrap(appbase::priority::low, [io_serv, &mx, &ran, &results, i](){
-           std::this_thread::sleep_for( 10us );
            std::lock_guard<std::mutex> g(mx);
            results.push_back( 50 + i );
            ++ran;
         }));
         boost::asio::post(*io_serv, pri_queue.wrap(appbase::priority::high, [io_serv, &mx, &ran, &results, i](){
-           std::this_thread::sleep_for( 10us );
            std::lock_guard<std::mutex> g(mx);
            results.push_back( i );
            ++ran;
         }));
      }
 
-     std::this_thread::sleep_for( 100 * 10us ); // will take at least this long
      while( ran < 100 ) std::this_thread::sleep_for( 5us );
 
      work_ptr.reset();
