@@ -436,7 +436,14 @@ struct controller_impl {
 
       const auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
 
-      {
+      if (read_mode == db_read_mode::IRREVERSIBLE) {
+         // ensure there's no reversible_blocks in irreversible mode
+         auto rbitr = rbi.begin();
+         while ( rbitr != rbi.end() ) {
+            reversible_blocks.remove( *rbitr );
+            rbitr = rbi.begin();
+         }
+      } else {
          auto rbitr = rbi.rbegin();
          if( rbitr != rbi.rend() ) {
             EOS_ASSERT( blog_head, fork_database_exception,
@@ -465,10 +472,12 @@ struct controller_impl {
          if( !head ) {
             initialize_blockchain_state(); // set head to genesis state
          } else {
-            EOS_ASSERT( last_block_num == head->block_num, fork_database_exception,
-                        "reversible block database is inconsistent with fork database, replay blockchain",
-                        ("head", head->block_num)("last_block_num", last_block_num)
-                      );
+            if (read_mode != db_read_mode::IRREVERSIBLE) {
+               EOS_ASSERT( last_block_num == head->block_num, fork_database_exception,
+                           "reversible block database is inconsistent with fork database, replay blockchain",
+                           ("head", head->block_num)("last_block_num", last_block_num)
+                        );
+            }
          }
 
          if( !blog_head ) {
@@ -485,6 +494,52 @@ struct controller_impl {
          }
       }
 
+      // handle read_mode transition (probably reconstruct reversible_blocks)
+      if (read_mode != db_read_mode::IRREVERSIBLE) { // speculative mode
+         if (head->block_num < fork_db.pending_head()->block_num) {
+            // irreversible mode => speculative mode
+            wlog("db_read_mode has been changed: reconstruct reversible_blocks & forwarding state from #${h} to fork pending head #${fh}", ("h", head->block_num)("fh", fork_db.pending_head()->block_num));
+
+            // rebuild reversible_blocks from fork_db
+            auto rbitr = rbi.begin();
+            while ( rbitr != rbi.end() ) {
+               reversible_blocks.remove( *rbitr );
+               rbitr = rbi.begin();
+            }
+
+            block_state_ptr bsp;
+            vector<block_state_ptr> head_to_lib;
+            auto id = fork_db.pending_head()->id;
+            while (id != head->id && (bsp = fork_db.get_block(id))) {
+               head_to_lib.push_back(bsp);
+               id = bsp->header.previous;
+            }
+                  
+            auto blog_head = blog.head();
+            auto blog_head_time = blog_head->timestamp.to_time_point();
+            replay_head_time = blog_head_time;
+            for (auto itr = head_to_lib.rbegin(); itr != head_to_lib.rend(); ++itr) {
+               reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
+                  ubo.blocknum = (*itr)->block_num;
+                  ubo.set_block( (*itr)->block );
+               });
+               replay_push_block( (*itr)->block, controller::block_status::validated, false);
+            }
+            replay_head_time.reset();
+         }
+      } else { // irreversible mode
+         uint32_t target_lib = fork_db.root()->block_num;
+         if (head->block_num > target_lib) {  
+            // speculative mode => irreversible mode
+            wlog("db_read_mode has been changed, rolling back state from block #${o} to lib block #${l}", ("o", head->block_num)("l", target_lib));
+            // let's go backward to lib(fork_db root)
+            while (head->block_num > target_lib) {
+               pop_block();
+            }
+            fork_db.rollback_head_to_root();
+         }
+      }
+      
       bool report_integrity_hash = !!snapshot || (lib_num > head->block_num);
 
       // Trim any irreversible blocks from start of reversible blocks database
@@ -521,29 +576,7 @@ struct controller_impl {
       if( report_integrity_hash ) {
          const auto hash = calculate_integrity_hash();
          ilog( "database initialized with hash: ${hash}", ("hash", hash) );
-      }
-
-      if (head && fork_db.pending_head() && fork_db.root()) {
-         if (read_mode != db_read_mode::IRREVERSIBLE) {
-            if (head->block_num < fork_db.pending_head()->block_num) { 
-               // irreversible mode => speculative mode
-               wlog("db_read_mode has been changed: forwarding state from block ${h} to fork pending head ${fh}", ("h", head->block_num)("fh", fork_db.pending_head()->block_num));
-               // let's go forward from lib to pending head, and set head as pending head
-               maybe_switch_forks( fork_db.pending_head(), controller::block_status::validated );
-            }
-         } else {
-            // speculative mode => irreversible mode
-            uint32_t target_lib = fork_db.root()->block_num;
-            if (head->block_num > target_lib) {
-               wlog("db_read_mode has been changed, rolling back state from block ${o} to lib block ${l}", ("o", head->block_num)("l", target_lib));
-               // let's go backward to lib(fork_db root)
-               while (head->block_num > target_lib) {
-                  pop_block();
-               }
-               fork_db.rollback_head_to_root();
-            }
-         }
-      }
+      } 
    }
 
    ~controller_impl() {
@@ -1489,7 +1522,7 @@ struct controller_impl {
       } FC_LOG_AND_RETHROW( )
    }
 
-   void replay_push_block( const signed_block_ptr& b, controller::block_status s ) {
+   void replay_push_block( const signed_block_ptr& b, controller::block_status s, bool add_to_fork_db = true ) {
       self.validate_db_available_size();
       self.validate_reversible_available_size();
 
@@ -1505,7 +1538,7 @@ struct controller_impl {
          // need to cater the irreversible mode case where head is not advancing
          auto bsp = std::make_shared<block_state>((read_mode == db_read_mode::IRREVERSIBLE && s != controller::block_status::irreversible && fork_db.pending_head()) ? *fork_db.pending_head() : *head, b, skip_validate_signee );
 
-         if( s != controller::block_status::irreversible ) {
+         if (add_to_fork_db && s != controller::block_status::irreversible ) {
             fork_db.add( bsp );
          }
 
@@ -1544,52 +1577,49 @@ struct controller_impl {
               ("current_head_id", head->id)("current_head_num", head->block_num)("new_head_id", new_head->id)("new_head_num", new_head->block_num) );
          auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
 
-         if (branches.second.size()) { // cater a case of switching from fork pending head to lib
-            for( auto itr = branches.second.begin(); itr != branches.second.end(); ++itr ) {
-               pop_block();
+         for( auto itr = branches.second.begin(); itr != branches.second.end(); ++itr ) {
+            pop_block();
+         }
+         EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
+                  "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
+
+         for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr ) {
+            optional<fc::exception> except;
+            try {
+               apply_block( (*ritr)->block, (*ritr)->is_valid() ? controller::block_status::validated : controller::block_status::complete );
+               fork_db.mark_valid( *ritr );
+               head = *ritr;
+            } catch (const fc::exception& e) {
+               except = e;
             }
-            EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
-                     "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
-         }
+            if( except ) {
+               elog("exception thrown while switching forks ${e}", ("e", except->to_detail_string()));
 
-         if (branches.first.size()) {
-            for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr ) {
-               optional<fc::exception> except;
-               try {
-                  apply_block( (*ritr)->block, (*ritr)->is_valid() ? controller::block_status::validated : controller::block_status::complete );
-                  fork_db.mark_valid( *ritr );
-                  head = *ritr;
-               } catch (const fc::exception& e) {
-                  except = e;
+               // ritr currently points to the block that threw
+               // Remove the block that threw and all forks built off it.
+               fork_db.remove( (*ritr)->id );
+
+               EOS_ASSERT( head->id == fork_db.head()->id, fork_database_exception,
+                           "loss of sync between fork_db and controller head during fork switch error" );
+
+               // pop all blocks from the bad fork
+               // ritr base is a forward itr to the last block successfully applied
+               auto applied_itr = ritr.base();
+               for( auto itr = applied_itr; itr != branches.first.end(); ++itr ) {
+                  pop_block();
                }
-               if( except ) {
-                  elog("exception thrown while switching forks ${e}", ("e", except->to_detail_string()));
+               EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
+                           "loss of sync between fork_db and chainbase during fork switch reversal" ); // _should_ never fail
 
-                  // ritr currently points to the block that threw
-                  // Remove the block that threw and all forks built off it.
-                  fork_db.remove( (*ritr)->id );
+               // re-apply good blocks
+               for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
+                  apply_block( (*ritr)->block, controller::block_status::validated /* we previously validated these blocks*/ );
+                  head = *ritr;
+               }
+               throw *except;
+            } // end if exception
+         } /// end for each block in branch
 
-                  EOS_ASSERT( head->id == fork_db.head()->id, fork_database_exception,
-                              "loss of sync between fork_db and controller head during fork switch error" );
-
-                  // pop all blocks from the bad fork
-                  // ritr base is a forward itr to the last block successfully applied
-                  auto applied_itr = ritr.base();
-                  for( auto itr = applied_itr; itr != branches.first.end(); ++itr ) {
-                     pop_block();
-                  }
-                  EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
-                              "loss of sync between fork_db and chainbase during fork switch reversal" ); // _should_ never fail
-
-                  // re-apply good blocks
-                  for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
-                     apply_block( (*ritr)->block, controller::block_status::validated /* we previously validated these blocks*/ );
-                     head = *ritr;
-                  }
-                  throw *except;
-               } // end if exception
-            } /// end for each block in branch
-         }
          ilog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
       } else {
          head_changed = false;
@@ -2100,8 +2130,7 @@ const vector<transaction_receipt>& controller::get_pending_trx_receipts()const {
 
 uint32_t controller::last_irreversible_block_num() const {
    uint32_t lib_num = (my->read_mode == db_read_mode::IRREVERSIBLE)
-                        ? std::max(my->fork_db.pending_head()->dpos_irreversible_blocknum, my->fork_db.root()->block_num)
-                        : my->head->dpos_irreversible_blocknum;
+                        ? my->fork_db.root()->block_num : my->head->dpos_irreversible_blocknum;
    return std::max( lib_num, my->snapshot_head_block );
 }
 
