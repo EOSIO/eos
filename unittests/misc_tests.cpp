@@ -1066,8 +1066,12 @@ BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
      appbase::execution_priority_queue pri_queue;
      auto io_serv = std::make_shared<boost::asio::io_service>();
      auto work_ptr = std::make_unique<boost::asio::io_service::work>(*io_serv);
+     std::atomic<int> posted{0};
 
-     std::thread t( [io_serv, &pri_queue]() {
+     std::thread t( [io_serv, &pri_queue, &posted]() {
+        while( posted < 100 && io_serv->run_one() ) {
+           ++posted;
+        }
         bool more = true;
         while( more || io_serv->run_one() ) {
            while( io_serv->poll_one() ) {}
@@ -1079,6 +1083,12 @@ BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
      std::mutex mx;
      std::vector<int> results;
      for( int i = 0; i < 50; ++i ) {
+        boost::asio::post(*io_serv, pri_queue.wrap(appbase::priority::low, [io_serv, &mx, &ran, &results, i](){
+           std::this_thread::sleep_for( 10us );
+           std::lock_guard<std::mutex> g(mx);
+           results.push_back( 50 + i );
+           ++ran;
+        }));
         boost::asio::post(*io_serv, pri_queue.wrap(appbase::priority::high, [io_serv, &mx, &ran, &results, i](){
            std::this_thread::sleep_for( 10us );
            std::lock_guard<std::mutex> g(mx);
@@ -1087,16 +1097,16 @@ BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
         }));
      }
 
-     std::this_thread::sleep_for( 50 * 10us ); // will take at least this long
-     while( ran < 50 ) std::this_thread::sleep_for( 5us );
+     std::this_thread::sleep_for( 100 * 10us ); // will take at least this long
+     while( ran < 100 ) std::this_thread::sleep_for( 5us );
 
      work_ptr.reset();
      io_serv->stop();
      t.join();
 
      std::lock_guard<std::mutex> g(mx);
-     BOOST_CHECK_EQUAL( 50, results.size() );
-     for( int i = 0; i < 50; ++i ) {
+     BOOST_CHECK_EQUAL( 100, results.size() );
+     for( int i = 0; i < 100; ++i ) {
         BOOST_CHECK_EQUAL( i, results.at( i ) );
      }
 
