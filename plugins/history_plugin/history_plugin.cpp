@@ -28,7 +28,7 @@ namespace eosio {
 
    struct action_history_object : public chainbase::object<action_history_object_type, action_history_object> {
 
-      OBJECT_CTOR( action_history_object, (packed_action_trace) );
+      OBJECT_CTOR( action_history_object);
 
       id_type      id;
       uint64_t     action_sequence_num; ///< the sequence number of the relevant action

@@ -76,7 +76,7 @@ void apply_context::exec_one( action_trace& trace )
    r.global_sequence  = next_global_sequence();
    r.recv_sequence    = next_recv_sequence( receiver );
 
-   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
+   const auto& account_sequence = chaindb.get<account_sequence_object, by_name>(act.account);
    r.code_sequence    = account_sequence.code_sequence; // could be modified by action execution above
    r.abi_sequence     = account_sequence.abi_sequence;  // could be modified by action execution above
 
@@ -148,10 +148,10 @@ void apply_context::exec( action_trace& trace )
 
 
 bool apply_context::is_domain(const domain_name& domain) const {
-   return nullptr != db.find<domain_object,by_name>(domain);
+   return nullptr != chaindb.find<domain_object,by_name>(domain);
 }
 bool apply_context::is_username(const account_name& scope, const username& name) const {
-   return nullptr != db.find<username_object,by_scope_name>(boost::make_tuple(scope,name));
+   return nullptr != chaindb.find<username_object,by_scope_name>(boost::make_tuple(scope,name));
 }
 account_name apply_context::get_domain_owner(const domain_name& domain) const {
    return control.get_domain(domain).owner;
@@ -165,7 +165,7 @@ account_name apply_context::resolve_username(const account_name& scope, const us
 
 
 bool apply_context::is_account( const account_name& account )const {
-   return nullptr != db.find<account_object,by_name>( account );
+   return nullptr != chaindb.find<account_object,by_name>( account );
 }
 
 void apply_context::require_authorization( const account_name& account ) {
@@ -228,7 +228,7 @@ void apply_context::require_recipient( account_name recipient ) {
  *   can better understand the security risk.
  */
 void apply_context::execute_inline( action&& a ) {
-   auto* code = control.db().find<account_object, by_name>(a.account);
+   auto* code = chaindb.find<account_object, by_name>(a.account);
    EOS_ASSERT( code != nullptr, action_validate_exception,
                "inline action's code account ${account} does not exist", ("account", a.account) );
 
@@ -244,7 +244,7 @@ void apply_context::execute_inline( action&& a ) {
    }
 
    for( const auto& auth : a.authorization ) {
-      auto* actor = control.db().find<account_object, by_name>(auth.actor);
+      auto* actor = chaindb.find<account_object, by_name>(auth.actor);
       EOS_ASSERT( actor != nullptr, action_validate_exception,
                   "inline action's authorizing actor ${account} does not exist", ("account", auth.actor) );
       EOS_ASSERT( control.get_authorization_manager().find_permission(auth) != nullptr, action_validate_exception,
@@ -295,7 +295,7 @@ void apply_context::execute_inline( action&& a ) {
 }
 
 void apply_context::execute_context_free_inline( action&& a ) {
-   auto* code = control.db().find<account_object, by_name>(a.account);
+   auto* code = chaindb.find<account_object, by_name>(a.account);
    EOS_ASSERT( code != nullptr, action_validate_exception,
                "inline action's code account ${account} does not exist", ("account", a.account) );
 
@@ -378,17 +378,18 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    }
 
    uint32_t trx_size = 0;
-   if ( auto ptr = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
+   if ( auto ptr = chaindb.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
 
       // TODO: Remove the following subjective check when the deferred trx replacement RAM bug has been fixed with a hard fork.
       EOS_ASSERT( !control.is_producing_block(), subjective_block_production_exception,
                   "Replacing a deferred transaction is temporarily disabled." );
 
-      // TODO: The logic of the next line needs to be incorporated into the next hard fork.
-      // add_ram_usage( ptr->payer, -(config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size()) );
+// TODO: Removed by CyberWay
+//      // TODO: The logic of the next line needs to be incorporated into the next hard fork.
+//      // add_ram_usage( ptr->payer, -(config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size()) );
 
-      db.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
+      chaindb.modify( *ptr, {*this, payer}, [&]( auto& gtx ) {
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
             gtx.payer       = payer;
@@ -399,7 +400,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
             trx_size = gtx.set( trx );
          });
    } else {
-      db.create<generated_transaction_object>( [&]( auto& gtx ) {
+      chaindb.emplace<generated_transaction_object>( {*this, payer}, [&]( auto& gtx ) {
             gtx.trx_id      = trx.id();
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
@@ -412,17 +413,19 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          });
    }
 
-   EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account) || (receiver == payer) || privileged,
-               subjective_block_production_exception, "Cannot charge RAM to other accounts during notify." );
-   add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
+// TODO: Removed by CyberWay
+//   EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account) || (receiver == payer) || privileged,
+//               subjective_block_production_exception, "Cannot charge RAM to other accounts during notify." );
+//   add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
 }
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
-   auto& generated_transaction_idx = db.get_mutable_index<generated_transaction_multi_index>();
-   const auto* gto = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
+   auto trx_table = chaindb.get_table<generated_transaction_object>();
+   const auto* gto = chaindb.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
    if ( gto ) {
-      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
-      generated_transaction_idx.remove(*gto);
+// TODO: Removed by CyberWay
+//      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
+      trx_table.erase(*gto, {*this});
    }
    return gto;
 }
@@ -431,30 +434,31 @@ void apply_context::push_event( event evt ) {
    _events.emplace_back(std::move(evt));
 }
 
-const table_id_object* apply_context::find_table( name code, name scope, name table ) {
-   return db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
-}
-
-const table_id_object& apply_context::find_or_create_table( name code, name scope, name table, const account_name &payer ) {
-   const auto* existing_tid =  db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
-   if (existing_tid != nullptr) {
-      return *existing_tid;
-   }
-
-   update_db_usage(payer, config::billable_size_v<table_id_object>);
-
-   return db.create<table_id_object>([&](table_id_object &t_id){
-      t_id.code = code;
-      t_id.scope = scope;
-      t_id.table = table;
-      t_id.payer = payer;
-   });
-}
-
-void apply_context::remove_table( const table_id_object& tid ) {
-   update_db_usage(tid.payer, - config::billable_size_v<table_id_object>);
-   db.remove(tid);
-}
+// TODO: Removed by CyberWay
+//const table_id_object* apply_context::find_table( name code, name scope, name table ) {
+//   return db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
+//}
+//
+//const table_id_object& apply_context::find_or_create_table( name code, name scope, name table, const account_name &payer ) {
+//   const auto* existing_tid =  db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
+//   if (existing_tid != nullptr) {
+//      return *existing_tid;
+//   }
+//
+//   update_db_usage(payer, config::billable_size_v<table_id_object>);
+//
+//   return db.create<table_id_object>([&](table_id_object &t_id){
+//      t_id.code = code;
+//      t_id.scope = scope;
+//      t_id.table = table;
+//      t_id.payer = payer;
+//   });
+//}
+//
+//void apply_context::remove_table( const table_id_object& tid ) {
+//   update_db_usage(tid.payer, - config::billable_size_v<table_id_object>);
+//   db.remove(tid);
+//}
 
 vector<account_name> apply_context::get_active_producers() const {
    const auto& ap = control.active_producers();
@@ -529,219 +533,220 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    return copy_size;
 }
 
-int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
-   return db_store_i64( receiver, scope, table, payer, id, buffer, buffer_size);
-}
-
-int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
-//   require_write_lock( scope );
-   const auto& tab = find_or_create_table( code, scope, table, payer );
-   auto tableid = tab.id;
-
-   EOS_ASSERT( payer != account_name(), invalid_table_payer, "must specify a valid account to pay for new record" );
-
-   const auto& obj = db.create<key_value_object>( [&]( auto& o ) {
-      o.t_id        = tableid;
-      o.primary_key = id;
-      o.value.assign( buffer, buffer_size );
-      o.payer       = payer;
-   });
-
-   db.modify( tab, [&]( auto& t ) {
-     ++t.count;
-   });
-
-   int64_t billable_size = (int64_t)(buffer_size + config::billable_size_v<key_value_object>);
-   update_db_usage( payer, billable_size);
-
-   keyval_cache.cache_table( tab );
-   return keyval_cache.add( obj );
-}
-
-void apply_context::db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
-   const key_value_object& obj = keyval_cache.get( iterator );
-
-   const auto& table_obj = keyval_cache.get_table( obj.t_id );
-   EOS_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
-
-//   require_write_lock( table_obj.scope );
-
-   const int64_t overhead = config::billable_size_v<key_value_object>;
-   int64_t old_size = (int64_t)(obj.value.size() + overhead);
-   int64_t new_size = (int64_t)(buffer_size + overhead);
-
-   if( payer == account_name() ) payer = obj.payer;
-
-   if( account_name(obj.payer) != payer ) {
-      // refund the existing payer
-      update_db_usage( obj.payer,  -(old_size) );
-      // charge the new payer
-      update_db_usage( payer,  (new_size));
-   } else if(old_size != new_size) {
-      // charge/refund the existing payer the difference
-      update_db_usage( obj.payer, new_size - old_size);
-   }
-
-   db.modify( obj, [&]( auto& o ) {
-     o.value.assign( buffer, buffer_size );
-     o.payer = payer;
-   });
-}
-
-void apply_context::db_remove_i64( int iterator ) {
-   const key_value_object& obj = keyval_cache.get( iterator );
-
-   const auto& table_obj = keyval_cache.get_table( obj.t_id );
-   EOS_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
-
-//   require_write_lock( table_obj.scope );
-
-   update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>) );
-
-   db.modify( table_obj, [&]( auto& t ) {
-      --t.count;
-   });
-   db.remove( obj );
-
-   if (table_obj.count == 0) {
-      remove_table(table_obj);
-   }
-
-   keyval_cache.remove( iterator );
-}
-
-int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) {
-   const key_value_object& obj = keyval_cache.get( iterator );
-
-   auto s = obj.value.size();
-   if( buffer_size == 0 ) return s;
-
-   auto copy_size = std::min( buffer_size, s );
-   memcpy( buffer, obj.value.data(), copy_size );
-
-   return copy_size;
-}
-
-int apply_context::db_next_i64( int iterator, uint64_t& primary ) {
-   if( iterator < -1 ) return -1; // cannot increment past end iterator of table
-
-   const auto& obj = keyval_cache.get( iterator ); // Check for iterator != -1 happens in this call
-   const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-
-   auto itr = idx.iterator_to( obj );
-   ++itr;
-
-   if( itr == idx.end() || itr->t_id != obj.t_id ) return keyval_cache.get_end_iterator_by_table_id(obj.t_id);
-
-   primary = itr->primary_key;
-   return keyval_cache.add( *itr );
-}
-
-int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
-   const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-
-   if( iterator < -1 ) // is end iterator
-   {
-      auto tab = keyval_cache.find_table_by_end_iterator(iterator);
-      EOS_ASSERT( tab, invalid_table_iterator, "not a valid end iterator" );
-
-      auto itr = idx.upper_bound(tab->id);
-      if( idx.begin() == idx.end() || itr == idx.begin() ) return -1; // Empty table
-
-      --itr;
-
-      if( itr->t_id != tab->id ) return -1; // Empty table
-
-      primary = itr->primary_key;
-      return keyval_cache.add(*itr);
-   }
-
-   const auto& obj = keyval_cache.get(iterator); // Check for iterator != -1 happens in this call
-
-   auto itr = idx.iterator_to(obj);
-   if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of table
-
-   --itr;
-
-   if( itr->t_id != obj.t_id ) return -1; // cannot decrement past beginning iterator of table
-
-   primary = itr->primary_key;
-   return keyval_cache.add(*itr);
-}
-
-int apply_context::db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-   //require_read_lock( code, scope ); // redundant?
-
-   const auto* tab = find_table( code, scope, table );
-   if( !tab ) return -1;
-
-   auto table_end_itr = keyval_cache.cache_table( *tab );
-
-   const key_value_object* obj = db.find<key_value_object, by_scope_primary>( boost::make_tuple( tab->id, id ) );
-   if( !obj ) return table_end_itr;
-
-   return keyval_cache.add( *obj );
-}
-
-int apply_context::db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-   //require_read_lock( code, scope ); // redundant?
-
-   const auto* tab = find_table( code, scope, table );
-   if( !tab ) return -1;
-
-   auto table_end_itr = keyval_cache.cache_table( *tab );
-
-   const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-   auto itr = idx.lower_bound( boost::make_tuple( tab->id, id ) );
-   if( itr == idx.end() ) return table_end_itr;
-   if( itr->t_id != tab->id ) return table_end_itr;
-
-   return keyval_cache.add( *itr );
-}
-
-int apply_context::db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-   //require_read_lock( code, scope ); // redundant?
-
-   const auto* tab = find_table( code, scope, table );
-   if( !tab ) return -1;
-
-   auto table_end_itr = keyval_cache.cache_table( *tab );
-
-   const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-   auto itr = idx.upper_bound( boost::make_tuple( tab->id, id ) );
-   if( itr == idx.end() ) return table_end_itr;
-   if( itr->t_id != tab->id ) return table_end_itr;
-
-   return keyval_cache.add( *itr );
-}
-
-int apply_context::db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
-   //require_read_lock( code, scope ); // redundant?
-
-   const auto* tab = find_table( code, scope, table );
-   if( !tab ) return -1;
-
-   return keyval_cache.cache_table( *tab );
-}
+// TODO: Removed by CyberWay
+//int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
+//   return db_store_i64( receiver, scope, table, payer, id, buffer, buffer_size);
+//}
+//
+//int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
+////   require_write_lock( scope );
+//   const auto& tab = find_or_create_table( code, scope, table, payer );
+//   auto tableid = tab.id;
+//
+//   EOS_ASSERT( payer != account_name(), invalid_table_payer, "must specify a valid account to pay for new record" );
+//
+//   const auto& obj = db.create<key_value_object>( [&]( auto& o ) {
+//      o.t_id        = tableid;
+//      o.primary_key = id;
+//      o.value.assign( buffer, buffer_size );
+//      o.payer       = payer;
+//   });
+//
+//   db.modify( tab, [&]( auto& t ) {
+//     ++t.count;
+//   });
+//
+//   int64_t billable_size = (int64_t)(buffer_size + config::billable_size_v<key_value_object>);
+//   update_db_usage( payer, billable_size);
+//
+//   keyval_cache.cache_table( tab );
+//   return keyval_cache.add( obj );
+//}
+//
+//void apply_context::db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
+//   const key_value_object& obj = keyval_cache.get( iterator );
+//
+//   const auto& table_obj = keyval_cache.get_table( obj.t_id );
+//   EOS_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
+//
+////   require_write_lock( table_obj.scope );
+//
+//   const int64_t overhead = config::billable_size_v<key_value_object>;
+//   int64_t old_size = (int64_t)(obj.value.size() + overhead);
+//   int64_t new_size = (int64_t)(buffer_size + overhead);
+//
+//   if( payer == account_name() ) payer = obj.payer;
+//
+//   if( account_name(obj.payer) != payer ) {
+//      // refund the existing payer
+//      update_db_usage( obj.payer,  -(old_size) );
+//      // charge the new payer
+//      update_db_usage( payer,  (new_size));
+//   } else if(old_size != new_size) {
+//      // charge/refund the existing payer the difference
+//      update_db_usage( obj.payer, new_size - old_size);
+//   }
+//
+//   db.modify( obj, [&]( auto& o ) {
+//     o.value.assign( buffer, buffer_size );
+//     o.payer = payer;
+//   });
+//}
+//
+//void apply_context::db_remove_i64( int iterator ) {
+//   const key_value_object& obj = keyval_cache.get( iterator );
+//
+//   const auto& table_obj = keyval_cache.get_table( obj.t_id );
+//   EOS_ASSERT( table_obj.code == receiver, table_access_violation, "db access violation" );
+//
+////   require_write_lock( table_obj.scope );
+//
+//   update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>) );
+//
+//   db.modify( table_obj, [&]( auto& t ) {
+//      --t.count;
+//   });
+//   db.remove( obj );
+//
+//   if (table_obj.count == 0) {
+//      remove_table(table_obj);
+//   }
+//
+//   keyval_cache.remove( iterator );
+//}
+//
+//int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) {
+//   const key_value_object& obj = keyval_cache.get( iterator );
+//
+//   auto s = obj.value.size();
+//   if( buffer_size == 0 ) return s;
+//
+//   auto copy_size = std::min( buffer_size, s );
+//   memcpy( buffer, obj.value.data(), copy_size );
+//
+//   return copy_size;
+//}
+//
+//int apply_context::db_next_i64( int iterator, uint64_t& primary ) {
+//   if( iterator < -1 ) return -1; // cannot increment past end iterator of table
+//
+//   const auto& obj = keyval_cache.get( iterator ); // Check for iterator != -1 happens in this call
+//   const auto& idx = db.get_index<key_value_index, by_scope_primary>();
+//
+//   auto itr = idx.iterator_to( obj );
+//   ++itr;
+//
+//   if( itr == idx.end() || itr->t_id != obj.t_id ) return keyval_cache.get_end_iterator_by_table_id(obj.t_id);
+//
+//   primary = itr->primary_key;
+//   return keyval_cache.add( *itr );
+//}
+//
+//int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
+//   const auto& idx = db.get_index<key_value_index, by_scope_primary>();
+//
+//   if( iterator < -1 ) // is end iterator
+//   {
+//      auto tab = keyval_cache.find_table_by_end_iterator(iterator);
+//      EOS_ASSERT( tab, invalid_table_iterator, "not a valid end iterator" );
+//
+//      auto itr = idx.upper_bound(tab->id);
+//      if( idx.begin() == idx.end() || itr == idx.begin() ) return -1; // Empty table
+//
+//      --itr;
+//
+//      if( itr->t_id != tab->id ) return -1; // Empty table
+//
+//      primary = itr->primary_key;
+//      return keyval_cache.add(*itr);
+//   }
+//
+//   const auto& obj = keyval_cache.get(iterator); // Check for iterator != -1 happens in this call
+//
+//   auto itr = idx.iterator_to(obj);
+//   if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of table
+//
+//   --itr;
+//
+//   if( itr->t_id != obj.t_id ) return -1; // cannot decrement past beginning iterator of table
+//
+//   primary = itr->primary_key;
+//   return keyval_cache.add(*itr);
+//}
+//
+//int apply_context::db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+//   //require_read_lock( code, scope ); // redundant?
+//
+//   const auto* tab = find_table( code, scope, table );
+//   if( !tab ) return -1;
+//
+//   auto table_end_itr = keyval_cache.cache_table( *tab );
+//
+//   const key_value_object* obj = db.find<key_value_object, by_scope_primary>( boost::make_tuple( tab->id, id ) );
+//   if( !obj ) return table_end_itr;
+//
+//   return keyval_cache.add( *obj );
+//}
+//
+//int apply_context::db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+//   //require_read_lock( code, scope ); // redundant?
+//
+//   const auto* tab = find_table( code, scope, table );
+//   if( !tab ) return -1;
+//
+//   auto table_end_itr = keyval_cache.cache_table( *tab );
+//
+//   const auto& idx = db.get_index<key_value_index, by_scope_primary>();
+//   auto itr = idx.lower_bound( boost::make_tuple( tab->id, id ) );
+//   if( itr == idx.end() ) return table_end_itr;
+//   if( itr->t_id != tab->id ) return table_end_itr;
+//
+//   return keyval_cache.add( *itr );
+//}
+//
+//int apply_context::db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+//   //require_read_lock( code, scope ); // redundant?
+//
+//   const auto* tab = find_table( code, scope, table );
+//   if( !tab ) return -1;
+//
+//   auto table_end_itr = keyval_cache.cache_table( *tab );
+//
+//   const auto& idx = db.get_index<key_value_index, by_scope_primary>();
+//   auto itr = idx.upper_bound( boost::make_tuple( tab->id, id ) );
+//   if( itr == idx.end() ) return table_end_itr;
+//   if( itr->t_id != tab->id ) return table_end_itr;
+//
+//   return keyval_cache.add( *itr );
+//}
+//
+//int apply_context::db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
+//   //require_read_lock( code, scope ); // redundant?
+//
+//   const auto* tab = find_table( code, scope, table );
+//   if( !tab ) return -1;
+//
+//   return keyval_cache.cache_table( *tab );
+//}
 
 uint64_t apply_context::next_global_sequence() {
    const auto& p = control.get_dynamic_global_properties();
-   db.modify( p, [&]( auto& dgp ) {
+   chaindb.modify( p, [&]( auto& dgp ) {
       ++dgp.global_action_sequence;
    });
    return p.global_action_sequence;
 }
 
 uint64_t apply_context::next_recv_sequence( account_name receiver ) {
-   const auto& rs = db.get<account_sequence_object,by_name>( receiver );
-   db.modify( rs, [&]( auto& mrs ) {
+   const auto& rs = chaindb.get<account_sequence_object,by_name>( receiver );
+   chaindb.modify( rs, [&]( auto& mrs ) {
       ++mrs.recv_sequence;
    });
    return rs.recv_sequence;
 }
 uint64_t apply_context::next_auth_sequence( account_name actor ) {
-   const auto& rs = db.get<account_sequence_object,by_name>( actor );
-   db.modify( rs, [&](auto& mrs ){
+   const auto& rs = chaindb.get<account_sequence_object,by_name>( actor );
+   chaindb.modify( rs, [&](auto& mrs ){
       ++mrs.auth_sequence;
    });
    return rs.auth_sequence;

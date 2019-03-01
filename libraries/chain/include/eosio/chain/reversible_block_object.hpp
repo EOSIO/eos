@@ -13,7 +13,7 @@
 namespace eosio { namespace chain {
 
    class reversible_block_object : public chainbase::object<reversible_block_object_type, reversible_block_object> {
-      OBJECT_CTOR(reversible_block_object,(packedblock) )
+      CHAINBASE_OBJECT_CTOR(reversible_block_object,(packedblock) )
 
       id_type        id;
       uint32_t       blocknum = 0;

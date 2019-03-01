@@ -26,7 +26,7 @@ namespace eosio { namespace chain {
     * is found for {account, code, ""}, then the required_permission from that link is used. If no such link is found,
     * account's active authority is used.
     */
-   class permission_link_object : public chainbase::object<permission_link_object_type, permission_link_object> {
+   class permission_link_object : public cyberway::chaindb::object<permission_link_object_type, permission_link_object> {
       OBJECT_CTOR(permission_link_object)
 
       id_type        id;
@@ -43,7 +43,7 @@ namespace eosio { namespace chain {
 
    struct by_action_name;
    struct by_permission_name;
-   using permission_link_index = cyberway::chaindb::shared_multi_index_container<
+   using permission_link_table = cyberway::chaindb::table_container<
       permission_link_object,
       cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>,
@@ -76,7 +76,7 @@ namespace eosio { namespace chain {
    }
 } } // eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_link_object, eosio::chain::permission_link_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::permission_link_object, eosio::chain::permission_link_table)
 CHAINDB_TAG(eosio::chain::permission_link_object, permlink)
 
 FC_REFLECT(eosio::chain::permission_link_object, (id)(account)(code)(message_type)(required_permission))

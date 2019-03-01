@@ -24,9 +24,9 @@ namespace eosio { namespace chain {
     *
     * This is an implementation detail. The values here are set by committee_members to tune the blockchain parameters.
     */
-   class global_property_object : public chainbase::object<global_property_object_type, global_property_object>
+   class global_property_object : public cyberway::chaindb::object<global_property_object_type, global_property_object>
    {
-      OBJECT_CTOR(global_property_object, (proposed_schedule))
+      OBJECT_CTOR(global_property_object)
 
       id_type                           id;
       optional<block_num_type>          proposed_schedule_block_num;
@@ -45,7 +45,7 @@ namespace eosio { namespace chain {
     * This is an implementation detail. The values here are calculated during normal chain operations and reflect the
     * current values of global blockchain properties.
     */
-   class dynamic_global_property_object : public chainbase::object<dynamic_global_property_object_type, dynamic_global_property_object>
+   class dynamic_global_property_object : public cyberway::chaindb::object<dynamic_global_property_object_type, dynamic_global_property_object>
    {
         OBJECT_CTOR(dynamic_global_property_object)
 
@@ -53,7 +53,7 @@ namespace eosio { namespace chain {
         uint64_t   global_action_sequence = 0;
    };
 
-   using global_property_multi_index = cyberway::chaindb::shared_multi_index_container<
+   using global_property_table = cyberway::chaindb::table_container<
       global_property_object,
       cyberway::chaindb::indexed_by<
           cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>,
@@ -62,7 +62,7 @@ namespace eosio { namespace chain {
       >
    >;
 
-   using dynamic_global_property_multi_index = cyberway::chaindb::shared_multi_index_container<
+   using dynamic_global_property_table = cyberway::chaindb::table_container<
       dynamic_global_property_object,
       cyberway::chaindb::indexed_by<
           cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>,
@@ -73,14 +73,10 @@ namespace eosio { namespace chain {
 
 }}
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::global_property_object, eosio::chain::global_property_multi_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::global_property_object, eosio::chain::global_property_table)
 CHAINDB_TAG(eosio::chain::global_property_object, gproperty)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::dynamic_global_property_object,
-                         eosio::chain::dynamic_global_property_multi_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::dynamic_global_property_object, eosio::chain::dynamic_global_property_table)
 CHAINDB_TAG(eosio::chain::dynamic_global_property_object, gdynproperty)
-
-//FC_REFLECT(chainbase::oid<eosio::chain::global_property_object>, (_id))
-//FC_REFLECT(chainbase::oid<eosio::chain::dynamic_global_property_object>, (_id))
 
 FC_REFLECT(eosio::chain::dynamic_global_property_object,
            (id)(global_action_sequence)

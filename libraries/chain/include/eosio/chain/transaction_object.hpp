@@ -19,7 +19,7 @@ namespace eosio { namespace chain {
     * in a block a transaction_object is added. At the end of block processing all transaction_objects that have
     * expired can be removed from the index.
     */
-   class transaction_object : public chainbase::object<transaction_object_type, transaction_object>
+   class transaction_object : public cyberway::chaindb::object<transaction_object_type, transaction_object>
    {
          OBJECT_CTOR(transaction_object)
 
@@ -30,7 +30,7 @@ namespace eosio { namespace chain {
 
    struct by_expiration;
    struct by_trx_id;
-   using transaction_multi_index = cyberway::chaindb::shared_multi_index_container<
+   using transaction_table = cyberway::chaindb::table_container<
       transaction_object,
       cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique< cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_object::id_type, id)>,
@@ -44,9 +44,8 @@ namespace eosio { namespace chain {
       >
    >;
 
-   typedef chainbase::generic_index<transaction_multi_index> transaction_index;
 } }
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::transaction_object, eosio::chain::transaction_multi_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::transaction_object, eosio::chain::transaction_table)
 CHAINDB_TAG(eosio::chain::transaction_object, transaction)
 FC_REFLECT(eosio::chain::transaction_object, (id)(expiration)(trx_id))
