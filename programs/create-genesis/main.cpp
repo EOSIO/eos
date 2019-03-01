@@ -2,7 +2,8 @@
 #include "golos_objects.hpp"
 #include "data_format.hpp"
 #include <eosio/chain/config.hpp>
-#include <cyberway/chaindb/controller.hpp>
+#include <eosio/chain/controller.hpp>
+#include <eosio/chain/authorization_manager.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/variant.hpp>
@@ -13,6 +14,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/fstream.hpp>
+
+#define READ_ACCOUNTS_ONLY
 
 namespace fc {
 
@@ -31,7 +34,7 @@ S& operator>>(S& s, cw::gls_acc_name& a) {
 template<typename S, int N>
 inline S& operator>>(S& s, cw::gls_shared_str<N>& a) {
     std::string n;
-    if (N == cw::sstr_type::permlink) {
+    if (N == cw::golos::sstr_type::permlink) {
         unsigned_int idx;
         fc::raw::unpack(s, idx);
         n = _gls_plnk_map->at(idx);
@@ -71,6 +74,16 @@ using bpo::variables_map;
 using std::string;
 
 
+template<typename KeyType = fc::ecc::private_key_shim>
+static private_key_type get_private_key(name keyname, string role = "owner") {
+    return private_key_type::regenerate<KeyType>(fc::sha256::hash(string(keyname)+role));
+}
+template<typename KeyType = fc::ecc::private_key_shim>
+static public_key_type get_public_key(name keyname, string role = "owner") {
+    return get_private_key<KeyType>(keyname, role).get_public_key();
+}
+
+
 struct map_info {
     bool read = false;
     std::vector<std::string> items;
@@ -79,6 +92,7 @@ struct map_info {
 struct converter {
     void read_state();
     void read_maps();
+    void create_accounts();
     void set_program_options(options_description& cli);
     void initialize(const variables_map& options);
 
@@ -86,12 +100,19 @@ struct converter {
     string chaindb_url;
     string mongo_db_prefix;
 
+    std::vector<golos::account_authority_object> auths;
+
     map_info accs_map;
     map_info permlink_map;
     map_info meta_map;
 
-private:
-    unique_ptr<chaindb_controller> _chaindb;
+    fc::time_point _genesis_ts;
+
+protected:
+    // tempdir field must come before control so that during destruction the tempdir is deleted only after controller finishes
+    fc::temp_directory tempdir;
+public:
+    std::unique_ptr<controller> control;
 };
 
 void converter::read_maps() {
@@ -121,6 +142,9 @@ void converter::read_maps() {
         std::cout << "done, " << map.items.size() << " item(s) read" << std::endl;
     };
     read_map('A', accs_map, fc::_gls_accs_map);
+#ifdef READ_ACCOUNTS_ONLY
+    return;
+#endif
     read_map('P', permlink_map, fc::_gls_plnk_map);
     read_map('M', meta_map, fc::_gls_meta_map);
 }
@@ -149,11 +173,105 @@ void converter::read_state() {
         auto v = fc::raw::unpack_static_variant<decltype(in)>(in);
         while (in && i < t.records_count) {
             o.visit(v);
+            if (type == account_authority_object_id) {
+                auths.emplace_back(o.get<golos::account_authority_object>());
+            }
             i++;
         }
+#ifdef READ_ACCOUNTS_ONLY
+        if (auths.size() > 0)
+            break;              // we do not need other tables for now
+#endif
     }
 
     // TODO
+    std::cout << "Done." << std::endl;
+}
+
+account_name generate_name(string n) {
+    // TODO: replace with better function
+    // TODO: remove dots from result (+append trailing to length of 12 characters)
+    uint64_t h = std::hash<std::string>()(n);
+    return account_name(h & 0xFFFFFFFFFFFFFFF0);
+}
+
+string pubkey_string(const golos::public_key_type& k) {
+    using checksummer = fc::crypto::checksummed_data<golos::public_key_type>;
+    checksummer wrapper;
+    wrapper.data = k;
+    wrapper.check = checksummer::calculate_checksum(wrapper.data);
+    auto packed = raw::pack(wrapper);
+    return fc::to_base58(packed.data(), packed.size());
+}
+
+void converter::create_accounts() {
+    static const string golos_name = "golos";
+    std::cout << "Creating accounts, authorities and usernames in Golos domain..." << std::endl;
+    auto& db = const_cast<database&>(control->db());
+    auto& auth_mgr = control->get_mutable_authorization_manager();
+    std::unordered_map<string,account_name> names;
+
+    // first fill names, we need them to check is authority account exists
+    names.reserve(auths.size());
+    for (const auto a: auths) {
+        const auto n = a.account.value;
+        const auto& name =
+            n.size() == 0 ? account_name() : generate_name(n);
+            // n == "null" ? account_name(config::null_account_name) : generate_name(n);
+            //txt_name == "temp"
+        names[n] = name;
+    }
+    for (const auto a: auths) {
+        const auto n = a.account.value;
+        const auto& name = names[n];
+        db.create<account_object>([&](auto& a) {
+            a.name = name;
+            a.creation_date = _genesis_ts;
+        });
+        db.create<account_sequence_object>([&](auto & a) {
+            a.name = name;
+        });
+        if (n == golos_name) {
+            db.create<domain_object>([&](auto& a) {
+                a.owner = name;
+                a.linked_to = name;
+                a.creation_date = _genesis_ts;
+                a.name = n;
+            });
+        }
+        auto add_permission = [&](permission_name perm, const golos::shared_authority& a, auto id) {
+            uint32_t threshold = a.weight_threshold;
+            vector<key_weight> keys;
+            for (const auto& k: a.key_auths) {
+                // can't construct public key directly, constructor is private. transform to string first:
+                const auto key = string(fc::crypto::config::public_key_legacy_prefix) + pubkey_string(k.first);
+                keys.emplace_back(key_weight{public_key_type(key), k.second});
+            }
+            vector<permission_level_weight> accounts;
+            for (const auto& p: a.account_auths) {
+                if (names.count(p.first.value)) {
+                    accounts.emplace_back(permission_level_weight{{names[p.first.value], perm}, p.second});
+                } else {
+                    std::cout << "Note: account " << n << " tried to add unexisting account " << p.first.value
+                        << " to it's " << perm << " authority. Skipped." << std::endl;
+                }
+            }
+            return auth_mgr.create_permission(name, perm, id, authority{threshold, keys, accounts}, _genesis_ts);
+        };
+        const auto& owner_perm = add_permission(config::owner_name, a.owner, 0);
+        const auto& active_perm = add_permission(config::active_name, a.active, owner_perm.id);
+        const auto& posting_perm = add_permission("posting", a.posting, active_perm.id);
+    }
+    // add usernames
+    const auto app = names[golos_name];
+    for (const auto& auth : auths) {                // loop through auths to preserve names order
+        const auto& n = auth.account.value;
+        db.create<username_object>([&](auto& a) {
+            a.owner = names[n]; //generate_name(n);
+            a.scope = app;
+            a.name = n;
+        });
+    }
     std::cout << "Done." << std::endl;
 }
 
@@ -185,10 +303,28 @@ cyberway::chaindb::chaindb_type chaindb_type_by_url(string url) {
 }
 
 void converter::initialize(const variables_map& options) { try {
+    fc::exception::enable_detailed_strace();
+    _genesis_ts = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+
     auto d = options.at("state").as<bfs::path>();
     state_file = d.is_relative() ? bfs::current_path() / d : d;
     auto type = chaindb_type_by_url(chaindb_url);
-    _chaindb.reset(new chaindb_controller(type, chaindb_url));  // TODO: pass mongo_db_prefix if MongoDB
+    // _chaindb.reset(new chaindb_controller(type, chaindb_url));  // TODO: pass mongo_db_prefix if MongoDB
+    controller::config cfg;
+    cfg.chaindb_address = chaindb_url;
+
+    cfg.blocks_dir = tempdir.path() / config::default_blocks_dir_name;
+    cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
+    cfg.state_size = 1024*1024*8;
+    cfg.state_guard_size = 0;
+    cfg.reversible_cache_size = 1024*1024*8;
+    cfg.reversible_guard_size = 0;
+    cfg.genesis.initial_timestamp = _genesis_ts;
+    cfg.genesis.initial_key = get_public_key(config::system_account_name, "active");
+    // open
+    control.reset(new controller(cfg));
+    control->add_indices();
+    control->startup([]() { return false; }, nullptr);
 } FC_LOG_AND_RETHROW() }
 
 
@@ -207,6 +343,7 @@ int main(int argc, char** argv) {
         }
         conv.initialize(vmap);
         conv.read_state();
+        conv.create_accounts();
     } catch (const fc::exception& e) {
         elog("${e}", ("e", e.to_detail_string()));
         return -1;
