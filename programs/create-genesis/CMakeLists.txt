@@ -1,4 +1,4 @@
-add_executable(create-genesis main.cpp golos_objects.cpp)
+add_executable(create-genesis main.cpp)
 
 if(UNIX AND NOT APPLE)
   set(rt_library rt)

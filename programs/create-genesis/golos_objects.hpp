@@ -122,7 +122,7 @@ struct account_bandwidth_object {
 struct account_metadata_object {
     id_type id;
     account_name_type account;
-    shared_string json_metadata;
+    shared_string<sstr_type::meta> json_metadata;
 };
 
 enum delegator_payout_strategy {to_delegator, to_delegated_vesting, _size};
@@ -169,7 +169,7 @@ struct witness_object {
     id_type id;
     account_name_type owner;
     time_point_sec created;
-    shared_string url;
+    shared_string<sstr_type::url> url;
     uint32_t total_missed;
     uint64_t last_aslot;
     uint64_t last_confirmed_block_num;
@@ -197,7 +197,8 @@ struct witness_schedule_object {
     id_type id;
     uint128_t current_virtual_time;
     uint32_t next_shuffle_block_num;
-    fc::array<account_name_type, 21/*STEEMIT_MAX_WITNESSES*/> current_shuffled_witnesses;
+    // fc::array<account_name_type, 21/*STEEMIT_MAX_WITNESSES*/> current_shuffled_witnesses;
+    fc::array<uint128_t, 21/*STEEMIT_MAX_WITNESSES*/> current_shuffled_witnesses;
     uint8_t num_scheduled_witnesses;
     uint8_t top19_weight;
     uint8_t timeshare_weight;
@@ -221,12 +222,8 @@ struct beneficiary_route_type {
 };
 enum comment_mode {not_set, first_payout, second_payout, archived};
 enum auction_window_reward_destination_type {to_reward_fund, to_curators, to_author};
-struct comment_object {
-    id_type id;
-    account_name_type parent_author;
-    shared_string parent_permlink;
-    account_name_type author;
-    shared_string permlink;
+// this part of comment object removed from archived comments
+struct active_comment_data {
     time_point_sec created;
     time_point_sec last_payout;
     uint16_t depth;
@@ -242,7 +239,6 @@ struct comment_object {
     int32_t net_votes;
     uint32_t total_votes;
     id_type root_comment;
-    comment_mode mode;
     curation_curve curation_reward_curve;
     auction_window_reward_destination_type auction_window_reward_destination;
     uint16_t auction_window_size;
@@ -253,6 +249,15 @@ struct comment_object {
     bool allow_curation_rewards;
     uint16_t curation_rewards_percent;
     std::vector<beneficiary_route_type> beneficiaries;
+};
+struct comment_object {
+    id_type id;
+    account_name_type parent_author;
+    shared_string<sstr_type::permlink> parent_permlink;
+    account_name_type author;
+    shared_string<sstr_type::permlink> permlink;
+    comment_mode mode;
+    active_comment_data active;
 };
 struct delegator_vote_interest_rate {
     account_name_type account;
@@ -324,7 +329,7 @@ struct savings_withdraw_object {
     id_type id;
     account_name_type from;
     account_name_type to;
-    shared_string memo;
+    shared_string<sstr_type::memo> memo;
     uint32_t request_id;
     asset amount;
     time_point_sec complete;

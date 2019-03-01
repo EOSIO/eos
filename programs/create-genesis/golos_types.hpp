@@ -1,32 +1,31 @@
 #pragma once
+#include "custom_unpack.hpp"
 #include <eosio/chain/asset.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/crypto/public_key.hpp>
 #include <string>
 
+
 namespace cw {
-
 using std::string;
-using eosio::chain::asset;
 using eosio::chain::share_type;
+}
 
-struct gls_acc_name {
-    string value;
-};
+namespace cw { namespace golos {
 
-namespace golos {
 
 using account_name_type = gls_acc_name;
+template<int N>
+using shared_string = gls_shared_str<N>;
+using asset         = gls_asset;
 using id_type       = int64_t;
-using shared_string = string;
 using digest_type   = fc::sha256;
 using block_id_type = fc::ripemd160;
 using weight_type   = uint16_t;
 
-struct public_key_type {
-    fc::ecc::public_key_data key_data;   // eosio public key is static variant: ecc/r1
-};
+using public_key_type = fc::ecc::public_key_data;   // eosio public key is static variant: ecc/r1
+
 struct shared_authority {
     uint32_t weight_threshold;
     std::map<account_name_type, weight_type> account_auths;
@@ -75,5 +74,7 @@ struct price {
 
 using version = uint32_t;
 using hardfork_version = version;
+
+enum sstr_type {permlink, url, meta, memo};
 
 }} // cw::golos

@@ -5,7 +5,7 @@ namespace cw {
 
 struct state_header {
     char magic[12] = "Golos\astatE";
-    uint32_t tables_count;
+    uint32_t version;
 };
 struct table_header {
     uint32_t type_id;
@@ -14,5 +14,5 @@ struct table_header {
 
 } // cw
 
-FC_REFLECT(cw::state_header, (magic)(tables_count))
+FC_REFLECT(cw::state_header, (magic)(version))
 FC_REFLECT(cw::table_header, (type_id)(records_count))
