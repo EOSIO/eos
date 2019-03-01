@@ -139,7 +139,7 @@ namespace eosio { namespace chain { namespace resource_limits {
       uint64_t                 ram_usage = 0;
    };
 
-   using resource_usage_index = cyberway::chaindb::shared_multi_index_container<
+   using resource_usage_table = cyberway::chaindb::table_container<
       resource_usage_object,
        cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_usage_object, resource_usage_object::id_type, id)>,
@@ -147,7 +147,7 @@ namespace eosio { namespace chain { namespace resource_limits {
       >
    >;
 
-   class resource_limits_config_object : public chainbase::object<resource_limits_config_object_type, resource_limits_config_object> {
+   class resource_limits_config_object : public cyberway::chaindb::object<resource_limits_config_object_type, resource_limits_config_object> {
       OBJECT_CTOR(resource_limits_config_object);
       id_type id;
 
@@ -165,14 +165,14 @@ namespace eosio { namespace chain { namespace resource_limits {
       uint32_t account_net_usage_average_window = config::account_net_usage_average_window_ms / config::block_interval_ms;
    };
 
-   using resource_limits_config_index = cyberway::chaindb::shared_multi_index_container<
+   using resource_limits_config_table = cyberway::chaindb::table_container<
       resource_limits_config_object,
       cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_limits_config_object, resource_limits_config_object::id_type, id)>
       >
    >;
 
-   class resource_limits_state_object : public chainbase::object<resource_limits_state_object_type, resource_limits_state_object> {
+   class resource_limits_state_object : public cyberway::chaindb::object<resource_limits_state_object_type, resource_limits_state_object> {
       OBJECT_CTOR(resource_limits_state_object);
       id_type id;
 
@@ -218,7 +218,7 @@ namespace eosio { namespace chain { namespace resource_limits {
       uint64_t virtual_ram_limit = 1024ll*1024*1024*64;
    };
 
-   using resource_limits_state_index = cyberway::chaindb::shared_multi_index_container<
+   using resource_limits_state_table = cyberway::chaindb::table_container<
       resource_limits_state_object,
       cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_limits_state_object, resource_limits_state_object::id_type, id)>

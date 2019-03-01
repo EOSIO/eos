@@ -67,8 +67,8 @@ namespace eosio { namespace chain {
          db.add_index<Index>();
       }
 
-      static void add_indices( chainbase::database& db, cyberway::chaindb::chaindb_controller& chaindb ) {
-         db.add_chaindb_index<Index>(chaindb);
+      static void add_indices( cyberway::chaindb::chaindb_controller& chaindb ) {
+         Index::set_cache_converter(chaindb);
       }
 
       template<typename F>
@@ -85,9 +85,9 @@ namespace eosio { namespace chain {
          index_set<RemainingIndices...>::add_indices(db);
       }
 
-      static void add_indices( chainbase::database& db, cyberway::chaindb::chaindb_controller& chaindb ) {
-         index_set<FirstIndex>::add_indices(db, chaindb);
-         index_set<RemainingIndices...>::add_indices(db, chaindb);
+      static void add_indices( cyberway::chaindb::chaindb_controller& chaindb ) {
+         index_set<FirstIndex>::add_indices(chaindb);
+         index_set<RemainingIndices...>::add_indices(chaindb);
       }
 
       template<typename F>

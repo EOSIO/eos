@@ -728,7 +728,9 @@ namespace bacc = boost::accumulators;
       auto first_auth = trx.first_authorizor();
 
       uint32_t trx_size = 0;
-      const auto& cgto = control.mutable_db().create<generated_transaction_object>( [&]( auto& gto ) {
+      auto& chaindb = control.chaindb();
+      auto trx_table = chaindb.get_table<generated_transaction_object>();
+      auto res = trx_table.emplace( [&]( auto& gto ) {
         gto.trx_id      = id;
         gto.payer       = first_auth;
         gto.sender      = account_name(); /// delayed transactions have no sender
@@ -739,25 +741,30 @@ namespace bacc = boost::accumulators;
         trx_size = gto.set( trx );
       });
 
-      add_ram_usage( cgto.payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
+      add_ram_usage( first_auth, res.delta );
+// TODO: Removed by CyberWay
+//      add_ram_usage( cgto.payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
    }
 
    void transaction_context::record_transaction( const transaction_id_type& id, fc::time_point_sec expire ) {
-      auto trx = control.db().find<transaction_object, by_trx_id>(id);
-      EOS_ASSERT(nullptr == trx, tx_duplicate, "duplicate transaction ${id}", ("id", id ));
+      auto& chaindb = control.chaindb();
+      auto trx_table = chaindb.get_table<transaction_object>();
+      auto trx_id_idx = trx_table.get_index<by_trx_id>();
+      auto itr = trx_id_idx.find(id);
+      EOS_ASSERT(trx_id_idx.end() == itr, tx_duplicate, "duplicate transaction ${id}", ("id", id ));
 
-      control.mutable_db().create<transaction_object>([&](transaction_object& transaction) {
+      trx_table.emplace([&](transaction_object& transaction) {
          transaction.trx_id     = id;
          transaction.expiration = expire;
       });
    } /// record_transaction
 
    void transaction_context::validate_referenced_accounts(const transaction& trx) const {
-      const auto& db = control.db();
+      auto& chaindb = control.chaindb();
       const auto& auth_manager = control.get_authorization_manager();
 
       for( const auto& a : trx.context_free_actions ) {
-         auto* code = db.find<account_object, by_name>(a.account);
+         auto* code = chaindb.find<account_object, by_name>(a.account);
          EOS_ASSERT( code != nullptr, transaction_exception,
                      "action's code account '${account}' does not exist", ("account", a.account) );
          EOS_ASSERT( a.authorization.size() == 0, transaction_exception,
@@ -766,12 +773,12 @@ namespace bacc = boost::accumulators;
 
       bool one_auth = false;
       for( const auto& a : trx.actions ) {
-         auto* code = db.find<account_object, by_name>(a.account);
+         auto* code = chaindb.find<account_object, by_name>(a.account);
          EOS_ASSERT( code != nullptr, transaction_exception,
                      "action's code account '${account}' does not exist", ("account", a.account) );
          for( const auto& auth : a.authorization ) {
             one_auth = true;
-            auto* actor = db.find<account_object, by_name>(auth.actor);
+            auto* actor = chaindb.find<account_object, by_name>(auth.actor);
             EOS_ASSERT( actor  != nullptr, transaction_exception,
                         "action's authorizing actor '${account}' does not exist", ("account", auth.actor) );
             EOS_ASSERT( auth_manager.find_permission(auth) != nullptr, transaction_exception,

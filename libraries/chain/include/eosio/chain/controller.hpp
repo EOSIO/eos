@@ -153,8 +153,6 @@ namespace eosio { namespace chain {
 
          boost::asio::thread_pool& get_thread_pool();
 
-         const chainbase::database& db()const;
-
          const fork_database& fork_db()const;
 
          chaindb_controller& chaindb() const;
@@ -285,8 +283,6 @@ namespace eosio { namespace chain {
       private:
          friend class apply_context;
          friend class transaction_context;
-
-         chainbase::database& mutable_db()const;
 
          std::unique_ptr<controller_impl> my;
 

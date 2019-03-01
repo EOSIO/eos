@@ -86,8 +86,7 @@ struct authority {
 
 
 struct shared_authority {
-   shared_authority( chainbase::allocator<char> )
-   {}
+   shared_authority() = default;
 
    shared_authority& operator=(const authority& a) {
       threshold = a.threshold;

@@ -35,8 +35,7 @@ namespace eosio { namespace chain {
    };
 
    struct shared_producer_schedule_type {
-      shared_producer_schedule_type( chainbase::allocator<char> )
-      {}
+      shared_producer_schedule_type() = default;
 
       shared_producer_schedule_type& operator=( const producer_schedule_type& a ) {
          version = a.version;

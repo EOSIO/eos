@@ -9,7 +9,7 @@
 #include <eosio/chain/multi_index_includes.hpp>
 
 namespace eosio { namespace chain {
-//class producer_object : public chainbase::object<producer_object_type, producer_object> {
+//class producer_object : public cyberway::chaindb::object<producer_object_type, producer_object> {
 //   OBJECT_CTOR(producer_object)
 //
 //   id_type            id;
@@ -26,7 +26,7 @@ namespace eosio { namespace chain {
 //
 //struct by_key;
 //struct by_owner;
-//using producer_multi_index = chainbase::shared_multi_index_container<
+//using producer_multi_index = chainbase::multi_index_container<
 //   producer_object,
 //   indexed_by<
 //      ordered_unique<tag<by_id>, member<producer_object, producer_object::id_type, &producer_object::id>>,

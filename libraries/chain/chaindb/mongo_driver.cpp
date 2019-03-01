@@ -857,7 +857,7 @@ namespace cyberway { namespace chaindb {
                             "Wrong operation type on writing into the table ${table} for the scope '${scope}"
                             "with the revision (find: ${find_rev}, set: ${set_rev}) and with the primary key ${pk}",
                             ("table", get_full_table_name(*table_))("scope", get_scope_name(*table_))
-                            ("find_rev", op.find_revision)("set_rev", op.object.revision())("pk", op.object.pk()));
+                            ("find_rev", op.find_revision)("set_rev", op.object.service.revision)("pk", op.object.pk()));
                         return;
                 }
 
