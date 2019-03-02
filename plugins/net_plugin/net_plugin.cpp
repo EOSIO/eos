@@ -2105,12 +2105,18 @@ namespace eosio {
          connection_wptr weak_conn = conn;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
          std::size_t minimum_read =
                std::atomic_exchange<decltype(conn->outstanding_read_bytes.load())>( &conn->outstanding_read_bytes, 0 );
          minimum_read = minimum_read != 0 ? minimum_read : message_header_size;
 =======
          std::size_t minimum_read = conn->outstanding_read_bytes != 0 ? conn->outstanding_read_bytes.load() : message_header_size;
 >>>>>>> Test of multi-threaded reading
+=======
+         std::size_t minimum_read =
+               std::atomic_exchange<decltype(conn->outstanding_read_bytes.load())>( &conn->outstanding_read_bytes, 0 );
+         minimum_read = minimum_read != 0 ? minimum_read : message_header_size;
+>>>>>>> Remove unneeded access to atomic
 
          if (use_socket_read_watermark) {
             const size_t max_socket_read_watermark = 4096;
@@ -2196,9 +2202,12 @@ namespace eosio {
 
                --conn->reads_in_flight;
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
                conn->outstanding_read_bytes = 0;
 >>>>>>> Test of multi-threaded reading
+=======
+>>>>>>> Remove unneeded access to atomic
                bool close_connection = false;
 
                try {
