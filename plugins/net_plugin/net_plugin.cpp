@@ -521,10 +521,14 @@ namespace eosio {
 
       std::atomic<uint32_t>   reads_in_flight{0};
 <<<<<<< HEAD
+<<<<<<< HEAD
       std::atomic<uint32_t>   trx_in_progress_size{0};
 =======
       uint32_t                trx_in_progress_size = 0;
 >>>>>>> Test of multi-threaded reading
+=======
+      std::atomic<uint32_t>   trx_in_progress_size{0};
+>>>>>>> Make delay_timer thread safe
       fc::sha256              node_id;
       handshake_message       last_handshake_recv;
       handshake_message       last_handshake_sent;
@@ -880,13 +884,19 @@ namespace eosio {
       fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
       cancel_wait();
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> Make delay_timer thread safe
       {
          std::lock_guard<std::mutex> g( read_delay_timer_mutex );
          if( read_delay_timer ) read_delay_timer->cancel();
       }
+<<<<<<< HEAD
 =======
       if( read_delay_timer ) read_delay_timer->cancel();
 >>>>>>> Test of multi-threaded reading
+=======
+>>>>>>> Make delay_timer thread safe
    }
 
    void connection::txn_send_pending(const vector<transaction_id_type>& ids) {
@@ -2116,13 +2126,16 @@ namespace eosio {
                return minimum_read - bytes_transferred;
             }
          };
-/*
+
          if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ||
              conn->reads_in_flight > def_max_reads_in_flight   ||
              conn->trx_in_progress_size > def_max_trx_in_progress_size )
          {
             // too much queued up, reschedule
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> Make delay_timer thread safe
             uint32_t write_queue_size = conn->buffer_queue.write_queue_size();
             uint32_t trx_in_progress_size = conn->trx_in_progress_size;
             uint32_t reads_in_flight = conn->reads_in_flight;
@@ -2130,12 +2143,15 @@ namespace eosio {
                peer_wlog( conn, "write_queue full ${s} bytes", ("s", write_queue_size) );
             } else if( reads_in_flight > def_max_reads_in_flight ) {
                peer_wlog( conn, "max reads in flight ${s}", ("s", reads_in_flight) );
+<<<<<<< HEAD
 =======
             if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ) {
                peer_wlog( conn, "write_queue full ${s} bytes", ("s", conn->buffer_queue.write_queue_size()) );
             } else if( conn->reads_in_flight > def_max_reads_in_flight ) {
                peer_wlog( conn, "max reads in flight ${s}", ("s", conn->reads_in_flight.load()) );
 >>>>>>> Test of multi-threaded reading
+=======
+>>>>>>> Make delay_timer thread safe
             } else {
                peer_wlog( conn, "max trx in progress ${s} bytes", ("s", trx_in_progress_size) );
             }
@@ -2144,7 +2160,11 @@ namespace eosio {
                   trx_in_progress_size > 2*def_max_trx_in_progress_size )
             {
                fc_wlog( logger, "queues over full, giving up on connection" );
+<<<<<<< HEAD
                app().post( priority::medium, [weak_conn]() {
+=======
+               app().post( priority::medium, [this, weak_conn]() {
+>>>>>>> Make delay_timer thread safe
                   auto conn = weak_conn.lock();
                   if( !conn ) return;
                   fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
@@ -2163,7 +2183,7 @@ namespace eosio {
             } ) );
             return;
          }
-*/
+
          ++conn->reads_in_flight;
          boost::asio::async_read(*conn->socket,
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
@@ -2249,6 +2269,7 @@ namespace eosio {
 
                if( close_connection ) {
 <<<<<<< HEAD
+<<<<<<< HEAD
                   app().post( priority::medium, [this, weak_conn]() {
 =======
                   connection_wptr weak_conn = conn;
@@ -2256,6 +2277,8 @@ namespace eosio {
                   app().post( priority::medium, "close conn", [this, weak_conn]() {
 >>>>>>> Test of multi-threaded reading
 =======
+=======
+>>>>>>> Make delay_timer thread safe
                   app().post( priority::medium, [this, weak_conn]() {
 >>>>>>> Remove descriptions of tasks as not merged into develop yet
                      auto conn = weak_conn.lock();
