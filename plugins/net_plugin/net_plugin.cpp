@@ -419,6 +419,7 @@ namespace eosio {
          }
       }
 
+      // thread safe
       uint32_t write_queue_size() const { return _write_queue_size; }
 
       bool is_out_queue_empty() const { return _out_queue.empty(); }
@@ -477,7 +478,7 @@ namespace eosio {
          std::function<void( boost::system::error_code, std::size_t )> callback;
       };
 
-      uint32_t _write_queue_size = 0;
+      std::atomic<uint32_t> _write_queue_size{0};
       deque<queued_write> _write_queue;
       deque<queued_write> _sync_write_queue; // sync_write_queue will be sent first
       deque<queued_write> _out_queue;
@@ -507,7 +508,7 @@ namespace eosio {
       queued_buffer           buffer_queue;
 
       std::atomic<uint32_t>   reads_in_flight{0};
-      uint32_t                trx_in_progress_size = 0;
+      std::atomic<uint32_t>   trx_in_progress_size{0};
       fc::sha256              node_id;
       handshake_message       last_handshake_recv;
       handshake_message       last_handshake_sent;
@@ -517,6 +518,7 @@ namespace eosio {
       uint16_t                protocol_version  = 0;
       string                  peer_addr;
       unique_ptr<boost::asio::steady_timer> response_expected;
+      std::mutex                            read_delay_timer_mutex;
       unique_ptr<boost::asio::steady_timer> read_delay_timer;
       go_away_reason         no_retry = no_reason;
       block_id_type          fork_head;
@@ -841,7 +843,10 @@ namespace eosio {
       my_impl->sync_master->reset_lib_num(shared_from_this());
       fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
       cancel_wait();
-      if( read_delay_timer ) read_delay_timer->cancel();
+      {
+         std::lock_guard<std::mutex> g( read_delay_timer_mutex );
+         if( read_delay_timer ) read_delay_timer->cancel();
+      }
    }
 
    void connection::txn_send_pending(const vector<transaction_id_type>& ids) {
@@ -2042,27 +2047,36 @@ namespace eosio {
                return minimum_read - bytes_transferred;
             }
          };
-/*
+
          if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ||
              conn->reads_in_flight > def_max_reads_in_flight   ||
              conn->trx_in_progress_size > def_max_trx_in_progress_size )
          {
             // too much queued up, reschedule
-            if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ) {
-               peer_wlog( conn, "write_queue full ${s} bytes", ("s", conn->buffer_queue.write_queue_size()) );
-            } else if( conn->reads_in_flight > def_max_reads_in_flight ) {
-               peer_wlog( conn, "max reads in flight ${s}", ("s", conn->reads_in_flight.load()) );
+            uint32_t write_queue_size = conn->buffer_queue.write_queue_size();
+            uint32_t trx_in_progress_size = conn->trx_in_progress_size;
+            uint32_t reads_in_flight = conn->reads_in_flight;
+            if( write_queue_size > def_max_write_queue_size ) {
+               peer_wlog( conn, "write_queue full ${s} bytes", ("s", write_queue_size) );
+            } else if( reads_in_flight > def_max_reads_in_flight ) {
+               peer_wlog( conn, "max reads in flight ${s}", ("s", reads_in_flight) );
             } else {
-               peer_wlog( conn, "max trx in progress ${s} bytes", ("s", conn->trx_in_progress_size) );
+               peer_wlog( conn, "max trx in progress ${s} bytes", ("s", trx_in_progress_size) );
             }
-            if( conn->buffer_queue.write_queue_size() > 2*def_max_write_queue_size ||
-                conn->reads_in_flight > 2*def_max_reads_in_flight   ||
-                conn->trx_in_progress_size > 2*def_max_trx_in_progress_size )
+            if( write_queue_size > 2*def_max_write_queue_size ||
+                reads_in_flight > 2*def_max_reads_in_flight   ||
+                  trx_in_progress_size > 2*def_max_trx_in_progress_size )
             {
-               fc_wlog( logger, "queues over full, giving up on connection ${p}", ("p", conn->peer_name()) );
-               my_impl->close( conn );
+               fc_wlog( logger, "queues over full, giving up on connection" );
+               app().post( priority::medium, [this, weak_conn]() {
+                  auto conn = weak_conn.lock();
+                  if( !conn ) return;
+                  fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
+                  my_impl->close( conn );
+               });
                return;
             }
+            std::lock_guard<std::mutex> g( conn->read_delay_timer_mutex );
             if( !conn->read_delay_timer ) return;
             conn->read_delay_timer->expires_from_now( def_read_delay_for_full_write_queue );
             conn->read_delay_timer->async_wait(
@@ -2073,7 +2087,7 @@ namespace eosio {
             } ) );
             return;
          }
-*/
+
          ++conn->reads_in_flight;
          boost::asio::async_read(*conn->socket,
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
@@ -2155,7 +2169,6 @@ namespace eosio {
                }
 
                if( close_connection ) {
-                  connection_wptr weak_conn = conn;
                   app().post( priority::medium, [this, weak_conn]() {
                      auto conn = weak_conn.lock();
                      if( !conn ) return;
@@ -2165,9 +2178,14 @@ namespace eosio {
                }
          });
       } catch (...) {
-         string pname = conn ? conn->peer_name() : "no connection name";
-         fc_elog( logger, "Undefined exception handling reading ${p}",("p",pname) );
-         close( conn );
+         fc_elog( logger, "Undefined exception in start_read_message" );
+         connection_wptr weak_conn = conn;
+         app().post( priority::medium, [this, weak_conn]() {
+            auto conn = weak_conn.lock();
+            if( !conn ) return;
+            fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
+            close( conn );
+         });
       }
    }
 
