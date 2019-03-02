@@ -2126,7 +2126,7 @@ namespace eosio {
                return minimum_read - bytes_transferred;
             }
          };
-/*
+
          if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ||
              conn->reads_in_flight > def_max_reads_in_flight   ||
              conn->trx_in_progress_size > def_max_trx_in_progress_size )
@@ -2183,7 +2183,7 @@ namespace eosio {
             } ) );
             return;
          }
-*/
+
          ++conn->reads_in_flight;
          boost::asio::async_read(*conn->socket,
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
@@ -2271,9 +2271,12 @@ namespace eosio {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
                   connection_wptr weak_conn = conn;
 >>>>>>> Remove descriptions of tasks as not merged into develop yet
+=======
+>>>>>>> Make delay_timer thread safe
                   app().post( priority::medium, [this, weak_conn]() {
 =======
                   connection_wptr weak_conn = conn;
