@@ -26,6 +26,8 @@
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/steady_timer.hpp>
 
+#include <atomic>
+
 using namespace eosio::chain::plugin_interface::compat;
 
 namespace fc {
@@ -2031,7 +2033,9 @@ namespace eosio {
          }
          connection_wptr weak_conn = conn;
 
-         std::size_t minimum_read = conn->outstanding_read_bytes != 0 ? conn->outstanding_read_bytes.load() : message_header_size;
+         std::size_t minimum_read =
+               std::atomic_exchange<decltype(conn->outstanding_read_bytes.load())>( &conn->outstanding_read_bytes, 0 );
+         minimum_read = minimum_read != 0 ? minimum_read : message_header_size;
 
          if (use_socket_read_watermark) {
             const size_t max_socket_read_watermark = 4096;
@@ -2099,7 +2103,6 @@ namespace eosio {
                }
 
                --conn->reads_in_flight;
-               conn->outstanding_read_bytes = 0;
                bool close_connection = false;
 
                try {
