@@ -2169,7 +2169,6 @@ namespace eosio {
                }
 
                if( close_connection ) {
-                  connection_wptr weak_conn = conn;
                   app().post( priority::medium, [this, weak_conn]() {
                      auto conn = weak_conn.lock();
                      if( !conn ) return;
