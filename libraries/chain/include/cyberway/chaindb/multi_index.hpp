@@ -234,8 +234,6 @@ private:
         using value_type = T;
     }; // struct item_data
 
-    chaindb_controller& controller_;
-
     struct cache_converter_ final: public cache_converter_interface {
         cache_converter_() = default;
         ~cache_converter_() = default;
@@ -328,7 +326,7 @@ private:
         const_iterator_impl& operator=(const_iterator_impl&& src) {
             if (this == &src) return *this;
 
-            multidx_ = src.multidx_;
+            controller_ = src.controller_;
             cursor_ = src.cursor_;
             primary_key_ = src.primary_key_;
             item_ = std::move(src.item_);
@@ -345,7 +343,7 @@ private:
         const_iterator_impl& operator=(const const_iterator_impl& src) {
             if (this == &src) return *this;
 
-            multidx_ = src.multidx_;
+            controller_ = src.controller_;
             primary_key_ = src.primary_key_;
             item_ = src.item_;
 
@@ -367,29 +365,24 @@ private:
             return cursor_ > uninitilized_cursor::state;
         }
 
-        friend multi_index;
         template<typename, typename> friend class index;
 
-        const_iterator_impl(const multi_index* midx, const cursor_t cursor)
-        : multidx_(midx), cursor_(cursor) { }
+        const_iterator_impl(chaindb_controller* ctrl, const cursor_t cursor)
+        : controller_(ctrl), cursor_(cursor) { }
 
-        const_iterator_impl(const multi_index* midx, const cursor_t cursor, const primary_key_t pk)
-        : multidx_(midx), cursor_(cursor), primary_key_(pk) { }
+        const_iterator_impl(chaindb_controller* ctrl, const cursor_t cursor, const primary_key_t pk)
+        : controller_(ctrl), cursor_(cursor), primary_key_(pk) { }
 
-        const_iterator_impl(const multi_index* midx, const cursor_t cursor, const primary_key_t pk, cache_item_ptr item)
-        : multidx_(midx), cursor_(cursor), primary_key_(pk), item_(std::move(item)) { }
-
-        const multi_index& multidx() const {
-            CYBERWAY_ASSERT(multidx_, chaindb_midx_logic_exception,
-                "Iterator is not initialized for the index ${index}", ("index", get_index_name()));
-            return *multidx_;
-        }
+        const_iterator_impl(chaindb_controller* ctrl, const cursor_t cursor, const primary_key_t pk, cache_item_ptr item)
+        : controller_(ctrl), cursor_(cursor), primary_key_(pk), item_(std::move(item)) { }
 
         chaindb_controller& controller() const {
-            return multidx().controller_;
+            CYBERWAY_ASSERT(controller_, chaindb_midx_logic_exception,
+                "Iterator is not initialized for the index ${index}", ("index", get_index_name()));
+            return *controller_;
         }
 
-        const multi_index* multidx_ = nullptr;
+        chaindb_controller* controller_ = nullptr;
         mutable cursor_t cursor_ = uninitilized_cursor::state;
         mutable primary_key_t primary_key_ = end_primary_key;
         mutable cache_item_ptr item_;
@@ -400,7 +393,15 @@ private:
             lazy_open();
             CYBERWAY_ASSERT(primary_key_ != end_primary_key, chaindb_midx_pk_exception,
                 "Cannot load object from the end iterator for the index ${index}", ("index", get_index_name()));
-            item_ = multidx().load_object(cursor_, primary_key_);
+
+            auto ptr = controller().get_cache_item({code_name(), cursor_}, get_table_request(), primary_key_);
+
+            auto& obj = item_data::get_T(ptr);
+            auto ptr_pk = primary_key_extractor_type()(obj);
+            CYBERWAY_ASSERT(ptr_pk == primary_key_, chaindb_midx_pk_exception,
+                "Invalid primary key ${pk} of object ${obj} for the index ${index}",
+                ("pk", primary_key_)("obj", obj)("index", get_index_name()));
+            item_ = ptr;
         }
 
         void lazy_open_begin() const {
@@ -459,18 +460,6 @@ private:
         }
     }; // struct multi_index::const_iterator_impl
 
-    cache_item_ptr load_object(const cursor_t& cursor, const primary_key_t& pk) const {
-        // controller will call as to convert_object()
-        auto ptr = controller_.get_cache_item({code_name(), cursor}, get_table_request(), pk);
-
-        auto& obj = item_data::get_T(ptr);
-        auto ptr_pk = primary_key_extractor_type()(obj);
-        CYBERWAY_ASSERT(ptr_pk == pk, chaindb_midx_pk_exception,
-            "Invalid primary key ${pk} of object ${obj} for the index ${index}",
-            ("pk", pk)("obj", obj)("index", get_index_name()));
-        return ptr;
-    }
-
     template<typename... Idx>
     struct index_container {
         using type = decltype(boost::hana::tuple<Idx...>());
@@ -484,9 +473,18 @@ private:
     primary_index_type primary_idx_;
 
 public:
+    using const_iterator = typename primary_index_type::const_iterator;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+    using emplace_result = typename primary_index_type::emplace_result;
+
     template<typename IndexName, typename Extractor>
     class index {
     public:
+        struct emplace_result final {
+            const T& obj;
+            int64_t  delta;
+        }; // struct emplace_result
+
         using extractor_type = Extractor;
         using key_type = typename std::decay<decltype(Extractor()(static_cast<const T&>(*(const T*)nullptr)))>::type;
         using const_iterator = const_iterator_impl<IndexName>;
@@ -497,17 +495,17 @@ public:
         constexpr static account_name_t code_name()  { return 0; }
         constexpr static account_name_t scope_name() { return 0; }
 
-        index(const multi_index* midx)
-        : multidx_(midx) {
+        index(chaindb_controller& ctrl)
+        : controller_(ctrl) {
         }
 
         const_iterator cbegin() const {
-            return const_iterator(multidx_, uninitilized_cursor::begin);
+            return const_iterator(&controller_, uninitilized_cursor::begin);
         }
         const_iterator begin() const  { return cbegin(); }
 
         const_iterator cend() const {
-            return const_iterator(multidx_, uninitilized_cursor::end);
+            return const_iterator(&controller_, uninitilized_cursor::end);
         }
         const_iterator end() const  { return cend(); }
 
@@ -552,9 +550,9 @@ public:
             find_info info;
             safe_allocate(fc::raw::pack_size(key), "Invalid size of key on lower_bound", [&](auto& data, auto& size) {
                 pack_object(key, data, size);
-                info = controller().lower_bound(get_index_request(), data, size);
+                info = controller_.lower_bound(get_index_request(), data, size);
             });
-            return const_iterator(multidx_, info.cursor, info.pk);
+            return const_iterator(&controller_, info.cursor, info.pk);
         }
 
         template<typename Value>
@@ -565,9 +563,9 @@ public:
             find_info info;
             safe_allocate(fc::raw::pack_size(key), "Invalid size of key on upper_bound", [&](auto& data, auto& size) {
                 pack_object(key, data, size);
-                info = controller().upper_bound(get_index_request(), data, size);
+                info = controller_.upper_bound(get_index_request(), data, size);
             });
-            return const_iterator(multidx_, info.cursor, info.pk);
+            return const_iterator(&controller_, info.cursor, info.pk);
         }
 
         std::pair<const_iterator,const_iterator> equal_range(const key_type& key) const {
@@ -597,14 +595,63 @@ public:
             find_info info;
             safe_allocate(fc::raw::pack_size(key), "Invalid size of key on iterator_to", [&](auto& data, auto& size) {
                 pack_object(key, data, size);
-                info = controller().find(get_index_request(), pk, data, size);
+                info = controller_.find(get_index_request(), pk, data, size);
             });
-            return const_iterator(multidx_, info.cursor, info.pk);
+            return const_iterator(&controller_, info.cursor, info.pk);
+        }
+
+        template<typename Lambda>
+        emplace_result emplace(const ram_payer_info& ram, Lambda&& constructor) const {
+            auto itm = controller_.create_cache_item(get_table_request());
+            try {
+                auto pk = itm->pk();
+                itm->data = std::make_unique<item_data>(*itm.get(), [&](auto& o) {
+                    o.id = pk;
+                    constructor(static_cast<T&>(o));
+                });
+
+                auto& obj = item_data::get_T(itm);
+                auto obj_pk = primary_key_extractor_type()(obj);
+                CYBERWAY_ASSERT(obj_pk == pk, chaindb_midx_pk_exception,
+                    "Invalid value of primary key ${pk} for the object ${obj} on emplace for the index ${index}",
+                    ("pk", pk)("obj", obj)("index", get_index_name()));
+
+                fc::variant value;
+                fc::to_variant(obj, value);
+                auto delta = controller_.insert(*itm.get(), std::move(value), ram);
+
+                return {obj, delta};
+            } catch (...) {
+                itm->mark_deleted();
+                throw;
+            }
+        }
+
+        template<typename Lambda>
+        emplace_result emplace(Lambda&& constructor) const {
+            return emplace({}, std::forward<Lambda>(constructor));
         }
 
         template<typename Lambda>
         int64_t modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
-            return multidx().modify(obj, ram, std::forward<Lambda>(updater));
+            auto& itm = item_data::get_cache(obj);
+            CYBERWAY_ASSERT(itm.is_valid_table(table_name()), chaindb_midx_logic_exception,
+                "Object ${obj} passed to modify is not from the index ${index}",
+                ("obj", obj)("index", get_index_name()));
+
+            auto pk = primary_key_extractor_type()(obj);
+
+            auto& mobj = const_cast<T&>(obj);
+            updater(mobj);
+
+            auto mpk = primary_key_extractor_type()(obj);
+            CYBERWAY_ASSERT(pk == mpk, chaindb_midx_pk_exception,
+                "Updater change primary key ${pk} on modifying of the object ${obj} for the index ${index}",
+                ("pk", pk)("obj", obj)("index", get_index_name()));
+
+            fc::variant value;
+            fc::to_variant(obj, value);
+            return controller_.update(itm, std::move(value), ram);
         }
 
         template<typename Lambda>
@@ -613,21 +660,18 @@ public:
         }
 
         int64_t erase(const T& obj, const ram_payer_info& ram = {}) const {
-            return multidx().erase(obj);
+            auto& itm = item_data::get_cache(obj);
+            CYBERWAY_ASSERT(itm.is_valid_table(table_name()), chaindb_midx_logic_exception,
+                "Object ${obj} passed to erase is not from the index ${index}",
+                ("obj", obj)("index", get_index_name()));
+
+            return controller_.remove(itm, ram);
         }
 
         static auto extract_key(const T& obj) { return extractor_type()(obj); }
 
     private:
-        const multi_index& multidx() const {
-            CYBERWAY_ASSERT(multidx_, chaindb_midx_logic_exception, "Index ${index} is not initialized",
-                 ("index", get_index_name()));
-            return *multidx_;
-        }
-
-        chaindb_controller& controller() const {
-            return multidx().controller_;
-        }
+        friend multi_index;
 
         static index_request& get_index_request() {
             static index_request request{code_name(), scope_name(), table_name(), index_name()};
@@ -638,21 +682,12 @@ public:
             return multi_index::get_index_name(index_name());
         }
 
-        const multi_index* const multidx_ = nullptr;
+        chaindb_controller& controller_;
     }; // struct multi_index::index
-
-    using const_iterator = typename primary_index_type::const_iterator;
-    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-
-    struct emplace_result final {
-        const_iterator pos;
-        int64_t        delta;
-    }; // struct emplace_result
 
 public:
     multi_index(chaindb_controller& controller)
-    : controller_(controller),
-      primary_idx_(this) {
+    : primary_idx_(controller) {
     }
 
     constexpr static table_name_t   table_name() { return code_extractor<TableName>::get_code(); }
@@ -711,7 +746,7 @@ public:
 
         static_assert(res != hana::nothing, "name provided is not the name of any secondary index within multi_index");
 
-        return index<IndexTag, typename std::decay<decltype(res.value())>::type::extractor_type>(this);
+        return index<IndexTag, typename std::decay<decltype(res.value())>::type::extractor_type>(primary_idx_.controller_);
     }
 
     const_iterator iterator_to(const T& obj) const {
@@ -719,71 +754,27 @@ public:
     }
 
     template<typename Lambda>
-    emplace_result emplace(const ram_payer_info& ram, Lambda&& constructor) const {
-        auto itm = controller_.create_cache_item(get_table_request());
-        try {
-            auto pk = itm->pk();
-            itm->data = std::make_unique<item_data>(*itm.get(), [&](auto& o) {
-                o.id = pk;
-                constructor(static_cast<T&>(o));
-            });
-
-            auto& obj = item_data::get_T(itm);
-            auto obj_pk = primary_key_extractor_type()(obj);
-            CYBERWAY_ASSERT(obj_pk == pk, chaindb_midx_pk_exception,
-                "Invalid value of primary key ${pk} for the object ${obj} on emplace for the index ${index}",
-                ("pk", pk)("obj", obj)("index", get_index_name()));
-
-            fc::variant value;
-            fc::to_variant(obj, value);
-            auto delta = controller_.insert(*itm.get(), std::move(value), ram);
-
-            return {const_iterator(this, uninitilized_cursor::find_by_pk, pk, std::move(itm)), delta};
-        } catch (...) {
-            itm->mark_deleted();
-            throw;
-        }
-    }
-
-    template<typename Lambda>
     emplace_result emplace(Lambda&& constructor) const {
-        return emplace({}, std::forward<Lambda>(constructor));
+        return primary_idx_.emplace(std::forward<Lambda>(constructor));
     }
 
     template<typename Lambda>
-    int64_t modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
-        auto& itm = item_data::get_cache(obj);
-        CYBERWAY_ASSERT(itm.is_valid_table(table_name()), chaindb_midx_logic_exception,
-            "Object ${obj} passed to modify is not from the index ${index}",
-            ("obj", obj)("index", get_index_name()));
-
-        auto pk = primary_key_extractor_type()(obj);
-
-        auto& mobj = const_cast<T&>(obj);
-        updater(mobj);
-
-        auto mpk = primary_key_extractor_type()(obj);
-        CYBERWAY_ASSERT(pk == mpk, chaindb_midx_pk_exception,
-            "Updater change primary key ${pk} on modifying of the object ${obj} for the index ${index}",
-            ("pk", pk)("obj", obj)("index", get_index_name()));
-
-        fc::variant value;
-        fc::to_variant(obj, value);
-        return controller_.update(itm, std::move(value), ram);
+    emplace_result emplace(const ram_payer_info& ram, Lambda&& constructor) const {
+        return primary_idx_.emplace(ram, std::forward<Lambda>(constructor));
     }
 
     template<typename Lambda>
     int64_t modify(const T& obj, Lambda&& updater) const {
-        return modify(obj, {}, std::forward<Lambda>(updater));
+        return primary_idx_.modify(obj, std::forward<Lambda>(updater));
+    }
+
+    template<typename Lambda>
+    int64_t modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
+        return primary_idx_.modify(obj, ram, std::forward<Lambda>(updater));
     }
 
     int64_t erase(const T& obj, const ram_payer_info& ram = {}) const {
-        auto& itm = item_data::get_cache(obj);
-        CYBERWAY_ASSERT(itm.is_valid_table(table_name()), chaindb_midx_logic_exception,
-            "Object ${obj} passed to erase is not from the index ${index}",
-            ("obj", obj)("index", get_index_name()));
-
-        return controller_.remove(itm, ram);
+        return primary_idx_.erase(obj, ram);
     }
 }; // struct multi_index
 

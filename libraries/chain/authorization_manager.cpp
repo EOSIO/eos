@@ -79,14 +79,13 @@ namespace eosio { namespace chain {
    }
 
    void authorization_manager::remove_permission( const permission_object& permission, const ram_payer_info& ram ) {
-      auto perm_table = _chaindb.get_table<permission_object>();
-      auto parent_idx = perm_table.get_index<by_parent>();
+      auto parent_idx = _chaindb.get_index<permission_object, by_parent>();
       auto range = parent_idx.equal_range(permission.id._id);
       EOS_ASSERT( range.first == range.second, action_validate_exception,
                   "Cannot remove a permission which has children. Remove the children first.");
 
       _chaindb.erase( permission.usage_id, ram );
-      perm_table.erase( permission, ram );
+      parent_idx.erase( permission, ram );
    }
 
    void authorization_manager::update_permission_usage( const permission_object& permission ) {
@@ -120,8 +119,7 @@ namespace eosio { namespace chain {
       try {
          // First look up a specific link for this message act_name
          auto key = boost::make_tuple(authorizer_account, scope, act_name);
-         auto link_table = _chaindb.get_table<permission_link_object>();
-         auto action_idx = link_table.get_index<by_action_name>();
+         auto action_idx = _chaindb.get_index<permission_link_object, by_action_name>();
          auto itr = action_idx.find(key);
          // If no specific link found, check for a contract-wide default
          if (action_idx.end() == itr) {
@@ -282,9 +280,8 @@ namespace eosio { namespace chain {
 
       const auto& trx_id = cancel.trx_id;
 
-      const auto& trx_table = _chaindb.get_table<generated_transaction_object>();
-      const auto& trx_idx = trx_table.get_index<by_trx_id>();
-      const auto& itr = trx_idx.lower_bound(trx_id);
+      auto trx_idx = _chaindb.get_index<generated_transaction_object, by_trx_id>();
+      auto itr = trx_idx.lower_bound(trx_id);
       EOS_ASSERT( itr != trx_idx.end() && itr->sender == account_name() && itr->trx_id == trx_id,
                   tx_not_found,
                  "cannot cancel trx_id=${tid}, there is no deferred transaction with that transaction id",

@@ -66,8 +66,13 @@ namespace cyberway { namespace chaindb {
         ~chaindb_controller();
 
         template<typename Object>
-        typename object_to_table<Object>::type get_table() {
+        auto get_table() {
             return typename object_to_table<Object>::type(*this);
+        }
+
+        template<typename Object, typename Index>
+        auto get_index() {
+            return get_table<Object>().template get_index<Index>();
         }
 
         template<typename Object>
@@ -128,7 +133,7 @@ namespace cyberway { namespace chaindb {
             auto midx = get_table<Object>();
             auto res = midx.emplace(ram, std::forward<Lambda>(constructor));
             // should not be critical - object is stored in cache map
-            return *res.pos;
+            return res.obj;
         }
 
         template<typename Object, typename Lambda>
