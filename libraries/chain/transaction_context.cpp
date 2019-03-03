@@ -576,7 +576,7 @@ namespace bacc = boost::accumulators;
       return static_cast<uint32_t>(billed_cpu_time_us);
    }
 
-   std::tuple<int64_t, int64_t> transaction_context::max_bandwidth_billed_accounts_can_pay(bool check_staked_virtual_balance) const{
+   std::tuple<int64_t, int64_t> transaction_context::max_bandwidth_billed_accounts_can_pay(bool check_staked_virtual_balance) {
       // Assumes rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot ) was already called prior
 
       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
@@ -598,7 +598,6 @@ namespace bacc = boost::accumulators;
       
       for( const auto& a : bill_to_accounts ) {
          // CYBERWAY: there is no greylists, so it's always elastic
-
           auto ram_limit_ex = rl.get_account_limit_ex(block_time, a, resource_limits::ram_code);
              EOS_ASSERT(ram_limit_ex.available < 0 ||
                 validate_ram_usage.find(a) == validate_ram_usage.end() || ram_limit_ex.used <= ram_limit_ex.max, 

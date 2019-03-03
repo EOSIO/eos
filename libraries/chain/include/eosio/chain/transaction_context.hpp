@@ -91,7 +91,7 @@ namespace eosio { namespace chain {
 
          uint32_t update_billed_cpu_time( fc::time_point now );
 
-         std::tuple<int64_t, int64_t> max_bandwidth_billed_accounts_can_pay(bool check_staked_virtual_balance = false) const;
+         std::tuple<int64_t, int64_t> max_bandwidth_billed_accounts_can_pay(bool check_staked_virtual_balance = false);
 
          uint64_t get_provided_net_limit(account_name account) const;
 

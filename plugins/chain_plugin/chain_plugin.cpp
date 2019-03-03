@@ -1695,8 +1695,10 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.created          = a.creation_date;
    
    int64_t now = db.pending_block_time().sec_since_epoch();
-   result.net_limit = rm.get_account_limit_ex(now, result.account_name, resource_limits::net_code);
-   result.cpu_limit = rm.get_account_limit_ex(now, result.account_name, resource_limits::cpu_code);
+   //TODO:
+   result.net_limit = {};
+   result.cpu_limit = {};
+   
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
 
    auto table = d.get_table<permission_object>();

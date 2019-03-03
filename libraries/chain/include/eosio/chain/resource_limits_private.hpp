@@ -227,9 +227,9 @@ namespace eosio { namespace chain { namespace resource_limits {
 
 } } } /// eosio::chain::resource_limits
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_usage_object,         eosio::chain::resource_limits::resource_usage_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_config_object, eosio::chain::resource_limits::resource_limits_config_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::resource_limits::resource_limits_state_object,  eosio::chain::resource_limits::resource_limits_state_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_usage_object,         eosio::chain::resource_limits::resource_usage_table)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_limits_config_object, eosio::chain::resource_limits::resource_limits_config_table)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_limits_state_object, eosio::chain::resource_limits::resource_limits_state_table)
 
 CHAINDB_TAG(eosio::chain::resource_limits::resource_usage_object,         resusage)
 CHAINDB_TAG(eosio::chain::resource_limits::resource_limits_config_object, resconfig)

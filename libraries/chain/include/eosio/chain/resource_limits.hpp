@@ -87,7 +87,7 @@ namespace resource_limits {
          uint64_t get_block_cpu_limit() const;
          uint64_t get_block_net_limit() const;
 
-         account_resource_limit get_account_limit_ex(int64_t now, const account_name& account, symbol_code purpose_code) const;
+         account_resource_limit get_account_limit_ex(int64_t now, const account_name& account, symbol_code purpose_code);
 
          int64_t get_account_ram_usage( const account_name& name ) const;
          
