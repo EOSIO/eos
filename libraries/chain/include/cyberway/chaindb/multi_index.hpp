@@ -254,6 +254,22 @@ private:
 
     using primary_key_extractor_type = typename PrimaryIndex::extractor;
 
+    template<typename IndexName, typename Extractor>
+    struct iterator_extractor_impl {
+        template<typename Iterator>
+        auto operator()(const Iterator& itr) const {
+            return Extractor()(*itr);
+        }
+    }; // iterator_extractor_impl
+
+    template<typename E>
+    struct iterator_extractor_impl<typename PrimaryIndex::tag, E> {
+        template<typename Iterator>
+        const primary_key_t& operator()(const Iterator& itr) const {
+            return itr.primary_key_;
+        }
+    }; // iterator_extractor_impl
+
     static string get_index_name(const index_name_t index) {
         return eosio::chain::table_name(table_name()).to_string()
             .append(".")
@@ -366,6 +382,7 @@ private:
         }
 
         template<typename, typename> friend class index;
+        template<typename, typename> friend struct iterator_extractor_impl;
 
         const_iterator_impl(chaindb_controller* ctrl, const cursor_t cursor)
         : controller_(ctrl), cursor_(cursor) { }
@@ -486,6 +503,7 @@ public:
         }; // struct emplace_result
 
         using extractor_type = Extractor;
+        using iterator_extractor_type = iterator_extractor_impl<IndexName, Extractor>;
         using key_type = typename std::decay<decltype(Extractor()(static_cast<const T&>(*(const T*)nullptr)))>::type;
         using const_iterator = const_iterator_impl<IndexName>;
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
@@ -521,20 +539,20 @@ public:
             auto itr = lower_bound(key);
             auto etr = cend();
             if (itr == etr) return etr;
-            if (!key_comparator<key_type>::compare_eq(extractor_type()(*itr), value)) return etr;
+            if (!key_comparator<key_type>::compare_eq(iterator_extractor_type()(itr), value)) return etr;
             return itr;
         }
         const_iterator find(const key_type& key) const {
             auto itr = lower_bound(key);
             auto etr = cend();
             if (itr == etr) return etr;
-            if (key != extractor_type()(*itr)) return etr;
+            if (key != iterator_extractor_type()(itr)) return etr;
             return itr;
         }
 
         const_iterator require_find(const key_type& key) const {
             auto itr = lower_bound(key);
-            CYBERWAY_ASSERT(itr != cend() && key == extractor_type()(*itr), chaindb_midx_find_exception,
+            CYBERWAY_ASSERT(itr != cend() && key == iterator_extractor_type()(itr), chaindb_midx_find_exception,
                 "Unable to find key ${key} in the index ${index}", ("key", key)("index", get_index_name()));
             return itr;
         }
@@ -577,7 +595,7 @@ public:
             const_iterator lower = lower_bound(value);
             const_iterator upper = lower;
             auto etr = cend();
-            while(upper != etr && key_comparator<key_type>::compare_eq(extractor_type()(*upper), value)) {
+            while(upper != etr && key_comparator<key_type>::compare_eq(iterator_extractor_type()(upper), value)) {
                 ++upper;
             }
 
