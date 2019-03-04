@@ -419,7 +419,7 @@ struct controller_impl {
       ilog( "${n} reversible blocks replayed", ("n",rev) );
       auto end = fc::time_point::now();
       ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
-            ("n", head->block_num - start_block_num)("duration", (end-start).count()/1000000)
+            ("n", head->block_num + 1 - start_block_num)("duration", (end-start).count()/1000000)
             ("mspb", ((end-start).count()/1000.0)/(head->block_num-start_block_num)) );
       replay_head_time.reset();
    }
@@ -719,11 +719,10 @@ struct controller_impl {
          section.read_row(head_header_state, db);
 
          snapshot_head_block = head_header_state.block_num;
-         auto next_block_after_snapshot_head = snapshot_head_block + 1;
-         EOS_ASSERT( blog_start <= next_block_after_snapshot_head && next_block_after_snapshot_head <= blog_end,
+         EOS_ASSERT( blog_start <= (snapshot_head_block + 1) && snapshot_head_block <= blog_end,
                      block_log_exception,
-                     "Block log is provided with snapshot but does not contain the block after the head block from the snapshot",
-                     ("next_block_after_snapshot_head_num", next_block_after_snapshot_head)
+                     "Block log is provided with snapshot but does not contain the head block from the snapshot nor a block right after it",
+                     ("snapshot_head_block", snapshot_head_block)
                      ("block_log_first_num", blog_start)
                      ("block_log_last_num", blog_end)
          );
