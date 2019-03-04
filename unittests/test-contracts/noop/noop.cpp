@@ -2,23 +2,13 @@
  *  @file
  *  @copyright defined in eos/LICENSE
  */
-#include <eosiolib/eosio.hpp>
+#include "noop.hpp"
 
-namespace eosio {
+using namespace eosio;
 
-   CONTRACT noop: public contract {
-   public:
-      using contract::contract;
-
-      // Ignore type in action
-      ACTION anyaction( name from,
-                        const eosio::ignore<std::string>& type,
-                        const eosio::ignore<std::string>& data )
-      {
-         require_auth( from );
-      }
-   };
-
-   EOSIO_DISPATCH( noop, ( anyaction ) )
-    
-} /// namespace eosio     
+void noop::anyaction( name                       from,
+                      const ignore<std::string>& type,
+                      const ignore<std::string>& data )
+{
+   require_auth( from );
+}

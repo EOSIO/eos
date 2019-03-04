@@ -417,16 +417,16 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
       action setowner_act;
       setowner_act.account = N(proxy);
       setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
+      setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
          ("delay", 10),
          abi_serializer_max_time
       );
       trx.actions.emplace_back(std::move(setowner_act));
-      
+
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(alice), "active"), control->get_chain_id());
+      trx.sign(get_private_key(N(proxy), "active"), control->get_chain_id());
       push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -473,7 +473,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       action setowner_act;
       setowner_act.account = N(proxy);
       setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
+      setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "bob")
          ("delay", 10),
@@ -482,7 +482,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       trx.actions.emplace_back(std::move(setowner_act));
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(bob), "active"), control->get_chain_id());
+      trx.sign(get_private_key(N(proxy), "active"), control->get_chain_id());
       push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -506,7 +506,6 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       produce_block();
       BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
-      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
       BOOST_REQUIRE_EQUAL(1, index.size());
       BOOST_REQUIRE_EQUAL(false, chain_has_transaction(deferred_id));
    }
@@ -525,7 +524,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       action setowner_act;
       setowner_act.account = N(bob);
       setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
+      setowner_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
          ("delay", 0),
@@ -534,7 +533,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       trx.actions.emplace_back(std::move(setowner_act));
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(alice), "active"), control->get_chain_id());
+      trx.sign(get_private_key(N(bob), "active"), control->get_chain_id());
       push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));

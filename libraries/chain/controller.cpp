@@ -24,7 +24,6 @@
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 
-
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
@@ -193,7 +192,7 @@ struct controller_impl {
     *  are removed from this list if they are re-applied in other blocks. Producers
     *  can query this list when scheduling new transactions into blocks.
     */
-   map<digest_type, transaction_metadata_ptr, sha256_less>     unapplied_transactions;
+   unapplied_transactions_type     unapplied_transactions;
 
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
@@ -395,8 +394,8 @@ struct controller_impl {
                ("s", start_block_num)("n", blog_head->block_num()) );
          while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
             replay_push_block( next, controller::block_status::irreversible );
-            if( next->block_num() % 100 == 0 ) {
-               std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
+            if( next->block_num() % 500 == 0 ) {
+               ilog( "${n} of ${head}", ("n", next->block_num())("head", blog_head->block_num()) );
                if( shutdown() ) break;
             }
          }
@@ -1457,7 +1456,7 @@ struct controller_impl {
 
          auto bsp = std::make_shared<block_state>(
                         std::move( ab._pending_block_header_state ),
-                        std::move( ab._unsigned_block ),
+                        b,
                         std::move( ab._trx_metas ),
                         true // signature should have already been verified (assuming untrusted) prior to apply_block
                     );
@@ -1924,10 +1923,23 @@ void controller::add_indices() {
 
 void controller::startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot ) {
    my->head = my->fork_db.head();
-   if( !my->head ) {
+   if( snapshot ) {
+      ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
+   }
+   else if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
    }
-   my->init(shutdown, snapshot);
+
+   try {
+      my->init(shutdown, snapshot);
+   } catch (boost::interprocess::bad_alloc& e) {
+      if ( snapshot )
+         elog( "db storage not configured to have enough storage for the provided snapshot, please increase and retry snapshot" );
+      throw e;
+   }
+   if( snapshot ) {
+      ilog( "Finished initialization from snapshot" );
+   }
 }
 
 const chainbase::database& controller::db()const { return my->db; }
@@ -2404,41 +2416,12 @@ const account_object& controller::get_account( account_name name )const
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
-vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {
-   vector<transaction_metadata_ptr> result;
-   if ( my->read_mode == db_read_mode::SPECULATIVE ) {
-      result.reserve(my->unapplied_transactions.size());
-      for ( const auto& entry: my->unapplied_transactions ) {
-         result.emplace_back(entry.second);
-      }
-   } else {
-      EOS_ASSERT( my->unapplied_transactions.empty(), transaction_exception, "not empty unapplied_transactions in non-speculative mode" ); //should never happen
+unapplied_transactions_type& controller::get_unapplied_transactions() {
+   if ( my->read_mode != db_read_mode::SPECULATIVE ) {
+      EOS_ASSERT( my->unapplied_transactions.empty(), transaction_exception,
+                  "not empty unapplied_transactions in non-speculative mode" ); //should never happen
    }
-   return result;
-}
-
-void controller::drop_unapplied_transaction(const transaction_metadata_ptr& trx) {
-   my->unapplied_transactions.erase(trx->signed_id);
-}
-
-void controller::drop_all_unapplied_transactions() {
-   my->unapplied_transactions.clear();
-}
-
-vector<transaction_id_type> controller::get_scheduled_transactions() const {
-   const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
-
-   vector<transaction_id_type> result;
-
-   static const size_t max_reserve = 64;
-   result.reserve(std::min(idx.size(), max_reserve));
-
-   auto itr = idx.begin();
-   while( itr != idx.end() && itr->delay_until <= pending_block_time() ) {
-      result.emplace_back(itr->trx_id);
-      ++itr;
-   }
-   return result;
+   return my->unapplied_transactions;
 }
 
 bool controller::sender_avoids_whitelist_blacklist_enforcement( account_name sender )const {

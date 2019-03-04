@@ -145,7 +145,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
       BOOST_TEST_CONTEXT("Testing Fork: " << i) {
          const auto& fork = forks.at(i);
          // push the fork to the original node
-         for (int fidx = 0; fidx < fork.blocks.size() - 1; fidx++) {
+         for (size_t fidx = 0; fidx < fork.blocks.size() - 1; fidx++) {
             const auto& b = fork.blocks.at(fidx);
             // push the block only if its not known already
             if (!bios.control->fetch_block_by_id(b->id())) {
@@ -331,10 +331,10 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
    push_blocks(c, c2);
 
    // fork happen after block 61
-   BOOST_REQUIRE_EQUAL(61, c.control->head_block_num());
-   BOOST_REQUIRE_EQUAL(61, c2.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(61u, c.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(61u, c2.control->head_block_num());
 
-   int fork_num = c.control->head_block_num();
+   uint32_t fork_num = c.control->head_block_num();
 
    auto nextproducer = [](tester &c, int skip_interval) ->account_name {
       auto head_time = c.control->head_block_time();
@@ -358,20 +358,60 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
       else ++skip2;
    }
 
-   BOOST_REQUIRE_EQUAL(87, c.control->head_block_num());
-   BOOST_REQUIRE_EQUAL(73, c2.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(87u, c.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(73u, c2.control->head_block_num());
 
    // push fork from c2 => c
-   int p = fork_num;
+   size_t p = fork_num;
+
    while ( p < c2.control->head_block_num()) {
       auto fb = c2.control->fetch_block_by_number(++p);
       c.push_block(fb);
    }
 
-   BOOST_REQUIRE_EQUAL(73, c.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(73u, c.control->head_block_num());
 
 } FC_LOG_AND_RETHROW()
 
+
+/**
+ *  Tests that a validating node does not accept a block which is considered invalid by another node.
+ */
+BOOST_AUTO_TEST_CASE( validator_accepts_valid_blocks ) try {
+
+   tester n1;
+   tester n2;
+   tester n3;
+
+   n1.produce_block();
+
+   auto id = n1.control->head_block_id();
+
+   block_state_ptr first_block;
+
+   auto c = n2.control->accepted_block.connect( [&]( const block_state_ptr& bsp) {
+      if( bsp->block_num == 2 ) {
+         first_block = bsp;
+      }
+   } );
+
+   push_blocks( n1, n2 );
+
+   BOOST_CHECK_EQUAL( n2.control->head_block_id(), id );
+
+   BOOST_REQUIRE( first_block );
+   first_block->verify_signee( first_block->signee() );
+   BOOST_CHECK_EQUAL( first_block->header.id(), first_block->block->id() );
+   BOOST_CHECK( first_block->header.producer_signature == first_block->block->producer_signature );
+
+   c.disconnect();
+
+   n3.push_block( first_block->block );
+
+   BOOST_CHECK_EQUAL( n3.control->head_block_id(), id );
+
+
+} FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE( read_modes ) try {
    tester c;

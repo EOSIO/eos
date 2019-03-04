@@ -17,11 +17,11 @@ BOOST_AUTO_TEST_SUITE(block_timestamp_tests)
 
 BOOST_AUTO_TEST_CASE(constructor_test) {
 	block_timestamp_type bt;
-        BOOST_TEST( bt.slot == 0, "Default constructor gives wrong value");
+        BOOST_TEST( bt.slot == 0u, "Default constructor gives wrong value");
         
 	fc::time_point t(fc::seconds(978307200));	
 	block_timestamp_type bt2(t);
-	BOOST_TEST( bt2.slot == (978307200 - 946684800)*2, "Time point constructor gives wrong value");
+	BOOST_TEST( bt2.slot == (978307200u - 946684800u)*2, "Time point constructor gives wrong value");
 }
 
 BOOST_AUTO_TEST_CASE(conversion_test) {

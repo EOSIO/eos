@@ -102,7 +102,7 @@ namespace eosio { namespace chain {
                                                     bool allow_duplicate_keys = false )const;
    };
 
-   struct packed_transaction {
+   struct packed_transaction : fc::reflect_init {
       enum compression_type {
          none = 0,
          zlib = 1,
@@ -158,6 +158,7 @@ namespace eosio { namespace chain {
 
       friend struct fc::reflector<packed_transaction>;
       friend struct fc::reflector_init_visitor<packed_transaction>;
+      friend struct fc::has_reflector_init<packed_transaction>;
       void reflector_init();
    private:
       vector<signature_type>                  signatures;

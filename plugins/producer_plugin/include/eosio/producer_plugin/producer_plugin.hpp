@@ -65,6 +65,7 @@ public:
    virtual void plugin_initialize(const boost::program_options::variables_map& options);
    virtual void plugin_startup();
    virtual void plugin_shutdown();
+   void handle_sighup() override;
 
    void pause();
    void resume();
