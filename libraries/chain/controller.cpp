@@ -307,19 +307,7 @@ struct controller_impl {
       if( fork_head->dpos_irreversible_blocknum <= lib_num )
          return;
 
-      /*
-      const auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
-      auto libitr = rbi.find( fork_head->dpos_irreversible_blocknum );
-      EOS_ASSERT( libitr != rbi.end(), fork_database_exception,
-                  "new LIB according to fork database is not in reversible block database" );
-
-      fc::datastream<const char*> ds( libitr->packedblock.data(), libitr->packedblock.size() );
-      block_header h;
-      fc::raw::unpack( ds, h );
-      auto lib_id = h.id();
-      */
-
-      const auto branch = fork_db.fetch_branch( fork_head->id, fork_head->dpos_irreversible_blocknum ); //fork_db.fetch_branch( lib_id );
+      const auto branch = fork_db.fetch_branch( fork_head->id, fork_head->dpos_irreversible_blocknum );
       try {
          const auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
 
@@ -402,7 +390,15 @@ struct controller_impl {
          std::cerr<< "\n";
          ilog( "${n} irreversible blocks replayed", ("n", 1 + head->block_num - start_block_num) );
 
-         fork_db.reset( *head );
+         auto pending_head = fork_db.pending_head();
+         if( pending_head->block_num < head->block_num || head->block_num <= fork_db.root()->block_num ) {
+            fork_db.reset( *head );
+         } else {
+            auto new_root = fork_db.search_on_branch( pending_head->id, head->block_num );
+            EOS_ASSERT( new_root, fork_database_exception, "unexpected error: could not find new LIB in fork database" );
+            fork_db.mark_valid( new_root );
+            fork_db.advance_root( new_root->id );
+         }
 
          // if the irreverible log is played without undo sessions enabled, we need to sync the
          // revision ordinal to the appropriate expected value here.
@@ -429,142 +425,63 @@ struct controller_impl {
    }
 
    void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
-      auto blog_head = blog.head();
-      auto lib_num = (blog_head ? blog_head->block_num() : 1);
-      auto last_block_num = lib_num;
-
-      const auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
-
-      if (read_mode == db_read_mode::IRREVERSIBLE) {
-         // ensure there's no reversible_blocks in irreversible mode
-         auto rbitr = rbi.begin();
-         while ( rbitr != rbi.end() ) {
-            reversible_blocks.remove( *rbitr );
-            rbitr = rbi.begin();
-         }
-      } else {
-         auto rbitr = rbi.rbegin();
-         if( rbitr != rbi.rend() ) {
-            EOS_ASSERT( blog_head, fork_database_exception,
-                        "non-empty reversible blocks despite empty irreversible block log" );
-            EOS_ASSERT( rbitr->blocknum > lib_num, fork_database_exception,
-                        "reversible block database is inconsistent with the block log" );
-            last_block_num = rbitr->blocknum;
-         }
-      }
-
-      // Setup state if necessary (or in the default case stay with already loaded state)
+      // Setup state if necessary (or in the default case stay with already loaded state):
+      auto lib_num = 1;
       if( snapshot ) {
-         EOS_ASSERT( !head, fork_database_exception, "" );
          snapshot->validate();
-
-         read_from_snapshot( snapshot );
-
-         if( !blog_head ) {
+         if( blog.head() ) {
+            lib_num = blog.head()->block_num();
+            read_from_snapshot( snapshot, blog.first_block_num(), lib_num );
+         } else {
+            read_from_snapshot( snapshot, 0, std::numeric_limits<uint32_t>::max() );
             lib_num = head->block_num;
             blog.reset( conf.genesis, signed_block_ptr(), lib_num + 1 );
          }
-
-         EOS_ASSERT( lib_num >= head->block_num, fork_database_exception,
-                     "Block log is provided with snapshot but does not contain the head block from the snapshot" );
       } else {
-         if( !head ) {
+         if( !fork_db.head() ) {
+            ilog( "No head block in fork datbase. Initializing fresh blockchain state." );
             initialize_blockchain_state(); // set head to genesis state
-         } else {
-            if (read_mode != db_read_mode::IRREVERSIBLE) {
-               EOS_ASSERT( last_block_num == head->block_num, fork_database_exception,
-                           "reversible block database is inconsistent with fork database, replay blockchain",
-                           ("head", head->block_num)("last_block_num", last_block_num)
-                        );
-            }
-         }
-
-         if( !blog_head ) {
-            if( blog.first_block_num() > 1 ) {
-               lib_num = blog.first_block_num() - 1;
-               last_block_num = lib_num;
-               EOS_ASSERT( lib_num == head->block_num, fork_database_exception,
-                           "Empty block log requires the next block to be appended to it to be at height ${first_block_num} which is not compatible with the head block",
-                           ("first_block_num", blog.first_block_num())("head", head->block_num)
-                         );
+            if( blog.head() ) {
+               EOS_ASSERT( blog.first_block_num() == 1, block_log_exception,
+                           "block log does not start with genesis block"
+               );
             } else {
                blog.reset( conf.genesis, head->block );
             }
-         }
-      }
-
-      // handle read_mode transition (probably reconstruct reversible_blocks)
-      if (read_mode != db_read_mode::IRREVERSIBLE) { // speculative mode
-         if (head->block_num < fork_db.pending_head()->block_num) {
-            // irreversible mode => speculative mode
-            wlog("db_read_mode has been changed: reconstruct reversible_blocks & forwarding state from #${h} to fork pending head #${fh}", ("h", head->block_num)("fh", fork_db.pending_head()->block_num));
-
-            // rebuild reversible_blocks from fork_db
-            auto rbitr = rbi.begin();
-            while ( rbitr != rbi.end() ) {
-               reversible_blocks.remove( *rbitr );
-               rbitr = rbi.begin();
+         } else {
+            lib_num = fork_db.root()->block_num;
+            auto first_block_num = blog.first_block_num();
+            if( blog.head() ) {
+               EOS_ASSERT( first_block_num <= lib_num && lib_num <= blog.head()->block_num(),
+                           block_log_exception,
+                           "block log does not contain last irreversible block",
+                           ("block_log_first_num", first_block_num)
+                           ("block_log_last_num", blog.head()->block_num())
+                           ("fork_db_lib", lib_num)
+               );
+               lib_num = blog.head()->block_num();
+            } else {
+               lib_num = fork_db.root()->block_num;
+               if( first_block_num != (lib_num + 1) ) {
+                  blog.reset( conf.genesis, signed_block_ptr(), lib_num + 1 );
+               }
             }
 
-            block_state_ptr bsp;
-            vector<block_state_ptr> head_to_lib;
-            auto id = fork_db.pending_head()->id;
-            while (id != head->id && (bsp = fork_db.get_block(id))) {
-               head_to_lib.push_back(bsp);
-               id = bsp->header.previous;
+            if( read_mode == db_read_mode::IRREVERSIBLE && fork_db.head()->id != fork_db.root()->id ) {
+               fork_db.rollback_head_to_root();
             }
-                  
-            auto blog_head = blog.head();
-            auto blog_head_time = blog_head->timestamp.to_time_point();
-            replay_head_time = blog_head_time;
-            for (auto itr = head_to_lib.rbegin(); itr != head_to_lib.rend(); ++itr) {
-               reversible_blocks.create<reversible_block_object>( [&]( auto& ubo ) {
-                  ubo.blocknum = (*itr)->block_num;
-                  ubo.set_block( (*itr)->block );
-               });
-               replay_push_block( (*itr)->block, controller::block_status::validated, false);
-            }
-            replay_head_time.reset();
-         }
-      } else { // irreversible mode
-         uint32_t target_lib = fork_db.root()->block_num;
-         if (head->block_num > target_lib) {  
-            // speculative mode => irreversible mode
-            wlog("db_read_mode has been changed, rolling back state from block #${o} to lib block #${l}", ("o", head->block_num)("l", target_lib));
-            // let's go backward to lib(fork_db root)
-            while (head->block_num > target_lib) {
-               pop_block();
-            }
-            fork_db.rollback_head_to_root();
+            head = fork_db.head();
          }
       }
-      
-      bool report_integrity_hash = !!snapshot || (lib_num > head->block_num);
-
-      // Trim any irreversible blocks from start of reversible blocks database
-      if( lib_num >= last_block_num ) {
-         last_block_num = lib_num;
-         auto rbitr = rbi.begin();
-         while( rbitr != rbi.end() && rbitr->blocknum <= lib_num ) {
-            reversible_blocks.remove( *rbitr );
-            rbitr = rbi.begin();
-         }
-      }
-
-      if( lib_num > head->block_num ) {
-         replay( shutdown ); // replay irreversible blocks and any reversible blocks
-      } else if( last_block_num > lib_num ) {
-         replay( shutdown ); // replay reversible blocks
-      }
-
-      if( shutdown() ) return;
+      // At this point head == fork_db.head() != nullptr && fork_db.root() != nullptr && fork_db.root()->block_num <= lib_num.
+      // Also, even though blog.head() may still be nullptr, blog.first_block_num() is guaranteed to be lib_num + 1.
 
       EOS_ASSERT( db.revision() >= head->block_num, fork_database_exception,
-                  "fork database is inconsistent with state",
+                  "fork database head is inconsistent with state",
                   ("db",db.revision())("head",head->block_num) );
 
       if( db.revision() > head->block_num ) {
-         wlog( "warning: database revision (${db}) is greater than head block number (${head}), "
+         wlog( "database revision (${db}) is greater than head block number (${head}), "
                "attempting to undo pending changes",
                ("db",db.revision())("head",head->block_num) );
       }
@@ -572,10 +489,102 @@ struct controller_impl {
          db.undo();
       }
 
+      const auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
+      auto last_block_num = lib_num;
+
+      if (read_mode == db_read_mode::IRREVERSIBLE) {
+         // ensure there are no reversible blocks
+         auto itr = rbi.begin();
+         if( itr != rbi.end() ) {
+            wlog( "read_mode has changed to irreversible: erasing reversible blocks" );
+         }
+         for( ; itr != rbi.end(); itr = rbi.begin() )
+            reversible_blocks.remove( *itr );
+      } else {
+         auto itr = rbi.begin();
+         for( ; itr != rbi.end() && itr->blocknum <= lib_num; itr = rbi.begin() )
+            reversible_blocks.remove( *itr );
+
+         EOS_ASSERT( itr == rbi.end() || itr->blocknum == lib_num + 1, reversible_blocks_exception,
+                     "gap exists between last irreversible block and first reversible block",
+                     ("lib", lib_num)("first_reversible_block_num", itr->blocknum)
+         );
+
+         auto ritr = rbi.rbegin();
+
+         if( ritr != rbi.rend() ) {
+            last_block_num = ritr->blocknum;
+            EOS_ASSERT( blog.head(), reversible_blocks_exception,
+                        "non-empty reversible blocks despite empty irreversible block log"
+            );
+         }
+
+         EOS_ASSERT( head->block_num <= last_block_num, reversible_blocks_exception,
+                     "head block (${head_num}) is greater than the last locally stored block (${last_block_num})",
+                     ("head_num", head->block_num)("last_block_num", last_block_num)
+         );
+
+         auto pending_head = fork_db.pending_head();
+
+         if( ritr != rbi.rend()
+             && blog.head()->block_num() < pending_head->block_num
+             && pending_head->block_num <= last_block_num
+         ) {
+            auto rbitr = rbi.find( pending_head->block_num );
+            EOS_ASSERT( rbitr != rbi.end(), reversible_blocks_exception, "pending head block not found in reversible blocks");
+            auto rev_id = rbitr->get_block_id();
+            EOS_ASSERT( rev_id == pending_head->id,
+                        reversible_blocks_exception,
+                        "mismatch in block id of pending head block ${num} in reversible blocks database: "
+                        "expected: ${expected}, actual: ${actual}",
+                        ("num", pending_head->block_num)("expected", pending_head->id)("actual", rev_id)
+            );
+         } else if( last_block_num < pending_head->block_num ) {
+            const auto& branch = fork_db.fetch_branch( pending_head->id );
+            auto num_blocks_prior_to_pending_head = pending_head->block_num - last_block_num;
+            FC_ASSERT( 1 <= num_blocks_prior_to_pending_head && num_blocks_prior_to_pending_head <= branch.size(),
+                       "unexpected violation of invariants" );
+
+            if( ritr != rbi.rend() ) {
+               FC_ASSERT( num_blocks_prior_to_pending_head < branch.size(), "unexpected violation of invariants" );
+               auto fork_id = branch[branch.size() - num_blocks_prior_to_pending_head - 1]->id;
+               auto rev_id = ritr->get_block_id();
+               EOS_ASSERT( rev_id == fork_id,
+                           reversible_blocks_exception,
+                           "mismatch in block id of last block (${num}) in reversible blocks database: "
+                           "expected: ${expected}, actual: ${actual}",
+                           ("num", last_block_num)("expected", fork_id)("actual", rev_id)
+               );
+            }
+
+            if( pending_head->id != head->id ) {
+               wlog( "read_mode has changed from irreversible: reconstructing reversible blocks from fork database" );
+
+               for( auto n = branch.size() - num_blocks_prior_to_pending_head; n < branch.size(); ++n ) {
+                  reversible_blocks.create<reversible_block_object>( [&]( auto& rbo ) {
+                     rbo.blocknum = branch[n]->block_num;
+                     rbo.set_block( branch[n]->block );
+                  });
+               }
+
+               last_block_num = pending_head->block_num;
+            }
+         }
+         // else no checks needed since fork_db will be completely reset on replay anyway
+      }
+
+      bool report_integrity_hash = !!snapshot || (lib_num > head->block_num);
+
+      if( last_block_num > head->block_num ) {
+         replay( shutdown ); // replay any irreversible and reversible blocks ahead of current head
+      }
+
+      if( shutdown() ) return;
+
       if( report_integrity_hash ) {
          const auto hash = calculate_integrity_hash();
          ilog( "database initialized with hash: ${hash}", ("hash", hash) );
-      } 
+      }
    }
 
    ~controller_impl() {
@@ -696,7 +705,7 @@ struct controller_impl {
       resource_limits.add_to_snapshot(snapshot);
    }
 
-   void read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
+   void read_from_snapshot( const snapshot_reader_ptr& snapshot, uint32_t blog_start, uint32_t blog_end ) {
       snapshot->read_section<chain_snapshot_header>([this]( auto &section ){
          chain_snapshot_header header;
          section.read_row(header, db);
@@ -704,14 +713,22 @@ struct controller_impl {
       });
 
 
-      snapshot->read_section<block_state>([this]( auto &section ){
+      snapshot->read_section<block_state>([this, blog_start, blog_end]( auto &section ){
          block_header_state head_header_state;
          section.read_row(head_header_state, db);
 
+         snapshot_head_block = head_header_state.block_num;
+         auto next_block_after_snapshot_head = snapshot_head_block + 1;
+         EOS_ASSERT( blog_start <= next_block_after_snapshot_head && next_block_after_snapshot_head <= blog_end,
+                     block_log_exception,
+                     "Block log is provided with snapshot but does not contain the block after the head block from the snapshot",
+                     ("next_block_after_snapshot_head_num", next_block_after_snapshot_head)
+                     ("block_log_first_num", blog_start)
+                     ("block_log_last_num", blog_end)
+         );
+
          fork_db.reset( head_header_state );
-         auto head_state = std::make_shared<block_state>();
-         static_cast<block_header_state&>(*head_state) = head_header_state;
-         head = head_state;
+         head = fork_db.head();
          snapshot_head_block = head->block_num;
       });
 
@@ -1521,7 +1538,7 @@ struct controller_impl {
       } FC_LOG_AND_RETHROW( )
    }
 
-   void replay_push_block( const signed_block_ptr& b, controller::block_status s, bool add_to_fork_db = true ) {
+   void replay_push_block( const signed_block_ptr& b, controller::block_status s ) {
       self.validate_db_available_size();
       self.validate_reversible_available_size();
 
@@ -1537,8 +1554,8 @@ struct controller_impl {
          // need to cater the irreversible mode case where head is not advancing
          auto bsp = std::make_shared<block_state>((read_mode == db_read_mode::IRREVERSIBLE && s != controller::block_status::irreversible && fork_db.pending_head()) ? *fork_db.pending_head() : *head, b, skip_validate_signee );
 
-         if (add_to_fork_db && s != controller::block_status::irreversible ) {
-            fork_db.add( bsp );
+         if( s != controller::block_status::irreversible ) {
+            fork_db.add( bsp, true );
          }
 
          emit( self.accepted_block_header, bsp );
@@ -1576,6 +1593,7 @@ struct controller_impl {
               ("current_head_id", head->id)("current_head_num", head->block_num)("new_head_id", new_head->id)("new_head_num", new_head->block_num) );
          auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
 
+         EOS_ASSERT( branches.second.size() > 0, fork_database_exception, "fork switch does not require popping blocks" );
          for( auto itr = branches.second.begin(); itr != branches.second.end(); ++itr ) {
             pop_block();
          }
@@ -1597,9 +1615,6 @@ struct controller_impl {
                // ritr currently points to the block that threw
                // Remove the block that threw and all forks built off it.
                fork_db.remove( (*ritr)->id );
-
-               EOS_ASSERT( head->id == fork_db.head()->id, fork_database_exception,
-                           "loss of sync between fork_db and controller head during fork switch error" );
 
                // pop all blocks from the bad fork
                // ritr base is a forward itr to the last block successfully applied
@@ -1922,14 +1937,9 @@ void controller::add_indices() {
 }
 
 void controller::startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot ) {
-   my->head = my->fork_db.head();
    if( snapshot ) {
       ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
    }
-   else if( !my->head ) {
-      elog( "No head block in fork db, perhaps we need to replay" );
-   }
-
    try {
       my->init(shutdown, snapshot);
    } catch (boost::interprocess::bad_alloc& e) {
@@ -2141,9 +2151,7 @@ const vector<transaction_receipt>& controller::get_pending_trx_receipts()const {
 }
 
 uint32_t controller::last_irreversible_block_num() const {
-   uint32_t lib_num = (my->read_mode == db_read_mode::IRREVERSIBLE)
-                        ? my->fork_db.root()->block_num : my->head->dpos_irreversible_blocknum;
-   return std::max( lib_num, my->snapshot_head_block );
+   return my->fork_db.root()->block_num;
 }
 
 block_id_type controller::last_irreversible_block_id() const {
@@ -2202,13 +2210,7 @@ block_state_ptr controller::fetch_block_state_by_number( uint32_t block_num )con
       }
    }
 
-   fc::datastream<const char*> ds( objitr->packedblock.data(), objitr->packedblock.size() );
-   block_header h;
-   fc::raw::unpack( ds, h );
-   // Only need the block id to then look up the block state in fork database, so just unpack the block_header from the stored packed data.
-   // Avoid calling objitr->get_block() since that constructs a new signed_block in heap memory and unpacks the full signed_block from the stored packed data.
-
-   return my->fork_db.get_block( h.id() );
+   return my->fork_db.get_block( objitr->get_block_id() );
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try {
@@ -2221,10 +2223,7 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
          const auto& rev_blocks = my->reversible_blocks.get_index<reversible_block_index,by_num>();
          auto objitr = rev_blocks.find(block_num);
          if( objitr != rev_blocks.end() ) {
-            fc::datastream<const char*> ds( objitr->packedblock.data(), objitr->packedblock.size() );
-            block_header h;
-            fc::raw::unpack( ds, h );
-            return h.id();
+            return objitr->get_block_id();
          }
       } else {
          auto bsp = my->fork_db.search_on_branch( my->fork_db.pending_head()->id, block_num );

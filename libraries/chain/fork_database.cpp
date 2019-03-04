@@ -277,7 +277,7 @@ namespace eosio { namespace chain {
       return block_header_state_ptr();
    }
 
-   void fork_database::add( const block_state_ptr& n ) {
+   void fork_database::add( const block_state_ptr& n, bool ignore_duplicate ) {
       EOS_ASSERT( my->root, fork_database_exception, "root not yet set" );
       EOS_ASSERT( n, fork_database_exception, "attempt to add null block state" );
 
@@ -285,7 +285,10 @@ namespace eosio { namespace chain {
                   "unlinkable block", ("id", n->id)("previous", n->header.previous) );
 
       auto inserted = my->index.insert(n);
-      EOS_ASSERT( inserted.second, fork_database_exception, "duplicate block added", ("id", n->id) );
+      if( !inserted.second ) {
+         if( ignore_duplicate ) return;
+         EOS_THROW( fork_database_exception, "duplicate block added", ("id", n->id) );
+      }
 
       auto candidate = my->index.get<by_lib_block_num>().begin();
       if( (*candidate)->is_valid() ) {
@@ -344,23 +347,23 @@ namespace eosio { namespace chain {
       while( first_branch->block_num > second_branch->block_num )
       {
          result.first.push_back(first_branch);
-         const auto &prev = first_branch->header.previous;
-         first_branch = get_block( first_branch->header.previous );
-         if (!first_branch && my->root && prev == my->root->id) first_branch = my->root;
+         const auto& prev = first_branch->header.previous;
+         first_branch = (prev == my->root->id) ? my->root : get_block( prev );
          EOS_ASSERT( first_branch, fork_db_block_not_found,
                      "block ${id} does not exist",
-                     ("id", prev) );
+                     ("id", prev)
+         );
       }
 
       while( second_branch->block_num > first_branch->block_num )
       {
          result.second.push_back( second_branch );
-         const auto &prev = second_branch->header.previous;
-         second_branch = get_block( second_branch->header.previous );
-         if (!second_branch && my->root && prev == my->root->id) second_branch = my->root;
+         const auto& prev = second_branch->header.previous;
+         second_branch = (prev == my->root->id) ? my->root : get_block( prev );
          EOS_ASSERT( second_branch, fork_db_block_not_found,
                      "block ${id} does not exist",
-                     ("id", prev) );
+                     ("id", prev)
+         );
       }
 
       if (first_branch->id == second_branch->id) return result;
@@ -371,10 +374,13 @@ namespace eosio { namespace chain {
          result.second.push_back(second_branch);
          first_branch = get_block( first_branch->header.previous );
          second_branch = get_block( second_branch->header.previous );
-         EOS_ASSERT( first_branch && second_branch, fork_db_block_not_found,
-                     "either block ${fid} or ${sid} does not exist",
-                     ("fid", first_branch->header.previous)
-                     ("sid", second_branch->header.previous)
+         EOS_ASSERT( first_branch, fork_db_block_not_found,
+                     "block ${id} does not exist",
+                     ("id", first_branch->header.previous)
+         );
+         EOS_ASSERT( second_branch, fork_db_block_not_found,
+                     "block ${id} does not exist",
+                     ("id", second_branch->header.previous)
          );
       }
 

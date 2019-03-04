@@ -37,8 +37,7 @@ namespace eosio { namespace chain {
          void            reset( const block_header_state& root_bhs );
 
          /**
-          * rollback head to root if read_mode changed from speculative to irreversible
-          * valid flag need to set to false to avoid head advancing
+          *  Removes validated flag from all blocks in fork database and resets head to point to the root.
           */
          void            rollback_head_to_root();
 
@@ -51,7 +50,7 @@ namespace eosio { namespace chain {
           *  Add block state to fork database.
           *  Must link to existing block in fork database or the root.
           */
-         void            add( const block_state_ptr& next_block );
+         void            add( const block_state_ptr& next_block, bool ignore_duplicate = false );
 
          void            remove( const block_id_type& id );
 
