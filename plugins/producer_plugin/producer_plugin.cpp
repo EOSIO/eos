@@ -671,24 +671,6 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
       }
    }
 
-   for (const auto& producer : my->_producers) {
-      bool signature_available = false;
-      chain::controller& chain = my->chain_plug->chain();
-      auto schedule = chain.active_producers();
-      auto key = schedule.get_producer_key(producer);
-      signature_available |= is_producer_key(key);
-      schedule = chain.pending_producers();
-      key = schedule.get_producer_key(producer);
-      signature_available |= is_producer_key(key);
-      auto proposed_schedule = chain.proposed_producers();
-      if(proposed_schedule.valid()) {
-         key = schedule.get_producer_key(producer);
-         signature_available |= is_producer_key(key);
-      }
-      if(!signature_available)
-         wlog("Missing signature-provider for producer ${prod}", ("prod", producer));
-   }
-
    my->_keosd_provider_timeout_us = fc::milliseconds(options.at("keosd-provider-timeout").as<int32_t>());
 
    my->_produce_time_offset_us = options.at("produce-time-offset-us").as<int32_t>();
@@ -767,6 +749,22 @@ void producer_plugin::plugin_startup()
    EOS_ASSERT( my->_producers.empty() || chain.get_validation_mode() == chain::validation_mode::FULL, plugin_config_exception,
               "node cannot have any producer-name configured because block production is not safe when validation_mode is not \"full\"" );
 
+   for (const auto& producer : my->_producers) {
+      bool signature_available = false;
+      auto schedule = chain.active_producers();
+      auto key = schedule.get_producer_key(producer);
+      signature_available |= is_producer_key(key);
+      schedule = chain.pending_producers();
+      key = schedule.get_producer_key(producer);
+      signature_available |= is_producer_key(key);
+      auto proposed_schedule = chain.proposed_producers();
+      if(proposed_schedule.valid()) {
+         key = schedule.get_producer_key(producer);
+         signature_available |= is_producer_key(key);
+      }
+      if(!signature_available)
+         wlog("Missing signature-provider for producer ${prod}", ("prod", producer));
+   }
 
    my->_accepted_block_connection.emplace(chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } ));
    my->_irreversible_block_connection.emplace(chain.irreversible_block.connect( [this]( const auto& bsp ){ my->on_irreversible_block( bsp->block ); } ));
