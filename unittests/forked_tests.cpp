@@ -374,6 +374,45 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
 } FC_LOG_AND_RETHROW()
 
 
+/**
+ *  Tests that a validating node does not accept a block which is considered invalid by another node.
+ */
+BOOST_AUTO_TEST_CASE( validator_accepts_valid_blocks ) try {
+
+   tester n1;
+   tester n2;
+   tester n3;
+
+   n1.produce_block();
+
+   auto id = n1.control->head_block_id();
+
+   block_state_ptr first_block;
+
+   auto c = n2.control->accepted_block.connect( [&]( const block_state_ptr& bsp) {
+      if( bsp->block_num == 2 ) {
+         first_block = bsp;
+      }
+   } );
+
+   push_blocks( n1, n2 );
+
+   BOOST_CHECK_EQUAL( n2.control->head_block_id(), id );
+
+   BOOST_REQUIRE( first_block );
+   first_block->verify_signee( first_block->signee() );
+   BOOST_CHECK_EQUAL( first_block->header.id(), first_block->block->id() );
+   BOOST_CHECK( first_block->header.producer_signature == first_block->block->producer_signature );
+
+   c.disconnect();
+
+   n3.push_block( first_block->block );
+
+   BOOST_CHECK_EQUAL( n3.control->head_block_id(), id );
+
+
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_CASE( read_modes ) try {
    tester c;
    c.produce_block();

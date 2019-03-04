@@ -1399,7 +1399,7 @@ struct controller_impl {
 
          auto bsp = std::make_shared<block_state>(
                         std::move( ab._pending_block_header_state ),
-                        std::move( ab._unsigned_block ),
+                        b,
                         std::move( ab._trx_metas ),
                         true // signature should have already been verified (assuming untrusted) prior to apply_block
                     );
