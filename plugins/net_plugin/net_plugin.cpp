@@ -145,6 +145,7 @@ namespace eosio {
       bool                          network_version_match = false;
       chain_id_type                 chain_id;
       fc::sha256                    node_id;
+      eosio::db_read_mode           db_read_mode = eosio::db_read_mode::SPECULATIVE;
 
       string                        user_agent_name;
       chain_plugin*                 chain_plug = nullptr;
@@ -2072,7 +2073,7 @@ namespace eosio {
                   trx_in_progress_size > 2*def_max_trx_in_progress_size )
             {
                fc_wlog( logger, "queues over full, giving up on connection" );
-               app().post( priority::medium, [this, weak_conn]() {
+               app().post( priority::medium, [weak_conn]() {
                   auto conn = weak_conn.lock();
                   if( !conn ) return;
                   fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
@@ -2555,8 +2556,7 @@ namespace eosio {
    void net_plugin_impl::handle_message(const connection_ptr& c, const packed_transaction_ptr& trx) {
       fc_dlog(logger, "got a packed transaction, cancel wait");
       peer_ilog(c, "received packed_transaction");
-      controller& cc = my_impl->chain_plug->chain();
-      if( cc.get_read_mode() == eosio::db_read_mode::READ_ONLY ) {
+      if( db_read_mode == eosio::db_read_mode::READ_ONLY ) {
          fc_dlog(logger, "got a txn in read-only mode - dropping");
          return;
       }
@@ -3165,7 +3165,8 @@ namespace eosio {
 
       my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
 
-      if( cc.get_read_mode() == chain::db_read_mode::READ_ONLY ) {
+      my->db_read_mode = cc.get_read_mode();
+      if( my->db_read_mode == chain::db_read_mode::READ_ONLY ) {
          my->max_nodes_per_host = 0;
          fc_ilog( logger, "node in read-only mode setting max_nodes_per_host to 0 to prevent connections" );
       }
