@@ -163,4 +163,32 @@ BOOST_AUTO_TEST_CASE(untrusted_producer_test)
    }) ;
 }
 
+/**
+ * Ensure that the block broadcasted by producing node and receiving node is identical
+ */
+BOOST_AUTO_TEST_CASE(broadcasted_block_test)
+{
+
+  tester producer_node;
+  tester receiving_node;
+
+  signed_block_ptr bcasted_blk_by_prod_node;
+  signed_block_ptr bcasted_blk_by_recv_node;
+
+  producer_node.control->accepted_block.connect( [&](const block_state_ptr& bs) {
+    bcasted_blk_by_prod_node = bs->block;
+  });
+  receiving_node.control->accepted_block.connect( [&](const block_state_ptr& bs) {
+    bcasted_blk_by_recv_node = bs->block;
+  });
+
+  auto b = producer_node.produce_block();
+  receiving_node.push_block(b);
+
+  bytes bcasted_blk_by_prod_node_packed = fc::raw::pack(*bcasted_blk_by_prod_node);
+  bytes bcasted_blk_by_recv_node_packed = fc::raw::pack(*bcasted_blk_by_recv_node);
+  BOOST_CHECK(std::equal(bcasted_blk_by_prod_node_packed.begin(), bcasted_blk_by_prod_node_packed.end(), bcasted_blk_by_recv_node_packed.begin()));
+
+}
+
 BOOST_AUTO_TEST_SUITE_END()
