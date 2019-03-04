@@ -445,6 +445,7 @@ struct controller_impl {
                EOS_ASSERT( blog.first_block_num() == 1, block_log_exception,
                            "block log does not start with genesis block"
                );
+               lib_num = blog.head()->block_num();
             } else {
                blog.reset( conf.genesis, head->block );
             }
