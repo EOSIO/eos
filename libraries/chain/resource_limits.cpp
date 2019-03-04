@@ -236,7 +236,7 @@ bool resource_limits_manager::set_account_limits( const account_name& account, i
             pending_limits.cpu_weight = limits.cpu_weight;
             pending_limits.pending = true;
          });
-         return *res.pos;
+         return res.obj;
       } else {
          return *pitr;
       }
