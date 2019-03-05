@@ -405,6 +405,8 @@ struct controller_impl {
    void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
 
       bool report_integrity_hash = !!snapshot;
+
+      EOS_ASSERT( !snapshot, fork_database_exception, "Snapshot not supported");
       if (snapshot) {
          EOS_ASSERT( !head, fork_database_exception, "" );
          snapshot->validate();
