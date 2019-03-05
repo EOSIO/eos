@@ -35,5 +35,10 @@ steps:
 
   - wait
 
+  - label: ":cop::skin-tone-2: unit_test"
+    command: ".buildkite/steps/deploy-unit_test.sh"
+
+  - wait
+
   - label: ":slack:"
     command: ".buildkite/steps/slack.sh \"Pipeline complete successfully: ${BUILDKITE_MESSAGE}\" \"good\""

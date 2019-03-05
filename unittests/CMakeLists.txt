@@ -40,9 +40,18 @@ add_dependencies(
 add_test(NAME unit_test_wavm COMMAND unit_test
  -t \!wasm_tests/weighted_cpu_limit_tests
  --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
- add_test(NAME unit_test_wabt COMMAND unit_test
+
+add_test(NAME unit_test_wabt COMMAND unit_test
  -t \!wasm_tests/weighted_cpu_limit_tests
  --report_level=detailed --color_output -- --wabt)
+
+install( TARGETS
+    unit_test
+
+    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
+)
 
 if(ENABLE_COVERAGE_TESTING)
 
