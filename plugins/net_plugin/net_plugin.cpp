@@ -759,8 +759,8 @@ namespace eosio {
       void rejected_transaction (const transaction_id_type& msg);
       void bcast_block (const signed_block& msg);
       void rejected_block (const block_id_type &id);
-
       void recv_block (connection_ptr conn, const block_id_type& msg, uint32_t bnum);
+      void expire_blocks( uint32_t bnum );
       void recv_transaction(connection_ptr conn, const transaction_id_type& id);
       void recv_notice (connection_ptr conn, const notice_message& msg, bool generated);
 
@@ -1730,9 +1730,21 @@ namespace eosio {
    }
 
    void dispatch_manager::rejected_block (const block_id_type& id) {
-      fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",id));
+      fc_dlog( logger, "rejected block ${id}", ("id", id) );
       auto range = received_blocks.equal_range(id);
       received_blocks.erase(range.first, range.second);
+   }
+
+   void dispatch_manager::expire_blocks( uint32_t lib_num ) {
+      for( auto i = received_blocks.begin(); i != received_blocks.end(); ) {
+         const block_id_type& blk_id = i->first;
+         uint32_t blk_num = block_header::num_from_id( blk_id );
+         if( blk_num <= lib_num ) {
+            i = received_blocks.erase( i );
+         } else {
+            ++i;
+         }
+      }
    }
 
    void dispatch_manager::bcast_transaction (const packed_transaction& trx) {
@@ -2686,6 +2698,7 @@ namespace eosio {
       }
       else {
          sync_master->rejected_block(c, blk_num);
+         dispatcher->rejected_block( blk_id );
       }
    }
 
@@ -2748,6 +2761,7 @@ namespace eosio {
       controller &cc = chain_plug->chain();
       uint32_t bn = cc.last_irreversible_block_num();
       stale.erase( stale.lower_bound(1), stale.upper_bound(bn) );
+      dispatcher->expire_blocks( bn );
       for ( auto &c : connections ) {
          auto &stale_txn = c->trx_state.get<by_block_num>();
          stale_txn.erase( stale_txn.lower_bound(1), stale_txn.upper_bound(bn) );
