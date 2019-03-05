@@ -157,7 +157,7 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
         }
         
         auto block_time = control->head_block_time().time_since_epoch().to_seconds();
-        auto& rlm = control->get_resource_limits_manager();
+        auto& rlm = control->get_mutable_resource_limits_manager();
         auto provider_cpu = rlm.get_account_limit_ex(block_time, N(provider), resource_limits::cpu_code);
         auto provider_net = rlm.get_account_limit_ex(block_time, N(provider), resource_limits::net_code);
 
