@@ -24,6 +24,8 @@
 
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
+#include <eosio.system/eosio.system.abi.hpp>
+#include <eosio.system/eosio.system.wast.hpp>
 
 namespace eosio { namespace detail {
   struct txn_test_gen_empty {};
@@ -82,9 +84,9 @@ using namespace eosio::chain;
    }\
 }
 
-#define INVOKE_ASYNC_R_R(api_handle, call_name, in_param0, in_param1) \
+#define INVOKE_ASYNC_R_R(api_handle, call_name, in_param0, in_param1, in_param2) \
    const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
-   api_handle->call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), result_handler);
+   api_handle->call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>(), result_handler);
 
 struct txn_test_gen_plugin_impl {
 
@@ -126,14 +128,16 @@ struct txn_test_gen_plugin_impl {
       push_next_transaction(trxs_copy, 0, next);
    }
 
-   void create_test_accounts(const std::string& init_name, const std::string& init_priv_key, const std::function<void(const fc::exception_ptr&)>& next) {
+   void create_test_accounts(const std::string& init_name, const std::string& init_priv_key,
+           const std::string& core_symbol,
+           const std::function<void(const fc::exception_ptr&)>& next) {
       std::vector<signed_transaction> trxs;
       trxs.reserve(2);
 
       try {
-         name newaccountA("txn.test.a");
-         name newaccountB("txn.test.b");
-         name newaccountC("txn.test.t");
+         name newaccountA("aaaaaaaaaaaa");
+         name newaccountB("bbbbbbbbbbbb");
+         name newaccountC("cccccccccccc");
          name creator(init_name);
 
          abi_def currency_abi_def = fc::json::from_string(eosio_token_abi).as<abi_def>();
@@ -152,6 +156,10 @@ struct txn_test_gen_plugin_impl {
          fc::crypto::public_key  txn_text_receiver_C_pub_key = txn_test_receiver_C_priv_key.get_public_key();
          fc::crypto::private_key creator_priv_key = fc::crypto::private_key(init_priv_key);
 
+         eosio::chain::asset net{1000000, symbol(4,core_symbol.c_str())};
+         eosio::chain::asset cpu{1000000, symbol(4,core_symbol.c_str())};
+         eosio::chain::asset ram{1000000, symbol(4,core_symbol.c_str())};
+
          //create some test accounts
          {
             signed_transaction trx;
@@ -162,6 +170,14 @@ struct txn_test_gen_plugin_impl {
             auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
 
             trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountA, owner_auth, active_auth});
+
+            //delegate cpu net and buyram
+            auto act_delegatebw = create_action_delegatebw(creator, newaccountA,net,cpu,abi_serializer_max_time);
+            auto act_buyram = create_action_buyram(creator, newaccountA, ram, abi_serializer_max_time);
+
+            trx.actions.emplace_back(act_delegatebw);
+            trx.actions.emplace_back(act_buyram);
+
             }
             //create "B" account
             {
@@ -169,13 +185,27 @@ struct txn_test_gen_plugin_impl {
             auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
 
             trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountB, owner_auth, active_auth});
+
+            //delegate cpu net and buyram
+            auto act_delegatebw = create_action_delegatebw(creator, newaccountB,net,cpu,abi_serializer_max_time);
+            auto act_buyram = create_action_buyram(creator, newaccountB, ram, abi_serializer_max_time);
+
+            trx.actions.emplace_back(act_delegatebw);
+            trx.actions.emplace_back(act_buyram);
             }
-            //create "txn.test.t" account
+            //create "cccccccccccc" account
             {
             auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
             auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
 
             trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountC, owner_auth, active_auth});
+
+            //delegate cpu net and buyram
+            auto act_delegatebw = create_action_delegatebw(creator, newaccountC,net,cpu,abi_serializer_max_time);
+            auto act_buyram = create_action_buyram(creator, newaccountC, ram, abi_serializer_max_time);
+
+            trx.actions.emplace_back(act_delegatebw);
+            trx.actions.emplace_back(act_buyram);
             }
 
             trx.expiration = cc.head_block_time() + fc::seconds(30);
@@ -184,7 +214,7 @@ struct txn_test_gen_plugin_impl {
             trxs.emplace_back(std::move(trx));
          }
 
-         //set txn.test.t contract to eosio.token & initialize it
+         //set cccccccccccc contract to eosio.token & initialize it
          {
             signed_transaction trx;
 
@@ -205,34 +235,34 @@ struct txn_test_gen_plugin_impl {
 
             {
                action act;
-               act.account = N(txn.test.t);
+               act.account = N(cccccccccccc);
                act.name = N(create);
                act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-               act.data = eosio_token_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"txn.test.t\",\"maximum_supply\":\"1000000000.0000 CUR\"}}"), abi_serializer_max_time);
+               act.data = eosio_token_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"cccccccccccc\",\"maximum_supply\":\"1000000000.0000 CUR\"}}"), abi_serializer_max_time);
                trx.actions.push_back(act);
             }
             {
                action act;
-               act.account = N(txn.test.t);
+               act.account = N(cccccccccccc);
                act.name = N(issue);
                act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-               act.data = eosio_token_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"txn.test.t\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"), abi_serializer_max_time);
+               act.data = eosio_token_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"cccccccccccc\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"), abi_serializer_max_time);
                trx.actions.push_back(act);
             }
             {
                action act;
-               act.account = N(txn.test.t);
+               act.account = N(cccccccccccc);
                act.name = N(transfer);
                act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-               act.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.t\",\"to\":\"txn.test.a\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"), abi_serializer_max_time);
+               act.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"cccccccccccc\",\"to\":\"aaaaaaaaaaaa\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"), abi_serializer_max_time);
                trx.actions.push_back(act);
             }
             {
                action act;
-               act.account = N(txn.test.t);
+               act.account = N(cccccccccccc);
                act.name = N(transfer);
                act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-               act.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"txn.test.t\",\"to\":\"txn.test.b\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"), abi_serializer_max_time);
+               act.data = eosio_token_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"cccccccccccc\",\"to\":\"bbbbbbbbbbbb\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"), abi_serializer_max_time);
                trx.actions.push_back(act);
             }
 
@@ -250,6 +280,36 @@ struct txn_test_gen_plugin_impl {
       push_transactions(std::move(trxs), next);
    }
 
+    eosio::chain::action create_action_delegatebw(const name &from, const name &to, const asset &net, const asset &cpu, const fc::microseconds &abi_serializer_max_time){
+       fc::variant variant_delegate = fc::mutable_variant_object()
+               ("from", from.to_string())
+               ("receiver", to.to_string())
+               ("stake_net_quantity", net.to_string())
+               ("stake_cpu_quantity", cpu.to_string())
+               ("transfer", true);
+       abi_serializer eosio_system_serializer{fc::json::from_string(eosio_system_abi).as<abi_def>(), abi_serializer_max_time};
+
+       auto payload_delegate = eosio_system_serializer.variant_to_binary( "delegatebw", variant_delegate, abi_serializer_max_time);
+       eosio::chain::action act_delegate{vector<chain::permission_level>{{from,"active"}},
+                                         config::system_account_name, N(delegatebw), payload_delegate};
+
+       return act_delegate;
+   }
+
+    eosio::chain::action create_action_buyram(const name &from, const name &to, const asset &quant, const fc::microseconds &abi_serializer_max_time){
+        fc::variant variant_buyram = fc::mutable_variant_object()
+                ("payer", from.to_string())
+                ("receiver", to.to_string())
+                ("quant", quant.to_string());
+        abi_serializer eosio_system_serializer{fc::json::from_string(eosio_system_abi).as<abi_def>(), abi_serializer_max_time};
+
+        auto payload_buyram = eosio_system_serializer.variant_to_binary( "buyram", variant_buyram, abi_serializer_max_time);
+        eosio::chain::action act_buyram{vector<chain::permission_level>{{from,"active"}},
+                                        config::system_account_name, N(buyram), payload_buyram};
+
+        return act_buyram;
+    }
+
    void start_generation(const std::string& salt, const uint64_t& period, const uint64_t& batch_size) {
       if(running)
          throw fc::exception(fc::invalid_operation_exception_code);
@@ -266,19 +326,19 @@ struct txn_test_gen_plugin_impl {
       auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
       abi_serializer eosio_token_serializer{fc::json::from_string(eosio_token_abi).as<abi_def>(), abi_serializer_max_time};
       //create the actions here
-      act_a_to_b.account = N(txn.test.t);
+      act_a_to_b.account = N(cccccccccccc);
       act_a_to_b.name = N(transfer);
-      act_a_to_b.authorization = vector<permission_level>{{name("txn.test.a"),config::active_name}};
+      act_a_to_b.authorization = vector<permission_level>{{name("aaaaaaaaaaaa"),config::active_name}};
       act_a_to_b.data = eosio_token_serializer.variant_to_binary("transfer", 
-                                                                  fc::json::from_string(fc::format_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", 
+                                                                  fc::json::from_string(fc::format_string("{\"from\":\"aaaaaaaaaaaa\",\"to\":\"bbbbbbbbbbbb\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}",
                                                                   fc::mutable_variant_object()("l", salt))),
                                                                   abi_serializer_max_time);
 
-      act_b_to_a.account = N(txn.test.t);
+      act_b_to_a.account = N(cccccccccccc);
       act_b_to_a.name = N(transfer);
-      act_b_to_a.authorization = vector<permission_level>{{name("txn.test.b"),config::active_name}};
+      act_b_to_a.authorization = vector<permission_level>{{name("bbbbbbbbbbbb"),config::active_name}};
       act_b_to_a.data = eosio_token_serializer.variant_to_binary("transfer", 
-                                                                  fc::json::from_string(fc::format_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", 
+                                                                  fc::json::from_string(fc::format_string("{\"from\":\"bbbbbbbbbbbb\",\"to\":\"aaaaaaaaaaaa\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}",
                                                                   fc::mutable_variant_object()("l", salt))),
                                                                   abi_serializer_max_time);
 
@@ -405,7 +465,7 @@ void txn_test_gen_plugin::plugin_initialize(const variables_map& options) {
 
 void txn_test_gen_plugin::plugin_startup() {
    app().get_plugin<http_plugin>().add_api({
-      CALL_ASYNC(txn_test_gen, my, create_test_accounts, INVOKE_ASYNC_R_R(my, create_test_accounts, std::string, std::string), 200),
+      CALL_ASYNC(txn_test_gen, my, create_test_accounts, INVOKE_ASYNC_R_R(my, create_test_accounts, std::string, std::string, std::string), 200),
       CALL(txn_test_gen, my, stop_generation, INVOKE_V_V(my, stop_generation), 200),
       CALL(txn_test_gen, my, start_generation, INVOKE_V_R_R_R(my, start_generation, std::string, uint64_t, uint64_t), 200)
    });
