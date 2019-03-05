@@ -27,25 +27,24 @@ BOOST_AUTO_TEST_SUITE(database_tests)
       try {
          TESTER test;
 
-         // Bypass read-only restriction on state DB access for this unit test which really needs to mutate the DB to properly conduct its test.
-         eosio::chain::database& db = const_cast<eosio::chain::database&>( test.control->db() );
+         auto& chaindb = test.control->chaindb();
 
-         auto ses = db.start_undo_session(true);
+         auto ses = chaindb.start_undo_session(true);
 
          // Create an account
-         db.create<account_object>([](account_object &a) {
+         chaindb.emplace<account_object>([](account_object &a) {
             a.name = "billy";
          });
 
          // Make sure we can retrieve that account by name
-         auto ptr = db.find<account_object, by_name, std::string>("billy");
+         auto ptr = chaindb.find<account_object, by_name, std::string>("billy");
          BOOST_TEST(ptr != nullptr);
 
          // Undo creation of the account
          ses.undo();
 
          // Make sure we can no longer find the account
-         ptr = db.find<account_object, by_name, std::string>("billy");
+         ptr = chaindb.find<account_object, by_name, std::string>("billy");
          BOOST_TEST(ptr == nullptr);
       } FC_LOG_AND_RETHROW()
    }

@@ -33,7 +33,7 @@ BOOST_FIXTURE_TEST_CASE(accounts_exists, tester)
 
       tester test;
       chain::controller *control = test.control.get();
-      const chain::database& chain1_db = control->db();
+      auto& chain1_db = control->chaindb();
 
       auto nobody = chain1_db.find<account_object, by_name>(config::null_account_name);
       BOOST_CHECK(nobody != nullptr);

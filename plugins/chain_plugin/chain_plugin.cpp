@@ -164,7 +164,7 @@ public:
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
    fc::microseconds                 abi_serializer_max_time_ms;
-   fc::optional<bfs::path>          snapshot_path;
+   //fc::optional<bfs::path>          snapshot_path;   // TODO: removed by CyberWay
 
 
    // retained references to channels for easy publication
@@ -414,31 +414,33 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->allow_ram_billing_in_notify = options.at( "disable-ram-billing-notify-checks" ).as<bool>();
 
       if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
-         genesis_state gs;
-
-         if( fc::exists( my->blocks_dir / "blocks.log" )) {
-            gs = block_log::extract_genesis_state( my->blocks_dir );
-         } else {
-            wlog( "No blocks.log found at '${p}'. Using default genesis state.",
-                  ("p", (my->blocks_dir / "blocks.log").generic_string()));
-         }
-
-         if( options.at( "print-genesis-json" ).as<bool>()) {
-            ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string( gs )));
-         }
-
-         if( options.count( "extract-genesis-json" )) {
-            auto p = options.at( "extract-genesis-json" ).as<bfs::path>();
-
-            if( p.is_relative()) {
-               p = bfs::current_path() / p;
-            }
-
-            fc::json::save_to_file( gs, p, true );
-            ilog( "Saved genesis JSON to '${path}'", ("path", p.generic_string()));
-         }
-
-         EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
+           ilog("Options 'extract-genesis-json' and 'print-genesis-json' doesn't work now");
+// TODO: removed by CyberWay
+//         genesis_state gs;
+//
+//         if( fc::exists( my->blocks_dir / "blocks.log" )) {
+//            gs = block_log::extract_genesis_state( my->blocks_dir );
+//         } else {
+//            wlog( "No blocks.log found at '${p}'. Using default genesis state.",
+//                  ("p", (my->blocks_dir / "blocks.log").generic_string()));
+//         }
+//
+//         if( options.at( "print-genesis-json" ).as<bool>()) {
+//            ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string( gs )));
+//         }
+//
+//         if( options.count( "extract-genesis-json" )) {
+//            auto p = options.at( "extract-genesis-json" ).as<bfs::path>();
+//
+//            if( p.is_relative()) {
+//               p = bfs::current_path() / p;
+//            }
+//
+//            fc::json::save_to_file( gs, p, true );
+//            ilog( "Saved genesis JSON to '${path}'", ("path", p.generic_string()));
+//         }
+//
+//         EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
       }
 
       if( options.count("export-reversible-blocks") ) {
@@ -463,25 +465,26 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          clear_directory_contents( my->chain_config->state_dir );
          fc::remove_all( my->blocks_dir );
       } else if( options.at( "hard-replay-blockchain" ).as<bool>()) {
-         ilog( "Hard replay requested: deleting state database" );
-         clear_directory_contents( my->chain_config->state_dir );
-         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>());
-         if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
-             options.at( "fix-reversible-blocks" ).as<bool>()) {
-            // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
-            if( !recover_reversible_blocks( backup_dir / config::reversible_blocks_dir_name,
-                                            my->chain_config->reversible_cache_size,
-                                            my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
-                                            options.at( "truncate-at-block" ).as<uint32_t>())) {
-               ilog( "Reversible blocks database was not corrupted. Copying from backup to blocks directory." );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name,
-                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
-                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.meta",
-                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.meta" );
-            }
-         }
+         ilog( "--hard-replay-blockchain doesn't work now");
+//         ilog( "Hard replay requested: deleting state database" );
+//         clear_directory_contents( my->chain_config->state_dir );
+//         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>());
+//         if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
+//             options.at( "fix-reversible-blocks" ).as<bool>()) {
+//            // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
+//            if( !recover_reversible_blocks( backup_dir / config::reversible_blocks_dir_name,
+//                                            my->chain_config->reversible_cache_size,
+//                                            my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
+//                                            options.at( "truncate-at-block" ).as<uint32_t>())) {
+//               ilog( "Reversible blocks database was not corrupted. Copying from backup to blocks directory." );
+//               fc::copy( backup_dir / config::reversible_blocks_dir_name,
+//                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
+//               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
+//                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
+//               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.meta",
+//                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.meta" );
+//            }
+//         }
       } else if( options.at( "replay-blockchain" ).as<bool>()) {
          ilog( "Replay requested: deleting state database" );
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
@@ -521,43 +524,47 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
 
       if (options.count( "snapshot" )) {
-         my->snapshot_path = options.at( "snapshot" ).as<bfs::path>();
-         EOS_ASSERT( fc::exists(*my->snapshot_path), plugin_config_exception,
-                     "Cannot load snapshot, ${name} does not exist", ("name", my->snapshot_path->generic_string()) );
-
-         // recover genesis information from the snapshot
-         auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
-         auto reader = std::make_shared<istream_snapshot_reader>(infile);
-         reader->validate();
-         reader->read_section<genesis_state>([this]( auto &section ){
-            section.read_row(my->chain_config->genesis);
-         });
-         infile.close();
-
-         EOS_ASSERT( options.count( "genesis-json" ) == 0 &&  options.count( "genesis-timestamp" ) == 0,
-                 plugin_config_exception,
-                 "--snapshot is incompatible with --genesis-json and --genesis-timestamp as the snapshot contains genesis information");
-
-         auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
-         EOS_ASSERT( !fc::exists(shared_mem_path),
-                 plugin_config_exception,
-                 "Snapshot can only be used to initialize an empty database." );
-
-         if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
-            auto log_genesis = block_log::extract_genesis_state(my->blocks_dir);
-            EOS_ASSERT( log_genesis.compute_chain_id() == my->chain_config->genesis.compute_chain_id(),
-                    plugin_config_exception,
-                    "Genesis information in blocks.log does not match genesis information in the snapshot");
-         }
+         EOS_ASSERT( false, plugin_config_exception, "Snapshot options disabled");
+// TODO: removed by CyberWay
+//         my->snapshot_path = options.at( "snapshot" ).as<bfs::path>();
+//         EOS_ASSERT( fc::exists(*my->snapshot_path), plugin_config_exception,
+//                     "Cannot load snapshot, ${name} does not exist", ("name", my->snapshot_path->generic_string()) );
+//
+//         // recover genesis information from the snapshot
+//         auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
+//         auto reader = std::make_shared<istream_snapshot_reader>(infile);
+//         reader->validate();
+//         reader->read_section<genesis_state>([this]( auto &section ){
+//            section.read_row(my->chain_config->genesis);
+//         });
+//         infile.close();
+//
+//         EOS_ASSERT( options.count( "genesis-json" ) == 0 &&  options.count( "genesis-timestamp" ) == 0,
+//                 plugin_config_exception,
+//                 "--snapshot is incompatible with --genesis-json and --genesis-timestamp as the snapshot contains genesis information");
+//
+//         auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
+//         EOS_ASSERT( !fc::exists(shared_mem_path),
+//                 plugin_config_exception,
+//                 "Snapshot can only be used to initialize an empty database." );
+//
+//         if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
+//            auto log_genesis = block_log::extract_genesis_state(my->blocks_dir);
+//            EOS_ASSERT( log_genesis.compute_chain_id() == my->chain_config->genesis.compute_chain_id(),
+//                    plugin_config_exception,
+//                    "Genesis information in blocks.log does not match genesis information in the snapshot");
+//         }
 
       } else {
          bfs::path genesis_file;
          bool genesis_timestamp_specified = false;
-         fc::optional<genesis_state> existing_genesis;
+         //fc::optional<genesis_state> existing_genesis;
+         bool existing_genesis = false;
 
          if( fc::exists( my->blocks_dir / "blocks.log" ) ) {
-            my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
-            existing_genesis = my->chain_config->genesis;
+            //my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
+            //existing_genesis = my->chain_config->genesis;
+            existing_genesis = true;
          }
 
          if( options.count( "genesis-json" )) {
@@ -593,11 +600,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             } else {
                wlog( "Starting up fresh blockchain with default genesis state." );
             }
-         } else {
-            EOS_ASSERT( my->chain_config->genesis == *existing_genesis, plugin_config_exception,
-                        "Genesis state provided via command line arguments does not match the existing genesis state in blocks.log. "
-                        "It is not necessary to provide genesis state arguments when a blocks.log file already exists."
-                      );
+// TODO: removed by CyberWay
+//         } else {
+//            EOS_ASSERT( genesis_file.empty() /*my->chain_config->genesis == *existing_genesis*/, plugin_config_exception,
+//                        //"Genesis state provided via command line arguments does not match the existing genesis state in blocks.log. "
+//                        "It is not necessary to provide genesis state arguments when a blocks.log file already exists."
+//                      );
          }
       }
 
@@ -684,14 +692,16 @@ void chain_plugin::plugin_startup()
 { try {
    try {
       auto shutdown = [](){ return app().is_quiting(); };
-      if (my->snapshot_path) {
-         auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
-         auto reader = std::make_shared<istream_snapshot_reader>(infile);
-         my->chain->startup(shutdown, reader);
-         infile.close();
-      } else {
-         my->chain->startup(shutdown);
-      }
+// TODO: removed by CyberWay
+//      if (my->snapshot_path) {
+//         auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
+//         auto reader = std::make_shared<istream_snapshot_reader>(infile);
+//         my->chain->startup(shutdown, reader);
+//         infile.close();
+//      } else {
+//         my->chain->startup(shutdown);
+//      }
+      my->chain->startup(shutdown);
    } catch (const database_guard_exception& e) {
       log_guard_exception(e);
       // make sure to properly close the db

@@ -405,6 +405,8 @@ struct controller_impl {
    void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
 
       bool report_integrity_hash = !!snapshot;
+
+      EOS_ASSERT( !snapshot, fork_database_exception, "Snapshot not supported");
       if (snapshot) {
          EOS_ASSERT( !head, fork_database_exception, "" );
          snapshot->validate();
@@ -776,8 +778,7 @@ struct controller_impl {
    }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false ) {
-      auto table = chaindb.get_table<generated_transaction_object>();
-      const auto idx = table.get_index<by_trx_id>();
+      auto idx = chaindb.get_index<generated_transaction_object, by_trx_id>();
       auto itr = idx.find( trxid );
       EOS_ASSERT( itr != idx.end(), unknown_transaction_exception, "unknown transaction" );
       return push_scheduled_transaction( *itr, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
@@ -1539,15 +1540,14 @@ struct controller_impl {
 
    void clear_expired_input_transactions() {
       //Look for expired transactions in the deduplication list, and remove them.
-      auto trx_table = chaindb.get_table<transaction_object>();
-      auto dedupe_idx = trx_table.get_index<by_expiration>();
+      auto dedupe_idx = chaindb.get_index<transaction_object, by_expiration>();
       auto now = self.pending_block_time();
       for (auto itr = dedupe_idx.begin(), etr = dedupe_idx.end(); etr != itr; ) {
          auto& trx = *itr;
          if (now <= fc::time_point(trx.expiration)) break;
 
          ++itr;
-         trx_table.erase(trx);
+         dedupe_idx.erase(trx);
       }
    }
 
@@ -2009,8 +2009,7 @@ void controller::drop_all_unapplied_transactions() {
 }
 
 vector<transaction_id_type> controller::get_scheduled_transactions() const {
-   auto trx_table = chaindb().get_table<generated_transaction_object>();
-   auto delay_idx = trx_table.get_index<by_delay>();
+   auto delay_idx = chaindb().get_index<generated_transaction_object, by_delay>();
 
    vector<transaction_id_type> result;
 

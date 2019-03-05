@@ -18,13 +18,11 @@ add_subdirectory(test.inline)
 
 add_subdirectory(hello)
 add_subdirectory(asserter)
-# TODO: CyberWay
-#add_subdirectory(proxy)
+add_subdirectory(proxy)
 add_subdirectory(test_api)
 add_subdirectory(test_api_mem)
-# TODO: CyberWay
-#add_subdirectory(test_api_db)
-#add_subdirectory(test_api_multi_index)
+add_subdirectory(test_api_db)
+add_subdirectory(test_api_multi_index)
 add_subdirectory(test_ram_limit)
 add_subdirectory(eosio.bios)
 add_subdirectory(noop)

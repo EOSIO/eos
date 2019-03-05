@@ -88,12 +88,18 @@ namespace eosio { namespace chain {
             return context.chaindb.available_pk({code, scope, table});
         }
 
+        void validate_db_access_violation(const account_name code) {
+            EOS_ASSERT(code == context.receiver || (code.empty() && context.privileged),
+                table_access_violation, "db access violation");
+        }
+
         primary_key_t chaindb_insert(
             account_name_t code, account_name_t scope, table_name_t table,
             account_name_t payer, primary_key_t pk, array_ptr<const char> data, size_t size
         ) {
             EOS_ASSERT(account_name(payer) != account_name(), invalid_table_payer,
                 "must specify a valid account to pay for new record");
+            validate_db_access_violation(code);
             context.lazy_init_chaindb_abi(code);
             context.chaindb.insert({code, scope, table}, {context, payer}, pk, data, size);
             return pk;
@@ -103,6 +109,7 @@ namespace eosio { namespace chain {
             account_name_t code, account_name_t scope, table_name_t table,
             account_name_t payer, primary_key_t pk, array_ptr<const char> data, size_t size
         ) {
+            validate_db_access_violation(code);
             context.lazy_init_chaindb_abi(code);
             context.chaindb.update({code, scope, table}, {context, payer}, pk, data, size);
             return pk;
@@ -111,6 +118,7 @@ namespace eosio { namespace chain {
         primary_key_t chaindb_delete(
             account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk
         ) {
+            validate_db_access_violation(code);
             context.lazy_init_chaindb_abi(code);
             context.chaindb.remove({code, scope, table}, {context}, pk);
             return pk;

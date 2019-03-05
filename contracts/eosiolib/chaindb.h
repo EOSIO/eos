@@ -1,5 +1,7 @@
 #pragma once
 
+#include "types.hpp"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -14,6 +16,8 @@ typedef int32_t cursor_t;
 typedef uint64_t primary_key_t;
 static constexpr primary_key_t end_primary_key = static_cast<primary_key_t>(-1);
 static constexpr primary_key_t unset_primary_key = static_cast<primary_key_t>(-2);
+
+cursor_t chaindb_opt_find_by_pk(account_name_t code, scope_t scope, table_name_t table, primary_key_t pk);
 
 cursor_t chaindb_lower_bound(account_name_t code, scope_t scope, table_name_t, index_name_t, void* key, size_t);
 cursor_t chaindb_upper_bound(account_name_t code, scope_t scope, table_name_t, index_name_t, void* key, size_t);

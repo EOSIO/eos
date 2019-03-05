@@ -68,7 +68,7 @@ static const uint32_t block_size_average_window_ms         = 60*1000l;
 
 const static uint32_t   rate_limiting_precision        = 1000*1000;
 
-
+const static uint32_t   maximum_block_size                           = 2*1024*1024; // maximum block size for pack/unpack data in block_log
 const static uint32_t   default_max_block_net_usage                 = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
 const static uint32_t   default_target_block_net_usage_pct           = 10 * percent_1; /// we target 1000 TPS
 const static uint32_t   default_max_transaction_net_usage            = default_max_block_net_usage / 2;

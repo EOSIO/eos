@@ -749,13 +749,11 @@ namespace bacc = boost::accumulators;
    }
 
    void transaction_context::record_transaction( const transaction_id_type& id, fc::time_point_sec expire ) {
-      auto& chaindb = control.chaindb();
-      auto trx_table = chaindb.get_table<transaction_object>();
-      auto trx_id_idx = trx_table.get_index<by_trx_id>();
-      auto itr = trx_id_idx.find(id);
-      EOS_ASSERT(trx_id_idx.end() == itr, tx_duplicate, "duplicate transaction ${id}", ("id", id ));
+      auto trx_idx = control.chaindb().get_index<transaction_object, by_trx_id>();
+      auto itr = trx_idx.find(id);
+      EOS_ASSERT(trx_idx.end() == itr, tx_duplicate, "duplicate transaction ${id}", ("id", id ));
 
-      trx_table.emplace([&](transaction_object& transaction) {
+      trx_idx.emplace([&](transaction_object& transaction) {
          transaction.trx_id     = id;
          transaction.expiration = expire;
       });

@@ -91,7 +91,7 @@ public:
         set_code(account, wast, signer);
         set_abi(account, abi, signer);
         if (account == config::system_account_name) {
-           const auto& accnt = control->db().get<account_object,by_name>( account );
+           const auto& accnt = control->chaindb().get<account_object,by_name>( account );
            abi_def abi_definition;
            BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi_definition), true);
            abi_ser.set_abi(abi_definition, abi_serializer_max_time);

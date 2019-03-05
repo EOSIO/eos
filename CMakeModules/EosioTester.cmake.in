@@ -44,6 +44,7 @@ endif ( APPLE )
 
 set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 find_package(Boost 1.67 REQUIRED COMPONENTS
+   thread
    date_time
    filesystem
    system
@@ -127,6 +128,7 @@ macro(add_eosio_test test_name)
        LLVMMC
        LLVMCore
        LLVMSupport
+       ${Boost_THREAD_LIBRARY}
        ${Boost_FILESYSTEM_LIBRARY}
        ${Boost_SYSTEM_LIBRARY}
        ${Boost_CHRONO_LIBRARY}
