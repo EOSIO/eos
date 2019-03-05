@@ -10,9 +10,8 @@
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
 
-// TODO: CyberWay
-//#include <proxy/proxy.wast.hpp>
-//#include <proxy/proxy.abi.hpp>
+#include <proxy/proxy.wast.hpp>
+#include <proxy/proxy.abi.hpp>
 
 #include <Runtime/Runtime.h>
 

@@ -383,7 +383,7 @@ try {
    chain.create_account(acc1a);
    chain.produce_block();
 
-   const chainbase::database &db = chain.control->db();
+   auto& chaindb = chain.control->chaindb();
 
    using resource_usage_object = eosio::chain::resource_limits::resource_usage_object;
    using by_owner = eosio::chain::resource_limits::by_owner;
@@ -415,9 +415,9 @@ try {
 
    create_acc(acc2);
 
-   const auto &usage = db.get<resource_usage_object,by_owner>(acc1);
+   const auto &usage = chaindb.get<resource_usage_object,by_owner>(acc1);
 
-   const auto &usage2 = db.get<resource_usage_object,by_owner>(acc1a);
+   const auto &usage2 = chaindb.get<resource_usage_object,by_owner>(acc1a);
 
    BOOST_TEST(usage.cpu_usage.average() > 0);
    BOOST_TEST(usage.net_usage.average() > 0);

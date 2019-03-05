@@ -41,9 +41,8 @@
 
 #include <test_api/test_api.wast.hpp>
 #include <test_api_mem/test_api_mem.wast.hpp>
-// TODO: CyberWay
-//#include <test_api_db/test_api_db.wast.hpp>
-//#include <test_api_multi_index/test_api_multi_index.wast.hpp>
+#include <test_api_db/test_api_db.wast.hpp>
+#include <test_api_multi_index/test_api_multi_index.wast.hpp>
 
 #include <eosio.bios/eosio.bios.wast.hpp>
 #include <eosio.bios/eosio.bios.abi.hpp>

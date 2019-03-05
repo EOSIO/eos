@@ -332,6 +332,7 @@ namespace eosio { namespace testing {
             else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
                vcfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
          }
+         vcfg.chaindb_address = getenv("MONGO_URL") ?: "mongodb://127.0.0.1:27017";
          return vcfg;
       }
 

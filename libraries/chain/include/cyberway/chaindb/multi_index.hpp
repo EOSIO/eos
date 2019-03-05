@@ -98,6 +98,26 @@ void safe_allocate(const Size size, const char* error_msg, Lambda&& callback) {
     callback(alloc.data, alloc.size);
 }
 
+template<typename Key>
+find_info lower_bound(chaindb_controller& chaindb, const index_request& request, const Key& key) {
+    find_info info;
+    safe_allocate(fc::raw::pack_size(key), "Invalid size of key on lower_bound", [&](auto& data, auto& size) {
+        pack_object(key, data, size);
+        info = chaindb.lower_bound(request, data, size);
+    });
+    return info;
+}
+
+template<typename Key>
+find_info upper_bound(chaindb_controller& chaindb, const index_request& request, const Key& key) {
+    find_info info;
+    safe_allocate(fc::raw::pack_size(key), "Invalid size of key on upper_bound", [&](auto& data, auto& size) {
+        pack_object(key, data, size);
+        info = chaindb.upper_bound(request, data, size);
+    });
+    return info;
+}
+
 using boost::multi_index::const_mem_fun;
 
 namespace _multi_detail {
@@ -565,11 +585,7 @@ public:
         }
 
         const_iterator lower_bound(const key_type& key) const {
-            find_info info;
-            safe_allocate(fc::raw::pack_size(key), "Invalid size of key on lower_bound", [&](auto& data, auto& size) {
-                pack_object(key, data, size);
-                info = controller_.lower_bound(get_index_request(), data, size);
-            });
+            auto info = chaindb::lower_bound(controller_, get_index_request(), key);
             return const_iterator(&controller_, info.cursor, info.pk);
         }
 
@@ -578,11 +594,7 @@ public:
             return lower_bound(key_converter<key_type>::convert(value));
         }
         const_iterator upper_bound(const key_type& key) const {
-            find_info info;
-            safe_allocate(fc::raw::pack_size(key), "Invalid size of key on upper_bound", [&](auto& data, auto& size) {
-                pack_object(key, data, size);
-                info = controller_.upper_bound(get_index_request(), data, size);
-            });
+            auto info = chaindb::upper_bound(controller_, get_index_request(), key);
             return const_iterator(&controller_, info.cursor, info.pk);
         }
 
@@ -600,6 +612,12 @@ public:
             }
 
             return make_pair(lower, upper);
+        }
+
+        size_t size() const {
+            // Bad realization, normal for tests,
+            //   should NOT!!!! be used in the production code.
+            return std::distance(begin(), end());
         }
 
         const_iterator iterator_to(const T& obj) const {
@@ -765,6 +783,10 @@ public:
         static_assert(res != hana::nothing, "name provided is not the name of any secondary index within multi_index");
 
         return index<IndexTag, typename std::decay<decltype(res.value())>::type::extractor_type>(primary_idx_.controller_);
+    }
+
+    size_t size() const {
+        return primary_idx_.size();
     }
 
     const_iterator iterator_to(const T& obj) const {

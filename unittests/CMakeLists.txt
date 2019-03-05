@@ -29,17 +29,11 @@ target_include_directories( unit_test PUBLIC
                             ${CMAKE_CURRENT_BINARY_DIR}/contracts
                             ${CMAKE_CURRENT_BINARY_DIR}/include )
 
-add_dependencies(unit_test asserter test_api test_api_mem
-        # test_api_db TODO: CyberWay
-        test_ram_limit
-        # test_api_multi_index TODO: CyberWay
-        eosio.token
-        # proxy TODO: CyberWay
-        identity identity_test stltest eosio.system eosio.token eosio.bios
-        # multi_index_test TODO: CyberWay
-        noop eosio.msig payloadless tic_tac_toe deferred_test
-        # snapshot_test TODO: CyberWay
-        )
+add_dependencies(
+        unit_test asserter test_api test_api_mem test_api_db test_ram_limit test_api_multi_index
+        eosio.token proxy identity identity_test stltest eosio.system eosio.bios
+        multi_index_test noop eosio.msig payloadless tic_tac_toe deferred_test snapshot_test
+)
 
 #Manually run unit_test for all supported runtimes
 #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
