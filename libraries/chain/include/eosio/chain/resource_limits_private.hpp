@@ -214,8 +214,8 @@ namespace eosio { namespace chain { namespace resource_limits {
        */
       uint64_t virtual_cpu_limit = 0ULL;
       
-      //TODO: config; smoothly increase this value when starting the chain
-      uint64_t virtual_ram_limit = 1024ll*1024*1024*64;
+      //TODO: smoothly increase this value when starting the chain
+      uint64_t virtual_ram_limit = config::default_virtual_ram_limit;
    };
 
    using resource_limits_state_table = cyberway::chaindb::table_container<

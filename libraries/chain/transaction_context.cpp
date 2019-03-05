@@ -631,8 +631,11 @@ namespace bacc = boost::accumulators;
                     net_limit_ex.staked_virtual_balance + 
                     cpu_limit_ex.staked_virtual_balance;
                  EOS_ASSERT(ram_limit_ex.available < 0 || staked_virtual_balance >= 0, ram_usage_exceeded,
-                    "account ${account} has insufficient ram; current staked virtual balance is ${staked_virtual_balance}",
+                    "account ${account} has insufficient ram; current staked virtual balance is ${staked_virtual_balance}: ram = ${ram}, net = ${net}, cpu = ${cpu}",
                     ("account", a)("staked_virtual_balance",staked_virtual_balance)
+                    ("ram", ram_limit_ex.staked_virtual_balance)
+                    ("net", net_limit_ex.staked_virtual_balance)
+                    ("cpu", cpu_limit_ex.staked_virtual_balance)
                  );
                  
                  auto virtual_balance_itr = providers_virtual_balances.find(a);
