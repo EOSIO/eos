@@ -329,6 +329,14 @@ void clear_directory_contents( const fc::path& p ) {
    }
 }
 
+void clear_chainbase_files( const fc::path& p ) {
+   if( !fc::is_directory( p ) )
+      return;
+
+   fc::remove( p / "shared_memory.bin" );
+   fc::remove( p / "shared_memory.meta" );
+}
+
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
@@ -512,7 +520,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          ilog( "Replay requested: deleting state database" );
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
             wlog( "The --truncate-at-block option does not work for a regular replay of the blockchain." );
-         clear_directory_contents( my->chain_config->state_dir );
+         clear_chainbase_files( my->chain_config->state_dir );
          if( options.at( "fix-reversible-blocks" ).as<bool>()) {
             if( !recover_reversible_blocks( my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
                                             my->chain_config->reversible_cache_size )) {
