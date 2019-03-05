@@ -1,5 +1,12 @@
 #pragma once
 
+#include "action.h"
+#include "types.hpp"
+#include "serialize.hpp"
+#include "datastream.hpp"
+#include "chaindb.h"
+#include "fixed_key.hpp"
+
 #include <vector>
 #include <tuple>
 #include <boost/hana.hpp>
@@ -10,19 +17,17 @@
 #include <limits>
 #include <algorithm>
 #include <memory>
-
-#include <eosiolib/action.h>
-#include <eosiolib/types.hpp>
-#include <eosiolib/serialize.hpp>
-#include <eosiolib/datastream.hpp>
-#include <eosiolib/chaindb.h>
-#include <eosiolib/fixed_key.hpp>
+#include <list>
 
 #define chaindb_assert(_EXPR, ...) eosio_assert(_EXPR, __VA_ARGS__)
 
-namespace eosio {
+#ifndef CHAINDB_ANOTHER_CONTRACT_PROTECT
+#  define CHAINDB_ANOTHER_CONTRACT_PROTECT(_CHECK, _MSG) \
+     chaindb_assert(_CHECK, _MSG)
+#endif // CHAINDB_ANOTHER_CONTRACT_PROTECT
 
-constexpr static inline name same_payer{};
+
+namespace eosio {
 
 template<class Class,typename Type,Type (Class::*PtrToMemberFunction)()const>
 struct const_mem_fun
@@ -324,12 +329,15 @@ struct key_converter<std::tuple<Indices...>> {
 template<typename T, typename MultiIndex>
 struct multi_index_item: public T {
     template<typename Constructor>
-    multi_index_item(const MultiIndex* midx, Constructor&& constructor)
-    : multidx_(midx) {
+    multi_index_item(const MultiIndex& midx, Constructor&& constructor)
+    : code_(midx.get_code()),
+      scope_(midx.get_scope()) {
         constructor(*this);
     }
 
-    const MultiIndex* const multidx_;
+    const account_name_t code_;
+    const scope_t scope_ = 0;
+
     bool deleted_ = false;
     int ref_cnt_ = 0;
 }; // struct multi_index_item
@@ -396,7 +404,7 @@ void safe_allocate(const Size size, const char* error_msg, Lambda&& callback) {
     callback(alloc.data, alloc.size);
 }
 
-template<table_name_t TableName, typename T, typename... Indices>
+template<uint64_t TableName, typename T, typename... Indices>
 class multi_index {
 private:
     static_assert(sizeof...(Indices) <= 16, "multi_index only supports a maximum of 16 secondary indices");
@@ -421,7 +429,30 @@ private:
     const scope_t scope_;
 
     mutable primary_key_t next_primary_key_ = end_primary_key;
-    mutable std::vector<item_ptr> items_vector_;
+
+    using cache_vector_t_ = std::vector<item_ptr>;
+    struct cache_item_t_ {
+        const account_name_t code;
+        const scope_t scope;
+        cache_vector_t_ items_vector;
+
+        cache_item_t_(const account_name_t c, const scope_t s)
+        : code(c), scope(s) {
+        }
+    };
+
+// Singleton realization for multiple instances
+//    static cache_vector_t_& get_items_vector(const account_name_t code, const scope_t scope) {
+//        static std::list<cache_item_t_> cache_map;
+//        for (auto& itm: cache_map) {
+//            if (itm.code == code && itm.scope == scope) return itm.items_vector;
+//        }
+//        cache_map.push_back({code, scope});
+//        return cache_map.back().items_vector;
+//    }
+//
+//    cache_vector_t_& items_vector_;
+    mutable cache_vector_t_ items_vector_;
 
     template<index_name_t IndexName>
     struct const_iterator_impl: public std::iterator<std::bidirectional_iterator_tag, const T> {
@@ -525,6 +556,9 @@ private:
 
         const_iterator_impl(const multi_index* midx, const cursor_t cursor)
         : multidx_(midx), cursor_(cursor) {
+            if (is_cursor_initialized()) {
+                primary_key_ = chaindb_current(get_code(), cursor_);
+            }
         }
 
         const_iterator_impl(const multi_index* midx, const cursor_t cursor, const primary_key_t pk, item_ptr item)
@@ -581,7 +615,7 @@ private:
         }
 
         void lazy_open_find_by_pk() const {
-            cursor_ = chaindb_find(get_code(), get_scope(), table_name(), index_name(), primary_key_, nullptr, 0);
+            cursor_ = chaindb_opt_find_by_pk(get_code(), get_scope(), table_name(), primary_key_);
             chaindb_assert(is_cursor_initialized(), "unable to open find_by_pk iterator");
         }
 
@@ -696,7 +730,7 @@ private:
 
         const_iterator iterator_to(const T& obj) const {
             const auto& itm = static_cast<const item&>(obj);
-            chaindb_assert(itm.multidx_ == multidx_, "object passed to iterator_to is not in multi_index");
+            chaindb_assert(multidx_->is_same_multidx(itm), "object passed to iterator_to is not in multi_index");
 
             auto key = extractor_type()(itm);
             auto pk = primary_key_extractor_type()(itm);
@@ -773,7 +807,7 @@ private:
         safe_allocate(size, "invalid unpack object size", [&](auto& data, auto& datasize) {
             auto dpk = chaindb_data(get_code(), cursor, data, datasize);
             chaindb_assert(dpk == pk, "invalid packet object");
-            ptr = item_ptr(new item(this, [&](auto& itm) {
+            ptr = item_ptr(new item(*this, [&](auto& itm) {
                 T& obj = static_cast<T&>(itm);
                 unpack_object(obj, data, datasize);
             }));
@@ -784,13 +818,19 @@ private:
         add_object_to_cache(ptr);
         return ptr;
     }
+
+    bool is_same_multidx(const item& o) const {
+        return (o.code_ == get_code() && o.scope_ == get_scope());
+    }
+
 public:
     using const_iterator = const_iterator_impl<N(primary)>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
 public:
-    multi_index(const account_name_t code, scope_t scope)
-    : code_(code), scope_(scope), primary_idx_(this) {}
+    multi_index(const account_name_t code, const scope_t scope)
+    : code_(code), scope_(scope), primary_idx_(this) {
+    }
 
     constexpr static table_name_t table_name() { return TableName; }
 
@@ -843,12 +883,21 @@ public:
         return primary_idx_.iterator_to(obj);
     }
 
+    void flush_cache() {
+        for (auto& itm_ptr: items_vector_) {
+            itm_ptr->deleted_ = true;
+        }
+        items_vector_.clear();
+    }
+
     template<typename Lambda>
     const_iterator emplace(const account_name_t payer, Lambda&& constructor) const {
         // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
-        chaindb_assert(static_cast<uint64_t>(get_code()) == current_receiver(), "cannot modify objects in table of another contract");
+        CHAINDB_ANOTHER_CONTRACT_PROTECT(
+            static_cast<uint64_t>(get_code()) == current_receiver(),
+            "cannot create objects in table of another contract");
 
-        auto ptr = item_ptr(new item(this, [&](auto& itm) {
+        auto ptr = item_ptr(new item(*this, [&](auto& itm) {
             constructor(static_cast<T&>(itm));
         }));
 
@@ -876,10 +925,12 @@ public:
     template<typename Lambda>
     void modify(const T& obj, const account_name_t payer, Lambda&& updater) const {
         // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
-        chaindb_assert(static_cast<uint64_t>(get_code()) == current_receiver(), "cannot modify objects in table of another contract");
+        CHAINDB_ANOTHER_CONTRACT_PROTECT(
+            static_cast<uint64_t>(get_code()) == current_receiver(),
+            "cannot modify objects in table of another contract");
 
         const auto& itm = static_cast<const item&>(obj);
-        chaindb_assert(itm.multidx_ == this, "object passed to modify is not in multi_index");
+        chaindb_assert(is_same_multidx(itm), "object passed to modify is not in multi_index");
 
         auto pk = primary_key_extractor_type()(obj);
 
@@ -921,7 +972,12 @@ public:
 
     void erase(const T& obj) const {
         const auto& itm = static_cast<const item&>(obj);
-        chaindb_assert(itm.multidx_ == this, "object passed to erase is not in multi_index");
+
+        CHAINDB_ANOTHER_CONTRACT_PROTECT(
+            static_cast<uint64_t>(get_code()) == current_receiver(),
+            "cannot delete objects from table of another contract");
+
+        chaindb_assert(is_same_multidx(itm), "object passed to erase is not in multi_index");
 
         auto pk = primary_key_extractor_type()(obj);
         remove_object_from_cache(pk);
