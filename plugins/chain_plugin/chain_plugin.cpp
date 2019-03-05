@@ -241,6 +241,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Type of chaindb connection")
          ("chaindb_address", bpo::value<string>()->default_value("mongodb://127.0.0.1:27017"),
           "Connection address to chaindb")
+         ("genesis-file", bpo::value<bfs::path>(),
+             "The location of the Genesis state file (absolute path or relative to the current directory)")
          ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
          ;
 
@@ -368,6 +370,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if (options.count("chaindb_address"))
          my->chain_config->chaindb_address = options.at("chaindb_address").as<string>();
+
+      my->chain_config->read_genesis = options.count("genesis-file");
+      if (my->chain_config->read_genesis) {
+          auto path = options.at("genesis-file").as<bfs::path>();
+          my->chain_config->genesis_file = path.is_relative() ? bfs::current_path() / path : path;
+      }
 
       if( options.count( "wasm-runtime" ))
          my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();

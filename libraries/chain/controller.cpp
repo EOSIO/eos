@@ -26,6 +26,7 @@
 
 
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/genesis/genesis_read.hpp>
 
 namespace eosio { namespace chain {
 
@@ -533,6 +534,13 @@ struct controller_impl {
    }
 
 
+    void read_genesis() {
+        if (conf.read_genesis) {
+            cyberway::genesis::genesis_read reader(conf.genesis_file, self, conf.genesis.initial_timestamp);
+            reader.read(cyberway::genesis::read_flags::accounts);
+        }
+    }
+
    /**
     *  Sets fork database head to the genesis state.
     */
@@ -556,6 +564,7 @@ struct controller_impl {
       set_revision(head->block_num);
 
       initialize_database();
+      read_genesis();
    }
 
    void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
@@ -1170,12 +1179,12 @@ struct controller_impl {
                });
             in_trx_requiring_checks = true;
             auto trace = push_transaction( onbtrx, fc::time_point::maximum(), self.get_global_properties().configuration.min_transaction_cpu_usage, true );
-            
+
             if(trace && trace->except) {
                edump((*trace));
                throw *trace->except;
            }
-           
+
          } catch( const boost::interprocess::bad_alloc& e  ) {
             elog( "on block transaction failed due to a bad allocation" );
             throw;
@@ -1600,7 +1609,7 @@ struct controller_impl {
       trx.actions.emplace_back(std::move(on_block_act));
       trx.set_reference_block(self.head_block_id());
       trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
-      
+
       return trx;
    }
 
