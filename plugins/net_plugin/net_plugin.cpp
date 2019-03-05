@@ -2581,7 +2581,7 @@ namespace eosio {
          } else {
             auto trace = result.get<transaction_trace_ptr>();
             if (!trace->except) {
-               fc_dlog(logger, "chain accepted transaction");
+               fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
                this->dispatcher->bcast_transaction(ptrx);
                return;
             }
