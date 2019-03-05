@@ -2711,7 +2711,12 @@ namespace eosio {
             auto trace = result.get<transaction_trace_ptr>();
             if (!trace->except) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
+<<<<<<< HEAD
                accepted = true;
+=======
+               this->dispatcher->bcast_transaction(ptrx);
+               return;
+>>>>>>> Add trx id to log message
             }
 
             if( !accepted ) {
