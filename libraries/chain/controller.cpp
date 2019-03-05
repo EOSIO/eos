@@ -364,9 +364,7 @@ struct controller_impl {
       head = std::make_shared<block_state>();
       static_cast<block_header_state&>(*head) = genheader;
       head->block = std::make_shared<signed_block>(genheader.header);
-      fork_db.reset( *head );
       db.set_revision( head->block_num );
-
       initialize_database();
    }
 
@@ -391,11 +389,15 @@ struct controller_impl {
          ilog( "${n} irreversible blocks replayed", ("n", 1 + head->block_num - start_block_num) );
 
          auto pending_head = fork_db.pending_head();
-         if( pending_head->block_num < head->block_num || head->block_num <= fork_db.root()->block_num ) {
+         if( pending_head->block_num < head->block_num || head->block_num < fork_db.root()->block_num ) {
+            ilog( "resetting fork database with new last irreversible block as the new root: ${id}",
+                  ("id", head->id) );
             fork_db.reset( *head );
-         } else {
+         } else if( head->block_num != fork_db.root()->block_num ) {
             auto new_root = fork_db.search_on_branch( pending_head->id, head->block_num );
             EOS_ASSERT( new_root, fork_database_exception, "unexpected error: could not find new LIB in fork database" );
+            ilog( "advancing fork database root to new last irreversible block within existing fork database: ${id}",
+                  ("id", new_root->id) );
             fork_db.mark_valid( new_root );
             fork_db.advance_root( new_root->id );
          }
@@ -438,9 +440,23 @@ struct controller_impl {
             blog.reset( conf.genesis, signed_block_ptr(), lib_num + 1 );
          }
       } else {
-         if( db.revision() < 1 ) {
-            ilog( "No existing chain state. Initializing fresh blockchain state." );
+         if( db.revision() < 1 || !fork_db.head() ) {
+            if( fork_db.head() ) {
+               if( read_mode == db_read_mode::IRREVERSIBLE && fork_db.head()->id != fork_db.root()->id ) {
+                  fork_db.rollback_head_to_root();
+               }
+               wlog( "No existing chain state. Initializing fresh blockchain state." );
+            } else {
+               EOS_ASSERT( db.revision() < 1, database_exception,
+                           "No existing fork database despite existing chain state. Replay required." );
+               wlog( "No existing chain state or fork database. Initializing fresh blockchain state and resetting fork database.");
+            }
             initialize_blockchain_state(); // sets head to genesis state
+
+            if( !fork_db.head() ) {
+               fork_db.reset( *head );
+            }
+
             if( blog.head() ) {
                EOS_ASSERT( blog.first_block_num() == 1, block_log_exception,
                            "block log does not start with genesis block"
@@ -474,7 +490,8 @@ struct controller_impl {
             head = fork_db.head();
          }
       }
-      // At this point head == fork_db.head() != nullptr && fork_db.root() != nullptr && fork_db.root()->block_num <= lib_num.
+      // At this point head != nullptr && fork_db.head() != nullptr && fork_db.root() != nullptr.
+      // Furthermore, fork_db.root()->block_num <= lib_num.
       // Also, even though blog.head() may still be nullptr, blog.first_block_num() is guaranteed to be lib_num + 1.
 
       EOS_ASSERT( db.revision() >= head->block_num, fork_database_exception,
@@ -569,7 +586,7 @@ struct controller_impl {
               pending_head->id != fork_db.head()->id;
               pending_head = fork_db.pending_head()
          ) {
-            wlog( "applying branch from fork database ending with block id '${id}'", ("id", pending_head->id) );
+            wlog( "applying branch from fork database ending with block: ${id}", ("id", pending_head->id) );
             maybe_switch_forks( pending_head, controller::block_status::complete );
          }
       }
