@@ -29,11 +29,31 @@ confinement: strict
 
 apps:
   cleos:
-    command: bin/cleos
+    command: bin/snapcraft-preload $SNAP/bin/cleos
+    environment:
+      HOME: "$SNAP_USER_COMMON"
+    plugs:
+      - home
+      - network
+      - network-bind
+
   keosd:
-    command: bin/keosd
+    command: bin/snapcraft-preload $SNAP/bin/keosd
+    environment:
+      HOME: "$SNAP_USER_COMMON"
+    plugs:
+      - home
+      - network
+      - network-bind
+
   nodeos:
-    command: bin/nodeos
+    command: bin/snapcraft-preload $SNAP/bin/nodeos
+    environment:
+      HOME: "$SNAP_USER_COMMON"
+    plugs:
+      - home
+      - network
+      - network-bind
 
 parts:
   eos:
@@ -67,4 +87,15 @@ parts:
     stage-packages:
       - libcurl4
       - libusb-1.0-0
+
+  snapcraft-preload:
+    source: https://github.com/sergiusens/snapcraft-preload.git
+    plugin: cmake
+    build-packages:
+      - on amd64:
+        - gcc-multilib
+        - g++-multilib
+    stage-packages:
+      - on amd64:
+        - lib32stdc++6
 
