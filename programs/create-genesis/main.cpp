@@ -207,7 +207,7 @@ string pubkey_string(const golos::public_key_type& k) {
 void converter::create_accounts() {
     static const string golos_name = "golos";
     std::cout << "Creating accounts, authorities and usernames in Golos domain..." << std::endl;
-    auto& db = const_cast<database&>(control->db());
+    auto& db = const_cast<chaindb_controller&>(control->chaindb());
     auto& auth_mgr = control->get_mutable_authorization_manager();
     std::unordered_map<string,account_name> names;
 
@@ -224,15 +224,15 @@ void converter::create_accounts() {
     for (const auto a: auths) {
         const auto n = a.account.value;
         const auto& name = names[n];
-        db.create<account_object>([&](auto& a) {
+        db.emplace<account_object>([&](auto& a) {
             a.name = name;
             a.creation_date = _genesis_ts;
         });
-        db.create<account_sequence_object>([&](auto & a) {
+        db.emplace<account_sequence_object>([&](auto & a) {
             a.name = name;
         });
         if (n == golos_name) {
-            db.create<domain_object>([&](auto& a) {
+            db.emplace<domain_object>([&](auto& a) {
                 a.owner = name;
                 a.linked_to = name;
                 a.creation_date = _genesis_ts;
@@ -256,7 +256,7 @@ void converter::create_accounts() {
                         << " to it's " << perm << " authority. Skipped." << std::endl;
                 }
             }
-            return auth_mgr.create_permission(name, perm, id, authority{threshold, keys, accounts}, _genesis_ts);
+            return auth_mgr.create_permission({}, name, perm, id, authority{threshold, keys, accounts}, _genesis_ts);
         };
         const auto& owner_perm = add_permission(config::owner_name, a.owner, 0);
         const auto& active_perm = add_permission(config::active_name, a.active, owner_perm.id);
@@ -266,7 +266,7 @@ void converter::create_accounts() {
     const auto app = names[golos_name];
     for (const auto& auth : auths) {                // loop through auths to preserve names order
         const auto& n = auth.account.value;
-        db.create<username_object>([&](auto& a) {
+        db.emplace<username_object>([&](auto& a) {
             a.owner = names[n]; //generate_name(n);
             a.scope = app;
             a.name = n;
