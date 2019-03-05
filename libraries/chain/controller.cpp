@@ -124,7 +124,7 @@ struct controller_impl {
    resource_limits_manager        resource_limits;
    authorization_manager          authorization;
    controller::config             conf;
-   chain_id_type                  chain_id;
+   const chain_id_type            chain_id; // read by thread_pool threads
    bool                           replaying= false;
    optional<fc::time_point>       replay_head_time;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
