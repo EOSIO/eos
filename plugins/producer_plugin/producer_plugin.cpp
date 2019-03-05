@@ -134,7 +134,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       transaction_id_with_expiry_index                          _persistent_transactions;
       fc::optional<boost::asio::thread_pool>                    _thread_pool;
 
-      int32_t                                                   _max_transaction_time_ms;
+      std::atomic<int32_t>                                      _max_transaction_time_ms; // modified by app thread, read by net_plugin thread pool
       fc::microseconds                                          _max_irreversible_block_age_us;
       int32_t                                                   _produce_time_offset_us = 0;
       int32_t                                                   _last_block_time_offset_us = 0;
@@ -350,8 +350,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void on_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
-         const auto& cfg = chain.get_global_properties().configuration;
-         fc::microseconds max_trx_cpu_usage{ cfg.max_transaction_cpu_usage };
+         fc::microseconds max_trx_cpu_usage = fc::milliseconds( _max_transaction_time_ms.load() );
          auto& tp = *_thread_pool;
          boost::asio::post( tp, [self = this, &chain, max_trx_cpu_usage, trx, persist_until_expired, next]() {
             // use chain thread pool for sig recovery so that future wait below is not in the same thread pool preventing progress
