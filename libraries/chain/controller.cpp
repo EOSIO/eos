@@ -438,9 +438,9 @@ struct controller_impl {
             blog.reset( conf.genesis, signed_block_ptr(), lib_num + 1 );
          }
       } else {
-         if( db.revision() < 1 /* !fork_db.head() */) {
-            ilog( "No head block in fork database. Initializing fresh blockchain state." );
-            initialize_blockchain_state(); // set head to genesis state
+         if( db.revision() < 1 ) {
+            ilog( "No existing chain state. Initializing fresh blockchain state." );
+            initialize_blockchain_state(); // sets head to genesis state
             if( blog.head() ) {
                EOS_ASSERT( blog.first_block_num() == 1, block_log_exception,
                            "block log does not start with genesis block"
@@ -569,6 +569,7 @@ struct controller_impl {
               pending_head->id != fork_db.head()->id;
               pending_head = fork_db.pending_head()
          ) {
+            wlog( "applying branch from fork database ending with block id '${id}'", ("id", pending_head->id) );
             maybe_switch_forks( pending_head, controller::block_status::complete );
          }
       }
