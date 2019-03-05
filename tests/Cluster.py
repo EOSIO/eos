@@ -1569,4 +1569,4 @@ class Cluster(object):
 
     @staticmethod
     def getDataDir(nodeId):
-        return os.path.join(Cluster.__dataDir, "node_%02d" % (nodeId))
+        return os.path.abspath(os.path.join(Cluster.__dataDir, "node_%02d" % (nodeId)))
