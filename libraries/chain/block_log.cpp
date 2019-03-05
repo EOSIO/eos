@@ -126,8 +126,7 @@ namespace eosio { namespace chain {
 
                 const auto* ptr = block_mapped_file.data() + pos;
                 const auto available_size = file_size - pos;
-                //const auto max_block_size = std::min<std::size_t>(available_size, STEEMIT_MAX_BLOCK_SIZE);
-                const auto max_block_size = available_size;
+                const auto max_block_size = std::min<std::size_t>(available_size, eosio::chain::config::maximum_block_size);
 
                 fc::datastream<const char*> ds(ptr, max_block_size);
                 fc::raw::unpack(ds, block);
@@ -285,6 +284,11 @@ namespace eosio { namespace chain {
 
             uint64_t append(const signed_block_ptr& block, const std::vector<char>& data) { try {
                 const auto index_pos = get_mapped_size(index_mapped_file);
+
+                EOS_ASSERT(data.size() <= eosio::chain::config::maximum_block_size,
+                    block_log_exception,
+                    "Block size to large (current ${size}, maximum ${max})",
+                    ("size", data.size())("max", eosio::chain::config::maximum_block_size));
 
                 EOS_ASSERT(index_pos == sizeof(uint64_t) * (block->block_num() - 1),
                     block_log_exception,
