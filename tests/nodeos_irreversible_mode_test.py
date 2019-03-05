@@ -73,20 +73,14 @@ def ensureHeadLibAndForkDbHeadIsAdvancing(nodeToTest):
 
 # Confirm the head lib and fork db of irreversible mode
 # Under any condition of irreversible mode:
-# - forkDbHead > head == lib
+# - forkDbHead >= head == lib
 # headLibAndForkDbHeadBeforeSwitchMode should be only passed IF production is disabled, otherwise it provides erroneous check
 # When comparing with the the state before node is switched:
 # - head == libBeforeSwitchMode == lib and forkDbHead == headBeforeSwitchMode == forkDbHeadBeforeSwitchMode
 def confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode=None, isReversibleBlocksDeleted=False):
-   # In irreversible mode, head should be equal to lib and not equal to fork Db blk num
    head, lib, forkDbHead = getHeadLibAndForkDbHead(nodeToTest)
    assert head == lib, "Head ({}) should be equal to lib ({})".format(head, lib)
-
-   # Fork db can be equal to the head if there is no reversible blocks
-   if not isReversibleBlocksDeleted:
-      assert forkDbHead > head, "Fork db head ({}) should be larger to the head ({}) when there's reversible blocks".format(forkDbHead, head)
-   else:
-      assert forkDbHead == head, "Fork db head ({}) should be larger or equal to the head ({}) when there's no reversible blocks".format(forkDbHead, head)
+   assert forkDbHead >= head, "Fork db head ({}) should be larger or equal to the head ({})".format(forkDbHead, head)
 
    if headLibAndForkDbHeadBeforeSwitchMode:
       headBeforeSwitchMode, libBeforeSwitchMode, forkDbHeadBeforeSwitchMode = headLibAndForkDbHeadBeforeSwitchMode
@@ -100,15 +94,14 @@ def confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeS
          assert forkDbHead == libBeforeSwitchMode, "Fork db head ({}) should be equal to lib before switch mode ({}) when there's no reversible blocks".format(forkDbHead, libBeforeSwitchMode)
 
 # Confirm the head lib and fork db of speculative mode
-# Under any condition of irreversible mode:
-# - forkDbHead == head > lib
+# Under any condition of speculative mode:
+# - forkDbHead == head >= lib
 # headLibAndForkDbHeadBeforeSwitchMode should be only passed IF production is disabled, otherwise it provides erroneous check
 # When comparing with the the state before node is switched:
 # - head == forkDbHeadBeforeSwitchMode == forkDbHead and lib == headBeforeSwitchMode == libBeforeSwitchMode
 def confirmHeadLibAndForkDbHeadOfSpecMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode=None):
-   # In speculative mode, head should be equal to lib and not equal to fork Db blk num
    head, lib, forkDbHead = getHeadLibAndForkDbHead(nodeToTest)
-   assert head > lib, "Head should be larger than lib (head: {}, lib: {})".format(head, lib)
+   assert head >= lib, "Head should be larger or equal to lib (head: {}, lib: {})".format(head, lib)
    assert head == forkDbHead, "Head ({}) should be equal to fork db head ({})".format(head, forkDbHead)
 
    if headLibAndForkDbHeadBeforeSwitchMode:
@@ -184,20 +177,21 @@ try:
       return testResult
 
    # 1st test case: Replay in irreversible mode with reversible blks
-   # Expectation: Node replays and launches successfully
-   #              with head == libBeforeSwitchMode == lib and forkDbHead == headBeforeSwitchMode == forkDbHeadBeforeSwitchMode
+   # Expectation: Node replays and launches successfully and forkdb head, head, and lib matches the irreversible mode expectation
    # Current Bug: duplicate blk added error
    def replayInIrrModeWithRevBlks(nodeIdOfNodeToTest, nodeToTest):
+      # Track head blk num and lib before shutdown
+      headLibAndForkDbHeadBeforeSwitchMode = getHeadLibAndForkDbHead(nodeToTest)
+
       # Kill node and replay in irreversible mode
       nodeToTest.kill(signal.SIGTERM)
       relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --read-mode irreversible --replay")
 
       # Confirm state
-      confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest)
+      confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode)
 
    # 2nd test case: Replay in irreversible mode without reversible blks
-   # Expectation: Node replays and launches successfully
-   #              with head == libBeforeSwitchMode == lib and forkDbHead == headBeforeSwitchMode == forkDbHeadBeforeSwitchMode
+   # Expectation: Node replays and launches successfully and forkdb head, head, and lib matches the irreversible mode expectation
    # Current Bug: lib != libBeforeSwitchMode
    def replayInIrrModeWithoutRevBlks(nodeIdOfNodeToTest, nodeToTest):
       # Track head blk num and lib before shutdown
@@ -212,8 +206,7 @@ try:
       confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode, True)
 
    # 3rd test case: Switch mode speculative -> irreversible without replay
-   # Expectation: Node switches mode successfully
-   #              with head == libBeforeSwitchMode == lib and forkDbHead == headBeforeSwitchMode == forkDbHeadBeforeSwitchMode
+   # Expectation: Node switches mode successfully and forkdb head, head, and lib matches the irreversible mode expectation
    # Current Bug: head != lib
    def switchSpecToIrrMode(nodeIdOfNodeToTest, nodeToTest):
       # Track head blk num and lib before shutdown
@@ -227,8 +220,7 @@ try:
       confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode)
 
    # 4th test case: Switch mode irreversible -> speculative without replay
-   # Expectation: Node switches mode successfully
-   #              with head == forkDbHeadBeforeSwitchMode == forkDbHead and lib == headBeforeSwitchMode == libBeforeSwitchMode
+   # Expectation: Node switches mode successfully and forkdb head, head, and lib matches the speculative mode expectation
    # Current Bug: head != forkDbHead and head != forkDbHeadBeforeSwitchMode and lib != libBeforeSwitchMode
    def switchIrrToSpecMode(nodeIdOfNodeToTest, nodeToTest):
       # Track head blk num and lib before shutdown
@@ -244,7 +236,7 @@ try:
    # 5th test case: Switch mode speculative -> irreversible without replay and connected to producing node
    # Expectation: Node switches mode successfully
    #              and the head and lib should be advancing after some blocks produced
-   #              with head == libBeforeSwitchMode == lib and forkDbHead == headBeforeSwitchMode == forkDbHeadBeforeSwitchMode
+   #              and forkdb head, head, and lib matches the irreversible mode expectation
    # Current Bug: Fail to switch to irreversible mode, blk_validate_exception next blk in the future will be thrown
    def switchSpecToIrrModeWithConnectedToProdNode(nodeIdOfNodeToTest, nodeToTest):
       try:
@@ -264,7 +256,7 @@ try:
    # 6th test case: Switch mode irreversible -> speculative without replay and connected to producing node
    # Expectation: Node switches mode successfully
    #              and the head and lib should be advancing after some blocks produced
-   #              with head == forkDbHeadBeforeSwitchMode == forkDbHead and lib == headBeforeSwitchMode == libBeforeSwitchMode
+   #              and forkdb head, head, and lib matches the speculative mode expectation
    # Current Bug: Node switches mode successfully, however, it fails to establish connection with the producing node
    def switchIrrToSpecModeWithConnectedToProdNode(nodeIdOfNodeToTest, nodeToTest):
       try:
@@ -284,7 +276,7 @@ try:
    # 7th test case: Replay in irreversible mode with reversible blks while connected to producing node
    # Expectation: Node replays and launches successfully
    #              and the head and lib should be advancing after some blocks produced
-   #              with head == libBeforeSwitchMode == lib and forkDbHead == headBeforeSwitchMode == forkDbHeadBeforeSwitchMode
+   #              and forkdb head, head, and lib matches the irreversible mode expectation
    # Current Bug: duplicate blk added error
    def replayInIrrModeWithRevBlksAndConnectedToProdNode(nodeIdOfNodeToTest, nodeToTest):
       try:
@@ -303,7 +295,7 @@ try:
    # 8th test case: Replay in irreversible mode without reversible blks while connected to producing node
    # Expectation: Node replays and launches successfully
    #              and the head and lib should be advancing after some blocks produced
-   #              with head == libBeforeSwitchMode == lib and forkDbHead == headBeforeSwitchMode == forkDbHeadBeforeSwitchMode
+   #              and forkdb head, head, and lib matches the irreversible mode expectation
    # Current Bug: Nothing
    def replayInIrrModeWithoutRevBlksAndConnectedToProdNode(nodeIdOfNodeToTest, nodeToTest):
       try:
