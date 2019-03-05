@@ -239,7 +239,7 @@ namespace eosio { namespace chain {
 
       if( h.new_producers ) {
          result.pending_schedule.schedule            = *h.new_producers;
-         result.pending_schedule.schedule_hash       = digest_type::hash( result.pending_schedule );
+         result.pending_schedule.schedule_hash       = digest_type::hash( *h.new_producers );
          result.pending_schedule.schedule_lib_num    = block_number;
       } else {
          if( was_pending_promoted ) {
