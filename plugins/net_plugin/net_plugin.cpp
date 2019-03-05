@@ -158,6 +158,8 @@ namespace eosio {
 
       bool                          use_socket_read_watermark = false;
 
+      channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
+
       uint16_t                                  thread_pool_size = 4;
       optional<boost::asio::thread_pool>        thread_pool;
       std::shared_ptr<boost::asio::io_context>  server_ioc;
@@ -187,6 +189,7 @@ namespace eosio {
       void send_transaction_to_all( const std::shared_ptr<std::vector<char>>& send_buffer, VerifierFunc verify );
 
       void accepted_block(const block_state_ptr&);
+      void transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>&);
 
       bool is_valid( const handshake_message &msg);
 
@@ -2834,6 +2837,17 @@ namespace eosio {
       dispatcher->bcast_block(block);
    }
 
+   void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>& results) {
+      const auto& id = results.second->id;
+      if (results.first) {
+         fc_ilog(logger,"signaled NACK, trx-id = ${id} : ${why}",("id", id)("why", results.first->to_detail_string()));
+         dispatcher->rejected_transaction(id);
+      } else {
+         fc_ilog(logger,"signaled ACK, trx-id = ${id}",("id", id));
+         dispatcher->bcast_transaction(results.second);
+      }
+   }
+
    bool net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
       if(allowed_connections == None)
          return false;
@@ -3148,6 +3162,8 @@ namespace eosio {
       {
          cc.accepted_block.connect(  boost::bind(&net_plugin_impl::accepted_block, my.get(), _1));
       }
+
+      my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
 
       my->db_read_mode = cc.get_read_mode();
       if( my->db_read_mode == chain::db_read_mode::READ_ONLY ) {
