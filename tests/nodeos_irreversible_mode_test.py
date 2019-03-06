@@ -92,9 +92,11 @@ def getHeadLibAndForkDbHead(node: Node):
 
 # Wait for some time until LIB advance
 def waitForBlksProducedAndLibAdvanced():
-   # Give 6 seconds buffer time
    requiredConfirmation = int(2 / 3 * numOfProducers) + 1
-   timeToWait = ((12 * requiredConfirmation - 1) * 2) + 6
+   maxNumOfBlksReqToConfirmLib = (12 * requiredConfirmation - 1) * 2
+   # Give 6 seconds buffer time
+   bufferTime = 6
+   timeToWait = maxNumOfBlksReqToConfirmLib / 2 + bufferTime
    time.sleep(timeToWait)
 
 # Ensure that the relaunched node received blks from producers, in other words head and lib is advancing
@@ -120,7 +122,8 @@ def confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeS
       headBeforeSwitchMode, libBeforeSwitchMode, forkDbHeadBeforeSwitchMode = headLibAndForkDbHeadBeforeSwitchMode
       assert head == libBeforeSwitchMode, "Head ({}) should be equal to lib before switch mode ({})".format(head, libBeforeSwitchMode)
       assert lib == libBeforeSwitchMode, "Lib ({}) should be equal to lib before switch mode ({})".format(lib, libBeforeSwitchMode)
-      assert forkDbHead == headBeforeSwitchMode and forkDbHead == forkDbHeadBeforeSwitchMode
+      assert forkDbHead == headBeforeSwitchMode and forkDbHead == forkDbHeadBeforeSwitchMode, \
+         "Fork db head ({}) should be equal to head before switch mode ({}) and fork db head before switch mode ({})".format(forkDbHead, headBeforeSwitchMode, forkDbHeadBeforeSwitchMode)
 
 # Confirm the head lib and fork db of speculative mode
 # Under any condition of speculative mode:
