@@ -90,9 +90,12 @@ def getHeadLibAndForkDbHead(node: Node):
    forkDbHead =  int(info["fork_db_head_block_num"])
    return head, lib, forkDbHead
 
-# Around 30 seconds should be enough to advance lib for 4 producers
+# Wait for some time until LIB advance
 def waitForBlksProducedAndLibAdvanced():
-   time.sleep(30)
+   # Give 6 seconds buffer time
+   requiredConfirmation = int(2 / 3 * numOfProducers) + 1
+   timeToWait = ((12 * requiredConfirmation - 1) * 2) + 6
+   time.sleep(timeToWait)
 
 # Ensure that the relaunched node received blks from producers, in other words head and lib is advancing
 def ensureHeadLibAndForkDbHeadIsAdvancing(nodeToTest):
@@ -108,7 +111,7 @@ def ensureHeadLibAndForkDbHeadIsAdvancing(nodeToTest):
 # headLibAndForkDbHeadBeforeSwitchMode should be only passed IF production is disabled, otherwise it provides erroneous check
 # When comparing with the the state before node is switched:
 # - head == libBeforeSwitchMode == lib and forkDbHead == headBeforeSwitchMode == forkDbHeadBeforeSwitchMode
-def confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode=None, isReversibleBlocksDeleted=False):
+def confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode=None):
    head, lib, forkDbHead = getHeadLibAndForkDbHead(nodeToTest)
    assert head == lib, "Head ({}) should be equal to lib ({})".format(head, lib)
    assert forkDbHead >= head, "Fork db head ({}) should be larger or equal to the head ({})".format(forkDbHead, head)
@@ -117,12 +120,7 @@ def confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeS
       headBeforeSwitchMode, libBeforeSwitchMode, forkDbHeadBeforeSwitchMode = headLibAndForkDbHeadBeforeSwitchMode
       assert head == libBeforeSwitchMode, "Head ({}) should be equal to lib before switch mode ({})".format(head, libBeforeSwitchMode)
       assert lib == libBeforeSwitchMode, "Lib ({}) should be equal to lib before switch mode ({})".format(lib, libBeforeSwitchMode)
-      # Different case when reversible blocks are deleted
-      if not isReversibleBlocksDeleted:
-         assert forkDbHead == headBeforeSwitchMode and forkDbHead == forkDbHeadBeforeSwitchMode, \
-            "Fork db head ({}) should be equal to head before switch mode ({}) and fork db head before switch mode ({})".format(forkDbHead, headBeforeSwitchMode, forkDbHeadBeforeSwitchMode)
-      else:
-         assert forkDbHead == libBeforeSwitchMode, "Fork db head ({}) should be equal to lib before switch mode ({}) when there's no reversible blocks".format(forkDbHead, libBeforeSwitchMode)
+      assert forkDbHead == headBeforeSwitchMode and forkDbHead == forkDbHeadBeforeSwitchMode
 
 # Confirm the head lib and fork db of speculative mode
 # Under any condition of speculative mode:
@@ -145,6 +143,7 @@ def confirmHeadLibAndForkDbHeadOfSpecMode(nodeToTest, headLibAndForkDbHeadBefore
 
 def relaunchNode(node: Node, nodeId, chainArg="", addOrSwapFlags=None, relaunchAssertMessage="Fail to relaunch"):
    isRelaunchSuccess = node.relaunch(nodeId, chainArg=chainArg, addOrSwapFlags=addOrSwapFlags, timeout=relaunchTimeout, cachePopen=True)
+   time.sleep(1) # Give a second to replay or resync if needed
    assert isRelaunchSuccess, relaunchAssertMessage
    return isRelaunchSuccess
 
@@ -235,7 +234,7 @@ try:
       relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --read-mode irreversible --replay")
 
       # Ensure the node condition is as expected after relaunch
-      confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode, True)
+      confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode)
 
    # 3rd test case: Switch mode speculative -> irreversible without replay
    # Expectation: Node switches mode successfully and forkdb head, head, and lib matches the irreversible mode expectation
