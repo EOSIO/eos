@@ -1581,7 +1581,7 @@ struct controller_impl {
 
          auto bsp = std::make_shared<block_state>(
                         std::move( ab._pending_block_header_state ),
-                        std::move( ab._unsigned_block ),
+                        b,
                         std::move( ab._trx_metas ),
                         []( block_timestamp_type timestamp,
                             const flat_set<digest_type>& cur_features,

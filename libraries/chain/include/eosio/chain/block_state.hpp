@@ -21,12 +21,12 @@ namespace eosio { namespace chain {
                  );
 
       block_state( pending_block_header_state&& cur,
-                  signed_block_ptr&& b, // unsigned block
-                  vector<transaction_metadata_ptr>&& trx_metas,
-                  const std::function<void( block_timestamp_type,
-                                            const flat_set<digest_type>&,
-                                            const vector<digest_type>& )>& validator,
-                  const std::function<signature_type(const digest_type&)>& signer
+                   signed_block_ptr&& b, // unsigned block
+                   vector<transaction_metadata_ptr>&& trx_metas,
+                   const std::function<void( block_timestamp_type,
+                                             const flat_set<digest_type>&,
+                                             const vector<digest_type>& )>& validator,
+                   const std::function<signature_type(const digest_type&)>& signer
                 );
 
       block_state( pending_block_header_state&& cur,
