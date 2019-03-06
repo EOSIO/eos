@@ -247,7 +247,7 @@ public:
   vector<string>  producers;
   eosd_def*       instance;
   string          gelf_endpoint;
-  bool            dont_start;
+  bool            dont_start = false;
 };
 
 void
@@ -392,7 +392,6 @@ struct launcher_def {
    bool force_overwrite;
    size_t total_nodes;
    size_t unstarted_nodes;
-   size_t total_nodes;
    size_t prod_nodes;
    size_t producers;
    size_t next_node;
@@ -893,7 +892,7 @@ launcher_def::bind_nodes () {
    int extra = producers % non_bios;
    unsigned int i = 0;
    unsigned int producer_number = 0;
-   const auto to_not_start_node = total_nodes - unstarted_nodes - 1;
+   const auto to_not_start_node = total_nodes - unstarted_nodes;
    for (auto &h : bindings) {
       for (auto &inst : h.instances) {
          bool is_bios = inst.name == "bios";
