@@ -5,6 +5,7 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/authorization_manager.hpp>
+#include <eosio/chain/resource_limits.hpp>
 
 #include <fc/io/raw.hpp>
 #include <fc/variant.hpp>
@@ -133,6 +134,7 @@ struct genesis_read::genesis_read_impl final {
         std::cout << "Creating accounts, authorities and usernames in Golos domain..." << std::endl;
         auto& db = const_cast<chaindb_controller&>(_control.chaindb());
         auto& auth_mgr = _control.get_mutable_authorization_manager();
+        auto& reslim_mgr = _control.get_mutable_resource_limits_manager();
         std::unordered_map<string,account_name> names;
         names.reserve(_auths.size());
 
@@ -189,6 +191,8 @@ struct genesis_read::genesis_read_impl final {
             const auto& active_perm = add_permission(config::active_name, a.active, owner_perm.id);
             const auto& posting_perm = add_permission(posting_auth_name, a.posting, active_perm.id);
             // TODO: do we need memo key ?
+
+            reslim_mgr.initialize_account(name);
         }
 
         // add usernames
