@@ -537,7 +537,7 @@ struct controller_impl {
     void read_genesis() {
         if (conf.read_genesis) {
             cyberway::genesis::genesis_read reader(conf.genesis_file, self, conf.genesis.initial_timestamp);
-            reader.read(cyberway::genesis::read_flags::accounts);
+            reader.read();
         }
     }
 

@@ -34,12 +34,15 @@ namespace cyberway { namespace genesis {
 
 using namespace eosio::chain;
 using namespace cyberway::chaindb;
+using mvo = mutable_variant_object;
 using std::string;
 using std::vector;
 
+
 constexpr auto posting_auth_name = "posting";
 constexpr auto golos_account_name = "golos";
-
+constexpr auto issuer_account_name = "cyber";   // ?cyberfounder
+constexpr int64_t golos_max_supply = 1'000'000'000ll * 1'000; // 3 symbols precision
 
 account_name generate_name(string n);
 string pubkey_string(const golos::public_key_type& k);
@@ -49,11 +52,11 @@ struct genesis_read::genesis_read_impl final {
     bfs::path _state_file;
     controller& _control;
     time_point _genesis_ts;
-    read_flags _flags;
 
     vector<string> _accs_map;
     vector<string> _plnk_map;
 
+    vector<golos::account_object> _accounts;
     vector<golos::account_authority_object> _auths;
 
     genesis_read_impl(const bfs::path& genesis_file, controller& ctrl, time_point genesis_ts)
@@ -118,12 +121,19 @@ struct genesis_read::genesis_read_impl final {
             int i = 0;
             for (; in && i < t.records_count; i++) {
                 o.visit(v);
-                if (type == account_authority_object_id) {
+                switch (type) {
+                case account_object_id:
+                    _accounts.emplace_back(o.get<golos::account_object>());
+                    break;
+                case account_authority_object_id:
                     _auths.emplace_back(o.get<golos::account_authority_object>());
+                    break;
+                default:
+                    break;
                 }
             }
             std::cout << "  done, " << i << " record(s) read." << std::endl;
-            if ((_flags & read_flags::accounts) == read_flags::accounts && _auths.size() > 0)
+            if (_auths.size() > 0)
                 break;              // we do not need other tables
         }
         std::cout << "Done reading Genesis state." << std::endl;
@@ -149,6 +159,7 @@ struct genesis_read::genesis_read_impl final {
         }
 
         // fill auths
+        int i = 0;
         for (const auto a: _auths) {
             const auto n = a.account.value(_accs_map);
             const auto& name = names[n];
@@ -193,6 +204,10 @@ struct genesis_read::genesis_read_impl final {
             // TODO: do we need memo key ?
 
             reslim_mgr.initialize_account(name);
+            if ((++i & 0xFF) == 0) {
+                db.apply_all_changes();
+                db.clear_cache();
+            }
         }
 
         // add usernames
@@ -204,10 +219,18 @@ struct genesis_read::genesis_read_impl final {
                 u.scope = app;
                 u.name = n;
             });
+            if ((++i & 0x3FF) == 0) {
+                db.apply_all_changes();
+                db.clear_cache();
+            }
         }
+
+        _auths.clear();
         std::cout << "Done." << std::endl;
     }
 
+    void create_balances() {
+    }
 };
 
 genesis_read::genesis_read(const bfs::path& genesis_file, controller& ctrl, time_point genesis_ts)
@@ -216,13 +239,11 @@ genesis_read::genesis_read(const bfs::path& genesis_file, controller& ctrl, time
 genesis_read::~genesis_read() {
 }
 
-void genesis_read::read(const read_flags flags) {
-    _impl->_flags = flags;
+void genesis_read::read() {
     _impl->read_state();
-    if (flags & accounts) {
-        _impl->create_accounts();
-    }
-    // TODO: balances, witnesses
+    _impl->create_accounts();
+    _impl->create_balances();
+    // TODO: witnesses
 }
 
 
