@@ -372,15 +372,17 @@ namespace eosio { namespace chain {
       {
          result.first.push_back(first_branch);
          result.second.push_back(second_branch);
-         first_branch = get_block( first_branch->header.previous );
-         second_branch = get_block( second_branch->header.previous );
+         const auto &first_prev = first_branch->header.previous;
+         first_branch = get_block( first_prev );
+         const auto &second_prev = second_branch->header.previous;
+         second_branch = get_block( second_prev );
          EOS_ASSERT( first_branch, fork_db_block_not_found,
                      "block ${id} does not exist",
-                     ("id", first_branch->header.previous)
+                     ("id", first_prev)
          );
          EOS_ASSERT( second_branch, fork_db_block_not_found,
                      "block ${id} does not exist",
-                     ("id", second_branch->header.previous)
+                     ("id", second_prev)
          );
       }
 
