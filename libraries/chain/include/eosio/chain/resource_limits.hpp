@@ -41,14 +41,6 @@ namespace resource_limits {
       void validate()const; // throws if the parameters do not satisfy basic sanity checks
    };
    
-    //TODO: remove it (there are dependencies in the plugins)
-   struct account_resource_limit { 
-      int64_t used = 0; ///< quantity used in current window 
-      int64_t available = 0; ///< quantity available in current window (based upon fractional reserve) 
-      int64_t max = 0; ///< max per window under current congestion 
-      int64_t staked_virtual_balance = 0; 
-   }; 
-   
    struct account_balance {
       uint64_t stake;
       uint64_t ram;
@@ -92,6 +84,10 @@ namespace resource_limits {
          uint64_t get_block_net_limit() const;
          
          pricelist get_pricelist() const;
+
+         ratio get_reource_usage_ratio(account_name account, symbol_code resource_code) const;
+         ratio get_account_stake_ratio(int64_t now, const account_name& account);
+
          account_balance get_account_balance(int64_t now, const account_name& account, const pricelist&);
 
          std::map<symbol_code, uint64_t> get_account_usage(const account_name& account) const;
@@ -103,5 +99,3 @@ namespace resource_limits {
 
 FC_REFLECT( eosio::chain::resource_limits::ratio, (numerator)(denominator))
 FC_REFLECT( eosio::chain::resource_limits::elastic_limit_parameters, (target)(max)(periods)(max_multiplier)(contract_rate)(expand_rate))
-FC_REFLECT( eosio::chain::resource_limits::account_resource_limit, (used)(available)(max)(staked_virtual_balance) )
-

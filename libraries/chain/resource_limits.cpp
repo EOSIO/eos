@@ -272,27 +272,42 @@ pricelist resource_limits_manager::get_pricelist() const {
     return ret;
 }
 
-account_balance resource_limits_manager::get_account_balance(int64_t now, const account_name& account, const pricelist& prices) {
+ratio resource_limits_manager::get_reource_usage_ratio(account_name account, symbol_code resource_code) const {
+    const auto resources_usage = get_account_usage(account);
+    const auto price_list = get_pricelist();
 
-    static constexpr account_balance no_limits{UINT64_MAX, UINT64_MAX};
+    const auto requested_resource_price = price_list.at(resource_code);
+    const auto requested_resource_usage = resources_usage.at(resource_code);
+
+    uint64_t total_usage_cost = 0;
+
+    for (const auto& resource_usage : resources_usage) {
+        const auto price = price_list.at(resource_usage.first);
+        total_usage_cost += safe_prop(resource_usage.second, price.numerator, price.denominator);
+    }
+
+    return ratio{safe_prop(requested_resource_usage, requested_resource_price.numerator, requested_resource_price.denominator), total_usage_cost};
+}
+
+ratio resource_limits_manager::get_account_stake_ratio(int64_t now, const account_name& account) {
     symbol_code token_code { symbol(CORE_SYMBOL).to_symbol_code() };
-    
+
     const stake_param_object* param = nullptr;
     const stake_stat_object* stat = nullptr;
-    
+
     if (_chaindb.get<account_object, by_name>(account).privileged || //assignments:
-        !(param = _chaindb.find<stake_param_object, by_id>(token_code.value)) || 
-        !(stat  = _chaindb.find<stake_stat_object, by_id>(token_code.value)) || 
+        !(param = _chaindb.find<stake_param_object, by_id>(token_code.value)) ||
+        !(stat  = _chaindb.find<stake_stat_object, by_id>(token_code.value)) ||
         !stat->enabled || stat->total_staked == 0) {
-            
-        return no_limits;
+
+        return {0,0};
     }
-    
+
     EOS_ASSERT(stat->total_staked > 0, chain_exception, "SYSTEM: incorrect total_staked");
-    
+
     auto agents_table = _chaindb.get_table<stake_agent_object>();
     auto agents_idx = agents_table.get_index<stake_agent_object::by_key>();
-    
+
     uint64_t staked = 0;
     auto agent = agents_idx.find(agent_key(token_code, account));
     if (agent != agents_idx.end()) {
@@ -304,14 +319,29 @@ account_balance resource_limits_manager::get_account_balance(int64_t now, const 
         EOS_ASSERT(agent->shares_sum >= 0, chain_exception, "SYSTEM: incorrect shares_sum value");
         staked = safe_prop<uint64_t>(total_funds, agent->own_share, agent->shares_sum);
     }
-    
+
+    return ratio{staked, static_cast<uint64_t>(stat->total_staked)};
+}
+
+account_balance resource_limits_manager::get_account_balance(int64_t now, const account_name& account, const pricelist& prices) {
+
+    static constexpr account_balance no_limits{UINT64_MAX, UINT64_MAX};
+
+    const auto account_stake_ratio = get_account_stake_ratio(now, account);
+    const auto staked = account_stake_ratio.numerator;
+    const auto total_staked = account_stake_ratio.denominator;
+
+    if (total_staked == 0) {
+        return no_limits;
+    }
+
     const auto& state  = _chaindb.get<resource_limits_state_object>();
-    auto max_ram_usage = safe_prop<uint64_t>(state.virtual_ram_limit, staked, stat->total_staked);
+    auto max_ram_usage = safe_prop<uint64_t>(state.virtual_ram_limit, staked, total_staked);
     auto res_usage = get_account_usage(account);
     
     EOS_ASSERT(max_ram_usage >= res_usage[ram_code], ram_usage_exceeded,
         "account ${a} has insufficient staked tokens (${s}) for use ram.\n ram usage ${ur};\n total staked ${ts};\n total ram ${tr};\n max ram usage ${mr}", 
-        ("a", account)("s",staked)("ur", res_usage[ram_code])("ts", stat->total_staked)("tr", state.virtual_ram_limit)("mr", max_ram_usage));
+        ("a", account)("s",staked)("ur", res_usage[ram_code])("ts", total_staked)("tr", state.virtual_ram_limit)("mr", max_ram_usage));
     
     uint64_t cost = 0;
     for (auto& u : res_usage) {
