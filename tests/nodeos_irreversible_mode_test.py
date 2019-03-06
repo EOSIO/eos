@@ -209,7 +209,6 @@ try:
 
    # 1st test case: Replay in irreversible mode with reversible blks
    # Expectation: Node replays and launches successfully and forkdb head, head, and lib matches the irreversible mode expectation
-   # Current Bug: duplicate blk added error
    def replayInIrrModeWithRevBlks(nodeIdOfNodeToTest, nodeToTest):
       # Track head blk num and lib before shutdown
       headLibAndForkDbHeadBeforeSwitchMode = getHeadLibAndForkDbHead(nodeToTest)
@@ -223,7 +222,6 @@ try:
 
    # 2nd test case: Replay in irreversible mode without reversible blks
    # Expectation: Node replays and launches successfully and forkdb head, head, and lib matches the irreversible mode expectation
-   # Current Bug: lib != libBeforeSwitchMode
    def replayInIrrModeWithoutRevBlks(nodeIdOfNodeToTest, nodeToTest):
       # Track head blk num and lib before shutdown
       headLibAndForkDbHeadBeforeSwitchMode = getHeadLibAndForkDbHead(nodeToTest)
@@ -238,7 +236,6 @@ try:
 
    # 3rd test case: Switch mode speculative -> irreversible without replay
    # Expectation: Node switches mode successfully and forkdb head, head, and lib matches the irreversible mode expectation
-   # Current Bug: head != lib
    def switchSpecToIrrMode(nodeIdOfNodeToTest, nodeToTest):
       # Track head blk num and lib before shutdown
       headLibAndForkDbHeadBeforeSwitchMode = getHeadLibAndForkDbHead(nodeToTest)
@@ -252,7 +249,6 @@ try:
 
    # 4th test case: Switch mode irreversible -> speculative without replay
    # Expectation: Node switches mode successfully and forkdb head, head, and lib matches the speculative mode expectation
-   # Current Bug: head != forkDbHead and head != forkDbHeadBeforeSwitchMode and lib != libBeforeSwitchMode
    def switchIrrToSpecMode(nodeIdOfNodeToTest, nodeToTest):
       # Track head blk num and lib before shutdown
       headLibAndForkDbHeadBeforeSwitchMode = getHeadLibAndForkDbHead(nodeToTest)
@@ -268,7 +264,6 @@ try:
    # Expectation: Node switches mode successfully
    #              and the head and lib should be advancing after some blocks produced
    #              and forkdb head, head, and lib matches the irreversible mode expectation
-   # Current Bug: Fail to switch to irreversible mode, blk_validate_exception next blk in the future will be thrown
    def switchSpecToIrrModeWithConnectedToProdNode(nodeIdOfNodeToTest, nodeToTest):
       try:
          startProdNode()
@@ -288,7 +283,6 @@ try:
    # Expectation: Node switches mode successfully
    #              and the head and lib should be advancing after some blocks produced
    #              and forkdb head, head, and lib matches the speculative mode expectation
-   # Current Bug: Node switches mode successfully, however, it fails to establish connection with the producing node
    def switchIrrToSpecModeWithConnectedToProdNode(nodeIdOfNodeToTest, nodeToTest):
       try:
          startProdNode()
@@ -308,7 +302,6 @@ try:
    # Expectation: Node replays and launches successfully
    #              and the head and lib should be advancing after some blocks produced
    #              and forkdb head, head, and lib matches the irreversible mode expectation
-   # Current Bug: duplicate blk added error
    def replayInIrrModeWithRevBlksAndConnectedToProdNode(nodeIdOfNodeToTest, nodeToTest):
       try:
          startProdNode()
@@ -327,7 +320,6 @@ try:
    # Expectation: Node replays and launches successfully
    #              and the head and lib should be advancing after some blocks produced
    #              and forkdb head, head, and lib matches the irreversible mode expectation
-   # Current Bug: Nothing
    def replayInIrrModeWithoutRevBlksAndConnectedToProdNode(nodeIdOfNodeToTest, nodeToTest):
       try:
          startProdNode()
@@ -348,7 +340,6 @@ try:
    # Expectation: Node replays and launches successfully
    #              and the head and lib should be advancing after some blocks produced
    #              and forkdb head, head, and lib should stay the same after relaunch
-   # Current Bug: Nothing
    def switchToSpecModeWithIrrModeSnapshot(nodeIdOfNodeToTest, nodeToTest):
       try:
          # Kill node and backup blocks directory of speculative mode
