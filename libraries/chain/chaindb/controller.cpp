@@ -134,6 +134,7 @@ namespace cyberway { namespace chaindb {
             assert(itr != abi_map_.end());
 
             auto system_abi = std::move(itr->second);
+            cache_.clear();
             undo_.clear(); // remove all undo states
             journal_.clear(); // remove all pending changes
             driver_.drop_db(); // drop database
@@ -580,6 +581,10 @@ namespace cyberway { namespace chaindb {
 
     void chaindb_controller::drop_db() {
         impl_->drop_db();
+    }
+
+    void chaindb_controller::clear_cache() {
+        impl_->cache_.clear();
     }
 
     void chaindb_controller::add_abi(const account_name& code, abi_def abi) {

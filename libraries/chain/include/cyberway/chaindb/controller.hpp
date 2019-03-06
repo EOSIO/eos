@@ -167,6 +167,7 @@ namespace cyberway { namespace chaindb {
 
         void restore_db();
         void drop_db();
+        void clear_cache();
 
         bool has_abi(const account_name&);
         void add_abi(const account_name&, abi_def);

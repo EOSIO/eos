@@ -10,7 +10,7 @@ namespace cyberway { namespace chaindb {
           converter_(converter) {
         }
 
-        using map_type = std::map<primary_key_t, cache_item_ptr>;
+        using map_type = fc::flat_map<primary_key_t, cache_item_ptr>;
 
         map_type map;
         primary_key_t next_pk = unset_primary_key;
@@ -64,6 +64,12 @@ namespace cyberway { namespace chaindb {
 
         void erase(table_cache_object& cache) {
             index_.erase(index_.iterator_to(cache));
+        }
+
+        void clear() {
+            for (auto& table: index_) {
+                const_cast<table_cache_object&>(table).map.clear();
+            }
         }
 
     private:
@@ -147,6 +153,10 @@ namespace cyberway { namespace chaindb {
         if (cache->map.empty() && cache->code() != account_name()) {
             impl_->erase(*cache);
         }
+    }
+
+    void cache_map::clear() {
+        impl_->clear();
     }
 
     //-----------
