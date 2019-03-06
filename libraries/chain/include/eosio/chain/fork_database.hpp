@@ -40,6 +40,11 @@ namespace eosio { namespace chain {
          void            reset( const block_header_state& root_bhs );
 
          /**
+          *  Removes validated flag from all blocks in fork database and resets head to point to the root.
+          */
+         void            rollback_head_to_root();
+
+         /**
           *  Advance root block forward to some other block in the tree.
           */
          void            advance_root( const block_id_type& id );
@@ -48,7 +53,7 @@ namespace eosio { namespace chain {
           *  Add block state to fork database.
           *  Must link to existing block in fork database or the root.
           */
-         void            add( const block_state_ptr& next_block );
+         void            add( const block_state_ptr& next_block, bool ignore_duplicate = false );
 
          void            remove( const block_id_type& id );
 

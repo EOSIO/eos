@@ -67,7 +67,7 @@ namespace eosio { namespace chain {
       fc::path              datadir;
 
       void add( const block_state_ptr& n,
-                bool validate,
+                bool ignore_duplicate, bool validate,
                 const std::function<void( block_timestamp_type,
                                           const flat_set<digest_type>&,
                                           const vector<digest_type>& )>& validator );
@@ -132,7 +132,7 @@ namespace eosio { namespace chain {
                   }
                }
                s.header_exts = s.block->validate_and_extract_header_extensions();
-               my->add( std::make_shared<block_state>( move( s ) ), true, validator );
+               my->add( std::make_shared<block_state>( move( s ) ), false, true, validator );
             }
             block_id_type head_id;
             fc::raw::unpack( ds, head_id );
@@ -237,6 +237,18 @@ namespace eosio { namespace chain {
       my->head = my->root;
    }
 
+   void fork_database::rollback_head_to_root() {
+      auto& by_id_idx = my->index.get<by_block_id>();
+      auto itr = by_id_idx.begin();
+      while (itr != by_id_idx.end()) {
+         by_id_idx.modify( itr, [&]( block_state_ptr& bsp ) {
+            bsp->validated = false;
+         } );
+         ++itr;
+      }
+      my->head = my->root;
+   }
+
    void fork_database::advance_root( const block_id_type& id ) {
       EOS_ASSERT( my->root, fork_database_exception, "root not yet set" );
 
@@ -285,7 +297,7 @@ namespace eosio { namespace chain {
    }
 
    void fork_database_impl::add( const block_state_ptr& n,
-                                 bool validate,
+                                 bool ignore_duplicate, bool validate,
                                  const std::function<void( block_timestamp_type,
                                                            const flat_set<digest_type>&,
                                                            const vector<digest_type>& )>& validator )
@@ -310,7 +322,10 @@ namespace eosio { namespace chain {
       }
 
       auto inserted = index.insert(n);
-      EOS_ASSERT( inserted.second, fork_database_exception, "duplicate block added", ("id", n->id) );
+      if( !inserted.second ) {
+         if( ignore_duplicate ) return;
+         EOS_THROW( fork_database_exception, "duplicate block added", ("id", n->id) );
+      }
 
       auto candidate = index.get<by_lib_block_num>().begin();
       if( (*candidate)->is_valid() ) {
@@ -318,8 +333,8 @@ namespace eosio { namespace chain {
       }
    }
 
-   void fork_database::add( const block_state_ptr& n ) {
-      my->add( n, false,
+   void fork_database::add( const block_state_ptr& n, bool ignore_duplicate ) {
+      my->add( n, ignore_duplicate, false,
                []( block_timestamp_type timestamp,
                    const flat_set<digest_type>& cur_features,
                    const vector<digest_type>& new_features )
@@ -369,37 +384,51 @@ namespace eosio { namespace chain {
    pair< branch_type, branch_type >  fork_database::fetch_branch_from( const block_id_type& first,
                                                                        const block_id_type& second )const {
       pair<branch_type,branch_type> result;
-      auto first_branch = get_block(first);
-      auto second_branch = get_block(second);
+      auto first_branch = (first == my->root->id) ? my->root : get_block(first);
+      auto second_branch = (second == my->root->id) ? my->root : get_block(second);
+
+      EOS_ASSERT(first_branch, fork_db_block_not_found, "block ${id} does not exist", ("id", first));
+      EOS_ASSERT(second_branch, fork_db_block_not_found, "block ${id} does not exist", ("id", second));
 
       while( first_branch->block_num > second_branch->block_num )
       {
          result.first.push_back(first_branch);
-         first_branch = get_block( first_branch->header.previous );
+         const auto& prev = first_branch->header.previous;
+         first_branch = (prev == my->root->id) ? my->root : get_block( prev );
          EOS_ASSERT( first_branch, fork_db_block_not_found,
                      "block ${id} does not exist",
-                     ("id", first_branch->header.previous) );
+                     ("id", prev)
+         );
       }
 
       while( second_branch->block_num > first_branch->block_num )
       {
          result.second.push_back( second_branch );
-         second_branch = get_block( second_branch->header.previous );
+         const auto& prev = second_branch->header.previous;
+         second_branch = (prev == my->root->id) ? my->root : get_block( prev );
          EOS_ASSERT( second_branch, fork_db_block_not_found,
                      "block ${id} does not exist",
-                     ("id", second_branch->header.previous) );
+                     ("id", prev)
+         );
       }
+
+      if (first_branch->id == second_branch->id) return result;
 
       while( first_branch->header.previous != second_branch->header.previous )
       {
          result.first.push_back(first_branch);
          result.second.push_back(second_branch);
-         first_branch = get_block( first_branch->header.previous );
-         second_branch = get_block( second_branch->header.previous );
-         EOS_ASSERT( first_branch && second_branch, fork_db_block_not_found,
-                     "either block ${fid} or ${sid} does not exist",
-                     ("fid", first_branch->header.previous)
-                     ("sid", second_branch->header.previous)
+         const auto &first_prev = first_branch->header.previous;
+         first_branch = get_block( first_prev );
+         const auto &second_prev = second_branch->header.previous;
+         second_branch = get_block( second_prev );
+         EOS_ASSERT( first_branch, fork_db_block_not_found,
+                     "block ${id} does not exist",
+                     ("id", first_prev)
+         );
+         EOS_ASSERT( second_branch, fork_db_block_not_found,
+                     "block ${id} does not exist",
+                     ("id", second_prev)
          );
       }
 
