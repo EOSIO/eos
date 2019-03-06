@@ -411,11 +411,9 @@ struct controller_impl {
       }
 
       int rev = 0;
-      auto next_block_num = head->block_num+1; // need to cater the irreversible case that head is not advancing
-      while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(read_mode != db_read_mode::IRREVERSIBLE ? head->block_num+1 : next_block_num) ) {
+      while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
          ++rev;
          replay_push_block( obj->get_block(), controller::block_status::validated );
-         ++next_block_num;
       }
 
       ilog( "${n} reversible blocks replayed", ("n",rev) );
@@ -1560,8 +1558,7 @@ struct controller_impl {
          emit( self.pre_accepted_block, b );
          const bool skip_validate_signee = !conf.force_all_checks;
 
-         // need to cater the irreversible mode case where head is not advancing
-         auto bsp = std::make_shared<block_state>((read_mode == db_read_mode::IRREVERSIBLE && s != controller::block_status::irreversible && fork_db.pending_head()) ? *fork_db.pending_head() : *head, b, skip_validate_signee );
+         auto bsp = std::make_shared<block_state>( *head, b, skip_validate_signee );
 
          if( s != controller::block_status::irreversible ) {
             fork_db.add( bsp, true );
@@ -1576,10 +1573,10 @@ struct controller_impl {
             // On replay, log_irreversible is not called and so no irreversible_block signal is emittted.
             // So emit it explicitly here.
             emit( self.irreversible_block, bsp );
-         } else if( read_mode != db_read_mode::IRREVERSIBLE ) {
-            maybe_switch_forks( bsp, s );
          } else {
-            log_irreversible();
+            EOS_ASSERT( read_mode != db_read_mode::IRREVERSIBLE, block_validate_exception,
+                        "invariant failure: cannot replay reversible blocks while in irreversible mode" );
+            maybe_switch_forks( bsp, s );
          }
 
       } FC_LOG_AND_RETHROW( )
