@@ -3011,7 +3011,12 @@ namespace eosio {
          auto &stale_blk = c->blk_state.get<by_block_num>();
          stale_blk.erase( stale_blk.lower_bound(1), stale_blk.upper_bound(lib) );
       }
+<<<<<<< HEAD
       fc_dlog( logger, "expire_txns ${n}us", ("n", time_point::now() - now) );
+=======
+      fc_dlog( logger, "expire_txns ${n}us size ${s} removed ${r}",
+               ("n", time_point::now() - now)("s", start_size)("r", start_size - local_txns.size()) );
+>>>>>>> force a build
    }
 
    void net_plugin_impl::expire_local_txns() {
