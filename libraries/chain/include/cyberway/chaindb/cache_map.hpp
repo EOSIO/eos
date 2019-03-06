@@ -21,6 +21,8 @@ namespace cyberway { namespace chaindb {
         cache_item_ptr emplace(const table_info&, object_value) const;
         void remove(const table_info&, primary_key_t) const;
 
+        void clear();
+
     private:
         struct cache_map_impl_;
         std::unique_ptr<cache_map_impl_> impl_;
