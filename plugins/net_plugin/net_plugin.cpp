@@ -697,6 +697,7 @@ namespace eosio {
       void operator()( packed_transaction&& msg ) const {
          shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>( std::move( msg ) );
 <<<<<<< HEAD
+<<<<<<< HEAD
          impl.handle_message( c, ptr );
 =======
          connection_wptr weak = c;
@@ -705,6 +706,9 @@ namespace eosio {
             if( c) impl->handle_message( c, ptr );
          });
 >>>>>>> Test of multi-threaded reading
+=======
+         impl.handle_message( c, ptr );
+>>>>>>> Move more of incoming transaction processing to thread pool
       }
 
       template <typename T>
@@ -2712,11 +2716,15 @@ namespace eosio {
             if (!trace->except) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
 <<<<<<< HEAD
+<<<<<<< HEAD
                accepted = true;
 =======
                this->dispatcher->bcast_transaction(ptrx);
                return;
 >>>>>>> Add trx id to log message
+=======
+               accepted = true;
+>>>>>>> Move more of incoming transaction processing to thread pool
             }
 
             if( !accepted ) {
@@ -3012,11 +3020,15 @@ namespace eosio {
          stale_blk.erase( stale_blk.lower_bound(1), stale_blk.upper_bound(lib) );
       }
 <<<<<<< HEAD
+<<<<<<< HEAD
       fc_dlog( logger, "expire_txns ${n}us", ("n", time_point::now() - now) );
 =======
       fc_dlog( logger, "expire_txns ${n}us size ${s} removed ${r}",
                ("n", time_point::now() - now)("s", start_size)("r", start_size - local_txns.size()) );
 >>>>>>> force a build
+=======
+      fc_dlog( logger, "expire_txns ${n}us", ("n", time_point::now() - now) );
+>>>>>>> Move more of incoming transaction processing to thread pool
    }
 
    void net_plugin_impl::expire_local_txns() {
