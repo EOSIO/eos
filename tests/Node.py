@@ -1333,7 +1333,7 @@ class Node(object):
             myCmd=" ".join(cmdArr)
 
         cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
-        self.launchCmd(cmd, nodeId)
+        self.launchCmd(cmd, nodeId, cachePopen)
 
         def isNodeAlive():
             """wait for node to be responsive."""
@@ -1355,7 +1355,7 @@ class Node(object):
         self.killed=False
         return True
 
-    def launchCmd(self, cmd, nodeId):
+    def launchCmd(self, cmd, nodeId, cachePopen=False):
         dataDir=Utils.getNodeDataDir(nodeId)
         dt = datetime.datetime.now()
         dateStr=Utils.getDateString(dt)
