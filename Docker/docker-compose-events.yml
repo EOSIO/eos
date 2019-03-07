@@ -74,7 +74,7 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-    command: bash -c "mkfifo /queue/msg.pipe; exec /opt/cyberway/bin/nodeosd.sh --data-dir /opt/cyberway/bin/data-dir -e --http-alias=nodeosd:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888 --plugin eosio::event_engine_plugin --event-engine-dumpfile /queue/msg.pipe"
+    command: bash -c "mkfifo /queue/msg.pipe; exec /opt/cyberway/bin/nodeosd.sh --data-dir /opt/cyberway/bin/data-dir -e --http-alias=nodeosd:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888 --plugin eosio::event_engine_plugin --event-engine-dumpfile /queue/msg.pipe --genesis-json /opt/cyberway/bin/genesis-data/genesis.json --genesis-data /opt/cyberway/bin/genesis-data/genesis.dat"
     hostname: nodeosd
     ports:
       - 8888:8888
@@ -84,6 +84,7 @@ services:
     volumes:
       - cyberway-nodeos-data:/opt/cyberway/bin/data-dir
       - ${PWD}/config.ini:/opt/cyberway/bin/data-dir/config.ini
+      - ${PWD}/genesis-data:/opt/cyberway/bin/genesis-data
       - cyberway-queue:/queue
     cap_add:
       - IPC_LOCK
