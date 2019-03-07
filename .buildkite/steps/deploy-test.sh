@@ -22,7 +22,7 @@ IMAGETAG=${BUILDKITE_BRANCH:-master}
 echo ":llama: Change docker-compose.yml"
 sed -i "s/cyberway\/cyberway:stable/cyberway\/cyberway:${IMAGETAG}/g" docker-compose.yml
 sed -i "s/--genesis-json \S\+ --genesis-data \S\+//g" docker-compose.yml
-sed -i "s/nodeosd.sh /nodeosd.sh --config config-standalone.ini /g" docker-compose.yml
+sed -i "s/\${PWD}\/config.ini/\${PWD}\/config-standalone.ini/g" docker-compose.yml
 echo "----------------------------------------------"
 cat docker-compose.yml
 echo "----------------------------------------------"
