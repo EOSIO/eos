@@ -32,7 +32,7 @@ class se_wallet final : public wallet_api {
       string create_key(string key_type) override;
       bool remove_key(string key) override;
 
-      optional<signature_type> try_sign_digest(const digest_type digest, const public_key_type public_key) override;
+      fc::optional<signature_type> try_sign_digest(const digest_type digest, const public_key_type public_key) override;
 
    private:
       std::unique_ptr<detail::se_wallet_impl> my;
