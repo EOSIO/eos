@@ -1584,8 +1584,6 @@ void producer_plugin_impl::produce_block() {
    } );
 
    chain.commit_block();
-   auto hbt = chain.head_block_time();
-   //idump((fc::time_point::now() - hbt));
 
    block_state_ptr new_bs = chain.head_block_state();
    _producer_watermarks[new_bs->header.producer] = chain.head_block_num();
