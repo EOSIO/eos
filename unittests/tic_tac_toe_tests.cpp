@@ -11,9 +11,8 @@
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 
-//TODO: CyberWay
-//#include <proxy/proxy.wast.hpp>
-//#include <proxy/proxy.abi.hpp>
+#include <proxy/proxy.wast.hpp>
+#include <proxy/proxy.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -41,25 +40,27 @@ struct game {
 };
 FC_REFLECT(game, (challenger)(host)(turn)(winner)(board));
 
+namespace fc {
+    template<uint32_t N>
+    void from_variant(const variant& v, uint8_t (&o)[N]) {
+        std::vector<uint8_t> d;
+        from_variant(v, d);
+        BOOST_REQUIRE_EQUAL(d.size(), N);
+        memcpy(o, d.data(), N);
+    }
+}
 
 struct ttt_tester : TESTER {
    void get_game(game& game, account_name scope, account_name key) {
-      auto* maybe_tid = find_table(N(tic.tac.toe), scope, N(games));
-      if(maybe_tid == nullptr)
-         BOOST_FAIL("table for code=\"tic.tac.toe\" scope=\"" + scope.to_string() + "\" table=\"games\" does not exist");
-
-      auto* o = control->db().find<key_value_object, by_scope_primary>(boost::make_tuple(maybe_tid->id, key));
-      if(o == nullptr)
-         BOOST_FAIL("game for  does not exist for challenger=\"" + key.to_string() + "\"");
-
-      fc::raw::unpack(o->value.data(), o->value.size(), game);
+      auto value = control->chaindb().value_by_pk({N(tic.tac.toe), scope, N(games)}, key.value);
+      fc::from_variant(value, game);
    }
 };
 
 BOOST_AUTO_TEST_SUITE(tic_tac_toe_tests)
 
 BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
-   TESTER chain;
+   ttt_tester chain;
    abi_serializer abi_ser{json::from_string(tic_tac_toe_abi).as<abi_def>(), chain.abi_serializer_max_time};
    chain.create_account(N(tic.tac.toe));
    chain.produce_blocks(10);
@@ -144,7 +145,7 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
       ), eosio_assert_message_exception, eosio_assert_message_starts_with("the game has ended"));
 
    game current;
-   chain.get_table_entry(current, N(tic.tac.toe), N(player1), N(games), N(player2));
+   chain.get_game(current, N(player1), N(player2));
    BOOST_REQUIRE_EQUAL("player1", account_name(current.winner).to_string());
 
    chain.push_action(N(tic.tac.toe), N(close), N(player1), mutable_variant_object()

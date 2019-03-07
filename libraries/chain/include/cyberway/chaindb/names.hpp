@@ -21,6 +21,8 @@ namespace cyberway { namespace chaindb {
         static const string next_pk_field;
         static const string undo_pk_field;
         static const string undo_rec_field;
+        static const string undo_payer_field;
+        static const string undo_size_field;
         static const string revision_field;
 
         static const string payer_field;
@@ -37,14 +39,21 @@ namespace cyberway { namespace chaindb {
 
     ///----
 
+    inline account_name get_system_code() {
+        return account_name();
+    }
+
+    inline bool is_system_code(const account_name& code) {
+        return (code.empty());
+    }
+
     inline string get_code_name(const account_name& code) {
-        if (!code.empty()) {
-            string str;
-            str.append(names::system_code).append(code.to_string());
-            std::replace( str.begin(), str.end(), '.', '-');
-            return str;
-        }
-        return names::system_code;
+        if (is_system_code(code)) return names::system_code;
+
+        string str;
+        str.append(names::system_code).append(code.to_string());
+        std::replace(str.begin(), str.end(), '.', '-');
+        return str;
     }
 
     inline string get_code_name(const account_name_t code) {

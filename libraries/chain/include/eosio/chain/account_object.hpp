@@ -11,7 +11,7 @@
 
 namespace eosio { namespace chain {
 
-   class account_object : public chainbase::object<account_object_type, account_object> {
+   class account_object : public cyberway::chaindb::object<account_object_type, account_object> {
       OBJECT_CTOR(account_object)
 
       id_type              id;
@@ -45,7 +45,7 @@ namespace eosio { namespace chain {
    using account_id_type = account_object::id_type;
 
    struct by_name;
-   using account_index = cyberway::chaindb::shared_multi_index_container<
+   using account_table = cyberway::chaindb::table_container<
       account_object,
       cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(account_object, account_object::id_type, id)>,
@@ -53,7 +53,7 @@ namespace eosio { namespace chain {
       >
    >;
 
-   class account_sequence_object : public chainbase::object<account_sequence_object_type, account_sequence_object>
+   class account_sequence_object : public cyberway::chaindb::object<account_sequence_object_type, account_sequence_object>
    {
       OBJECT_CTOR(account_sequence_object);
 
@@ -66,7 +66,7 @@ namespace eosio { namespace chain {
    };
 
    struct by_name;
-   using account_sequence_index = cyberway::chaindb::shared_multi_index_container<
+   using account_sequence_table = cyberway::chaindb::table_container<
       account_sequence_object,
       cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(account_sequence_object, account_sequence_object::id_type, id)>,
@@ -76,9 +76,9 @@ namespace eosio { namespace chain {
 
 } } // eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::account_object, eosio::chain::account_table)
 CHAINDB_TAG(eosio::chain::account_object, account)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_sequence_object, eosio::chain::account_sequence_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::account_sequence_object, eosio::chain::account_sequence_table)
 CHAINDB_TAG(eosio::chain::account_sequence_object, accountseq)
 
 FC_REFLECT(eosio::chain::account_object, (id)(name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date)(code)(abi))

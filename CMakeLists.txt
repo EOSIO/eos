@@ -235,7 +235,7 @@ add_subdirectory( plugins )
 add_subdirectory( programs )
 add_subdirectory( scripts )
 add_subdirectory( unittests )
-add_subdirectory( tests )
+# add_subdirectory( tests ) TODO: CyberWay
 add_subdirectory( tools )
 add_subdirectory( debian )
 

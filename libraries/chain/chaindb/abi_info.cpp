@@ -9,7 +9,7 @@ namespace cyberway { namespace chaindb {
 
     namespace { namespace _detail {
 
-        using struct_def_map_type = fc::flat_map<type_name, struct_def>;
+        using struct_def_map_type = std::map<type_name, struct_def>;
 
         const struct_def_map_type& get_system_types() {
             static auto types = [](){
@@ -37,7 +37,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void validate_unique_field_names(const abi_info& abi, const table_def& table, const index_def& index) {
-            std::set<field_name> fields;
+            fc::flat_set<field_name> fields;
             for (auto& order: index.orders) fields.emplace(order.field);
             CYBERWAY_ASSERT(fields.size() == index.orders.size(), unique_field_name_exception,
                 "The index '${index}' should has unique field names",
@@ -73,14 +73,18 @@ namespace cyberway { namespace chaindb {
     class index_builder final {
         using table_map_type = std::map<table_name_t, table_def>;
         index_info info_;
-        abi_serializer& serializer_;
         table_map_type& table_map_;
+        abi_serializer& serializer_;
+        const fc::microseconds& max_abi_time_;
 
     public:
-        index_builder(const account_name& code, abi_serializer& serializer, table_map_type& table_map)
-        : info_(code, code),
-          serializer_(serializer),
-          table_map_(table_map) {
+        index_builder(
+            const account_name& code, table_map_type& table_map,
+            abi_serializer& serializer, const fc::microseconds& max_abi_time
+        ): info_(code, code),
+           table_map_(table_map),
+           serializer_(serializer),
+           max_abi_time_(max_abi_time) {
         }
 
         void build_indexes() {
@@ -118,9 +122,11 @@ namespace cyberway { namespace chaindb {
 
         void build_index(table_def& table, index_def& index, const struct_def& table_struct) {
             _detail::struct_def_map_type dst_struct_map;
+            std::deque<struct_def*> dst_structs;
 
             auto struct_name = get_root_index_name(table, index);
             auto& root_struct = dst_struct_map.emplace(struct_name, struct_def(struct_name, "", {})).first->second;
+            dst_structs.push_front(&root_struct);
             for (auto& order: index.orders) {
                 CYBERWAY_ASSERT(order.order == names::asc_order || order.order == names::desc_order,
                     invalid_index_description_exception,
@@ -133,28 +139,37 @@ namespace cyberway { namespace chaindb {
                 auto src_struct = &table_struct;
                 auto size = order.path.size();
                 for (auto& key: order.path) {
+                    bool was_key = false;
                     for (auto& src_field: src_struct->fields) {
                         if (src_field.name != key) continue;
+                        CYBERWAY_ASSERT(!serializer_.is_array(src_field.type), array_field_exception,
+                            "The field ${path} can't be used for the index ${index}",
+                            ("path", order.field)("index", root_struct.name));
 
+                        was_key = true;
                         --size;
                         if (!size) {
                             auto field = src_field;
                             field.type = serializer_.resolve_type(src_field.type);
                             order.type = field.type;
                             dst_struct->fields.emplace_back(std::move(field));
+
+                            auto index_cnt_res = table.field_index_map.emplace(order.field, 0);
+                            index_cnt_res.first->second++;
                         } else {
                             src_struct = &get_struct(src_field.type);
-
-                            struct_name.append('.', 1).append(key);
+                            struct_name.append(1, '.').append(key);
                             auto itr = dst_struct_map.find(struct_name);
                             if (dst_struct_map.end() == itr) {
                                 dst_struct->fields.emplace_back(key, struct_name);
                                 itr = dst_struct_map.emplace(struct_name, struct_def(struct_name, "", {})).first;
+                                dst_structs.push_front(&itr->second);
                             }
                             dst_struct = &itr->second;
                         }
                         break;
                     }
+                    if (!was_key) break;
                 }
                 CYBERWAY_ASSERT(!size && !order.type.empty(), invalid_index_description_exception,
                     "Can't find type for fields of the index ${index}", ("index", root_struct.name));
@@ -162,8 +177,8 @@ namespace cyberway { namespace chaindb {
                 struct_name = root_struct.name;
             }
 
-            for (auto& t: dst_struct_map) {
-                serializer_.add_struct(std::move(t.second));
+            for (auto struct_ptr: dst_structs) {
+                serializer_.add_struct(std::move(*struct_ptr), max_abi_time_);
             }
         }
 
@@ -191,6 +206,7 @@ namespace cyberway { namespace chaindb {
 
     abi_info::abi_info(const account_name& code, abi_def abi)
     : code_(code) {
+        if (is_system_code(code)) serializer_.disable_check_field_name();
         serializer_.set_abi(abi, max_abi_time_);
 
         CYBERWAY_ASSERT(abi.tables.size() <= max_table_cnt, max_table_count_exception,
@@ -206,10 +222,7 @@ namespace cyberway { namespace chaindb {
             table_map_.emplace(id, std::move(table));
         }
 
-        CYBERWAY_ASSERT(table_map_.size() == abi.tables.size(), unique_table_name_exception,
-            "The account '${code} should has unique table names", ("code", get_code_name(code_)));
-
-        index_builder builder(code_, serializer_, table_map_);
+        index_builder builder(code_, table_map_, serializer_, max_abi_time_);
         builder.build_indexes();
     }
 
@@ -220,8 +233,6 @@ namespace cyberway { namespace chaindb {
 
         std::map<table_name, const table_def*> tables;
         for (auto& table: table_map_) tables.emplace(table.second.name, &table.second);
-        CYBERWAY_ASSERT(table_map_.size() == tables.size(), unique_table_name_exception,
-            "The account '${code} should has unique table names", ("code", get_code_name(code_)));
 
         auto db_tables = driver.db_tables(code_);
         for (auto& db_table: db_tables) {
@@ -236,10 +247,18 @@ namespace cyberway { namespace chaindb {
                 continue;
             }
 
+            std::string path;
+            std::set<std::string> paths;
             std::map<index_name, const index_def*> indexes;
-            for (auto& index: ttr->second->indexes) indexes.emplace(index.name, &index);
-            CYBERWAY_ASSERT(ttr->second->indexes.size() == indexes.size(), unique_table_name_exception,
-                "The account '${table} should has unique index names", ("table", get_full_table_name(table)));
+            for (auto& index: ttr->second->indexes) {
+                indexes.emplace(index.name, &index);
+                path.clear();
+                for (auto& order: index.orders) path.append(":").append(order.field);
+                paths.insert(path);
+            }
+            CYBERWAY_ASSERT(ttr->second->indexes.size() == indexes.size() && indexes.size() == paths.size(),
+                unique_index_name_exception,
+                "The account '${table} should has unique indexes", ("table", get_full_table_name(table)));
 
             for (auto& db_index: db_table.indexes) {
                 auto itr = indexes.find(db_index.name);
@@ -275,7 +294,6 @@ namespace cyberway { namespace chaindb {
         for (auto& table: drop_tables)    driver.drop_table(  table);
         for (auto& index: drop_indexes)   driver.drop_index(  index);
         for (auto& index: create_indexes) driver.create_index(index);
-
     }
 
 } } // namespace cyberway::chaindb

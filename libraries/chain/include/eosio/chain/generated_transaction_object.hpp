@@ -22,7 +22,7 @@ namespace eosio { namespace chain {
     * authentic/valid SignedTransactions for the purposes of scheduling transactions
     * in to new blocks
     */
-   class generated_transaction_object : public chainbase::object<generated_transaction_object_type, generated_transaction_object>
+   class generated_transaction_object : public cyberway::chaindb::object<generated_transaction_object_type, generated_transaction_object>
    {
          OBJECT_CTOR(generated_transaction_object)
 
@@ -51,7 +51,7 @@ namespace eosio { namespace chain {
    struct by_status;
    struct by_sender_id;
 
-   using generated_transaction_multi_index = cyberway::chaindb::shared_multi_index_container<
+   using generated_transaction_table = cyberway::chaindb::table_container<
       generated_transaction_object,
       cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique< cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(generated_transaction_object, generated_transaction_object::id_type, id)>,
@@ -114,7 +114,7 @@ namespace eosio { namespace chain {
    }
 } } // eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_multi_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_table)
 CHAINDB_TAG(eosio::chain::generated_transaction_object, gtransaction)
 FC_REFLECT(eosio::chain::generated_transaction_object, (id)(trx_id)(sender)(sender_id)(payer)(delay_until)(expiration)(published)(packed_trx))
 

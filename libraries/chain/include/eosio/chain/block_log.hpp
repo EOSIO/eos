@@ -58,20 +58,16 @@ namespace eosio { namespace chain {
          uint64_t get_block_pos(uint32_t block_num) const;
          signed_block_ptr        read_head()const;
          const signed_block_ptr& head()const;
-         uint32_t                first_block_num() const;
+         uint32_t                first_block_num() const {return 1;}
 
          static const uint64_t npos = std::numeric_limits<uint64_t>::max();
 
-         static const uint32_t min_supported_version;
-         static const uint32_t max_supported_version;
-
-         static fc::path repair_log( const fc::path& data_dir, uint32_t truncate_at_block = 0 );
-
-         static genesis_state extract_genesis_state( const fc::path& data_dir );
+         // TODO: removed by CyberWay
+         //static fc::path repair_log( const fc::path& data_dir, uint32_t truncate_at_block = 0 );
+         //static genesis_state extract_genesis_state( const fc::path& data_dir );
 
       private:
          void open(const fc::path& data_dir);
-         void construct_index();
 
          std::unique_ptr<detail::block_log_impl> my;
    };

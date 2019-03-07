@@ -12,9 +12,10 @@ namespace proxy {
    namespace configs {
 
       bool get(config &out, const account_name &self) {
-         auto it = db_find_i64(self, self, N(config), config::key);
-         if (it != -1) {
-            auto size = db_get_i64(it, (char*)&out, sizeof(config));
+         auto it = chaindb_opt_find_by_pk(self, self, N(config), config::key);
+         auto pk = chaindb_current(self, it);
+         if (pk != end_primary_key) {
+            auto size = chaindb_datasize(self, it);
             eosio_assert(size == sizeof(config), "Wrong record size");
             return true;
          } else {
@@ -23,11 +24,12 @@ namespace proxy {
       }
 
       void store(const config &in, const account_name &self) {
-         auto it = db_find_i64(self, self, N(config), config::key);
-         if (it != -1) {
-            db_update_i64(it, self, (const char *)&in, sizeof(config));
+         auto it = chaindb_opt_find_by_pk(self, self, N(config), config::key);
+         auto pk = chaindb_current(self, it);
+         if (pk != end_primary_key) {
+            chaindb_update(self, self, self, N(config), config::key, (void *)&in, sizeof(config));
          } else {
-            db_store_i64(self, N(config), self, config::key, (const char *)&in, sizeof(config));
+            chaindb_insert(self, self, self, N(config), config::key, (void *)&in, sizeof(config));
          }
       }
    };

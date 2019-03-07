@@ -9,7 +9,7 @@
 
 namespace eosio { namespace chain {
 
-   class permission_usage_object : public chainbase::object<permission_usage_object_type, permission_usage_object> {
+   class permission_usage_object : public cyberway::chaindb::object<permission_usage_object_type, permission_usage_object> {
       OBJECT_CTOR(permission_usage_object)
 
       id_type           id;
@@ -17,7 +17,7 @@ namespace eosio { namespace chain {
    };
 
    struct by_account_permission;
-   using permission_usage_index = cyberway::chaindb::shared_multi_index_container<
+   using permission_usage_table = cyberway::chaindb::table_container<
       permission_usage_object,
       cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(permission_usage_object, permission_usage_object::id_type, id)>
@@ -25,8 +25,8 @@ namespace eosio { namespace chain {
    >;
 
 
-   class permission_object : public chainbase::object<permission_object_type, permission_object> {
-      OBJECT_CTOR(permission_object, (auth) )
+   class permission_object : public cyberway::chaindb::object<permission_object_type, permission_object> {
+      OBJECT_CTOR(permission_object)
 
       id_type                           id;
       permission_usage_object::id_type  usage_id;
@@ -57,13 +57,13 @@ namespace eosio { namespace chain {
             return true;
 
          // Walk up other's parent tree, seeing if we find this permission. If so, this permission satisfies other
-         const permission_object* parent = &*permission_index.template get<by_id>().find(other.parent);
-         while( parent ) {
-            if( id == parent->parent )
+         auto itr = permission_index.find(other.parent._id);
+         while( permission_index.end() != itr ) {
+            if( id == itr->parent )
                return true;
-            if( parent->parent._id == 0 )
+            if( itr->parent._id == 0 )
                return false;
-            parent = &*permission_index.template get<by_id>().find(parent->parent);
+            itr = permission_index.find(itr->parent._id);
          }
          // This permission is not a parent of other, and so does not satisfy other
          return false;
@@ -86,7 +86,7 @@ namespace eosio { namespace chain {
    struct by_parent;
    struct by_owner;
    struct by_name;
-   using permission_index = cyberway::chaindb::shared_multi_index_container<
+   using permission_table = cyberway::chaindb::table_container<
       permission_object,
        cyberway::chaindb::indexed_by<
          cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(permission_object, permission_object::id_type, id)>,
@@ -120,9 +120,9 @@ namespace eosio { namespace chain {
    }
 } } // eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_object, eosio::chain::permission_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::permission_object, eosio::chain::permission_table)
 CHAINDB_TAG(eosio::chain::permission_object, permission)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_usage_object, eosio::chain::permission_usage_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::permission_usage_object, eosio::chain::permission_usage_table)
 CHAINDB_TAG(eosio::chain::permission_usage_object, permusage)
 
 FC_REFLECT(eosio::chain::permission_object, (id)(usage_id)(parent)(owner)(name)(last_updated)(auth))

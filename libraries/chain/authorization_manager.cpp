@@ -19,124 +19,35 @@
 namespace eosio { namespace chain {
 
    using authorization_index_set = index_set<
-      permission_index,
-      permission_usage_index,
-      permission_link_index
+      permission_table,
+      permission_usage_table,
+      permission_link_table
    >;
 
-   authorization_manager::authorization_manager(controller& c, database& d)
-   :_control(c),_db(d){}
+   authorization_manager::authorization_manager(controller& c, cyberway::chaindb::chaindb_controller& chaindb)
+   :_control(c),_chaindb(chaindb) {}
 
    void authorization_manager::add_indices() {
-       authorization_index_set::add_indices(_db, _control.chaindb());
+       authorization_index_set::add_indices(_chaindb);
    }
 
    void authorization_manager::initialize_database() {
-      _db.create<permission_object>([](auto&){}); /// reserve perm 0 (used else where)
-   }
-
-   namespace detail {
-      template<>
-      struct snapshot_row_traits<permission_object> {
-         using value_type = permission_object;
-         using snapshot_type = snapshot_permission_object;
-
-         static snapshot_permission_object to_snapshot_row(const permission_object& value, const chainbase::database& db) {
-            snapshot_permission_object res;
-            res.name = value.name;
-            res.owner = value.owner;
-            res.last_updated = value.last_updated;
-            res.auth = value.auth.to_authority();
-
-            // lookup parent name
-            const auto& parent = db.get(value.parent);
-            res.parent = parent.name;
-
-            // lookup the usage object
-            const auto& usage = db.get<permission_usage_object>(value.usage_id);
-            res.last_used = usage.last_used;
-
-            return res;
-         };
-
-         static void from_snapshot_row(snapshot_permission_object&& row, permission_object& value, chainbase::database& db) {
-            value.name = row.name;
-            value.owner = row.owner;
-            value.last_updated = row.last_updated;
-            value.auth = row.auth;
-
-            value.parent = 0;
-            if (value.id == 0) {
-               EOS_ASSERT(row.parent == permission_name(), snapshot_exception, "Unexpected parent name on reserved permission 0");
-               EOS_ASSERT(row.name == permission_name(), snapshot_exception, "Unexpected permission name on reserved permission 0");
-               EOS_ASSERT(row.owner == name(), snapshot_exception, "Unexpected owner name on reserved permission 0");
-               EOS_ASSERT(row.auth.accounts.size() == 0,  snapshot_exception, "Unexpected auth accounts on reserved permission 0");
-               EOS_ASSERT(row.auth.keys.size() == 0,  snapshot_exception, "Unexpected auth keys on reserved permission 0");
-               EOS_ASSERT(row.auth.waits.size() == 0,  snapshot_exception, "Unexpected auth waits on reserved permission 0");
-               EOS_ASSERT(row.auth.threshold == 0,  snapshot_exception, "Unexpected auth threshold on reserved permission 0");
-               EOS_ASSERT(row.last_updated == time_point(),  snapshot_exception, "Unexpected auth last updated on reserved permission 0");
-               value.parent = 0;
-            } else if ( row.parent != permission_name()){
-               const auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(row.owner, row.parent));
-
-               EOS_ASSERT(parent.id != 0, snapshot_exception, "Unexpected mapping to reserved permission 0");
-               value.parent = parent.id;
-            }
-
-            if (value.id != 0) {
-               // create the usage object
-               const auto& usage = db.create<permission_usage_object>([&](auto& p) {
-                  p.last_used = row.last_used;
-               });
-               value.usage_id = usage.id;
-            } else {
-               value.usage_id = 0;
-            }
-         }
-      };
+      _chaindb.emplace<permission_object>([](auto&){}); /// reserve perm 0 (used else where)
    }
 
    void authorization_manager::add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
-      authorization_index_set::walk_indices([this, &snapshot]( auto utils ){
-         using section_t = typename decltype(utils)::index_t::value_type;
-
-         // skip the permission_usage_index as its inlined with permission_index
-         if (std::is_same<section_t, permission_usage_object>::value) {
-            return;
-         }
-
-         snapshot->write_section<section_t>([this]( auto& section ){
-            decltype(utils)::walk(_db, [this, &section]( const auto &row ) {
-               section.add_row(row, _db);
-            });
-         });
-      });
+      // TODO: Removed by CyberWay
    }
 
    void authorization_manager::read_from_snapshot( const snapshot_reader_ptr& snapshot ) {
-      authorization_index_set::walk_indices([this, &snapshot]( auto utils ){
-         using section_t = typename decltype(utils)::index_t::value_type;
-
-         // skip the permission_usage_index as its inlined with permission_index
-         if (std::is_same<section_t, permission_usage_object>::value) {
-            return;
-         }
-
-         snapshot->read_section<section_t>([this]( auto& section ) {
-            bool more = !section.empty();
-            while(more) {
-               decltype(utils)::create(_db, [this, &section, &more]( auto &row ) {
-                  more = section.read_row(row, _db);
-               });
-            }
-         });
-      });
+      // TODO: Removed by CyberWay
    }
 
-   const permission_object& authorization_manager::create_permission( account_name account,
+   const permission_object& authorization_manager::create_permission( const ram_payer_info& ram,
+                                                                      account_name account,
                                                                       permission_name name,
                                                                       permission_id_type parent,
-                                                                      const authority& auth,
+                                                                      authority auth,
                                                                       time_point initial_creation_time
                                                                     )
    {
@@ -145,38 +56,11 @@ namespace eosio { namespace chain {
          creation_time = _control.pending_block_time();
       }
 
-      const auto& perm_usage = _db.create<permission_usage_object>([&](auto& p) {
+      const auto& perm_usage = _chaindb.emplace<permission_usage_object>(ram, [&](auto& p) {
          p.last_used = creation_time;
       });
 
-      const auto& perm = _db.create<permission_object>([&](auto& p) {
-         p.usage_id     = perm_usage.id;
-         p.parent       = parent;
-         p.owner        = account;
-         p.name         = name;
-         p.last_updated = creation_time;
-         p.auth         = auth;
-      });
-      return perm;
-   }
-
-   const permission_object& authorization_manager::create_permission( account_name account,
-                                                                      permission_name name,
-                                                                      permission_id_type parent,
-                                                                      authority&& auth,
-                                                                      time_point initial_creation_time
-                                                                    )
-   {
-      auto creation_time = initial_creation_time;
-      if( creation_time == time_point() ) {
-         creation_time = _control.pending_block_time();
-      }
-
-      const auto& perm_usage = _db.create<permission_usage_object>([&](auto& p) {
-         p.last_used = creation_time;
-      });
-
-      const auto& perm = _db.create<permission_object>([&](auto& p) {
+      const auto& perm = _chaindb.emplace<permission_object>(ram, [&](auto& p) {
          p.usage_id     = perm_usage.id;
          p.parent       = parent;
          p.owner        = account;
@@ -187,44 +71,44 @@ namespace eosio { namespace chain {
       return perm;
    }
 
-   void authorization_manager::modify_permission( const permission_object& permission, const authority& auth ) {
-      _db.modify( permission, [&](permission_object& po) {
+   void authorization_manager::modify_permission( const permission_object& permission, const ram_payer_info& ram, const authority& auth ) {
+      _chaindb.modify( permission, ram, [&](permission_object& po) {
          po.auth = auth;
          po.last_updated = _control.pending_block_time();
       });
    }
 
-   void authorization_manager::remove_permission( const permission_object& permission ) {
-      const auto& index = _db.template get_index<permission_index, by_parent>();
-      auto range = index.equal_range(permission.id);
+   void authorization_manager::remove_permission( const permission_object& permission, const ram_payer_info& ram ) {
+      auto parent_idx = _chaindb.get_index<permission_object, by_parent>();
+      auto range = parent_idx.equal_range(permission.id._id);
       EOS_ASSERT( range.first == range.second, action_validate_exception,
                   "Cannot remove a permission which has children. Remove the children first.");
 
-      _db.get_mutable_index<permission_usage_index>().remove_object( permission.usage_id._id );
-      _db.remove( permission );
+      _chaindb.erase( permission.usage_id, ram );
+      parent_idx.erase( permission, ram );
    }
 
    void authorization_manager::update_permission_usage( const permission_object& permission ) {
-      const auto& puo = _db.get<permission_usage_object, by_id>( permission.usage_id );
-      _db.modify( puo, [&](permission_usage_object& p) {
+      const auto& puo = _chaindb.get( permission.usage_id );
+       _chaindb.modify( puo, [&](permission_usage_object& p) {
          p.last_used = _control.pending_block_time();
       });
    }
 
    fc::time_point authorization_manager::get_permission_last_used( const permission_object& permission )const {
-      return _db.get<permission_usage_object, by_id>( permission.usage_id ).last_used;
+      return _chaindb.get( permission.usage_id ).last_used;
    }
 
    const permission_object*  authorization_manager::find_permission( const permission_level& level )const
    { try {
       EOS_ASSERT( !level.actor.empty() && !level.permission.empty(), invalid_permission, "Invalid permission" );
-      return _db.find<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
+      return _chaindb.find<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
    } EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: ${level}", ("level", level) ) }
 
    const permission_object&  authorization_manager::get_permission( const permission_level& level )const
    { try {
       EOS_ASSERT( !level.actor.empty() && !level.permission.empty(), invalid_permission, "Invalid permission" );
-      return _db.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
+      return _chaindb.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
    } EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: ${level}", ("level", level) ) }
 
    optional<permission_name> authorization_manager::lookup_linked_permission( account_name authorizer_account,
@@ -235,16 +119,17 @@ namespace eosio { namespace chain {
       try {
          // First look up a specific link for this message act_name
          auto key = boost::make_tuple(authorizer_account, scope, act_name);
-         auto link = _db.find<permission_link_object, by_action_name>(key);
+         auto action_idx = _chaindb.get_index<permission_link_object, by_action_name>();
+         auto itr = action_idx.find(key);
          // If no specific link found, check for a contract-wide default
-         if (link == nullptr) {
-            boost::get<2>(key) = "";
-            link = _db.find<permission_link_object, by_action_name>(key);
+         if (action_idx.end() == itr) {
+            boost::get<2>(key) = action_name();
+            itr = action_idx.find(key);
          }
 
          // If no specific or default link found, use active permission
-         if (link != nullptr) {
-            return link->required_permission;
+         if (action_idx.end() != itr) {
+            return itr->required_permission;
          }
          return optional<permission_name>();
 
@@ -296,7 +181,7 @@ namespace eosio { namespace chain {
       }
 
       EOS_ASSERT( get_permission(auth).satisfies( *min_permission,
-                                                  _db.get_index<permission_index>().indices() ),
+                                                  _chaindb.get_table<permission_object>() ),
                   irrelevant_auth_exception,
                   "updateauth action declares irrelevant authority '${auth}'; minimum authority is ${min}",
                   ("auth", auth)("min", permission_level{update.account, min_permission->name}) );
@@ -315,7 +200,7 @@ namespace eosio { namespace chain {
       const auto& min_permission = get_permission({del.account, del.permission});
 
       EOS_ASSERT( get_permission(auth).satisfies( min_permission,
-                                                  _db.get_index<permission_index>().indices() ),
+                                                  _chaindb.get_table<permission_object>() ),
                   irrelevant_auth_exception,
                   "updateauth action declares irrelevant authority '${auth}'; minimum authority is ${min}",
                   ("auth", auth)("min", permission_level{min_permission.owner, min_permission.name}) );
@@ -348,7 +233,7 @@ namespace eosio { namespace chain {
          return;
 
       EOS_ASSERT( get_permission(auth).satisfies( get_permission({link.account, *linked_permission_name}),
-                                                  _db.get_index<permission_index>().indices()              ),
+                                                  _chaindb.get_table<permission_object>() ),
                   irrelevant_auth_exception,
                   "link action declares irrelevant authority '${auth}'; minimum authority is ${min}",
                   ("auth", auth)("min", permission_level{link.account, *linked_permission_name}) );
@@ -373,7 +258,7 @@ namespace eosio { namespace chain {
          return;
 
       EOS_ASSERT( get_permission(auth).satisfies( get_permission({unlink.account, *unlinked_permission_name}),
-                                                  _db.get_index<permission_index>().indices()                  ),
+                                                  _chaindb.get_table<permission_object>() ),
                   irrelevant_auth_exception,
                   "unlink action declares irrelevant authority '${auth}'; minimum authority is ${min}",
                   ("auth", auth)("min", permission_level{unlink.account, *unlinked_permission_name}) );
@@ -388,17 +273,16 @@ namespace eosio { namespace chain {
       const auto& auth = auths[0];
 
       EOS_ASSERT( get_permission(auth).satisfies( get_permission(cancel.canceling_auth),
-                                                  _db.get_index<permission_index>().indices() ),
+                                                  _chaindb.get_table<permission_object>() ),
                   irrelevant_auth_exception,
                   "canceldelay action declares irrelevant authority '${auth}'; specified authority to satisfy is ${min}",
                   ("auth", auth)("min", cancel.canceling_auth) );
 
       const auto& trx_id = cancel.trx_id;
 
-      const auto& generated_transaction_idx = _control.db().get_index<generated_transaction_multi_index>();
-      const auto& generated_index = generated_transaction_idx.indices().get<by_trx_id>();
-      const auto& itr = generated_index.lower_bound(trx_id);
-      EOS_ASSERT( itr != generated_index.end() && itr->sender == account_name() && itr->trx_id == trx_id,
+      auto trx_idx = _chaindb.get_index<generated_transaction_object, by_trx_id>();
+      auto itr = trx_idx.lower_bound(trx_id);
+      EOS_ASSERT( itr != trx_idx.end() && itr->sender == account_name() && itr->trx_id == trx_id,
                   tx_not_found,
                  "cannot cancel trx_id=${tid}, there is no deferred transaction with that transaction id",
                  ("tid", trx_id) );
@@ -482,7 +366,7 @@ namespace eosio { namespace chain {
                if( min_permission_name ) { // since special cases were already handled, it should only be false if the permission is cyber.any
                   const auto& min_permission = get_permission({declared_auth.actor, *min_permission_name});
                   EOS_ASSERT( get_permission(declared_auth).satisfies( min_permission,
-                                                                       _db.get_index<permission_index>().indices() ),
+                                                                       _chaindb.get_table<permission_object>() ),
                               irrelevant_auth_exception,
                               "action declares irrelevant authority '${auth}'; minimum authority is ${min}",
                               ("auth", declared_auth)("min", permission_level{min_permission.owner, min_permission.name}) );

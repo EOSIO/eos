@@ -1,10 +1,9 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/fixed_key.hpp>
 #include <eosio/chain/global_property_object.hpp>
-#include <chainbase/chainbase.hpp>
+#include <cyberway/chaindb/multi_index.hpp>
 
 #include <identity/identity.wast.hpp>
 #include <identity/identity.abi.hpp>
@@ -44,12 +43,12 @@ public:
       set_abi(N(identitytest), identity_test_abi);
       produce_blocks(1);
 
-      const auto& accnt = control->db().get<account_object,by_name>( N(identity) );
+      const auto& accnt = control->chaindb().get<account_object,by_name>( N(identity) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi, abi_serializer_max_time);
 
-      const auto& acnt_test = control->db().get<account_object,by_name>( N(identitytest) );
+      const auto& acnt_test = control->chaindb().get<account_object,by_name>( N(identitytest) );
       abi_def abi_test;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(acnt_test.abi, abi_test), true);
       abi_ser_test.set_abi(abi_test, abi_serializer_max_time);
@@ -60,18 +59,9 @@ public:
    }
 
    uint64_t get_result_uint64() {
-      const auto& db = control->db();
-      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identitytest), 0, N(result)));
-      FC_ASSERT(t_id != 0, "Table id not found");
-
-      const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-
-      auto itr = idx.lower_bound(boost::make_tuple(t_id->id));
-      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
-
-      FC_ASSERT( N(result) == itr->primary_key, "row with result not found");
-      FC_ASSERT( sizeof(uint64_t) == itr->value.size(), "unexpected result size");
-      return *reinterpret_cast<const uint64_t*>(itr->value.data());
+      auto& chaindb = control->chaindb();
+      auto value = chaindb.value_by_pk({N(identitytest), 0, N(result)}, N(result));
+      return value["id"].as_uint64();
    }
 
    uint64_t get_owner_for_identity(uint64_t identity)
@@ -113,19 +103,9 @@ public:
    }
 
    fc::variant get_identity(uint64_t idnt) {
-      const auto& db = control->db();
-      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), N(identity), N(ident)));
-      FC_ASSERT(t_id != 0, "object not found");
-
-      const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-
-      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, idnt));
-      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
-      BOOST_REQUIRE_EQUAL(idnt, itr->primary_key);
-
-      vector<char> data;
-      copy_row(*itr, data);
-      return abi_ser.binary_to_variant("identrow", data, abi_serializer_max_time);
+      auto& chaindb = control->chaindb();
+      auto value = chaindb.value_by_pk({N(identity), N(identity), N(ident)}, idnt);
+      return value;
    }
 
    action_result certify(const string& certifier, uint64_t identity, const vector<fc::variant>& fields, bool auth = true) {
@@ -143,48 +123,22 @@ public:
    }
 
    fc::variant get_certrow(uint64_t identity, const string& property, uint64_t trusted, const string& certifier) {
-      const auto& db = control->db();
-      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), identity, N( certs )));
-      if ( !t_id ) {
-         return fc::variant(nullptr);
-      }
-
-      const auto& idx = db.get_index<index256_index, by_secondary>();
-      auto key = key256::make_from_word_sequence<uint64_t>(string_to_name(property.c_str()), trusted, string_to_name(certifier.c_str()));
-
-      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, key.get_array()));
-      if (itr != idx.end() && itr->t_id == t_id->id && itr->secondary_key == key.get_array()) {
-         auto primary_key = itr->primary_key;
-         const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-
-         auto itr = idx.lower_bound(boost::make_tuple(t_id->id, primary_key));
-         FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id && primary_key == itr->primary_key,
-                    "Record found in secondary index, but not found in primary index."
-         );
-         vector<char> data;
-         copy_row(*itr, data);
-         return abi_ser.binary_to_variant("certrow", data, abi_serializer_max_time);
+      auto& chaindb = control->chaindb();
+      auto find = cyberway::chaindb::lower_bound(
+         chaindb,
+         {N(identity), identity, N( certs ), N(secondary)},
+         boost::make_tuple(string_to_name(property.c_str()), trusted, string_to_name(certifier.c_str())));
+      if (find.pk != cyberway::chaindb::end_primary_key) {
+         return chaindb.value_at_cursor({N(identity), find.cursor});
       } else {
-         return fc::variant(nullptr);
+          return fc::variant();
       }
    }
 
    fc::variant get_accountrow(const string& account) {
-      const auto& db = control->db();
-      uint64_t acnt = string_to_name(account.c_str());
-      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), acnt, N(account)));
-      if (!t_id) {
-         return fc::variant(nullptr);
-      }
-      const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, N(account)));
-      if( itr != idx.end() && itr->t_id == t_id->id && N(account) == itr->primary_key) {
-         vector<char> data;
-         copy_row(*itr, data);
-         return abi_ser.binary_to_variant("accountrow", data, abi_serializer_max_time);
-      } else {
-         return fc::variant(nullptr);
-      }
+      auto& chaindb = control->chaindb();
+      auto acnt = string_to_name(account.c_str());
+      return chaindb.value_by_pk({N(identity), acnt, N(account)}, acnt);
    }
 
    action_result settrust(const string& trustor, const string& trusting, uint64_t trust, bool auth = true)
@@ -204,16 +158,9 @@ public:
    }
 
    bool get_trust(const string& trustor, const string& trusting) {
-      const auto& db = control->db();
-      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), string_to_name(trustor.c_str()), N(trust)));
-      if (!t_id) {
-         return false;
-      }
-
+      auto& chaindb = control->chaindb();
       uint64_t tng = string_to_name(trusting.c_str());
-      const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, tng));
-      return ( itr != idx.end() && itr->t_id == t_id->id && tng == itr->primary_key ); //true if found
+      return !chaindb.value_by_pk({N(identity), string_to_name(trustor.c_str()), N(trust)}, tng).is_null();
    }
 
 public:

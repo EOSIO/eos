@@ -85,6 +85,9 @@ namespace eosio { namespace chain {
 
             chaindb_type             chaindb_address_type = chaindb_type::MongoDB;
             string                   chaindb_address;
+
+            path                     genesis_file;                // Golos state
+            bool                     read_genesis = false;
          };
 
          enum class block_status {
@@ -152,8 +155,6 @@ namespace eosio { namespace chain {
          void push_block( std::future<block_state_ptr>& block_state_future );
 
          boost::asio::thread_pool& get_thread_pool();
-
-         const chainbase::database& db()const;
 
          const fork_database& fork_db()const;
 
@@ -286,8 +287,6 @@ namespace eosio { namespace chain {
          friend class apply_context;
          friend class transaction_context;
 
-         chainbase::database& mutable_db()const;
-
          std::unique_ptr<controller_impl> my;
 
    };
@@ -306,4 +305,5 @@ FC_REFLECT( eosio::chain::controller::config,
             (genesis)
             (wasm_runtime)
             (trusted_producers)
+            (genesis_file)(read_genesis)
           )

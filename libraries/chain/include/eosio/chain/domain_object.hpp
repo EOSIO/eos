@@ -10,7 +10,7 @@
 
 namespace eosio { namespace chain {
 
-class domain_object : public chainbase::object<domain_object_type, domain_object> {
+class domain_object : public cyberway::chaindb::object<domain_object_type, domain_object> {
    OBJECT_CTOR(domain_object)
 
    id_type              id;
@@ -23,7 +23,7 @@ using domain_id_type = domain_object::id_type;
 
 struct by_name;
 struct by_owner;
-using domain_index = cyberway::chaindb::shared_multi_index_container<
+using domain_table = cyberway::chaindb::table_container<
    domain_object,
    cyberway::chaindb::indexed_by<
       cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>,
@@ -38,7 +38,7 @@ using domain_index = cyberway::chaindb::shared_multi_index_container<
    >
 >;
 
-class username_object : public chainbase::object<username_object_type, username_object> {
+class username_object : public cyberway::chaindb::object<username_object_type, username_object> {
    OBJECT_CTOR(username_object)
 
    id_type              id;
@@ -50,7 +50,7 @@ using username_id_type = username_object::id_type;
 
 struct by_scope_name;
 struct by_owner;
-using username_index = cyberway::chaindb::shared_multi_index_container<
+using username_table = cyberway::chaindb::table_container<
    username_object,
    cyberway::chaindb::indexed_by<
       cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>,
@@ -71,9 +71,9 @@ using username_index = cyberway::chaindb::shared_multi_index_container<
 
 } } // eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::domain_object, eosio::chain::domain_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::domain_object, eosio::chain::domain_table)
 CHAINDB_TAG(eosio::chain::domain_object, domain)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::username_object, eosio::chain::username_index)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::username_object, eosio::chain::username_table)
 CHAINDB_TAG(eosio::chain::username_object, username)
 
 FC_REFLECT(eosio::chain::domain_object, (id)(owner)(linked_to)(creation_date)(name))

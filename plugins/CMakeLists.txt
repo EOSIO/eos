@@ -14,7 +14,7 @@ add_subdirectory(producer_api_plugin)
 add_subdirectory(wallet_plugin)
 add_subdirectory(wallet_api_plugin)
 add_subdirectory(txn_test_gen_plugin)
-add_subdirectory(db_size_api_plugin)
+#add_subdirectory(db_size_api_plugin) TODO: CyberWay
 #add_subdirectory(faucet_testnet_plugin)
 add_subdirectory(mongo_db_plugin)
 add_subdirectory(login_plugin)

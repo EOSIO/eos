@@ -6,16 +6,12 @@
 
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/chaindb/cache_item.hpp>
-
-namespace eosio { namespace chain {
-    class apply_context;
-} } // namespace eosio::chain
+#include <cyberway/chaindb/ram_payer_info.hpp>
 
 namespace cyberway { namespace chaindb {
     using fc::microseconds;
     using fc::variant;
 
-    using eosio::chain::apply_context;
     using eosio::chain::abi_def;
 
     using table_name_t = eosio::chain::table_name::value_type;
@@ -24,6 +20,9 @@ namespace cyberway { namespace chaindb {
 
     using cursor_t = int32_t;
     static constexpr cursor_t invalid_cursor = (0);
+
+    template<class> struct object_to_table;
+    struct ram_payer_info;
 
     struct index_request final {
         const account_name code;
@@ -56,7 +55,7 @@ namespace cyberway { namespace chaindb {
     struct find_info final {
         cursor_t      cursor = invalid_cursor;
         primary_key_t pk     = end_primary_key;
-    };
+    }; // struct find_info
 
     class chaindb_controller final {
     public:
@@ -66,8 +65,109 @@ namespace cyberway { namespace chaindb {
         chaindb_controller(chaindb_type, string);
         ~chaindb_controller();
 
+        template<typename Object>
+        auto get_table() {
+            return typename object_to_table<Object>::type(*this);
+        }
+
+        template<typename Object, typename Index>
+        auto get_index() {
+            return get_table<Object>().template get_index<Index>();
+        }
+
+        template<typename Object>
+        const Object* find(const primary_key_t pk) {
+            auto midx = get_table<Object>();
+            auto itr = midx.find(pk);
+            if (midx.end() == itr) {
+                return nullptr;
+            }
+            // should not be critical - object is stored in cache map
+            return &*itr;
+        }
+
+        template<typename Object>
+        const Object* find(const oid<Object>& id = oid<Object>()) {
+            return find<Object>(id._id);
+        }
+
+        template<typename Object, typename ByIndex, typename Key>
+        const Object* find(Key&& key) {
+            auto midx = get_table<Object>();
+            auto idx = midx.template get_index<ByIndex>();
+            auto itr = idx.find(std::forward<Key>(key));
+            if (idx.end() == itr) {
+                return nullptr;
+            }
+            // should not be critical - object is stored in cache map
+            return &*itr;
+        }
+
+        template<typename Object>
+        const Object& get(const primary_key_t pk) {
+            auto midx = get_table<Object>();
+            // should not be critical - object is stored in cache map
+            return midx.get(pk);
+        }
+
+        template<typename Object>
+        const Object& get(const oid<Object>& id = oid<Object>()) {
+            return get<Object>(id._id);
+        }
+
+        template<typename Object, typename ByIndex, typename Key>
+        const Object& get(Key&& key) {
+            auto midx = get_table<Object>();
+            auto idx = midx.template get_index<ByIndex>();
+            // should not be critical - object is stored in cache map
+            return idx.get(std::forward<Key>(key));
+        }
+
+        template<typename Object, typename Lambda>
+        const Object& emplace(Lambda&& constructor) {
+            return emplace<Object>({}, std::forward<Lambda>(constructor));
+        }
+
+        template<typename Object, typename Lambda>
+        const Object& emplace(const ram_payer_info& ram, Lambda&& constructor) {
+            auto midx = get_table<Object>();
+            auto res = midx.emplace(ram, std::forward<Lambda>(constructor));
+            // should not be critical - object is stored in cache map
+            return res.obj;
+        }
+
+        template<typename Object, typename Lambda>
+        int64_t modify(const Object& obj, Lambda&& updater) {
+            auto midx = get_table<Object>();
+            return midx.modify(obj, std::forward<Lambda>(updater));
+        }
+
+        template<typename Object, typename Lambda>
+        int64_t modify(const Object& obj, const ram_payer_info& ram, Lambda&& updater) {
+            auto midx = get_table<Object>();
+            return midx.modify(obj, ram, std::forward<Lambda>(updater));
+        }
+
+        template<typename Object>
+        int64_t erase(const Object& obj, const ram_payer_info& ram = {}) {
+            auto midx = get_table<Object>();
+            return midx.erase(obj, ram);
+        }
+
+        template<typename Object>
+        int64_t erase(const primary_key_t pk, const ram_payer_info& ram = {}) {
+            auto midx = get_table<Object>();
+            return midx.erase(midx.get(pk), ram);
+        }
+
+        template<typename Object>
+        int64_t erase(const oid<Object>& id, const ram_payer_info& ram = {}) {
+            return erase<Object>(id._id, ram);
+        }
+
         void restore_db();
         void drop_db();
+        void clear_cache();
 
         bool has_abi(const account_name&);
         void add_abi(const account_name&, abi_def);
@@ -111,13 +211,13 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t available_pk(const table_request&);
 
-        primary_key_t insert(apply_context&, const table_request&, const account_name&, primary_key_t, const char*, size_t);
-        primary_key_t update(apply_context&, const table_request&, const account_name&, primary_key_t, const char*, size_t);
-        primary_key_t remove(apply_context&, const table_request&, primary_key_t);
+        int64_t insert(const table_request&, const ram_payer_info&, primary_key_t, const char*, size_t);
+        int64_t update(const table_request&, const ram_payer_info&, primary_key_t, const char*, size_t);
+        int64_t remove(const table_request&, const ram_payer_info&, primary_key_t);
 
-        primary_key_t insert(cache_item&, variant, size_t);
-        primary_key_t update(cache_item&, variant, size_t);
-        primary_key_t remove(cache_item&);
+        int64_t insert(cache_item&, variant, const ram_payer_info&);
+        int64_t update(cache_item&, variant, const ram_payer_info&);
+        int64_t remove(cache_item&, const ram_payer_info&);
 
         variant value_by_pk(const table_request& request, primary_key_t pk);
         variant value_at_cursor(const cursor_request& request);

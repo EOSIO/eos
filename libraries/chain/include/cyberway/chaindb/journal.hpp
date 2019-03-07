@@ -16,7 +16,7 @@ namespace cyberway { namespace chaindb {
         }; // enum operation_t
 
         operation_t  operation     = Unknown;
-        revision_t   find_revision = impossible_revision;
+        revision_t   find_revision = unset_revision;
         object_value object;
 
         write_operation(const operation_t op): operation(op) { }
@@ -49,7 +49,7 @@ namespace cyberway { namespace chaindb {
             op.object = std::move(obj);
             op.find_revision = find_rev;
             // see undo_state.cpp - revision is always downgraded to one position
-            op.object.set_revision(find_rev - 1);
+            op.object.service.revision = find_rev - 1;
             return op;
         }
 
@@ -118,7 +118,7 @@ namespace cyberway { namespace chaindb {
             undo_map_t_     undo_map;
         }; // struct info_t_
 
-        using info_map_t_ = std::map<primary_key_t, info_t_>;
+        using info_map_t_ = fc::flat_map<primary_key_t, info_t_>;
 
         struct table_t_ final: public table_object::object {
             using table_object::object::object;
