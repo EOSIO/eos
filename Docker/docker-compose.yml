@@ -32,8 +32,8 @@ services:
       - "8888"
     volumes:
       - cyberway-nodeos-data:/opt/cyberway/bin/data-dir
-      - /etc/cyberway/config.ini:/opt/cyberway/bin/data-dir/config.ini
-      - /etc/cyberway/genesis-data:/opt/cyberway/bin/genesis-data
+      - ${PWD}/config.ini:/opt/cyberway/bin/data-dir/config.ini
+      - ${PWD}/genesis-data:/opt/cyberway/bin/genesis-data
     cap_add:
       - IPC_LOCK
     stop_grace_period: 10m
