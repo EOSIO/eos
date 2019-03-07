@@ -162,9 +162,9 @@ steps:
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-        echo "+++ :microscope: Running tests" && \
+        echo "+++ :microscope: Running LR Tests" && \
         cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L long_running_tests --output-on-failure
-    label: ":ubuntu: 16.04 Tests"
+    label: ":ubuntu: 16.04 LR Tests"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
@@ -189,9 +189,9 @@ steps:
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-        echo "+++ :microscope: Running tests" && \
+        echo "+++ :microscope: Running LR Tests" && \
         cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L long_running_tests --output-on-failure
-    label: ":ubuntu: 18.04 Tests"
+    label: ":ubuntu: 18.04 LR Tests"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
@@ -216,9 +216,9 @@ steps:
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-        echo "+++ :microscope: Running tests" && \
+        echo "+++ :microscope: Running LR Tests" && \
         cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L long_running_tests --output-on-failure
-    label: ":centos: 7 Tests"
+    label: ":centos: 7 LR Tests"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
@@ -243,9 +243,9 @@ steps:
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-        echo "+++ :microscope: Running tests" && \
+        echo "+++ :microscope: Running LR Tests" && \
         cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L long_running_tests --output-on-failure
-    label: ":aws: 1 Tests"
+    label: ":aws: 1 LR Tests"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
@@ -270,9 +270,9 @@ steps:
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-        echo "+++ :microscope: Running tests" && \
+        echo "+++ :microscope: Running LR Tests" && \
         cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L long_running_tests --output-on-failure
-    label: ":aws: 2 Tests"
+    label: ":aws: 2 LR Tests"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
@@ -297,9 +297,9 @@ steps:
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-        echo "+++ :microscope: Running tests" && \
+        echo "+++ :microscope: Running LR Tests" && \
         cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L long_running_tests --output-on-failure
-    label: ":fedora: 27 Tests"
+    label: ":fedora: 27 LR Tests"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
@@ -324,9 +324,9 @@ steps:
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-        echo "+++ :microscope: Running tests" && \
+        echo "+++ :microscope: Running LR Tests" && \
         ln -s "$(pwd)" /data/job && cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L long_running_tests --output-on-failure
-    label: ":darwin: High Sierra Tests"
+    label: ":darwin: High Sierra LR Tests"
     agents:
       - "role=tester-v2-1"
       - "os=high-sierra"
@@ -342,9 +342,9 @@ steps:
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-        echo "+++ :microscope: Running tests" && \
+        echo "+++ :microscope: Running LR Tests" && \
         ln -s "$(pwd)" /data/job && cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L long_running_tests --output-on-failure
-    label: ":darwin: Mojave Tests"
+    label: ":darwin: Mojave LR Tests"
     agents:
       - "role=tester-v2-1"
       - "os=mojave"
