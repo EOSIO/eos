@@ -80,43 +80,17 @@ set(CMAKE_LIST_CONTENT "
       -DBOOST_ROOT=${BOOST_ROOT}
   )
 
-  ExternalProject_add(  llvm_clone
+  ExternalProject_add(  llvm
     PREFIX              llvm
-    SOURCE_DIR          llvm/src/llvm
     GIT_REPOSITORY      https://github.com/llvm-mirror/llvm
     GIT_TAG             release_40
     GIT_SHALLOW         1
     GIT_PROGRESS        1
-    CONFIGURE_COMMAND   \"\"
-    BUILD_COMMAND       \"\"
-    INSTALL_COMMAND     \"\"
-  )
-
-  ExternalProject_add(  clang_clone
-    DEPENDS             llvm_clone
-    PREFIX              llvm
-    SOURCE_DIR          llvm/src/llvm/tools/clang
-    GIT_REPOSITORY      https://github.com/llvm-mirror/clang
-    GIT_TAG             release_40
-    GIT_SHALLOW         1
-    GIT_PROGRESS        1
-    CONFIGURE_COMMAND   \"\"
-    BUILD_COMMAND       \"\"
-    INSTALL_COMMAND     \"\"
-  )
-
-  ExternalProject_add(  llvm_build
-    DEPENDS             clang_clone
-    PREFIX              llvm
-    SOURCE_DIR          llvm/src/llvm
-    DOWNLOAD_COMMAND    \"\"
-    UPDATE_COMMAND      \"\"
     BUILD_COMMAND       \"${CMAKE_COMMAND}\" --build . -- ${CMAKE_PARALLEL_OPT}
     CMAKE_ARGS
       -DCMAKE_INSTALL_PREFIX=${WASM_ROOT}
       -DCMAKE_BUILD_TYPE=Release
       -DLLVM_TARGETS_TO_BUILD=
-      -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly
       -DLLVM_ENABLE_RTTI=ON
       -DLLVM_BUILD_EXAMPLES=OFF
       -DLLVM_BUILD_TESTS=OFF
