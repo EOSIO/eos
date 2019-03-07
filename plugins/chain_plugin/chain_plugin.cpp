@@ -469,21 +469,14 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
    auto output_protocol_feature = [&p]( const builtin_protocol_feature& f, const digest_type& feature_digest ) {
       static constexpr int max_tries = 10;
 
-      string digest_string("-");
-      {
-         fc::variant v;
-         to_variant( feature_digest, v );
-         digest_string += v.get_string();
-      }
-
       string filename_base( "BUILTIN-" );
       filename_base += builtin_protocol_feature_codename( f.get_codename() );
 
-      string filename = filename_base + digest_string + ".json";
+      string filename = filename_base+ ".json";
       int i = 0;
       for( ;
            i < max_tries && fc::exists( p / filename );
-           ++i, filename = filename_base + digest_string + "-" + std::to_string(i) + ".json" )
+           ++i, filename = filename_base + "-" + std::to_string(i) + ".json" )
          ;
 
       EOS_ASSERT( i < max_tries, plugin_exception,
