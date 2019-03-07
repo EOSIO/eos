@@ -720,4 +720,39 @@ abi_def domain_contract_abi(abi_def abi) {
     return abi;
 }
 
+// this abi contains only tables needed for genesis
+abi_def token_contract_abi(abi_def abi) {
+    if (abi.version.size() == 0) {
+        abi.version = "cyberway::abi/1.0";
+    }
+    fc::move_append(abi.types, common_type_defs());
+
+    abi.structs.emplace_back(struct_def {"account", "", {
+        {"balance", "asset"}}
+    });
+    abi.structs.emplace_back(struct_def {"currency_stats", "", {
+        {"supply", "asset"},
+        {"max_supply", "asset"},
+        {"issuer", "name"}}
+    });
+
+    abi.tables.emplace_back(table_def{"accounts", "account", {
+        {"primary", true, {{"balance.sym", "asc"}}}
+    }});
+    abi.tables.emplace_back(table_def{"stat", "currency_stats", {
+        {"primary", true, {{"supply.sym", "asc"}}}
+    }});
+
+    return abi;
+}
+
+abi_def golos_vesting_contract_abi(abi_def abi) {
+    if (abi.version.size() == 0) {
+        abi.version = "cyberway::abi/1.0";
+    }
+    fc::move_append(abi.types, common_type_defs());
+
+    return abi;
+}
+
 } } /// eosio::chain
