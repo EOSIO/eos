@@ -9,6 +9,7 @@ namespace cyberway { namespace chaindb {
 
     using revision_t = int64_t;
     static constexpr revision_t impossible_revision = (-1);
+    static constexpr revision_t unset_revision = (-2);
     static constexpr revision_t start_revision = (1);
 
     using primary_key_t = uint64_t;

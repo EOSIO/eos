@@ -374,6 +374,8 @@ struct controller_impl {
 
       auto start = fc::time_point::now();
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
+         auto session = chaindb.start_undo_session(true);
+         session.push();
          replay_push_block( next, controller::block_status::irreversible );
          if( next->block_num() % 100 == 0 ) {
             std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
@@ -383,15 +385,21 @@ struct controller_impl {
       std::cerr<< "\n";
       ilog( "${n} blocks replayed", ("n", head->block_num - start_block_num) );
 
-      // if the irreverible log is played without undo sessions enabled, we need to sync the
-      // revision ordinal to the appropriate expected value here.
-      if( self.skip_db_sessions( controller::block_status::irreversible ) )
-         set_revision(head->block_num);
+// TODO: Removed by CyberWay
+//      // if the irreverible log is played without undo sessions enabled, we need to sync the
+//      // revision ordinal to the appropriate expected value here.
+//      if( self.skip_db_sessions( controller::block_status::irreversible ) )
+//         set_revision(head->block_num);
 
       int rev = 0;
+      auto total = blog_head->block_num() + reversible_blocks.get_index<reversible_block_index>().indices().size();
       while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
          ++rev;
          replay_push_block( obj->get_block(), controller::block_status::validated );
+         if( obj->get_block()->block_num() % 100 == 0 ) {
+            std::cerr << std::setw(10) << obj->get_block()->block_num() << " of " << total << "\r";
+            if( shutdown() ) break;
+         }
       }
 
       ilog( "${n} reversible blocks replayed", ("n",rev) );
@@ -1270,7 +1278,10 @@ struct controller_impl {
          // this implicitly asserts that all header fields (less the signature) are identical
          EOS_ASSERT(producer_block_id == pending->_pending_block_state->header.id(),
                    block_validate_exception, "Block ID does not match",
-                   ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id()));
+                   ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id())
+                   ("producer_block", static_cast<const block_header&>(*b))
+                   ("validator_block", static_cast<const block_header&>(pending->_pending_block_state->header))
+                   ("num", b->block_num()));
 
          // We need to fill out the pending block state's block because that gets serialized in the reversible block log
          // in the future we can optimize this by serializing the original and not the copy

@@ -401,9 +401,10 @@ namespace eosio { namespace chain {
 
    signed_block_ptr block_log::read_block_by_num(uint32_t block_num) const try {
        detail::read_lock lock(my->mutex);
-       signed_block_ptr block = std::make_shared<signed_block>();
+       signed_block_ptr block;
        uint64_t pos = my->get_block_pos(block_num);
        if (pos != npos) {
+           block = std::make_shared<signed_block>();
            my->read_block(pos, *block);
            EOS_ASSERT(block->block_num() == block_num,
                    block_log_exception,
