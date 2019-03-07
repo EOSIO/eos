@@ -521,7 +521,7 @@ namespace eosio {
       uint16_t                protocol_version  = 0;
       string                  peer_addr;
       unique_ptr<boost::asio::steady_timer> response_expected;
-      std::mutex                            read_delay_timer_mutex;
+      std::mutex                            read_delay_timer_mtx;
       unique_ptr<boost::asio::steady_timer> read_delay_timer;
       go_away_reason         no_retry = no_reason;
       block_id_type          fork_head;
@@ -840,25 +840,23 @@ namespace eosio {
       my_impl->sync_master->reset_lib_num(shared_from_this());
       fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
       cancel_wait();
-      {
-         std::lock_guard<std::mutex> g( read_delay_timer_mutex );
-         if( read_delay_timer ) read_delay_timer->cancel();
-      }
+
+      std::lock_guard<std::mutex> g( read_delay_timer_mtx );
+      if( read_delay_timer ) read_delay_timer->cancel();
    }
 
    void connection::txn_send_pending(const vector<transaction_id_type>& ids) {
       const std::set<transaction_id_type, sha256_less> known_ids(ids.cbegin(), ids.cend());
       my_impl->expire_local_txns();
       vector<std::shared_ptr<vector<char>>> trx_to_send;
-      {
-         std::lock_guard<std::mutex> g( my_impl->local_txns_mtx );
-         for( auto tx = my_impl->local_txns.begin(); tx != my_impl->local_txns.end(); ++tx ) {
-            const bool found = known_ids.find( tx->id ) != known_ids.cend();
-            if( !found ) {
-               trx_to_send.emplace_back( tx->serialized_txn );
-            }
+      std::unique_lock<std::mutex> g( my_impl->local_txns_mtx );
+      for( auto tx = my_impl->local_txns.begin(); tx != my_impl->local_txns.end(); ++tx ) {
+         const bool found = known_ids.find( tx->id ) != known_ids.cend();
+         if( !found ) {
+            trx_to_send.emplace_back( tx->serialized_txn );
          }
       }
+      g.unlock();
       for( const auto& t : trx_to_send ) {
          queue_write( t, true, priority::low, []( boost::system::error_code ec, std::size_t ) {} );
       }
@@ -866,15 +864,14 @@ namespace eosio {
 
    void connection::txn_send(const vector<transaction_id_type>& ids) {
       vector<std::shared_ptr<vector<char>>> trx_to_send;
-      {
-         std::lock_guard<std::mutex> g( my_impl->local_txns_mtx );
-         for( const auto& t : ids ) {
-            auto tx = my_impl->local_txns.get<by_id>().find( t );
-            if( tx != my_impl->local_txns.end()) {
-               trx_to_send.emplace_back( tx->serialized_txn );
-            }
+      std::unique_lock<std::mutex> g( my_impl->local_txns_mtx );
+      for( const auto& t : ids ) {
+         auto tx = my_impl->local_txns.get<by_id>().find( t );
+         if( tx != my_impl->local_txns.end()) {
+            trx_to_send.emplace_back( tx->serialized_txn );
          }
       }
+      g.unlock();
       for( const auto& t : trx_to_send ) {
          queue_write( t, true, priority::low, []( boost::system::error_code ec, std::size_t ) {} );
       }
@@ -1488,10 +1485,9 @@ namespace eosio {
          notice_message note;
          note.known_blocks.mode = none;
          note.known_trx.mode = catch_up;
-         {
-            std::lock_guard<std::mutex> g( my_impl->local_txns_mtx );
-            note.known_trx.pending = my_impl->local_txns.size();
-         }
+         std::unique_lock<std::mutex> g( my_impl->local_txns_mtx );
+         note.known_trx.pending = my_impl->local_txns.size();
+         g.unlock();
          c->enqueue( note );
          return;
       }
@@ -1723,13 +1719,12 @@ namespace eosio {
       }
       received_transactions.erase(range.first, range.second);
 
-      {
-         std::lock_guard<std::mutex> g( my_impl->local_txns_mtx );
-         if( my_impl->local_txns.get<by_id>().find( id ) != my_impl->local_txns.end()) { //found
-            fc_dlog( logger, "found trxid in local_trxs" );
-            return;
-         }
+      std::unique_lock<std::mutex> g( my_impl->local_txns_mtx );
+      if( my_impl->local_txns.get<by_id>().find( id ) != my_impl->local_txns.end()) { //found
+         fc_dlog( logger, "found trxid in local_trxs" );
+         return;
       }
+      g.unlock();
 
       time_point_sec trx_expiration = ptrx->packed_trx->expiration();
       const packed_transaction& trx = *ptrx->packed_trx;
@@ -1737,10 +1732,9 @@ namespace eosio {
       auto buff = create_send_buffer( trx );
 
       node_transaction_state nts = {id, trx_expiration, 0, buff};
-      {
-         std::lock_guard<std::mutex> g( my_impl->local_txns_mtx );
-         my_impl->local_txns.insert( std::move( nts ));
-      }
+      g.lock();
+      my_impl->local_txns.insert( std::move( nts ));
+      g.unlock();
 
       my_impl->send_transaction_to_all( buff, [&id, &skips, trx_expiration](const connection_ptr& c) -> bool {
          if( skips.find(c) != skips.end() || c->syncing ) {
@@ -2096,7 +2090,7 @@ namespace eosio {
                });
                return;
             }
-            std::lock_guard<std::mutex> g( conn->read_delay_timer_mutex );
+            std::lock_guard<std::mutex> g( conn->read_delay_timer_mtx );
             if( !conn->read_delay_timer ) return;
             conn->read_delay_timer->expires_from_now( def_read_delay_for_full_write_queue );
             conn->read_delay_timer->async_wait(
@@ -2580,13 +2574,12 @@ namespace eosio {
       auto ptrx = std::make_shared<transaction_metadata>( trx );
       const auto& tid = ptrx->id;
 
-      {
-         std::lock_guard<std::mutex> g( local_txns_mtx );
-         if( local_txns.get<by_id>().find( tid ) != local_txns.end()) {
-            fc_dlog( logger, "got a duplicate transaction - dropping" );
-            return;
-         }
+      std::unique_lock<std::mutex> g( local_txns_mtx );
+      if( local_txns.get<by_id>().find( tid ) != local_txns.end()) {
+         fc_dlog( logger, "got a duplicate transaction - dropping" );
+         return;
       }
+      g.unlock();
       connection_wptr weak_ptr = c;
       app().post(priority::low, [weak_ptr{std::move(weak_ptr)}, &dispatcher = dispatcher, tid](){
          auto c = weak_ptr.lock();
@@ -2667,21 +2660,20 @@ namespace eosio {
 
       update_block_num ubn(blk_num);
       if( reason == no_reason ) {
-         {
-            std::lock_guard<std::mutex> g( local_txns_mtx );
-            for( const auto& recpt : msg->transactions ) {
-               auto id = (recpt.trx.which() == 0) ? recpt.trx.get<transaction_id_type>()
-                                                  : recpt.trx.get<packed_transaction>().id();
-               auto ltx = local_txns.get<by_id>().find( id );
-               if( ltx != local_txns.end()) {
-                  local_txns.modify( ltx, ubn );
-               }
-               auto ctx = c->trx_state.get<by_id>().find( id );
-               if( ctx != c->trx_state.end()) {
-                  c->trx_state.modify( ctx, ubn );
-               }
+         std::unique_lock<std::mutex> g( local_txns_mtx );
+         for( const auto& recpt : msg->transactions ) {
+            auto id = (recpt.trx.which() == 0) ? recpt.trx.get<transaction_id_type>()
+                                               : recpt.trx.get<packed_transaction>().id();
+            auto ltx = local_txns.get<by_id>().find( id );
+            if( ltx != local_txns.end()) {
+               local_txns.modify( ltx, ubn );
+            }
+            auto ctx = c->trx_state.get<by_id>().find( id );
+            if( ctx != c->trx_state.end()) {
+               c->trx_state.modify( ctx, ubn );
             }
          }
+         g.unlock();
          sync_master->recv_block(c, blk_id, blk_num);
       }
       else {
@@ -2769,19 +2761,19 @@ namespace eosio {
       uint32_t lib = cc.last_irreversible_block_num();
       size_t start_size = 0, end_size = 0;
 
-      {
-         std::lock_guard<std::mutex> g( local_txns_mtx );
+      std::unique_lock<std::mutex> g( local_txns_mtx );
 
-         start_size = local_txns.size();
-         auto& old = local_txns.get<by_expiry>();
-         auto ex_lo = old.lower_bound( fc::time_point_sec( 0 ));
-         auto ex_up = old.upper_bound( time_point::now());
-         old.erase( ex_lo, ex_up );
+      start_size = local_txns.size();
+      auto& old = local_txns.get<by_expiry>();
+      auto ex_lo = old.lower_bound( fc::time_point_sec( 0 ));
+      auto ex_up = old.upper_bound( time_point::now());
+      old.erase( ex_lo, ex_up );
 
-         auto& stale = local_txns.get<by_block_num>();
-         stale.erase( stale.lower_bound( 1 ), stale.upper_bound( lib ));
-         end_size = local_txns.size();
-      }
+      auto& stale = local_txns.get<by_block_num>();
+      stale.erase( stale.lower_bound( 1 ), stale.upper_bound( lib ));
+      end_size = local_txns.size();
+
+      g.unlock();
 
       fc_dlog( logger, "expire_local_txns size ${s} removed ${r}", ("s", start_size)("r", start_size - end_size) );
    }
