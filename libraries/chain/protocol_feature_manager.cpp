@@ -102,6 +102,7 @@ namespace eosio { namespace chain {
       digest_type::encoder enc;
       fc::raw::pack( enc, _type );
       fc::raw::pack( enc, description_digest  );
+      fc::raw::pack( enc, dependencies );
       fc::raw::pack( enc, _codename );
 
       return enc.result();
