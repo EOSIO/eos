@@ -14,7 +14,7 @@ namespace eosio { namespace chain {
    const std::unordered_map<builtin_protocol_feature_t, builtin_protocol_feature_spec, enum_hash<builtin_protocol_feature_t>>
    builtin_protocol_feature_codenames =
       boost::assign::map_list_of<builtin_protocol_feature_t, builtin_protocol_feature_spec>
-         (  builtin_protocol_feature_t::preactivate_feature, {
+         (  builtin_protocol_feature_t::preactivate_feature, builtin_protocol_feature_spec{
             "PREACTIVATE_FEATURE",
             fc::variant("64fe7df32e9b86be2b296b3f81dfd527f84e82b98e363bc97e40bc7a83733310").as<digest_type>(),
             // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
@@ -208,8 +208,8 @@ Pre-activated protocol features must be activated in the next block.
          auto dependency_digest = get_builtin_digest( d );
          EOS_ASSERT( dependency_digest, protocol_feature_exception,
                      "cannot make default builtin protocol feature with codename '${codename}' since it has a dependency that has not been added yet: ${dependency_codename}",
-                     ("codename", static_cast<uint32_t>(itr->first))
-                     ("dependency_codename", static_cast<uint32_t>(d))
+                     ("codename", builtin_protocol_feature_codename(itr->first))
+                     ("dependency_codename", builtin_protocol_feature_codename(d))
          );
          dependencies.insert( *dependency_digest );
       }
@@ -297,7 +297,7 @@ Pre-activated protocol features must be activated in the next block.
                   "builtin protocol feature with codename '${codename}' has a digest of ${digest} but another protocol feature with the same digest has already been added",
                   ("codename", f.builtin_feature_codename)("digest", feature_digest) );
 
-      if( indx < _builtin_protocol_features.size() ) {
+      if( indx >= _builtin_protocol_features.size() ) {
          for( auto i =_builtin_protocol_features.size(); i <= indx; ++i ) {
             _builtin_protocol_features.push_back( builtin_protocol_feature_entry{
                                                    _recognized_protocol_features.end(),
