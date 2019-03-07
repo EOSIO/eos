@@ -236,8 +236,6 @@ if [ "$ARCH" == "Linux" ]; then
       ;;
       "Ubuntu")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-         CXX_COMPILER=clang++-4.0
-         C_COMPILER=clang-4.0
       ;;
       "Debian GNU/Linux")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
