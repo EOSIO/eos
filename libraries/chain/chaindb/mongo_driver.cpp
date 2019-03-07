@@ -847,7 +847,7 @@ namespace cyberway { namespace chaindb {
 
                     case write_operation::Remove:
                         build_find_document(pk_doc, *table_, op.object);
-                        if (impossible_revision != op.find_revision) {
+                        if (op.find_revision >= start_revision) {
                             pk_doc.append(kvp(names::revision_path, op.find_revision));
                         }
                         break;

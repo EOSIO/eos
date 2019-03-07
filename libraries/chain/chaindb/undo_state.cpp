@@ -431,8 +431,11 @@ namespace cyberway { namespace chaindb {
         }
 
         void restore() try {
-            CYBERWAY_SESSION_ASSERT(start_revision >= revision_ && start_revision >= tail_revision_,
-                "Wrong state on restore");
+            if (start_revision <= revision_ || start_revision <= tail_revision_) {
+                ilog( "Skip restore undo state, tail revision ${tail}, head revision = ${head}",
+                    ("head", revision_)("tail", tail_revision_));
+                return;
+            }
 
             auto account_idx = controller_.get_index<eosio::chain::account_object, eosio::chain::by_name>();
             auto& abi_map = controller_.get_abi_map();
