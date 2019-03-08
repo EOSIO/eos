@@ -105,27 +105,6 @@ steps:
         workdir: /data/job
     timeout: 60
 
-  # - command: |
-  #       echo "+++ :hammer: Building" && \
-  #       ./scripts/eosio_build.sh -y && \
-  #       echo "--- :compression: Compressing build directory" && \
-  #       tar -pczf build.tar.gz build/
-  #   label: ":aws: 2 Build"
-  #   agents:
-  #     queue: "automation-large-builder-fleet"
-  #   artifact_paths: "build.tar.gz"
-  #   plugins:
-  #     ecr#v1.1.4:
-  #       login: true
-  #       account_ids: "436617320021"
-  #       no-include-email: true
-  #       region: "us-west-2"
-  #     docker#v2.1.0:
-  #       debug: true
-  #       image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
-  #       workdir: /data/job
-  #   timeout: 60
-
   - command: |
         echo "+++ :hammer: Building" && \
         ./scripts/eosio_build.sh -y && \
@@ -230,7 +209,7 @@ steps:
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-1"
         workdir: /data/job
     timeout: 60
-
+  
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
         buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build" && \
@@ -394,60 +373,6 @@ steps:
         workdir: /data/job
     timeout: 60
 
-  # - command: |
-  #       echo "--- :arrow_down: Downloading build directory" && \
-  #       buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build" && \
-  #       tar -zxf build.tar.gz && \
-  #       echo "--- :m: Starting MongoDB" && \
-  #       ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-  #       echo "+++ :microscope: Running tests" && \
-  #       cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -j8 -LE _tests --output-on-failure
-  #   label: ":aws: 2 Tests"
-  #   agents:
-  #     queue: "automation-large-builder-fleet"
-  #   artifact_paths:
-  #     - "mongod.log"
-  #     - "build/genesis.json"
-  #     - "build/config.ini"
-  #   plugins:
-  #     ecr#v1.1.4:
-  #       login: true
-  #       account_ids: "436617320021"
-  #       no-include-email: true
-  #       region: "us-west-2"
-  #     docker#v2.1.0:
-  #       debug: true
-  #       image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
-  #       workdir: /data/job
-  #   timeout: 60
-
-  # - command: |
-  #       echo "--- :arrow_down: Downloading build directory" && \
-  #       buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build" && \
-  #       tar -zxf build.tar.gz && \
-  #       echo "--- :m: Starting MongoDB" && \
-  #       ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-  #       echo "+++ :microscope: Running tests" && \
-  #       cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -L nonparallelizable_tests --output-on-failure
-  #   label: ":aws: 2 NP Tests"
-  #   agents:
-  #     queue: "automation-large-builder-fleet"
-  #   artifact_paths:
-  #     - "mongod.log"
-  #     - "build/genesis.json"
-  #     - "build/config.ini"
-  #   plugins:
-  #     ecr#v1.1.4:
-  #       login: true
-  #       account_ids: "436617320021"
-  #       no-include-email: true
-  #       region: "us-west-2"
-  #     docker#v2.1.0:
-  #       debug: true
-  #       image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
-  #       workdir: /data/job
-  #   timeout: 60
-
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
         buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build" && \
@@ -512,8 +437,7 @@ steps:
         cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":fedora: 27 Tests"
     agents:
-      - "role=tester-v2-1"
-      - "os=high-sierra"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -540,8 +464,7 @@ steps:
         cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":fedora: 27 NP Tests"
     agents:
-      - "role=tester-v2-1"
-      - "os=high-sierra"
+      queue: "automation-large-builder-fleet"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -629,7 +552,7 @@ steps:
       - "build/genesis.json"
       - "build/config.ini"
     timeout: 60
-
+    
   - wait
 
   - command: |
