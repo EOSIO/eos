@@ -111,7 +111,7 @@ for (( i=0; i<${#DEP_ARRAY[@]}; i++ )); do
 done
 if [ "${COUNT}" -gt 1 ]; then
 	printf "\\nThe following dependencies are required to install EOSIO:\\n"
-	printf "${DISPLAY}\\n\\n" 
+	printf "${DISPLAY}\\n\\n"
 	if [ $ANSWER != 1 ]; then read -p "Do you wish to install these packages? (y/n) " ANSWER; fi
 	case $ANSWER in
 		1 | [Yy]* )
@@ -125,8 +125,8 @@ if [ "${COUNT}" -gt 1 ]; then
 		[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
 		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
-else 
-	printf " - No required APT dependencies to install."
+else
+	printf " - No required APT dependencies to install.\\n"
 fi
 
 

@@ -10,6 +10,7 @@
 #include <eosio/testing/tester.hpp>
 
 #include <fc/io/json.hpp>
+#include <appbase/execution_priority_queue.hpp>
 
 #include <boost/asio/thread_pool.hpp>
 #include <boost/test/unit_test.hpp>
@@ -1054,6 +1055,59 @@ BOOST_AUTO_TEST_CASE(reflector_init_test) {
       }
 
    } FC_LOG_AND_RETHROW()
+}
+
+// Verify appbase::execution_priority_queue uses a stable priority queue so that jobs are executed
+// in order, FIFO, as submitted.
+BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
+  try {
+     using namespace std::chrono_literals;
+
+     appbase::execution_priority_queue pri_queue;
+     auto io_serv = std::make_shared<boost::asio::io_service>();
+     auto work_ptr = std::make_unique<boost::asio::io_service::work>(*io_serv);
+     std::atomic<int> posted{0};
+
+     std::thread t( [io_serv, &pri_queue, &posted]() {
+        while( posted < 100 && io_serv->run_one() ) {
+           ++posted;
+        }
+        bool more = true;
+        while( more || io_serv->run_one() ) {
+           while( io_serv->poll_one() ) {}
+           // execute the highest priority item
+           more = pri_queue.execute_highest();
+        }
+     } );
+     std::atomic<int> ran{0};
+     std::mutex mx;
+     std::vector<int> results;
+     for( int i = 0; i < 50; ++i ) {
+        boost::asio::post(*io_serv, pri_queue.wrap(appbase::priority::low, [io_serv, &mx, &ran, &results, i](){
+           std::lock_guard<std::mutex> g(mx);
+           results.push_back( 50 + i );
+           ++ran;
+        }));
+        boost::asio::post(*io_serv, pri_queue.wrap(appbase::priority::high, [io_serv, &mx, &ran, &results, i](){
+           std::lock_guard<std::mutex> g(mx);
+           results.push_back( i );
+           ++ran;
+        }));
+     }
+
+     while( ran < 100 ) std::this_thread::sleep_for( 5us );
+
+     work_ptr.reset();
+     io_serv->stop();
+     t.join();
+
+     std::lock_guard<std::mutex> g(mx);
+     BOOST_CHECK_EQUAL( 100, results.size() );
+     for( int i = 0; i < 100; ++i ) {
+        BOOST_CHECK_EQUAL( i, results.at( i ) );
+     }
+
+  } FC_LOG_AND_RETHROW()
 }
 
 

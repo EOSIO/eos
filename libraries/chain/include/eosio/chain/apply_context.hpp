@@ -466,7 +466,6 @@ class apply_context {
       ,idx_double(*this)
       ,idx_long_double(*this)
       {
-         reset_console();
       }
 
 
@@ -517,23 +516,8 @@ class apply_context {
    /// Console methods:
    public:
 
-      void reset_console();
-      std::ostringstream& get_console_stream()            { return _pending_console_output; }
-      const std::ostringstream& get_console_stream()const { return _pending_console_output; }
-
-      template<typename T>
-      void console_append(T val) {
-         _pending_console_output << val;
-      }
-
-      template<typename T, typename ...Ts>
-      void console_append(T val, Ts ...rest) {
-         console_append(val);
-         console_append(rest...);
-      };
-
-      inline void console_append_formatted(const string& fmt, const variant_object& vo) {
-         console_append(fc::format_string(fmt, vo));
+      void console_append( const string& val ) {
+         _pending_console_output += val;
       }
 
    /// Database methods:
@@ -602,7 +586,7 @@ class apply_context {
       vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
       vector<action>                      _inline_actions; ///< queued inline messages
       vector<action>                      _cfa_inline_actions; ///< queued inline messages
-      std::ostringstream                  _pending_console_output;
+      std::string                         _pending_console_output;
       flat_set<account_delta>             _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
 
       //bytes                               _cached_trx;

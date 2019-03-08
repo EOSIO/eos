@@ -679,7 +679,7 @@ namespace eosio {
 
       chain_plugin* chain_plug = nullptr;
 
-      constexpr auto stage_str(stages s );
+      constexpr static auto stage_str(stages s);
 
    public:
       explicit sync_manager(uint32_t span);
@@ -709,6 +709,7 @@ namespace eosio {
       void rejected_block(const block_id_type& id);
 
       void recv_block(const connection_ptr& conn, const block_id_type& msg, uint32_t bnum);
+      void expire_blocks( uint32_t bnum );
       void recv_transaction(const connection_ptr& conn, const transaction_id_type& id);
       void recv_notice(const connection_ptr& conn, const notice_message& msg, bool generated);
 
@@ -1117,7 +1118,8 @@ namespace eosio {
                      connection_ptr conn = weak_this.lock();
                      if (conn) {
                         if (close_after_send != no_reason) {
-                           elog ("sent a go away message: ${r}, closing connection to ${p}",("r", reason_str(close_after_send))("p", conn->peer_name()));
+                           fc_elog( logger, "sent a go away message: ${r}, closing connection to ${p}",
+                                    ("r", reason_str(close_after_send))("p", conn->peer_name()) );
                            my_impl->close(conn);
                            return;
                         }
@@ -1182,6 +1184,13 @@ namespace eosio {
       }
       if( !peer_addr.empty() ) {
          return peer_addr;
+      }
+      if( socket != nullptr ) {
+         boost::system::error_code ec;
+         auto rep = socket->remote_endpoint(ec);
+         if( !ec ) {
+            return rep.address().to_string() + ':' + std::to_string( rep.port() );
+         }
       }
       return "connecting client";
    }
@@ -1514,7 +1523,8 @@ namespace eosio {
    void sync_manager::recv_notice(const connection_ptr& c, const notice_message& msg) {
       fc_ilog(logger, "sync_manager got ${m} block notice",("m",modes_str(msg.known_blocks.mode)));
       if( msg.known_blocks.ids.size() > 1 ) {
-         fc_elog( logger, "Invalid notice_message, known_blocks.ids.size ${s}", ("s", msg.known_blocks.ids.size()) );
+         fc_elog( logger, "Invalid notice_message, known_blocks.ids.size ${s}, closing connection: ${p}",
+                  ("s", msg.known_blocks.ids.size())("p", c->peer_name()) );
          my_impl->close(c);
          return;
       }
@@ -1534,7 +1544,7 @@ namespace eosio {
 
    void sync_manager::rejected_block(const connection_ptr& c, uint32_t blk_num) {
       if (state != in_sync ) {
-         fc_ilog(logger, "block ${bn} not accepted from ${p}",("bn",blk_num)("p",c->peer_name()));
+         fc_wlog( logger, "block ${bn} not accepted from ${p}, closing connection", ("bn",blk_num)("p",c->peer_name()) );
          sync_last_requested_num = 0;
          source.reset();
          my_impl->close(c);
@@ -1546,7 +1556,8 @@ namespace eosio {
       fc_dlog(logger, "got block ${bn} from ${p}",("bn",blk_num)("p",c->peer_name()));
       if (state == lib_catchup) {
          if (blk_num != sync_next_expected_num) {
-            fc_ilog(logger, "expected block ${ne} but got ${bn}",("ne",sync_next_expected_num)("bn",blk_num));
+            fc_wlog( logger, "expected block ${ne} but got ${bn}, closing connection: ${p}",
+                     ("ne",sync_next_expected_num)("bn",blk_num)("p",c->peer_name()) );
             my_impl->close(c);
             return;
          }
@@ -1639,9 +1650,21 @@ namespace eosio {
    }
 
    void dispatch_manager::rejected_block(const block_id_type& id) {
-      fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",id));
+      fc_dlog( logger, "rejected block ${id}", ("id", id) );
       auto range = received_blocks.equal_range(id);
       received_blocks.erase(range.first, range.second);
+   }
+
+   void dispatch_manager::expire_blocks( uint32_t lib_num ) {
+      for( auto i = received_blocks.begin(); i != received_blocks.end(); ) {
+         const block_id_type& blk_id = i->first;
+         uint32_t blk_num = block_header::num_from_id( blk_id );
+         if( blk_num <= lib_num ) {
+            i = received_blocks.erase( i );
+         } else {
+            ++i;
+         }
+      }
    }
 
    void dispatch_manager::bcast_transaction(const transaction_metadata_ptr& ptrx) {
@@ -2089,18 +2112,17 @@ namespace eosio {
                   }
                }
                catch(const std::exception &ex) {
-                  string pname = conn ? conn->peer_name() : "no connection name";
-                  fc_elog( logger, "Exception in handling read data from ${p} ${s}",("p",pname)("s",ex.what()) );
+                  fc_elog( logger, "Exception in handling read data from ${p}: ${s}",
+                           ("p",conn->peer_name())("s",ex.what()) );
                   close( conn );
                }
                catch(const fc::exception &ex) {
-                  string pname = conn ? conn->peer_name() : "no connection name";
-                  fc_elog( logger, "Exception in handling read data ${s}", ("p",pname)("s",ex.to_string()) );
+                  fc_elog( logger, "Exception in handling read data from ${p}: ${s}",
+                           ("p",conn->peer_name())("s",ex.to_string()) );
                   close( conn );
                }
                catch (...) {
-                  string pname = conn ? conn->peer_name() : "no connection name";
-                  fc_elog( logger, "Undefined exception hanlding the read data from connection ${p}",( "p",pname) );
+                  fc_elog( logger, "Undefined exception handling the read data from ${p}",( "p",conn->peer_name()) );
                   close( conn );
                }
             });
@@ -2144,7 +2166,8 @@ namespace eosio {
             msg.visit( m );
          }
       } catch( const fc::exception& e ) {
-         edump( (e.to_detail_string()) );
+         fc_elog( logger, "Exception in handling message from ${p}: ${s}",
+                  ("p", conn->peer_name())("s", e.to_detail_string()) );
          close( conn );
          return false;
       }
@@ -2308,10 +2331,7 @@ namespace eosio {
    }
 
    void net_plugin_impl::handle_message(const connection_ptr& c, const go_away_message& msg) {
-      string rsn = reason_str( msg.reason );
-      peer_wlog(c, "received go_away_message");
-      fc_wlog( logger, "received a go away message from ${p}, reason = ${r}",
-               ("p", c->peer_name())("r",rsn) );
+      peer_wlog(c, "received go_away_message, reason = ${r}", ("r",reason_str( msg.reason )) );
       c->no_retry = msg.reason;
       if(msg.reason == duplicate ) {
          c->node_id = msg.node_id;
@@ -2419,7 +2439,8 @@ namespace eosio {
 
    void net_plugin_impl::handle_message(const connection_ptr& c, const request_message& msg) {
       if( msg.req_blocks.ids.size() > 1 ) {
-         fc_elog( logger, "Invalid request_message, req_blocks.ids.size ${s}", ("s", msg.req_blocks.ids.size()) );
+         fc_elog( logger, "Invalid request_message, req_blocks.ids.size ${s}, closing ${p}",
+                  ("s", msg.req_blocks.ids.size())("p",c->peer_name()) );
          close(c);
          return;
       }
@@ -2575,6 +2596,7 @@ namespace eosio {
       }
       else {
          sync_master->rejected_block(c, blk_num);
+         dispatcher->rejected_block( blk_id );
       }
    }
 
@@ -2642,6 +2664,7 @@ namespace eosio {
 
       controller& cc = chain_plug->chain();
       uint32_t lib = cc.last_irreversible_block_num();
+      dispatcher->expire_blocks( lib );
       for ( auto &c : connections ) {
          auto &stale_txn = c->trx_state.get<by_block_num>();
          stale_txn.erase( stale_txn.lower_bound(1), stale_txn.upper_bound(lib) );
@@ -3075,6 +3098,7 @@ namespace eosio {
 
             fc_ilog( logger, "close ${s} connections",( "s",my->connections.size()) );
             for( auto& con : my->connections ) {
+               fc_dlog( logger, "close: ${p}", ("p",con->peer_name()) );
                my->close( con );
             }
             my->connections.clear();
@@ -3114,6 +3138,7 @@ namespace eosio {
       for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr ) {
          if( (*itr)->peer_addr == host ) {
             (*itr)->reset();
+            fc_ilog( logger, "disconnecting: ${p}", ("p", (*itr)->peer_name()) );
             my->close(*itr);
             my->connections.erase(itr);
             return "connection removed";

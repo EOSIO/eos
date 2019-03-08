@@ -2,6 +2,7 @@
 #include <eosio/chain/block_state.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain/genesis_state.hpp>
+#include <chainbase/pinnable_mapped_file.hpp>
 #include <boost/signals2/signal.hpp>
 
 #include <eosio/chain/abi_serializer.hpp>
@@ -25,6 +26,7 @@ namespace eosio { namespace chain {
 
    struct controller_impl;
    using chainbase::database;
+   using chainbase::pinnable_mapped_file;
    using boost::signals2::signal;
 
    class dynamic_global_property_object;
@@ -79,6 +81,9 @@ namespace eosio { namespace chain {
 
             db_read_mode             read_mode              = db_read_mode::SPECULATIVE;
             validation_mode          block_validation_mode  = validation_mode::FULL;
+
+            pinnable_mapped_file::map_mode db_map_mode      = pinnable_mapped_file::map_mode::mapped;
+            vector<string>           db_hugepage_paths;
 
             flat_set<account_name>   resource_greylist;
             flat_set<account_name>   trusted_producers;
