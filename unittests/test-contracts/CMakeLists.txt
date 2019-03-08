@@ -9,6 +9,7 @@ endif()
 
 add_subdirectory( asserter )
 add_subdirectory( deferred_test )
+add_subdirectory( integration_test )
 add_subdirectory( noop )
 add_subdirectory( payloadless )
 add_subdirectory( proxy )
