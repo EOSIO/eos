@@ -236,6 +236,8 @@ if [ "$ARCH" == "Linux" ]; then
       ;;
       "Ubuntu")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
+         CXX_COMPILER=g++
+         C_COMPILER=gcc
       ;;
       "Debian GNU/Linux")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
@@ -247,6 +249,9 @@ if [ "$ARCH" == "Linux" ]; then
          exit 1
    esac
 fi
+char* foo = "hello";
+eostring str("hello");
+eostring str2(foo);
 
 if [ "$ARCH" == "Darwin" ]; then
    # Check if cmake is already installed or not and use source install location
