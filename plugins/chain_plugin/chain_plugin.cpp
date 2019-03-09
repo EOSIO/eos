@@ -1124,7 +1124,7 @@ uint64_t convert_to_type(const string& str, const string& desc) {
    try {
       return boost::lexical_cast<uint64_t>(str.c_str(), str.size());
    } catch( ... ) { }
-   
+
    try {
       auto trimmed_str = str;
       boost::trim(trimmed_str);
@@ -1138,7 +1138,7 @@ uint64_t convert_to_type(const string& str, const string& desc) {
          return symb.value();
       } catch( ... ) { }
    }
-   
+
    try {
       return ( eosio::chain::string_to_symbol( 0, str.c_str() ) >> 8 );
    } catch( ... ) {
@@ -1529,14 +1529,24 @@ read_only::get_scheduled_transactions( const read_only::get_scheduled_transactio
 
 fc::variant read_only::get_block(const read_only::get_block_params& params) const {
    signed_block_ptr block;
-   EOS_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64, chain::block_id_type_exception, "Invalid Block number or ID, must be greater than 0 and less than 64 characters" );
-   try {
-      block = db.fetch_block_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
-      if (!block) {
-         block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id));
-      }
+   optional<uint64_t> block_num;
 
-   } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
+   EOS_ASSERT( !params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64,
+               chain::block_id_type_exception,
+               "Invalid Block number or ID, must be greater than 0 and less than 64 characters"
+   );
+
+   try {
+      block_num = fc::to_uint64(params.block_num_or_id);
+   } catch( ... ) {}
+
+   if( block_num.valid() ) {
+      block = db.fetch_block_by_number( *block_num );
+   } else {
+      try {
+         block = db.fetch_block_by_id( fc::variant(params.block_num_or_id).as<block_id_type>() );
+      } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
+   }
 
    EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
