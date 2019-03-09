@@ -9,6 +9,7 @@
 *.dot
 *.abi.hpp
 *.cmake
+!CMakeModules/*.cmake
 *.ninja
 \#*
 \.#*

@@ -125,7 +125,7 @@ struct yubihsm_wallet_impl {
 
    void prime_keepalive_timer() {
       keepalive_timer.expires_at(std::chrono::steady_clock::now() + std::chrono::seconds(20));
-      keepalive_timer.async_wait([this](auto ec){
+      keepalive_timer.async_wait([this](const boost::system::error_code& ec){
          if(ec || !session)
             return;
 

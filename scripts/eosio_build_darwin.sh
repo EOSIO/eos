@@ -94,20 +94,20 @@ printf "\\nChecking dependencies...\\n"
 var_ifs="${IFS}"
 IFS=","
 while read -r name tester testee brewname uri; do
-	if [ "${tester}" "${testee}" ]; then
-		printf " - %s found\\n" "${name}"
+	if [ $tester $testee ]; then
+		printf " - ${name} found!\\n"
 		continue
 	fi
 	# resolve conflict with homebrew glibtool and apple/gnu installs of libtool
 	if [ "${testee}" == "/usr/local/bin/glibtool" ]; then
 		if [ "${tester}" "/usr/local/bin/libtool" ]; then
-			printf " - %s found\\n" "${name}"
+			printf " - ${name} found!\\n"
 			continue
 		fi
 	fi
 	DEPS=$DEPS"${brewname},"
 	DISPLAY="${DISPLAY}${COUNT}. ${name}\\n"
-	printf " - %s ${bldred}NOT${txtrst} found.\\n" "${name}"
+	printf " - ${name} ${bldred}NOT${txtrst} found.\\n"
 	(( COUNT++ ))
 done < "${REPO_ROOT}/scripts/eosio_build_darwin_deps"
 IFS="${var_ifs}"
@@ -138,11 +138,8 @@ if [ $COUNT -gt 1 ]; then
 				[Nn]* ) echo "Proceeding without update!";;
 				* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 			esac
-			brew tap eosio/eosio # Required to install mongo-cxx-driver with static library
+			brew tap eosio/eosio
 			printf "\\nInstalling Dependencies...\\n"
-			# Ignore cmake so we don't install a newer version.
-			# Build from source to use local cmake; see homebrew-eosio repo for examples
-			# DON'T INSTALL llvm@4 WITH --force!
 			OIFS="$IFS"
 			IFS=$','
 			for DEP in $DEPS; do
@@ -158,7 +155,7 @@ if [ $COUNT -gt 1 ]; then
 		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
 else
-	printf "\\n - No required Home Brew dependencies to install.\\n"
+	printf " - No required Home Brew dependencies to install.\\n"
 fi
 
 

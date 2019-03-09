@@ -21,7 +21,7 @@ printf "CPU speed: ${CPU_SPEED}Mhz\\n"
 printf "CPU cores: ${CPU_CORE}\\n"
 printf "Physical Memory: ${MEM_MEG}Mgb\\n"
 printf "Disk install: ${DISK_INSTALL}\\n"
-printf "Disk space total: ${DISK_TOTAL%.*}G\\n" 
+printf "Disk space total: ${DISK_TOTAL%.*}G\\n"
 printf "Disk space available: ${DISK_AVAIL%.*}G\\n"
 printf "Concurrent Jobs (make -j): ${JOBS}\\n"
 
@@ -118,7 +118,7 @@ fi
 
 printf "\\n"
 
-DEP_ARRAY=( 
+DEP_ARRAY=(
 	git autoconf automake libtool make bzip2 doxygen graphviz \
 	bzip2-devel openssl-devel gmp-devel \
 	ocaml libicu-devel python python-devel python33 \
@@ -157,7 +157,7 @@ if [ "${COUNT}" -gt 1 ]; then
 		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
 else
-	printf " - No required YUM dependencies to install.\\n"
+	printf " - No required YUM dependencies to install.\\n\\n"
 fi
 
 if [ -d /opt/rh/python33 ]; then
@@ -233,7 +233,7 @@ if [ ! -d $MONGODB_ROOT ]; then
 	printf " - MongoDB successfully installed @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION}).\\n"
 else
 	printf " - MongoDB found with correct version @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION}).\\n"
-fi 
+fi
 if [ $? -ne 0 ]; then exit -1; fi
 printf "Checking MongoDB C driver installation...\\n"
 if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
