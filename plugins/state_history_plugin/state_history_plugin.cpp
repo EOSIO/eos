@@ -315,7 +315,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
    void do_accept() {
       auto socket = std::make_shared<tcp::socket>(app().get_io_service());
-      acceptor->async_accept(*socket, [self = shared_from_this(), socket, this](auto ec) {
+      acceptor->async_accept(*socket, [self = shared_from_this(), socket, this](const boost::system::error_code& ec) {
          if (stopping)
             return;
          if (ec) {

@@ -279,10 +279,10 @@ struct controller_impl {
    :self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.state_size ),
+        cfg.state_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     reversible_blocks( cfg.blocks_dir/config::reversible_blocks_dir_name,
         cfg.read_only ? database::read_only : database::read_write,
-        cfg.reversible_cache_size ),
+        cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime ),
@@ -661,9 +661,6 @@ struct controller_impl {
 
    ~controller_impl() {
       pending.reset();
-
-      db.flush();
-      reversible_blocks.flush();
    }
 
    void add_indices() {
@@ -678,14 +675,12 @@ struct controller_impl {
 
    void clear_all_undo() {
       // Rewind the database to the last irreversible block
-      db.with_write_lock([&] {
-         db.undo_all();
-         /*
-         FC_ASSERT(db.revision() == self.head_block_num(),
-                   "Chainbase revision does not match head block num",
-                   ("rev", db.revision())("head_block", self.head_block_num()));
-                   */
-      });
+      db.undo_all();
+      /*
+      FC_ASSERT(db.revision() == self.head_block_num(),
+                  "Chainbase revision does not match head block num",
+                  ("rev", db.revision())("head_block", self.head_block_num()));
+                  */
    }
 
    void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
@@ -1207,6 +1202,9 @@ struct controller_impl {
       transaction_trace_ptr trace;
       try {
          auto start = fc::time_point::now();
+         const bool check_auth = !self.skip_auth_check() && !trx->implicit;
+         // call recover keys so that trx->sig_cpu_usage is set correctly
+         const flat_set<public_key_type>& recovered_keys = check_auth ? trx->recover_keys( chain_id ) : flat_set<public_key_type>();
          if( !explicit_billed_cpu_time ) {
             fc::microseconds already_consumed_time( EOS_PERCENT(trx->sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
 
@@ -1239,15 +1237,13 @@ struct controller_impl {
 
             trx_context.delay = fc::seconds(trn.delay_sec);
 
-            if( !self.skip_auth_check() && !trx->implicit ) {
+            if( check_auth ) {
                authorization.check_authorization(
                        trn.actions,
-                       trx->recover_keys( chain_id ),
+                       recovered_keys,
                        {},
                        trx_context.delay,
-                       [](){}
-                       /*std::bind(&transaction_context::add_cpu_usage_and_check_time, &trx_context,
-                                 std::placeholders::_1)*/,
+                       [&trx_context](){ trx_context.checktime(); },
                        false
                );
             }

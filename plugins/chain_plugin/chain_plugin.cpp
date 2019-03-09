@@ -199,6 +199,7 @@ chain_plugin::chain_plugin()
 :my(new chain_plugin_impl()) {
    app().register_config_type<eosio::chain::db_read_mode>();
    app().register_config_type<eosio::chain::validation_mode>();
+   app().register_config_type<chainbase::pinnable_mapped_file::map_mode>();
 }
 
 chain_plugin::~chain_plugin(){}
@@ -252,6 +253,19 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("disable-ram-billing-notify-checks", bpo::bool_switch()->default_value(false),
           "Disable the check which subjectively fails a transaction if a contract bills more RAM to another account within the context of a notification handler (i.e. when the receiver is not the code of the action).")
          ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
+         ("database-map-mode", bpo::value<chainbase::pinnable_mapped_file::map_mode>()->default_value(chainbase::pinnable_mapped_file::map_mode::mapped),
+          "Database map mode (\"mapped\", \"heap\", or \"locked\").\n"
+          "In \"mapped\" mode database is memory mapped as a file.\n"
+          "In \"heap\" mode database is preloaded in to swappable memory.\n"
+#ifdef __linux__
+          "In \"locked\" mode database is preloaded, locked in to memory, and optionally can use huge pages.\n"
+#else
+          "In \"locked\" mode database is preloaded and locked in to memory.\n"
+#endif
+         )
+#ifdef __linux__
+         ("database-hugepage-path", bpo::value<vector<string>>()->composing(), "Optional path for database hugepages when in \"locked\" mode (may specify multiple times)")
+#endif
          ;
 
 // TODO: rate limiting
@@ -714,8 +728,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                          my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
                fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
                          my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.meta",
-                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.meta" );
             }
          }
       } else if( options.at( "replay-blockchain" ).as<bool>()) {
@@ -770,10 +782,25 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          });
          infile.close();
 
-         EOS_ASSERT( options.count( "genesis-json" ) == 0 &&  options.count( "genesis-timestamp" ) == 0,
+         EOS_ASSERT( options.count( "genesis-timestamp" ) == 0,
                  plugin_config_exception,
-                 "--snapshot is incompatible with --genesis-json and --genesis-timestamp as the snapshot contains genesis information");
+                 "--snapshot is incompatible with --genesis-timestamp as the snapshot contains genesis information");
 
+         if( options.count( "genesis-json" )) {
+            auto genesis_path = options.at( "genesis-json" ).as<bfs::path>();
+            if( genesis_path.is_relative() ) {
+               genesis_path = bfs::current_path() / genesis_path;
+            }
+            EOS_ASSERT( fc::is_regular_file( genesis_path ),
+                        plugin_config_exception,
+                        "Specified genesis file '${genesis}' does not exist.",
+                        ("genesis", genesis_path.generic_string()));
+            auto genesis_file = fc::json::from_file( genesis_path ).as<genesis_state>();
+            EOS_ASSERT( my->chain_config->genesis == genesis_file, plugin_config_exception,
+                        "Genesis state provided via command line arguments does not match the existing genesis state in the snapshot. "
+                        "It is not necessary to provide a genesis state argument when loading a snapshot."
+                      );
+         }
          auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
          EOS_ASSERT( !fc::exists(shared_mem_path),
                  plugin_config_exception,
@@ -844,6 +871,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       if ( options.count("validation-mode") ) {
          my->chain_config->block_validation_mode = options.at("validation-mode").as<validation_mode>();
       }
+
+      my->chain_config->db_map_mode = options.at("database-map-mode").as<pinnable_mapped_file::map_mode>();
+#ifdef __linux__
+      if( options.count("database-hugepage-path") )
+         my->chain_config->db_hugepage_paths = options.at("database-hugepage-path").as<std::vector<std::string>>();
+#endif
 
       my->chain.emplace( *my->chain_config, std::move(pfm) );
       my->chain_id.emplace( my->chain->get_chain_id());

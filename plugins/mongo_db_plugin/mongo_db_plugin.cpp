@@ -118,6 +118,7 @@ public:
 
    void init();
    void wipe_database();
+   void create_expiration_index(mongocxx::collection& collection, uint32_t expire_after_seconds);
 
    template<typename Queue, typename Entry> void queue(Queue& queue, const Entry& e);
 
@@ -136,6 +137,7 @@ public:
    bool store_transactions = true;
    bool store_transaction_traces = true;
    bool store_action_traces = true;
+   uint32_t expire_after_seconds = 0;
 
    std::string db_name;
    mongocxx::instance mongo_inst;
@@ -1397,6 +1399,39 @@ void mongo_db_plugin_impl::wipe_database() {
    ilog("done wipe_database");
 }
 
+void mongo_db_plugin_impl::create_expiration_index(mongocxx::collection& collection, uint32_t expire_after_seconds) {
+   using bsoncxx::builder::basic::make_document;
+   using bsoncxx::builder::basic::kvp;
+
+   auto indexes = collection.indexes();
+   for( auto& index : indexes.list()) {
+      auto key = index["key"];
+      if( !key ) {
+         continue;
+      }
+      auto field = key["createdAt"];
+      if( !field ) {
+         continue;
+      }
+
+      auto ttl = index["expireAfterSeconds"];
+      if( ttl && ttl.get_int32() == expire_after_seconds ) {
+         return;
+      } else {
+         auto name = index["name"].get_utf8();
+         ilog( "mongo db drop ttl index for collection ${collection}", ( "collection", collection.name().to_string()));
+         indexes.drop_one( name.value );
+         break;
+      }
+   }
+
+   mongocxx::options::index index_options{};
+   index_options.expire_after( std::chrono::seconds( expire_after_seconds ));
+   index_options.background( true );
+   ilog( "mongo db create ttl index for collection ${collection}", ( "collection", collection.name().to_string()));
+   collection.create_index( make_document( kvp( "createdAt", 1 )), index_options );
+}
+
 void mongo_db_plugin_impl::init() {
    using namespace bsoncxx::types;
    using bsoncxx::builder::basic::make_document;
@@ -1465,6 +1500,23 @@ void mongo_db_plugin_impl::init() {
             handle_mongo_exception( "create indexes", __LINE__ );
          }
       }
+
+      if( expire_after_seconds > 0 ) {
+         try {
+            mongocxx::collection block_states = mongo_conn[db_name][block_states_col];
+            create_expiration_index( block_states, expire_after_seconds );
+            mongocxx::collection blocks = mongo_conn[db_name][blocks_col];
+            create_expiration_index( blocks, expire_after_seconds );
+            mongocxx::collection trans = mongo_conn[db_name][trans_col];
+            create_expiration_index( trans, expire_after_seconds );
+            mongocxx::collection trans_traces = mongo_conn[db_name][trans_traces_col];
+            create_expiration_index( trans_traces, expire_after_seconds );
+            mongocxx::collection action_traces = mongo_conn[db_name][action_traces_col];
+            create_expiration_index( action_traces, expire_after_seconds );
+         } catch(...) {
+            handle_mongo_exception( "create expiration indexes", __LINE__ );
+         }
+      }
    } catch (...) {
       handle_mongo_exception( "mongo init", __LINE__ );
    }
@@ -1517,6 +1569,8 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
           "Enables storing transaction traces in mongodb.")
          ("mongodb-store-action-traces", bpo::value<bool>()->default_value(true),
           "Enables storing action traces in mongodb.")
+         ("mongodb-expire-after-seconds", bpo::value<uint32_t>()->default_value(0),
+          "Enables expiring data in mongodb after a specified number of seconds.")
          ("mongodb-filter-on", bpo::value<vector<string>>()->composing(),
           "Track actions which match receiver:action:actor. Receiver, Action, & Actor may be blank to include all. i.e. eosio:: or :transfer:  Use * or leave unspecified to include all.")
          ("mongodb-filter-out", bpo::value<vector<string>>()->composing(),
@@ -1573,6 +1627,9 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          }
          if( options.count( "mongodb-store-action-traces" )) {
             my->store_action_traces = options.at( "mongodb-store-action-traces" ).as<bool>();
+         }
+         if( options.count( "mongodb-expire-after-seconds" )) {
+            my->expire_after_seconds = options.at( "mongodb-expire-after-seconds" ).as<uint32_t>();
          }
          if( options.count( "mongodb-filter-on" )) {
             auto fo = options.at( "mongodb-filter-on" ).as<vector<string>>();

@@ -8,9 +8,9 @@ if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [ $FORCED ==
    elif [ $1 == 1 ] || [ $FORCED == 1 ]; then
       ANSWER=1
    fi
-   echo "Uninstalling..."
    case $ANSWER in
       1 | [Yy]* )
+         echo "Uninstalling..."
          if [ -d "$HOME/opt/eosio" ] || [[ $1 == "force-new" ]]; then
             if [ $( uname ) == "Darwin" ]; then
                # gettext and other brew packages are not modified as they can be dependencies for things other than eosio
@@ -128,7 +128,6 @@ if [ -d "/usr/local/include/eosio" ] || [ -d "$HOME/opt/eosio" ] || [ $FORCED ==
       ;;
       [Nn]* )
          printf "Skipping\n\n"
-         exit 0
       ;;
    esac
 fi

@@ -84,26 +84,26 @@ steps:
         workdir: /data/job
     timeout: 60
 
-  # - command: |
-  #       echo "+++ :hammer: Building" && \
-  #       ./scripts/eosio_build.sh -y && \
-  #       echo "--- :compression: Compressing build directory" && \
-  #       tar -pczf build.tar.gz build/
-  #   label: ":aws: 2 Build"
-  #   agents:
-  #     queue: "automation-large-builder-fleet"
-  #   artifact_paths: "build.tar.gz"
-  #   plugins:
-  #     ecr#v1.1.4:
-  #       login: true
-  #       account_ids: "436617320021"
-  #       no-include-email: true
-  #       region: "us-west-2"
-  #     docker#v2.1.0:
-  #       debug: true
-  #       image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
-  #       workdir: /data/job
-  #   timeout: 60
+  - command: |
+        echo "+++ :hammer: Building" && \
+        ./scripts/eosio_build.sh -y && \
+        echo "--- :compression: Compressing build directory" && \
+        tar -pczf build.tar.gz build/
+    label: ":aws: 2 Build"
+    agents:
+      queue: "automation-large-builder-fleet"
+    artifact_paths: "build.tar.gz"
+    plugins:
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
+        workdir: /data/job
+    timeout: 60
 
   - command: |
         echo "+++ :hammer: Building" && \
@@ -163,7 +163,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":ubuntu: 16.04 Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -190,7 +190,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":ubuntu: 16.04 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -217,7 +217,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":ubuntu: 18.04 Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -244,7 +244,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":ubuntu: 18.04 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -272,7 +272,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":centos: 7 Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -299,7 +299,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":centos: 7 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -326,7 +326,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":aws: 1 Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -353,7 +353,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":aws: 1 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -373,59 +373,59 @@ steps:
         workdir: /data/job
     timeout: 60
 
-  # - command: |
-  #       echo "--- :arrow_down: Downloading build directory" && \
-  #       buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build" && \
-  #       tar -zxf build.tar.gz && \
-  #       echo "--- :m: Starting MongoDB" && \
-  #       ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-  #       echo "+++ :microscope: Running tests" && \
-  #       cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -j8 -LE _tests --output-on-failure
-  #   label: ":aws: 2 Tests"
-  #   agents:
-  #     queue: "automation-large-builder-fleet"
-  #   artifact_paths:
-  #     - "mongod.log"
-  #     - "build/genesis.json"
-  #     - "build/config.ini"
-  #   plugins:
-  #     ecr#v1.1.4:
-  #       login: true
-  #       account_ids: "436617320021"
-  #       no-include-email: true
-  #       region: "us-west-2"
-  #     docker#v2.1.0:
-  #       debug: true
-  #       image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
-  #       workdir: /data/job
-  #   timeout: 60
+  - command: |
+        echo "--- :arrow_down: Downloading build directory" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build" && \
+        tar -zxf build.tar.gz && \
+        echo "--- :m: Starting MongoDB" && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        echo "+++ :microscope: Running tests" && \
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
+    label: ":aws: 2 Tests"
+    agents:
+      queue: "automation-large-builder-fleet"
+    artifact_paths:
+      - "mongod.log"
+      - "build/genesis.json"
+      - "build/config.ini"
+    plugins:
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
+        workdir: /data/job
+    timeout: 60
 
-  # - command: |
-  #       echo "--- :arrow_down: Downloading build directory" && \
-  #       buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build" && \
-  #       tar -zxf build.tar.gz && \
-  #       echo "--- :m: Starting MongoDB" && \
-  #       ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
-  #       echo "+++ :microscope: Running tests" && \
-  #       cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -L nonparallelizable_tests --output-on-failure
-  #   label: ":aws: 2 NP Tests"
-  #   agents:
-  #     queue: "automation-large-builder-fleet"
-  #   artifact_paths:
-  #     - "mongod.log"
-  #     - "build/genesis.json"
-  #     - "build/config.ini"
-  #   plugins:
-  #     ecr#v1.1.4:
-  #       login: true
-  #       account_ids: "436617320021"
-  #       no-include-email: true
-  #       region: "us-west-2"
-  #     docker#v2.1.0:
-  #       debug: true
-  #       image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
-  #       workdir: /data/job
-  #   timeout: 60
+  - command: |
+        echo "--- :arrow_down: Downloading build directory" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build" && \
+        tar -zxf build.tar.gz && \
+        echo "--- :m: Starting MongoDB" && \
+        ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
+        echo "+++ :microscope: Running tests" && \
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
+    label: ":aws: 2 NP Tests"
+    agents:
+      queue: "automation-large-builder-fleet"
+    artifact_paths:
+      - "mongod.log"
+      - "build/genesis.json"
+      - "build/config.ini"
+    plugins:
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
+        workdir: /data/job
+    timeout: 60
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -434,7 +434,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -j8 -LE _tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -j8 -LE _tests --output-on-failure
     label: ":fedora: 27 Tests"
     agents:
       queue: "automation-large-builder-fleet"
@@ -461,7 +461,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         ~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ~/bin/ctest -L nonparallelizable_tests --output-on-failure
+        cd /data/job/build && PATH=\$PATH:~/opt/mongodb/bin ctest -L nonparallelizable_tests --output-on-failure
     label: ":fedora: 27 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"

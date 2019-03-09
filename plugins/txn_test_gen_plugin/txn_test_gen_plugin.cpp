@@ -436,7 +436,7 @@ void txn_test_gen_plugin::plugin_shutdown() {
    try {
       my->stop_generation();
    }
-   catch(fc::exception e) {
+   catch(fc::exception& e) {
    }
 }
 
