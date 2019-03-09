@@ -131,8 +131,8 @@ class Cluster(object):
                associatedNodeLabels=None):
         """Launch cluster.
         pnodes: producer nodes count
-        unstartedNodes: non-producer nodes that are configured into the launch, but not started
-        totalNodes: producer + non-producer nodes count
+        unstartedNodes: non-producer nodes that are configured into the launch, but not started.  Should be included in totalNodes.
+        totalNodes: producer + non-producer nodes + unstarted non-producer nodes count
         prodCount: producers per producer node count
         topo: cluster topology (as defined by launcher, and "bridge" shape that is specific to this launch method)
         delay: delay between individual nodes launch (as defined by launcher)
@@ -189,14 +189,14 @@ class Cluster(object):
             tries = tries - 1
             time.sleep(2)
 
-        cmd="%s -p %s -n %s -d %s -i %s -f --p2p-plugin %s %s" % (
+        cmd="%s -p %s -n %s -d %s -i %s -f --p2p-plugin %s %s --unstarted-nodes %s" % (
             Utils.EosLauncherPath, pnodes, totalNodes, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
-            p2pPlugin, producerFlag)
+            p2pPlugin, producerFlag, unstartedNodes)
         cmdArr=cmd.split()
         if self.staging:
             cmdArr.append("--nogen")
 
-        nodeosArgs="--max-transaction-time -1 --abi-serializer-max-time-ms 990000 --filter-on * --p2p-max-nodes-per-host %d" % (totalNodes)
+        nodeosArgs="--max-transaction-time -1 --abi-serializer-max-time-ms 990000 --filter-on \"*\" --p2p-max-nodes-per-host %d" % (totalNodes)
         if not self.walletd:
             nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
@@ -262,7 +262,7 @@ class Cluster(object):
             # of two entries - [ <first>, <second> ] with first being the name and second being the node definition
             shapeFileNodes = shapeFileObject["nodes"]
 
-            numProducers=totalProducers if totalProducers is not None else totalNodes
+            numProducers=totalProducers if totalProducers is not None else (totalNodes - unstartedNodes)
             maxProducers=ord('z')-ord('a')+1
             assert numProducers<maxProducers, \
                    "ERROR: topo of %s assumes names of \"defproducera\" to \"defproducerz\", so must have at most %d producers" % \
@@ -367,12 +367,13 @@ class Cluster(object):
             Utils.Print("ERROR: Launcher failed to launch. failed cmd: %s" % (s))
             return False
 
-        self.nodes=list(range(totalNodes)) # placeholder for cleanup purposes only
+        startedNodes=totalNodes-unstartedNodes
+        self.nodes=list(range(startedNodes)) # placeholder for cleanup purposes only
 
-        nodes=self.discoverLocalNodes(totalNodes, timeout=Utils.systemWaitTimeout)
-        if nodes is None or totalNodes != len(nodes):
+        nodes=self.discoverLocalNodes(startedNodes, timeout=Utils.systemWaitTimeout)
+        if nodes is None or startedNodes != len(nodes):
             Utils.Print("ERROR: Unable to validate %s instances, expected: %d, actual: %d" %
-                          (Utils.EosServerName, totalNodes, len(nodes)))
+                          (Utils.EosServerName, startedNodes, len(nodes)))
             return False
 
         self.nodes=nodes
@@ -397,13 +398,13 @@ class Cluster(object):
 
         Utils.Print("Bootstrap cluster.")
         if onlyBios or not useBiosBootFile:
-            self.biosNode=Cluster.bootstrap(totalNodes, prodCount, totalProducers, Cluster.__BiosHost, Cluster.__BiosPort, self.walletMgr, onlyBios)
+            self.biosNode=Cluster.bootstrap(startedNodes, prodCount, totalProducers, Cluster.__BiosHost, Cluster.__BiosPort, self.walletMgr, onlyBios)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False
         else:
             self.useBiosBootFile=True
-            self.biosNode=Cluster.bios_bootstrap(totalNodes, Cluster.__BiosHost, Cluster.__BiosPort, self.walletMgr)
+            self.biosNode=Cluster.bios_bootstrap(startedNodes, Cluster.__BiosHost, Cluster.__BiosPort, self.walletMgr)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False
