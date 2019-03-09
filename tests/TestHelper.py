@@ -22,6 +22,11 @@ class AppArgs:
         arg=self.AppArg(flag, type, help, default, choices)
         self.args.append(arg)
 
+
+    def add_bool(self, flag, help, action='store_true'):
+        arg=self.AppArg(flag=flag, help=help, action=action)
+        self.args.append(arg)
+
 # pylint: disable=too-many-instance-attributes
 class TestHelper(object):
     LOCAL_HOST="localhost"
