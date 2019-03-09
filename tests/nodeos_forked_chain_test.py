@@ -7,7 +7,6 @@ from Cluster import Cluster
 from WalletMgr import WalletMgr
 from Node import BlockType
 from Node import Node
-from TestHelper import AppArgs
 from TestHelper import TestHelper
 
 import decimal
