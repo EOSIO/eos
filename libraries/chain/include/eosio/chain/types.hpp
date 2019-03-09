@@ -8,7 +8,7 @@
 
 #include <chainbase/chainbase.hpp>
 
-#include <fc/container/flat_fwd.hpp>
+#include <fc/interprocess/container.hpp>
 #include <fc/io/varint.hpp>
 #include <fc/io/enum_type.hpp>
 #include <fc/crypto/sha224.hpp>
@@ -95,6 +95,8 @@ namespace eosio { namespace chain {
    using shared_vector = boost::interprocess::vector<T, allocator<T>>;
    template<typename T>
    using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
+   template<typename K, typename V>
+   using shared_flat_multimap = boost::interprocess::flat_multimap< K, V, std::less<K>, allocator< std::pair<K,V> > >;
 
    /**
     * For bugs in boost interprocess we moved our blob data to shared_string

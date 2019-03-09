@@ -11,6 +11,7 @@
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/incremental_merkle.hpp>
+#include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <chainbase/chainbase.hpp>
 #include "multi_index_includes.hpp"
 
@@ -26,13 +27,15 @@ namespace eosio { namespace chain {
     */
    class global_property_object : public chainbase::object<global_property_object_type, global_property_object>
    {
-      OBJECT_CTOR(global_property_object, (proposed_schedule)(preactivated_protocol_features))
+      OBJECT_CTOR(global_property_object, (proposed_schedule)(preactivated_protocol_features)(whitelisted_intrinsics))
 
-      id_type                           id;
-      optional<block_num_type>          proposed_schedule_block_num;
-      shared_producer_schedule_type     proposed_schedule;
-      chain_config                      configuration;
-      shared_vector<digest_type>        preactivated_protocol_features;
+   public:
+      id_type                        id;
+      optional<block_num_type>       proposed_schedule_block_num;
+      shared_producer_schedule_type  proposed_schedule;
+      chain_config                   configuration;
+      shared_vector<digest_type>     preactivated_protocol_features;
+      whitelisted_intrinsics_type    whitelisted_intrinsics;
    };
 
 
@@ -83,5 +86,6 @@ FC_REFLECT(eosio::chain::dynamic_global_property_object,
           )
 
 FC_REFLECT(eosio::chain::global_property_object,
-           (proposed_schedule_block_num)(proposed_schedule)(configuration)(preactivated_protocol_features)
+           (proposed_schedule_block_num)(proposed_schedule)(configuration)
+           (preactivated_protocol_features)(whitelisted_intrinsics)
           )
