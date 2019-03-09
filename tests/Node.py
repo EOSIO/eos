@@ -1075,8 +1075,12 @@ class Node(object):
         assert(isinstance(blockType, BlockType))
         assert(isinstance(returnType, ReturnType))
         basedOnLib="true" if blockType==BlockType.lib else "false"
-        cmd="curl %s/v1/test_control/kill_node_on_producer -d '{ \"producer\":\"%s\", \"where_in_sequence\":%d, \"based_on_lib\":\"%s\" }' -X POST -H \"Content-Type: application/json\"" % \
-            (self.endpointHttp, producer, whereInSequence, basedOnLib)
+        payload="{ \"producer\":\"%s\", \"where_in_sequence\":%d, \"based_on_lib\":\"%s\" }" % (producer, whereInSequence, basedOnLib)
+        return self.processCurlCmd("test_control", "kill_node_on_producer", payload, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=exitMsg, returnType=returnType)
+
+    def processCurlCmd(self, resource, command, payload, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
+        cmd="curl %s/v1/%s/%s -d '%s' -X POST -H \"Content-Type: application/json\"" % \
+            (self.endpointHttp, resource, command, payload)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         rtn=None
         start=time.perf_counter()
@@ -1112,6 +1116,23 @@ class Node(object):
             Utils.errorExit("Failed to \"%s\"" % (cmd))
 
         return rtn
+
+    def txnGenCreateTestAccounts(self, genAccount, genKey, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
+        assert(isinstance(genAccount, str))
+        assert(isinstance(genKey, str))
+        assert(isinstance(returnType, ReturnType))
+
+        payload="[ \"%s\", \"%s\" ]" % (genAccount, genKey)
+        return self.processCurlCmd("txn_test_gen", "create_test_accounts", payload, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=exitMsg, returnType=returnType)
+
+    def txnGenStart(self, salt, period, batchSize, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
+        assert(isinstance(salt, str))
+        assert(isinstance(period, int))
+        assert(isinstance(batchSize, int))
+        assert(isinstance(returnType, ReturnType))
+
+        payload="[ \"%s\", %d, %d ]" % (salt, period, batchSize)
+        return self.processCurlCmd("txn_test_gen", "start_generation", payload, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=exitMsg, returnType=returnType)
 
     def waitForTransBlockIfNeeded(self, trans, waitForTransBlock, exitOnError=False):
         if not waitForTransBlock:
@@ -1353,6 +1374,19 @@ class Node(object):
 
         self.cmd=cmd
         self.killed=False
+        return True
+
+    def launchUnstarted(self, nodeId, cachePopen=False):
+        startFile=Utils.getNodeDataDir(nodeId, "start.cmd")
+        if not os.path.exists(startFile):
+            Utils.Print("Cannot launch unstarted process since %s file does not exist" % startFile)
+            return False
+
+        with open(startFile, 'r') as file:
+            cmd=file.read()
+            Utils.Print("launchUnstarted cmd: %s" % (cmd))
+
+        self.launchCmd(cmd, nodeId, cachePopen)
         return True
 
     def launchCmd(self, cmd, nodeId, cachePopen=False):
