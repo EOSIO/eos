@@ -274,6 +274,13 @@ namespace cyberway { namespace chaindb {
             return delta;
         }
 
+        // From genesis
+        int64_t insert(const table_request& request, primary_key_t pk, variant value, const ram_payer_info& ram) {
+            auto table = get_table(request);
+            auto obj = object_value{{table, pk}, std::move(value)};
+            return insert(table, ram, obj);
+        }
+
         // From contracts
         int64_t update(
             const table_request& request, const ram_payer_info& ram,
@@ -726,6 +733,12 @@ namespace cyberway { namespace chaindb {
 
     int64_t chaindb_controller::remove(const table_request& request, const ram_payer_info& ram, primary_key_t pk) {
         return impl_->remove(request, ram, pk);
+    }
+
+    int64_t chaindb_controller::insert(
+        const table_request& request, primary_key_t pk, variant data, const ram_payer_info& ram
+    ) {
+         return impl_->insert(request, pk, std::move(data), ram);
     }
 
     int64_t chaindb_controller::insert(cache_item& itm, variant data, const ram_payer_info& ram) {
