@@ -13,6 +13,7 @@
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
 #include <appbase/execution_priority_queue.hpp>
+#include <fc/bitutil.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -118,6 +119,14 @@ static constexpr uint64_t name_suffix( uint64_t n ) {
 }
 
 BOOST_AUTO_TEST_SUITE(misc_tests)
+
+BOOST_AUTO_TEST_CASE(reverse_endian_tests)
+{
+    BOOST_CHECK_EQUAL( endian_reverse_u64(0x0123456789abcdef), 0xefcdab8967452301 );
+    BOOST_CHECK_EQUAL( endian_reverse_u64(0x0102030405060708), 0x0807060504030201 );
+    BOOST_CHECK_EQUAL( endian_reverse_u32(0x01234567), 0x67452301 );
+    BOOST_CHECK_EQUAL( endian_reverse_u32(0x01020304), 0x04030201 );
+}
 
 BOOST_AUTO_TEST_CASE(name_suffix_tests)
 {
