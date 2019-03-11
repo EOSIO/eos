@@ -1840,14 +1840,19 @@ read_only::resolve_names_results read_only::resolve_names(const resolve_names_pa
             }
             EOS_ASSERT(at2 == string::npos, username_type_exception, "Unknown name format: excess `@` symbol");
             auto username = n.substr(0, at);
-            validate_username(username);
+            bool have_username = username.size() > 0;
+            if (have_username) {
+                validate_username(username);
+            }
 
             auto tail = n.substr(tail_pos, n.length() - tail_pos);
             if (!at_acc) {
                 set_domain(tail, item);
             }
-            auto scope = at_acc ? name(tail) : *item.resolved_domain;
-            item.resolved_username = db.get_username(scope, username).owner;
+            if (have_username) {
+                auto scope = at_acc ? name(tail) : *item.resolved_domain;
+                item.resolved_username = db.get_username(scope, username).owner;
+            }
         }
         r.push_back(item);
         if (fc::time_point::now() > timeout) {

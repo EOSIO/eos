@@ -1835,11 +1835,14 @@ struct canceldelay_subcommand {
    }
 };
 
-void resolve_name(const string& textual_name) {
+eosio::chain_apis::read_only::resolve_names_item resolve_name(const string& textual_name, bool silent = false) {
     vector<string> names{textual_name};
     fc::variant json = call(resolve_names_func, names);
     auto res = json.as<eosio::chain_apis::read_only::resolve_names_results>();
     auto n = res[0];
+    if (silent) {
+        return n;
+    }
     std::cout << '"' << textual_name << "\" resolves to:" << std::endl;
     if (n.resolved_domain) {
         const auto& d = *n.resolved_domain;
@@ -1848,15 +1851,34 @@ void resolve_name(const string& textual_name) {
     if (n.resolved_username) {
         std::cout << "  Username: " << *n.resolved_username << std::endl;
     }
+    return n;
+}
+
+string name_string_to_account(const string& textual_name, bool silent = false) {
+    string r = textual_name;
+    auto at = r.find('@');
+    if (at != string::npos) {
+        const auto& n = resolve_name(textual_name, silent);
+        if (n.resolved_username) {
+            r = (*n.resolved_username).to_string();
+        } else if (n.resolved_domain) {
+            r = (*n.resolved_domain).to_string();
+            if (!silent && name() == *n.resolved_domain) {
+                std::cout << " Domain name `" << textual_name << "` is unlinked, can't resolve to account name" << std::endl;
+            }
+        }
+    }
+    return r;
 }
 
 void get_account( const string& accountName, const string& coresym, bool json_format ) {
    fc::variant json;
+   const string& accName = name_string_to_account(accountName, json_format);
    if (coresym.empty()) {
-      json = call(get_account_func, fc::mutable_variant_object("account_name", accountName));
+      json = call(get_account_func, fc::mutable_variant_object("account_name", accName));
    }
    else {
-      json = call(get_account_func, fc::mutable_variant_object("account_name", accountName)("expected_core_symbol", symbol::from_string(coresym)));
+      json = call(get_account_func, fc::mutable_variant_object("account_name", accName)("expected_core_symbol", symbol::from_string(coresym)));
    }
 
    auto res = json.as<eosio::chain_apis::read_only::get_account_results>();
@@ -2488,7 +2510,7 @@ int main( int argc, char** argv ) {
    get_balance->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
    get_balance->set_callback([&] {
       auto result = call(get_currency_balance_func, fc::mutable_variant_object
-         ("account", accountName)
+         ("account", name_string_to_account(accountName))
          ("code", code)
          ("symbol", symbol.empty() ? fc::variant() : symbol)
       );
