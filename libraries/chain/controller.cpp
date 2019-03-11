@@ -2280,6 +2280,12 @@ vector<digest_type> controller::get_preactivated_protocol_features()const {
    return preactivated_protocol_features;
 }
 
+void controller::validate_protocol_features( const vector<digest_type>& features_to_activate )const {
+   my->check_protocol_features( my->head->header.timestamp,
+                                my->head->activated_protocol_features->protocol_features,
+                                features_to_activate );
+}
+
 void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count )
 {
    validate_db_available_size();

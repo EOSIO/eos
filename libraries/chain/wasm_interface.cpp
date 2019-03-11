@@ -1720,6 +1720,8 @@ REGISTER_INTRINSICS(privileged_api,
    (set_blockchain_parameters_packed, void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
+   (is_feature_activated,             int(int)                              )
+   (preactivate_feature,              void(int)                             )
 );
 
 REGISTER_INJECTED_INTRINSICS(transaction_context,

@@ -142,6 +142,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       fc::time_point                                            _irreversible_block_time;
       fc::microseconds                                          _keosd_provider_timeout_us;
 
+      std::vector<chain::digest_type>                           _protocol_features_to_activate;
+
       time_point _last_signed_block_time;
       time_point _start_time = fc::time_point::now();
       uint32_t   _last_signed_block_num = 0;
@@ -964,6 +966,21 @@ producer_plugin::snapshot_information producer_plugin::create_snapshot() const {
    return {head_id, snapshot_path};
 }
 
+producer_plugin::scheduled_protocol_feature_activations
+producer_plugin::get_scheduled_protocol_feature_activations()const {
+   return {my->_protocol_features_to_activate};
+}
+
+void producer_plugin::schedule_protocol_feature_activations( const scheduled_protocol_feature_activations& schedule ) {
+   const chain::controller& chain = my->chain_plug->chain();
+   std::set<digest_type> set_of_features_to_activate( schedule.protocol_features_to_activate.begin(),
+                                                      schedule.protocol_features_to_activate.end() );
+   EOS_ASSERT( set_of_features_to_activate.size() == schedule.protocol_features_to_activate.size(),
+               invalid_protocol_features_to_activate, "duplicate digests" );
+   chain.validate_protocol_features( schedule.protocol_features_to_activate );
+   my->_protocol_features_to_activate = schedule.protocol_features_to_activate;
+}
+
 optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const {
    chain::controller& chain = chain_plug->chain();
    const auto& hbs = chain.head_block_state();
@@ -1123,7 +1140,41 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       }
 
       chain.abort_block();
-      chain.start_block(block_time, blocks_to_confirm);
+
+      auto features_to_activate = chain.get_preactivated_protocol_features();
+      if( _pending_block_mode == pending_block_mode::producing && _protocol_features_to_activate.size() > 0 ) {
+         bool drop_features_to_activate = false;
+         try {
+            chain.validate_protocol_features( _protocol_features_to_activate );
+         } catch( const fc::exception& e ) {
+            wlog( "protocol features to activate are no longer all valid: ${details}",
+                  ("details",e.to_detail_string()) );
+            drop_features_to_activate = true;
+         }
+
+         if( drop_features_to_activate ) {
+            _protocol_features_to_activate.clear();
+         } else {
+            if( features_to_activate.size() > 0 ) {
+               _protocol_features_to_activate.reserve( _protocol_features_to_activate.size()
+                                                         + features_to_activate.size() );
+               std::set<digest_type> set_of_features_to_activate( _protocol_features_to_activate.begin(),
+                                                                  _protocol_features_to_activate.end() );
+               for( const auto& f : features_to_activate ) {
+                  auto res = set_of_features_to_activate.insert( f );
+                  if( res.second ) {
+                     _protocol_features_to_activate.push_back( f );
+                  }
+               }
+               features_to_activate.clear();
+            }
+            std::swap( features_to_activate, _protocol_features_to_activate );
+            ilog( "signaling activation of the following protocol features in block ${num}: ${features_to_activate}",
+                  ("num", hbs->block_num + 1)("features_to_activate", features_to_activate) );
+         }
+      }
+
+      chain.start_block( block_time, blocks_to_confirm, features_to_activate );
    } FC_LOG_AND_DROP();
 
    if( chain.is_building_block() ) {

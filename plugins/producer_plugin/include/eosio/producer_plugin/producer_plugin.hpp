@@ -51,6 +51,10 @@ public:
       std::string          snapshot_name;
    };
 
+   struct scheduled_protocol_feature_activations {
+      std::vector<chain::digest_type> protocol_features_to_activate;
+   };
+
    producer_plugin();
    virtual ~producer_plugin();
 
@@ -83,6 +87,9 @@ public:
    integrity_hash_information get_integrity_hash() const;
    snapshot_information create_snapshot() const;
 
+   scheduled_protocol_feature_activations get_scheduled_protocol_feature_activations() const;
+   void schedule_protocol_feature_activations(const scheduled_protocol_feature_activations& schedule);
+
    signal<void(const chain::producer_confirmation&)> confirmed_block;
 private:
    std::shared_ptr<class producer_plugin_impl> my;
@@ -95,4 +102,4 @@ FC_REFLECT(eosio::producer_plugin::greylist_params, (accounts));
 FC_REFLECT(eosio::producer_plugin::whitelist_blacklist, (actor_whitelist)(actor_blacklist)(contract_whitelist)(contract_blacklist)(action_blacklist)(key_blacklist) )
 FC_REFLECT(eosio::producer_plugin::integrity_hash_information, (head_block_id)(integrity_hash))
 FC_REFLECT(eosio::producer_plugin::snapshot_information, (head_block_id)(snapshot_name))
-
+FC_REFLECT(eosio::producer_plugin::scheduled_protocol_feature_activations, (protocol_features_to_activate))

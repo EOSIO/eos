@@ -108,6 +108,8 @@ namespace eosio { namespace chain {
 
          vector<digest_type> get_preactivated_protocol_features()const;
 
+         void validate_protocol_features( const vector<digest_type>& features_to_activate )const;
+
          /**
           *  Starts a new pending block session upon which new transactions can
           *  be pushed.
