@@ -216,12 +216,12 @@ namespace eosio { namespace chain {
       auto exts = h.validate_and_extract_header_extensions();
       {
          if( exts.size() > 0 ) {
-            auto& new_protocol_features = exts.front().get<protocol_feature_activation>().protocol_features;
+            const auto& new_protocol_features = exts.front().get<protocol_feature_activation>().protocol_features;
             validator( timestamp, prev_activated_protocol_features->protocol_features, new_protocol_features );
 
             new_activated_protocol_features =   std::make_shared<protocol_feature_activation_set>(
                                                    *prev_activated_protocol_features,
-                                                   std::move( new_protocol_features )
+                                                   new_protocol_features
                                                 );
          } else {
             new_activated_protocol_features = std::move( prev_activated_protocol_features );
