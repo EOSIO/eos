@@ -7,7 +7,7 @@ namespace cyberway { namespace chaindb {
     struct mongodb_driver::mongodb_impl_ {
     }; // struct mongodb_driver::mongodb_impl_
 
-    mongodb_driver::mongodb_driver(const std::string&) {
+    mongodb_driver::mongodb_driver(string, string) {
         NOT_SUPPORTED;
     }
 

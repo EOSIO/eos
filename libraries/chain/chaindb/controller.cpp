@@ -59,17 +59,23 @@ namespace cyberway { namespace chaindb {
     driver_interface::~driver_interface() = default;
 
     namespace { namespace _detail {
-        std::unique_ptr<driver_interface> create_driver(chaindb_type t, journal& jrnl, string p) {
-            switch(t) {
+        std::unique_ptr<driver_interface> create_driver(
+            chaindb_type type, journal& jrnl, string address, string sys_name
+        ) {
+            if (sys_name.empty()) {
+                sys_name = names::system_code;
+            }
+
+            switch(type) {
                 case chaindb_type::MongoDB:
-                    return std::make_unique<mongodb_driver>(jrnl, std::move(p));
+                    return std::make_unique<mongodb_driver>(jrnl, std::move(address), std::move(sys_name));
 
                 default:
                     break;
             }
             CYBERWAY_ASSERT(
                 false, unknown_connection_type_exception,
-                "Invalid type ${type} of ChainDB connection", ("type", t));
+                "Invalid type ${type} of ChainDB connection", ("type", type));
         }
 
         variant get_pk_value(const table_info& table, const primary_key_t pk) {
@@ -116,8 +122,8 @@ namespace cyberway { namespace chaindb {
         cache_map cache_;
         undo_stack undo_;
 
-        controller_impl_(chaindb_controller& controller, const chaindb_type t, string p)
-        : driver_ptr_(_detail::create_driver(t, journal_, std::move(p))),
+        controller_impl_(chaindb_controller& controller, const chaindb_type t, string address, string sys_name)
+        : driver_ptr_(_detail::create_driver(t, journal_, std::move(address), std::move(sys_name))),
           driver_(*driver_ptr_.get()),
           undo_(controller, driver_, journal_, cache_) {
         }
@@ -569,8 +575,8 @@ namespace cyberway { namespace chaindb {
         }
     }; // class chaindb_controller::controller_impl_
 
-    chaindb_controller::chaindb_controller(const chaindb_type t, string p)
-    : impl_(new controller_impl_(*this, t, std::move(p))) {
+    chaindb_controller::chaindb_controller(const chaindb_type t, string address, string sys_name)
+    : impl_(new controller_impl_(*this, t, std::move(address), std::move(sys_name))) {
     }
 
     chaindb_controller::~chaindb_controller() = default;
