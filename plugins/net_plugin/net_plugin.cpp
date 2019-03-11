@@ -110,6 +110,7 @@ namespace eosio {
       uint32_t                         max_client_count = 0;
       uint32_t                         max_nodes_per_host = 1;
       uint32_t                         num_clients = 0;
+      uint32_t                         current_connection_id = 0;
 
       vector<string>                   supplied_peers;
       vector<chain::public_key_type>   allowed_peers; ///< peer keys allowed to connect
@@ -363,20 +364,24 @@ namespace eosio {
 
       > transaction_state_index;
 
-   /**
-    *
-    */
    struct peer_block_state {
       block_id_type id;
       uint32_t      block_num;
+      uint32_t      connection_id;
    };
 
    typedef multi_index_container<
       eosio::peer_block_state,
       indexed_by<
-         ordered_unique< tag<by_id>, member<eosio::peer_block_state, block_id_type, &eosio::peer_block_state::id >, sha256_less >,
-         ordered_unique< tag<by_block_num>, member<eosio::peer_block_state, uint32_t, &eosio::peer_block_state::block_num > >
-         >
+         ordered_unique< tag<by_id>,
+               composite_key< peer_block_state,
+                     member<peer_block_state, block_id_type, &eosio::peer_block_state::id>,
+                     member<peer_block_state, uint32_t, &eosio::peer_block_state::connection_id>
+               >,
+               composite_key_compare< sha256_less, std::less<uint32_t> >
+         >,
+         ordered_non_unique< tag<by_block_num>, member<eosio::peer_block_state, uint32_t, &eosio::peer_block_state::block_num > >
+      >
       > peer_block_state_index;
 
 
@@ -498,7 +503,6 @@ namespace eosio {
       ~connection();
       void initialize();
 
-      peer_block_state_index  blk_state;
       transaction_state_index trx_state;
       optional<sync_state>    peer_requested;  // this peer is requesting info from us
       std::shared_ptr<boost::asio::io_context>  server_ioc; // keep ioc alive
@@ -530,6 +534,7 @@ namespace eosio {
       std::atomic<uint32_t>   trx_in_progress_size{0};
 >>>>>>> Make delay_timer thread safe
       fc::sha256              node_id;
+      const uint32_t          connection_id;
       handshake_message       last_handshake_recv;
       handshake_message       last_handshake_sent;
       int16_t                 sent_handshake_count = 0;
@@ -630,9 +635,6 @@ namespace eosio {
                        std::function<void(boost::system::error_code, std::size_t)> callback,
                        bool to_sync_queue = false);
       void do_queue_write(int priority);
-
-      bool add_peer_block(const peer_block_state& pbs);
-      bool peer_has_block(const block_id_type& blkid);
 
       fc::optional<fc::variant_object> _logger_variant;
       const fc::variant_object& get_logger_variant()  {
@@ -767,10 +769,11 @@ namespace eosio {
    };
 
    class dispatch_manager {
-   public:
-      std::multimap<block_id_type, connection_ptr, sha256_less> received_blocks;
+      std::mutex              blk_state_mtx;
+      peer_block_state_index  blk_state;
       std::multimap<transaction_id_type, connection_ptr, sha256_less> received_transactions;
 
+   public:
       void bcast_transaction(const transaction_metadata_ptr& trx);
       void rejected_transaction(const transaction_id_type& msg);
       void bcast_block(const block_state_ptr& bs);
@@ -782,18 +785,22 @@ namespace eosio {
       void recv_notice(const connection_ptr& conn, const notice_message& msg, bool generated);
 
       void retry_fetch(const connection_ptr& conn);
+
+      bool add_peer_block(const peer_block_state& pbs);
+      bool peer_has_block(const block_id_type& blkid, uint32_t connection_id);
+      bool have_block(const block_id_type& blkid);
    };
 
    //---------------------------------------------------------------------------
 
    connection::connection( string endpoint )
-      : blk_state(),
-        trx_state(),
+      : trx_state(),
         peer_requested(),
         server_ioc( my_impl->server_ioc ),
         strand( app().get_io_service() ),
         socket( std::make_shared<tcp::socket>( std::ref( *my_impl->server_ioc ))),
         node_id(),
+        connection_id( ++my_impl->current_connection_id ),
         last_handshake_recv(),
         last_handshake_sent(),
         sent_handshake_count(0),
@@ -813,13 +820,13 @@ namespace eosio {
    }
 
    connection::connection( socket_ptr s )
-      : blk_state(),
-        trx_state(),
+      : trx_state(),
         peer_requested(),
         server_ioc( my_impl->server_ioc ),
         strand( app().get_io_service() ),
         socket( s ),
         node_id(),
+        connection_id( ++my_impl->current_connection_id ),
         last_handshake_recv(),
         last_handshake_sent(),
         sent_handshake_count(0),
@@ -859,7 +866,6 @@ namespace eosio {
 
    void connection::reset() {
       peer_requested.reset();
-      blk_state.clear();
       trx_state.clear();
    }
 
@@ -997,7 +1003,7 @@ namespace eosio {
          signed_block_ptr b = cc.fetch_block_by_id(blkid);
          if(b) {
             fc_dlog(logger,"found block for id at num ${n}",("n",b->block_num()));
-            add_peer_block({blkid, block_header::num_from_id(blkid)});
+            my_impl->dispatcher->add_peer_block({blkid, block_header::num_from_id(blkid), connection_id});
             enqueue_block( b );
          } else {
             fc_ilog( logger, "fetch block by id returned null, id ${id} for ${p}",
@@ -1317,20 +1323,6 @@ namespace eosio {
       sync_request_message srm = {start,end};
       enqueue( net_message(srm));
       sync_wait();
-   }
-
-   bool connection::add_peer_block(const peer_block_state& entry) {
-      auto bptr = blk_state.get<by_id>().find(entry.id);
-      bool added = (bptr == blk_state.end());
-      if (added){
-         blk_state.insert(entry);
-      }
-      return added;
-   }
-
-   bool connection::peer_has_block( const block_id_type& blkid ) {
-      auto blk_itr = blk_state.get<by_id>().find(blkid);
-      return blk_itr != blk_state.end();
    }
 
    //-----------------------------------------------------------
@@ -1710,26 +1702,48 @@ namespace eosio {
 
    //------------------------------------------------------------------------
 
-   void dispatch_manager::bcast_block(const block_state_ptr& bs) {
-      std::set<connection_ptr> skips;
-      auto range = received_blocks.equal_range(bs->id);
-      for (auto org = range.first; org != range.second; ++org) {
-         skips.insert(org->second);
+   bool dispatch_manager::add_peer_block(const peer_block_state& entry) {
+      std::lock_guard<std::mutex> g(blk_state_mtx);
+      auto bptr = blk_state.get<by_id>().find(std::make_tuple(std::ref(entry.id), entry.connection_id));
+      bool added = (bptr == blk_state.end());
+      if (added){
+         blk_state.insert(entry);
       }
-      received_blocks.erase(range.first, range.second);
+      return added;
+   }
 
+   bool dispatch_manager::peer_has_block( const block_id_type& blkid, uint32_t connection_id ) {
+      std::lock_guard<std::mutex> g(blk_state_mtx);
+      auto blk_itr = blk_state.get<by_id>().find(std::make_tuple(std::ref(blkid), connection_id));
+      return blk_itr != blk_state.end();
+   }
+
+   bool dispatch_manager::have_block( const block_id_type& blkid ) {
+      std::lock_guard<std::mutex> g(blk_state_mtx);
+      auto blk_itr = blk_state.get<by_id>().find( blkid );
+      return blk_itr != blk_state.end();
+   }
+
+   void dispatch_manager::expire_blocks( uint32_t lib_num ) {
+      std::lock_guard<std::mutex> g(blk_state_mtx);
+      auto& stale_blk = blk_state.get<by_block_num>();
+      stale_blk.erase( stale_blk.lower_bound(1), stale_blk.upper_bound(lib_num) );
+   }
+
+   void dispatch_manager::bcast_block(const block_state_ptr& bs) {
       uint32_t bnum = bs->block_num;
       peer_block_state pbstate{bs->id, bnum};
       fc_dlog( logger, "bcast block ${b}", ("b", bnum) );
 
       std::shared_ptr<std::vector<char>> send_buffer;
       for( auto& cp : my_impl->connections ) {
-         if( skips.find( cp ) != skips.end() || !cp->current() ) {
+         if( !cp->current() ) {
             continue;
          }
          bool has_block = cp->last_handshake_recv.last_irreversible_block_num >= bnum;
          if( !has_block ) {
-            if( !cp->add_peer_block( pbstate ) ) {
+            pbstate.connection_id = cp->connection_id;
+            if( !add_peer_block( pbstate ) ) {
                continue;
             }
             if( !send_buffer ) {
@@ -1743,7 +1757,8 @@ namespace eosio {
    }
 
    void dispatch_manager::recv_block(const connection_ptr& c, const block_id_type& id, uint32_t bnum) {
-      received_blocks.insert(std::make_pair(id, c));
+      peer_block_state pbstate{id, bnum, c->connection_id};
+      add_peer_block( pbstate );
       if (c &&
           c->last_req &&
           c->last_req->req_blocks.mode != none &&
@@ -1758,20 +1773,6 @@ namespace eosio {
 
    void dispatch_manager::rejected_block(const block_id_type& id) {
       fc_dlog( logger, "rejected block ${id}", ("id", id) );
-      auto range = received_blocks.equal_range(id);
-      received_blocks.erase(range.first, range.second);
-   }
-
-   void dispatch_manager::expire_blocks( uint32_t lib_num ) {
-      for( auto i = received_blocks.begin(); i != received_blocks.end(); ) {
-         const block_id_type& blk_id = i->first;
-         uint32_t blk_num = block_header::num_from_id( blk_id );
-         if( blk_num <= lib_num ) {
-            i = received_blocks.erase( i );
-         } else {
-            ++i;
-         }
-      }
    }
 
    void dispatch_manager::bcast_transaction(const transaction_metadata_ptr& ptrx) {
@@ -1860,7 +1861,7 @@ namespace eosio {
             try {
                b = cc.fetch_block_by_id(blkid); // if exists
                if(b) {
-                  c->add_peer_block({blkid, block_header::num_from_id(blkid)});
+                  add_peer_block({blkid, block_header::num_from_id(blkid), c->connection_id});
                }
             } catch (const assert_exception &ex) {
                fc_ilog( logger, "caught assert on fetch_block_by_id, ${ex}",("ex",ex.what()) );
@@ -1916,7 +1917,7 @@ namespace eosio {
             sendit = trx != conn->trx_state.end();
          }
          else {
-            sendit = conn->peer_has_block(bid);
+            sendit = peer_has_block(bid, c->connection_id);
          }
          if (sendit) {
             conn->enqueue(*c->last_req);
@@ -2324,7 +2325,6 @@ namespace eosio {
    bool net_plugin_impl::process_next_message(const connection_ptr& conn, uint32_t message_length) {
       try {
          // if next message is a block we already have, exit early
-/*
          auto peek_ds = conn->pending_message_buffer.create_peek_datastream();
          unsigned_int which{};
          fc::raw::unpack( peek_ds, which );
@@ -2332,16 +2332,23 @@ namespace eosio {
             block_header bh;
             fc::raw::unpack( peek_ds, bh );
 
-            controller& cc = chain_plug->chain();
             block_id_type blk_id = bh.id();
-            uint32_t blk_num = bh.block_num();
-            if( cc.fetch_block_by_id( blk_id ) ) {
-               sync_master->recv_block( conn, blk_id, blk_num );
+            if( dispatcher->have_block( blk_id ) ) {
+               connection_wptr weak = conn;
+               app().post(priority::low,
+                     [dispatcher = dispatcher.get(), sync_master = sync_master.get(), weak{std::move(weak)}, blk_id] {
+                  connection_ptr c = weak.lock();
+                  if(c) {
+                     auto blk_num = block_header::num_from_id(blk_id);
+                     dispatcher->recv_block(c, blk_id, blk_num);
+                     sync_master->recv_block( c, blk_id, blk_num );
+                  }
+               });
                conn->pending_message_buffer.advance_read_ptr( message_length );
                return true;
             }
          }
-*/
+
          auto ds = conn->pending_message_buffer.create_datastream();
          net_message msg;
          fc::raw::unpack( ds, msg );
@@ -3015,8 +3022,6 @@ namespace eosio {
          stale_txn.erase( stale_txn.lower_bound(1), stale_txn.upper_bound(lib) );
          auto &stale_txn_e = c->trx_state.get<by_expiry>();
          stale_txn_e.erase(stale_txn_e.lower_bound(time_point_sec()), stale_txn_e.upper_bound(time_point::now()));
-         auto &stale_blk = c->blk_state.get<by_block_num>();
-         stale_blk.erase( stale_blk.lower_bound(1), stale_blk.upper_bound(lib) );
       }
 <<<<<<< HEAD
 <<<<<<< HEAD
