@@ -49,12 +49,13 @@ namespace cyberway { namespace chaindb {
         return (code.empty());
     }
 
-    inline string get_code_name(const account_name& code) {
-        if (is_system_code(code)) return names::system_code;
+    inline string get_code_name(string name, const account_name& code) {
+        if (!is_system_code(code)) name.append(db_name_to_string(code.value));
+        return name;
+    }
 
-        string str;
-        str.append(names::system_code).append(db_name_to_string(code.value));
-        return str;
+    inline string get_code_name(const account_name& code) {
+        return get_code_name(names::system_code, code);
     }
 
     inline string get_code_name(const account_name_t code) {
