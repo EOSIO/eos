@@ -2894,7 +2894,10 @@ const flat_set<account_name> &controller::get_resource_greylist() const {
 
 template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::preactivate_feature>() {
-
+   db.modify( db.get<global_property_object>(), [&]( auto& gp ) {
+      add_intrinsic_to_whitelist( gp.whitelisted_intrinsics, "preactivate_feature" );
+      add_intrinsic_to_whitelist( gp.whitelisted_intrinsics, "is_feature_activated" );
+   } );
 }
 
 /// End of protocol feature activation handlers
