@@ -352,9 +352,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          chain::controller& chain = chain_plug->chain();
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
          fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
-         // use chain thread pool for sig recovery so that future wait below is not in the same thread pool preventing progress
-         transaction_metadata::create_signing_keys_future( trx, chain.get_thread_pool(), chain.get_chain_id(), max_trx_cpu_usage );
          auto& tp = *_thread_pool;
+         // use chain thread pool for sig recovery so that future wait below is not in the same thread pool preventing progress
+         transaction_metadata::create_signing_keys_future( trx, tp, chain.get_chain_id(), max_trx_cpu_usage );
          boost::asio::post( tp, [self = this, trx, persist_until_expired, next]() {
             if( trx->signing_keys_future.valid() )
                trx->signing_keys_future.wait();
