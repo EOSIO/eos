@@ -304,18 +304,20 @@ namespace eosio {
                               [ioc = this->server_ioc, &bytes_in_flight = this->bytes_in_flight, handler_itr,
                                resource{std::move( resource )}, body{std::move( body )}, con]() {
                      try {
-                        bytes_in_flight -= body.size();
                         handler_itr->second( resource, body,
-                              [ioc{std::move(ioc)}, &bytes_in_flight, con]( int code, std::string response_body ) {
-                           bytes_in_flight += response_body.size();
-                           boost::asio::post( *ioc, [ioc, response_body{std::move( response_body )}, &bytes_in_flight, con, code]() {
-                              size_t body_size = response_body.size();
-                              con->set_body( std::move( response_body ) );
+                              [ioc{std::move(ioc)}, &bytes_in_flight, con]( int code, fc::variant response_body ) {
+                           boost::asio::post( *ioc, [ioc, response_body{std::move( response_body )}, &bytes_in_flight, con, code]() mutable {
+                              std::string json = fc::json::to_string( response_body );
+                              response_body.clear();
+                              const size_t json_size = json.size();
+                              bytes_in_flight += json_size;
+                              con->set_body( std::move( json ) );
                               con->set_status( websocketpp::http::status_code::value( code ) );
                               con->send_http_response();
-                              bytes_in_flight -= body_size;
+                              bytes_in_flight -= json_size;
                            } );
                         });
+                        bytes_in_flight -= body.size();
                      } catch( ... ) {
                         handle_exception<T>( con );
                         con->send_http_response();
@@ -592,7 +594,7 @@ namespace eosio {
             try {
                if (body.empty()) body = "{}";
                auto result = (*this).get_supported_apis();
-               cb(200, fc::json::to_string(result));
+               cb(200, fc::variant(result));
             } catch (...) {
                handle_exception("node", "get_supported_apis", body, cb);
             }
@@ -629,21 +631,21 @@ namespace eosio {
             throw;
          } catch (chain::unknown_block_exception& e) {
             error_results results{400, "Unknown Block", error_results::error_info(e, verbose_http_errors)};
-            cb( 400, fc::json::to_string( results ));
+            cb( 400, fc::variant( results ));
          } catch (chain::unsatisfied_authorization& e) {
             error_results results{401, "UnAuthorized", error_results::error_info(e, verbose_http_errors)};
-            cb( 401, fc::json::to_string( results ));
+            cb( 401, fc::variant( results ));
          } catch (chain::tx_duplicate& e) {
             error_results results{409, "Conflict", error_results::error_info(e, verbose_http_errors)};
-            cb( 409, fc::json::to_string( results ));
+            cb( 409, fc::variant( results ));
          } catch (fc::eof_exception& e) {
             error_results results{422, "Unprocessable Entity", error_results::error_info(e, verbose_http_errors)};
-            cb( 422, fc::json::to_string( results ));
+            cb( 422, fc::variant( results ));
             elog( "Unable to parse arguments to ${api}.${call}", ("api", api_name)( "call", call_name ));
             dlog("Bad arguments: ${args}", ("args", body));
          } catch (fc::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(e, verbose_http_errors)};
-            cb( 500, fc::json::to_string( results ));
+            cb( 500, fc::variant( results ));
             if (e.code() != chain::greylist_net_usage_exceeded::code_value && e.code() != chain::greylist_cpu_usage_exceeded::code_value) {
                elog( "FC Exception encountered while processing ${api}.${call}",
                      ("api", api_name)( "call", call_name ));
@@ -651,14 +653,14 @@ namespace eosio {
             }
          } catch (std::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, e.what())), verbose_http_errors)};
-            cb( 500, fc::json::to_string( results ));
+            cb( 500, fc::variant( results ));
             elog( "STD Exception encountered while processing ${api}.${call}",
                   ("api", api_name)( "call", call_name ));
             dlog( "Exception Details: ${e}", ("e", e.what()));
          } catch (...) {
             error_results results{500, "Internal Service Error",
                error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Exception" )), verbose_http_errors)};
-            cb( 500, fc::json::to_string( results ));
+            cb( 500, fc::variant( results ));
             elog( "Unknown Exception encountered while processing ${api}.${call}",
                   ("api", api_name)( "call", call_name ));
          }
