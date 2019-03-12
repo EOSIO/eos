@@ -204,7 +204,9 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
 
 BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    create_accounts( {N(alice),N(bob),N(carol)} );
-   produce_block();
+   while (control->head_block_num() < 3) {
+      produce_block();
+   }
 
    auto compare_schedules = [&]( const vector<producer_key>& a, const producer_schedule_type& b ) {
       return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
@@ -228,7 +230,7 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    produce_block(); // Starts new block which promotes the pending schedule to active
    BOOST_CHECK_EQUAL( control->active_producers().version, 1u );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
-   produce_blocks(7);
+   produce_blocks(6);
 
    res = set_producers( {N(alice),N(bob),N(carol)} );
    vector<producer_key> sch2 = {
@@ -267,7 +269,9 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
 
 BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
    create_accounts( {N(alice),N(bob),N(carol)} );
-   produce_block();
+   while (control->head_block_num() < 3) {
+      produce_block();
+   }
 
    auto compare_schedules = [&]( const vector<producer_key>& a, const producer_schedule_type& b ) {
       return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
@@ -291,7 +295,7 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
    produce_block(); // Starts new block which promotes the pending schedule to active
    BOOST_CHECK_EQUAL( control->active_producers().version, 1u );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
-   produce_blocks(7);
+   produce_blocks(6);
 
    res = set_producers( {N(alice),N(bob)} );
    vector<producer_key> sch2 = {
@@ -324,7 +328,9 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
 
 BOOST_FIXTURE_TEST_CASE( empty_producer_schedule_has_no_effect, tester ) try {
    create_accounts( {N(alice),N(bob),N(carol)} );
-   produce_block();
+   while (control->head_block_num() < 3) {
+      produce_block();
+   }
 
    auto compare_schedules = [&]( const vector<producer_key>& a, const producer_schedule_type& b ) {
       return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
@@ -350,7 +356,7 @@ BOOST_FIXTURE_TEST_CASE( empty_producer_schedule_has_no_effect, tester ) try {
    produce_block();
    BOOST_CHECK_EQUAL( control->active_producers().version, 1u );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
-   produce_blocks(7);
+   produce_blocks(6);
 
    res = set_producers( {} );
    wlog("set producer schedule to []");

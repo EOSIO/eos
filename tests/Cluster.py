@@ -960,7 +960,8 @@ class Cluster(object):
             return None
 
         contract="eosio.bios"
-        contractDir="unittests/contracts/%s" % (contract)
+        #contractDir="unittests/contracts/%s" % (contract)
+        contractDir="unittests/contracts/old_versions/v1.6.0-rc3/%s" % (contract) # use old eosio.bios for now
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))

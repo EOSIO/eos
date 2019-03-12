@@ -19,36 +19,10 @@
 using namespace eosio::chain;
 using namespace eosio::testing;
 
-protocol_feature_manager make_protocol_feature_manager() {
-   protocol_feature_manager pfm;
-
-   set<builtin_protocol_feature_t> visited_builtins;
-
-   std::function<void(builtin_protocol_feature_t)> add_builtins =
-   [&pfm, &visited_builtins, &add_builtins]( builtin_protocol_feature_t codename ) -> void {
-      auto res = visited_builtins.emplace( codename );
-      if( !res.second ) return;
-
-      auto f = pfm.make_default_builtin_protocol_feature( codename, [&add_builtins]( builtin_protocol_feature_t d ) {
-         add_builtins( d );
-      } );
-
-      pfm.add_feature( f );
-   };
-
-   for( const auto& p : builtin_protocol_feature_codenames ) {
-      add_builtins( p.first );
-   }
-
-   return pfm;
-}
-
 BOOST_AUTO_TEST_SUITE(protocol_feature_tests)
 
 BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
-   tester c(false, db_read_mode::SPECULATIVE);
-   c.close();
-   c.open( make_protocol_feature_manager(), nullptr );
+   tester c(setup_policy::none, db_read_mode::SPECULATIVE);
 
    const auto& pfm = c.control->get_protocol_feature_manager();
 
@@ -74,8 +48,7 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
    BOOST_REQUIRE( d );
 
    // Activate PREACTIVATE_FEATURE.
-   c.control->start_block( t, 0, { *d } );
-   c.finish_block();
+   c.schedule_protocol_features_wo_preactivation({ *d });
    c.produce_block();
 
    // Now the latest bios contract can be set.
@@ -98,10 +71,7 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
 
    // Ensure validator node accepts the blockchain
 
-   tester c2(false, db_read_mode::SPECULATIVE);
-   c2.close();
-   c2.open( make_protocol_feature_manager(), nullptr );
-
+   tester c2(setup_policy::none, db_read_mode::SPECULATIVE);
    push_blocks( c, c2 );
 
 } FC_LOG_AND_RETHROW()
