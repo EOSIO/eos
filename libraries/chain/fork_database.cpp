@@ -312,10 +312,10 @@ namespace eosio { namespace chain {
 
       if( validate ) {
          try {
-            auto exts = n->block->validate_and_extract_header_extensions();
+            const auto& exts = n->header_exts;
 
             if( exts.size() > 0 ) {
-               auto& new_protocol_features = exts.front().get<protocol_feature_activation>().protocol_features;
+               const auto& new_protocol_features = exts.front().get<protocol_feature_activation>().protocol_features;
                validator( n->header.timestamp, prev_bh->activated_protocol_features->protocol_features, new_protocol_features );
             }
          } EOS_RETHROW_EXCEPTIONS( fork_database_exception, "serialized fork database is incompatible with configured protocol features"  )
