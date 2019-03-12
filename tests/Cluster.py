@@ -128,7 +128,7 @@ class Cluster(object):
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, unstartedNodes=0, totalNodes=1, prodCount=1, topo="mesh", p2pPlugin="net", delay=1, onlyBios=False, dontBootstrap=False,
                totalProducers=None, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None, alternateVersionLabelsFile=None,
-               associatedNodeLabels=None):
+               associatedNodeLabels=None, loadSystemContract=True):
         """Launch cluster.
         pnodes: producer nodes count
         unstartedNodes: non-producer nodes that are configured into the launch, but not started.  Should be included in totalNodes.
@@ -147,6 +147,7 @@ class Cluster(object):
                                  --specific-nodeos flags on launcher), example: { "5" : "--plugin eosio::test_control_api_plugin" }
         alternateVersionLabelsFile: Supply an alternate version labels file to use with associatedNodeLabels.
         associatedNodeLabels: Supply a dictionary of node numbers to use an alternate label for a specific node.
+        loadSystemContract: indicate whether the eosio.system contract should be loaded (setting this to False causes useBiosBootFile to be treated as False)
         """
         assert(isinstance(topo, str))
         if alternateVersionLabelsFile is not None:
@@ -397,8 +398,10 @@ class Cluster(object):
             return True
 
         Utils.Print("Bootstrap cluster.")
+        if not loadSystemContract:
+            useBiosBootFile=False  #ensure we use Cluster.bootstrap
         if onlyBios or not useBiosBootFile:
-            self.biosNode=Cluster.bootstrap(startedNodes, prodCount, totalProducers, Cluster.__BiosHost, Cluster.__BiosPort, self.walletMgr, onlyBios)
+            self.biosNode=Cluster.bootstrap(startedNodes, prodCount, totalProducers, Cluster.__BiosHost, Cluster.__BiosPort, self.walletMgr, onlyBios, loadSystemContract)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False
@@ -965,7 +968,7 @@ class Cluster(object):
         return biosNode
 
     @staticmethod
-    def bootstrap(totalNodes, prodCount, totalProducers, biosHost, biosPort, walletMgr, onlyBios=False):
+    def bootstrap(totalNodes, prodCount, totalProducers, biosHost, biosPort, walletMgr, onlyBios=False, loadSystemContract=True):
         """Create 'prodCount' init accounts and deposits 10000000000 SYS in each. If prodCount is -1 will initialize all possible producers.
         Ensure nodes are inter-connected prior to this call. One way to validate this will be to check if every node has block 1."""
 
@@ -1187,17 +1190,18 @@ class Cluster(object):
                         (expectedAmount, actualAmount))
             return None
 
-        contract="eosio.system"
-        contractDir="unittests/contracts/%s" % (contract)
-        wasmFile="%s.wasm" % (contract)
-        abiFile="%s.abi" % (contract)
-        Utils.Print("Publish %s contract" % (contract))
-        trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
-        if trans is None:
-            Utils.Print("ERROR: Failed to publish contract %s." % (contract))
-            return None
+        if loadSystemContract:
+            contract="eosio.system"
+            contractDir="unittests/contracts/%s" % (contract)
+            wasmFile="%s.wasm" % (contract)
+            abiFile="%s.abi" % (contract)
+            Utils.Print("Publish %s contract" % (contract))
+            trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+            if trans is None:
+                Utils.Print("ERROR: Failed to publish contract %s." % (contract))
+                return None
 
-        Node.validateTransaction(trans)
+            Node.validateTransaction(trans)
 
         initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
         Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
