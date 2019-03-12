@@ -1,7 +1,7 @@
 steps:
   - label: ":spiral_note_pad: Generate Report"
     command: |
-        echo "--- :hammer: Ensuring lcov is installed" && apt-get install -y lcov && \
+        echo "--- :hammer: Ensuring lcov is installed" && apt-get install -y lcov && gem install coveralls-lcov && \
         echo "--- :hammer: Building" && \
         cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT="${BOOST_ROOT}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true -DENABLE_COVERAGE_TESTING=true -DBUILD_DOXYGEN=false && \
         ninja && \
