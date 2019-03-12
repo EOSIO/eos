@@ -1,16 +1,18 @@
 steps:
   - label: ":spiral_note_pad: Generate Report"
-    command:
-      - "echo \"--- :hammer: Ensuring packages are installed\" && apt-get install -y lcov"
-      - "echo \"--- :hammer: Building\" && \
-        cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT=\"${BOOST_ROOT}\" -DWASM_ROOT="${WASM_ROOT}" -DOPENSSL_ROOT_DIR=\"${OPENSSL_ROOT_DIR}\" -DBUILD_MONGO_DB_PLUGIN=true -DENABLE_COVERAGE_TESTING=true -DBUILD_DOXYGEN=false && \
+    command: |
+        echo "--- :hammer: Ensuring lcov is installed" && apt-get install -y lcov && \
+        echo "--- :hammer: Building" && \
+        cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_C_COMPILER=clang-4.0 -DBOOST_ROOT="${BOOST_ROOT}" -DWASM_ROOT="${WASM_ROOT}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true -DENABLE_COVERAGE_TESTING=true -DBUILD_DOXYGEN=false && \
         ninja && \
-      - "echo \"--- :spiral_note_pad: Generating Code Coverage Report\" && ninja EOSIO_ut_coverage"
-      - "echo \"--- :arrow_up: Publishing Code Coverage Report\" && \
+        echo "--- :spiral_note_pad: Generating Code Coverage Report" && \
+        ninja EOSIO_ut_coverage && \
+        echo "--- :arrow_up: Publishing Code Coverage Report" && \
         buildkite-agent artifact upload "EOSIO_ut_coverage/**/*" s3://eos-coverage/$BUILDKITE_JOB_ID && \
         cp /config/.coveralls.yml . && \
-        /usr/local/bin/coveralls-lcov EOSIO_ut_coverage_filtered.info"
-      - "echo \"+++ View Report\" && printf "\033]1339;url=https://eos-coverage.s3-us-west-2.amazonaws.com/$BUILDKITE_JOB_ID/EOSIO_ut_coverage/index.html;content=View Full Coverage Report\a\n"
+        /usr/local/bin/coveralls-lcov EOSIO_ut_coverage_filtered.info && \
+        echo "+++ View Report" && \
+        printf "\033]1339;url=https://eos-coverage.s3-us-west-2.amazonaws.com/$BUILDKITE_JOB_ID/EOSIO_ut_coverage/index.html;content=View Full Coverage Report\a\n"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
