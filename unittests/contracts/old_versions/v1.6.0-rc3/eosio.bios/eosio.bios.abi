@@ -1,7 +1,6 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Mon Mar 11 20:20:06 2019",
     "version": "eosio::abi/1.1",
-    "types": [],
     "structs": [
         {
             "name": "abi_hash",
@@ -242,16 +241,6 @@
             ]
         },
         {
-            "name": "preactivate",
-            "base": "",
-            "fields": [
-                {
-                    "name": "feature_digest",
-                    "type": "checksum256"
-                }
-            ]
-        },
-        {
             "name": "producer_key",
             "base": "",
             "fields": [
@@ -262,16 +251,6 @@
                 {
                     "name": "block_signing_key",
                     "type": "public_key"
-                }
-            ]
-        },
-        {
-            "name": "reqactivated",
-            "base": "",
-            "fields": [
-                {
-                    "name": "feature_digest",
-                    "type": "checksum256"
                 }
             ]
         },
@@ -450,6 +429,7 @@
             ]
         }
     ],
+    "types": [],
     "actions": [
         {
             "name": "canceldelay",
@@ -474,16 +454,6 @@
         {
             "name": "onerror",
             "type": "onerror",
-            "ricardian_contract": ""
-        },
-        {
-            "name": "preactivate",
-            "type": "preactivate",
-            "ricardian_contract": ""
-        },
-        {
-            "name": "reqactivated",
-            "type": "reqactivated",
             "ricardian_contract": ""
         },
         {
@@ -547,5 +517,6 @@
         }
     ],
     "ricardian_clauses": [],
-    "variants": []
+    "variants": [],
+    "abi_extensions": []
 }
