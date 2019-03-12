@@ -2301,6 +2301,10 @@ void controller::start_block( block_timestamp_type when, uint16_t confirm_block_
       }
    }
 
+   if( new_protocol_feature_activations.size() > 0 ) {
+      validate_protocol_features( new_protocol_feature_activations );
+   }
+
    my->start_block( when, confirm_block_count, new_protocol_feature_activations,
                     block_status::incomplete, optional<block_id_type>() );
 }
@@ -2310,6 +2314,11 @@ void controller::start_block( block_timestamp_type when,
                               const vector<digest_type>& new_protocol_feature_activations )
 {
    validate_db_available_size();
+
+   if( new_protocol_feature_activations.size() > 0 ) {
+      validate_protocol_features( new_protocol_feature_activations );
+   }
+
    my->start_block( when, confirm_block_count, new_protocol_feature_activations,
                     block_status::incomplete, optional<block_id_type>() );
 }
@@ -2325,10 +2334,10 @@ block_state_ptr controller::finalize_block( const std::function<signature_type( 
                   std::move( ab._pending_block_header_state ),
                   std::move( ab._unsigned_block ),
                   std::move( ab._trx_metas ),
-                  [control=my.get()]( block_timestamp_type timestamp,
-                                      const flat_set<digest_type>& cur_features,
-                                      const vector<digest_type>& new_features )
-                  { control->check_protocol_features( timestamp, cur_features, new_features ); },
+                  []( block_timestamp_type timestamp,
+                      const flat_set<digest_type>& cur_features,
+                      const vector<digest_type>& new_features )
+                  {},
                   signer_callback
               );
 

@@ -40,7 +40,7 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
    auto t = c.control->pending_block_time();
    c.control->abort_block();
    BOOST_REQUIRE_EXCEPTION( c.control->start_block( t, 0, {digest_type()} ), protocol_feature_exception,
-                            fc_exception_message_starts_with( "unrecognized protocol feature with digest:" )
+                            fc_exception_message_is( "protocol feature with digest '0000000000000000000000000000000000000000000000000000000000000000' is unrecognized" )
    );
 
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature );
