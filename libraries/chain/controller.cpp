@@ -2261,6 +2261,21 @@ void controller::preactivate_feature( const digest_type& feature_digest ) {
                ("digest", feature_digest)
    );
 
+   auto dependency_checker = [&]( const digest_type& d ) -> bool
+   {
+      if( is_protocol_feature_activated( d ) ) return true;
+
+      return ( std::find( gpo.preactivated_protocol_features.begin(),
+                          gpo.preactivated_protocol_features.end(),
+                          d ) != gpo.preactivated_protocol_features.end() );
+   };
+
+   EOS_ASSERT( my->protocol_features.validate_dependencies( feature_digest, dependency_checker ),
+               protocol_feature_exception,
+               "not all dependencies of protocol feature with digest '${digest}' have been activated or pre-activated",
+               ("digest", feature_digest)
+   );
+
    my->db.modify( gpo, [&]( auto& gp ) {
       gp.preactivated_protocol_features.push_back( feature_digest );
    } );
