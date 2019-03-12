@@ -483,7 +483,7 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( block_index_not_found, block_log_exception,
                                     3190005, "block index can not be found"  )
 
-      FC_DECLARE_DERIVED_EXCEPTION( http_exception, chain_exception,
+   FC_DECLARE_DERIVED_EXCEPTION( http_exception, chain_exception,
                                  3200000, "http exception" )
       FC_DECLARE_DERIVED_EXCEPTION( invalid_http_client_root_cert,    http_exception,
                                     3200001, "invalid http client root certificate" )
