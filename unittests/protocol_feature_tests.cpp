@@ -19,30 +19,6 @@
 using namespace eosio::chain;
 using namespace eosio::testing;
 
-protocol_feature_manager make_protocol_feature_manager() {
-   protocol_feature_manager pfm;
-
-   set<builtin_protocol_feature_t> visited_builtins;
-
-   std::function<void(builtin_protocol_feature_t)> add_builtins =
-   [&pfm, &visited_builtins, &add_builtins]( builtin_protocol_feature_t codename ) -> void {
-      auto res = visited_builtins.emplace( codename );
-      if( !res.second ) return;
-
-      auto f = pfm.make_default_builtin_protocol_feature( codename, [&add_builtins]( builtin_protocol_feature_t d ) {
-         add_builtins( d );
-      } );
-
-      pfm.add_feature( f );
-   };
-
-   for( const auto& p : builtin_protocol_feature_codenames ) {
-      add_builtins( p.first );
-   }
-
-   return pfm;
-}
-
 BOOST_AUTO_TEST_SUITE(protocol_feature_tests)
 
 BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {

@@ -136,8 +136,9 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
 
 BOOST_AUTO_TEST_CASE( forking ) try {
    tester c;
-   c.produce_block();
-   c.produce_block();
+   while (c.control->head_block_num() < 3) {
+      c.produce_block();
+   }
    auto r = c.create_accounts( {N(dan),N(sam),N(pam)} );
    wdump((fc::json::to_pretty_string(r)));
    c.produce_block();
@@ -287,7 +288,9 @@ BOOST_AUTO_TEST_CASE( forking ) try {
  */
 BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
    tester c;
-   c.produce_blocks(10);
+   while (c.control->head_block_num() < 11) {
+      c.produce_block();
+   }
    auto r = c.create_accounts( {N(dan),N(sam),N(pam),N(scott)} );
    auto res = c.set_producers( {N(dan),N(sam),N(pam),N(scott)} );
    wlog("set producer schedule to [dan,sam,pam,scott]");
@@ -357,9 +360,7 @@ BOOST_AUTO_TEST_CASE( validator_accepts_valid_blocks ) try {
    block_state_ptr first_block;
 
    auto c = n2.control->accepted_block.connect( [&]( const block_state_ptr& bsp) {
-      if( bsp->block_num == 2 ) {
-         first_block = bsp;
-      }
+      first_block = bsp;
    } );
 
    push_blocks( n1, n2 );

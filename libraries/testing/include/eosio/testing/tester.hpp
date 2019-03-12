@@ -92,7 +92,7 @@ namespace eosio { namespace testing {
 
          virtual ~base_tester() {};
 
-         void              init(const setup_policy policy = setup_policy::old_bios_only, db_read_mode read_mode = db_read_mode::SPECULATIVE);
+         void              init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE);
          void              init(controller::config config, const snapshot_reader_ptr& snapshot = nullptr);
          void              init(controller::config config, protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot = nullptr);
          void              execute_setup_policy(const setup_policy policy);
@@ -319,7 +319,7 @@ namespace eosio { namespace testing {
 
    class tester : public base_tester {
    public:
-      tester(setup_policy policy = setup_policy::old_bios_only, db_read_mode read_mode = db_read_mode::SPECULATIVE ) {
+      tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE ) {
          init(policy, read_mode);
       }
 

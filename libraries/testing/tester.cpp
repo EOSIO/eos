@@ -146,7 +146,7 @@ namespace eosio { namespace testing {
 
       auto schedule_preactivate_protocol_feature = [&]() {
          auto preactivate_feature_digest = pfm.get_builtin_digest(builtin_protocol_feature_t::preactivate_feature);
-         schedule_protocol_features_wo_preactivation({*preactivate_feature_digest});
+         schedule_protocol_features_wo_preactivation( { *preactivate_feature_digest } );
       };
 
       auto schedule_all_builtin_protocol_features = [&]() {
