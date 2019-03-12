@@ -178,7 +178,7 @@ void blocklog::initialize(const variables_map& options) {
 }
 
 //struct used by trunc_blocklog() and make_index() to read first 18 bytes of a block from blocks.log
-struct __attribute__((packed)) Block_Start {    //first 18 bytes of each block (must match block_header)
+struct __attribute__((__packed__)) Block_Start {    //first 18 bytes of each block (must match block_header)
    block_timestamp_type timestamp;
    account_name         prodname;
    uint16_t             confirmed;
