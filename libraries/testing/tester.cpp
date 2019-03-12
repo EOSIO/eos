@@ -146,25 +146,8 @@ namespace eosio { namespace testing {
 
       auto schedule_preactivate_protocol_feature = [&]() {
          auto preactivate_feature_digest = pfm.get_builtin_digest(builtin_protocol_feature_t::preactivate_feature);
+         FC_ASSERT( preactivate_feature_digest, "PREACTIVATE_FEATURE not found" );
          schedule_protocol_features_wo_preactivation( { *preactivate_feature_digest } );
-      };
-
-      auto schedule_all_builtin_protocol_features = [&]() {
-         const auto& head_block_num = control->head_block_num();
-         // Check all builtins and split them based on whether a preactivation is required or not
-         vector<digest_type> require_preactivation, without_preactivation;
-         for (auto itr = builtin_protocol_feature_codenames.begin(); itr != builtin_protocol_feature_codenames.end(); itr++) {
-            const auto& codename = itr->first;
-            if (pfm.is_builtin_activated(codename, head_block_num) || !itr->second.subjective_restrictions.enabled) continue;
-            const digest_type digest = *pfm.get_builtin_digest(codename);
-            if (itr->second.subjective_restrictions.preactivation_required) {
-               require_preactivation.emplace_back(digest);
-            } else {
-               without_preactivation.emplace_back(digest);
-            }
-         }
-         preactivate_protocol_features(require_preactivation);
-         schedule_protocol_features_wo_preactivation(without_preactivation);
       };
 
       switch (policy) {
@@ -187,7 +170,7 @@ namespace eosio { namespace testing {
             schedule_preactivate_protocol_feature();
             produce_block();
             set_bios_contract();
-            schedule_all_builtin_protocol_features();
+            preactivate_all_builtin_protocol_features();
             produce_block();
             break;
          }
@@ -971,30 +954,45 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::preactivate_protocol_features(const vector<digest_type> feature_digests) {
-      for (auto& feature_digest: feature_digests) {
-         push_action(config::system_account_name, N(preactivate_feature), N(eosio), fc::mutable_variant_object()("feature_digest", feature_digest));
+      for( const auto& feature_digest: feature_digests ) {
+         push_action( config::system_account_name, N(preactivate_feature), config::system_account_name,
+                      fc::mutable_variant_object()("feature_digest", feature_digest) );
       }
    }
 
-   void base_tester::schedule_all_builtin_protocol_features() {
-      const auto&pfm = control->get_protocol_feature_manager();
-      const auto& head_block_num = control->head_block_num();
-      // Check all builtins and split them based on whether a preactivation is required or not
-      vector<digest_type> require_preactivation;
-      vector<digest_type> without_preactivation;
-      for (auto itr = builtin_protocol_feature_codenames.begin(); itr != builtin_protocol_feature_codenames.end(); itr++) {
-         const auto& codename = itr->first;
-         if (pfm.is_builtin_activated(codename, head_block_num) || !itr->second.subjective_restrictions.enabled) continue;
-         const digest_type digest = *pfm.get_builtin_digest(codename);
-         if (itr->second.subjective_restrictions.preactivation_required) {
-            require_preactivation.emplace_back(digest);
-         } else {
-            without_preactivation.emplace_back(digest);
+   void base_tester::preactivate_all_builtin_protocol_features() {
+      const auto& pfm = control->get_protocol_feature_manager();
+      const auto current_block_num  =  control->head_block_num() + (control->is_building_block() ? 1 : 0);
+      const auto current_block_time = ( control->is_building_block() ? control->pending_block_time()
+                                        : control->head_block_time() + fc::milliseconds(config::block_interval_ms) );
+
+      set<digest_type>    preactivation_set;
+      vector<digest_type> preactivations;
+
+      std::function<void(const digest_type&)> add_digests =
+      [&pfm, current_block_num, current_block_time, &preactivation_set, &preactivations, &add_digests]
+      ( const digest_type& feature_digest ) {
+         const auto& pf = pfm.get_protocol_feature( feature_digest );
+         FC_ASSERT( pf.builtin_feature, "called add_digests on a non-builtin protocol feature" );
+         if( !pf.enabled || pf.earliest_allowed_activation_time > current_block_time
+             || pfm.is_builtin_activated( *pf.builtin_feature, current_block_num ) ) return;
+
+         for( const auto& dependency : pf.dependencies ) {
+            add_digests( dependency );
          }
+
+         auto res = preactivation_set.emplace( feature_digest );
+         if( !res.second ) return;
+         preactivations.emplace_back( feature_digest );
+      };
+
+      for( const auto& f : builtin_protocol_feature_codenames ) {
+         auto digest = pfm.get_builtin_digest( f.first );
+         if( !digest ) continue;
+         add_digests( *digest );
       }
 
-      preactivate_protocol_features(require_preactivation);
-      schedule_protocol_features_wo_preactivation(without_preactivation);
+      preactivate_protocol_features( preactivations );
    }
 
    bool fc_exception_message_is::operator()( const fc::exception& ex ) {
