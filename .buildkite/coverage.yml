@@ -15,8 +15,14 @@ steps:
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
-      docker#v1.4.0:
-        image: "eosio/ci:ubuntu18"
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-1"
         workdir: /data/job
         mounts:
           - /etc/buildkite-agent/config:/config
