@@ -130,6 +130,7 @@ struct txn_test_gen_plugin_impl {
    }
 
    void create_test_accounts(const std::string& init_name, const std::string& init_priv_key, const std::function<void(const fc::exception_ptr&)>& next) {
+      ilog("create_test_accounts");
       std::vector<signed_transaction> trxs;
       trxs.reserve(2);
 
@@ -282,7 +283,7 @@ struct txn_test_gen_plugin_impl {
       act_a_to_b.name = N(transfer);
       act_a_to_b.authorization = vector<permission_level>{{newaccountA,config::active_name}};
       act_a_to_b.data = eosio_token_serializer.variant_to_binary("transfer",
-                                                                  fc::json::from_string(fc::format_string("{\"from\":\"${from}\",\"to\":\"{to}\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}",
+                                                                  fc::json::from_string(fc::format_string("{\"from\":\"${from}\",\"to\":\"${to}\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}",
                                                                   fc::mutable_variant_object()("from",newaccountA.to_string())("to",newaccountB.to_string())("l", salt))),
                                                                   abi_serializer_max_time);
 
