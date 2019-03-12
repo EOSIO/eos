@@ -79,11 +79,35 @@ namespace eosio { namespace testing {
       memcpy( data.data(), obj.value.data(), obj.value.size() );
    }
 
+   protocol_feature_manager make_protocol_feature_manager() {
+      protocol_feature_manager pfm;
+
+      set<builtin_protocol_feature_t> visited_builtins;
+
+      std::function<void(builtin_protocol_feature_t)> add_builtins =
+      [&pfm, &visited_builtins, &add_builtins]( builtin_protocol_feature_t codename ) -> void {
+         auto res = visited_builtins.emplace( codename );
+         if( !res.second ) return;
+
+         auto f = pfm.make_default_builtin_protocol_feature( codename, [&add_builtins]( builtin_protocol_feature_t d ) {
+            add_builtins( d );
+         } );
+
+         pfm.add_feature( f );
+      };
+
+      for( const auto& p : builtin_protocol_feature_codenames ) {
+         add_builtins( p.first );
+      }
+
+      return pfm;
+   }
+
    bool base_tester::is_same_chain( base_tester& other ) {
      return control->head_block_id() == other.control->head_block_id();
    }
 
-   void base_tester::init(bool push_genesis, db_read_mode read_mode) {
+   void base_tester::init(const setup_policy policy, db_read_mode read_mode) {
       cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
       cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
       cfg.state_size = 1024*1024*8;
@@ -104,31 +128,82 @@ namespace eosio { namespace testing {
       }
 
       open(nullptr);
-
-      if (push_genesis)
-         push_genesis_block();
+      execute_setup_policy(policy);
    }
-
 
    void base_tester::init(controller::config config, const snapshot_reader_ptr& snapshot) {
       cfg = config;
       open(snapshot);
    }
 
-   void base_tester::init(controller::config config, protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot ) {
+   void base_tester::init(controller::config config, protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot) {
       cfg = config;
       open(std::move(pfm), snapshot);
    }
 
+   void base_tester::execute_setup_policy(const setup_policy policy) {
+      const auto& pfm = control->get_protocol_feature_manager();
+
+      auto schedule_preactivate_protocol_feature = [&]() {
+         auto preactivate_feature_digest = pfm.get_builtin_digest(builtin_protocol_feature_t::preactivate_feature);
+         schedule_protocol_features_wo_preactivation({*preactivate_feature_digest});
+      };
+
+      auto schedule_all_builtin_protocol_features = [&]() {
+         const auto& head_block_num = control->head_block_num();
+         // Check all builtins and split them based on whether a preactivation is required or not
+         vector<digest_type> require_preactivation, without_preactivation;
+         for (auto itr = builtin_protocol_feature_codenames.begin(); itr != builtin_protocol_feature_codenames.end(); itr++) {
+            const auto& codename = itr->first;
+            if (pfm.is_builtin_activated(codename, head_block_num) || !itr->second.subjective_restrictions.enabled) continue;
+            const digest_type digest = *pfm.get_builtin_digest(codename);
+            if (itr->second.subjective_restrictions.preactivation_required) {
+               require_preactivation.emplace_back(digest);
+            } else {
+               without_preactivation.emplace_back(digest);
+            }
+         }
+         preactivate_protocol_features(require_preactivation);
+         schedule_protocol_features_wo_preactivation(without_preactivation);
+      };
+
+      switch (policy) {
+         case setup_policy::old_bios_only: {
+            set_before_preactivate_bios_contract();
+            break;
+         }
+         case setup_policy::preactivate_feature_only: {
+            schedule_preactivate_protocol_feature();
+            produce_block(); // block production is required to activate protocol feature
+            break;
+         }
+         case setup_policy::preactivate_feature_and_new_bios: {
+            schedule_preactivate_protocol_feature();
+            produce_block();
+            set_bios_contract();
+            break;
+         }
+         case setup_policy::full: {
+            schedule_preactivate_protocol_feature();
+            produce_block();
+            set_bios_contract();
+            schedule_all_builtin_protocol_features();
+            produce_block();
+            break;
+         }
+         case setup_policy::none:
+         default:
+            break;
+      };
+   }
 
    void base_tester::close() {
       control.reset();
       chain_transactions.clear();
    }
 
-
-   void base_tester::open( const snapshot_reader_ptr& snapshot) {
-      open( protocol_feature_manager{}, snapshot );
+   void base_tester::open( const snapshot_reader_ptr& snapshot ) {
+      open( make_protocol_feature_manager(), snapshot );
    }
 
    void base_tester::open( protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot ) {
@@ -209,7 +284,26 @@ namespace eosio { namespace testing {
       }
 
       control->abort_block();
-      control->start_block( block_time, head_block_number - last_produced_block_num );
+
+      vector<digest_type> feature_to_be_activated;
+      // First add protocol features to be activated WITHOUT preactivation
+      feature_to_be_activated.insert(
+         feature_to_be_activated.end(),
+         protocol_features_to_be_activated_wo_preactivation.begin(),
+         protocol_features_to_be_activated_wo_preactivation.end()
+      );
+      // Then add protocol features to be activated WITH preactivation
+      const auto preactivated_protocol_features = control->get_preactivated_protocol_features();
+      feature_to_be_activated.insert(
+         feature_to_be_activated.end(),
+         preactivated_protocol_features.begin(),
+         preactivated_protocol_features.end()
+      );
+
+      control->start_block( block_time, head_block_number - last_produced_block_num, feature_to_be_activated );
+
+      // Clear the list, if start block finishes successfuly, the protocol features should be assumed to be activated
+      protocol_features_to_be_activated_wo_preactivation.clear();
    }
 
    signed_block_ptr base_tester::_finish_block() {
@@ -835,10 +929,16 @@ namespace eosio { namespace testing {
       sync_dbs(other, *this);
    }
 
-   void base_tester::push_genesis_block() {
+   void base_tester::set_before_preactivate_bios_contract() {
+      set_code(config::system_account_name, contracts::before_preactivate_eosio_bios_wasm());
+      set_abi(config::system_account_name, contracts::before_preactivate_eosio_bios_abi().data());
+   }
+
+   void base_tester::set_bios_contract() {
       set_code(config::system_account_name, contracts::eosio_bios_wasm());
       set_abi(config::system_account_name, contracts::eosio_bios_abi().data());
    }
+
 
    vector<producer_key> base_tester::get_producer_keys( const vector<account_name>& producer_names )const {
        // Create producer schedule
@@ -860,6 +960,41 @@ namespace eosio { namespace testing {
    const table_id_object* base_tester::find_table( name code, name scope, name table ) {
       auto tid = control->db().find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
       return tid;
+   }
+
+   void base_tester::schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests) {
+      protocol_features_to_be_activated_wo_preactivation.insert(
+         protocol_features_to_be_activated_wo_preactivation.end(),
+         feature_digests.begin(),
+         feature_digests.end()
+      );
+   }
+
+   void base_tester::preactivate_protocol_features(const vector<digest_type> feature_digests) {
+      for (auto& feature_digest: feature_digests) {
+         push_action(config::system_account_name, N(preactivate_feature), N(eosio), fc::mutable_variant_object()("feature_digest", feature_digest));
+      }
+   }
+
+   void base_tester::schedule_all_builtin_protocol_features() {
+      const auto&pfm = control->get_protocol_feature_manager();
+      const auto& head_block_num = control->head_block_num();
+      // Check all builtins and split them based on whether a preactivation is required or not
+      vector<digest_type> require_preactivation;
+      vector<digest_type> without_preactivation;
+      for (auto itr = builtin_protocol_feature_codenames.begin(); itr != builtin_protocol_feature_codenames.end(); itr++) {
+         const auto& codename = itr->first;
+         if (pfm.is_builtin_activated(codename, head_block_num) || !itr->second.subjective_restrictions.enabled) continue;
+         const digest_type digest = *pfm.get_builtin_digest(codename);
+         if (itr->second.subjective_restrictions.preactivation_required) {
+            require_preactivation.emplace_back(digest);
+         } else {
+            without_preactivation.emplace_back(digest);
+         }
+      }
+
+      preactivate_protocol_features(require_preactivation);
+      schedule_protocol_features_wo_preactivation(without_preactivation);
    }
 
    bool fc_exception_message_is::operator()( const fc::exception& ex ) {

@@ -391,17 +391,17 @@ BOOST_AUTO_TEST_CASE( read_modes ) try {
    auto head_block_num = c.control->head_block_num();
    auto last_irreversible_block_num = c.control->last_irreversible_block_num();
 
-   tester head(true, db_read_mode::HEAD);
+   tester head(setup_policy::old_bios_only, db_read_mode::HEAD);
    push_blocks(c, head);
    BOOST_CHECK_EQUAL(head_block_num, head.control->fork_db_head_block_num());
    BOOST_CHECK_EQUAL(head_block_num, head.control->head_block_num());
 
-   tester read_only(false, db_read_mode::READ_ONLY);
+   tester read_only(setup_policy::none, db_read_mode::READ_ONLY);
    push_blocks(c, read_only);
    BOOST_CHECK_EQUAL(head_block_num, read_only.control->fork_db_head_block_num());
    BOOST_CHECK_EQUAL(head_block_num, read_only.control->head_block_num());
 
-   tester irreversible(true, db_read_mode::IRREVERSIBLE);
+   tester irreversible(setup_policy::old_bios_only, db_read_mode::IRREVERSIBLE);
    push_blocks(c, irreversible);
    BOOST_CHECK_EQUAL(head_block_num, irreversible.control->fork_db_pending_head_block_num());
    BOOST_CHECK_EQUAL(last_irreversible_block_num, irreversible.control->fork_db_head_block_num());
@@ -475,7 +475,7 @@ BOOST_AUTO_TEST_CASE( irreversible_mode ) try {
    BOOST_REQUIRE( hbn4 > hbn3 );
    BOOST_REQUIRE( lib4 < hbn1 );
 
-   tester irreversible(false, db_read_mode::IRREVERSIBLE);
+   tester irreversible(setup_policy::none, db_read_mode::IRREVERSIBLE);
 
    push_blocks( main, irreversible, hbn1 );
 

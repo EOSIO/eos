@@ -387,10 +387,10 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
       BOOST_CHECK_EQUAL( m.begin()->second, base_test_auth_seq_num + 4 );
    } );
 
-   set_code( config::system_account_name, contracts::eosio_bios_wasm() );
+   set_code( config::system_account_name, contracts::before_preactivate_eosio_bios_wasm() );
 
-   set_code( N(test), contracts::eosio_bios_wasm() );
-   set_abi( N(test), contracts::eosio_bios_abi().data() );
+   set_code( N(test), contracts::before_preactivate_eosio_bios_wasm() );
+   set_abi( N(test), contracts::before_preactivate_eosio_bios_abi().data() );
 	set_code( N(test), contracts::payloadless_wasm() );
 
    call_doit_and_check( N(test), N(test), [&]( const transaction_trace_ptr& res ) {

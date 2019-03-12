@@ -56,6 +56,14 @@ namespace boost { namespace test_tools { namespace tt_detail {
 } } }
 
 namespace eosio { namespace testing {
+  enum class setup_policy {
+      none,
+      old_bios_only,
+      preactivate_feature_only,
+      preactivate_feature_and_new_bios,
+      full
+   };
+
    std::vector<uint8_t> read_wasm( const char* fn );
    std::vector<char>    read_abi( const char* fn );
    std::string          read_wast( const char* fn );
@@ -66,6 +74,8 @@ namespace eosio { namespace testing {
    void copy_row(const chain::key_value_object& obj, vector<char>& data);
 
    bool expect_assert_message(const fc::exception& ex, string expected);
+
+   protocol_feature_manager make_protocol_feature_manager();
 
    /**
     *  @class tester
@@ -82,13 +92,14 @@ namespace eosio { namespace testing {
 
          virtual ~base_tester() {};
 
-         void              init(bool push_genesis = true, db_read_mode read_mode = db_read_mode::SPECULATIVE);
+         void              init(const setup_policy policy = setup_policy::old_bios_only, db_read_mode read_mode = db_read_mode::SPECULATIVE);
          void              init(controller::config config, const snapshot_reader_ptr& snapshot = nullptr);
          void              init(controller::config config, protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot = nullptr);
+         void              execute_setup_policy(const setup_policy policy);
 
          void              close();
-         void              open( protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot );
-         void              open( const snapshot_reader_ptr& snapshot );
+         void              open( protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot);
+         void              open( const snapshot_reader_ptr& snapshot);
          bool              is_same_chain( base_tester& other );
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
@@ -154,7 +165,8 @@ namespace eosio { namespace testing {
             return traces;
          }
 
-         void                  push_genesis_block();
+         void                  set_before_preactivate_bios_contract();
+         void                  set_bios_contract();
          vector<producer_key>  get_producer_keys( const vector<account_name>& producer_names )const;
          transaction_trace_ptr set_producers(const vector<account_name>& producer_names);
 
@@ -282,6 +294,10 @@ namespace eosio { namespace testing {
             return cfg;
          }
 
+         void schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests);
+         void preactivate_protocol_features(const vector<digest_type> feature_digests);
+         void schedule_all_builtin_protocol_features();
+
       protected:
          signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false, uint32_t skip_flag = 0 );
          void             _start_block(fc::time_point block_time);
@@ -298,12 +314,13 @@ namespace eosio { namespace testing {
          controller::config                            cfg;
          map<transaction_id_type, transaction_receipt> chain_transactions;
          map<account_name, block_id_type>              last_produced_block;
+         vector<digest_type>                           protocol_features_to_be_activated_wo_preactivation;
    };
 
    class tester : public base_tester {
    public:
-      tester(bool push_genesis = true, db_read_mode read_mode = db_read_mode::SPECULATIVE ) {
-         init(push_genesis, read_mode);
+      tester(setup_policy policy = setup_policy::old_bios_only, db_read_mode read_mode = db_read_mode::SPECULATIVE ) {
+         init(policy, read_mode);
       }
 
       tester(controller::config config) {
@@ -372,11 +389,11 @@ namespace eosio { namespace testing {
 
          vcfg.trusted_producers = trusted_producers;
 
-         validating_node = std::make_unique<controller>(vcfg);
+         validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_manager());
          validating_node->add_indices();
          validating_node->startup( []() { return false; } );
 
-         init(true);
+         init();
       }
 
       validating_tester(controller::config config) {
@@ -387,7 +404,7 @@ namespace eosio { namespace testing {
          vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
          vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
 
-         validating_node = std::make_unique<controller>(vcfg);
+         validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_manager());
          validating_node->add_indices();
          validating_node->startup( []() { return false; } );
 
