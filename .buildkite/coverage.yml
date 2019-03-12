@@ -24,8 +24,7 @@ steps:
       docker#v2.1.0:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-1"
+        workdir: /data/job
         mounts:
           - /etc/buildkite-agent/config:/config
-        environment:
-          - CI=true
     timeout: 60
