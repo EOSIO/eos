@@ -83,7 +83,7 @@ void chain_api_plugin::plugin_startup() {
    ro_api.set_shorten_abi_errors( !_http_plugin.verbose_errors() );
 
    _http_plugin.add_api({
-      CHAIN_RO_CALL(get_info, 200l),
+      CHAIN_RO_CALL(get_info, 200),
       CHAIN_RO_CALL(get_block, 200),
       CHAIN_RO_CALL(get_block_header_state, 200),
       CHAIN_RO_CALL(get_account, 200),

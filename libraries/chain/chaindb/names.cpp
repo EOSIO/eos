@@ -33,5 +33,4 @@ namespace cyberway { namespace chaindb {
 
     const string names::asc_order        = "asc";
     const string names::desc_order       = "desc";
-
 } } // namespace cyberway::chaindb

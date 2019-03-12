@@ -386,31 +386,6 @@ public:
 
    get_scheduled_transactions_result get_scheduled_transactions( const get_scheduled_transactions_params& params ) const;
 
-// TODO: Removed by CyberWay
-//   static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
-//      data.resize( obj.value.size() );
-//      memcpy( data.data(), obj.value.data(), obj.value.size() );
-//   }
-
-// TODO: Removed by CyberWay
-//   template<typename Function>
-//   void walk_key_value_table(const name& code, const name& scope, const name& table, Function f) const
-//   {
-//      const auto& d = db.db();
-//      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(code, scope, table));
-//      if (t_id != nullptr) {
-//         const auto &idx = d.get_index<chain::key_value_index, chain::by_scope_primary>();
-//         decltype(t_id->id) next_tid(t_id->id._id + 1);
-//         auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
-//         auto upper = idx.lower_bound(boost::make_tuple(next_tid));
-//
-//         for (auto itr = lower; itr != upper; ++itr) {
-//            if (!f(*itr)) {
-//               break;
-//            }
-//         }
-//      }
-//   }
 
    static uint64_t get_table_index_name(const read_only::get_table_rows_params& p, bool& primary);
 
