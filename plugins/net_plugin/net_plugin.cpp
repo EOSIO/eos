@@ -612,7 +612,6 @@ namespace eosio {
       const string peer_name();
 
       void txn_send_pending(const vector<transaction_id_type>& ids);
-      void txn_send(const vector<transaction_id_type>& txn_lis);
 
       void blk_send_branch();
       void blk_send(const block_id_type& blkid);
@@ -928,21 +927,6 @@ namespace eosio {
       for( auto tx = my_impl->local_txns.begin(); tx != my_impl->local_txns.end(); ++tx ) {
          const bool found = known_ids.find( tx->id ) != known_ids.cend();
          if( !found ) {
-            trx_to_send.emplace_back( tx->serialized_txn );
-         }
-      }
-      g.unlock();
-      for( const auto& t : trx_to_send ) {
-         queue_write( t, true, priority::low, []( boost::system::error_code ec, std::size_t ) {} );
-      }
-   }
-
-   void connection::txn_send(const vector<transaction_id_type>& ids) {
-      vector<std::shared_ptr<vector<char>>> trx_to_send;
-      std::unique_lock<std::mutex> g( my_impl->local_txns_mtx );
-      for( const auto& t : ids ) {
-         auto tx = my_impl->local_txns.get<by_id>().find( t );
-         if( tx != my_impl->local_txns.end()) {
             trx_to_send.emplace_back( tx->serialized_txn );
          }
       }
@@ -2600,6 +2584,7 @@ namespace eosio {
             std::lock_guard<std::mutex> g( my_impl->local_txns_mtx );
             size_t known_sum = local_txns.size();
             if( known_sum ) {
+               expire_local_txns();
                for( const auto& t : local_txns.get<by_id>() ) {
                   req.req_trx.ids.push_back( t.id );
                }
@@ -2665,12 +2650,16 @@ namespace eosio {
       case catch_up :
          c->txn_send_pending(msg.req_trx.ids);
          break;
-      case normal :
-         c->txn_send(msg.req_trx.ids);
-         break;
       case none :
          if(msg.req_blocks.mode == none)
             c->stop_send();
+         // no break
+      case normal :
+         if( !msg.req_trx.ids.empty() ) {
+            elog( "Invalid request_message, req_trx.ids.size ${s}", ("s", msg.req_trx.ids.size()) );
+            close(c);
+            return;
+         }
          break;
       default:;
       }
