@@ -62,7 +62,7 @@ namespace cyberway { namespace chaindb {
         chaindb_controller() = delete;
         chaindb_controller(const chaindb_controller&) = delete;
 
-        chaindb_controller(chaindb_type, string);
+        chaindb_controller(chaindb_type, string, string);
         ~chaindb_controller();
 
         template<typename Object>

@@ -208,7 +208,7 @@ struct controller_impl {
 
    controller_impl( const controller::config& cfg, controller& s  )
    :self(s),
-    chaindb(cfg.chaindb_address_type, cfg.chaindb_address),
+    chaindb(cfg.chaindb_address_type, cfg.chaindb_address, cfg.chaindb_sys_name),
 // TODO: removed by CyberWay
 //    db( cfg.state_dir,
 //        cfg.read_only ? database::read_only : database::read_write,

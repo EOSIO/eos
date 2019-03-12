@@ -22,7 +22,7 @@ BOOST_AUTO_TEST_CASE(constructor_test) {
         
 	fc::time_point t(fc::seconds(978307200));	
 	block_timestamp_type bt2(t);
-	BOOST_TEST( bt2.slot == (978307200 - 946684800)*2, "Time point constructor gives wrong value");
+	BOOST_TEST( bt2.slot == (978307200 - 946684800)/3, "Time point constructor gives wrong value");
 }
 
 BOOST_AUTO_TEST_CASE(conversion_test) {
@@ -31,8 +31,8 @@ BOOST_AUTO_TEST_CASE(conversion_test) {
 	BOOST_TEST(t.time_since_epoch().to_seconds() == 946684800ll, "Time point conversion failed");
 
 	block_timestamp_type bt1(200);
-	t = (fc::time_point)bt1;
-	BOOST_TEST(t.time_since_epoch().to_seconds() == 946684900ll, "Time point conversion failed");
+	fc::time_point t1 = (fc::time_point)bt1;
+	BOOST_TEST(t1.time_since_epoch().to_seconds() == t.time_since_epoch().to_seconds() + 3 * 200, "Time point conversion failed");
 
 }
 

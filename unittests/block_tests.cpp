@@ -153,7 +153,8 @@ BOOST_AUTO_TEST_CASE(untrusted_producer_test)
    std::vector<account_name> schedule(producers.cbegin(), producers.cend());
    auto trace = main.set_producers(schedule);
 
-   while (b->producer != N(defproducerb)) {
+   // Depends on blocks per producer, fix if change it
+   while (b->producer != N(defproducerd)) {
       b = main.produce_block();
    }
 
