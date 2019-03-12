@@ -6,9 +6,10 @@ steps:
       echo 1 | ./eosio_build.sh -o Debug && \
       echo "--- Compressing build directory :compression:" && \
       tar -pczf build.tar.gz build/
-    label: ":darwin: Build"
+    label: ":darwin: Mojave Build"
     agents:
-      - "role=macos-builder"
+      - "role=builder-v2-1"
+      - "os=mojave"
     artifact_paths: "build.tar.gz"
     timeout: 60
 
@@ -17,13 +18,19 @@ steps:
         echo 1 | ./eosio_build.sh -o Debug && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
-    label: ":ubuntu: Build"
+    label: ":ubuntu: 16.04 Build"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v2.0.0:
-        image: "eosio/ci:ubuntu"
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-1"
         workdir: /data/job
     timeout: 60
     
@@ -37,8 +44,14 @@ steps:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v2.0.0:
-        image: "eosio/ci:ubuntu18"
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-1"
         workdir: /data/job
     timeout: 60
 
@@ -47,13 +60,19 @@ steps:
         echo 1 | ./eosio_build.sh -o Debug && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
-    label: ":fedora: Build"
+    label: ":fedora: 27 Build"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v2.0.0:
-        image: "eosio/ci:fedora"
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-1"
         workdir: /data/job
     timeout: 60
  
@@ -62,13 +81,19 @@ steps:
         echo 1 | ./eosio_build.sh -o Debug && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
-    label: ":centos: Build"
+    label: ":centos: 7 Build"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v2.0.0:
-        image: "eosio/ci:centos"
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-1"
         workdir: /data/job
     timeout: 60
 
@@ -77,13 +102,40 @@ steps:
         echo 1 | ./eosio_build.sh -o Debug && \
         echo "--- :compression: Compressing build directory" && \
         tar -pczf build.tar.gz build/
-    label: ":aws: Build"
+    label: ":aws: 1 Build"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
-      docker#v2.0.0:
-        image: "eosio/ci:amazonlinux"
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux1_2-1"
+        workdir: /data/job
+    timeout: 60
+
+    - command: |
+        echo "+++ :hammer: Building" && \
+        echo 1 | ./eosio_build.sh -o Debug && \
+        echo "--- :compression: Compressing build directory" && \
+        tar -pczf build.tar.gz build/
+    label: ":aws: 2 Build"
+    agents:
+      queue: "automation-large-builder-fleet"
+    artifact_paths: "build.tar.gz"
+    plugins:
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
         workdir: /data/job
     timeout: 60
 
@@ -91,7 +143,7 @@ steps:
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Build" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
@@ -100,9 +152,10 @@ steps:
     retry:
       automatic:
         limit: 1
-    label: ":darwin: Tests"
+    label: ":darwin: Mojave Tests"
     agents:
-      - "role=macos-tester"
+      - "role=builder-v2-1"
+      - "os=mojave"
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
@@ -111,7 +164,7 @@ steps:
     
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Build" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 16.04 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
@@ -120,7 +173,7 @@ steps:
     retry:
       automatic:
         limit: 1
-    label: ":ubuntu: Tests"
+    label: ":ubuntu: 16.04 Tests"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
@@ -128,8 +181,14 @@ steps:
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v2.0.0:
-        image: "eosio/ci:ubuntu"
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-1"
         workdir: /data/job
     timeout: 60
   
@@ -152,14 +211,20 @@ steps:
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v2.0.0:
-        image: "eosio/ci:ubuntu18"
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-1"
         workdir: /data/job
     timeout: 60
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: Build" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: 27 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
@@ -168,7 +233,7 @@ steps:
     retry:
       automatic:
         limit: 1
-    label: ":fedora: Tests"
+    label: ":fedora: 27 Tests"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
@@ -176,14 +241,20 @@ steps:
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v2.0.0:
-        image: "eosio/ci:fedora"
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-1"
         workdir: /data/job
     timeout: 60
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":centos: Build" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":centos: 7 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
@@ -192,7 +263,7 @@ steps:
     retry:
       automatic:
         limit: 1
-    label: ":centos: Tests"
+    label: ":centos: 7 Tests"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
@@ -200,14 +271,20 @@ steps:
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v2.0.0:
-        image: "eosio/ci:centos"
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-1"
         workdir: /data/job
     timeout: 60
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":aws: Build" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 1 Build" && \
         tar -zxf build.tar.gz && \
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
@@ -216,7 +293,7 @@ steps:
     retry:
       automatic:
         limit: 1
-    label: ":aws: Tests"
+    label: ":aws: 1 Tests"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
@@ -224,7 +301,43 @@ steps:
       - "build/genesis.json"
       - "build/config.ini"
     plugins:
-      docker#v2.0.0:
-        image: "eosio/ci:amazonlinux"
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux1_2-1"
+        workdir: /data/job
+    timeout: 60
+
+  - command: |
+        echo "--- :arrow_down: Downloading build directory" && \
+        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build" && \
+        tar -zxf build.tar.gz && \
+        echo "--- :m: Starting MongoDB" && \
+        $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
+        echo "+++ :microscope: Running tests" && \
+        cd /data/job/build && ctest -LE long_running_tests --output-on-failure
+    retry:
+      automatic:
+        limit: 1
+    label: ":aws: 2 Tests"
+    agents:
+      queue: "automation-large-builder-fleet"
+    artifact_paths:
+      - "mongod.log"
+      - "build/genesis.json"
+      - "build/config.ini"
+    plugins:
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
         workdir: /data/job
     timeout: 60
