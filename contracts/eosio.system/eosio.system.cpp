@@ -12,6 +12,7 @@ namespace eosiosystem {
    system_contract::system_contract( account_name s )
    :native(s),
     _voters(_self,_self),
+    _rates(_self, _self),
     _producers(_self,_self),
     _global(_self,_self),
     _rammarket(_self,_self)
@@ -192,7 +193,7 @@ EOSIO_ABI( eosiosystem::system_contract,
      // delegate_bandwidth.cpp
      (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(refund)
      // voting.cpp
-     (regproducer)(unregprod)(voteproducer)(regproxy)
+     (regproducer)(unregprod)(voteproducer)(setrates)(regproxy)
      // producer_pay.cpp
      (onblock)(claimrewards)
 )

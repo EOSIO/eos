@@ -112,8 +112,19 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(proxied_vote_weight)(is_proxy)(reserved1)(reserved2)(reserved3) )
    };
 
+    struct voter_rates {
+        account_name                owner = 0; /// the voter
+        double                      social_rate = 0; /// voter's share in the total social activity, a fraction between 0 and 1
+        double                      transfer_rate = 0; /// voter's share in the total transfer activity, a fraction between 0 and 1
+
+        uint64_t primary_key()const { return owner; }
+
+        EOSLIB_SERIALIZE( voter_rates, (owner)(social_rate)(transfer_rate) )
+    };
+
    typedef eosio::multi_index< N(voters), voter_info>  voters_table;
 
+   typedef eosio::multi_index< N(rates), voter_rates> rates_table;
 
    typedef eosio::multi_index< N(producers), producer_info,
                                indexed_by<N(prototalvote), const_mem_fun<producer_info, double, &producer_info::by_votes>  >
@@ -128,6 +139,7 @@ namespace eosiosystem {
    class system_contract : public native {
       private:
          voters_table           _voters;
+         rates_table            _rates;
          producers_table        _producers;
          global_state_singleton _global;
 
@@ -202,6 +214,8 @@ namespace eosiosystem {
          void setram( uint64_t max_ram_size );
 
          void voteproducer( const account_name voter, const account_name proxy, const std::vector<account_name>& producers );
+
+         void setrates(const account_name voter, const double social_rate, const  double transfer_rate);
 
          void regproxy( const account_name proxy, bool isproxy );
 

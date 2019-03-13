@@ -107,6 +107,23 @@ namespace eosiosystem {
       double weight = int64_t( (now() - (block_timestamp::block_timestamp_epoch / 1000)) / (seconds_per_day * 7) )  / double( 52 );
       return double(staked) * std::pow( 2, weight );
    }
+
+    int64_t get_importance_as_stake( double social_rate, double transfer_rate, int64_t stake, int64_t total_stake ) {
+       const double social_share = 0.1;
+       const double transfer_share = 0.1;
+       const double stake_share = 1.0 - social_share - transfer_share;
+
+       /// Total importance is scaled to the value of (total_stake / stake_share), not 1.
+       /// Hence the accounts with zero social and transfer rates will have importance value
+       /// equal to their stake.
+
+       int64_t social_as_stake = (int64_t)(total_stake / stake_share * social_share * social_rate);
+       int64_t transfer_as_stake = (int64_t)(total_stake / stake_share * transfer_share * transfer_rate);
+
+       int64_t importance_as_stake = stake + social_as_stake + transfer_as_stake;
+       return  importance_as_stake;
+    }
+
    /**
     *  @pre producers must be sorted from lowest to highest and must be registered and active
     *  @pre if proxy is set then no producers can be voted for
@@ -126,6 +143,36 @@ namespace eosiosystem {
    void system_contract::voteproducer( const account_name voter_name, const account_name proxy, const std::vector<account_name>& producers ) {
       require_auth( voter_name );
       update_votes( voter_name, proxy, producers, true );
+   }
+
+   void system_contract::setrates(const account_name voter, const double social_rate, const double transfer_rate) {
+      //we require eosio authorization until the proving routine is ready
+      require_auth( N(eosio) );
+
+      eosio_assert( is_account(voter), "voter account does not exist");
+      eosio_assert( 0 <= social_rate && social_rate <= 1, "social rate must be in the interval from 0 to 1");
+      eosio_assert( 0 <= transfer_rate && transfer_rate <= 1, "transfer rate must be in the interval from 0 to 1");
+
+      ///update rate values
+      auto from_rates = _rates.find(voter);
+      if(from_rates == _rates.end()){
+         from_rates = _rates.emplace(voter, [&]( auto& v ) {
+            v.owner = voter;
+            v.social_rate = social_rate;
+            v.transfer_rate = transfer_rate;
+         });
+      } else {
+         _rates.modify(from_rates, 0, [&]( auto& v ) {
+             v.social_rate = social_rate;
+             v.transfer_rate = transfer_rate;
+         });
+      }
+
+      ///update the votes
+      auto from_voters = _voters.find(voter);
+      if(from_voters != _voters.end()) {
+         update_votes(voter, from_voters->proxy, from_voters->producers, false);
+      }
    }
 
    void system_contract::update_votes( const account_name voter_name, const account_name proxy, const std::vector<account_name>& producers, bool voting ) {
@@ -157,7 +204,19 @@ namespace eosiosystem {
          }
       }
 
-      auto new_vote_weight = stake2vote( voter->staked );
+      ///use the rates and the stake to calculate the importance scaled to stake
+      double social_rate = 0;
+      double transfer_rate = 0;
+      auto rate = _rates.find(voter_name);
+      if(rate != _rates.end()) {
+         social_rate = rate -> social_rate;
+         transfer_rate = rate -> transfer_rate;
+      }
+      auto importance = get_importance_as_stake(social_rate, transfer_rate, voter->staked,
+                                                _gstate.total_activated_stake);
+
+      ///vote weight is now derived from importance, not stake
+      auto new_vote_weight = stake2vote( importance );
       if( voter->is_proxy ) {
          new_vote_weight += voter->proxied_vote_weight;
       }
@@ -254,7 +313,20 @@ namespace eosiosystem {
 
    void system_contract::propagate_weight_change( const voter_info& voter ) {
       eosio_assert( voter.proxy == 0 || !voter.is_proxy, "account registered as a proxy is not allowed to use a proxy" );
-      double new_weight = stake2vote( voter.staked );
+
+      ///use the rates and the stake to calculate the importance scaled to stake
+      double social_rate = 0;
+      double transfer_rate = 0;
+      auto rate = _rates.find(voter.owner);
+      if(rate != _rates.end()) {
+         social_rate = rate -> social_rate;
+         transfer_rate = rate -> transfer_rate;
+      }
+      auto importance = get_importance_as_stake(social_rate, transfer_rate, voter.staked,
+                                                _gstate.total_activated_stake);
+
+      ///vote weight is now derived from importance, not stake
+      double new_weight = stake2vote( importance );
       if ( voter.is_proxy ) {
          new_weight += voter.proxied_vote_weight;
       }
