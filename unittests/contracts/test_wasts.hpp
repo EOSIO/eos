@@ -633,3 +633,17 @@ static const char memory_growth_memset_test[] = R"=====(
  )
 )
 )=====";
+
+static const char large_maligned_host_ptr[] = R"=====(
+(module
+ (export "apply" (func $$apply))
+ (import "env" "get_active_producers" (func $$get_active_producers (param i32 i32) (result i32)))
+ (memory $$0 ${MAX_WASM_PAGES})
+ (func $$apply (param i64) (param i64) (param i64)
+   (drop (call $$get_active_producers
+     (i32.const 1)
+     (i32.const ${MAX_NAME_ARRAY})
+   ))
+ )
+)
+)=====";

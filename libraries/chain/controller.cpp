@@ -24,7 +24,6 @@
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 
-
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
@@ -310,15 +309,14 @@ struct controller_impl {
       auto start = fc::time_point::now();
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
          replay_push_block( next, controller::block_status::irreversible );
-         if( next->block_num() % 100 == 0 ) {
-            std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
+         if( next->block_num() % 500 == 0 ) {
+            ilog( "${n} of ${head}", ("n", next->block_num())("head", blog_head->block_num()) );
             if( shutdown() ) break;
          }
       }
-      std::cerr<< "\n";
       ilog( "${n} blocks replayed", ("n", head->block_num - start_block_num) );
 
-      // if the irreverible log is played without undo sessions enabled, we need to sync the
+      // if the irreversible log is played without undo sessions enabled, we need to sync the
       // revision ordinal to the appropriate expected value here.
       if( self.skip_db_sessions( controller::block_status::irreversible ) )
          db.set_revision(head->block_num);
@@ -1736,10 +1734,23 @@ void controller::add_indices() {
 
 void controller::startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot ) {
    my->head = my->fork_db.head();
-   if( !my->head ) {
+   if( snapshot ) {
+      ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
+   }
+   else if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
    }
-   my->init(shutdown, snapshot);
+
+   try {
+      my->init(shutdown, snapshot);
+   } catch (boost::interprocess::bad_alloc& e) {
+      if ( snapshot )
+         elog( "db storage not configured to have enough storage for the provided snapshot, please increase and retry snapshot" );
+      throw e;
+   }
+   if( snapshot ) {
+      ilog( "Finished initialization from snapshot" );
+   }
 }
 
 const chainbase::database& controller::db()const { return my->db; }

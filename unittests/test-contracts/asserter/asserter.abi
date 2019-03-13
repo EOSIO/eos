@@ -1,0 +1,41 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "procassert",
+            "base": "",
+            "fields": [
+                {
+                    "name": "condition",
+                    "type": "int8"
+                },
+                {
+                    "name": "message",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "provereset",
+            "base": "",
+            "fields": []
+        }
+    ],
+    "actions": [
+        {
+            "name": "procassert",
+            "type": "procassert",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "provereset",
+            "type": "provereset",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": []
+}

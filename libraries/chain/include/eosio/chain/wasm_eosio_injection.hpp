@@ -37,7 +37,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
 
       static void build_type_slots( Module& mod ) {
          // add the module types to the type_slots map
-         for ( int i=0; i < mod.types.size(); i++ ) {
+         for ( size_t i=0; i < mod.types.size(); i++ ) {
             std::vector<uint16_t> type_slot_list = { static_cast<uint16_t>(mod.types[i]->ret) };
             for ( auto param : mod.types[i]->parameters )
                type_slot_list.push_back( static_cast<uint16_t>(param) );
@@ -78,7 +78,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             injected_index_mapping.emplace( index, actual_index ); 
 
             // shift all exported functions by 1
-            for ( int i=0; i < module.exports.size(); i++ ) {
+            for ( size_t i=0; i < module.exports.size(); i++ ) {
                if ( module.exports[i].kind == IR::ObjectKind::function ) {
                   module.exports[i].index++;
                }
