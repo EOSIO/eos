@@ -8,8 +8,8 @@ DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
 DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
 DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
 
-DEP_ARRAY(sudo file git autoconf automake make libtool bzip2 bzip2-devel doxygen graphviz python python-devel python33 gettext-devel \
-          openssl-devel gmp-devel libicu-devel libcurl-devel wget which llvm4.0 llvm4.0-devel llvm4.0-libs llvm4.0-static libusbx-devel)
+DEP_ARRAY=(sudo file git autoconf automake make libtool bzip2 bzip2-devel doxygen graphviz python python-devel python33 gettext-devel \
+          openssl-devel gmp-devel libicu-devel libcurl-devel wget which libusbx-devel)
 
 if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
    # add gmp maybe
@@ -119,6 +119,7 @@ printf "\\n"
 printf "Checking CMAKE installation...\\n"
 if [ ! -e $CMAKE ]; then
 	printf "Installing CMAKE...\\n"
+   curl -LO https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-$CMAKE_VERSION-Linux-x86_64.tar.gz \
 	curl -LO https://cmake.org/files/v$CMAKE_VERSION_MAJOR.$CMAKE_VERSION_MINOR/cmake-$CMAKE_VERSION.tar.gz \
 	&& tar -xzf cmake-$CMAKE_VERSION.tar.gz \
 	&& cd cmake-$CMAKE_VERSION \
