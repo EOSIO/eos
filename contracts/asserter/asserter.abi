@@ -1,5 +1,5 @@
 {
-   "version": "eosio::abi/1.0",
+   "version": "cyberway::abi/1.0",
    "types": [],
    "structs": [
       {
