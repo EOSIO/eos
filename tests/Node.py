@@ -1417,7 +1417,7 @@ class Node(object):
         rpcApiResult = None
         try:
            response = urllib.request.urlopen(req, reqData)
-           rpcApiResult = json.loads(response.read())
+           rpcApiResult = json.loads(response.read().decode("utf-8"))
         except Exception as e:
            Utils.Print("Fail to send RPC API to {} with data {} ({})".format(url, data, e))
            raise
