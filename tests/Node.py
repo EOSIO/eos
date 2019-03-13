@@ -7,6 +7,8 @@ import re
 import datetime
 import json
 import signal
+import urllib.request
+import urllib.parse
 
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
@@ -1406,3 +1408,29 @@ class Node(object):
         status="last getInfo returned None" if not self.infoValid else "at last call to getInfo"
         Utils.Print(" hbn   : %s (%s)" % (self.lastRetrievedHeadBlockNum, status))
         Utils.Print(" lib   : %s (%s)" % (self.lastRetrievedLIB, status))
+
+    def sendRpcApi(self, relativeUrl, data={}):
+        url = urllib.parse.urljoin(self.endpointHttp, relativeUrl)
+        req = urllib.request.Request(url)
+        req.add_header('Content-Type', 'application/json; charset=utf-8')
+        reqData = json.dumps(data).encode("utf-8")
+        rpcApiResult = None
+        try:
+           response = urllib.request.urlopen(req, reqData)
+           rpcApiResult = json.loads(response.read())
+        except Exception as e:
+           Utils.Print("Fail to send RPC API to {} with data {} ({})".format(url, data, e))
+           raise
+        return rpcApiResult
+
+    def scheduleProtocolFeatureActivations(self, featureDigests=[]):
+        self.sendRpcApi("v1/producer/schedule_protocol_feature_activations", {"protocol_features_to_activate": featureDigests})
+
+    def activatePreactivateFeature(self):
+        # TODO: Find out if there's another way to get the feature digest in the real life
+        self.scheduleProtocolFeatureActivations(["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"])
+        # Wait for the next block to be produced so the scheduled protocol feature is activated
+        currentHead = self.getHeadBlockNum()
+        def isHeadAdvancing():
+           return self.getHeadBlockNum() > currentHead
+        Utils.waitForBool(isHeadAdvancing, 5)

@@ -12,6 +12,11 @@ if [ -z "$biosport" ]; then
     biosport=9776
 fi
 
+bioscontractpath=$BIOS_CONTRACT_PATH
+if [ -z "$bioscontractpath" ]; then
+    bioscontractpath="unittests/contracts/eosio.bios"
+fi
+
 wddir=eosio-ignition-wd
 wdaddr=localhost:8899
 wdurl=http://$wdaddr
@@ -76,8 +81,7 @@ wcmd create --to-console -n ignition
 ###INSERT prodkeys
 
 # Use old bios contract for now (switch to new after adding changes to activate PREACTIVATE_FEATURE)
-ecmd set contract eosio unittests/contracts/old_versions/v1.6.0-rc3/eosio.bios eosio.bios.wasm eosio.bios.abi
-#ecmd set contract eosio unittests/contracts/eosio.bios eosio.bios.wasm eosio.bios.abi
+ecmd set contract eosio $bioscontractpath eosio.bios.wasm eosio.bios.abi
 
 # Create required system accounts
 ecmd create key --to-console
