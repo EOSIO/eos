@@ -24,21 +24,22 @@ const flat_set<public_key_type>& transaction_metadata::recover_keys( const chain
 }
 
 void transaction_metadata::create_signing_keys_future( const transaction_metadata_ptr& mtrx,
-      boost::asio::thread_pool& thread_pool, const chain_id_type& chain_id, fc::microseconds time_limit ) {
-   if( mtrx->signing_keys_future.valid() || mtrx->signing_keys.valid() ) // already created
+      boost::asio::thread_pool& thread_pool, const chain_id_type& chain_id, fc::microseconds time_limit,
+      std::function<void()> next )
+{
+   if( mtrx->signing_keys_future.valid() || mtrx->signing_keys.valid() ) {// already created
+      if( next ) next();
       return;
+   }
 
-   std::weak_ptr<transaction_metadata> mtrx_wp = mtrx;
-   mtrx->signing_keys_future = async_thread_pool( thread_pool, [time_limit, chain_id, mtrx_wp]() {
+   mtrx->signing_keys_future = async_thread_pool( thread_pool, [time_limit, chain_id, mtrx, next{std::move(next)}]() {
       fc::time_point deadline = time_limit == fc::microseconds::maximum() ?
             fc::time_point::maximum() : fc::time_point::now() + time_limit;
-      auto mtrx = mtrx_wp.lock();
       fc::microseconds cpu_usage;
       flat_set<public_key_type> recovered_pub_keys;
-      if( mtrx ) {
-         const signed_transaction& trn = mtrx->packed_trx->get_signed_transaction();
-         cpu_usage = trn.get_signature_keys( chain_id, deadline, recovered_pub_keys );
-      }
+      const signed_transaction& trn = mtrx->packed_trx->get_signed_transaction();
+      cpu_usage = trn.get_signature_keys( chain_id, deadline, recovered_pub_keys );
+      if( next ) next();
       return std::make_tuple( chain_id, cpu_usage, std::move( recovered_pub_keys ));
    } );
 }
