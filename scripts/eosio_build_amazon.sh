@@ -8,18 +8,15 @@ DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
 DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
 DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
 
+DEP_ARRAY(sudo file git autoconf automake make libtool bzip2 bzip2-devel doxygen graphviz python python-devel python33 gettext-devel \
+          openssl-devel gmp-devel libicu-devel libcurl-devel wget which llvm4.0 llvm4.0-devel llvm4.0-libs llvm4.0-static libusbx-devel)
+
 if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
-	DEP_ARRAY=( 
-		sudo procps util-linux which gcc72 gcc72-c++ autoconf automake libtool make doxygen graphviz \
-		bzip2 bzip2-devel openssl-devel gmp gmp-devel libstdc++72 python27 python27-devel python34 python34-devel \
-		libedit-devel ncurses-devel swig wget file libcurl-devel libusb1-devel
-	)
+   # add gmp maybe
+	DEP_ARRAY+=(procps util-linux which gcc72 gcc72-c++ libstdc++72 python27 python27-devel python34 python34-devel \
+               libedit-devel ncurses-devel swig libusb1-devel)
 else
-	DEP_ARRAY=( 
-		git procps-ng util-linux gcc gcc-c++ autoconf automake libtool make bzip2 \
-		bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel libusbx-devel \
-		python3 python3-devel python-devel libedit-devel doxygen graphviz 
-	)
+   DEP_ARRAY+=(procps-ng util-linux gcc gcc-c++ libstdc++ python3 python3-devel python-devel libusbx-devel compat-openssl10)
 fi
 
 COUNT=1
