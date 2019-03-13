@@ -249,9 +249,6 @@ if [ "$ARCH" == "Linux" ]; then
          exit 1
    esac
 fi
-char* foo = "hello";
-eostring str("hello");
-eostring str2(foo);
 
 if [ "$ARCH" == "Darwin" ]; then
    # Check if cmake is already installed or not and use source install location
