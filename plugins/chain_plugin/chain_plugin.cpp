@@ -1263,7 +1263,11 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
 
     const cyberway::chaindb::index_request request{p.code, p.account, N(accounts), cyberway::chaindb::names::primary_index};
 
-    for (auto accounts_it = chaindb.begin(request); accounts_it.pk != cyberway::chaindb::end_primary_key; ++accounts_it.pk) {
+    auto accounts_it = chaindb.begin(request);
+
+    const auto next_request = cyberway::chaindb::cursor_request{p.code, accounts_it.cursor};
+
+    for (; accounts_it.pk != cyberway::chaindb::end_primary_key; accounts_it.pk = chaindb.next(next_request)) {
 
         const auto value = chaindb.value_at_cursor({p.code, accounts_it.cursor});
 
