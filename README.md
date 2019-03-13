@@ -7,22 +7,22 @@ Welcome to the EOSIO source code repository! This software enables businesses to
 
 Some of the groundbreaking features of EOSIO include:
 
-1. Free Rate Limited Transactions 
+1. Free Rate Limited Transactions
 1. Low Latency Block confirmation (0.5 seconds)
 1. Low-overhead Byzantine Fault Tolerant Finality
-1. Designed for optional high-overhead, low-latency BFT finality 
-1. Smart contract platform powered by Web Assembly
+1. Designed for optional high-overhead, low-latency BFT finality
+1. Smart contract platform powered by WebAssembly
 1. Designed for Sparse Header Light Client Validation
-1. Scheduled Recurring Transactions 
+1. Scheduled Recurring Transactions
 1. Time Delay Security
 1. Hierarchical Role Based Permissions
 1. Support for Biometric Hardware Secured Keys (e.g. Apple Secure Enclave)
 1. Designed for Parallel Execution of Context Free Validation Logic
-1. Designed for Inter Blockchain Communication 
+1. Designed for Inter Blockchain Communication
 
-EOSIO is released under the open source MIT license and is offered “AS IS” without warranty of any kind, express or implied. Any security provided by the EOSIO software depends in part on how it is used, configured, and deployed. EOSIO is built upon many third-party libraries such as Binaryen (Apache License) and WAVM  (BSD 3-clause) which are also provided “AS IS” without warranty of any kind. Without limiting the generality of the foregoing, Block.one makes no representation or guarantee that EOSIO or any third-party libraries will perform as intended or will be free of errors, bugs or faulty code. Both may fail in large or small ways that could completely or partially limit functionality or compromise computer systems. If you use or implement EOSIO, you do so at your own risk. In no event will Block.one be liable to any party for any damages whatsoever, even if it had been advised of the possibility of damage.  
+EOSIO is released under the open source MIT license and is offered “AS IS” without warranty of any kind, express or implied. Any security provided by the EOSIO software depends in part on how it is used, configured, and deployed. EOSIO is built upon many third-party libraries such as WABT (Apache License) and WAVM (BSD 3-clause) which are also provided “AS IS” without warranty of any kind. Without limiting the generality of the foregoing, Block.one makes no representation or guarantee that EOSIO or any third-party libraries will perform as intended or will be free of errors, bugs or faulty code. Both may fail in large or small ways that could completely or partially limit functionality or compromise computer systems. If you use or implement EOSIO, you do so at your own risk. In no event will Block.one be liable to any party for any damages whatsoever, even if it had been advised of the possibility of damage.  
 
-Block.one is neither launching nor operating any initial public blockchains based upon the EOSIO software. This release refers only to version 1.0 of our open source software. We caution those who wish to use blockchains built on EOSIO to carefully vet the companies and organizations launching blockchains based on EOSIO before disclosing any private keys to their derivative software. 
+Block.one is neither launching nor operating any initial public blockchains based upon the EOSIO software. This release refers only to version 1.0 of our open source software. We caution those who wish to use blockchains built on EOSIO to carefully vet the companies and organizations launching blockchains based on EOSIO before disclosing any private keys to their derivative software.
 
 There is no public testnet running currently.
 
@@ -39,13 +39,13 @@ $ brew remove eosio
 ```
 #### Ubuntu 18.04 Debian Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.6.3/eosio_1.6.3-1-ubuntu-18.04_amd64.deb
-$ sudo apt install ./eosio_1.6.3-1-ubuntu-18.04_amd64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.7.0/eosio_1.7.0-1-ubuntu-18.04_amd64.deb
+$ sudo apt install ./eosio_1.7.0-1-ubuntu-18.04_amd64.deb
 ```
 #### Ubuntu 16.04 Debian Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.6.3/eosio_1.6.3-1-ubuntu-16.04_amd64.deb
-$ sudo apt install ./eosio_1.6.3-1-ubuntu-16.04_amd64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.7.0/eosio_1.7.0-1-ubuntu-16.04_amd64.deb
+$ sudo apt install ./eosio_1.7.0-1-ubuntu-16.04_amd64.deb
 ```
 #### Debian Package Uninstall
 ```sh
@@ -53,8 +53,8 @@ $ sudo apt remove eosio
 ```
 #### Centos RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.6.3/eosio-1.6.3-1.el7.x86_64.rpm
-$ sudo yum install ./eosio-1.6.3-1.el7.x86_64.rpm
+$ wget https://github.com/eosio/eos/releases/download/v1.7.0/eosio-1.7.0-1.el7.x86_64.rpm
+$ sudo yum install ./eosio-1.7.0-1.el7.x86_64.rpm
 ```
 #### Centos RPM Package Uninstall
 ```sh
@@ -62,8 +62,8 @@ $ sudo yum remove eosio.cdt
 ```
 #### Fedora RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.6.3/eosio-1.6.3-1.fc27.x86_64.rpm
-$ sudo yum install ./eosio-1.6.3-1.fc27.x86_64.rpm
+$ wget https://github.com/eosio/eos/releases/download/v1.7.0/eosio-1.7.0-1.fc27.x86_64.rpm
+$ sudo yum install ./eosio-1.7.0-1.fc27.x86_64.rpm
 ```
 #### Fedora RPM Package Uninstall
 ```sh
