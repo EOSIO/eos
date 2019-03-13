@@ -356,10 +356,12 @@ void clear_chainbase_files( const fc::path& p ) {
 optional<builtin_protocol_feature> read_builtin_protocol_feature( const fc::path& p  ) {
    try {
       return fc::json::from_file<builtin_protocol_feature>( p );
-   } catch( const protocol_feature_exception& e ) {
+   } catch( const fc::exception& e ) {
       wlog( "problem encountered while reading '${path}':\n${details}",
             ("path", p.generic_string())("details",e.to_detail_string()) );
    } catch( ... ) {
+      dlog( "unknown problem encountered while reading '${path}'",
+            ("path", p.generic_string()) );
    }
    return {};
 }

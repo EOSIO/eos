@@ -57,7 +57,7 @@ protected:
 
 class builtin_protocol_feature : public protocol_feature_base {
 public:
-   static constexpr const char* feature_type_string = "builtin";
+   static const char* feature_type_string;
 
    builtin_protocol_feature() = default;
 
@@ -95,11 +95,14 @@ public:
 
    struct protocol_feature {
       digest_type                           feature_digest;
+      digest_type                           description_digest;
       flat_set<digest_type>                 dependencies;
       time_point                            earliest_allowed_activation_time;
       bool                                  preactivation_required = false;
       bool                                  enabled = false;
       optional<builtin_protocol_feature_t>  builtin_feature;
+
+      fc::variant to_variant( bool include_subjective_restrictions = true )const;
 
       friend bool operator <( const protocol_feature& lhs, const protocol_feature& rhs ) {
          return lhs.feature_digest < rhs.feature_digest;
@@ -113,6 +116,10 @@ public:
          return lhs.feature_digest < rhs;
       }
    };
+
+   using protocol_feature_set_type = std::set<protocol_feature, std::less<>>;
+
+   const protocol_feature_set_type& get_protocol_feature_set()const { return _recognized_protocol_features; }
 
    recognized_t is_recognized( const digest_type& feature_digest, time_point now )const;
 
@@ -136,7 +143,6 @@ public:
    void popped_blocks_to( uint32_t block_num );
 
 protected:
-   using protocol_feature_set_type = std::set<protocol_feature, std::less<>>;
 
    struct builtin_protocol_feature_entry {
       static constexpr uint32_t not_active  = std::numeric_limits<uint32_t>::max();

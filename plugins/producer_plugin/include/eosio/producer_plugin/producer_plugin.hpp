@@ -55,6 +55,11 @@ public:
       std::vector<chain::digest_type> protocol_features_to_activate;
    };
 
+   struct get_supported_protocol_features_params {
+      bool exclude_disabled = false;
+      bool exclude_unactivatable = false;
+   };
+
    producer_plugin();
    virtual ~producer_plugin();
 
@@ -90,6 +95,8 @@ public:
    scheduled_protocol_feature_activations get_scheduled_protocol_feature_activations() const;
    void schedule_protocol_feature_activations(const scheduled_protocol_feature_activations& schedule);
 
+   fc::variants get_supported_protocol_features( const get_supported_protocol_features_params& params ) const;
+
    signal<void(const chain::producer_confirmation&)> confirmed_block;
 private:
    std::shared_ptr<class producer_plugin_impl> my;
@@ -103,3 +110,4 @@ FC_REFLECT(eosio::producer_plugin::whitelist_blacklist, (actor_whitelist)(actor_
 FC_REFLECT(eosio::producer_plugin::integrity_hash_information, (head_block_id)(integrity_hash))
 FC_REFLECT(eosio::producer_plugin::snapshot_information, (head_block_id)(snapshot_name))
 FC_REFLECT(eosio::producer_plugin::scheduled_protocol_feature_activations, (protocol_features_to_activate))
+FC_REFLECT(eosio::producer_plugin::get_supported_protocol_features_params, (exclude_disabled)(exclude_unactivatable))

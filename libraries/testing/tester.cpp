@@ -977,12 +977,13 @@ namespace eosio { namespace testing {
          if( !pf.enabled || pf.earliest_allowed_activation_time > current_block_time
              || pfm.is_builtin_activated( *pf.builtin_feature, current_block_num ) ) return;
 
+         auto res = preactivation_set.emplace( feature_digest );
+         if( !res.second ) return;
+
          for( const auto& dependency : pf.dependencies ) {
             add_digests( dependency );
          }
 
-         auto res = preactivation_set.emplace( feature_digest );
-         if( !res.second ) return;
          preactivations.emplace_back( feature_digest );
       };
 

@@ -94,6 +94,9 @@ void producer_api_plugin::plugin_startup() {
            INVOKE_R_V(producer, get_scheduled_protocol_feature_activations), 201),
       CALL(producer, producer, schedule_protocol_feature_activations,
            INVOKE_V_R(producer, schedule_protocol_feature_activations, producer_plugin::scheduled_protocol_feature_activations), 201),
+      CALL(producer, producer, get_supported_protocol_features,
+           INVOKE_R_R(producer, get_supported_protocol_features,
+                                producer_plugin::get_supported_protocol_features_params), 201),
    });
 }
 

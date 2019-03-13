@@ -74,6 +74,8 @@ Pre-activated protocol features must be activated in the next block.
       }
    }
 
+   const char* builtin_protocol_feature::feature_type_string = "builtin";
+
    builtin_protocol_feature::builtin_protocol_feature( builtin_protocol_feature_t codename,
                                                        const digest_type& description_digest,
                                                        flat_set<digest_type>&& dependencies,
@@ -113,6 +115,43 @@ Pre-activated protocol features must be activated in the next block.
       fc::raw::pack( enc, _codename );
 
       return enc.result();
+   }
+
+   fc::variant protocol_feature_manager::protocol_feature::to_variant( bool include_subjective_restrictions )const {
+      EOS_ASSERT( builtin_feature, protocol_feature_exception, "not a builtin protocol feature" );
+
+      fc::mutable_variant_object mvo;
+
+      mvo( "feature_digest", feature_digest );
+
+      if( include_subjective_restrictions ) {
+         fc::mutable_variant_object subjective_restrictions;
+
+         subjective_restrictions( "enabled", enabled );
+         subjective_restrictions( "preactivation_required", preactivation_required );
+         subjective_restrictions( "earliest_allowed_activation_time", earliest_allowed_activation_time );
+
+         mvo( "subjective_restrictions", std::move( subjective_restrictions ) );
+      }
+
+      mvo( "description_digest", description_digest );
+      mvo( "dependencies", dependencies );
+      mvo( "protocol_feature_type", builtin_protocol_feature::feature_type_string );
+
+      fc::variants specification;
+      auto add_to_specification = [&specification]( const char* key_name, auto&& value ) {
+         fc::mutable_variant_object obj;
+         obj( "name", key_name );
+         obj( "value", std::forward<decltype(value)>( value ) );
+         specification.emplace_back( std::move(obj) );
+      };
+
+
+      add_to_specification( "builtin_feature_codename", builtin_protocol_feature_codename( *builtin_feature ) );
+
+      mvo( "specification", std::move( specification ) );
+
+      return fc::variant( std::move(mvo) );
    }
 
    protocol_feature_manager::protocol_feature_manager() {
@@ -286,6 +325,7 @@ Pre-activated protocol features must be activated in the next block.
 
       auto res = _recognized_protocol_features.insert( protocol_feature{
          feature_digest,
+         f.description_digest,
          f.dependencies,
          f.subjective_restrictions.earliest_allowed_activation_time,
          f.subjective_restrictions.preactivation_required,

@@ -981,6 +981,45 @@ void producer_plugin::schedule_protocol_feature_activations( const scheduled_pro
    my->_protocol_features_to_activate = schedule.protocol_features_to_activate;
 }
 
+fc::variants producer_plugin::get_supported_protocol_features( const get_supported_protocol_features_params& params ) const {
+   fc::variants results;
+   const chain::controller& chain = my->chain_plug->chain();
+   const auto& pfm = chain.get_protocol_feature_manager();
+   const auto& pfs = pfm.get_protocol_feature_set();
+   const auto next_block_time = chain.head_block_time() + fc::milliseconds(config::block_interval_ms);
+
+   flat_map<digest_type, bool>  visited_protocol_features;
+   visited_protocol_features.reserve( pfs.size() );
+
+   std::function<bool(const protocol_feature_manager::protocol_feature&)> add_feature =
+   [&results, &pfm, &params, next_block_time, &visited_protocol_features, &add_feature]
+   ( const protocol_feature_manager::protocol_feature& pf ) -> bool {
+      if( ( params.exclude_disabled || params.exclude_unactivatable ) && !pf.enabled ) return false;
+      if( params.exclude_unactivatable && ( next_block_time > pf.earliest_allowed_activation_time  ) ) return false;
+
+      auto res = visited_protocol_features.emplace( pf.feature_digest, false );
+      if( !res.second ) return res.first->second;
+
+      const auto original_size = results.size();
+      for( const auto& dependency : pf.dependencies ) {
+         if( !add_feature( pfm.get_protocol_feature( dependency ) ) ) {
+            results.resize( original_size );
+            return false;
+         }
+      }
+
+      res.first->second = true;
+      results.emplace_back( pf.to_variant(true) );
+      return true;
+   };
+
+   for( const auto& pf : pfs ) {
+      add_feature( pf );
+   }
+
+   return results;
+}
+
 optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const {
    chain::controller& chain = chain_plug->chain();
    const auto& hbs = chain.head_block_state();
