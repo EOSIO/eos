@@ -611,8 +611,6 @@ namespace eosio {
 
       const string peer_name();
 
-      void txn_send_pending(const vector<transaction_id_type>& ids);
-
       void blk_send_branch();
       void blk_send(const block_id_type& blkid);
       void stop_send();
@@ -917,23 +915,6 @@ namespace eosio {
       std::lock_guard<std::mutex> g( read_delay_timer_mtx );
       if( read_delay_timer ) read_delay_timer->cancel();
 >>>>>>> Use unique_lock instead of lock_guard to clean up code
-   }
-
-   void connection::txn_send_pending(const vector<transaction_id_type>& ids) {
-      const std::set<transaction_id_type, sha256_less> known_ids(ids.cbegin(), ids.cend());
-      my_impl->expire_local_txns();
-      vector<std::shared_ptr<vector<char>>> trx_to_send;
-      std::unique_lock<std::mutex> g( my_impl->local_txns_mtx );
-      for( auto tx = my_impl->local_txns.begin(); tx != my_impl->local_txns.end(); ++tx ) {
-         const bool found = known_ids.find( tx->id ) != known_ids.cend();
-         if( !found ) {
-            trx_to_send.emplace_back( tx->serialized_txn );
-         }
-      }
-      g.unlock();
-      for( const auto& t : trx_to_send ) {
-         queue_write( t, true, priority::low, []( boost::system::error_code ec, std::size_t ) {} );
-      }
    }
 
    void connection::blk_send_branch() {
@@ -2577,19 +2558,6 @@ namespace eosio {
          break;
       }
       case catch_up : {
-         if( msg.known_trx.pending > 0) {
-            // plan to get all except what we already know about.
-            req.req_trx.mode = catch_up;
-            send_req = true;
-            std::lock_guard<std::mutex> g( my_impl->local_txns_mtx );
-            size_t known_sum = local_txns.size();
-            if( known_sum ) {
-               expire_local_txns();
-               for( const auto& t : local_txns.get<by_id>() ) {
-                  req.req_trx.ids.push_back( t.id );
-               }
-            }
-         }
          break;
       }
       case normal: {
@@ -2648,7 +2616,6 @@ namespace eosio {
 
       switch (msg.req_trx.mode) {
       case catch_up :
-         c->txn_send_pending(msg.req_trx.ids);
          break;
       case none :
          if(msg.req_blocks.mode == none)
