@@ -1341,10 +1341,11 @@ struct controller_impl {
          bool handled_all_preactivated_features = (num_preactivated_protocol_features == 0);
 
          if( new_protocol_feature_activations.size() > 0 ) {
-            flat_map<digest_type, bool> preactivated_protocol_features;
-            preactivated_protocol_features.reserve( num_preactivated_protocol_features );
+            flat_map<digest_type, bool> activated_protocol_features;
+            activated_protocol_features.reserve( std::max( num_preactivated_protocol_features,
+                                                           new_protocol_feature_activations.size() ) );
             for( const auto& feature_digest : gpo.preactivated_protocol_features ) {
-               preactivated_protocol_features.emplace( feature_digest, false );
+               activated_protocol_features.emplace( feature_digest, false );
             }
 
             size_t num_preactivated_features_that_have_activated = 0;
@@ -1352,18 +1353,21 @@ struct controller_impl {
             for( const auto& feature_digest : new_protocol_feature_activations ) {
                const auto& f = protocol_features.get_protocol_feature( feature_digest );
 
-               if( f.preactivation_required ) {
-                  auto itr = preactivated_protocol_features.find( feature_digest );
-                  if( itr != preactivated_protocol_features.end() && !itr->second ) {
-                     itr->second = true;
-                     ++num_preactivated_features_that_have_activated;
-                  }
+               auto res = activated_protocol_features.emplace( feature_digest, true );
+               if( !res.second ) {
+                  EOS_ASSERT( res.first->second, block_validate_exception,
+                              "attempted duplicate activation within a single block: ${digest}",
+                              ("digest", res.first->first)
+                  );
+                  res.first->second = true;
+                  ++num_preactivated_features_that_have_activated;
                }
 
                if( f.builtin_feature ) {
                   trigger_activation_handler( *f.builtin_feature );
-                  protocol_features.activate_feature( feature_digest, pbhs.block_num );
                }
+
+               protocol_features.activate_feature( feature_digest, pbhs.block_num );
 
                ++bb._num_new_protocol_features_that_have_activated;
             }
