@@ -544,6 +544,8 @@ struct controller_impl {
 
     void read_genesis() {
         if (conf.read_genesis) {
+            chaindb.add_abi(config::token_account_name, token_contract_abi());   // need to add here again
+            chaindb.add_abi(config::gls_vest_account_name, golos_vesting_contract_abi());
             cyberway::genesis::genesis_read reader(conf.genesis_file, self, conf.genesis.initial_timestamp);
             reader.read();
         }
@@ -585,6 +587,10 @@ struct controller_impl {
             a.set_abi(eosio_contract_abi());
          } else if (name == config::domain_account_name) {
             a.set_abi(domain_contract_abi());
+         } else if (name == config::token_account_name) {
+            a.set_abi(token_contract_abi());
+         } else if (name == config::gls_vest_account_name) {
+            a.set_abi(golos_vesting_contract_abi());
          }
       });
       chaindb.emplace<account_sequence_object>([&](auto & a) {
@@ -662,6 +668,14 @@ struct controller_impl {
                                                                              majority_permission.id,
                                                                              active_producers_authority,
                                                                              conf.genesis.initial_timestamp );
+
+     if (conf.read_genesis) {
+        create_native_account(config::token_account_name, system_auth, system_auth);
+        // TODO: gls auths must be changed here or at startup
+        create_native_account(config::gls_ctrl_account_name, system_auth, system_auth);
+        create_native_account(config::gls_vest_account_name, system_auth, system_auth);
+        create_native_account(config::gls_post_account_name, system_auth, system_auth);
+     }
    }
 
 

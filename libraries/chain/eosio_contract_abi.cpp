@@ -727,10 +727,10 @@ abi_def token_contract_abi(abi_def abi) {
     }
     fc::move_append(abi.types, common_type_defs());
 
-    abi.structs.emplace_back(struct_def {"account", "", {
+    abi.structs.emplace_back(struct_def{"account", "", {
         {"balance", "asset"}}
     });
-    abi.structs.emplace_back(struct_def {"currency_stats", "", {
+    abi.structs.emplace_back(struct_def{"currency_stats", "", {
         {"supply", "asset"},
         {"max_supply", "asset"},
         {"issuer", "name"}}
@@ -752,6 +752,23 @@ abi_def golos_vesting_contract_abi(abi_def abi) {
     }
     fc::move_append(abi.types, common_type_defs());
 
+    abi.structs.emplace_back(struct_def{"user_balance", "", {
+        {"vesting", "asset"},
+        {"delegate_vesting", "asset"},
+        {"received_vesting", "asset"},
+        {"unlocked_limit", "asset"}}
+    });
+    abi.structs.emplace_back(struct_def{"balance_vesting", "", {  // TODO: rename…
+        {"supply", "asset"},
+        {"notify_acc", "name"}}
+    });
+
+    abi.tables.emplace_back(table_def{"accounts", "user_balance", {
+        {"primary", true, {{"vesting.sym", "asc"}}}
+    }});
+    abi.tables.emplace_back(table_def{"vesting", "balance_vesting", {
+        {"primary", true, {{"supply.sym", "asc"}}}
+    }});
     return abi;
 }
 
