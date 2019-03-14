@@ -1789,13 +1789,6 @@ namespace eosio {
 
    void dispatch_manager::recv_transaction(const connection_ptr& c, const transaction_id_type& id) {
       received_transactions.insert(std::make_pair(id, c));
-      if (c &&
-          c->last_req &&
-          c->last_req->req_trx.mode != none &&
-          !c->last_req->req_trx.ids.empty() &&
-          c->last_req->req_trx.ids.back() == id) {
-         c->last_req.reset();
-      }
 
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
       c->cancel_wait();
@@ -1862,17 +1855,10 @@ namespace eosio {
          return;
       }
       fc_wlog( logger, "failed to fetch from ${p}",("p",c->peer_name()));
-      transaction_id_type tid;
       block_id_type bid;
-      bool is_txn = false;
-      if( c->last_req->req_trx.mode == normal && !c->last_req->req_trx.ids.empty() ) {
-         is_txn = true;
-         tid = c->last_req->req_trx.ids.back();
-      }
-      else if( c->last_req->req_blocks.mode == normal && !c->last_req->req_blocks.ids.empty() ) {
+      if( c->last_req->req_blocks.mode == normal && !c->last_req->req_blocks.ids.empty() ) {
          bid = c->last_req->req_blocks.ids.back();
-      }
-      else {
+      } else {
          fc_wlog( logger,"no retry, block mpde = ${b} trx mode = ${t}",
                   ("b",modes_str(c->last_req->req_blocks.mode))("t",modes_str(c->last_req->req_trx.mode)));
          return;
@@ -1881,14 +1867,7 @@ namespace eosio {
          if (conn == c || conn->last_req) {
             continue;
          }
-         bool sendit = false;
-         if (is_txn) {
-            auto trx = conn->trx_state.get<by_id>().find(tid);
-            sendit = trx != conn->trx_state.end();
-         }
-         else {
-            sendit = peer_has_block(bid, c->connection_id);
-         }
+         bool sendit = peer_has_block( bid, c->connection_id );
          if (sendit) {
             conn->enqueue(*c->last_req);
             conn->fetch_wait();
