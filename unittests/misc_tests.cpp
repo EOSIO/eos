@@ -178,10 +178,10 @@ BOOST_AUTO_TEST_CASE(asset_from_string_overflow)
 
    // precision = 0, magnitude > 2^76
    BOOST_CHECK_EXCEPTION( asset::from_string("100000000000000000000000 CUR") , parse_error_exception, [](const parse_error_exception& e) {
-      return expect_assert_message(e, "Couldn't parse int64_t");
+      return expect_assert_message(e, "Couldn't parse uint64_t");
    });
    BOOST_CHECK_EXCEPTION( asset::from_string("-100000000000000000000000 CUR") , parse_error_exception, [](const parse_error_exception& e) {
-      return expect_assert_message(e, "Couldn't parse int64_t");
+      return expect_assert_message(e, "Couldn't parse uint64_t");
    });
 
    // precision = 20, magnitude > 2^142
