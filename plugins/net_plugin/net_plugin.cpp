@@ -28,7 +28,7 @@
 
 #include <atomic>
 
-using namespace eosio::chain::plugin_interface::compat;
+using namespace eosio::chain::plugin_interface;
 
 namespace fc {
    extern std::unordered_map<std::string,logger>& get_logger_map();
@@ -146,6 +146,7 @@ namespace eosio {
       bool                          network_version_match = false;
       chain_id_type                 chain_id;
       fc::sha256                    node_id;
+      std::atomic<uint32_t>         lib_num{0};
       eosio::db_read_mode           db_read_mode = eosio::db_read_mode::SPECULATIVE;
 
       string                        user_agent_name;
@@ -160,7 +161,8 @@ namespace eosio {
 
       bool                          use_socket_read_watermark = false;
 
-      channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
+      compat::channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
+      channels::irreversible_block::channel_type::handle       incoming_irreversible_block_subscription;
 
       uint16_t                                  thread_pool_size = 4;
       optional<boost::asio::thread_pool>        thread_pool;
@@ -192,6 +194,9 @@ namespace eosio {
 
       void accepted_block(const block_state_ptr&);
       void transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>&);
+      void on_irreversible_block( const block_state_ptr& blk ) {
+         lib_num = blk->block_num;
+      }
 
       bool is_valid( const handshake_message &msg);
 
@@ -3014,10 +3019,9 @@ namespace eosio {
       auto now = time_point::now();
       expire_local_txns();
 
-      controller& cc = chain_plug->chain();
-      uint32_t lib = cc.last_irreversible_block_num();
+      uint32_t lib = lib_num.load();
       dispatcher->expire_blocks( lib );
-      for ( auto &c : connections ) {
+      for ( auto& c : connections ) {
          auto &stale_txn = c->trx_state.get<by_block_num>();
          stale_txn.erase( stale_txn.lower_bound(1), stale_txn.upper_bound(lib) );
          auto &stale_txn_e = c->trx_state.get<by_expiry>();
@@ -3035,9 +3039,9 @@ namespace eosio {
 >>>>>>> Move more of incoming transaction processing to thread pool
    }
 
+   // thread safe
    void net_plugin_impl::expire_local_txns() {
-      controller& cc = chain_plug->chain();
-      uint32_t lib = cc.last_irreversible_block_num();
+      uint32_t lib = lib_num.load();
       size_t start_size = 0, end_size = 0;
 
       std::unique_lock<std::mutex> g( local_txns_mtx );
@@ -3425,7 +3429,12 @@ namespace eosio {
          cc.accepted_block.connect(  boost::bind(&net_plugin_impl::accepted_block, my.get(), _1));
       }
 
-      my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
+      my->incoming_transaction_ack_subscription = app().get_channel<compat::channels::transaction_ack>().subscribe(
+            boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
+      my->incoming_irreversible_block_subscription = app().get_channel<channels::irreversible_block>().subscribe(
+            [this]( block_state_ptr s ) {
+               my->on_irreversible_block( s );
+            });
 
       my->db_read_mode = cc.get_read_mode();
       if( my->db_read_mode == chain::db_read_mode::READ_ONLY ) {
