@@ -63,7 +63,6 @@ namespace eosio {
       transaction_id_type id;
       time_point_sec  expires;  /// time after which this may be purged.
       uint32_t        block_num = 0; /// block transaction was included in
-      std::shared_ptr<vector<char>>   serialized_txn; /// the received raw bundle
    };
 
    struct by_expiry;
@@ -767,7 +766,7 @@ namespace eosio {
       void rejected_block(const connection_ptr& c, uint32_t blk_num);
       void recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num);
       void recv_handshake(const connection_ptr& c, const handshake_message& msg);
-      void recv_notice(const connection_ptr& c, const notice_message& msg);
+      void sync_recv_notice( const connection_ptr& c, const notice_message& msg);
    };
 
    class dispatch_manager {
@@ -1512,9 +1511,7 @@ namespace eosio {
          notice_message note;
          note.known_blocks.mode = none;
          note.known_trx.mode = catch_up;
-         std::unique_lock<std::mutex> g( my_impl->local_txns_mtx );
-         note.known_trx.pending = my_impl->local_txns.size();
-         g.unlock();
+         note.known_trx.pending = 0;
          c->enqueue( note );
          return;
       }
@@ -1588,8 +1585,10 @@ namespace eosio {
       c->enqueue( req );
    }
 
-   void sync_manager::recv_notice(const connection_ptr& c, const notice_message& msg) {
+   void sync_manager::sync_recv_notice( const connection_ptr& c, const notice_message& msg) {
       fc_ilog(logger, "sync_manager got ${m} block notice",("m",modes_str(msg.known_blocks.mode)));
+      EOS_ASSERT( msg.known_blocks.mode == catch_up || msg.known_blocks.mode == last_irr_catch_up, plugin_exception,
+                  "sync_recv_notice only called on catch_up" );
       if( msg.known_blocks.ids.size() > 1 ) {
          fc_elog( logger, "Invalid notice_message, known_blocks.ids.size ${s}, closing connection: ${p}",
                   ("s", msg.known_blocks.ids.size())("p", c->peer_name()) );
@@ -1602,8 +1601,7 @@ namespace eosio {
          } else {
             verify_catchup(c, msg.known_blocks.pending, msg.known_blocks.ids.back());
          }
-      }
-      else {
+      } else if (msg.known_blocks.mode == last_irr_catch_up) {
          c->last_handshake_recv.last_irreversible_block_num = msg.known_trx.pending;
          reset_lib_num(c);
          start_sync(c, msg.known_trx.pending);
@@ -1757,20 +1755,17 @@ namespace eosio {
 
       std::unique_lock<std::mutex> g( my_impl->local_txns_mtx );
       if( my_impl->local_txns.get<by_id>().find( id ) != my_impl->local_txns.end()) { //found
+         g.unlock();
          fc_dlog( logger, "found trxid in local_trxs" );
          return;
       }
-      g.unlock();
-
       time_point_sec trx_expiration = ptrx->packed_trx->expiration();
-      const packed_transaction& trx = *ptrx->packed_trx;
-
-      auto buff = create_send_buffer( trx );
-
-      node_transaction_state nts = {id, trx_expiration, 0, buff};
-      g.lock();
+      node_transaction_state nts = {id, trx_expiration, 0};
       my_impl->local_txns.insert( std::move( nts ));
       g.unlock();
+
+      const packed_transaction& trx = *ptrx->packed_trx;
+      auto buff = create_send_buffer( trx );
 
       my_impl->send_transaction_to_all( buff, [&id, &skips, trx_expiration](const connection_ptr& c) -> bool {
          if( skips.find(c) != skips.end() || c->syncing ) {
@@ -2553,7 +2548,7 @@ namespace eosio {
       }
       case last_irr_catch_up:
       case catch_up: {
-         sync_master->recv_notice(c,msg);
+         sync_master->sync_recv_notice(c,msg);
          break;
       }
       case normal : {
@@ -2643,6 +2638,7 @@ namespace eosio {
 
       std::unique_lock<std::mutex> g( local_txns_mtx );
       if( local_txns.get<by_id>().find( tid ) != local_txns.end()) {
+         g.unlock();
          fc_dlog( logger, "got a duplicate transaction - dropping" );
          return;
       }
