@@ -22,8 +22,7 @@ using namespace eosio::testing;
 BOOST_AUTO_TEST_SUITE(protocol_feature_tests)
 
 BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
-   tester c(setup_policy::none, db_read_mode::SPECULATIVE);
-
+   tester c( setup_policy::none );
    const auto& pfm = c.control->get_protocol_feature_manager();
 
    c.produce_block();
@@ -76,8 +75,68 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE( double_preactivation ) try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+   const auto& pfm = c.control->get_protocol_feature_manager();
+
+   auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
+   BOOST_REQUIRE( d );
+
+   c.push_action( config::system_account_name, N(preactivate), config::system_account_name,
+                  fc::mutable_variant_object()("feature_digest", *d), 10 );
+
+   std::string expected_error_msg("protocol feature with digest '");
+   {
+      fc::variant v;
+      to_variant( *d, v );
+      expected_error_msg += v.get_string();
+      expected_error_msg += "' is already pre-activated";
+   }
+
+   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, N(preactivate), config::system_account_name,
+                                          fc::mutable_variant_object()("feature_digest", *d), 20 ),
+                           protocol_feature_exception,
+                           fc_exception_message_is( expected_error_msg )
+   );
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE( double_activation ) try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+   const auto& pfm = c.control->get_protocol_feature_manager();
+
+   auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
+   BOOST_REQUIRE( d );
+
+   BOOST_CHECK( !c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+
+   c.preactivate_protocol_features( {*d} );
+
+   BOOST_CHECK( !c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+
+   c.schedule_protocol_features_wo_preactivation( {*d} );
+
+   BOOST_CHECK_EXCEPTION(  c.produce_block();,
+                           block_validate_exception,
+                           fc_exception_message_starts_with( "attempted duplicate activation within a single block:" )
+   );
+
+   c.protocol_features_to_be_activated_wo_preactivation.clear();
+
+   BOOST_CHECK( !c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+
+   c.produce_block();
+
+   BOOST_CHECK( c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+
+   c.produce_block();
+
+   BOOST_CHECK( c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
-   tester c(setup_policy::preactivate_feature_and_new_bios, db_read_mode::SPECULATIVE);
+   tester c( setup_policy::preactivate_feature_and_new_bios );
    const auto& pfm = c.control->get_protocol_feature_manager();
 
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );

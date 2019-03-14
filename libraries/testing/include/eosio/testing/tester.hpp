@@ -314,6 +314,7 @@ namespace eosio { namespace testing {
          controller::config                            cfg;
          map<transaction_id_type, transaction_receipt> chain_transactions;
          map<account_name, block_id_type>              last_produced_block;
+      public:
          vector<digest_type>                           protocol_features_to_be_activated_wo_preactivation;
    };
 

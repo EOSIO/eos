@@ -1313,7 +1313,8 @@ struct controller_impl {
    {
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
 
-      auto guard_pending = fc::make_scoped_exit([this](){
+      auto guard_pending = fc::make_scoped_exit([this, head_block_num=head->block_num](){
+         protocol_features.popped_blocks_to( head_block_num );
          pending.reset();
       });
 
