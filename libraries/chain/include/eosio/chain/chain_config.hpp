@@ -105,6 +105,16 @@ struct chain_config {
 
 };
 
+struct chain_config2 {
+   chain_config2( chainbase::allocator<char> alloc )
+      :actor_blacklist(alloc),contract_blacklist(alloc),resource_greylist(alloc){}
+
+   shared_vector<name>  actor_blacklist;
+   shared_vector<name>  contract_blacklist;
+   shared_vector<name>  resource_greylist;
+
+   void validate()const;
+};
 } } // namespace eosio::chain
 
 FC_REFLECT(eosio::chain::chain_config,
@@ -119,3 +129,4 @@ FC_REFLECT(eosio::chain::chain_config,
            (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
 
 )
+FC_REFLECT( eosio::chain::chain_config2, (actor_blacklist)(contract_blacklist)(resource_greylist) )
