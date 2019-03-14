@@ -19,15 +19,14 @@ cd Docker
 
 IMAGETAG=${BUILDKITE_BRANCH:-master}
 
-if [[ "$IMAGETAG" != "master" ]]; then
-    echo ":llama: Change docker-compose.yml"
-    sed -i "s/cyberway\/cyberway:master/cyberway\/cyberway:${IMAGETAG}/g" docker-compose.yml
-    echo "----------------------------------------------"
-    cat docker-compose.yml
-    echo "----------------------------------------------"
-fi
+echo ":llama: Change docker-compose.yml"
+sed -i "s/cyberway\/cyberway:stable/cyberway\/cyberway:${IMAGETAG}/g" docker-compose.yml
+sed -i "s/--genesis-json \S\+ --genesis-data \S\+//g" docker-compose.yml
+sed -i "s/\${PWD}\/config.ini/\${PWD}\/config-standalone.ini/g" docker-compose.yml
+echo "----------------------------------------------"
+cat docker-compose.yml
+echo "----------------------------------------------"
 
-cp ./config.ini /etc/cyberway/config.ini || true
 docker-compose up -d || true
 sleep 15s
 

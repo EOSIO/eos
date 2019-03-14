@@ -85,6 +85,10 @@ namespace eosio { namespace chain {
 
             chaindb_type             chaindb_address_type = chaindb_type::MongoDB;
             string                   chaindb_address;
+            string                   chaindb_sys_name; // if empty, than initialize default
+
+            path                     genesis_file;                // Golos state
+            bool                     read_genesis = false;
          };
 
          enum class block_status {
@@ -302,4 +306,5 @@ FC_REFLECT( eosio::chain::controller::config,
             (genesis)
             (wasm_runtime)
             (trusted_producers)
+            (genesis_file)(read_genesis)
           )

@@ -502,7 +502,7 @@ BOOST_AUTO_TEST_CASE( linkauth_special ) { try {
       BOOST_REQUIRE_EXCEPTION(
          chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
                ("account", "tester")
-               ("code", config::system_account_name)
+               ("code", name(config::system_account_name))
                ("type", type)
                ("requirement", "first")),
          action_validate_exception,

@@ -62,7 +62,7 @@ namespace cyberway { namespace chaindb {
         chaindb_controller() = delete;
         chaindb_controller(const chaindb_controller&) = delete;
 
-        chaindb_controller(chaindb_type, string);
+        chaindb_controller(chaindb_type, string, string);
         ~chaindb_controller();
 
         template<typename Object>
@@ -167,6 +167,7 @@ namespace cyberway { namespace chaindb {
 
         void restore_db();
         void drop_db();
+        void clear_cache();
 
         bool has_abi(const account_name&);
         void add_abi(const account_name&, abi_def);
@@ -213,6 +214,8 @@ namespace cyberway { namespace chaindb {
         int64_t insert(const table_request&, const ram_payer_info&, primary_key_t, const char*, size_t);
         int64_t update(const table_request&, const ram_payer_info&, primary_key_t, const char*, size_t);
         int64_t remove(const table_request&, const ram_payer_info&, primary_key_t);
+
+        int64_t insert(const table_request&, primary_key_t, variant, const ram_payer_info&);
 
         int64_t insert(cache_item&, variant, const ram_payer_info&);
         int64_t update(cache_item&, variant, const ram_payer_info&);

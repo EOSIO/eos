@@ -16,7 +16,8 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/snapshot.hpp>
 
-#include <eosio/chain/eosio_contract.hpp>
+#include <cyberway/chaindb/multi_index.hpp>
+#include <cyberway/chaindb/names.hpp>
 
 #include <boost/signals2/connection.hpp>
 #include <boost/algorithm/string.hpp>
@@ -241,6 +242,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Type of chaindb connection")
          ("chaindb_address", bpo::value<string>()->default_value("mongodb://127.0.0.1:27017"),
           "Connection address to chaindb")
+         ("genesis-data", bpo::value<bfs::path>(),
+             "The location of the Genesis state file (absolute path or relative to the current directory)")
          ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
          ;
 
@@ -368,6 +371,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if (options.count("chaindb_address"))
          my->chain_config->chaindb_address = options.at("chaindb_address").as<string>();
+
+      my->chain_config->read_genesis = options.count("genesis-data");
+      if (my->chain_config->read_genesis) {
+          auto path = options.at("genesis-data").as<bfs::path>();
+          my->chain_config->genesis_file = path.is_relative() ? bfs::current_path() / path : path;
+      }
 
       if( options.count( "wasm-runtime" ))
          my->wasm_runtime = options.at( "wasm-runtime" ).as<vm_type>();
@@ -1249,30 +1258,35 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
 }
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
+    vector<asset> results;
+    auto& chaindb = db.chaindb();
 
-   const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
-   (void)get_table_type( abi, "accounts" );
+    const cyberway::chaindb::index_request request{p.code, p.account, N(accounts), cyberway::chaindb::names::primary_index};
 
-   vector<asset> results;
-// TODO: Removed by CyberWay
-//   walk_key_value_table(p.code, p.account, N(accounts), [&](const key_value_object& obj){
-//      EOS_ASSERT( obj.value.size() >= sizeof(asset), chain::asset_type_exception, "Invalid data on table");
-//
-//      asset cursor;
-//      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-//      fc::raw::unpack(ds, cursor);
-//
-//      EOS_ASSERT( cursor.get_symbol().valid(), chain::asset_type_exception, "Invalid asset");
-//
-//      if( !p.symbol || boost::iequals(cursor.symbol_name(), *p.symbol) ) {
-//        results.emplace_back(cursor);
-//      }
-//
-//      // return false if we are looking for one and found it, true otherwise
-//      return !(p.symbol && boost::iequals(cursor.symbol_name(), *p.symbol));
-//   });
+    auto accounts_it = chaindb.begin(request);
 
-   return results;
+    const auto next_request = cyberway::chaindb::cursor_request{p.code, accounts_it.cursor};
+
+    for (; accounts_it.pk != cyberway::chaindb::end_primary_key; accounts_it.pk = chaindb.next(next_request)) {
+
+        const auto value = chaindb.value_at_cursor({p.code, accounts_it.cursor});
+
+        const auto balance_object = value["balance"];
+        eosio::chain::asset asset_value;
+
+        fc::from_variant(balance_object, asset_value);
+
+        if( !p.symbol || boost::iequals(asset_value.symbol_name(), *p.symbol) ) {
+            results.push_back(asset_value);
+        }
+
+        // return false if we are looking for one and found it, true otherwise
+        if (p.symbol && boost::iequals(asset_value.symbol_name(), *p.symbol)) {
+            return results;
+        }
+    }
+
+    return results;
 }
 
 fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p )const {
@@ -1833,14 +1847,19 @@ read_only::resolve_names_results read_only::resolve_names(const resolve_names_pa
             }
             EOS_ASSERT(at2 == string::npos, username_type_exception, "Unknown name format: excess `@` symbol");
             auto username = n.substr(0, at);
-            validate_username(username);
+            bool have_username = username.size() > 0;
+            if (have_username) {
+                validate_username(username);
+            }
 
             auto tail = n.substr(tail_pos, n.length() - tail_pos);
             if (!at_acc) {
                 set_domain(tail, item);
             }
-            auto scope = at_acc ? name(tail) : *item.resolved_domain;
-            item.resolved_username = db.get_username(scope, username).owner;
+            if (have_username) {
+                auto scope = at_acc ? name(tail) : *item.resolved_domain;
+                item.resolved_username = db.get_username(scope, username).owner;
+            }
         }
         r.push_back(item);
         if (fc::time_point::now() > timeout) {

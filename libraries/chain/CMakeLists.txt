@@ -4,6 +4,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis_state_root_key.cpp.in ${CMAKE
 file(GLOB HEADERS "include/eosio/chain/*.hpp"
                   "include/eosio/chain/webassembly/*.hpp"
                   "include/cyberway/chaindb/*.hpp"
+                  "include/cyberway/genesis/*.hpp"
                   "${CMAKE_CURRENT_BINARY_DIR}/include/eosio/chain/core_symbol.hpp" )
 
 include(ChaindbMongo)
@@ -50,8 +51,9 @@ add_library( eosio_chain
              chaindb/journal.cpp
              chaindb/abi_info.cpp
              chaindb/ram_calculator.cpp
-             
+
              domain_name.cpp
+             genesis/genesis_read.cpp
              ${CHAINDB_SRCS}
 
 #             get_config.cpp

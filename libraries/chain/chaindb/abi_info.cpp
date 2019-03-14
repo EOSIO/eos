@@ -37,7 +37,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void validate_unique_field_names(const abi_info& abi, const table_def& table, const index_def& index) {
-            std::set<field_name> fields;
+            fc::flat_set<field_name> fields;
             for (auto& order: index.orders) fields.emplace(order.field);
             CYBERWAY_ASSERT(fields.size() == index.orders.size(), unique_field_name_exception,
                 "The index '${index}' should has unique field names",

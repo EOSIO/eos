@@ -6,8 +6,12 @@ namespace cyberway { namespace chaindb {
     namespace { namespace _detail {
 
         void copy_find_revision(write_operation& dst, revision_t find_revision) {
-            if (impossible_revision == dst.find_revision) {
+            if (unset_revision != dst.find_revision) return;
+
+            if (find_revision >= start_revision) {
                 dst.find_revision = find_revision;
+            } else {
+                dst.find_revision = impossible_revision;
             }
         }
 
@@ -132,41 +136,49 @@ namespace cyberway { namespace chaindb {
         return *info_;
     }
 
-    void journal::write_data(write_ctx& ctx, write_operation data) { try {
+    void journal::write_data(write_ctx& ctx, write_operation data) try {
         auto& info = ctx.info(data.object.pk());
         _detail::write(std::move(data), info.data);
     } FC_CAPTURE_LOG_AND_RETHROW(
         (get_full_table_name(data.object.service))
-        (get_scope_name(data.object.service))(data.object.service.pk))
-    }
+        (get_scope_name(data.object.service))(data.object.service.pk)
+    )
+
 
     void journal::write_data(const table_info& table, write_operation data) {
         auto ctx = create_ctx(table);
         write_data(ctx, std::move(data));
     }
 
-    void journal::write_undo(write_ctx& ctx, write_operation undo) { try {
+    void journal::write_undo(write_ctx& ctx, write_operation undo) try {
+        _detail::copy_find_revision(undo, impossible_revision);
+
         auto& info = ctx.info(undo.object.pk());
         const auto rev = undo.object.service.revision;
-        const auto find_rev = (impossible_revision != undo.find_revision) ? undo.find_revision : rev;
+        const auto find_rev = (undo.find_revision >= start_revision ) ? undo.find_revision : rev;
         auto itr = info.undo_map.find(find_rev);
 
-        if (info.undo_map.end() == itr) {
+        if (info.undo_map.end() == itr && rev != find_rev) {
             itr = info.undo_map.find(rev);
         }
 
         if (info.undo_map.end() == itr) {
-            info.undo_map.emplace(rev, std::move(undo));
-        } else if (itr->first != rev) {
-            info.undo_map.erase(itr);
+            // create the new position
             info.undo_map.emplace(rev, std::move(undo));
         } else {
+            // merge two values
             _detail::write(std::move(undo), itr->second);
+            if (itr->first != rev) {
+                // move to the new position
+                undo = std::move(itr->second);
+                info.undo_map.erase(itr);
+                info.undo_map.emplace(rev, std::move(undo));
+            }
         }
     } FC_CAPTURE_LOG_AND_RETHROW(
         (get_full_table_name(undo.object.service))
-        (get_scope_name(undo.object.service))(undo.object.service.pk))
-    }
+        (get_scope_name(undo.object.service))(undo.object.service.pk)
+    )
 
     void journal::write(write_ctx& ctx, write_operation data, write_operation undo) {
         write_data(ctx, std::move(data));

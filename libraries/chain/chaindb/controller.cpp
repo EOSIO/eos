@@ -60,17 +60,23 @@ namespace cyberway { namespace chaindb {
     driver_interface::~driver_interface() = default;
 
     namespace { namespace _detail {
-        std::unique_ptr<driver_interface> create_driver(chaindb_type t, journal& jrnl, string p) {
-            switch(t) {
+        std::unique_ptr<driver_interface> create_driver(
+            chaindb_type type, journal& jrnl, string address, string sys_name
+        ) {
+            if (sys_name.empty()) {
+                sys_name = names::system_code;
+            }
+
+            switch(type) {
                 case chaindb_type::MongoDB:
-                    return std::make_unique<mongodb_driver>(jrnl, std::move(p));
+                    return std::make_unique<mongodb_driver>(jrnl, std::move(address), std::move(sys_name));
 
                 default:
                     break;
             }
             CYBERWAY_ASSERT(
                 false, unknown_connection_type_exception,
-                "Invalid type ${type} of ChainDB connection", ("type", t));
+                "Invalid type ${type} of ChainDB connection", ("type", type));
         }
 
         variant get_pk_value(const table_info& table, const primary_key_t pk) {
@@ -120,8 +126,8 @@ namespace cyberway { namespace chaindb {
         cache_map cache_;
         undo_stack undo_;
 
-        controller_impl_(chaindb_controller& controller, const chaindb_type t, string p)
-        : driver_ptr_(_detail::create_driver(t, journal_, std::move(p))),
+        controller_impl_(chaindb_controller& controller, const chaindb_type t, string address, string sys_name)
+        : driver_ptr_(_detail::create_driver(t, journal_, std::move(address), std::move(sys_name))),
           driver_(*driver_ptr_.get()),
           undo_(controller, driver_, journal_, cache_) {
         }
@@ -138,6 +144,7 @@ namespace cyberway { namespace chaindb {
             assert(itr != abi_map_.end());
 
             auto system_abi = std::move(itr->second);
+            cache_.clear();
             undo_.clear(); // remove all undo states
             journal_.clear(); // remove all pending changes
             driver_.drop_db(); // drop database
@@ -275,6 +282,13 @@ namespace cyberway { namespace chaindb {
             itm.set_object(std::move(obj));
 
             return delta;
+        }
+
+        // From genesis
+        int64_t insert(const table_request& request, primary_key_t pk, variant value, const ram_payer_info& ram) {
+            auto table = get_table(request);
+            auto obj = object_value{{table, pk}, std::move(value)};
+            return insert(table, ram, obj);
         }
 
         // From contracts
@@ -572,8 +586,8 @@ namespace cyberway { namespace chaindb {
         }
     }; // class chaindb_controller::controller_impl_
 
-    chaindb_controller::chaindb_controller(const chaindb_type t, string p)
-    : impl_(new controller_impl_(*this, t, std::move(p))) {
+    chaindb_controller::chaindb_controller(const chaindb_type t, string address, string sys_name)
+    : impl_(new controller_impl_(*this, t, std::move(address), std::move(sys_name))) {
     }
 
     chaindb_controller::~chaindb_controller() = default;
@@ -584,6 +598,10 @@ namespace cyberway { namespace chaindb {
 
     void chaindb_controller::drop_db() {
         impl_->drop_db();
+    }
+
+    void chaindb_controller::clear_cache() {
+        impl_->cache_.clear();
     }
 
     void chaindb_controller::add_abi(const account_name& code, abi_def abi) {
@@ -725,6 +743,12 @@ namespace cyberway { namespace chaindb {
 
     int64_t chaindb_controller::remove(const table_request& request, const ram_payer_info& ram, primary_key_t pk) {
         return impl_->remove(request, ram, pk);
+    }
+
+    int64_t chaindb_controller::insert(
+        const table_request& request, primary_key_t pk, variant data, const ram_payer_info& ram
+    ) {
+         return impl_->insert(request, pk, std::move(data), ram);
     }
 
     int64_t chaindb_controller::insert(cache_item& itm, variant data, const ram_payer_info& ram) {

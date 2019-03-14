@@ -1,5 +1,5 @@
 {
-   "version": "eosio::abi/1.0",
+   "version": "cyberway::abi/1.0",
    "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -59,15 +59,22 @@
   "tables": [{
       "name": "accounts",
       "type": "account",
-      "index_type": "i64",
-      "key_names" : ["currency"],
-      "key_types" : ["uint64"]
+      "indexes": [{
+          "name": "primary",
+          "unique": "true",
+          "orders": [{"field": "balance.sym", "order": "asc"}]
+        }
+      ]
+
     },{
       "name": "stat",
       "type": "currency_stats",
-      "index_type": "i64",
-      "key_names" : ["currency"],
-      "key_types" : ["uint64"]
+      "indexes": [{
+          "name": "primary",
+          "unique": "true",
+          "orders": [{"field": "supply.sym", "order": "asc"}]
+        }
+      ]
     }
   ],
   "abi_extensions": []

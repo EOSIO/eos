@@ -467,13 +467,15 @@ namespace cyberway { namespace chaindb {
 
     struct mongodb_driver::mongodb_impl_ {
         journal& journal_;
+        string sys_code_name_;
         mongocxx::client mongo_conn_;
         code_cursor_map code_cursor_map_;
 
-        mongodb_impl_(journal& jrnl, const std::string& p)
-        : journal_(jrnl) {
+        mongodb_impl_(journal& jrnl, string address, string sys_name)
+        : journal_(jrnl),
+          sys_code_name_(std::move(sys_name)) {
             init_instance();
-            mongocxx::uri uri{p};
+            mongocxx::uri uri{address};
             mongo_conn_ = mongocxx::client{uri};
         }
 
@@ -582,7 +584,7 @@ namespace cyberway { namespace chaindb {
             tables.reserve(abi_info::max_table_cnt * 2);
             _detail::auto_reconnect([&]() {
                 tables.clear();
-                auto db = mongo_conn_.database(get_code_name(code));
+                auto db = mongo_conn_.database(get_code_name(sys_code_name_, code));
                 auto names = db.list_collection_names();
                 for (auto& tname: names) {
                     table_def table;
@@ -669,7 +671,7 @@ namespace cyberway { namespace chaindb {
             auto db_list = mongo_conn_.list_databases();
             for (auto& db: db_list) {
                 auto db_name = db["name"].get_utf8().value;
-                if (!db_name.starts_with(names::system_code)) continue;
+                if (!db_name.starts_with(sys_code_name_)) continue;
 
                 mongo_conn_.database(db_name).drop();
             }
@@ -726,11 +728,11 @@ namespace cyberway { namespace chaindb {
         }
 
         collection get_db_table(const table_info& table) const {
-            return mongo_conn_.database(get_code_name(table)).collection(get_table_name(table));
+            return mongo_conn_.database(get_code_name(sys_code_name_, table.code)).collection(get_table_name(table));
         }
 
         collection get_undo_db_table() const {
-            return mongo_conn_.database(names::system_code).collection(names::undo_table);
+            return mongo_conn_.database(get_code_name(sys_code_name_, account_name())).collection(names::undo_table);
         }
 
         cursor_t get_next_cursor_id(code_cursor_map::iterator itr) {
@@ -847,7 +849,7 @@ namespace cyberway { namespace chaindb {
 
                     case write_operation::Remove:
                         build_find_document(pk_doc, *table_, op.object);
-                        if (impossible_revision != op.find_revision) {
+                        if (op.find_revision >= start_revision) {
                             pk_doc.append(kvp(names::revision_path, op.find_revision));
                         }
                         break;
@@ -904,8 +906,8 @@ namespace cyberway { namespace chaindb {
 
     ///----
 
-    mongodb_driver::mongodb_driver(journal& jrnl, const std::string& p)
-    : impl_(new mongodb_impl_(jrnl, p)) {
+    mongodb_driver::mongodb_driver(journal& jrnl, string address, string sys_name)
+    : impl_(new mongodb_impl_(jrnl, std::move(address), std::move(sys_name))) {
     }
 
     mongodb_driver::~mongodb_driver() = default;

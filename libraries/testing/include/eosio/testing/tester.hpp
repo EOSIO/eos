@@ -350,6 +350,7 @@ namespace eosio { namespace testing {
          vcfg = default_config();
 
          vcfg.trusted_producers = trusted_producers;
+         vcfg.chaindb_sys_name = "_VALIDATE_";
 
          validating_node = std::make_unique<controller>(vcfg);
          validating_node->add_indices();
@@ -365,6 +366,7 @@ namespace eosio { namespace testing {
          vcfg = config;
          vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
          vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
+         vcfg.chaindb_sys_name = "_VALIDATE_";
 
          validating_node = std::make_unique<controller>(vcfg);
          validating_node->add_indices();
