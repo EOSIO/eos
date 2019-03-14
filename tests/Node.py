@@ -1426,11 +1426,28 @@ class Node(object):
     def scheduleProtocolFeatureActivations(self, featureDigests=[]):
         self.sendRpcApi("v1/producer/schedule_protocol_feature_activations", {"protocol_features_to_activate": featureDigests})
 
+    def getSupportedProtocolFeatures(self, excludeDisabled=True, excludeUnactivatable=True):
+        param = {
+           "exclude_disabled": excludeDisabled,
+           "exclude_unactivatable": excludeUnactivatable
+        }
+        res = self.sendRpcApi("v1/producer/get_supported_protocol_features", param)
+        return res
+
     def activatePreactivateFeature(self):
-        # TODO: Find out if there's another way to get the feature digest in the real life
-        self.scheduleProtocolFeatureActivations(["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"])
+        def getPreactivateFeatureDigest(supportedProtocolFeatures):
+            for protocolFeature in supportedProtocolFeatures:
+                for spec in protocolFeature["specification"]:
+                    if (spec["name"] == "builtin_feature_codename" and spec["value"] == "PREACTIVATE_FEATURE"):
+                        return protocolFeature["feature_digest"]
+            return None
+        preactivateFeatureDigest = getPreactivateFeatureDigest(self.getSupportedProtocolFeatures())
+        assert preactivateFeatureDigest
+
+        self.scheduleProtocolFeatureActivations([preactivateFeatureDigest])
+
         # Wait for the next block to be produced so the scheduled protocol feature is activated
         currentHead = self.getHeadBlockNum()
         def isHeadAdvancing():
-           return self.getHeadBlockNum() > currentHead
+            return self.getHeadBlockNum() > currentHead
         Utils.waitForBool(isHeadAdvancing, 5)
