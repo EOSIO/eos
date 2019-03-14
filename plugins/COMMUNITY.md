@@ -1,8 +1,8 @@
 # Community Plugin List
 
-This file contains a list of community authored plugins for `nodeos`, acting as a directory of the plugins that are available.
+This file contains a list of community authored plugins for `nodeos` and APIs/tools that are associated with plugins, acting as a directory of the community authored plugins that are available.
 
-Third parties are encouraged to make pull requests to this file (`develop` branch please) in order to list new plugins.
+Third parties are encouraged to make pull requests to this file (`develop` branch please) in order to list new related projects.
 
 | Description | URL |
 | ----------- | --- |
@@ -18,7 +18,8 @@ Third parties are encouraged to make pull requests to this file (`develop` branc
 | Mongo History API | https://github.com/CryptoLions/EOS-mongo-history-API |
 | State History API | https://github.com/acoutts/EOS-state-history-API |
 | Hyperion History API | https://github.com/eosrio/Hyperion-History-API |
+| Chronicle	| https://github.com/EOSChronicleProject/eos-chronicle |
 
 ## DISCLAIMER:
 
-The fact that a plugin is listed in this file does not mean the plugin has been reviewed by this repository's maintainers.  No warranties are made, i.e. you are at your own risk if you choose to use them.
+The fact that a plugin or API/tool is listed in this file does not mean it has been reviewed by this repository's maintainers.  No warranties are made, i.e. you are at your own risk if you choose to use them.
