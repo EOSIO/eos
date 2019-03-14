@@ -193,6 +193,23 @@ class privileged_api : public context_aware_api {
          });
       }
 
+      void set_name_list_packed(int64_t list, int64_t action, array_ptr<char> packed_name_list, size_t datalen)
+      {
+          int64_t lstbegin = static_cast<int64_t>(list_type::actor_blacklist_type );
+          int64_t lstend = static_cast<int64_t>(list_type::list_type_count);
+          int64_t actbegin = static_cast<int64_t>(list_action_type::insert_type);
+         int64_t actend = static_cast<int64_t>(list_action_type::list_action_type_count);
+         EOS_ASSERT(list >= lstbegin && list < lstend, wasm_execution_error, "unkown name list!");
+         EOS_ASSERT(action >= actbegin && action < actend, wasm_execution_error, "unkown action");
+
+         datastream<const char *> ds(packed_name_list, datalen);
+         std::vector<name> name_list; // TODO std::set<name> dosen't work, bug.
+         fc::raw::unpack(ds, name_list);
+
+         context.control.set_name_list(list, action, name_list);
+
+       
+      }
       bool is_privileged( account_name n )const {
          return context.db.get<account_object, by_name>( n ).privileged;
       }
@@ -1700,6 +1717,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_proposed_producers,           int64_t(int,int)                      )
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
+   (set_name_list_packed,             void(int64_t,int64_t,int,int)         )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
 );
