@@ -995,7 +995,7 @@ fc::variants producer_plugin::get_supported_protocol_features( const get_support
    [&results, &pfm, &params, next_block_time, &visited_protocol_features, &add_feature]
    ( const protocol_feature_manager::protocol_feature& pf ) -> bool {
       if( ( params.exclude_disabled || params.exclude_unactivatable ) && !pf.enabled ) return false;
-      if( params.exclude_unactivatable && ( next_block_time > pf.earliest_allowed_activation_time  ) ) return false;
+      if( params.exclude_unactivatable && ( next_block_time < pf.earliest_allowed_activation_time  ) ) return false;
 
       auto res = visited_protocol_features.emplace( pf.feature_digest, false );
       if( !res.second ) return res.first->second;
