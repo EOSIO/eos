@@ -1451,3 +1451,27 @@ class Node(object):
         def isHeadAdvancing():
             return self.getHeadBlockNum() > currentHead
         Utils.waitForBool(isHeadAdvancing, 5)
+
+    def getAllBuiltinFeatureDigestsToPreactivate(self):
+        allBuiltinProtocolFeatureDigests = []
+        supportedProtocolFeatures = self.getSupportedProtocolFeatures()
+        for protocolFeature in supportedProtocolFeatures:
+            for spec in protocolFeature["specification"]:
+                if (spec["name"] == "builtin_feature_codename"):
+                    if (spec["value"] != "PREACTIVATE_FEATURE"):
+                        allBuiltinProtocolFeatureDigests.append(protocolFeature["feature_digest"])
+                    break
+        return allBuiltinProtocolFeatureDigests
+
+    def preactivateAllBuiltinProtocolFeature(self):
+        contract="eosio"
+        action="preactivate"
+        allBuiltinProtocolFeatureDigests = self.getAllBuiltinFeatureDigestsToPreactivate()
+        for digest in allBuiltinProtocolFeatureDigests:
+            Utils.Print("push preactivate action with digest" % (digest))
+            data='{"feature_digest":{}}'.format(digest)
+            opts="--permission eosio@active"
+            trans=self.pushMessage(contract, action, data, opts)
+            if trans is None or not trans[0]:
+                Utils.Print("ERROR: Failed to preactive digest {}".format(digest))
+                return None
