@@ -18,13 +18,13 @@ from testUtils import Account
 from Node import BlockType
 from Node import Node
 from WalletMgr import WalletMgr
-from enum import Enum, auto
+from enum import Enum
 
 # Protocol Feature Setup Policy
 class PFSetupPolicy(Enum):
-    NONE = auto()
-    PREACTIVATE_FEATURE_ONLY = auto()
-    FULL = auto()
+    NONE = 0
+    PREACTIVATE_FEATURE_ONLY = 1
+    FULL = 2
     def hasPreactivateFeature(self):
         return self == PFSetupPolicy.PREACTIVATE_FEATURE_ONLY or \
                 self == PFSetupPolicy.FULL
