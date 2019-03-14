@@ -22,4 +22,4 @@ Third parties are encouraged to make pull requests to this file (`develop` branc
 
 ## DISCLAIMER:
 
-The fact that a plugin or API/tool is listed in this file does not mean it has been reviewed by this repository's maintainers.  No warranties are made, i.e. you are at your own risk if you choose to use them.
+The resources listed here are developed, offered and maintained by third-parties and not by block.one. Providing information, material or commentaries about such third-party resources does not mean we endorse or recommend any of these resources. We are not responsible, and disclaim any responsibility or liability, for your use of or reliance on any of these resources. Third-party resources may be updated, changed or terminated at any time, so the information here may be out of date or inaccurate.  USAGE AND RELIANCE IS ENTIRELY AT YOUR OWN RISK.
