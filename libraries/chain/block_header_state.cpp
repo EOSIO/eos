@@ -1,5 +1,6 @@
 #include <eosio/chain/block_header_state.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/random.hpp>
 #include <limits>
 
 namespace eosio { namespace chain {
@@ -59,6 +60,7 @@ namespace eosio { namespace chain {
     result.blockroot_merkle.append( id );
 
     result.active_schedule                       = active_schedule;
+    result.promoting_block                       = promoting_block;
     result.pending_schedule                      = pending_schedule;
     result.dpos_proposed_irreversible_blocknum   = dpos_proposed_irreversible_blocknum;
     result.bft_irreversible_blocknum             = bft_irreversible_blocknum;
@@ -87,11 +89,14 @@ namespace eosio { namespace chain {
     return result;
   } /// generate_next
 
-   bool block_header_state::maybe_promote_pending() {
+   bool block_header_state::update_active_schedule() {
+      auto when = header.timestamp;
       if( pending_schedule.producers.size() &&
           dpos_irreversible_blocknum >= pending_schedule_lib_num )
       {
          active_schedule = move( pending_schedule );
+         shuffle(active_schedule.producers, when.slot);
+         promoting_block = when;
 
          flat_map<account_name,uint32_t> new_producer_to_last_produced;
          for( const auto& pro : active_schedule.producers ) {
@@ -118,6 +123,13 @@ namespace eosio { namespace chain {
          producer_to_last_produced[header.producer] = block_num;
 
          return true;
+      }
+      else {
+          EOS_ASSERT( active_schedule.producers.size(), producer_schedule_exception, "SYSTEM: no active producers" );
+          EOS_ASSERT( when > promoting_block, producer_schedule_exception, "SYSTEM: wrong promoting_block value" );
+          if ((when.slot - promoting_block.slot) % active_schedule.producers.size() == 0) {
+             shuffle(active_schedule.producers, when.slot);
+          }
       }
       return false;
    }
@@ -163,7 +175,7 @@ namespace eosio { namespace chain {
 
     result.set_confirmed( h.confirmed );
 
-    auto was_pending_promoted = result.maybe_promote_pending();
+    auto was_pending_promoted = result.update_active_schedule();
 
     if( h.new_producers ) {
       EOS_ASSERT( !was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
@@ -249,6 +261,4 @@ namespace eosio { namespace chain {
 
      confirmations.emplace_back( conf );
   }
-
-
 } } /// namespace eosio::chain

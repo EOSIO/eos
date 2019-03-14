@@ -1156,7 +1156,7 @@ struct controller_impl {
 
       pending->_pending_block_state->set_confirmed(confirm_block_count);
 
-      auto was_pending_promoted = pending->_pending_block_state->maybe_promote_pending();
+      auto was_pending_promoted = pending->_pending_block_state->update_active_schedule();
 
       //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
