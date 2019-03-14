@@ -1194,20 +1194,21 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if( drop_features_to_activate ) {
             _protocol_features_to_activate.clear();
          } else {
+            auto protocol_features_to_activate = _protocol_features_to_activate; // do a copy as pending_block might be aborted
             if( features_to_activate.size() > 0 ) {
-               _protocol_features_to_activate.reserve( _protocol_features_to_activate.size()
+               protocol_features_to_activate.reserve( protocol_features_to_activate.size()
                                                          + features_to_activate.size() );
-               std::set<digest_type> set_of_features_to_activate( _protocol_features_to_activate.begin(),
-                                                                  _protocol_features_to_activate.end() );
+               std::set<digest_type> set_of_features_to_activate( protocol_features_to_activate.begin(),
+                                                                  protocol_features_to_activate.end() );
                for( const auto& f : features_to_activate ) {
                   auto res = set_of_features_to_activate.insert( f );
                   if( res.second ) {
-                     _protocol_features_to_activate.push_back( f );
+                     protocol_features_to_activate.push_back( f );
                   }
                }
                features_to_activate.clear();
             }
-            std::swap( features_to_activate, _protocol_features_to_activate );
+            std::swap( features_to_activate, protocol_features_to_activate );
             ilog( "signaling activation of the following protocol features in block ${num}: ${features_to_activate}",
                   ("num", hbs->block_num + 1)("features_to_activate", features_to_activate) );
          }
@@ -1661,6 +1662,8 @@ void producer_plugin_impl::produce_block() {
    auto signature_provider_itr = _signature_providers.find( chain.pending_block_signing_key() );
 
    EOS_ASSERT(signature_provider_itr != _signature_providers.end(), producer_priv_key_not_found, "Attempting to produce a block for which we don't have the private key");
+
+   _protocol_features_to_activate.clear(); // clear _protocol_features_to_activate as it is already set in pending_block
 
    //idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block( [&]( const digest_type& d ) {
