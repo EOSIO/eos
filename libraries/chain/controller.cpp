@@ -1355,7 +1355,7 @@ struct controller_impl {
 
                auto res = activated_protocol_features.emplace( feature_digest, true );
                if( !res.second ) {
-                  EOS_ASSERT( res.first->second, block_validate_exception,
+                  EOS_ASSERT( !res.first->second, block_validate_exception,
                               "attempted duplicate activation within a single block: ${digest}",
                               ("digest", res.first->first)
                   );
