@@ -350,6 +350,10 @@ namespace eosio { namespace testing {
    class validating_tester : public base_tester {
    public:
       virtual ~validating_tester() {
+         if( !validating_node ) {
+            elog( "~validating_tester() called with empty validating_node; likely in the middle of failure" );
+            return;
+         }
          try {
             if( num_blocks_to_producer_before_shutdown > 0 )
                produce_blocks( num_blocks_to_producer_before_shutdown );
@@ -454,7 +458,7 @@ namespace eosio { namespace testing {
                hbh.producer == vn_hbh.producer;
 
         validating_node.reset();
-        validating_node = std::make_unique<controller>(vcfg);
+        validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_manager());
         validating_node->add_indices();
         validating_node->startup( []() { return false; } );
 

@@ -27,6 +27,17 @@ Pre-activated protocol features must be activated in the next block.
             {},
             {time_point{}, false, true} // enabled without preactivation and ready to go at any time
          } )
+         (  builtin_protocol_feature_t::only_link_to_existing_permission, builtin_protocol_feature_spec{
+            "ONLY_LINK_TO_EXISTING_PERMISSION",
+            fc::variant("f3c3d91c4603cde2397268bfed4e662465293aab10cd9416db0d442b8cec2949").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: ONLY_LINK_TO_EXISTING_PERMISSION
+
+Disallows linking an action to a non-existing permission.
+*/
+            {}
+         } )
    ;
 
 

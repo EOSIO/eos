@@ -76,6 +76,64 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
+   tester c(setup_policy::preactivate_feature_and_new_bios, db_read_mode::SPECULATIVE);
+   const auto& pfm = c.control->get_protocol_feature_manager();
+
+   auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
+   BOOST_REQUIRE( d );
+
+   c.create_accounts( {N(alice), N(bob), N(charlie)} );
+
+   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, N(linkauth), N(bob), fc::mutable_variant_object()
+                              ("account", "bob")
+                              ("code", name(config::system_account_name))
+                              ("type", "")
+                              ("requirement", "test" )
+                           ), permission_query_exception,
+                           fc_exception_message_is( "Failed to retrieve permission: test" )
+   );
+
+   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, N(linkauth), N(charlie), fc::mutable_variant_object()
+                              ("account", "charlie")
+                              ("code", name(config::system_account_name))
+                              ("type", "")
+                              ("requirement", "test" )
+                           ), permission_query_exception,
+                           fc_exception_message_is( "Failed to retrieve permission: test" )
+   );
+
+   c.push_action( config::system_account_name, N(updateauth), N(alice), fc::mutable_variant_object()
+      ("account", "alice")
+      ("permission", "test")
+      ("parent", "active")
+      ("auth", authority(get_public_key("testapi", "test")))
+   );
+
+   c.produce_block();
+
+   // Verify the incorrect behavior prior to ONLY_LINK_TO_EXISTING_PERMISSION activation.
+   c.push_action( config::system_account_name, N(linkauth), N(bob), fc::mutable_variant_object()
+      ("account", "bob")
+      ("code", name(config::system_account_name))
+      ("type", "")
+      ("requirement", "test" )
+   );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   // Verify the correct behavior after ONLY_LINK_TO_EXISTING_PERMISSION activation.
+   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, N(linkauth), N(charlie), fc::mutable_variant_object()
+                              ("account", "charlie")
+                              ("code", name(config::system_account_name))
+                              ("type", "")
+                              ("requirement", "test" )
+                           ), permission_query_exception,
+                           fc_exception_message_is( "Failed to retrieve permission: test" )
+   );
+
+} FC_LOG_AND_RETHROW()
 
 
 BOOST_AUTO_TEST_SUITE_END()
