@@ -416,8 +416,10 @@ namespace cyberway { namespace chaindb {
             if (itm) return itm->object();
 
             auto obj = driver_.object_by_pk(table, pk);
-            validate_object(table, obj, pk);
-            cache_.emplace(table, obj);
+            if (!obj.value.is_null()) {
+                validate_object(table, obj, pk);
+                cache_.emplace(table, obj);
+            }
             return obj;
         }
 

@@ -1,5 +1,7 @@
 #include "interface.hpp"
 
+#include <eosiolib/eosio.hpp>
+
 namespace identity {
 
 identity_name interface::get_claimed_identity( account_name acnt ) {
@@ -12,7 +14,7 @@ account_name interface::get_owner_for_identity( uint64_t receiver, identity_name
    //   check to see if the account has claimed it
    certs_table certs( _self, ident );
    auto idx = certs.template get_index<N(bytuple)>();
-   auto itr = idx.lower_bound(certrow::key(N(owner), 1, 0));
+   auto itr = idx.lower_bound(std::make_tuple(N(owner), 1ull));
    account_name owner = 0;
    while (itr != idx.end() && itr->property == N(owner) && itr->trusted) {
       if (sizeof(account_name) == itr->data.size()) {
@@ -46,7 +48,7 @@ account_name interface::get_owner_for_identity( uint64_t receiver, identity_name
    }
    // trusted certification not found
    // let's see if any untrusted certifications became trusted
-   itr = idx.lower_bound(certrow::key(N(owner), 0, 0));
+   itr = idx.lower_bound(N(owner));
    while (itr != idx.end() && itr->property == N(owner) && !itr->trusted) {
       if (sizeof(account_name) == itr->data.size()) {
          account_name account = *reinterpret_cast<const account_name*>(itr->data.data());

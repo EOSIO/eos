@@ -171,10 +171,10 @@ namespace cyberway { namespace chaindb {
         for (auto& key: pk_order.path) {
             auto itr = view.find(key);
             CYBERWAY_ASSERT(view.end() != itr, driver_primary_key_exception,
-                            "Can't find the part ${key} for the primary key ${pk} in the row '${row}' "
-                            "from the table ${table} for the scope '${scope}'",
-                            ("key", key)("pk", pk_order.field)("row", to_json(row))
-                                ("table", get_full_table_name(table))("scope", get_scope_name(table)));
+                "Can't find the part ${key} for the primary key ${pk} in the row '${row}' "
+                "from the table ${table} for the scope '${scope}'",
+                ("key", key)("pk", pk_order.field)("row", to_json(row))
+                ("table", get_full_table_name(table))("scope", get_scope_name(table)));
 
             --pos;
             if (0 == pos) {
