@@ -13,3 +13,4 @@ The websocket streams data to external processes. It automatically catches clien
 * [State-History Plugin](state-history-plugin.md)
    * [Setup](setup.md)
    * [Protocol](protocol.md)
+   * [JS Example](js-example.md)
