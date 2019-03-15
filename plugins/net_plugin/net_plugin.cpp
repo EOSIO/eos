@@ -2315,7 +2315,7 @@ namespace eosio {
             block_id_type blk_id = bh.id();
             if( dispatcher->have_block( blk_id ) ) {
                connection_wptr weak = conn;
-               app().post(priority::low,
+               app().post(priority::high, // high since block processing is high and this needs to run before next block
                      [dispatcher = dispatcher.get(), sync_master = sync_master.get(), weak{std::move(weak)}, blk_id] {
                   connection_ptr c = weak.lock();
                   if(c) {
