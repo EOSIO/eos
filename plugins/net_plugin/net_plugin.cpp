@@ -1788,6 +1788,7 @@ namespace eosio {
          if( !cp->current() ) {
             continue;
          }
+         nts.connection_id = cp->connection_id;
          if( !add_peer_txn(nts) ) {
             continue;
          }
