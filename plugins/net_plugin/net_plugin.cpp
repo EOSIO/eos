@@ -222,14 +222,17 @@ namespace eosio {
       unique_ptr< sync_manager >       sync_master;
       unique_ptr< dispatch_manager >   dispatcher;
 
-      unique_ptr<boost::asio::steady_timer> connector_check;
-      unique_ptr<boost::asio::steady_timer> transaction_check;
+      std::mutex                            connector_check_timer_mtx; 
+      unique_ptr<boost::asio::steady_timer> connector_check_timer;
+      std::mutex                            expire_timer_mtx;
+      unique_ptr<boost::asio::steady_timer> expire_timer;
+      std::mutex                            keepalive_timer_mtx;
       unique_ptr<boost::asio::steady_timer> keepalive_timer;
       boost::asio::steady_timer::duration   connector_period;
       boost::asio::steady_timer::duration   txn_exp_period;
       boost::asio::steady_timer::duration   resp_expected_period;
       boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
-      int                           max_cleanup_time_ms = 0;
+      int                                   max_cleanup_time_ms = 0;
 
       const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
 
@@ -314,10 +317,10 @@ namespace eosio {
       void handle_message(const connection_ptr& c, const packed_transaction_ptr& msg);
 
       void start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection);
-      void start_txn_timer();
+      void start_expire_timer();
       void start_monitors();
 
-      void expire_txns();
+      void expire();
       void connection_monitor(std::weak_ptr<connection> from_connection);
       /** \name Peer Timestamps
        *  Time message handling
@@ -540,7 +543,9 @@ namespace eosio {
 
       explicit connection( socket_ptr s );
       ~connection();
-      void initialize();
+   private:
+      void initialize(); // only called from constructor
+   public:
 
       optional<sync_state>    peer_requested;  // this peer is requesting info from us
       std::shared_ptr<boost::asio::io_context>  server_ioc; // keep ioc alive
@@ -580,7 +585,8 @@ namespace eosio {
       bool                    syncing = false;
       uint16_t                protocol_version  = 0;
       string                  peer_addr;
-      unique_ptr<boost::asio::steady_timer> response_expected;
+      std::mutex                            response_expected_timer_mtx;
+      unique_ptr<boost::asio::steady_timer> response_expected_timer;
       std::mutex                            read_delay_timer_mtx;
       unique_ptr<boost::asio::steady_timer> read_delay_timer;
       go_away_reason         no_retry = no_reason;
@@ -783,7 +789,7 @@ namespace eosio {
         syncing(false),
         protocol_version(0),
         peer_addr(endpoint),
-        response_expected(),
+        response_expected_timer(),
         read_delay_timer(),
         no_retry(no_reason),
         fork_head(),
@@ -808,7 +814,7 @@ namespace eosio {
         syncing(false),
         protocol_version(0),
         peer_addr(),
-        response_expected(),
+        response_expected_timer(),
         read_delay_timer(),
         no_retry(no_reason),
         fork_head(),
@@ -826,7 +832,8 @@ namespace eosio {
    void connection::initialize() {
       auto *rnd = node_id.data();
       rnd[0] = 0;
-      response_expected.reset(new boost::asio::steady_timer( *my_impl->server_ioc ));
+      // called only from constructor, no mutex needed
+      response_expected_timer.reset(new boost::asio::steady_timer( *my_impl->server_ioc ));
       read_delay_timer.reset(new boost::asio::steady_timer( *my_impl->server_ioc ));
    }
 
@@ -1181,15 +1188,19 @@ namespace eosio {
                   to_sync_queue);
    }
 
+   // thread safe
    void connection::cancel_wait() {
-      if (response_expected)
-         response_expected->cancel();
+      std::lock_guard<std::mutex> g( response_expected_timer_mtx );
+      if (response_expected_timer)
+         response_expected_timer->cancel();
    }
 
+   // thread safe
    void connection::sync_wait() {
-      response_expected->expires_from_now( my_impl->resp_expected_period);
       connection_wptr c(shared_from_this());
-      response_expected->async_wait( [c]( boost::system::error_code ec ) {
+      std::lock_guard<std::mutex> g( response_expected_timer_mtx );
+      response_expected_timer->expires_from_now( my_impl->resp_expected_period);
+      response_expected_timer->async_wait( [c]( boost::system::error_code ec ) {
          app().post(priority::low, [c, ec]() {
             connection_ptr conn = c.lock();
             if (!conn) {
@@ -1202,10 +1213,12 @@ namespace eosio {
       } );
    }
 
+   // thread safe
    void connection::fetch_wait() {
-      response_expected->expires_from_now( my_impl->resp_expected_period);
       connection_wptr c(shared_from_this());
-      response_expected->async_wait( [c]( boost::system::error_code ec ) {
+      std::lock_guard<std::mutex> g( response_expected_timer_mtx );
+      response_expected_timer->expires_from_now( my_impl->resp_expected_period);
+      response_expected_timer->async_wait( [c]( boost::system::error_code ec ) {
          app().post(priority::low, [c, ec]() {
             connection_ptr conn = c.lock();
             if (!conn) {
@@ -2894,8 +2907,9 @@ namespace eosio {
    }
 
    void net_plugin_impl::start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection) {
-      connector_check->expires_from_now( du);
-      connector_check->async_wait( [this, from_connection](boost::system::error_code ec) {
+      std::lock_guard<std::mutex> g( connector_check_timer_mtx );
+      connector_check_timer->expires_from_now( du);
+      connector_check_timer->async_wait( [this, from_connection](boost::system::error_code ec) {
             app().post( priority::low, [this, from_connection, ec]() {
             if( !ec) {
                connection_monitor(from_connection);
@@ -2908,22 +2922,23 @@ namespace eosio {
       });
    }
 
-   void net_plugin_impl::start_txn_timer() {
-      transaction_check->expires_from_now( txn_exp_period);
-      transaction_check->async_wait( [this]( boost::system::error_code ec ) {
-         int lower_than_low = priority::low - 1;
-         app().post( lower_than_low, [this, ec]() {
-            if( !ec ) {
-               expire_txns();
-            } else {
-               fc_elog( logger, "Error from transaction check monitor: ${m}", ("m", ec.message()));
-               start_txn_timer();
-            }
-         } );
-      });
+   // thread safe
+   void net_plugin_impl::start_expire_timer() {
+      std::lock_guard<std::mutex> g( expire_timer_mtx );
+      expire_timer->expires_from_now( txn_exp_period);
+      expire_timer->async_wait( [this]( boost::system::error_code ec ) {
+         if( !ec ) {
+            expire();
+         } else {
+            fc_elog( logger, "Error from transaction check monitor: ${m}", ("m", ec.message()) );
+            start_expire_timer();
+         }
+      } );
    }
 
+   // thread safe
    void net_plugin_impl::ticker() {
+      std::lock_guard<std::mutex> g( keepalive_timer_mtx );
       keepalive_timer->expires_from_now(keepalive_interval);
       keepalive_timer->async_wait( [this]( boost::system::error_code ec ) {
          app().post( priority::low, [this, ec]() {
@@ -2941,14 +2956,20 @@ namespace eosio {
    }
 
    void net_plugin_impl::start_monitors() {
-      connector_check.reset(new boost::asio::steady_timer( *server_ioc ));
-      transaction_check.reset(new boost::asio::steady_timer( *server_ioc ));
+      {
+         std::lock_guard<std::mutex> g( connector_check_timer_mtx );
+         connector_check_timer.reset(new boost::asio::steady_timer( *server_ioc ));
+      }
+      {
+         std::lock_guard<std::mutex> g( expire_timer_mtx );
+         expire_timer.reset( new boost::asio::steady_timer( *server_ioc ) );
+      }
       start_conn_timer(connector_period, std::weak_ptr<connection>());
-      start_txn_timer();
+      start_expire_timer();
    }
 
-   void net_plugin_impl::expire_txns() {
-      start_txn_timer();
+   void net_plugin_impl::expire() {
+      start_expire_timer();
 
       auto now = time_point::now();
       uint32_t lib = lib_num.load();
@@ -3321,7 +3342,10 @@ namespace eosio {
          }
       }
 
-      my->keepalive_timer.reset( new boost::asio::steady_timer( *my->server_ioc ) );
+      {
+         std::lock_guard<std::mutex> g( my->keepalive_timer_mtx );
+         my->keepalive_timer.reset( new boost::asio::steady_timer( *my->server_ioc ) );
+      }
       my->ticker();
 
       if( my->acceptor ) {
@@ -3375,12 +3399,19 @@ namespace eosio {
          if( my->server_ioc_work )
             my->server_ioc_work->reset();
 
-         if( my->connector_check )
-            my->connector_check->cancel();
-         if( my->transaction_check )
-            my->transaction_check->cancel();
-         if( my->keepalive_timer )
-            my->keepalive_timer->cancel();
+         {
+            std::lock_guard<std::mutex> g( my->connector_check_timer_mtx );
+            if( my->connector_check_timer )
+               my->connector_check_timer->cancel();
+         }{
+            std::lock_guard<std::mutex> g( my->expire_timer_mtx );
+            if( my->expire_timer )
+               my->expire_timer->cancel();
+         }{
+            std::lock_guard<std::mutex> g( my->keepalive_timer_mtx );
+            if( my->keepalive_timer )
+               my->keepalive_timer->cancel();
+         }
 
          my->done = true;
          if( my->acceptor ) {
