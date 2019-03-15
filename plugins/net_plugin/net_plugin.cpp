@@ -2533,7 +2533,6 @@ namespace eosio {
    // called from thread_pool threads
    void net_plugin_impl::handle_message(const connection_ptr& c, const packed_transaction_ptr& trx) {
       fc_dlog(logger, "got a packed transaction, cancel wait");
-      peer_ilog(c, "received packed_transaction");
       if( db_read_mode == eosio::db_read_mode::READ_ONLY ) {
          fc_dlog(logger, "got a txn in read-only mode - dropping");
          return;
@@ -2541,6 +2540,7 @@ namespace eosio {
 
       auto ptrx = std::make_shared<transaction_metadata>( trx );
       const auto& tid = ptrx->id;
+      peer_ilog(c, "received packed_transaction ${id}", ("id", tid));
 
       bool have_trx = dispatcher->have_txn( tid );
       connection_wptr weak_ptr = c;
@@ -2549,7 +2549,7 @@ namespace eosio {
          dispatcher->recv_transaction(c, ptrx);
       });
       if( have_trx ) {
-         fc_dlog( logger, "got a duplicate transaction - dropping" );
+         fc_dlog( logger, "got a duplicate transaction - dropping ${id}", ("id", tid) );
          return;
       }
 
