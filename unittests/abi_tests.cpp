@@ -489,7 +489,7 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
 
 BOOST_AUTO_TEST_CASE(uint_types)
 { try {
-
+   BOOST_REQUIRE(false == true); // fail on purpose
    const char* currency_abi = R"=====(
    {
        "version": "eosio::abi/1.0",
