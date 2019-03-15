@@ -1723,19 +1723,21 @@ namespace eosio {
 
    void dispatch_manager::expire_txns( uint32_t lib_num ) {
       size_t start_size = 0, end_size = 0;
-      {
-         std::lock_guard<std::mutex> g( local_txns_mtx );
 
-         start_size = local_txns.size();
-         auto& old = local_txns.get<by_expiry>();
-         auto ex_lo = old.lower_bound( fc::time_point_sec( 0 ) );
-         auto ex_up = old.upper_bound( time_point::now() );
-         old.erase( ex_lo, ex_up );
+      std::unique_lock<std::mutex> g( local_txns_mtx );
+      start_size = local_txns.size();
+      auto& old = local_txns.get<by_expiry>();
+      auto ex_lo = old.lower_bound( fc::time_point_sec( 0 ) );
+      auto ex_up = old.upper_bound( time_point::now() );
+      old.erase( ex_lo, ex_up );
+      g.unlock(); // allow other threads opportunity to use local_txns
 
-         auto& stale = local_txns.get<by_block_num>();
-         stale.erase( stale.lower_bound( 1 ), stale.upper_bound( lib_num ) );
-         end_size = local_txns.size();
-      }
+      g.lock();
+      auto& stale = local_txns.get<by_block_num>();
+      stale.erase( stale.lower_bound( 1 ), stale.upper_bound( lib_num ) );
+      end_size = local_txns.size();
+      g.unlock();
+
       fc_dlog( logger, "expire_local_txns size ${s} removed ${r}", ("s", start_size)( "r", start_size - end_size ) );
    }
 
@@ -2969,8 +2971,6 @@ namespace eosio {
    }
 
    void net_plugin_impl::expire() {
-      start_expire_timer();
-
       auto now = time_point::now();
       uint32_t lib = lib_num.load();
       dispatcher->expire_blocks( lib );
@@ -2993,7 +2993,12 @@ namespace eosio {
       dispatcher->expire_txns( lib );
 >>>>>>> Consolidate transaction tracking, reducing memory requirements and making thread safe.
       fc_dlog( logger, "expire_txns ${n}us", ("n", time_point::now() - now) );
+<<<<<<< HEAD
 >>>>>>> Move more of incoming transaction processing to thread pool
+=======
+
+      start_expire_timer();
+>>>>>>> Break expire into two steps
    }
 
    void net_plugin_impl::connection_monitor(std::weak_ptr<connection> from_connection) {
