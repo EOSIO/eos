@@ -24,7 +24,7 @@ from enum import Enum
 class PFSetupPolicy(Enum):
     NONE = 0
     PREACTIVATE_FEATURE_ONLY = 1
-    FULL = 2
+    FULL = 2 # This will only happen if the cluster is bootstrapped (i.e. dontBootstrap == False)
     def hasPreactivateFeature(self):
         return self == PFSetupPolicy.PREACTIVATE_FEATURE_ONLY or \
                 self == PFSetupPolicy.FULL
@@ -110,7 +110,7 @@ class Cluster(object):
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", p2pPlugin="net", delay=1, onlyBios=False, dontBootstrap=False,
                totalProducers=None, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None,
-               pFSetupPolicy:PFSetupPolicy = PFSetupPolicy.FULL):
+               pfSetupPolicy:PFSetupPolicy = PFSetupPolicy.FULL):
         """Launch cluster.
         pnodes: producer nodes count
         totalNodes: producer + non-producer nodes count
@@ -126,7 +126,7 @@ class Cluster(object):
           A value of false uses manual bootstrapping in this script, which does not do things like stake votes for producers.
         specificExtraNodeosArgs: dictionary of arguments to pass to a specific node (via --specific-num and
                                  --specific-nodeos flags on launcher), example: { "5" : "--plugin eosio::test_control_api_plugin" }
-        activatePreactivateFeature: When true, this will activate PREACTIVATE_FEATURE protocol feature immediately after the bios node is starting
+        pfSetupPolicy: determine the protocol feature setup policy (none, preactivate_feature_only, or full)
         """
         assert(isinstance(topo, str))
 
@@ -173,7 +173,7 @@ class Cluster(object):
             nodeosArgs += extraNodeosArgs
         if Utils.Debug:
             nodeosArgs += " --contracts-console"
-        if pFSetupPolicy.hasPreactivateFeature():
+        if pfSetupPolicy.hasPreactivateFeature():
             nodeosArgs += " --plugin eosio::producer_api_plugin"
 
         if nodeosArgs:
@@ -348,7 +348,7 @@ class Cluster(object):
             Utils.Print("ERROR: Cluster doesn't seem to be in sync. Some nodes missing block 1")
             return False
 
-        if pFSetupPolicy.hasPreactivateFeature():
+        if pfSetupPolicy.hasPreactivateFeature():
             Utils.Print("Activate Preactivate Feature.")
             biosNode.activatePreactivateFeature()
 
@@ -358,10 +358,12 @@ class Cluster(object):
 
         Utils.Print("Bootstrap cluster.")
         if onlyBios or not useBiosBootFile:
-            self.biosNode=self.bootstrap(biosNode, totalNodes, prodCount, totalProducers, pFSetupPolicy, onlyBios)
+            Utils.Print("NON BIOS BOOTSTRAP")
+            self.biosNode=self.bootstrap(biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios)
         else:
+            Utils.Print(" BIOS BOOTSTRAP")
             self.useBiosBootFile=True
-            self.biosNode=self.bios_bootstrap(biosNode, totalNodes, pFSetupPolicy)
+            self.biosNode=self.bios_bootstrap(biosNode, totalNodes, pfSetupPolicy)
 
         if self.biosNode is None:
             Utils.Print("ERROR: Bootstrap failed.")
@@ -857,11 +859,18 @@ class Cluster(object):
 
         cmd="bash bios_boot.sh"
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        env = {
+            "BIOS_CONTRACT_PATH": "unittests/contracts/old_versions/v1.6.0-rc3/eosio.bios",
+            "FEATURE_DIGESTS": ""
+        }
         if pfSetupPolicy.hasPreactivateFeature():
-            biosContractPath = "unittests/contracts/eosio.bios"
-        else:
-            biosContractPath = "unittests/contracts/old_versions/v1.6.0-rc3/eosio.bios"
-        if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull, env={"BIOS_CONTRACT_PATH":biosContractPath}):
+            env["BIOS_CONTRACT_PATH"] = "unittests/contracts/eosio.bios"
+
+        if pfSetupPolicy == PFSetupPolicy.FULL:
+            allBuiltinProtocolFeatureDigests = biosNode.getAllBuiltinFeatureDigestsToPreactivate()
+            env["FEATURE_DIGESTS"] = " ".join(allBuiltinProtocolFeatureDigests)
+
+        if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull, env=env):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
             return None
 

@@ -9,6 +9,7 @@ import json
 import signal
 import urllib.request
 import urllib.parse
+import tempfile
 
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
@@ -1434,6 +1435,12 @@ class Node(object):
         res = self.sendRpcApi("v1/producer/get_supported_protocol_features", param)
         return res
 
+    def waitForHeadToAdvance(self):
+        currentHead = self.getHeadBlockNum()
+        def isHeadAdvancing():
+            return self.getHeadBlockNum() > currentHead
+        Utils.waitForBool(isHeadAdvancing, 5)
+
     def activatePreactivateFeature(self):
         def getPreactivateFeatureDigest(supportedProtocolFeatures):
             for protocolFeature in supportedProtocolFeatures:
@@ -1447,10 +1454,7 @@ class Node(object):
         self.scheduleProtocolFeatureActivations([preactivateFeatureDigest])
 
         # Wait for the next block to be produced so the scheduled protocol feature is activated
-        currentHead = self.getHeadBlockNum()
-        def isHeadAdvancing():
-            return self.getHeadBlockNum() > currentHead
-        Utils.waitForBool(isHeadAdvancing, 5)
+        self.waitForHeadToAdvance()
 
     def getAllBuiltinFeatureDigestsToPreactivate(self):
         allBuiltinProtocolFeatureDigests = []
@@ -1464,14 +1468,13 @@ class Node(object):
         return allBuiltinProtocolFeatureDigests
 
     def preactivateAllBuiltinProtocolFeature(self):
-        contract="eosio"
-        action="preactivate"
         allBuiltinProtocolFeatureDigests = self.getAllBuiltinFeatureDigestsToPreactivate()
         for digest in allBuiltinProtocolFeatureDigests:
-            Utils.Print("push preactivate action with digest" % (digest))
-            data='{"feature_digest":{}}'.format(digest)
+            Utils.Print("push preactivate action with digest {}".format(digest))
+            data="{{\"feature_digest\":{}}}".format(digest)
             opts="--permission eosio@active"
-            trans=self.pushMessage(contract, action, data, opts)
+            trans=self.pushMessage("eosio", "preactivate", data, opts)
             if trans is None or not trans[0]:
                 Utils.Print("ERROR: Failed to preactive digest {}".format(digest))
                 return None
+        self.waitForHeadToAdvance()
