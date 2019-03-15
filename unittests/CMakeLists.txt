@@ -53,7 +53,7 @@ target_include_directories( unit_test PUBLIC
                             ${CMAKE_CURRENT_BINARY_DIR}/include )
 
 ### MARK TEST SUITES FOR EXECUTION ###
-add_test(abi_unit_test_wavm COMMAND unit_test --run_test=abi_tests --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
+add_test(NAME abi_unit_test_wavm COMMAND unit_test --run_test=abi_tests --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
 set(ctest_tests "'${ctest_tests}' -j8") # surround test list string in apostrophies
 
 ### COVERAGE TESTING ###
