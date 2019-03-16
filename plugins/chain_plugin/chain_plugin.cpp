@@ -366,10 +366,10 @@ optional<builtin_protocol_feature> read_builtin_protocol_feature( const fc::path
    return {};
 }
 
-protocol_feature_manager initialize_protocol_features( const fc::path& p, bool populate_missing_builtins = true ) {
+protocol_feature_set initialize_protocol_features( const fc::path& p, bool populate_missing_builtins = true ) {
    using boost::filesystem::directory_iterator;
 
-   protocol_feature_manager pfm;
+   protocol_feature_set pfs;
 
    bool directory_exists = true;
 
@@ -425,7 +425,7 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
    map<builtin_protocol_feature_t, fc::path>  found_builtin_protocol_features;
    map<digest_type, std::pair<builtin_protocol_feature, bool> > builtin_protocol_features_to_add;
    // The bool in the pair is set to true if the builtin protocol feature has already been visited to add
-   set<builtin_protocol_feature_t> visited_builtins;
+   map< builtin_protocol_feature_t, optional<digest_type> > visited_builtins;
 
    // Read all builtin protocol features
    if( directory_exists ) {
@@ -458,12 +458,12 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
    // Add builtin protocol features to the protocol feature manager in the right order (to satisfy dependencies)
    using itr_type = map<digest_type, std::pair<builtin_protocol_feature, bool>>::iterator;
    std::function<void(const itr_type&)> add_protocol_feature =
-   [&pfm, &builtin_protocol_features_to_add, &visited_builtins, &log_recognized_protocol_feature, &add_protocol_feature]( const itr_type& itr ) -> void {
+   [&pfs, &builtin_protocol_features_to_add, &visited_builtins, &log_recognized_protocol_feature, &add_protocol_feature]( const itr_type& itr ) -> void {
       if( itr->second.second ) {
          return;
       } else {
          itr->second.second = true;
-         visited_builtins.insert( itr->second.first.get_codename() );
+         visited_builtins.emplace( itr->second.first.get_codename(), itr->first );
       }
 
       for( const auto& d : itr->second.first.dependencies ) {
@@ -473,7 +473,7 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
          }
       }
 
-      pfm.add_feature( itr->second.first );
+      pfs.add_feature( itr->second.first );
 
       log_recognized_protocol_feature( itr->second.first, itr->first );
    };
@@ -509,28 +509,34 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
       );
    };
 
-   std::function<void(builtin_protocol_feature_t)> add_missing_builtins =
-   [&pfm, &visited_builtins, &output_protocol_feature, &log_recognized_protocol_feature, &add_missing_builtins, populate_missing_builtins]
-   ( builtin_protocol_feature_t codename ) -> void {
-      auto res = visited_builtins.emplace( codename );
-      if( !res.second ) return;
+   std::function<digest_type(builtin_protocol_feature_t)> add_missing_builtins =
+   [&pfs, &visited_builtins, &output_protocol_feature, &log_recognized_protocol_feature, &add_missing_builtins, populate_missing_builtins]
+   ( builtin_protocol_feature_t codename ) -> digest_type {
+      auto res = visited_builtins.emplace( codename, optional<digest_type>() );
+      if( !res.second ) {
+         EOS_ASSERT( res.first->second, protocol_feature_exception,
+                     "invariant failure: cycle found in builtin protocol feature dependencies"
+         );
+         return *res.first->second;
+      }
 
-      auto f = pfm.make_default_builtin_protocol_feature( codename,
+      auto f = pfs.make_default_builtin_protocol_feature( codename,
       [&add_missing_builtins]( builtin_protocol_feature_t d ) {
-         add_missing_builtins( d );
+         return add_missing_builtins( d );
       } );
 
       if( !populate_missing_builtins )
          f.subjective_restrictions.enabled = false;
 
-      pfm.add_feature( f );
+      const auto& pf = pfs.add_feature( f );
+      res.first->second = pf.feature_digest;
 
-      const auto feature_digest = f.digest();
-
-      log_recognized_protocol_feature( f, feature_digest );
+      log_recognized_protocol_feature( f, pf.feature_digest );
 
       if( populate_missing_builtins )
-         output_protocol_feature( f, feature_digest );
+         output_protocol_feature( f, pf.feature_digest );
+
+      return pf.feature_digest;
    };
 
    for( const auto& p : builtin_protocol_feature_codenames ) {
@@ -540,7 +546,7 @@ protocol_feature_manager initialize_protocol_features( const fc::path& p, bool p
       add_missing_builtins( p.first );
    }
 
-   return pfm;
+   return pfs;
 }
 
 void chain_plugin::plugin_initialize(const variables_map& options) {
@@ -593,7 +599,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             my->blocks_dir = bld;
       }
 
-      protocol_feature_manager pfm;
+      protocol_feature_set pfs;
       {
          fc::path protocol_features_dir;
          auto pfd = options.at( "protocol-features-dir" ).as<bfs::path>();
@@ -602,7 +608,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          else
             protocol_features_dir = pfd;
 
-         pfm = initialize_protocol_features( protocol_features_dir );
+         pfs = initialize_protocol_features( protocol_features_dir );
       }
 
       if( options.count("checkpoint") ) {
@@ -880,7 +886,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->db_hugepage_paths = options.at("database-hugepage-path").as<std::vector<std::string>>();
 #endif
 
-      my->chain.emplace( *my->chain_config, std::move(pfm) );
+      my->chain.emplace( *my->chain_config, std::move(pfs) );
       my->chain_id.emplace( my->chain->get_chain_id());
 
       // set up method providers
@@ -1284,6 +1290,77 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       db.fork_db_pending_head_block_num(),
       db.fork_db_pending_head_block_id()
    };
+}
+
+read_only::get_activated_protocol_features_results
+read_only::get_activated_protocol_features( const read_only::get_activated_protocol_features_params& params )const {
+   read_only::get_activated_protocol_features_results result;
+   const auto& pfm = db.get_protocol_feature_manager();
+
+   uint32_t lower_bound_value = std::numeric_limits<uint32_t>::lowest();
+   uint32_t upper_bound_value = std::numeric_limits<uint32_t>::max();
+
+   if( params.lower_bound ) {
+      lower_bound_value = *params.lower_bound;
+   }
+
+   if( params.upper_bound ) {
+      upper_bound_value = *params.upper_bound;
+   }
+
+   if( upper_bound_value < lower_bound_value )
+      return result;
+
+   auto walk_range = [&]( auto itr, auto end_itr, auto&& convert_iterator ) {
+      fc::mutable_variant_object mvo;
+      mvo( "activation_ordinal", 0 );
+      mvo( "activation_block_num", 0 );
+
+      auto& activation_ordinal_value   = mvo["activation_ordinal"];
+      auto& activation_block_num_value = mvo["activation_block_num"];
+
+      auto cur_time = fc::time_point::now();
+      auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
+      for( unsigned int count = 0;
+           cur_time <= end_time && count < params.limit && itr != end_itr;
+           ++itr, cur_time = fc::time_point::now() )
+      {
+         const auto& conv_itr = convert_iterator( itr );
+         activation_ordinal_value   = conv_itr.activation_ordinal();
+         activation_block_num_value = conv_itr.activation_block_num();
+
+         result.activated_protocol_features.emplace_back( conv_itr->to_variant( false, &mvo ) );
+         ++count;
+      }
+      if( itr != end_itr ) {
+         result.more = convert_iterator( itr ).activation_ordinal() ;
+      }
+   };
+
+   auto get_next_if_not_end = [&pfm]( auto&& itr ) {
+      if( itr == pfm.cend() ) return itr;
+
+      ++itr;
+      return itr;
+   };
+
+   wlog( "lower_bound_value = ${value}", ("value", lower_bound_value) );
+   wlog( "upper_bound_value = ${value}", ("value", upper_bound_value) );
+
+   auto lower = ( params.search_by_block_num ? pfm.lower_bound( lower_bound_value )
+                                             : pfm.at_activation_ordinal( lower_bound_value ) );
+
+   auto upper = ( params.search_by_block_num ? pfm.upper_bound( lower_bound_value )
+                                             : get_next_if_not_end( pfm.at_activation_ordinal( upper_bound_value ) ) );
+
+   if( params.reverse ) {
+      walk_range( std::make_reverse_iterator(upper), std::make_reverse_iterator(lower),
+                  []( auto&& ritr ) { return --(ritr.base()); } );
+   } else {
+      walk_range( lower, upper, []( auto&& itr ) { return itr; } );
+   }
+
+   return result;
 }
 
 uint64_t read_only::get_table_index_name(const read_only::get_table_rows_params& p, bool& primary) {

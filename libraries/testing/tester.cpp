@@ -79,28 +79,37 @@ namespace eosio { namespace testing {
       memcpy( data.data(), obj.value.data(), obj.value.size() );
    }
 
-   protocol_feature_manager make_protocol_feature_manager() {
-      protocol_feature_manager pfm;
+   protocol_feature_set make_protocol_feature_set() {
+      protocol_feature_set pfs;
 
-      set<builtin_protocol_feature_t> visited_builtins;
+      map< builtin_protocol_feature_t, optional<digest_type> > visited_builtins;
 
-      std::function<void(builtin_protocol_feature_t)> add_builtins =
-      [&pfm, &visited_builtins, &add_builtins]( builtin_protocol_feature_t codename ) -> void {
-         auto res = visited_builtins.emplace( codename );
-         if( !res.second ) return;
+      std::function<digest_type(builtin_protocol_feature_t)> add_builtins =
+      [&pfs, &visited_builtins, &add_builtins]( builtin_protocol_feature_t codename ) -> digest_type {
+         auto res = visited_builtins.emplace( codename, optional<digest_type>() );
+         if( !res.second ) {
+            EOS_ASSERT( res.first->second, protocol_feature_exception,
+                        "invariant failure: cycle found in builtin protocol feature dependencies"
+            );
+            return *res.first->second;
+         }
 
-         auto f = pfm.make_default_builtin_protocol_feature( codename, [&add_builtins]( builtin_protocol_feature_t d ) {
-            add_builtins( d );
+         auto f = pfs.make_default_builtin_protocol_feature( codename,
+         [&add_builtins]( builtin_protocol_feature_t d ) {
+            return add_builtins( d );
          } );
 
-         pfm.add_feature( f );
+         const auto& pf = pfs.add_feature( f );
+         res.first->second = pf.feature_digest;
+
+         return pf.feature_digest;
       };
 
       for( const auto& p : builtin_protocol_feature_codenames ) {
          add_builtins( p.first );
       }
 
-      return pfm;
+      return pfs;
    }
 
    bool base_tester::is_same_chain( base_tester& other ) {
@@ -136,9 +145,9 @@ namespace eosio { namespace testing {
       open(snapshot);
    }
 
-   void base_tester::init(controller::config config, protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot) {
+   void base_tester::init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot) {
       cfg = config;
-      open(std::move(pfm), snapshot);
+      open(std::move(pfs), snapshot);
    }
 
    void base_tester::execute_setup_policy(const setup_policy policy) {
@@ -186,11 +195,11 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::open( const snapshot_reader_ptr& snapshot ) {
-      open( make_protocol_feature_manager(), snapshot );
+      open( make_protocol_feature_set(), snapshot );
    }
 
-   void base_tester::open( protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot ) {
-      control.reset( new controller(cfg, std::move(pfm)) );
+   void base_tester::open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot ) {
+      control.reset( new controller(cfg, std::move(pfs)) );
       control->add_indices();
       control->startup( []() { return false; }, snapshot);
       chain_transactions.clear();
@@ -962,6 +971,7 @@ namespace eosio { namespace testing {
 
    void base_tester::preactivate_all_builtin_protocol_features() {
       const auto& pfm = control->get_protocol_feature_manager();
+      const auto& pfs = pfm.get_protocol_feature_set();
       const auto current_block_num  =  control->head_block_num() + (control->is_building_block() ? 1 : 0);
       const auto current_block_time = ( control->is_building_block() ? control->pending_block_time()
                                         : control->head_block_time() + fc::milliseconds(config::block_interval_ms) );
@@ -970,9 +980,9 @@ namespace eosio { namespace testing {
       vector<digest_type> preactivations;
 
       std::function<void(const digest_type&)> add_digests =
-      [&pfm, current_block_num, current_block_time, &preactivation_set, &preactivations, &add_digests]
+      [&pfm, &pfs, current_block_num, current_block_time, &preactivation_set, &preactivations, &add_digests]
       ( const digest_type& feature_digest ) {
-         const auto& pf = pfm.get_protocol_feature( feature_digest );
+         const auto& pf = pfs.get_protocol_feature( feature_digest );
          FC_ASSERT( pf.builtin_feature, "called add_digests on a non-builtin protocol feature" );
          if( !pf.enabled || pf.earliest_allowed_activation_time > current_block_time
              || pfm.is_builtin_activated( *pf.builtin_feature, current_block_num ) ) return;
@@ -988,7 +998,7 @@ namespace eosio { namespace testing {
       };
 
       for( const auto& f : builtin_protocol_feature_codenames ) {
-         auto digest = pfm.get_builtin_digest( f.first );
+         auto digest = pfs.get_builtin_digest( f.first );
          if( !digest ) continue;
          add_digests( *digest );
       }

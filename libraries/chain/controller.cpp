@@ -35,6 +35,7 @@ using controller_index_set = index_set<
    account_index,
    account_sequence_index,
    global_property_multi_index,
+   protocol_state_multi_index,
    dynamic_global_property_multi_index,
    block_summary_multi_index,
    transaction_multi_index,
@@ -275,7 +276,7 @@ struct controller_impl {
       apply_handlers[receiver][make_pair(contract,action)] = v;
    }
 
-   controller_impl( const controller::config& cfg, controller& s, protocol_feature_manager&& pfm  )
+   controller_impl( const controller::config& cfg, controller& s, protocol_feature_set&& pfs  )
    :self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
@@ -288,7 +289,7 @@ struct controller_impl {
     wasmif( cfg.wasm_runtime ),
     resource_limits( db ),
     authorization( s, db ),
-    protocol_features( std::move(pfm) ),
+    protocol_features( std::move(pfs) ),
     conf( cfg ),
     chain_id( cfg.genesis.compute_chain_id() ),
     read_mode( cfg.read_mode ),
@@ -568,6 +569,8 @@ struct controller_impl {
       while( db.revision() > head->block_num ) {
          db.undo();
       }
+
+      protocol_features.init( db );
 
       const auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
       auto last_block_num = lib_num;
@@ -876,10 +879,14 @@ struct controller_impl {
       conf.genesis.initial_configuration.validate();
       db.create<global_property_object>([&](auto& gpo ){
          gpo.configuration = conf.genesis.initial_configuration;
+      });
+
+      db.create<protocol_state_object>([&](auto& pso ){
          for( const auto& i : genesis_intrinsics ) {
-            add_intrinsic_to_whitelist( gpo.whitelisted_intrinsics, i );
+            add_intrinsic_to_whitelist( pso.whitelisted_intrinsics, i );
          }
       });
+
       db.create<dynamic_global_property_object>([](auto&){});
 
       authorization.initialize_database();
@@ -1336,23 +1343,24 @@ struct controller_impl {
       // modify state of speculative block only if we are in speculative read mode (otherwise we need clean state for head or read-only modes)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete )
       {
-         const auto& gpo = db.get<global_property_object>();
+         const auto& pso = db.get<protocol_state_object>();
 
-         auto num_preactivated_protocol_features = gpo.preactivated_protocol_features.size();
+         auto num_preactivated_protocol_features = pso.preactivated_protocol_features.size();
          bool handled_all_preactivated_features = (num_preactivated_protocol_features == 0);
 
          if( new_protocol_feature_activations.size() > 0 ) {
             flat_map<digest_type, bool> activated_protocol_features;
             activated_protocol_features.reserve( std::max( num_preactivated_protocol_features,
                                                            new_protocol_feature_activations.size() ) );
-            for( const auto& feature_digest : gpo.preactivated_protocol_features ) {
+            for( const auto& feature_digest : pso.preactivated_protocol_features ) {
                activated_protocol_features.emplace( feature_digest, false );
             }
 
             size_t num_preactivated_features_that_have_activated = 0;
 
+            const auto& pfs = protocol_features.get_protocol_feature_set();
             for( const auto& feature_digest : new_protocol_feature_activations ) {
-               const auto& f = protocol_features.get_protocol_feature( feature_digest );
+               const auto& f = pfs.get_protocol_feature( feature_digest );
 
                auto res = activated_protocol_features.emplace( feature_digest, true );
                if( !res.second ) {
@@ -1382,6 +1390,20 @@ struct controller_impl {
                      "There are pre-activated protocol features that were not activated at the start of this block"
          );
 
+         if( new_protocol_feature_activations.size() > 0 ) {
+            db.modify( pso, [&]( auto& ps ) {
+               ps.preactivated_protocol_features.clear();
+
+               ps.activated_protocol_features.reserve( ps.activated_protocol_features.size()
+                                                         + new_protocol_feature_activations.size() );
+               for( const auto& feature_digest : new_protocol_feature_activations ) {
+                  ps.activated_protocol_features.emplace_back( feature_digest, pbhs.block_num );
+               }
+            });
+         }
+
+         const auto& gpo = db.get<global_property_object>();
+
          if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
              ( *gpo.proposed_schedule_block_num <= pbhs.dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
              pbhs.prev_pending_schedule.schedule.producers.size() == 0 // ... and there was room for a new pending schedule prior to any possible promotion
@@ -1402,13 +1424,6 @@ struct controller_impl {
             db.modify( gpo, [&]( auto& gp ) {
                gp.proposed_schedule_block_num = optional<block_num_type>();
                gp.proposed_schedule.clear();
-               if( gp.preactivated_protocol_features.size() > 0 ) {
-                  gp.preactivated_protocol_features.clear();
-               }
-            });
-         } else if( gpo.preactivated_protocol_features.size() > 0 ) {
-            db.modify( gpo, [&]( auto& gp ) {
-               gp.preactivated_protocol_features.clear();
             });
          }
 
@@ -1553,25 +1568,27 @@ struct controller_impl {
                                  const flat_set<digest_type>& currently_activated_protocol_features,
                                  const vector<digest_type>& new_protocol_features )
    {
+      const auto& pfs = protocol_features.get_protocol_feature_set();
+
       for( auto itr = new_protocol_features.begin(); itr != new_protocol_features.end(); ++itr ) {
          const auto& f = *itr;
 
-         auto status = protocol_features.is_recognized( f, timestamp );
+         auto status = pfs.is_recognized( f, timestamp );
          switch( status ) {
-            case protocol_feature_manager::recognized_t::unrecognized:
+            case protocol_feature_set::recognized_t::unrecognized:
                EOS_THROW( protocol_feature_exception,
                           "protocol feature with digest '${digest}' is unrecognized", ("digest", f) );
             break;
-            case protocol_feature_manager::recognized_t::disabled:
+            case protocol_feature_set::recognized_t::disabled:
                EOS_THROW( protocol_feature_exception,
                           "protocol feature with digest '${digest}' is disabled", ("digest", f) );
             break;
-            case protocol_feature_manager::recognized_t::too_early:
+            case protocol_feature_set::recognized_t::too_early:
                EOS_THROW( protocol_feature_exception,
                           "${timestamp} is too early for the earliest allowed activation time of the protocol feature with digest '${digest}'", ("digest", f)("timestamp", timestamp) );
             break;
-            case protocol_feature_manager::recognized_t::ready_if_preactivated:
-            case protocol_feature_manager::recognized_t::ready:
+            case protocol_feature_set::recognized_t::ready_if_preactivated:
+            case protocol_feature_set::recognized_t::ready:
             break;
             default:
                EOS_THROW( protocol_feature_exception, "unexpected recognized_t status" );
@@ -1593,7 +1610,7 @@ struct controller_impl {
             return (std::find( new_protocol_features.begin(), itr, f ) != itr);
          };
 
-         EOS_ASSERT( protocol_features.validate_dependencies( f, dependency_checker ), protocol_feature_exception,
+         EOS_ASSERT( pfs.validate_dependencies( f, dependency_checker ), protocol_feature_exception,
                      "not all dependencies of protocol feature with digest '${digest}' have been activated",
                      ("digest", f)
          );
@@ -2140,12 +2157,12 @@ const protocol_feature_manager& controller::get_protocol_feature_manager()const
 }
 
 controller::controller( const controller::config& cfg )
-:my( new controller_impl( cfg, *this, protocol_feature_manager{} ) )
+:my( new controller_impl( cfg, *this, protocol_feature_set{} ) )
 {
 }
 
-controller::controller( const config& cfg, protocol_feature_manager&& pfm )
-:my( new controller_impl( cfg, *this, std::move(pfm) ) )
+controller::controller( const config& cfg, protocol_feature_set&& pfs )
+:my( new controller_impl( cfg, *this, std::move(pfs) ) )
 {
 }
 
@@ -2186,10 +2203,12 @@ chainbase::database& controller::mutable_db()const { return my->db; }
 const fork_database& controller::fork_db()const { return my->fork_db; }
 
 void controller::preactivate_feature( const digest_type& feature_digest ) {
+   const auto& pfs = my->protocol_features.get_protocol_feature_set();
    auto cur_time = pending_block_time();
-   auto status = my->protocol_features.is_recognized( feature_digest, cur_time );
+
+   auto status = pfs.is_recognized( feature_digest, cur_time );
    switch( status ) {
-      case protocol_feature_manager::recognized_t::unrecognized:
+      case protocol_feature_set::recognized_t::unrecognized:
          if( is_producing_block() ) {
             EOS_THROW( subjective_block_production_exception,
                        "protocol feature with digest '${digest}' is unrecognized", ("digest", feature_digest) );
@@ -2198,7 +2217,7 @@ void controller::preactivate_feature( const digest_type& feature_digest ) {
                        "protocol feature with digest '${digest}' is unrecognized", ("digest", feature_digest) );
          }
       break;
-      case protocol_feature_manager::recognized_t::disabled:
+      case protocol_feature_set::recognized_t::disabled:
          if( is_producing_block() ) {
             EOS_THROW( subjective_block_production_exception,
                        "protocol feature with digest '${digest}' is disabled", ("digest", feature_digest) );
@@ -2207,7 +2226,7 @@ void controller::preactivate_feature( const digest_type& feature_digest ) {
                        "protocol feature with digest '${digest}' is disabled", ("digest", feature_digest) );
          }
       break;
-      case protocol_feature_manager::recognized_t::too_early:
+      case protocol_feature_set::recognized_t::too_early:
          if( is_producing_block() ) {
             EOS_THROW( subjective_block_production_exception,
                        "${timestamp} is too early for the earliest allowed activation time of the protocol feature with digest '${digest}'", ("digest", feature_digest)("timestamp", cur_time) );
@@ -2216,8 +2235,8 @@ void controller::preactivate_feature( const digest_type& feature_digest ) {
                        "${timestamp} is too early for the earliest allowed activation time of the protocol feature with digest '${digest}'", ("digest", feature_digest)("timestamp", cur_time) );
          }
       break;
-      case protocol_feature_manager::recognized_t::ready_if_preactivated:
-      case protocol_feature_manager::recognized_t::ready:
+      case protocol_feature_set::recognized_t::ready_if_preactivated:
+      case protocol_feature_set::recognized_t::ready:
       break;
       default:
          if( is_producing_block() ) {
@@ -2255,12 +2274,12 @@ void controller::preactivate_feature( const digest_type& feature_digest ) {
                ("digest", feature_digest)
    );
 
-   const auto& gpo = my->db.get<global_property_object>();
+   const auto& pso = my->db.get<protocol_state_object>();
 
-   EOS_ASSERT( std::find( gpo.preactivated_protocol_features.begin(),
-                          gpo.preactivated_protocol_features.end(),
+   EOS_ASSERT( std::find( pso.preactivated_protocol_features.begin(),
+                          pso.preactivated_protocol_features.end(),
                           feature_digest
-               ) == gpo.preactivated_protocol_features.end(),
+               ) == pso.preactivated_protocol_features.end(),
                protocol_feature_exception,
                "protocol feature with digest '${digest}' is already pre-activated",
                ("digest", feature_digest)
@@ -2270,30 +2289,30 @@ void controller::preactivate_feature( const digest_type& feature_digest ) {
    {
       if( is_protocol_feature_activated( d ) ) return true;
 
-      return ( std::find( gpo.preactivated_protocol_features.begin(),
-                          gpo.preactivated_protocol_features.end(),
-                          d ) != gpo.preactivated_protocol_features.end() );
+      return ( std::find( pso.preactivated_protocol_features.begin(),
+                          pso.preactivated_protocol_features.end(),
+                          d ) != pso.preactivated_protocol_features.end() );
    };
 
-   EOS_ASSERT( my->protocol_features.validate_dependencies( feature_digest, dependency_checker ),
+   EOS_ASSERT( pfs.validate_dependencies( feature_digest, dependency_checker ),
                protocol_feature_exception,
                "not all dependencies of protocol feature with digest '${digest}' have been activated or pre-activated",
                ("digest", feature_digest)
    );
 
-   my->db.modify( gpo, [&]( auto& gp ) {
-      gp.preactivated_protocol_features.push_back( feature_digest );
+   my->db.modify( pso, [&]( auto& ps ) {
+      ps.preactivated_protocol_features.push_back( feature_digest );
    } );
 }
 
 vector<digest_type> controller::get_preactivated_protocol_features()const {
-   const auto& gpo = my->db.get<global_property_object>();
+   const auto& pso = my->db.get<protocol_state_object>();
 
-   if( gpo.preactivated_protocol_features.size() == 0 ) return {};
+   if( pso.preactivated_protocol_features.size() == 0 ) return {};
 
    vector<digest_type> preactivated_protocol_features;
 
-   for( const auto& f : gpo.preactivated_protocol_features ) {
+   for( const auto& f : pso.preactivated_protocol_features ) {
       preactivated_protocol_features.emplace_back( f );
    }
 
@@ -2314,9 +2333,9 @@ void controller::start_block( block_timestamp_type when, uint16_t confirm_block_
 
    vector<digest_type> new_protocol_feature_activations;
 
-   const auto& gpo = my->db.get<global_property_object>();
-   if( gpo.preactivated_protocol_features.size() > 0 ) {
-      for( const auto& f : gpo.preactivated_protocol_features ) {
+   const auto& pso = my->db.get<protocol_state_object>();
+   if( pso.preactivated_protocol_features.size() > 0 ) {
+      for( const auto& f : pso.preactivated_protocol_features ) {
          new_protocol_feature_activations.emplace_back( f );
       }
    }
@@ -2923,9 +2942,9 @@ const flat_set<account_name> &controller::get_resource_greylist() const {
 
 template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::preactivate_feature>() {
-   db.modify( db.get<global_property_object>(), [&]( auto& gp ) {
-      add_intrinsic_to_whitelist( gp.whitelisted_intrinsics, "preactivate_feature" );
-      add_intrinsic_to_whitelist( gp.whitelisted_intrinsics, "is_feature_activated" );
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "preactivate_feature" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "is_feature_activated" );
    } );
 }
 
