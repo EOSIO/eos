@@ -116,6 +116,9 @@ FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
     locale
     iostreams)
 
+# Some new stdlibc++s will #error on <experimental/string_view>
+add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
+
 if( WIN32 )
 
     message( STATUS "Configuring EOSIO on WIN32")
