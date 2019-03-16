@@ -75,6 +75,34 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE( activate_and_restart ) try {
+   tester c( setup_policy::none );
+   const auto& pfm = c.control->get_protocol_feature_manager();
+
+   auto pfs = pfm.get_protocol_feature_set(); // make copy of protocol feature set
+
+   auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::preactivate_feature );
+   BOOST_REQUIRE( d );
+
+   BOOST_CHECK( !c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
+
+   // Activate PREACTIVATE_FEATURE.
+   c.schedule_protocol_features_wo_preactivation({ *d });
+   c.produce_blocks(2);
+
+   auto head_block_num = c.control->head_block_num();
+
+   BOOST_CHECK( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
+
+   c.close();
+   c.open( std::move( pfs ), nullptr );
+
+   BOOST_CHECK_EQUAL( head_block_num, c.control->head_block_num() );
+
+   BOOST_CHECK( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
+
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_CASE( double_preactivation ) try {
    tester c( setup_policy::preactivate_feature_and_new_bios );
    const auto& pfm = c.control->get_protocol_feature_manager();

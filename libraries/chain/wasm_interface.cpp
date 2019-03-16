@@ -46,9 +46,9 @@ namespace eosio { namespace chain {
       wasm_validations::wasm_binary_validation validator(control, module);
       validator.validate();
 
-      const auto& gpo = control.db().get<global_property_object>();
+      const auto& pso = control.db().get<protocol_state_object>();
 
-      root_resolver resolver( gpo.whitelisted_intrinsics );
+      root_resolver resolver( pso.whitelisted_intrinsics );
       LinkResult link_result = linkModule(module, resolver);
 
       //there are a couple opportunties for improvement here--

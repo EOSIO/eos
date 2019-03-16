@@ -986,16 +986,15 @@ void producer_plugin::schedule_protocol_feature_activations( const scheduled_pro
 fc::variants producer_plugin::get_supported_protocol_features( const get_supported_protocol_features_params& params ) const {
    fc::variants results;
    const chain::controller& chain = my->chain_plug->chain();
-   const auto& pfm = chain.get_protocol_feature_manager();
-   const auto& pfs = pfm.get_protocol_feature_set();
+   const auto& pfs = chain.get_protocol_feature_manager().get_protocol_feature_set();
    const auto next_block_time = chain.head_block_time() + fc::milliseconds(config::block_interval_ms);
 
    flat_map<digest_type, bool>  visited_protocol_features;
    visited_protocol_features.reserve( pfs.size() );
 
-   std::function<bool(const protocol_feature_manager::protocol_feature&)> add_feature =
-   [&results, &pfm, &params, next_block_time, &visited_protocol_features, &add_feature]
-   ( const protocol_feature_manager::protocol_feature& pf ) -> bool {
+   std::function<bool(const protocol_feature&)> add_feature =
+   [&results, &pfs, &params, next_block_time, &visited_protocol_features, &add_feature]
+   ( const protocol_feature& pf ) -> bool {
       if( ( params.exclude_disabled || params.exclude_unactivatable ) && !pf.enabled ) return false;
       if( params.exclude_unactivatable && ( next_block_time < pf.earliest_allowed_activation_time  ) ) return false;
 
@@ -1004,7 +1003,7 @@ fc::variants producer_plugin::get_supported_protocol_features( const get_support
 
       const auto original_size = results.size();
       for( const auto& dependency : pf.dependencies ) {
-         if( !add_feature( pfm.get_protocol_feature( dependency ) ) ) {
+         if( !add_feature( pfs.get_protocol_feature( dependency ) ) ) {
             results.resize( original_size );
             return false;
          }

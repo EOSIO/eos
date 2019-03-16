@@ -75,7 +75,7 @@ namespace eosio { namespace testing {
 
    bool expect_assert_message(const fc::exception& ex, string expected);
 
-   protocol_feature_manager make_protocol_feature_manager();
+   protocol_feature_set make_protocol_feature_set();
 
    /**
     *  @class tester
@@ -94,11 +94,11 @@ namespace eosio { namespace testing {
 
          void              init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE);
          void              init(controller::config config, const snapshot_reader_ptr& snapshot = nullptr);
-         void              init(controller::config config, protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot = nullptr);
+         void              init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot = nullptr);
          void              execute_setup_policy(const setup_policy policy);
 
          void              close();
-         void              open( protocol_feature_manager&& pfm, const snapshot_reader_ptr& snapshot);
+         void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot);
          void              open( const snapshot_reader_ptr& snapshot);
          bool              is_same_chain( base_tester& other );
 
@@ -328,8 +328,8 @@ namespace eosio { namespace testing {
          init(config);
       }
 
-      tester(controller::config config, protocol_feature_manager&& pfm) {
-         init(config, std::move(pfm));
+      tester(controller::config config, protocol_feature_set&& pfs) {
+         init(config, std::move(pfs));
       }
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ )override {
@@ -394,7 +394,7 @@ namespace eosio { namespace testing {
 
          vcfg.trusted_producers = trusted_producers;
 
-         validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_manager());
+         validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set());
          validating_node->add_indices();
          validating_node->startup( []() { return false; } );
 
@@ -409,7 +409,7 @@ namespace eosio { namespace testing {
          vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
          vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
 
-         validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_manager());
+         validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set());
          validating_node->add_indices();
          validating_node->startup( []() { return false; } );
 
@@ -459,7 +459,7 @@ namespace eosio { namespace testing {
                hbh.producer == vn_hbh.producer;
 
         validating_node.reset();
-        validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_manager());
+        validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set());
         validating_node->add_indices();
         validating_node->startup( []() { return false; } );
 

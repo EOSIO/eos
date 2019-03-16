@@ -82,7 +82,6 @@ wcmd create --to-console -n ignition
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
 
-# Use old bios contract for now (switch to new after adding changes to activate PREACTIVATE_FEATURE)
 ecmd set contract eosio $bioscontractpath eosio.bios.wasm eosio.bios.abi
 
 # Preactivate all digests
