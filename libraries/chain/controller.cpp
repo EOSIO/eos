@@ -646,6 +646,9 @@ struct controller_impl {
       });
       db.create<dynamic_global_property_object>([](auto&){});
 
+       db.create<global_property2_object>([&](auto &gpo) {
+
+      });
       authorization.initialize_database();
       resource_limits.initialize_database();
 
