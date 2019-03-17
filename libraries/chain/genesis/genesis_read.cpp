@@ -1,5 +1,6 @@
 #include "custom_unpack.hpp"
 #include "golos_objects.hpp"
+#include "genesis_accounts.hpp"
 #include "genesis_container.hpp"
 #include <cyberway/genesis/genesis_read.hpp>
 #include <eosio/chain/config.hpp>
@@ -39,6 +40,7 @@ using namespace cyberway::chaindb;
 using mvo = mutable_variant_object;
 using std::string;
 using std::vector;
+using acc_idx = uint32_t;       // lookup index in _acc_map
 
 
 constexpr auto GBG = SY(3,GBG);
@@ -47,8 +49,8 @@ constexpr auto GESTS = SY(6,GESTS);
 constexpr auto posting_auth_name = "posting";
 constexpr auto golos_account_name = "golos";
 constexpr auto issuer_account_name = config::system_account_name;   // ?cyberfounder
-constexpr auto notify_account_name = config::gls_ctrl_account_name;
-constexpr auto posting_account_name = config::gls_post_account_name;
+constexpr auto notify_account_name = gls_ctrl_account_name;
+constexpr auto posting_account_name = gls_post_account_name;
 constexpr int64_t system_max_supply = 1'000'000'000ll * 10000; // 4 digits precision
 constexpr int64_t golos_max_supply = 1'000'000'000ll * 1000; // 3 digits precision
 
@@ -89,12 +91,18 @@ struct state_object_visitor {
 
     bool early_exit = false;
     golos::dynamic_global_property_object   gpo;
-    vector<golos::account_object>           accounts;
-    vector<golos::account_authority_object> auths;
+    fc::flat_map<acc_idx,golos::account_object> accounts;
+    vector<golos::account_authority_object>     auths;
+    vector<golos::witness_object>               witnesses;
+    fc::flat_map<acc_idx,vector<acc_idx>>       witness_votes;
+    fc::flat_map<golos::id_type,acc_idx>        acc_id2idx;     // witness_votes and some other tables store id of acc
+    golos::account_object acc_by_id(golos::id_type id) {
+        return accounts[acc_id2idx[id]];
+    }
 
-    fc::flat_map<uint32_t, asset> gbg;
-    fc::flat_map<uint32_t, asset> gls;
-    fc::flat_map<uint32_t, asset> gests;
+    fc::flat_map<acc_idx, asset> gbg;
+    fc::flat_map<acc_idx, asset> gls;
+    fc::flat_map<acc_idx, asset> gests;
     asset total_gests;
     fc::flat_map<balance_type, asset> gbg_by_type;
     fc::flat_map<balance_type, asset> gls_by_type;
@@ -110,11 +118,14 @@ struct state_object_visitor {
         auths.emplace_back(auth);
     }
 
+    // accounts and balances
     void operator()(const golos::account_object& acc) {
-        accounts.emplace_back(acc);
-        gls[acc.name.id] = acc.balance + acc.savings_balance;
-        gbg[acc.name.id] = acc.sbd_balance + acc.savings_sbd_balance;
-        gests[acc.name.id] = acc.vesting_shares;
+        auto idx = acc.name.id;
+        acc_id2idx[acc.id] = idx;
+        accounts[idx]   = acc;
+        gls[idx]        = acc.balance + acc.savings_balance;
+        gbg[idx]        = acc.sbd_balance + acc.savings_sbd_balance;
+        gests[idx]      = acc.vesting_shares;
         total_gests          += acc.vesting_shares;
         gls_by_type[account] += acc.balance;
         gbg_by_type[account] += acc.sbd_balance;
@@ -162,22 +173,60 @@ struct state_object_visitor {
         }
     };
 
+    // witnesses
+    void operator()(const golos::witness_object& w) {
+        witnesses.emplace_back(w);
+    }
+
+    void operator()(const golos::witness_vote_object& v) {
+        witness_votes[acc_id2idx[v.account]].emplace_back(witnesses[v.witness].owner.id);
+    }
+
+    void operator()(const golos::witness_schedule_object& s) {
+        // it's simpler to skip schedule
+    }
+
 };
 
 struct genesis_read::genesis_read_impl final {
     bfs::path _state_file;
     controller& _control;
-    time_point _genesis_ts;
+    genesis_state _conf;
+
+    chaindb_controller& db;
+    int db_updates;
+    authorization_manager& auth_mgr;
+    resource_limits_manager& reslim_mgr;
 
     vector<string> _accs_map;
     vector<string> _plnk_map;
 
     state_object_visitor _visitor;
 
-    genesis_read_impl(const bfs::path& genesis_file, controller& ctrl, time_point genesis_ts)
-    :   _state_file(genesis_file),
-        _control(ctrl),
-        _genesis_ts(genesis_ts) {
+    genesis_read_impl(const bfs::path& genesis_file, controller& ctrl, genesis_state conf)
+    :   _state_file(genesis_file)
+    ,   _control(ctrl)
+    ,   _conf(conf)
+    ,   db(const_cast<chaindb_controller&>(ctrl.chaindb()))
+    ,   auth_mgr(ctrl.get_mutable_authorization_manager())
+    ,   reslim_mgr(ctrl.get_mutable_resource_limits_manager()) {
+    }
+
+    void apply_db_changes(bool force = false) {
+        if (force || (++db_updates & 0xFF) == 0) {
+            db.apply_all_changes();
+            db.clear_cache();
+        }
+    }
+
+    void init_accounts() {
+        authority system_auth(_conf.initial_key);
+        create_account(config::token_account_name, system_auth, system_auth, authority());
+        create_account(gls_ctrl_account_name, system_auth, system_auth, authority());
+        create_account(gls_vest_account_name, system_auth, system_auth, authority());
+        create_account(gls_post_account_name, system_auth, system_auth, authority());
+
+        init_genesis_accounts(db);
     }
 
     void read_maps() {
@@ -198,7 +247,7 @@ struct genesis_read::genesis_read_impl final {
             std::cout << "count=" << len << "... ";
             while (im && len) {
                 string a;
-                std::getline(im, a, '\0' );
+                std::getline(im, a, '\0');
                 map.emplace_back(a);
                 len--;
             }
@@ -245,11 +294,25 @@ struct genesis_read::genesis_read_impl final {
         in.close();
     }
 
+    void create_account(account_name name, const authority& owner, const authority& active, const authority& posting) {
+        auto ts = _conf.initial_timestamp;
+        db.emplace<account_object>([&](auto& a) {
+            a.name = name;
+            a.creation_date = ts;   // TODO: do we need to import creation date from Golos?
+        });
+        db.emplace<account_sequence_object>([&](auto & a) {
+            a.name = name;
+        });
+        const auto& owner_perm  = auth_mgr.create_permission({}, name, config::owner_name, 0, owner, ts);
+        const auto& active_perm = auth_mgr.create_permission({}, name, config::active_name, owner_perm.id, active, ts);
+        if (posting != authority()) {
+            auth_mgr.create_permission({}, name, posting_auth_name, active_perm.id, posting, ts);
+        }
+        reslim_mgr.initialize_account(name);
+    }
+
     void create_accounts() {
         std::cout << "Creating accounts, authorities and usernames in Golos domain..." << std::endl;
-        auto& db = const_cast<chaindb_controller&>(_control.chaindb());
-        auto& auth_mgr = _control.get_mutable_authorization_manager();
-        auto& reslim_mgr = _control.get_mutable_resource_limits_manager();
         std::unordered_map<string,account_name> names;
         names.reserve(_visitor.auths.size());
 
@@ -261,26 +324,10 @@ struct genesis_read::genesis_read_impl final {
         }
 
         // fill auths
-        int i = 0;
+        auto ts = _conf.initial_timestamp;
         for (const auto a: _visitor.auths) {
             const auto n = a.account.value(_accs_map);
-            const auto& name = names[n];
-            db.emplace<account_object>([&](auto& a) {
-                a.name = name;
-                a.creation_date = _genesis_ts;
-            });
-            db.emplace<account_sequence_object>([&](auto & a) {
-                a.name = name;
-            });
-            if (n == golos_account_name) {
-                db.emplace<domain_object>([&](auto& a) {
-                    a.owner = name;
-                    a.linked_to = name;
-                    a.creation_date = _genesis_ts;
-                    a.name = n;
-                });
-            }
-            auto add_permission = [&](permission_name perm, const golos::shared_authority& a, auto id) {
+            auto convert_authority = [&](permission_name perm, const golos::shared_authority& a) {
                 uint32_t threshold = a.weight_threshold;
                 vector<key_weight> keys;
                 for (const auto& k: a.key_auths) {
@@ -298,22 +345,26 @@ struct genesis_read::genesis_read_impl final {
                             << " to it's " << perm << " authority. Skipped." << std::endl;
                     }
                 }
-                return auth_mgr.create_permission({}, name, perm, id, authority{threshold, keys, accounts}, _genesis_ts);
+                return authority{threshold, keys, accounts};
             };
-            const auto& owner_perm = add_permission(config::owner_name, a.owner, 0);
-            const auto& active_perm = add_permission(config::active_name, a.active, owner_perm.id);
-            const auto& posting_perm = add_permission(posting_auth_name, a.posting, active_perm.id);
+
+            const auto owner = convert_authority(config::owner_name, a.owner);
+            const auto active = convert_authority(config::active_name, a.active);
+            const auto posting = convert_authority(posting_auth_name, a.posting);
+            create_account(names[n], owner, active, posting);
             // TODO: do we need memo key ?
 
-            reslim_mgr.initialize_account(name);
-            if ((++i & 0xFF) == 0) {
-                db.apply_all_changes();
-                db.clear_cache();
-            }
+            apply_db_changes();
         }
 
         // add usernames
         const auto app = names[golos_account_name];
+        db.emplace<domain_object>([&](auto& a) {
+            a.owner = app;
+            a.linked_to = app;
+            a.creation_date = ts;
+            a.name = golos_account_name;
+        });
         for (const auto& auth : _visitor.auths) {                // loop through auths to preserve names order
             const auto& n = auth.account.value(_accs_map);
             db.emplace<username_object>([&](auto& u) {
@@ -321,10 +372,7 @@ struct genesis_read::genesis_read_impl final {
                 u.scope = app;
                 u.name = n;
             });
-            if ((++i & 0x3FF) == 0) {
-                db.apply_all_changes();
-                db.clear_cache();
-            }
+            apply_db_changes();
         }
 
         _visitor.auths.clear();
@@ -333,7 +381,6 @@ struct genesis_read::genesis_read_impl final {
 
     void create_balances() {
         std::cout << "Creating balances..." << std::endl;
-        auto& db = const_cast<chaindb_controller&>(_control.chaindb());
 
         // check invariants first
         auto& data = _visitor;
@@ -399,7 +446,7 @@ struct genesis_read::genesis_read_impl final {
 
         // vesting info
         // table_request tbl{config::gls_vest_account_name, vests_sym.value(), N(vesting)}; // TODO change scope
-        table_request tbl{config::gls_vest_account_name, config::gls_vest_account_name, N(vesting)};
+        table_request tbl{gls_vest_account_name, gls_vest_account_name, N(vesting)};
         primary_key_t vests_pk = vests_sym.value() >> 8;
         auto vests_info = mvo
             ("supply", asset(data.total_gests.get_amount(), vests_sym))
@@ -408,9 +455,9 @@ struct genesis_read::genesis_read_impl final {
 
         // funds
         // TODO: convert vesting to staking and burn system tokens in reward pool?
-        db.insert({config::token_account_name, config::gls_vest_account_name, N(accounts)}, gls_pk,
+        db.insert({config::token_account_name, gls_vest_account_name, N(accounts)}, gls_pk,
             mvo("balance", gp.total_vesting_fund_steem), ram_payer);
-        db.insert({config::token_account_name, config::gls_post_account_name, N(accounts)}, gls_pk,
+        db.insert({config::token_account_name, gls_post_account_name, N(accounts)}, gls_pk,
             mvo("balance", gp.total_reward_fund_steem), ram_payer);
         // TODO: internal pool of posting contract
 
@@ -420,7 +467,6 @@ struct genesis_read::genesis_read_impl final {
             ("received_vesting", asset(0, vests_sym))
             ("unlocked_limit", asset(0, vests_sym));
         asset total_gls = asset(0, golos_sym);
-        int i = 0;
         for (const auto& balance: data.gbg) {
             auto acc = balance.first;
             auto gbg = balance.second;
@@ -431,12 +477,9 @@ struct genesis_read::genesis_read_impl final {
 #ifdef IMPORT_SYS_BALANCES
             db.insert({config::token_account_name, n, N(accounts)}, sys_pk, mvo("balance", golos2sys(gls)), ram_payer);
 #endif
-            db.insert({config::gls_vest_account_name, n, N(accounts)}, vests_pk,
+            db.insert({gls_vest_account_name, n, N(accounts)}, vests_pk,
                 vests_obj("vesting", asset(data.gests[acc].get_amount(), vests_sym)), ram_payer);
-            if ((++i & 0xFF) == 0) {
-                db.apply_all_changes();
-                db.clear_cache();
-            }
+            apply_db_changes();
         }
         // TODO: update gbg2golos to uniformly distribute rounded amount
         std::cout << " Total accounts' GOLOS + converted GBG = " << total_gls << "; diff = " <<
@@ -446,19 +489,95 @@ struct genesis_read::genesis_read_impl final {
 
         std::cout << "Done." << std::endl;
     }
+
+    void create_witnesses() {
+        std::cout << "Creating witnesses..." << std::endl;
+        fc::flat_map<acc_idx,int64_t> weights;  // accumulate weights per witness to compare with witness.total_weight
+        ram_payer_info ram_payer{}; // TODO: fix
+
+        // Golos dApp have no proxy for witnesses, so create direct votes instead
+        const auto& empty_acc = std::distance(_accs_map.begin(), std::find(_accs_map.begin(), _accs_map.end(), string("")));
+        for (const auto& acc: _visitor.accounts) {
+            auto idx = acc.first;
+            const auto& a = acc.second;
+            if (a.proxy.id.value != empty_acc) {
+                bool found = false;
+                auto final_proxy = a.proxy.id;
+                for (int depth = 0; !found && depth < 4; depth++) {
+                    const auto& proxy = _visitor.accounts[final_proxy].proxy.id.value;
+                    found = proxy == empty_acc;
+                    if (!found) {
+                        final_proxy = proxy;
+                    }
+                }
+                EOS_ASSERT(found, extract_genesis_state_exception, "Account proxy depth >= 4");
+                _visitor.witness_votes[idx];    // force create element so container won't change after obtainig final_proxy element
+                _visitor.witness_votes[idx] = _visitor.witness_votes[final_proxy];
+            }
+        }
+
+        // process votes before witnesses to calculate total weights
+        for (const auto& v: _visitor.witness_votes) {
+            const auto& acc = v.first;
+            const auto& votes = v.second;
+            EOS_ASSERT(votes.size() <= 30, extract_genesis_state_exception,
+                "Account `${a}` have ${n} witness votes, but max 30 allowed", ("a",_accs_map[acc])("n",votes.size()));
+
+            vector<account_name> witnesses;
+            const auto& vests = _visitor.accounts[acc].vesting_shares.get_amount();
+            for (const auto& w: votes) {
+                witnesses.emplace_back(generate_name(_accs_map[w]));
+                weights[w] += vests;
+            }
+            const auto& n = generate_name(_accs_map[acc]);
+            auto o = mvo
+                ("voter", n)
+                ("witnesses", witnesses);
+            primary_key_t pk = n.value;
+            db.insert({gls_ctrl_account_name, gls_ctrl_account_name, N(witnessvote)}, pk, o, ram_payer);
+            // TODO: BPs
+            apply_db_changes();
+        }
+
+        for (const auto& w : _visitor.witnesses) {
+            const auto& n = generate_name(_accs_map[w.owner.id]);
+            primary_key_t pk = n.value;
+            auto obj = mvo
+                ("name", n)
+                ("url", w.url)
+                ("active", true)
+                ("total_weight", w.votes);
+            db.insert({gls_ctrl_account_name, gls_ctrl_account_name, N(witness)}, pk, obj, ram_payer);
+            if (weights[w.owner.id] != w.votes) {
+                wlog("Witness `${a}` .votes value ${w} ≠ ${c}",
+                    ("a",_accs_map[w.owner.id])("w",w.votes)("c",weights[w.owner.id]));
+            }
+            EOS_ASSERT(weights[w.owner.id] == w.votes, extract_genesis_state_exception,
+                "Witness .votes value is not equal to sum individual votes", ("w",w)("calculated",weights[w.owner.id]));
+            // TODO: BPs
+            apply_db_changes();
+        }
+
+        _visitor.witnesses.clear();
+        _visitor.witness_votes.clear();
+        std::cout << "Done." << std::endl;
+    }
+
 };
 
-genesis_read::genesis_read(const bfs::path& genesis_file, controller& ctrl, time_point genesis_ts)
-: _impl(new genesis_read_impl(genesis_file, ctrl, genesis_ts)) {
+genesis_read::genesis_read(const bfs::path& genesis_file, controller& ctrl, const genesis_state& conf)
+: _impl(new genesis_read_impl(genesis_file, ctrl, conf)) {
 }
 genesis_read::~genesis_read() {
 }
 
 void genesis_read::read() {
+    _impl->init_accounts();
     _impl->read_state();
     _impl->create_accounts();
-    _impl->create_balances();
-    // TODO: witnesses
+    _impl->create_balances();       // TODO: delegation+withdraws
+    _impl->create_witnesses();
+    _impl->apply_db_changes(true);
 }
 
 

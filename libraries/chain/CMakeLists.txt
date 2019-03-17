@@ -54,6 +54,7 @@ add_library( eosio_chain
 
              domain_name.cpp
              genesis/genesis_read.cpp
+             genesis/genesis_accounts.cpp
              ${CHAINDB_SRCS}
 
 #             get_config.cpp

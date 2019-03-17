@@ -39,6 +39,15 @@ namespace eosio { namespace chain {
 } } /// eosio::chain
 
 namespace fc {
-  void to_variant(const eosio::chain::name& c, fc::variant& v) { v = std::string(c); }
-  void from_variant(const fc::variant& v, eosio::chain::name& check) { check = v.get_string(); }
+  void to_variant(const eosio::chain::name& c, fc::variant& v) {
+      v = std::string(c);
+  }
+
+  void from_variant(const fc::variant& v, eosio::chain::name& check) {
+      if (v.is_string()) {
+          check = v.get_string();
+      } else {
+          check = v.as_uint64();
+      }
+  }
 } // fc

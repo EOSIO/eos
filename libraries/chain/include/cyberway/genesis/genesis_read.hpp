@@ -13,7 +13,7 @@ public:
     genesis_read() = delete;
     genesis_read(const genesis_read&) = delete;
 
-    genesis_read(const bfs::path& genesis_file, controller& ctrl, time_point genesis_ts);
+    genesis_read(const bfs::path& genesis_file, controller& ctrl, const genesis_state& conf);
     ~genesis_read();
 
     void read();
