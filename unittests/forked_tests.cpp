@@ -51,7 +51,8 @@ struct fork_tracker {
 };
 
 BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
-   tester bios;
+   tester bios(tester::default_config("_BIOS_"), true);
+
    bios.produce_block();
    bios.produce_block();
    bios.create_accounts( {N(a),N(b),N(c),N(d),N(e)} );
@@ -65,26 +66,26 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
    }
 
    // sync remote node
-   tester remote;
+   tester remote(tester::default_config("_REMOTE_"), true);
    push_blocks(bios, remote);
 
-   // produce 6 blocks on bios
-   for (int i = 0; i < 6; i ++) {
+   // produce half of series blocks on bios
+   for (int i = 0; i < config::producer_repetitions / 2; i++) {
       bios.produce_block();
       BOOST_REQUIRE_EQUAL( bios.control->head_block_state()->header.producer.to_string(), "a" );
    }
 
-   vector<fork_tracker> forks(7);
+   vector<fork_tracker> forks(config::producer_repetitions / 2 + 1);
    // enough to skip A's blocks
-   auto offset = fc::milliseconds(config::block_interval_ms * 13);
+   auto offset = fc::milliseconds(config::block_interval_ms * (config::producer_repetitions + 1));
 
    // skip a's blocks on remote
-   // create 7 forks of 7 blocks so this fork is longer where the ith block is corrupted
-   for (size_t i = 0; i < 7; i ++) {
+   // create half of series forks of half of series blocks so this fork is longer where the ith block is corrupted
+   for (size_t i = 0; i < config::producer_repetitions / 2 + 1; i ++) {
       auto b = remote.produce_block(offset);
       BOOST_REQUIRE_EQUAL( b->producer.to_string(), "b" );
 
-      for (size_t j = 0; j < 7; j ++) {
+      for (size_t j = 0; j < config::producer_repetitions / 2 + 1; j ++) {
          auto& fork = forks.at(j);
 
          if (j <= i) {
@@ -142,7 +143,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
 } FC_LOG_AND_RETHROW();
 
 BOOST_AUTO_TEST_CASE( forking ) try {
-   tester c;
+   tester c(tester::default_config("_C_"), true);
    c.produce_block();
    c.produce_block();
    auto r = c.create_accounts( {N(dan),N(sam),N(pam)} );
@@ -179,7 +180,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wdump((fc::json::to_pretty_string(cr)));
 
 
-   tester c2;
+   tester c2(tester::default_config("_C2_"), true);
    wlog( "push c1 blocks to c2" );
    push_blocks(c, c2);
    wlog( "end push c1 blocks to c2" );
@@ -212,18 +213,18 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    auto fork_block_num = c.control->head_block_num();
 
    wlog( "c2 blocks:" );
-   c2.produce_blocks(12); // pam produces 12 blocks
-   b = c2.produce_block( fc::milliseconds(config::block_interval_ms * 13) ); // sam skips over dan's blocks
+   c2.produce_blocks(config::producer_repetitions); // pam produces series of blocks
+   b = c2.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions + 1)) ); // sam skips over dan's blocks
    expected_producer = N(sam);
    BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
-   c2.produce_blocks(11 + 12);
+   c2.produce_blocks(config::producer_repetitions * 2 - 1);
 
 
    wlog( "c1 blocks:" );
-   b = c.produce_block( fc::milliseconds(config::block_interval_ms * 13) ); // dan skips over pam's blocks
+   b = c.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions + 1)) ); // dan skips over pam's blocks
    expected_producer = N(dan);
    BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
-   c.produce_blocks(11);
+   c.produce_blocks(config::producer_repetitions - 1);
 
    // dan on chain 1 now gets all of the blocks from chain 2 which should cause fork switch
    wlog( "push c2 blocks to c1" );
@@ -235,7 +236,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wlog( "end push c2 blocks to c1" );
 
    wlog( "c1 blocks:" );
-   c.produce_blocks(24);
+   c.produce_blocks(config::producer_repetitions * 2);
 
    b = c.produce_block(); // Switching active schedule to version 2 happens in this block.
    expected_producer = N(pam);
@@ -244,7 +245,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    b = c.produce_block();
    expected_producer = N(cam);
 //   BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
-   c.produce_blocks(10);
+   c.produce_blocks(config::producer_repetitions - 2);
 
    wlog( "push c1 blocks to c2" );
    push_blocks(c, c2);
@@ -255,18 +256,18 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    fork_block_num = c.control->head_block_num();
    wlog( "cam and dan go off on their own fork on c1 while sam and pam go off on their own fork on c2" );
    wlog( "c1 blocks:" );
-   c.produce_blocks(12); // dan produces 12 blocks
-   c.produce_block( fc::milliseconds(config::block_interval_ms * 25) ); // cam skips over sam and pam's blocks
-   c.produce_blocks(23); // cam finishes the remaining 11 blocks then dan produces his 12 blocks
+   c.produce_blocks(config::producer_repetitions); // dan produces series of blocks
+   c.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions * 2 + 1)) ); // cam skips over sam and pam's blocks
+   c.produce_blocks(config::producer_repetitions * 2 - 1); // cam finishes the remaining 11 blocks then dan produces his 12 blocks
    wlog( "c2 blocks:" );
-   c2.produce_block( fc::milliseconds(config::block_interval_ms * 25) ); // pam skips over dan and sam's blocks
-   c2.produce_blocks(11); // pam finishes the remaining 11 blocks
-   c2.produce_block( fc::milliseconds(config::block_interval_ms * 25) ); // sam skips over cam and dan's blocks
-   c2.produce_blocks(11); // sam finishes the remaining 11 blocks
+   c2.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions + 1)) ); // pam skips over dan and sam's blocks
+   c2.produce_blocks(config::producer_repetitions - 1); // pam finishes the remaining series of blocks
+   c2.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions * 2 + 1)) ); // sam skips over cam and dan's blocks
+   c2.produce_blocks(config::producer_repetitions - 1); // sam finishes the remaining series of blocks
 
    wlog( "now cam and dan rejoin sam and pam on c2" );
-   c2.produce_block( fc::milliseconds(config::block_interval_ms * 13) ); // cam skips over pam's blocks (this block triggers a block on this branch to become irreversible)
-   c2.produce_blocks(11); // cam produces the remaining 11 blocks
+   c2.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions + 1)) ); // cam skips over pam's blocks (this block triggers a block on this branch to become irreversible)
+   c2.produce_blocks(config::producer_repetitions - 1); // cam produces the remaining series of blocks
    b = c2.produce_block(); // dan produces a block
 
    // a node on chain 1 now gets all but the last block from chain 2 which should cause a fork switch
@@ -293,14 +294,14 @@ BOOST_AUTO_TEST_CASE( forking ) try {
  *  the highest last irreversible block over one that is longer.
  */
 BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
-   tester c;
+   tester c(tester::default_config("_C_"), true);
    c.produce_blocks(10);
    auto r = c.create_accounts( {N(dan),N(sam),N(pam),N(scott)} );
    auto res = c.set_producers( {N(dan),N(sam),N(pam),N(scott)} );
    wlog("set producer schedule to [dan,sam,pam,scott]");
    c.produce_blocks(50);
 
-   tester c2;
+   tester c2(tester::default_config("_C2_"), true);
    wlog( "push c1 blocks to c2" );
    push_blocks(c, c2);
 
@@ -335,20 +336,20 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
    BOOST_REQUIRE_EQUAL(87, c.control->head_block_num());
    BOOST_REQUIRE_EQUAL(73, c2.control->head_block_num());
    
-   // push fork from c2 => c
+   // push fork from c => c2
    int p = fork_num;
-   while ( p < c2.control->head_block_num()) {
-      auto fb = c2.control->fetch_block_by_number(++p);
-      c.push_block(fb);
+   while ( p < c.control->head_block_num()) {
+      auto fb = c.control->fetch_block_by_number(++p);
+      c2.push_block(fb);
    }
 
-   BOOST_REQUIRE_EQUAL(73, c.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(87, c2.control->head_block_num());
 
 } FC_LOG_AND_RETHROW() 
 
 
 BOOST_AUTO_TEST_CASE( read_modes ) try {
-   tester c;
+   tester c(tester::default_config("_C_"));
    c.produce_block();
    c.produce_block();
    auto r = c.create_accounts( {N(dan),N(sam),N(pam)} );
@@ -357,20 +358,20 @@ BOOST_AUTO_TEST_CASE( read_modes ) try {
    c.produce_blocks(200);
    auto head_block_num = c.control->head_block_num();
 
-   tester head(true, db_read_mode::HEAD);
+   tester head(tester::default_config("_HEAD_"), true, db_read_mode::HEAD);
    push_blocks(c, head);
    BOOST_REQUIRE_EQUAL(head_block_num, head.control->fork_db_head_block_num());
    BOOST_REQUIRE_EQUAL(head_block_num, head.control->head_block_num());
 
-   tester read_only(false, db_read_mode::READ_ONLY);
+   tester read_only(tester::default_config("_READ_ONLY_"), false, db_read_mode::READ_ONLY);
    push_blocks(c, read_only);
    BOOST_REQUIRE_EQUAL(head_block_num, read_only.control->fork_db_head_block_num());
    BOOST_REQUIRE_EQUAL(head_block_num, read_only.control->head_block_num());
 
-   tester irreversible(true, db_read_mode::IRREVERSIBLE);
+   tester irreversible(tester::default_config("_IRREVERSIBLE_"), true, db_read_mode::IRREVERSIBLE);
    push_blocks(c, irreversible);
    BOOST_REQUIRE_EQUAL(head_block_num, irreversible.control->fork_db_head_block_num());
-   BOOST_REQUIRE_EQUAL(head_block_num - 49, irreversible.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(head_block_num - (config::producer_repetitions * 4 + 1), irreversible.control->head_block_num());
 
 } FC_LOG_AND_RETHROW()
 

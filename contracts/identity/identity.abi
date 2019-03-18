@@ -1,5 +1,5 @@
 {
-  "version": "eosio::abi/1.0",
+  "version": "cyberway::abi/1.0",
   "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -49,6 +49,7 @@
       "name": "certrow",
       "base": "",
       "fields": [
+        {"name":"id", "type":"uint64"},
         {"name":"property", "type":"property_name"},
         {"name":"trusted", "type":"uint64"},
         {"name":"certifier", "type":"account_name"},
@@ -64,10 +65,17 @@
         {"name":"creator", "type":"account_name"}
       ]
     },{
+      "name": "trustrow",
+      "base": "",
+      "fields": [
+        {"name":"account", "type":"account_name"}
+      ]
+    },{
       "name": "accountrow",
       "base": "",
       "fields": [
-        {"name":"identity", "type":"uint64"}
+        {"name":"id", "type":"account_name"},
+        {"name":"identity", "type":"uint64"},
       ]
     }
   ],
@@ -85,29 +93,47 @@
   "tables": [{
       "name": "certs",
       "type": "certrow",
-      "index_type": "i64i64i64",
-      "key_names" : [
-        "property",
-        "trusted",
-        "certifier"
-      ],
-      " key_types": [
-        "uint64",
-        "uint64",
-        "uint64"
+      "indexes": [{
+          "name": "primary",
+          "unique": "true",
+          "orders": [{"field": "id", "order": "asc"}]
+        },{
+          "name": "bytuple",
+          "unique": "true",
+          "orders": [
+            {"field": "property", "order": "asc"},
+            {"field": "trusted", "order": "asc"},
+            {"field": "certifier", "order": "asc"}
+          ]
+        }
       ]
     },{
       "name": "idents",
       "type": "identrow",
-      "index_type": "i64",
-      "key_names" : [ "identity" ],
-      "key_types": [ "uint64" ]
+      "indexes": [{
+          "name": "primary",
+          "unique": "true",
+          "orders": [{"field": "identity", "order": "asc"}]
+        }
+      ]
     },{
       "name": "trust",
-      "type": "account_name",
-      "index_type": "i64",
-      "key_names" : [ "account" ],
-      "key_types": [ "account_name" ]
+      "type": "trustrow",
+      "indexes": [{
+          "name": "primary",
+          "unique": "true",
+          "orders": [{"field": "account", "order": "asc"}]
+        }
+      ]
+    },{
+      "name": "account",
+      "type": "accountrow",
+      "indexes": [{
+         "name": "primary",
+         "unique": "true",
+         "orders": [{"field": "id", "order": "asc"}]
+        }
+      ]
     }
   ],
   "abi_extensions": []

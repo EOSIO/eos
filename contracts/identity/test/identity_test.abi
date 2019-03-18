@@ -1,5 +1,5 @@
 {
-  "version": "eosio::abi/1.0",
+  "version": "cyberway::abi/1.0",
   "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -20,6 +20,13 @@
       "fields": [
         {"name":"account", "type":"account_name"}
       ]
+    },{
+      "name": "resultrow",
+      "base": "",
+      "fields": [
+        {"name":"id", "type":"uint64"},
+        {"name":"identity", "type":"uint64"},
+      ]
     }
   ],
   "actions": [{
@@ -30,6 +37,15 @@
       "type": "getidentity"
     }
   ],
-  "tables": [
+  "tables": [{
+      "name": "result",
+      "type": "resultrow",
+      "indexes": [{
+          "name": "primary",
+          "unique": "true",
+          "orders": [{"field": "id", "order": "asc"}]
+        }
+      ]
+    }
   ]
 }

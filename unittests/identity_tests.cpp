@@ -35,7 +35,7 @@ public:
       produce_blocks(2);
 
       create_accounts( {N(identity), N(identitytest), N(alice), N(bob), N(carol)} );
-      produce_blocks(1000);
+      produce_blocks(10);
 
       set_code(N(identity), identity_wast);
       set_abi(N(identity), identity_abi);
@@ -61,7 +61,7 @@ public:
    uint64_t get_result_uint64() {
       auto& chaindb = control->chaindb();
       auto value = chaindb.value_by_pk({N(identitytest), 0, N(result)}, N(result));
-      return value["id"].as_uint64();
+      return value["identity"].as_uint64();
    }
 
    uint64_t get_owner_for_identity(uint64_t identity)
@@ -104,7 +104,7 @@ public:
 
    fc::variant get_identity(uint64_t idnt) {
       auto& chaindb = control->chaindb();
-      auto value = chaindb.value_by_pk({N(identity), N(identity), N(ident)}, idnt);
+      auto value = chaindb.value_by_pk({N(identity), N(identity), N(idents)}, idnt);
       return value;
    }
 
@@ -126,19 +126,22 @@ public:
       auto& chaindb = control->chaindb();
       auto find = cyberway::chaindb::lower_bound(
          chaindb,
-         {N(identity), identity, N( certs ), N(secondary)},
+         {N(identity), identity, N( certs ), N(bytuple)},
          boost::make_tuple(string_to_name(property.c_str()), trusted, string_to_name(certifier.c_str())));
       if (find.pk != cyberway::chaindb::end_primary_key) {
-         return chaindb.value_at_cursor({N(identity), find.cursor});
-      } else {
-          return fc::variant();
+         auto val = chaindb.value_at_cursor({N(identity), find.cursor});
+         auto& obj = val.get_object();
+         if (obj["property"].as_string() == property && obj["trusted"].as_uint64() == trusted && obj["certifier"].as_string() == certifier) {
+             return val;
+         }
       }
+      return fc::variant();
    }
 
    fc::variant get_accountrow(const string& account) {
       auto& chaindb = control->chaindb();
       auto acnt = string_to_name(account.c_str());
-      return chaindb.value_by_pk({N(identity), acnt, N(account)}, acnt);
+      return chaindb.value_by_pk({N(identity), acnt, N(account)}, N(account));
    }
 
    action_result settrust(const string& trustor, const string& trusting, uint64_t trust, bool auth = true)
@@ -169,7 +172,7 @@ public:
    std::string producer_name;
 };
 
-constexpr uint64_t identity_val = 0xffffffffffffffff; //64-bit value
+constexpr uint64_t identity_val = 0xffff; //64-bit value
 
 BOOST_AUTO_TEST_SUITE(identity_tests)
 
@@ -388,7 +391,7 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify_owner, identity_tester ) try {
 
    //check that singleton "account" in the alice's scope contains the identity
    fc::variant acntrow = get_accountrow("alice");
-   BOOST_REQUIRE_EQUAL( true, certrow.is_object() );
+   BOOST_REQUIRE_EQUAL( true, acntrow.is_object() );
    BOOST_REQUIRE_EQUAL( identity_val, acntrow["identity"].as_uint64() );
 
    // ownership was certified by alice, but not by a block producer or someone trusted by a block producer
@@ -405,7 +408,7 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify_owner, identity_tester ) try {
                }));
    //singleton "account" in the alice's scope still should contain the identity
    acntrow = get_accountrow("alice");
-   BOOST_REQUIRE_EQUAL( true, certrow.is_object() );
+   BOOST_REQUIRE_EQUAL( true, acntrow.is_object() );
    BOOST_REQUIRE_EQUAL( identity_val, acntrow["identity"].as_uint64() );
 
    //remove owner certification
@@ -421,7 +424,7 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify_owner, identity_tester ) try {
 
    //check that singleton "account" in the alice's scope doesn't contain the identity
    acntrow = get_accountrow("alice");
-   BOOST_REQUIRE_EQUAL(true, certrow.is_null());
+   BOOST_REQUIRE_EQUAL(true, acntrow.is_null());
 
 } FC_LOG_AND_RETHROW() //certify_decertify_owner
 

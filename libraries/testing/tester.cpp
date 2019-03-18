@@ -77,41 +77,45 @@ namespace eosio { namespace testing {
      return control->head_block_id() == other.control->head_block_id();
    }
 
-   void base_tester::init(bool push_genesis, db_read_mode read_mode) {
-      fc::exception::enable_detailed_strace();
+   controller::config base_tester::default_config(string chaindb_sys_name) {
+     fc::exception::enable_detailed_strace();
 
-      cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
-      cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
-      cfg.state_size = 1024*1024*8;
-      cfg.state_guard_size = 0;
-      cfg.reversible_cache_size = 1024*1024*8;
-      cfg.reversible_guard_size = 0;
-      cfg.contracts_console = true;
+     fc::temp_directory tempdir;
+     controller::config result;
+     result.blocks_dir = tempdir.path() / string(chaindb_sys_name).append(config::default_blocks_dir_name);
+     result.state_dir  = tempdir.path() / string(chaindb_sys_name).append(config::default_state_dir_name);
+     result.state_size = 1024*1024*8;
+     result.state_guard_size = 0;
+     result.reversible_cache_size = 1024*1024*8;
+     result.reversible_guard_size = 0;
+     result.contracts_console = true;
+
+     result.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+     result.genesis.initial_key = get_public_key( config::system_account_name, "active" );
+
+     for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
+       if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
+         result.wasm_runtime = chain::wasm_interface::vm_type::wavm;
+       else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
+         result.wasm_runtime = chain::wasm_interface::vm_type::wabt;
+     }
+     result.chaindb_address  = getenv("MONGO_URL") ?: "mongodb://127.0.0.1:27017";
+     result.chaindb_sys_name = chaindb_sys_name;
+     return result;
+   }
+
+   void base_tester::init(controller::config config, bool push_genesis, db_read_mode read_mode) {
+      cfg = config;
       cfg.read_mode = read_mode;
-
-      cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-      cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
-
-      for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-         if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-            cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-         else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-            cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-      }
-      cfg.chaindb_address = getenv("MONGO_URL") ?: "mongodb://127.0.0.1:27017";
 
       open(nullptr);
 
       if (push_genesis)
-         push_genesis_block();
+        push_genesis_block();
    }
 
-
    void base_tester::init(controller::config config, const snapshot_reader_ptr& snapshot) {
-      fc::exception::enable_detailed_strace();
-
       cfg = config;
-      cfg.chaindb_address = getenv("MONGO_URL") ?: "mongodb://127.0.0.1:27017";
       open(snapshot);
    }
 

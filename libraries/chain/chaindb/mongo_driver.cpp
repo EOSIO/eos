@@ -285,7 +285,7 @@ namespace cyberway { namespace chaindb {
             if (!object_.value.is_null()) return object_;
 
             if (end_primary_key == get_pk_value()) {
-                object_.value = variant_object();
+                object_.value         = variant();
                 object_.service.pk    = pk;
                 object_.service.code  = index.code;
                 object_.service.scope = index.scope;
@@ -711,7 +711,7 @@ namespace cyberway { namespace chaindb {
             if (cursor.end() != itr) {
                 return build_object(table, *itr);
             } else {
-                obj.value = variant_object();
+                obj.value = variant();
                 return obj;
             }
 
