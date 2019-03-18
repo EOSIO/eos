@@ -88,7 +88,7 @@ namespace eosio { namespace testing {
      result.state_guard_size = 0;
      result.reversible_cache_size = 1024*1024*8;
      result.reversible_guard_size = 0;
-     result.contracts_console = false;
+     result.contracts_console = true;
 
      result.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
      result.genesis.initial_key = get_public_key( config::system_account_name, "active" );

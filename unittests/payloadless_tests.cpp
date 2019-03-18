@@ -39,7 +39,7 @@ BOOST_FIXTURE_TEST_CASE( test_doit, payloadless_tester ) {
 
    auto trace = push_action(N(payloadless), N(doit), N(payloadless), mutable_variant_object());
    auto msg = trace->action_traces.front().console;
-   BOOST_CHECK_EQUAL(msg == "Im a payloadless action", true);
+   BOOST_CHECK_EQUAL(msg, "Im a payloadless action");
 }
 
 // test GH#3916 - contract api action with no parameters fails when called from cleos
@@ -73,7 +73,7 @@ BOOST_FIXTURE_TEST_CASE( test_abi_serializer, payloadless_tester ) {
    trx.sign( get_private_key( N(payloadless), "active" ), control->get_chain_id() );
    auto trace = push_transaction( trx );
    auto msg = trace->action_traces.front().console;
-   BOOST_CHECK_EQUAL(msg == "Im a payloadless action", true);
+   BOOST_CHECK_EQUAL(msg, "Im a payloadless action");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
