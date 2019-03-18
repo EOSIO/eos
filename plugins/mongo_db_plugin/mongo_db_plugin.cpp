@@ -310,10 +310,12 @@ void mongo_db_plugin_impl::queue( Queue& queue, const Entry& e ) {
 }
 
 void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metadata_ptr& t ) {
+   if( !store_transactions ) {
+      return;
+   }
+
    try {
-      if( store_transactions ) {
-         queue( transaction_metadata_queue, t );
-      }
+      queue( transaction_metadata_queue, t );
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_transaction ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -324,29 +326,31 @@ void mongo_db_plugin_impl::accepted_transaction( const chain::transaction_metada
 }
 
 void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_ptr& t ) {
+   // Traces emitted from an incomplete block leave the producer_block_id as empty.
+   //
+   // Avoid adding the action traces or transaction traces to the database if the producer_block_id is empty.
+   // This way traces from speculatively executed transactions are not included in the Mongo database which can
+   // avoid potential confusion for consumers of that database.
+   //
+   // Due to forks, it could be possible for multiple incompatible action traces with the same block_num and trx_id
+   // to exist in the database. And if the producer double produces a block, even the block_time may not
+   // disambiguate the two action traces. Without a producer_block_id to disambiguate and determine if the action
+   // trace comes from an orphaned fork branching off of the blockchain, consumers of the Mongo DB database may be
+   // reacting to a stale action trace that never actually executed in the current blockchain.
+   //
+   // It is better to avoid this potential confusion by not logging traces from speculative execution, i.e. emitted
+   // from an incomplete block. This means that traces will not be recorded in speculative read-mode, but
+   // users should not be using the mongo_db_plugin in that mode anyway.
+   //
+   // Allow logging traces if node is a producer for testing purposes, so a single nodeos can do both for testing.
+   //
+   // It is recommended to run mongo_db_plugin in read-mode = read-only.
+   //
+   if( !is_producer && !t->producer_block_id.valid() ) {
+      return;
+   }
+
    try {
-      // Traces emitted from an incomplete block leave the producer_block_id as empty.
-      //
-      // Avoid adding the action traces or transaction traces to the database if the producer_block_id is empty.
-      // This way traces from speculatively executed transactions are not included in the Mongo database which can
-      // avoid potential confusion for consumers of that database.
-      //
-      // Due to forks, it could be possible for multiple incompatible action traces with the same block_num and trx_id
-      // to exist in the database. And if the producer double produces a block, even the block_time may not
-      // disambiguate the two action traces. Without a producer_block_id to disambiguate and determine if the action
-      // trace comes from an orphaned fork branching off of the blockchain, consumers of the Mongo DB database may be
-      // reacting to a stale action trace that never actually executed in the current blockchain.
-      //
-      // It is better to avoid this potential confusion by not logging traces from speculative execution, i.e. emitted
-      // from an incomplete block. This means that traces will not be recorded in speculative read-mode, but
-      // users should not be using the mongo_db_plugin in that mode anyway.
-      //
-      // Allow logging traces if node is a producer for testing purposes, so a single nodeos can do both for testing.
-      //
-      // It is recommended to run mongo_db_plugin in read-mode = read-only.
-      //
-      if( !is_producer && !t->producer_block_id.valid() )
-         return;
       // always queue since account information always gathered
       queue( transaction_trace_queue, t );
    } catch (fc::exception& e) {
@@ -359,10 +363,12 @@ void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_p
 }
 
 void mongo_db_plugin_impl::applied_irreversible_block( const chain::block_state_ptr& bs ) {
+   if( !store_blocks && !store_block_states && !store_transactions ) {
+      return;
+   }
+
    try {
-      if( store_blocks || store_block_states || store_transactions ) {
-         queue( irreversible_block_state_queue, bs );
-      }
+      queue( irreversible_block_state_queue, bs );
    } catch (fc::exception& e) {
       elog("FC Exception while applied_irreversible_block ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -373,15 +379,17 @@ void mongo_db_plugin_impl::applied_irreversible_block( const chain::block_state_
 }
 
 void mongo_db_plugin_impl::accepted_block( const chain::block_state_ptr& bs ) {
+   if( !start_block_reached ) {
+      if( bs->block_num >= start_block_num ) {
+         start_block_reached = true;
+      }
+   }
+   if( !store_blocks && !store_block_states ) {
+      return;
+   }
+
    try {
-      if( !start_block_reached ) {
-         if( bs->block_num >= start_block_num ) {
-            start_block_reached = true;
-         }
-      }
-      if( store_blocks || store_block_states ) {
-         queue( block_state_queue, bs );
-      }
+      queue( block_state_queue, bs );
    } catch (fc::exception& e) {
       elog("FC Exception while accepted_block ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -1427,39 +1435,44 @@ void mongo_db_plugin_impl::init() {
          }
 
          try {
+            // Due to the vast amounts of data, we suggest:
+            //   1. enableSharding database (default to EOS)
+            //   2. shardCollection: blocks, action_traces, transaction_traces, especially action_traces
+            //   3. Use compound index with shard key (default to _id), to improve query performance.
+
             // blocks indexes
             auto blocks = mongo_conn[db_name][blocks_col];
-            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
-            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
+            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1, "_id" : 1 })xxx" ));
+            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1, "_id" : 1 })xxx" ));
 
             auto block_states = mongo_conn[db_name][block_states_col];
-            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
-            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
+            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1, "_id" : 1 })xxx" ));
+            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1, "_id" : 1 })xxx" ));
 
             // accounts indexes
-            accounts.create_index( bsoncxx::from_json( R"xxx({ "name" : 1 })xxx" ));
+            accounts.create_index( bsoncxx::from_json( R"xxx({ "name" : 1, "_id" : 1 })xxx" ));
 
             // transactions indexes
             auto trans = mongo_conn[db_name][trans_col];
-            trans.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
+            trans.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1, "_id" : 1 })xxx" ));
 
             auto trans_trace = mongo_conn[db_name][trans_traces_col];
-            trans_trace.create_index( bsoncxx::from_json( R"xxx({ "id" : 1 })xxx" ));
+            trans_trace.create_index( bsoncxx::from_json( R"xxx({ "id" : 1, "_id" : 1 })xxx" ));
 
             // action traces indexes
             auto action_traces = mongo_conn[db_name][action_traces_col];
-            action_traces.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
+            action_traces.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1, "_id" : 1 })xxx" ));
 
             // pub_keys indexes
             auto pub_keys = mongo_conn[db_name][pub_keys_col];
-            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "account" : 1, "permission" : 1 })xxx" ));
-            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "public_key" : 1 })xxx" ));
+            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "account" : 1, "permission" : 1, "_id" : 1 })xxx" ));
+            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "public_key" : 1, "_id" : 1 })xxx" ));
 
             // account_controls indexes
             auto account_controls = mongo_conn[db_name][account_controls_col];
             account_controls.create_index(
-                  bsoncxx::from_json( R"xxx({ "controlled_account" : 1, "controlled_permission" : 1 })xxx" ));
-            account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlling_account" : 1 })xxx" ));
+                  bsoncxx::from_json( R"xxx({ "controlled_account" : 1, "controlled_permission" : 1, "_id" : 1 })xxx" ));
+            account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlling_account" : 1, "_id" : 1 })xxx" ));
 
          } catch (...) {
             handle_mongo_exception( "create indexes", __LINE__ );
