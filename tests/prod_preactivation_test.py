@@ -12,7 +12,7 @@ import re
 import time
 
 ###############################################################
-# nodeos_run_test
+# prod_preactivation_test
 # --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
 # --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
@@ -22,7 +22,7 @@ errorExit=Utils.errorExit
 cmdError=Utils.cmdError
 from core_symbol import CORE_SYMBOL
 
-args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key","--mongodb"
+args = TestHelper.parse_args({"--host","--port","--defproducera_prvt_key","--defproducerb_prvt_key","--mongodb"
                               ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
                               ,"--sanity-test","--p2p-plugin","--wallet-port"})
 server=args.host
@@ -35,7 +35,7 @@ dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontLaunch=args.dont_launch
 dontKill=args.leave_running
-prodCount=2 # args.prod_count
+prodCount=2
 onlyBios=args.only_bios
 killAll=args.clean_run
 sanityTest=args.sanity_test
@@ -53,8 +53,6 @@ dontBootstrap=sanityTest
 
 WalletdName=Utils.EosWalletName
 ClientName="cleos"
-timeout = .5 * 12 * 2 + 60 # time for finalization with 1 producer + 60 seconds padding
-Utils.setIrreversibleTimeout(timeout)
 
 try:
     TestHelper.printSystemInfo("BEGIN prod_preactivation_test.py")
@@ -69,7 +67,7 @@ try:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(pnodes=prodCount, totalNodes=prodCount, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, p2pPlugin=p2pPlugin, extraNodeosArgs=" --plugin eosio::producer_api_plugin") is False:
+        if cluster.launch(pnodes=prodCount, totalNodes=prodCount, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, p2pPlugin=p2pPlugin, useBiosBootFile=False, extraNodeosArgs=" --plugin eosio::producer_api_plugin") is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
 
@@ -80,13 +78,11 @@ try:
     cmd = "curl %s/v1/producer/get_supported_protocol_features" % (node.endpointHttp)
     Print("try to get supported feature list from Node 0 with cmd: %s" % (cmd))
     feature0=Utils.runCmdReturnJson(cmd)
-    #Print("feature list:", feature0)
 
     node = cluster.getNode(1)
     cmd = "curl %s/v1/producer/get_supported_protocol_features" % (node.endpointHttp)
     Print("try to get supported feature list from Node 1 with cmd: %s" % (cmd))
     feature1=Utils.runCmdReturnJson(cmd)
-    #Print("feature list:", feature1)
 
     if feature0 != feature1:
         errorExit("feature list mismatch between node 0 and node 1")
@@ -99,7 +95,7 @@ try:
     digest = ""
     for i in range(0, len(feature0)):
        feature = feature0[i]
-       if feature["specification"][i]["value"] != "PREACTIVATE_FEATURE":
+       if feature["specification"][0]["value"] != "PREACTIVATE_FEATURE":
            continue
        else:
            digest = feature["feature_digest"]
@@ -118,23 +114,21 @@ try:
     Print("publish a new bios contract %s should fails because env.is_feature_activated unresolveable" % (contractDir))
     retMap = node0.publishContract("eosio", contractDir, wasmFile, abiFile, True, shouldFail=True)
 
-    #Print(retMap)
     if retMap["output"].decode("utf-8").find("unresolveable") < 0:
         errorExit("bios contract not result in expected unresolveable error")
 
-    secwait = 60
-    Print("Wait for defproducerb to produce...")
+    secwait = 30
+    Print("Wait for defproducera to produce...")
     node = cluster.getNode(1)
     while secwait > 0:
        info = node.getInfo()
-       #Print("head producer:", info["head_block_producer"])
-       if info["head_block_producer"] == "defproducerb": #defproducerb is in node0
+       if info["head_block_producer"] == "defproducera": #defproducera is in node0
           break
        time.sleep(1)
        secwait = secwait - 1
     
     if secwait <= 0:
-       errorExit("No producer of defproducerb")
+       errorExit("No producer of defproducera")
     
     cmd = "curl --data-binary '{\"protocol_features_to_activate\":[\"%s\"]}' %s/v1/producer/schedule_protocol_feature_activations" % (digest, node.endpointHttp)
 
@@ -153,11 +147,10 @@ try:
         errorExit("bios contract not result in expected unresolveable error")
 
     Print("now wait for node 1 produce a block....(take some minutes)...")
-    secwait = 480 # wait for node1 produce a block
+    secwait = 30 # wait for node1 produce a block
     while secwait > 0:
        info = node.getInfo()
-       #Print("head producer:", info["head_block_producer"])
-       if info["head_block_producer"] >= "defproducerm" and info["head_block_producer"] <= "defproduceru":
+       if (info["head_block_producer"] == "defproducerl") or (info["head_block_producer"] == "defproducerm"):
           break
        time.sleep(1)
        secwait = secwait - 1
@@ -165,7 +158,7 @@ try:
     if secwait <= 0:
        errorExit("No blocks produced by node 1")
 
-    time.sleep(1)
+    time.sleep(0.6)
     retMap = node0.publishContract("eosio", contractDir, wasmFile, abiFile, True)
     Print("sucessfully set new contract with new intrinsic!!!")
 
