@@ -156,6 +156,7 @@ steps:
 
   - wait
 
+  # Ubuntu 16.04 Tests
   - command: |
         echo "--- :arrow_down: Downloading Build Directory" && \
         buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 16.04 Build" && \
@@ -164,10 +165,6 @@ steps:
     label: ":ubuntu: 16.04 Tests"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -188,10 +185,6 @@ steps:
     label: ":ubuntu: 16.04 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -204,6 +197,7 @@ steps:
         workdir: /data/job
     timeout: 60
   
+  # Ubuntu 18.04 Tests
   - command: |
         echo "--- :arrow_down: Downloading Build Directory" && \
         buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build" && \
@@ -212,10 +206,6 @@ steps:
     label: ":ubuntu: 18.04 Tests"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -236,10 +226,6 @@ steps:
     label: ":ubuntu: 18.04 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -252,6 +238,7 @@ steps:
         workdir: /data/job
     timeout: 60
 
+  # centOS Tests
   - command: |
         echo "--- :arrow_down: Downloading Build Directory" && \
         buildkite-agent artifact download "build.tar.gz" . --step ":centos: 7 Build" && \
@@ -260,10 +247,6 @@ steps:
     label: ":centos: 7 Tests"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -284,10 +267,6 @@ steps:
     label: ":centos: 7 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -300,6 +279,7 @@ steps:
         workdir: /data/job
     timeout: 60
 
+  # Amazon AWS-1 Linux Tests
   - command: |
         echo "--- :arrow_down: Downloading Build Directory" && \
         buildkite-agent artifact download "build.tar.gz" . --step ":aws: 1 Build" && \
@@ -308,10 +288,6 @@ steps:
     label: ":aws: 1 Tests"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -332,10 +308,6 @@ steps:
     label: ":aws: 1 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -348,6 +320,7 @@ steps:
         workdir: /data/job
     timeout: 60
 
+  # Amazon AWS-2 Linux Tests
   - command: |
         echo "--- :arrow_down: Downloading Build Directory" && \
         buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build" && \
@@ -356,10 +329,6 @@ steps:
     label: ":aws: 2 Tests"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -380,10 +349,6 @@ steps:
     label: ":aws: 2 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -396,6 +361,7 @@ steps:
         workdir: /data/job
     timeout: 60
 
+  # Fedora Tests
   - command: |
         echo "--- :arrow_down: Downloading Build Directory" && \
         buildkite-agent artifact download "build.tar.gz" . --step ":fedora: 27 Build" && \
@@ -404,10 +370,6 @@ steps:
     label: ":fedora: 27 Tests"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -428,10 +390,6 @@ steps:
     label: ":fedora: 27 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -444,6 +402,7 @@ steps:
         workdir: /data/job
     timeout: 60
 
+  # High Sierra Tests
   - command: |
         echo "--- :arrow_down: Downloading Build Directory" && \
         buildkite-agent artifact download "build.tar.gz" . --step ":darwin: High Sierra Build" && \
@@ -454,10 +413,6 @@ steps:
     agents:
       - "role=tester-v2-1"
       - "os=high-sierra"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     timeout: 60
 
   - command: |
@@ -469,12 +424,9 @@ steps:
     agents:
       - "role=tester-v2-1"
       - "os=high-sierra"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     timeout: 60
 
+  # Mojave Tests
   - command: |
         echo "--- :arrow_down: Downloading Build Directory" && \
         buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build" && \
@@ -485,10 +437,6 @@ steps:
     agents:
       - "role=tester-v2-1"
       - "os=mojave"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     timeout: 60
 
   - command: |
@@ -500,10 +448,6 @@ steps:
     agents:
       - "role=tester-v2-1"
       - "os=mojave"
-    artifact_paths:
-      - "mongod.log"
-      - "build/genesis.json"
-      - "build/config.ini"
     timeout: 60
     
   - wait

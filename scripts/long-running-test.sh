@@ -11,8 +11,8 @@ cd /data/job/build
 echo "Running tests..."
 TEST_COUNT=$(ctest -N -L nonparallelizable_tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
 [[ $TEST_COUNT > 0 ]] && echo "$TEST_COUNT tests found." || (echo "ERROR: No tests registered with ctest! Exiting..." && exit 1)
-echo "$ ctest -L nonparallelizable_tests --output-on-failure -T Test"
-ctest -L nonparallelizable_tests --output-on-failure -T Test
+echo "$ ctest -L long_running_tests --output-on-failure -T Test"
+ctest -L long_running_tests --output-on-failure -T Test
 # upload artifacts
 echo "Uploading artifacts..."
 XML_FILENAME="test-results.xml"
