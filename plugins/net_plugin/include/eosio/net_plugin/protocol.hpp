@@ -5,6 +5,7 @@
 #pragma once
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/pbft_database.hpp>
 #include <chrono>
 
 namespace eosio {
@@ -132,6 +133,11 @@ namespace eosio {
       uint32_t end_block;
    };
 
+   struct checkpoint_request_message {
+       uint32_t start_block;
+       uint32_t end_block;
+   };
+
    using net_message = static_variant<handshake_message,
                                       chain_size_message,
                                       go_away_message,
@@ -140,7 +146,22 @@ namespace eosio {
                                       request_message,
                                       sync_request_message,
                                       signed_block,         // which = 7
-                                      packed_transaction>;  // which = 8
+                                      packed_transaction,   // which = 8
+                                      pbft_prepare,
+                                      pbft_commit,
+                                      pbft_view_change,
+                                      pbft_new_view,
+                                      pbft_checkpoint,
+                                      pbft_stable_checkpoint,
+                                      checkpoint_request_message>;
+
+   using pbft_message = static_variant<pbft_prepare,
+                                       pbft_commit,
+                                       pbft_view_change,
+                                       pbft_new_view,
+                                       pbft_checkpoint,
+                                       pbft_stable_checkpoint,
+                                       checkpoint_request_message>;
 
 } // namespace eosio
 
@@ -159,6 +180,8 @@ FC_REFLECT( eosio::time_message, (org)(rec)(xmt)(dst) )
 FC_REFLECT( eosio::notice_message, (known_trx)(known_blocks) )
 FC_REFLECT( eosio::request_message, (req_trx)(req_blocks) )
 FC_REFLECT( eosio::sync_request_message, (start_block)(end_block) )
+FC_REFLECT( eosio::checkpoint_request_message, (start_block)(end_block) )
+
 
 /**
  *

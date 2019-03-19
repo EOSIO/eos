@@ -136,6 +136,8 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( fork_db_block_not_found, fork_database_exception,
                                     3020001, "Block can not be found" )
 
+   FC_DECLARE_DERIVED_EXCEPTION( pbft_exception, chain_exception,
+                                 4010000, "PBFT exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( block_validate_exception, chain_exception,
                                  3030000, "Block exception" )

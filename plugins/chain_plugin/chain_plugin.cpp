@@ -150,24 +150,41 @@ public:
    ,incoming_block_channel(app().get_channel<incoming::channels::block>())
    ,incoming_block_sync_method(app().get_method<incoming::methods::block_sync>())
    ,incoming_transaction_async_method(app().get_method<incoming::methods::transaction_async>())
+   //pbft channels
+   ,pbft_outgoing_prepare_channel(app().get_channel<pbft::outgoing::prepare_channel>())
+   ,pbft_incoming_prepare_channel(app().get_channel<pbft::incoming::prepare_channel>())
+   ,pbft_outgoing_commit_channel(app().get_channel<pbft::outgoing::commit_channel>())
+   ,pbft_incoming_commit_channel(app().get_channel<pbft::incoming::commit_channel>())
+   ,pbft_outgoing_view_change_channel(app().get_channel<pbft::outgoing::view_change_channel>())
+   ,pbft_incoming_view_change_channel(app().get_channel<pbft::incoming::view_change_channel>())
+   ,pbft_outgoing_new_view_channel(app().get_channel<pbft::outgoing::new_view_channel>())
+   ,pbft_incoming_new_view_channel(app().get_channel<pbft::incoming::new_view_channel>())
+   ,pbft_outgoing_checkpoint_channel(app().get_channel<pbft::outgoing::checkpoint_channel>())
+   ,pbft_incoming_checkpoint_channel(app().get_channel<pbft::incoming::checkpoint_channel>())
    {}
 
    bfs::path                        blocks_dir;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
-   fc::optional<fork_database>      fork_db;
+//   fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
    fc::optional<controller::config> chain_config;
    fc::optional<controller>         chain;
    fc::optional<chain_id_type>      chain_id;
+   fc::optional<pbft_controller>    pbft_ctrl;
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
    fc::microseconds                 abi_serializer_max_time_ms;
    fc::optional<bfs::path>          snapshot_path;
 
+   void on_pbft_incoming_prepare(pbft_prepare p);
+   void on_pbft_incoming_commit(pbft_commit c);
+   void on_pbft_incoming_view_change(pbft_view_change vc);
+   void on_pbft_incoming_new_view(pbft_new_view nv);
+   void on_pbft_incoming_checkpoint(pbft_checkpoint cp);
 
-   // retained references to channels for easy publication
+    // retained references to channels for easy publication
    channels::pre_accepted_block::channel_type&     pre_accepted_block_channel;
    channels::accepted_block_header::channel_type&  accepted_block_header_channel;
    channels::accepted_block::channel_type&         accepted_block_channel;
@@ -196,7 +213,31 @@ public:
    fc::optional<scoped_connection>                                   applied_transaction_connection;
    fc::optional<scoped_connection>                                   accepted_confirmation_connection;
 
+   //pbft
+   fc::optional<scoped_connection>                                   pbft_outgoing_prepare_connection;
+   pbft::incoming::prepare_channel::channel_type::handle pbft_incoming_prepare_subscription;
+   pbft::outgoing::prepare_channel::channel_type& pbft_outgoing_prepare_channel;
+   pbft::incoming::prepare_channel::channel_type& pbft_incoming_prepare_channel;
 
+   fc::optional<scoped_connection>                                   pbft_outgoing_commit_connection;
+   pbft::incoming::commit_channel::channel_type::handle pbft_incoming_commit_subscription;
+   pbft::outgoing::commit_channel::channel_type& pbft_outgoing_commit_channel;
+   pbft::incoming::commit_channel::channel_type& pbft_incoming_commit_channel;
+
+   fc::optional<scoped_connection>                                   pbft_outgoing_view_change_connection;
+   pbft::incoming::view_change_channel::channel_type::handle pbft_incoming_view_change_subscription;
+   pbft::outgoing::view_change_channel::channel_type& pbft_outgoing_view_change_channel;
+   pbft::incoming::view_change_channel::channel_type& pbft_incoming_view_change_channel;
+
+   fc::optional<scoped_connection>                                   pbft_outgoing_new_view_connection;
+    pbft::incoming::new_view_channel::channel_type::handle pbft_incoming_new_view_subscription;
+    pbft::outgoing::new_view_channel::channel_type& pbft_outgoing_new_view_channel;
+    pbft::incoming::new_view_channel::channel_type& pbft_incoming_new_view_channel;
+
+    fc::optional<scoped_connection>                                  pbft_outgoing_checkpoint_connection;
+    pbft::incoming::checkpoint_channel::channel_type::handle pbft_incoming_checkpoint_subscription;
+    pbft::outgoing::checkpoint_channel::channel_type& pbft_outgoing_checkpoint_channel;
+    pbft::incoming::checkpoint_channel::channel_type& pbft_incoming_checkpoint_channel;
 };
 
 chain_plugin::chain_plugin()
@@ -294,11 +335,24 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 
 }
 
+template<typename T>
+T dejsonify(const string& s) {
+ return fc::json::from_string(s).as<T>();
+}
+
 #define LOAD_VALUE_SET(options, name, container) \
 if( options.count(name) ) { \
    const std::vector<std::string>& ops = options[name].as<std::vector<std::string>>(); \
    std::copy(ops.begin(), ops.end(), std::inserter(container, container.end())); \
 }
+
+static signature_provider_type
+make_key_signature_provider(const private_key_type& key) {
+ return [key]( const chain::digest_type& digest ) {
+     return key.sign(digest);
+ };
+}
+
 
 fc::time_point calculate_genesis_timestamp( string tstr ) {
    fc::time_point genesis_timestamp;
@@ -350,6 +404,48 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       LOAD_VALUE_SET( options, "actor-blacklist", my->chain_config->actor_blacklist );
       LOAD_VALUE_SET( options, "contract-whitelist", my->chain_config->contract_whitelist );
       LOAD_VALUE_SET( options, "contract-blacklist", my->chain_config->contract_blacklist );
+      LOAD_VALUE_SET( options, "producer-name", my->chain_config->my_producers);
+      if( options.count("private-key") )
+      {
+         const std::vector<std::string> key_id_to_wif_pair_strings = options["private-key"].as<std::vector<std::string>>();
+         for (const std::string& key_id_to_wif_pair_string : key_id_to_wif_pair_strings)
+         {
+            try {
+               auto key_id_to_wif_pair = dejsonify<std::pair<public_key_type, private_key_type>>(key_id_to_wif_pair_string);
+               my->chain_config->my_signature_providers[key_id_to_wif_pair.first] = make_key_signature_provider(key_id_to_wif_pair.second);
+               auto blanked_privkey = std::string(std::string(key_id_to_wif_pair.second).size(), '*' );
+               wlog("\"private-key\" is DEPRECATED, use \"signature-provider=${pub}=KEY:${priv}\"", ("pub",key_id_to_wif_pair.first)("priv", blanked_privkey));
+            } catch ( fc::exception& e ) {
+               elog("Malformed private key pair");
+            }
+         }
+      }
+
+      if( options.count("signature-provider") ) {
+         const std::vector<std::string> key_spec_pairs = options["signature-provider"].as<std::vector<std::string>>();
+         for (const auto& key_spec_pair : key_spec_pairs) {
+            try {
+               auto delim = key_spec_pair.find("=");
+               EOS_ASSERT(delim != std::string::npos, plugin_config_exception, "Missing \"=\" in the key spec pair");
+               auto pub_key_str = key_spec_pair.substr(0, delim);
+               auto spec_str = key_spec_pair.substr(delim + 1);
+
+               auto spec_delim = spec_str.find(":");
+               EOS_ASSERT(spec_delim != std::string::npos, plugin_config_exception, "Missing \":\" in the key spec pair");
+               auto spec_type_str = spec_str.substr(0, spec_delim);
+               auto spec_data = spec_str.substr(spec_delim + 1);
+
+               auto pubkey = public_key_type(pub_key_str);
+
+               if (spec_type_str == "KEY") {
+                  my->chain_config->my_signature_providers[pubkey] = make_key_signature_provider(private_key_type(spec_data));
+               }
+
+            } catch (...) {
+               elog("Malformed signature provider: \"${val}\", ignoring!", ("val", key_spec_pair));
+            }
+         }
+      }
 
       LOAD_VALUE_SET( options, "trusted-producer", my->chain_config->trusted_producers );
 
@@ -641,6 +737,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain.emplace( *my->chain_config );
       my->chain_id.emplace( my->chain->get_chain_id());
 
+      ilog("include pbft controller...");
+      my->pbft_ctrl.emplace(*my->chain);
+
       // set up method providers
       my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider(
             [this]( uint32_t block_num ) -> signed_block_ptr {
@@ -703,10 +802,80 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                my->accepted_confirmation_channel.publish( conf );
             } );
 
+
+
+      //pbft
+      my->pbft_incoming_prepare_subscription = my->pbft_incoming_prepare_channel.subscribe( [this]( pbft_prepare p ){
+          my->on_pbft_incoming_prepare(p);
+      });
+
+      my->pbft_incoming_commit_subscription = my->pbft_incoming_commit_channel.subscribe( [this]( pbft_commit c ){
+          my->on_pbft_incoming_commit(c);
+      });
+
+      my->pbft_incoming_view_change_subscription = my->pbft_incoming_view_change_channel.subscribe( [this]( pbft_view_change vc ){
+          my->on_pbft_incoming_view_change(vc);
+      });
+
+      my->pbft_incoming_new_view_subscription = my->pbft_incoming_new_view_channel.subscribe( [this]( pbft_new_view nv ){
+          my->on_pbft_incoming_new_view(nv);
+      });
+
+      my->pbft_incoming_checkpoint_subscription = my->pbft_incoming_checkpoint_channel.subscribe( [this]( pbft_checkpoint cp ){
+          my->on_pbft_incoming_checkpoint(cp);
+      });
+
+      my->pbft_outgoing_prepare_connection = my->pbft_ctrl->pbft_db.pbft_outgoing_prepare.connect(
+              [this]( const pbft_prepare& prepare ) {
+                  my->pbft_outgoing_prepare_channel.publish( prepare );
+              });
+
+      my->pbft_outgoing_commit_connection = my->pbft_ctrl->pbft_db.pbft_outgoing_commit.connect(
+              [this]( const pbft_commit& commit ) {
+                  my->pbft_outgoing_commit_channel.publish( commit );
+              });
+
+      my->pbft_outgoing_view_change_connection = my->pbft_ctrl->pbft_db.pbft_outgoing_view_change.connect(
+              [this]( const pbft_view_change& view_change ) {
+                  my->pbft_outgoing_view_change_channel.publish( view_change );
+              });
+
+      my->pbft_outgoing_new_view_connection = my->pbft_ctrl->pbft_db.pbft_outgoing_new_view.connect(
+              [this]( const pbft_new_view& new_view ) {
+                  my->pbft_outgoing_new_view_channel.publish( new_view );
+              });
+
+      my->pbft_outgoing_checkpoint_connection = my->pbft_ctrl->pbft_db.pbft_outgoing_checkpoint.connect(
+              [this]( const pbft_checkpoint& checkpoint ) {
+                  my->pbft_outgoing_checkpoint_channel.publish( checkpoint );
+              });
+
       my->chain->add_indices();
    } FC_LOG_AND_RETHROW()
 
+
 }
+
+void chain_plugin_impl::on_pbft_incoming_prepare(pbft_prepare p){
+   pbft_ctrl->on_pbft_prepare(p);
+}
+
+void chain_plugin_impl::on_pbft_incoming_commit(pbft_commit c){
+   pbft_ctrl->on_pbft_commit(c);
+}
+
+void chain_plugin_impl::on_pbft_incoming_view_change(pbft_view_change vc){
+   pbft_ctrl->on_pbft_view_change(vc);
+}
+
+void chain_plugin_impl::on_pbft_incoming_new_view(pbft_new_view nv){
+   pbft_ctrl->on_pbft_new_view(nv);
+}
+
+void chain_plugin_impl::on_pbft_incoming_checkpoint(pbft_checkpoint cp){
+   pbft_ctrl->on_pbft_checkpoint(cp);
+}
+
 
 void chain_plugin::plugin_startup()
 { try {
@@ -979,6 +1148,8 @@ bool chain_plugin::export_reversible_blocks( const fc::path& reversible_dir,
 
 controller& chain_plugin::chain() { return *my->chain; }
 const controller& chain_plugin::chain() const { return *my->chain; }
+pbft_controller& chain_plugin::pbft_ctrl() { return *my->pbft_ctrl; }
+const pbft_controller& chain_plugin::pbft_ctrl() const { return *my->pbft_ctrl; }
 
 chain::chain_id_type chain_plugin::get_chain_id()const {
    EOS_ASSERT( my->chain_id.valid(), chain_id_type_exception, "chain ID has not been initialized yet" );
@@ -1038,6 +1209,9 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       db.fork_db_head_block_id(),
       db.fork_db_head_block_time(),
       db.fork_db_head_block_producer(),
+      pbft_ctrl.state_machine.get_current_view(),
+      pbft_ctrl.state_machine.get_target_view(),
+      db.last_stable_checkpoint_block_num(),
       rm.get_virtual_block_cpu_limit(),
       rm.get_virtual_block_net_limit(),
       rm.get_block_cpu_limit(),

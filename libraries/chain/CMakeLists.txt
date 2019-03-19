@@ -14,6 +14,8 @@ add_library( eosio_chain
              block_header_state.cpp
              block_state.cpp
              fork_database.cpp
+             pbft_database.cpp
+             pbft.cpp
              controller.cpp
              authorization_manager.cpp
              resource_limits.cpp

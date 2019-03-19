@@ -82,6 +82,8 @@ public:
    integrity_hash_information get_integrity_hash() const;
    snapshot_information create_snapshot() const;
 
+   void set_pbft_current_view(const uint32_t view);
+
    signal<void(const chain::producer_confirmation&)> confirmed_block;
 private:
    std::shared_ptr<class producer_plugin_impl> my;

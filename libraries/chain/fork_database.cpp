@@ -31,12 +31,14 @@ namespace eosio { namespace chain {
             composite_key_compare< std::less<uint32_t>, std::greater<bool> >
          >,
          ordered_non_unique< tag<by_lib_block_num>,
-            composite_key< block_header_state,
-                member<block_header_state,uint32_t,&block_header_state::dpos_irreversible_blocknum>,
+            composite_key< block_state,
+//                member<block_header_state,uint32_t,&block_header_state::dpos_irreversible_blocknum>,
                 member<block_header_state,uint32_t,&block_header_state::bft_irreversible_blocknum>,
+                member<block_state,bool,&block_state::pbft_prepared>,
+                member<block_state,bool,&block_state::pbft_my_prepare>,
                 member<block_header_state,uint32_t,&block_header_state::block_num>
             >,
-            composite_key_compare< std::greater<uint32_t>, std::greater<uint32_t>, std::greater<uint32_t> >
+            composite_key_compare< std::greater<uint32_t>, std::greater<bool>, std::greater<bool>, std::greater<uint32_t> >
          >
       >
    > fork_multi_index_type;
@@ -95,9 +97,10 @@ namespace eosio { namespace chain {
       /// we cannot normally prune the lib if it is the head block because
       /// the next block needs to build off of the head block. We are exiting
       /// now so we can prune this block as irreversible before exiting.
-      auto lib    = my->head->dpos_irreversible_blocknum;
+      auto lib    = my->head->bft_irreversible_blocknum;
+      auto checkpoint = my->head->pbft_stable_checkpoint_blocknum;
       auto oldest = *my->index.get<by_block_num>().begin();
-      if( oldest->block_num <= lib ) {
+      if( oldest->block_num < lib && oldest->block_num < checkpoint ) {
          prune( oldest );
       }
 
@@ -138,11 +141,12 @@ namespace eosio { namespace chain {
 
       my->head = *my->index.get<by_lib_block_num>().begin();
 
-      auto lib    = my->head->dpos_irreversible_blocknum;
+      auto lib    = my->head->bft_irreversible_blocknum;
+      auto checkpoint = my->head->pbft_stable_checkpoint_blocknum;
       auto oldest = *my->index.get<by_block_num>().begin();
 
-      if( oldest->block_num < lib ) {
-         prune( oldest );
+      if( oldest->block_num < lib && oldest->block_num < checkpoint ) {
+          prune( oldest );
       }
 
       return n;
@@ -277,16 +281,110 @@ namespace eosio { namespace chain {
       }
    }
 
-   block_state_ptr   fork_database::get_block(const block_id_type& id)const {
+   block_state_ptr fork_database::get_block(const block_id_type& id) const {
       auto itr = my->index.find( id );
       if( itr != my->index.end() )
          return *itr;
       return block_state_ptr();
    }
 
+   void fork_database::mark_pbft_prepared_fork(const block_id_type &id) const {
+       auto& by_id_idx = my->index.get<by_block_id>();
+       auto itr = by_id_idx.find( id );
+       EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
+       by_id_idx.modify( itr, [&]( auto& bsp ) { bsp->pbft_prepared = true; });
+
+       auto update = [&]( const vector<block_id_type>& in ) {
+           vector<block_id_type> updated;
+
+           for( const auto& i : in ) {
+               auto& pidx = my->index.get<by_prev>();
+               auto pitr  = pidx.lower_bound( i );
+               auto epitr = pidx.upper_bound( i );
+               while( pitr != epitr ) {
+                   pidx.modify( pitr, [&]( auto& bsp ) {
+                       bsp->pbft_prepared = true;
+                       updated.push_back( bsp->id );
+                   });
+                   ++pitr;
+               }
+           }
+           return updated;
+       };
+
+       vector<block_id_type> queue{id};
+       while(!queue.empty()) {
+           queue = update( queue );
+       }
+       my->head = *my->index.get<by_lib_block_num>().begin();
+   }
+
+   void fork_database::mark_pbft_my_prepare_fork(const block_id_type &id) const {
+       auto& by_id_idx = my->index.get<by_block_id>();
+       auto itr = by_id_idx.find( id );
+       EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
+       by_id_idx.modify( itr, [&]( auto& bsp ) { bsp->pbft_my_prepare = true; });
+
+       auto update = [&]( const vector<block_id_type>& in ) {
+           vector<block_id_type> updated;
+
+           for( const auto& i : in ) {
+               auto& pidx = my->index.get<by_prev>();
+               auto pitr  = pidx.lower_bound( i );
+               auto epitr = pidx.upper_bound( i );
+               while( pitr != epitr ) {
+                   pidx.modify( pitr, [&]( auto& bsp ) {
+                       bsp->pbft_my_prepare = true;
+                       updated.push_back( bsp->id );
+                   });
+                   ++pitr;
+               }
+           }
+           return updated;
+       };
+
+       vector<block_id_type> queue{id};
+       while(!queue.empty()) {
+           queue = update( queue );
+       }
+       my->head = *my->index.get<by_lib_block_num>().begin();
+   }
+
+   void fork_database::remove_pbft_my_prepare_fork(const block_id_type &id) const {
+       auto& by_id_idx = my->index.get<by_block_id>();
+       auto itr = by_id_idx.find( id );
+       EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
+       by_id_idx.modify( itr, [&]( auto& bsp ) { bsp->pbft_my_prepare = false; });
+
+       auto update = [&]( const vector<block_id_type>& in ) {
+           vector<block_id_type> updated;
+
+           for( const auto& i : in ) {
+               auto& pidx = my->index.get<by_prev>();
+               auto pitr  = pidx.lower_bound( i );
+               auto epitr = pidx.upper_bound( i );
+               while( pitr != epitr ) {
+                   pidx.modify( pitr, [&]( auto& bsp ) {
+                       bsp->pbft_my_prepare = false;
+                       updated.push_back( bsp->id );
+                   });
+                   ++pitr;
+               }
+           }
+           return updated;
+       };
+
+       vector<block_id_type> queue{id};
+       while(!queue.empty()) {
+           queue = update( queue );
+       }
+       my->head = *my->index.get<by_lib_block_num>().begin();
+   }
+
    block_state_ptr   fork_database::get_block_in_current_chain_by_num( uint32_t n )const {
       const auto& numidx = my->index.get<by_block_num>();
       auto nitr = numidx.lower_bound( n );
+
       // following asserts removed so null can be returned
       //FC_ASSERT( nitr != numidx.end() && (*nitr)->block_num == n,
       //           "could not find block in fork database with block number ${block_num}", ("block_num", n) );
@@ -316,10 +414,13 @@ namespace eosio { namespace chain {
     *  This will require a search over all forks
     */
    void fork_database::set_bft_irreversible( block_id_type id ) {
-      auto& idx = my->index.get<by_block_id>();
-      auto itr = idx.find(id);
-      uint32_t block_num = (*itr)->block_num;
-      idx.modify( itr, [&]( auto& bsp ) {
+       auto b = get_block( id );
+       EOS_ASSERT( b, fork_db_block_not_found, "unable to find block id ${id}", ("id",id));
+
+       auto& idx = my->index.get<by_block_id>();
+       auto itr = idx.find(id);
+       uint32_t block_num = (*itr)->block_num;
+       idx.modify( itr, [&]( auto& bsp ) {
            bsp->bft_irreversible_blocknum = bsp->block_num;
       });
 
@@ -332,27 +433,65 @@ namespace eosio { namespace chain {
       auto update = [&]( const vector<block_id_type>& in ) {
          vector<block_id_type> updated;
 
-         for( const auto& i : in ) {
-            auto& pidx = my->index.get<by_prev>();
-            auto pitr  = pidx.lower_bound( i );
-            auto epitr = pidx.upper_bound( i );
-            while( pitr != epitr ) {
-               pidx.modify( pitr, [&]( auto& bsp ) {
-                 if( bsp->bft_irreversible_blocknum < block_num ) {
-                    bsp->bft_irreversible_blocknum = block_num;
-                    updated.push_back( bsp->id );
-                 }
-               });
-               ++pitr;
-            }
-         }
-         return updated;
-      };
+           for( const auto& i : in ) {
+               auto& pidx = my->index.get<by_prev>();
+               auto pitr  = pidx.lower_bound( i );
+               auto epitr = pidx.upper_bound( i );
+               while( pitr != epitr ) {
+                   pidx.modify( pitr, [&]( auto& bsp ) {
+                       if( bsp->bft_irreversible_blocknum < block_num ) {
+                           bsp->bft_irreversible_blocknum = block_num;
+                           updated.push_back( bsp->id );
+                       }
+                   });
+                   ++pitr;
+               }
+           }
+           return updated;
+       };
 
-      vector<block_id_type> queue{id};
-      while( queue.size() ) {
-         queue = update( queue );
-      }
+       vector<block_id_type> queue{id};
+       while( queue.size() ) {
+           queue = update( queue );
+       }
    }
 
-} } /// eosio::chain
+   void fork_database::set_latest_checkpoint( block_id_type id) {
+       auto b = get_block( id );
+       EOS_ASSERT( b, fork_db_block_not_found, "unable to find block id ${id}", ("id",id));
+
+       auto& idx = my->index.get<by_block_id>();
+       auto itr = idx.find(id);
+       uint32_t block_num = (*itr)->block_num;
+       idx.modify( itr, [&]( auto& bsp ) {
+           bsp->pbft_stable_checkpoint_blocknum = bsp->block_num;
+       });
+
+       auto update = [&]( const vector<block_id_type>& in ) {
+           vector<block_id_type> updated;
+
+           for( const auto& i : in ) {
+               auto& pidx = my->index.get<by_prev>();
+               auto pitr  = pidx.lower_bound( i );
+               auto epitr = pidx.upper_bound( i );
+               while( pitr != epitr ) {
+                   pidx.modify( pitr, [&]( auto& bsp ) {
+                       if( bsp->pbft_stable_checkpoint_blocknum < block_num ) {
+                           bsp->pbft_stable_checkpoint_blocknum = block_num;
+                           updated.push_back( bsp->id );
+                       }
+                   });
+                   ++pitr;
+               }
+           }
+           return updated;
+       };
+
+       vector<block_id_type> queue{id};
+       while( queue.size() ) {
+           queue = update( queue );
+       }
+   }
+
+
+    } } /// eosio::chain
