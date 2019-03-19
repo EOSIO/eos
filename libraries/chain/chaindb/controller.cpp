@@ -189,6 +189,16 @@ namespace cyberway { namespace chaindb {
             return driver_.upper_bound(std::move(index), std::move(value));
         }
 
+        const cursor_info& lower_bound(const index_request& request, const fc::variant& orders) const {
+            auto index = get_index(request);
+            return driver_.lower_bound(std::move(index), orders);
+        }
+
+        const cursor_info& upper_bound(const index_request& request, const fc::variant& orders) const {
+            auto index = get_index(request);
+            return driver_.upper_bound(std::move(index), orders);
+        }
+
         const cursor_info& find(const index_request& request, primary_key_t pk, const char* key, size_t size) const {
             auto index = get_index(request);
             auto value = index.abi->to_object(index, key, size);
@@ -670,6 +680,17 @@ namespace cyberway { namespace chaindb {
         const auto& info = impl_->upper_bound(request, key, size);
         return {info.id, info.pk};
     }
+
+    find_info chaindb_controller::lower_bound(const index_request& request, const fc::variant& orders) const {
+        auto info = impl_->lower_bound(request, orders);
+        return {info.id, info.pk};
+    }
+
+     find_info chaindb_controller::upper_bound(const index_request& request, const fc::variant& orders) const {
+        auto info = impl_->lower_bound(request, orders);
+        return {info.id, info.pk};
+    }
+
 
     find_info chaindb_controller::find(const index_request& request, primary_key_t pk, const char* key, size_t size) {
         const auto& info = impl_->find(request, pk, key, size);

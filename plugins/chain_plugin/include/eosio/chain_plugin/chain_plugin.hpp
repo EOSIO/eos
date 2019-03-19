@@ -3,6 +3,8 @@
  *  @copyright defined in eos/LICENSE
  */
 #pragma once
+#include <functional>
+
 #include <appbase/application.hpp>
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/authority.hpp>
@@ -75,8 +77,6 @@ class read_only {
    bool  shorten_abi_errors = true;
 
 public:
-   static const string KEYi64;
-
    read_only(const controller& db, const fc::microseconds& abi_serializer_max_time)
       : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
 
@@ -285,14 +285,13 @@ public:
    struct get_table_rows_params {
       bool        json = false;
       name        code;
-      string      scope;
+      name        scope;
       name        table;
       string      table_key;
-      string      lower_bound;
-      string      upper_bound;
+      fc::variant lower_bound;
+      fc::variant upper_bound;
       uint32_t    limit = 10;
-      string      key_type;  // type of key specified by index_position
-      string      index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
+      name        index;
       string      encode_type{"dec"}; //dec, hex , default=dec
       optional<bool>  reverse;
       optional<bool>  show_payer; // show RAM pyer
@@ -387,174 +386,11 @@ public:
 
    get_scheduled_transactions_result get_scheduled_transactions( const get_scheduled_transactions_params& params ) const;
 
-
-   static uint64_t get_table_index_name(const read_only::get_table_rows_params& p, bool& primary);
-
-   template <typename IndexType, typename SecKeyType, typename ConvFn>
-   read_only::get_table_rows_result get_table_rows_by_seckey( const read_only::get_table_rows_params& p, const abi_def& abi, ConvFn conv )const {
-      read_only::get_table_rows_result result;
-// TODO: Removed by CyberWay
-//      const auto& d = db.db();
-//
-//      uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
-//
-//      abi_serializer abis;
-//      abis.set_abi(abi, abi_serializer_max_time);
-//      bool primary = false;
-//      const uint64_t table_with_index = get_table_index_name(p, primary);
-//      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
-//      const auto* index_t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, table_with_index));
-//      if( t_id != nullptr && index_t_id != nullptr ) {
-//         using secondary_key_type = std::result_of_t<decltype(conv)(SecKeyType)>;
-//         static_assert( std::is_same<typename IndexType::value_type::secondary_key_type, secondary_key_type>::value, "Return type of conv does not match type of secondary key for IndexType" );
-//
-//         const auto& secidx = d.get_index<IndexType, chain::by_secondary>();
-//         auto lower_bound_lookup_tuple = std::make_tuple( index_t_id->id._id,
-//                                                          eosio::chain::secondary_key_traits<secondary_key_type>::true_lowest(),
-//                                                          std::numeric_limits<uint64_t>::lowest() );
-//         auto upper_bound_lookup_tuple = std::make_tuple( index_t_id->id._id,
-//                                                          eosio::chain::secondary_key_traits<secondary_key_type>::true_highest(),
-//                                                          std::numeric_limits<uint64_t>::max() );
-//
-//         if( p.lower_bound.size() ) {
-//            if( p.key_type == "name" ) {
-//               name s(p.lower_bound);
-//               SecKeyType lv = convert_to_type<SecKeyType>( s.to_string(), "lower_bound name" ); // avoids compiler error
-//               std::get<1>(lower_bound_lookup_tuple) = conv( lv );
-//            } else {
-//               SecKeyType lv = convert_to_type<SecKeyType>( p.lower_bound, "lower_bound" );
-//               std::get<1>(lower_bound_lookup_tuple) = conv( lv );
-//            }
-//         }
-//
-//         if( p.upper_bound.size() ) {
-//            if( p.key_type == "name" ) {
-//               name s(p.upper_bound);
-//               SecKeyType uv = convert_to_type<SecKeyType>( s.to_string(), "upper_bound name" );
-//               std::get<1>(upper_bound_lookup_tuple) = conv( uv );
-//            } else {
-//               SecKeyType uv = convert_to_type<SecKeyType>( p.upper_bound, "upper_bound" );
-//               std::get<1>(upper_bound_lookup_tuple) = conv( uv );
-//            }
-//         }
-//
-//         if( upper_bound_lookup_tuple < lower_bound_lookup_tuple )
-//            return result;
-//
-//         auto walk_table_row_range = [&]( auto itr, auto end_itr ) {
-//            auto cur_time = fc::time_point::now();
-//            auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
-//            vector<char> data;
-//            for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::time_point::now() ) {
-//               const auto* itr2 = d.find<chain::key_value_object, chain::by_scope_primary>( boost::make_tuple(t_id->id, itr->primary_key) );
-//               if( itr2 == nullptr ) continue;
-//               copy_inline_row(*itr2, data);
-//
-//               fc::variant data_var;
-//               if( p.json ) {
-//                  data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors );
-//               } else {
-//                  data_var = fc::variant( data );
-//               }
-//
-//               if( p.show_payer && *p.show_payer ) {
-//                  result.rows.emplace_back( fc::mutable_variant_object("data", std::move(data_var))("payer", itr->payer) );
-//               } else {
-//                  result.rows.emplace_back( std::move(data_var) );
-//               }
-//
-//               ++count;
-//            }
-//            if( itr != end_itr ) {
-//               result.more = true;
-//            }
-//         };
-//
-//         auto lower = secidx.lower_bound( lower_bound_lookup_tuple );
-//         auto upper = secidx.upper_bound( upper_bound_lookup_tuple );
-//         if( p.reverse && *p.reverse ) {
-//            walk_table_row_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
-//         } else {
-//            walk_table_row_range( lower, upper );
-//         }
-//      }
-      return result;
-   }
-
-   template <typename IndexType>
-   read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const abi_def& abi )const {
-      read_only::get_table_rows_result result;
-// TODO: Removed by CyberWay
-//      const auto& d = db.db();
-//
-//      uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
-//
-//      abi_serializer abis;
-//      abis.set_abi(abi, abi_serializer_max_time);
-//      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
-//      if( t_id != nullptr ) {
-//         const auto& idx = d.get_index<IndexType, chain::by_scope_primary>();
-//         auto lower_bound_lookup_tuple = std::make_tuple( t_id->id, std::numeric_limits<uint64_t>::lowest() );
-//         auto upper_bound_lookup_tuple = std::make_tuple( t_id->id, std::numeric_limits<uint64_t>::max() );
-//
-//         if( p.lower_bound.size() ) {
-//            if( p.key_type == "name" ) {
-//               name s(p.lower_bound);
-//               std::get<1>(lower_bound_lookup_tuple) = s.value;
-//            } else {
-//               auto lv = convert_to_type<typename IndexType::value_type::key_type>( p.lower_bound, "lower_bound" );
-//               std::get<1>(lower_bound_lookup_tuple) = lv;
-//            }
-//         }
-//
-//         if( p.upper_bound.size() ) {
-//            if( p.key_type == "name" ) {
-//               name s(p.upper_bound);
-//               std::get<1>(upper_bound_lookup_tuple) = s.value;
-//            } else {
-//               auto uv = convert_to_type<typename IndexType::value_type::key_type>( p.upper_bound, "upper_bound" );
-//               std::get<1>(upper_bound_lookup_tuple) = uv;
-//            }
-//         }
-//
-//         if( upper_bound_lookup_tuple < lower_bound_lookup_tuple  )
-//            return result;
-//
-//         auto walk_table_row_range = [&]( auto itr, auto end_itr ) {
-//            auto cur_time = fc::time_point::now();
-//            auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
-//            vector<char> data;
-//            for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++count, ++itr, cur_time = fc::time_point::now() ) {
-//               copy_inline_row(*itr, data);
-//
-//               fc::variant data_var;
-//               if( p.json ) {
-//                  data_var = abis.binary_to_variant( abis.get_table_type(p.table), data, abi_serializer_max_time, shorten_abi_errors );
-//               } else {
-//                  data_var = fc::variant( data );
-//               }
-//
-//               if( p.show_payer && *p.show_payer ) {
-//                  result.rows.emplace_back( fc::mutable_variant_object("data", std::move(data_var))("payer", itr->payer) );
-//               } else {
-//                  result.rows.emplace_back( std::move(data_var) );
-//               }
-//            }
-//            if( itr != end_itr ) {
-//               result.more = true;
-//            }
-//         };
-//
-//         auto lower = idx.lower_bound( lower_bound_lookup_tuple );
-//         auto upper = idx.upper_bound( upper_bound_lookup_tuple );
-//         if( p.reverse && *p.reverse ) {
-//            walk_table_row_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
-//         } else {
-//            walk_table_row_range( lower, upper );
-//         }
-//      }
-      return result;
-   }
+private:
+    read_only::get_table_rows_result walk_table_row_range(const read_only::get_table_rows_params& p,
+                                                         cyberway::chaindb::find_info& itr,
+                                                         cyberway::chaindb::primary_key_t end_pk,
+                                                         const std::function<cyberway::chaindb::primary_key_t (cyberway::chaindb::chaindb_controller&, const cyberway::chaindb::cursor_request&)>& next) const;
 
    chain::symbol extract_core_symbol()const;
 
@@ -586,68 +422,6 @@ public:
 
    friend resolver_factory<read_write>;
 };
-
- //support for --key_types [sha256,ripemd160] and --encoding [dec/hex]
- constexpr const char i64[]       = "i64";
- constexpr const char i128[]      = "i128";
- constexpr const char i256[]      = "i256";
- constexpr const char float64[]   = "float64";
- constexpr const char float128[]  = "float128";
- constexpr const char sha256[]    = "sha256";
- constexpr const char ripemd160[] = "ripemd160";
- constexpr const char dec[]       = "dec";
- constexpr const char hex[]       = "hex";
-
-
- template<const char*key_type , const char *encoding=chain_apis::dec>
- struct keytype_converter ;
-
-// TODO: Removed by CyberWay
-// template<>
-// struct keytype_converter<chain_apis::sha256, chain_apis::hex> {
-//     using input_type = chain::checksum256_type;
-//     using index_type = chain::index256_index;
-//     static auto function() {
-//        return [](const input_type& v) {
-//            chain::key256_t k;
-//            k[0] = ((uint128_t *)&v._hash)[0]; //0-127
-//            k[1] = ((uint128_t *)&v._hash)[1]; //127-256
-//            return k;
-//        };
-//     }
-// };
-
- //key160 support with padding zeros in the end of key256
-// TODO: Removed by CyberWay
-// template<>
-// struct keytype_converter<chain_apis::ripemd160, chain_apis::hex> {
-//     using input_type = chain::checksum160_type;
-//     using index_type = chain::index256_index;
-//     static auto function() {
-//        return [](const input_type& v) {
-//            chain::key256_t k;
-//            memset(k.data(), 0, sizeof(k));
-//            memcpy(k.data(), v._hash, sizeof(v._hash));
-//            return k;
-//        };
-//     }
-// };
-
-// TODO: Removed by CyberWay
-// template<>
-// struct keytype_converter<chain_apis::i256> {
-//     using input_type = boost::multiprecision::uint256_t;
-//     using index_type = chain::index256_index;
-//     static auto function() {
-//        return [](const input_type v) {
-//            chain::key256_t k;
-//            k[0] = ((uint128_t *)&v)[0]; //0-127
-//            k[1] = ((uint128_t *)&v)[1]; //127-256
-//            return k;
-//        };
-//     }
-// };
-
 } // namespace chain_apis
 
 class chain_plugin : public plugin<chain_plugin> {
@@ -715,7 +489,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_n
 
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(index)(encode_type)(reverse)(show_payer) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit)(reverse) )

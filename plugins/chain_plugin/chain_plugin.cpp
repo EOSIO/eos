@@ -16,7 +16,6 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/snapshot.hpp>
 
-#include <cyberway/chaindb/multi_index.hpp>
 #include <cyberway/chaindb/names.hpp>
 
 #include <boost/signals2/connection.hpp>
@@ -1007,8 +1006,6 @@ void chain_plugin::handle_db_exhaustion() {
 
 namespace chain_apis {
 
-const string read_only::KEYi64 = "i64";
-
 template<typename I>
 std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
    static const char* digits = "0123456789abcdef";
@@ -1037,51 +1034,6 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       //__builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0,
       app().version_string(),
    };
-}
-
-uint64_t read_only::get_table_index_name(const read_only::get_table_rows_params& p, bool& primary) {
-   using boost::algorithm::starts_with;
-   // see multi_index packing of index name
-   const uint64_t table = p.table;
-   uint64_t index = table & 0xFFFFFFFFFFFFFFF0ULL;
-   EOS_ASSERT( index == table, chain::contract_table_query_exception, "Unsupported table name: ${n}", ("n", p.table) );
-
-   primary = false;
-   uint64_t pos = 0;
-   if (p.index_position.empty() || p.index_position == "first" || p.index_position == "primary" || p.index_position == "one") {
-      primary = true;
-   } else if (starts_with(p.index_position, "sec") || p.index_position == "two") { // second, secondary
-   } else if (starts_with(p.index_position , "ter") || starts_with(p.index_position, "th")) { // tertiary, ternary, third, three
-      pos = 1;
-   } else if (starts_with(p.index_position, "fou")) { // four, fourth
-      pos = 2;
-   } else if (starts_with(p.index_position, "fi")) { // five, fifth
-      pos = 3;
-   } else if (starts_with(p.index_position, "six")) { // six, sixth
-      pos = 4;
-   } else if (starts_with(p.index_position, "sev")) { // seven, seventh
-      pos = 5;
-   } else if (starts_with(p.index_position, "eig")) { // eight, eighth
-      pos = 6;
-   } else if (starts_with(p.index_position, "nin")) { // nine, ninth
-      pos = 7;
-   } else if (starts_with(p.index_position, "ten")) { // ten, tenth
-      pos = 8;
-   } else {
-      try {
-         pos = fc::to_uint64( p.index_position );
-      } catch(...) {
-         EOS_ASSERT( false, chain::contract_table_query_exception, "Invalid index_position: ${p}", ("p", p.index_position));
-      }
-      if (pos < 2) {
-         primary = true;
-         pos = 0;
-      } else {
-         pos -= 2;
-      }
-   }
-   index |= (pos & 0x000000000000000FULL);
-   return index;
 }
 
 template<>
@@ -1136,77 +1088,50 @@ abi_def get_abi( const controller& db, const name& account ) {
    return abi;
 }
 
-string get_table_type( const abi_def& abi, const name& table_name ) {
-   for( const auto& t : abi.tables ) {
-      if( t.name == table_name ){
-         return "i64";
-         // return t.index_type; // CYBERWAY
-      }
-   }
-   EOS_ASSERT( false, chain::contract_table_query_exception, "Table ${table} is not specified in the ABI", ("table",table_name) );
-}
-
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
-   return read_only::get_table_rows_result();
 
-// TODO: Removed by CyberWay
-//   const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
-//
-//   bool primary = false;
-//   auto table_with_index = get_table_index_name( p, primary );
-//   if( primary ) {
-//      EOS_ASSERT( p.table == table_with_index, chain::contract_table_query_exception, "Invalid table name ${t}", ( "t", p.table ));
-//      auto table_type = get_table_type( abi, p.table );
-//      if( table_type == KEYi64 || p.key_type == "i64" || p.key_type == "name" ) {
-//         return get_table_rows_ex<key_value_index>(p,abi);
-//      }
-//      EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
-//   } else {
-//      EOS_ASSERT( !p.key_type.empty(), chain::contract_table_query_exception, "key type required for non-primary index" );
-//
-//      if (p.key_type == chain_apis::i64 || p.key_type == "name") {
-//         return get_table_rows_by_seckey<index64_index, uint64_t>(p, abi, [](uint64_t v)->uint64_t {
-//            return v;
-//         });
-//      }
-//      else if (p.key_type == chain_apis::i128) {
-//         return get_table_rows_by_seckey<index128_index, uint128_t>(p, abi, [](uint128_t v)->uint128_t {
-//            return v;
-//         });
-//      }
-//      else if (p.key_type == chain_apis::i256) {
-//         if ( p.encode_type == chain_apis::hex) {
-//            using  conv = keytype_converter<chain_apis::sha256,chain_apis::hex>;
-//            return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
-//         }
-//         using  conv = keytype_converter<chain_apis::i256>;
-//         return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
-//      }
-//      else if (p.key_type == chain_apis::float64) {
-//         return get_table_rows_by_seckey<index_double_index, double>(p, abi, [](double v)->float64_t {
-//            float64_t f = *(float64_t *)&v;
-//            return f;
-//         });
-//      }
-//      else if (p.key_type == chain_apis::float128) {
-//         return get_table_rows_by_seckey<index_long_double_index, double>(p, abi, [](double v)->float128_t{
-//            float64_t f = *(float64_t *)&v;
-//            float128_t f128;
-//            f64_to_f128M(f, &f128);
-//            return f128;
-//         });
-//      }
-//      else if (p.key_type == chain_apis::sha256) {
-//         using  conv = keytype_converter<chain_apis::sha256,chain_apis::hex>;
-//         return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
-//      }
-//      else if(p.key_type == chain_apis::ripemd160) {
-//         using  conv = keytype_converter<chain_apis::ripemd160,chain_apis::hex>;
-//         return get_table_rows_by_seckey<conv::index_type, conv::input_type>(p, abi, conv::function());
-//      }
-//      EOS_ASSERT(false, chain::contract_table_query_exception,  "Unsupported secondary index type: ${t}", ("t", p.key_type));
-//   }
+
+   auto& chaindb = db.chaindb();
+
+   const cyberway::chaindb::index_request request{p.code, p.scope, p.table, p.index};
+
+   if (p.reverse && *p.reverse) {
+       auto begin = p.upper_bound.is_null() ? chaindb.end(request) : chaindb.upper_bound(request, p.upper_bound);
+
+       begin.pk = chaindb.prev({p.code, begin.cursor});
+
+       const auto end_pk = p.lower_bound.is_null() ? cyberway::chaindb::end_primary_key : chaindb.prev({p.code, chaindb.lower_bound(request, p.lower_bound).cursor});
+
+       return walk_table_row_range(p, begin, end_pk, [] (auto& chaindb, const auto& move_cursor_request) {return chaindb.prev(move_cursor_request);});
+   } else {
+       auto begin = p.lower_bound.is_null() ? chaindb.begin(request) : chaindb.lower_bound(request, p.lower_bound);
+       const auto end_pk = p.upper_bound.is_null() ? cyberway::chaindb::end_primary_key : chaindb.upper_bound(request, p.upper_bound).pk;
+       return walk_table_row_range(p, begin, end_pk, [] (auto& chaindb, const auto& move_cursor_request) {return chaindb.next(move_cursor_request);});
+   }
+
 }
+
+read_only::get_table_rows_result read_only::walk_table_row_range(const read_only::get_table_rows_params& p, cyberway::chaindb::find_info& itr, cyberway::chaindb::primary_key_t end_pk, const std::function<cyberway::chaindb::primary_key_t (cyberway::chaindb::chaindb_controller&, const cyberway::chaindb::cursor_request&)>& next) const {
+    read_only::get_table_rows_result result;
+
+    auto cur_time = fc::time_point::now();
+    const auto end_time = cur_time + fc::microseconds(1000 * 10); /// 10ms max time
+
+    auto& chaindb = db.chaindb();
+    cyberway::chaindb::cursor_request cursor{p.code, itr.cursor};
+
+    for(unsigned int count = 0;
+        cur_time <= end_time &&
+        count < p.limit &&
+        itr.pk != end_pk;
+        itr.pk = next(chaindb, cursor), ++count, cur_time = fc::time_point::now()) {
+        result.rows.push_back(chaindb.value_at_cursor(cursor));
+    }
+
+    result.more = itr.pk != end_pk;
+    return result;
+}
+
 
 read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_only::get_table_by_scope_params& p )const {
    read_only::get_table_by_scope_result result;
@@ -1293,7 +1218,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    fc::mutable_variant_object results;
 
    const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
-   (void)get_table_type( abi, "stat" );
+   //(void)get_index_type( abi, "stat" );
 
    uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
 
@@ -1322,8 +1247,8 @@ static float64_t to_softfloat64( double d ) {
 }
 
 fc::variant get_global_row( const database& db, const abi_def& abi, const abi_serializer& abis, const fc::microseconds& abi_serializer_max_time_ms, bool shorten_abi_errors ) {
-   const auto table_type = get_table_type(abi, N(global));
-   EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
+//   const auto table_type = get_index_type(abi, N(global));
+//   EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
 
 // TODO: Removed by CyberWay
 //   const auto* const table_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(config::system_account_name, config::system_account_name, N(global)));
@@ -1341,9 +1266,9 @@ fc::variant get_global_row( const database& db, const abi_def& abi, const abi_se
 
 read_only::get_producers_result read_only::get_producers( const read_only::get_producers_params& p ) const {
    const abi_def abi = eosio::chain_apis::get_abi(db, config::system_account_name);
-   const auto table_type = get_table_type(abi, N(producers));
+//   const auto table_type = get_index_type(abi, N(producers));
    const abi_serializer abis{ abi, abi_serializer_max_time };
-   EOS_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
+ //  EOS_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
 
 // TODO: Removed by CyberWay
 //   const auto& d = db.db();
