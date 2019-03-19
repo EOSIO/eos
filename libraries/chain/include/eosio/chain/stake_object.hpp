@@ -107,6 +107,7 @@ class stake_stat_object : public cyberway::chaindb::object<stake_stat_object_typ
     symbol_code purpose_code;
     symbol_code token_code;
     int64_t total_staked;
+    bool enabled;
     struct by_key {};
 };
 
@@ -152,4 +153,4 @@ FC_REFLECT(eosio::chain::stake_param_object,
     (id)(token_symbol)(purposes)(max_proxies)(frame_length)(payout_step_lenght)(payout_steps_num))
     
 FC_REFLECT(eosio::chain::stake_stat_object, 
-    (id)(purpose_code)(token_code)(total_staked))
+    (id)(purpose_code)(token_code)(total_staked)(enabled))

@@ -155,22 +155,23 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
 
             r = buyram(config::system_account_name, N(user2), asset(1000));
         }
-
-        auto& rlm = control->get_resource_limits_manager();
-        auto provider_cpu = rlm.get_account_cpu_limit_ex(N(provider));
-        auto provider_net = rlm.get_account_net_limit_ex(N(provider));
+        
+        auto block_time = control->head_block_time().time_since_epoch().to_seconds();
+        auto& rlm = control->get_mutable_resource_limits_manager();
+        auto provider_cpu = rlm.get_account_limit_ex(block_time, N(provider), resource_limits::cpu_code);
+        auto provider_net = rlm.get_account_limit_ex(block_time, N(provider), resource_limits::net_code);
 
         BOOST_CHECK_GT(provider_cpu.available, 0);
         BOOST_CHECK_GT(provider_net.available, 0);
-
-        auto user_cpu = rlm.get_account_cpu_limit_ex(N(user));
-        auto user_net = rlm.get_account_net_limit_ex(N(user));
+        
+        auto user_cpu = rlm.get_account_limit_ex(block_time, N(user), resource_limits::cpu_code);
+        auto user_net = rlm.get_account_limit_ex(block_time, N(user), resource_limits::net_code);
 
         BOOST_CHECK_EQUAL(user_cpu.available, 0);
         BOOST_CHECK_EQUAL(user_net.available, 0);
 
-        BOOST_CHECK_EQUAL(rlm.get_account_cpu_limit_ex(N(user2)).available, 0);
-        BOOST_CHECK_EQUAL(rlm.get_account_net_limit_ex(N(user2)).available, 0);
+        BOOST_CHECK_EQUAL(rlm.get_account_limit_ex(block_time, N(user2), resource_limits::cpu_code).available, 0);
+        BOOST_CHECK_EQUAL(rlm.get_account_limit_ex(block_time, N(user2), resource_limits::net_code).available, 0);
 
         // Check that user can't send transaction due missing bandwidth
         signed_transaction trx;
@@ -196,11 +197,11 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
 
         BOOST_REQUIRE( !r->except_ptr );
 
-        auto provider_cpu2 = rlm.get_account_cpu_limit_ex(N(provider));
-        auto provider_net2 = rlm.get_account_net_limit_ex(N(provider));
+        auto provider_cpu2 = rlm.get_account_limit_ex(block_time, N(provider), resource_limits::cpu_code);
+        auto provider_net2 = rlm.get_account_limit_ex(block_time, N(provider), resource_limits::net_code);
 
-        auto user_cpu2 = rlm.get_account_cpu_limit_ex(N(user));
-        auto user_net2 = rlm.get_account_net_limit_ex(N(user));
+        auto user_cpu2 = rlm.get_account_limit_ex(block_time, N(user), resource_limits::cpu_code);
+        auto user_net2 = rlm.get_account_limit_ex(block_time, N(user), resource_limits::net_code);
 
         BOOST_CHECK_EQUAL(user_cpu2.used, user_cpu.used);
         BOOST_CHECK_EQUAL(user_net2.used, user_net.used);

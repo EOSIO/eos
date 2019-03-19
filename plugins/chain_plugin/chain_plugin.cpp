@@ -1712,16 +1712,17 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.head_block_num  = db.head_block_num();
    result.head_block_time = db.head_block_time();
 
-   rm.get_account_limits( result.account_name, result.ram_quota, result.net_weight, result.cpu_weight );
-
    const auto& a = db.get_account(result.account_name);
 
    result.privileged       = a.privileged;
    result.last_code_update = a.last_code_update;
    result.created          = a.creation_date;
-
-   result.net_limit = rm.get_account_net_limit_ex(result.account_name);
-   result.cpu_limit = rm.get_account_cpu_limit_ex(result.account_name);
+   
+   int64_t now = db.pending_block_time().sec_since_epoch();
+   //TODO:
+   result.net_limit = {};
+   result.cpu_limit = {};
+   
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
 
    auto table = d.get_table<permission_object>();

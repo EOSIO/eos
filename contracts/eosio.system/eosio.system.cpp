@@ -175,7 +175,7 @@ namespace eosiosystem {
         res.owner = newact;
       });
 
-      set_resource_limits( newact, 0, 0, 0 );
+      //set_resource_limits( newact, 0, 0, 0 );
    }
 
 } /// eosio.system

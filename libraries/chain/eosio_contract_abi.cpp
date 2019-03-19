@@ -398,24 +398,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    namespace rl = resource_limits;
 
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
-      "resource_limit_object", "", {
-         {"id", "uint64"},
-         {"owner", "name"},
-         {"pending", "bool"},
-         {"net_weight", "int64"},
-         {"cpu_weight", "int64"},
-         {"ram_bytes", "int64"}
-      }
-   });
-
-   eos_abi.tables.emplace_back( eosio::chain::table_def {
-      cyberway::chaindb::tag<rl::resource_limits_object>::get_code(), "resource_limit_object", {
-         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"pending","asc"}, {"owner","asc"}}}
-      }
-   });
-
-   eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "usage_accumulator", "", {
          {"last_ordinal", "uint32"},
          {"value_ex", "uint64"},
@@ -480,11 +462,9 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"avg_block_cpu_usage", "usage_accumulator"},
          {"pending_net_usage", "uint64"},
          {"pending_cpu_usage", "uint64"},
-         {"total_net_weight", "uint64"},
-         {"total_cpu_weight", "uint64"},
-         {"total_ram_bytes", "uint64"},
          {"virtual_net_limit", "uint64"},
-         {"virtual_cpu_limit", "uint64"}
+         {"virtual_cpu_limit", "uint64"},
+         {"virtual_ram_limit", "uint64"}
       }
    });
 
@@ -559,7 +539,8 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"id", "uint64"},
         {"purpose_code", "symbol_code"},
         {"token_code", "symbol_code"},
-        {"total_staked", "int64"}}});
+        {"total_staked", "int64"},
+        {"enabled", "bool"}}});
         
    eos_abi.tables.emplace_back( eosio::chain::table_def {
       cyberway::chaindb::tag<stake_stat_object>::get_code(), "stat_struct", {

@@ -124,6 +124,7 @@ public:
 
       optional<asset>            core_liquid_balance;
 
+//TODO: replace it (? with ram/net/cpu staked)
       int64_t                    ram_quota  = 0;
       int64_t                    net_weight = 0;
       int64_t                    cpu_weight = 0;

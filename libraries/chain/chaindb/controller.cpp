@@ -16,6 +16,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include <eosio/chain/apply_context.hpp>
+#include <eosio/chain/resource_limits.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -110,6 +111,9 @@ namespace cyberway { namespace chaindb {
     } } // namespace _detail
 
     void ram_payer_info::add_usage(const account_name new_payer, const int64_t delta) const {
+        if (delta < 0 && rl) {
+            rl->add_pending_ram_usage( new_payer, delta );
+        }
         if (!ctx || new_payer.empty() || !delta) return;
 
         const_cast<apply_context&>(*ctx).update_db_usage(new_payer, delta);

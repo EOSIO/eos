@@ -974,7 +974,8 @@ struct controller_impl {
          }
 
          resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0,
-                                                block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
+                                                block_timestamp_type(self.pending_block_time()).slot, 
+                                                self.pending_block_time().sec_since_epoch() ); // Should never fail
 
          trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
 
@@ -1495,8 +1496,6 @@ struct controller_impl {
             );
       */
 
-      // Update resource limits:
-      resource_limits.process_account_limit_updates();
       const auto& chain_config = self.get_global_properties().configuration;
       uint32_t max_virtual_mult = 1000;
       uint64_t CPU_TARGET = EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct);
