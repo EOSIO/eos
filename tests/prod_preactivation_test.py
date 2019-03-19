@@ -67,7 +67,7 @@ try:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(pnodes=prodCount, totalNodes=prodCount, prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, p2pPlugin=p2pPlugin, useBiosBootFile=False, extraNodeosArgs=" --plugin eosio::producer_api_plugin") is False:
+        if cluster.launch(pnodes=prodCount, totalNodes=prodCount, prodCount=1, onlyBios=onlyBios, dontBootstrap=dontBootstrap, p2pPlugin=p2pPlugin, useBiosBootFile=False, extraNodeosArgs=" --plugin eosio::producer_api_plugin") is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
 
@@ -118,17 +118,27 @@ try:
         errorExit("bios contract not result in expected unresolveable error")
 
     secwait = 30
-    Print("Wait for defproducera to produce...")
+    Print("Wait for node 1 to produce...")
     node = cluster.getNode(1)
     while secwait > 0:
        info = node.getInfo()
-       if info["head_block_producer"] == "defproducera": #defproducera is in node0
+       if info["head_block_producer"] >= "defproducerl" and info["head_block_producer"] <= "defproduceru":
+          break
+       time.sleep(1)
+       secwait = secwait - 1
+
+    secwait = 30
+    Print("Waiting until node 0 start to produce...")
+    node = cluster.getNode(1)
+    while secwait > 0:
+       info = node.getInfo()
+       if info["head_block_producer"] >= "defproducera" and info["head_block_producer"] <= "defproducerk":
           break
        time.sleep(1)
        secwait = secwait - 1
     
     if secwait <= 0:
-       errorExit("No producer of defproducera")
+       errorExit("No producer of node 0")
     
     cmd = "curl --data-binary '{\"protocol_features_to_activate\":[\"%s\"]}' %s/v1/producer/schedule_protocol_feature_activations" % (digest, node.endpointHttp)
 
@@ -140,17 +150,17 @@ try:
     else:
         Print("feature PREACTIVATE_FEATURE (%s) preactivation success" % (digest))
 
-    time.sleep(2)
+    time.sleep(0.6)
     Print("publish a new bios contract %s should fails because node1 is not producing block yet" % (contractDir))
     retMap = node0.publishContract("eosio", contractDir, wasmFile, abiFile, True, shouldFail=True)
     if retMap["output"].decode("utf-8").find("unresolveable") < 0:
         errorExit("bios contract not result in expected unresolveable error")
 
-    Print("now wait for node 1 produce a block....(take some minutes)...")
-    secwait = 30 # wait for node1 produce a block
+    Print("now wait for node 1 produce a block...")
+    secwait = 30 # wait for node 1 produce a block
     while secwait > 0:
        info = node.getInfo()
-       if (info["head_block_producer"] == "defproducerl") or (info["head_block_producer"] == "defproducerm"):
+       if info["head_block_producer"] >= "defproducerl" and info["head_block_producer"] <= "defproduceru":
           break
        time.sleep(1)
        secwait = secwait - 1
