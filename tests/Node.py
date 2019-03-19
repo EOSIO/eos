@@ -9,6 +9,7 @@ import json
 import signal
 import urllib.request
 import urllib.parse
+from urllib.error import HTTPError
 import tempfile
 
 from core_symbol import CORE_SYMBOL
@@ -1419,15 +1420,20 @@ class Node(object):
         try:
            response = urllib.request.urlopen(req, reqData)
            rpcApiResult = json.loads(response.read().decode("utf-8"))
+        except HTTPError as e:
+           Utils.Print("Fail to send RPC API to {} with data {} ({})".format(url, data, e.read()))
+           raise e
         except Exception as e:
            Utils.Print("Fail to send RPC API to {} with data {} ({})".format(url, data, e))
-           raise
+           raise e
         return rpcApiResult
 
+    # Require producer_api_plugin
     def scheduleProtocolFeatureActivations(self, featureDigests=[]):
         self.sendRpcApi("v1/producer/schedule_protocol_feature_activations", {"protocol_features_to_activate": featureDigests})
 
-    def getSupportedProtocolFeatures(self, excludeDisabled=True, excludeUnactivatable=True):
+    # Require producer_api_plugin
+    def getSupportedProtocolFeatures(self, excludeDisabled=False, excludeUnactivatable=False):
         param = {
            "exclude_disabled": excludeDisabled,
            "exclude_unactivatable": excludeUnactivatable
@@ -1435,20 +1441,39 @@ class Node(object):
         res = self.sendRpcApi("v1/producer/get_supported_protocol_features", param)
         return res
 
-    def waitForHeadToAdvance(self):
+    # This will return supported protocol feature digests as a dict, i.e.
+    # {
+    #   "PREACTIVATE_FEATURE": "01234567",
+    #   "ONLY_LINK_TO_EXISTING_PERMISSION": "01234567"
+    # }
+    # Require producer_api_plugin
+    def getSupportedProtocolFeatureDigestDict(self, excludeDisabled=False, excludeUnactivatable=False):
+        protocolFeatureDigestDict = {}
+        supportedProtocolFeatures = self.getSupportedProtocolFeatures(excludeDisabled, excludeUnactivatable)
+        for protocolFeature in supportedProtocolFeatures:
+            for spec in protocolFeature["specification"]:
+                if (spec["name"] == "builtin_feature_codename"):
+                    codename = spec["value"]
+                    protocolFeatureDigestDict[codename] = protocolFeature["feature_digest"]
+                    break
+        return protocolFeatureDigestDict
+
+    def waitForHeadToAdvance(self, timeout=6):
         currentHead = self.getHeadBlockNum()
         def isHeadAdvancing():
             return self.getHeadBlockNum() > currentHead
-        Utils.waitForBool(isHeadAdvancing, 5)
+        Utils.waitForBool(isHeadAdvancing, timeout)
 
+    def waitForLibToAdvance(self, timeout=6):
+        currentLib = self.getIrreversibleBlockNum()
+        def isLibAdvancing():
+            return self.getIrreversibleBlockNum() > currentLib
+        Utils.waitForBool(isLibAdvancing, timeout)
+
+    # Require producer_api_plugin
     def activatePreactivateFeature(self):
-        def getPreactivateFeatureDigest(supportedProtocolFeatures):
-            for protocolFeature in supportedProtocolFeatures:
-                for spec in protocolFeature["specification"]:
-                    if (spec["name"] == "builtin_feature_codename" and spec["value"] == "PREACTIVATE_FEATURE"):
-                        return protocolFeature["feature_digest"]
-            return None
-        preactivateFeatureDigest = getPreactivateFeatureDigest(self.getSupportedProtocolFeatures())
+        protocolFeatureDigestDict = self.getSupportedProtocolFeatureDigestDict()
+        preactivateFeatureDigest = protocolFeatureDigestDict["PREACTIVATE_FEATURE"]
         assert preactivateFeatureDigest
 
         self.scheduleProtocolFeatureActivations([preactivateFeatureDigest])
@@ -1456,17 +1481,15 @@ class Node(object):
         # Wait for the next block to be produced so the scheduled protocol feature is activated
         self.waitForHeadToAdvance()
 
+    # Return an array of feature digests to be preactivated
+    # Require producer_api_plugin
     def getAllBuiltinFeatureDigestsToPreactivate(self):
-        allBuiltinProtocolFeatureDigests = []
-        supportedProtocolFeatures = self.getSupportedProtocolFeatures()
-        for protocolFeature in supportedProtocolFeatures:
-            for spec in protocolFeature["specification"]:
-                if (spec["name"] == "builtin_feature_codename"):
-                    if (spec["value"] != "PREACTIVATE_FEATURE"):
-                        allBuiltinProtocolFeatureDigests.append(protocolFeature["feature_digest"])
-                    break
-        return allBuiltinProtocolFeatureDigests
+        protocolFeatureDigestDict = self.getSupportedProtocolFeatureDigestDict()
+        # Filter out "PREACTIVATE_FEATURE"
+        protocolFeatureDigestDict = {k: v for k, v in protocolFeatureDigestDict.items() if k != "PREACTIVATE_FEATURE"}
+        return list(protocolFeatureDigestDict.values())
 
+    # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
     def preactivateAllBuiltinProtocolFeature(self):
         allBuiltinProtocolFeatureDigests = self.getAllBuiltinFeatureDigestsToPreactivate()
         for digest in allBuiltinProtocolFeatureDigests:
@@ -1478,3 +1501,9 @@ class Node(object):
                 Utils.Print("ERROR: Failed to preactive digest {}".format(digest))
                 return None
         self.waitForHeadToAdvance()
+
+    def getLatestBlockHeaderState(self):
+        headBlockNum = self.getHeadBlockNum()
+        cmdDesc = "get block {} --header-state".format(headBlockNum)
+        latestBlockHeaderState = self.processCleosCmd(cmdDesc, cmdDesc)
+        return latestBlockHeaderState

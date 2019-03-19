@@ -354,6 +354,8 @@ class Cluster(object):
 
         if dontBootstrap:
             Utils.Print("Skipping bootstrap.")
+            self.biosNode=biosNode
+            self.discoverBiosNodePid()
             return True
 
         Utils.Print("Bootstrap cluster.")
@@ -1595,3 +1597,7 @@ class Cluster(object):
     @staticmethod
     def getDataDir(nodeId):
         return os.path.abspath(os.path.join(Cluster.__dataDir, "node_%02d" % (nodeId)))
+
+    @staticmethod
+    def getConfigDir(nodeId):
+        return os.path.abspath(os.path.join(Cluster.__configDir, "node_%02d" % (nodeId)))
