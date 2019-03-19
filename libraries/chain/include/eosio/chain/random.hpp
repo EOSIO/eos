@@ -8,8 +8,10 @@ namespace eosio { namespace chain {
 
 template<typename T>
 void shuffle(std::vector<T>& items, uint32_t seed) {
-    auto hi = static_cast<uint64_t>(seed) << 32;
     auto s = items.size();
+    if (1 >= s) return;
+
+    auto hi = static_cast<uint64_t>(seed) << 32;
     for (uint32_t i = 0; i < s; ++i) {
         /// High performance random generator
         /// http://xorshift.di.unimi.it/

@@ -5,6 +5,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
+#include <eosio/chain/random.hpp>
 
 using namespace eosio;
 using namespace testing;
@@ -86,23 +87,35 @@ std::pair<signed_block_ptr, signed_block_ptr> corrupt_trx_in_block(validating_te
 // verify that a block with a transaction with an incorrect signature, is blindly accepted from a trusted producer
 BOOST_AUTO_TEST_CASE(trusted_producer_test)
 {
-   flat_set<account_name> trusted_producers = { N(defproducera), N(defproducerc) };
+   flat_set<account_name> trusted_producers = { N(defproducera), N(defproducerc), N(defproducere) };
    validating_tester main(trusted_producers);
    // only using validating_tester to keep the 2 chains in sync, not to validate that the validating_node matches the main node,
    // since it won't be
    main.skip_validate = true;
 
    // First we create a valid block with valid transaction
-   std::set<account_name> producers = { N(defproducera), N(defproducerb), N(defproducerc), N(defproducerd) };
+   std::set<account_name> producers = { N(defproducera), N(defproducerb), N(defproducerc), N(defproducerd), N(defproducere) };
    for (auto prod : producers)
        main.create_account(prod);
    auto b = main.produce_block();
+   BOOST_REQUIRE_EQUAL(b->producer, config::system_account_name);
 
    std::vector<account_name> schedule(producers.cbegin(), producers.cend());
    auto trace = main.set_producers(schedule);
 
-   while (b->producer != N(defproducera)) {
+   while (b->producer == config::system_account_name) {
       b = main.produce_block();
+   }
+
+   shuffle(schedule, b->timestamp.slot - 1);
+
+   auto itr = schedule.begin();
+   for (; *itr != b->producer; ++itr); // find current producer
+
+   ++itr; // skip producer produced block
+   for (; schedule.end() != itr && !trusted_producers.count(*itr); ++itr) { // find next trusted producer
+      b = main.produce_block();
+      BOOST_REQUIRE_EQUAL(b->producer, *itr);
    }
 
    auto blocks = corrupt_trx_in_block(main, N(tstproducera));
