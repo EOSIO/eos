@@ -366,10 +366,8 @@ class Cluster(object):
 
         Utils.Print("Bootstrap cluster.")
         if onlyBios or not useBiosBootFile:
-            Utils.Print("NON BIOS BOOTSTRAP")
             self.biosNode=self.bootstrap(biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios)
         else:
-            Utils.Print(" BIOS BOOTSTRAP")
             self.useBiosBootFile=True
             self.biosNode=self.bios_bootstrap(biosNode, totalNodes, pfSetupPolicy)
 

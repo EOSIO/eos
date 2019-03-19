@@ -1490,9 +1490,8 @@ class Node(object):
         return list(protocolFeatureDigestDict.values())
 
     # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
-    def preactivateAllBuiltinProtocolFeature(self):
-        allBuiltinProtocolFeatureDigests = self.getAllBuiltinFeatureDigestsToPreactivate()
-        for digest in allBuiltinProtocolFeatureDigests:
+    def preactivateProtocolFeatures(self, featureDigests:list):
+        for digest in featureDigests:
             Utils.Print("push preactivate action with digest {}".format(digest))
             data="{{\"feature_digest\":{}}}".format(digest)
             opts="--permission eosio@active"
@@ -1502,8 +1501,17 @@ class Node(object):
                 return None
         self.waitForHeadToAdvance()
 
+    # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
+    def preactivateAllBuiltinProtocolFeature(self):
+        allBuiltinProtocolFeatureDigests = self.getAllBuiltinFeatureDigestsToPreactivate()
+        self.preactivateProtocolFeatures(allBuiltinProtocolFeatureDigests)
+
     def getLatestBlockHeaderState(self):
         headBlockNum = self.getHeadBlockNum()
         cmdDesc = "get block {} --header-state".format(headBlockNum)
         latestBlockHeaderState = self.processCleosCmd(cmdDesc, cmdDesc)
         return latestBlockHeaderState
+
+    def getActivatedProtocolFeatures(self):
+        latestBlockHeaderState = self.getLatestBlockHeaderState()
+        return latestBlockHeaderState["activated_protocol_features"]["protocol_features"]
