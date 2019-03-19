@@ -80,7 +80,7 @@ std::pair<signed_block_ptr, signed_block_ptr> corrupt_trx_in_block(validating_te
    // Re-sign the block
    auto header_bmroot = digest_type::hash( std::make_pair( copy_b->digest(), main.control->head_block_state()->blockroot_merkle.get_root() ) );
    auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, main.control->head_block_state()->pending_schedule_hash) );
-   copy_b->producer_signature = main.get_private_key(b->producer, "active").sign(sig_digest);
+   copy_b->producer_signature = main.get_private_key(copy_b->producer, "active").sign(sig_digest);
    return std::pair<signed_block_ptr, signed_block_ptr>(b, copy_b);
 }
 
@@ -110,9 +110,7 @@ BOOST_AUTO_TEST_CASE(trusted_producer_test)
    shuffle(schedule, b->timestamp.slot - 1);
 
    auto itr = schedule.begin();
-   for (; *itr != b->producer; ++itr); // find current producer
-
-   ++itr; // skip producer produced block
+   ++itr; // skip producer of the current block
    for (; schedule.end() != itr && !trusted_producers.count(*itr); ++itr) { // find next trusted producer
       b = main.produce_block();
       BOOST_REQUIRE_EQUAL(b->producer, *itr);
@@ -125,14 +123,15 @@ BOOST_AUTO_TEST_CASE(trusted_producer_test)
 // like trusted_producer_test, except verify that any entry in the trusted_producer list is accepted
 BOOST_AUTO_TEST_CASE(trusted_producer_verify_2nd_test)
 {
-   flat_set<account_name> trusted_producers = { N(defproducera), N(defproducerc) };
+   flat_set<account_name> trusted_producers = { N(defproducera), N(defproducerc), N(defproducere) };
+   std::deque<account_name> corrupted_accounts = {N(tstproducera), N(tstproducerc), N(tstproducere) };
    validating_tester main(trusted_producers);
    // only using validating_tester to keep the 2 chains in sync, not to validate that the validating_node matches the main node,
    // since it won't be
    main.skip_validate = true;
 
    // First we create a valid block with valid transaction
-   std::set<account_name> producers = { N(defproducera), N(defproducerb), N(defproducerc), N(defproducerd) };
+   std::set<account_name> producers = { N(defproducera), N(defproducerb), N(defproducerc), N(defproducerd), N(defproducere) };
    for (auto prod : producers)
        main.create_account(prod);
    auto b = main.produce_block();
@@ -140,12 +139,42 @@ BOOST_AUTO_TEST_CASE(trusted_producer_verify_2nd_test)
    std::vector<account_name> schedule(producers.cbegin(), producers.cend());
    auto trace = main.set_producers(schedule);
 
-   while (b->producer != N(defproducerc)) {
+   // waiting of applying of proposed producers to active state
+   while (b->producer == config::system_account_name) {
       b = main.produce_block();
    }
 
-   auto blocks = corrupt_trx_in_block(main, N(tstproducera));
-   main.validate_push_block( blocks.second );
+   // the first round shuffle
+   const auto promote_slot = main.control->head_block_state()->promoting_block.slot;
+   shuffle(schedule, promote_slot);
+
+   // generate the first round of active producers
+   while (0 != (b->timestamp.slot - promote_slot) % schedule.size()) {
+     b = main.produce_block();
+   }
+
+   // the new round in which we will try to generate corrupted blocks
+   shuffle(schedule, b->timestamp.slot);
+
+   for (auto& producer: schedule) {
+      // for each trusted producer in a round
+      if (trusted_producers.count(producer)) {
+        auto blocks = corrupt_trx_in_block(main, corrupted_accounts.back());
+        corrupted_accounts.pop_back();
+        BOOST_REQUIRE_EQUAL(blocks.first->producer, producer);
+        BOOST_REQUIRE_EQUAL(blocks.second->producer, producer);
+
+        // push the corrupted block
+        main.validate_push_block( blocks.second );
+        // pop the corrupted block
+        main.validating_node->pop_block();
+        // push the good normal block for success linking of the next in the round block
+        main.validate_push_block( blocks.first );
+      } else {
+        b = main.produce_block();
+        BOOST_REQUIRE_EQUAL(b->producer, producer);
+      }
+   }
 }
 
 // verify that a block with a transaction with an incorrect signature, is rejected if it is not from a trusted producer
