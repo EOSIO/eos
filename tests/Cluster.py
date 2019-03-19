@@ -115,7 +115,7 @@ class Cluster(object):
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", p2pPlugin="net", delay=1, onlyBios=False, dontBootstrap=False,
                totalProducers=None, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None,
-               pfSetupPolicy:PFSetupPolicy = PFSetupPolicy.FULL):
+               pfSetupPolicy = PFSetupPolicy.FULL):
         """Launch cluster.
         pnodes: producer nodes count
         totalNodes: producer + non-producer nodes count
