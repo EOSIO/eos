@@ -131,6 +131,7 @@ namespace eosio { namespace chain {
                }
             }
          }
+         new_producer_to_last_produced[prokey.producer_name] = result.block_num;
 
          result.producer_to_last_produced = std::move( new_producer_to_last_produced );
 
