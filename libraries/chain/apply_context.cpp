@@ -436,8 +436,9 @@ void apply_context::push_event( event evt ) {
 
 uint64_t apply_context::save_record( const char* data, size_t data_len ) {
    auto block_state = control.pending_block_state();
-   // TODO: Check for pending_block exist
-   // block_state && block_state->block
+   
+   EOS_ASSERT(block_state && block_state->block, block_validate_exception,
+       "No pending block to save archive record");
 
    auto block = block_state->block;
    int id = block->archive_records.size();
