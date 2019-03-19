@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE(trusted_producer_verify_2nd_test)
    shuffle(schedule, b->timestamp.slot);
 
    for (auto& producer: schedule) {
-      // for each trusted producer in a round
+      // for each trusted producer in the round
       if (trusted_producers.count(producer)) {
         auto blocks = corrupt_trx_in_block(main, corrupted_accounts.back());
         corrupted_accounts.pop_back();
@@ -168,7 +168,7 @@ BOOST_AUTO_TEST_CASE(trusted_producer_verify_2nd_test)
         main.validate_push_block( blocks.second );
         // pop the corrupted block
         main.validating_node->pop_block();
-        // push the good normal block for success linking of the next in the round block
+        // push the normal block for success linking of the next in the round block
         main.validate_push_block( blocks.first );
       } else {
         b = main.produce_block();
@@ -180,14 +180,15 @@ BOOST_AUTO_TEST_CASE(trusted_producer_verify_2nd_test)
 // verify that a block with a transaction with an incorrect signature, is rejected if it is not from a trusted producer
 BOOST_AUTO_TEST_CASE(untrusted_producer_test)
 {
-   flat_set<account_name> trusted_producers = { N(defproducera), N(defproducerc) };
+   flat_set<account_name> trusted_producers = { N(defproducera), N(defproducerc), N(defproducere) };
+   std::deque<account_name> corrupted_accounts = {N(tstproducera), N(tstproducerc), N(tstproducere) };
    validating_tester main(trusted_producers);
    // only using validating_tester to keep the 2 chains in sync, not to validate that the validating_node matches the main node,
    // since it won't be
    main.skip_validate = true;
 
    // First we create a valid block with valid transaction
-   std::set<account_name> producers = { N(defproducera), N(defproducerb), N(defproducerc), N(defproducerd) };
+   std::set<account_name> producers = { N(defproducera), N(defproducerb), N(defproducerc), N(defproducerd), N(defproducere) };
    for (auto prod : producers)
        main.create_account(prod);
    auto b = main.produce_block();
@@ -195,16 +196,42 @@ BOOST_AUTO_TEST_CASE(untrusted_producer_test)
    std::vector<account_name> schedule(producers.cbegin(), producers.cend());
    auto trace = main.set_producers(schedule);
 
-   // Depends on blocks per producer, fix if change it
-   while (b->producer != N(defproducerd)) {
+   // waiting of applying of proposed producers to active state
+   while (b->producer == config::system_account_name) {
       b = main.produce_block();
    }
 
-   auto blocks = corrupt_trx_in_block(main, N(tstproducera));
-   BOOST_REQUIRE_EXCEPTION(main.validate_push_block( blocks.second ), fc::exception ,
-   [] (const fc::exception &e)->bool {
-      return e.code() == unsatisfied_authorization::code_value ;
-   }) ;
+   // the first round shuffle
+   const auto promote_slot = main.control->head_block_state()->promoting_block.slot;
+   shuffle(schedule, promote_slot);
+
+   // generate the first round of active producers
+   while (0 != (b->timestamp.slot - promote_slot) % schedule.size()) {
+      b = main.produce_block();
+   }
+
+   // the new round in which we will try to generate corrupted blocks
+   shuffle(schedule, b->timestamp.slot);
+
+   for (auto& producer: schedule) {
+      // for each not-trusted producer in the round
+      if (!trusted_producers.count(producer)) {
+         auto blocks = corrupt_trx_in_block(main, corrupted_accounts.back());
+         corrupted_accounts.pop_back();
+         BOOST_REQUIRE_EQUAL(blocks.first->producer, producer);
+         BOOST_REQUIRE_EQUAL(blocks.second->producer, producer);
+
+         BOOST_REQUIRE_EXCEPTION(main.validate_push_block( blocks.second ), fc::exception,
+            [] (const fc::exception& e)->bool {
+               return e.code() == unsatisfied_authorization::code_value;
+            });
+         // push the good block for success linking of the next in the round block
+         main.validate_push_block( blocks.first );
+      } else {
+         b = main.produce_block();
+         BOOST_REQUIRE_EQUAL(b->producer, producer);
+      }
+   }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
