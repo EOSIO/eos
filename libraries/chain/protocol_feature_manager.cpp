@@ -196,9 +196,6 @@ Disallows linking an action to a non-existing permission.
       if( itr->earliest_allowed_activation_time > now )
          return recognized_t::too_early;
 
-      if( itr->preactivation_required )
-         return recognized_t::ready_if_preactivated;
-
       return recognized_t::ready;
    }
 

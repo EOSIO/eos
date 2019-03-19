@@ -163,6 +163,22 @@ BOOST_AUTO_TEST_CASE( double_activation ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE( require_preactivation_test ) try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+   const auto& pfm = c.control->get_protocol_feature_manager();
+
+   auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
+   BOOST_REQUIRE( d );
+
+   BOOST_CHECK( !c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+
+   c.schedule_protocol_features_wo_preactivation( {*d} );
+   BOOST_CHECK_EXCEPTION( c.produce_block(),
+                          protocol_feature_exception,
+                          fc_exception_message_starts_with( "attempted to activate protocol feature without prior required preactivation:" )
+   );
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
    tester c( setup_policy::preactivate_feature_and_new_bios );
    const auto& pfm = c.control->get_protocol_feature_manager();
@@ -221,6 +237,5 @@ BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
    );
 
 } FC_LOG_AND_RETHROW()
-
 
 BOOST_AUTO_TEST_SUITE_END()

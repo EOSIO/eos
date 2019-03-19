@@ -1363,11 +1363,18 @@ struct controller_impl {
                const auto& f = pfs.get_protocol_feature( feature_digest );
 
                auto res = activated_protocol_features.emplace( feature_digest, true );
-               if( !res.second ) {
+               if( res.second ) {
+                  // feature_digest was not preactivated
+                  EOS_ASSERT( !f.preactivation_required, protocol_feature_exception,
+                              "attempted to activate protocol feature without prior required preactivation: ${digest}",
+                              ("digest", feature_digest)
+                  );
+               } else {
                   EOS_ASSERT( !res.first->second, block_validate_exception,
                               "attempted duplicate activation within a single block: ${digest}",
-                              ("digest", res.first->first)
+                              ("digest", feature_digest)
                   );
+                  // feature_digest was preactivated
                   res.first->second = true;
                   ++num_preactivated_features_that_have_activated;
                }
@@ -1587,7 +1594,6 @@ struct controller_impl {
                EOS_THROW( protocol_feature_exception,
                           "${timestamp} is too early for the earliest allowed activation time of the protocol feature with digest '${digest}'", ("digest", f)("timestamp", timestamp) );
             break;
-            case protocol_feature_set::recognized_t::ready_if_preactivated:
             case protocol_feature_set::recognized_t::ready:
             break;
             default:
@@ -2235,7 +2241,6 @@ void controller::preactivate_feature( const digest_type& feature_digest ) {
                        "${timestamp} is too early for the earliest allowed activation time of the protocol feature with digest '${digest}'", ("digest", feature_digest)("timestamp", cur_time) );
          }
       break;
-      case protocol_feature_set::recognized_t::ready_if_preactivated:
       case protocol_feature_set::recognized_t::ready:
       break;
       default:

@@ -118,7 +118,6 @@ public:
       unrecognized,
       disabled,
       too_early,
-      ready_if_preactivated,
       ready
    };
 
