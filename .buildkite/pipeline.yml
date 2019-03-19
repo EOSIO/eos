@@ -1,9 +1,9 @@
 steps:
 
   - command: |
-        echo "+++ :hammer: Building" && \
-        ./scripts/eosio_build.sh -y && \
-        echo "--- :compression: Compressing build directory" && \
+        echo "+++ :hammer: Building"
+        ./scripts/eosio_build.sh -y
+        echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build/
     label: ":ubuntu: 16.04 Build"
     agents:
@@ -22,9 +22,9 @@ steps:
     timeout: 60
 
   - command: |
-        echo "+++ :hammer: Building" && \
-        ./scripts/eosio_build.sh -y && \
-        echo "--- :compression: Compressing build directory" && \
+        echo "+++ :hammer: Building"
+        ./scripts/eosio_build.sh -y
+        echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build/
     label: ":ubuntu: 18.04 Build"
     agents:
@@ -43,9 +43,9 @@ steps:
     timeout: 60
 
   - command: |
-        echo "+++ :hammer: Building" && \
-        ./scripts/eosio_build.sh -y && \
-        echo "--- :compression: Compressing build directory" && \
+        echo "+++ :hammer: Building"
+        ./scripts/eosio_build.sh -y
+        echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build/
     label: ":centos: 7 Build"
     agents:
@@ -64,9 +64,9 @@ steps:
     timeout: 60
 
   - command: |
-        echo "+++ :hammer: Building" && \
-        ./scripts/eosio_build.sh -y && \
-        echo "--- :compression: Compressing build directory" && \
+        echo "+++ :hammer: Building"
+        ./scripts/eosio_build.sh -y
+        echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build/
     label: ":aws: 1 Build"
     agents:
@@ -85,9 +85,9 @@ steps:
     timeout: 60
 
   - command: |
-        echo "+++ :hammer: Building" && \
-        ./scripts/eosio_build.sh -y && \
-        echo "--- :compression: Compressing build directory" && \
+        echo "+++ :hammer: Building"
+        ./scripts/eosio_build.sh -y
+        echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build/
     label: ":aws: 2 Build"
     agents:
@@ -106,9 +106,9 @@ steps:
     timeout: 60
 
   - command: |
-        echo "+++ :hammer: Building" && \
-        ./scripts/eosio_build.sh -y && \
-        echo "--- :compression: Compressing build directory" && \
+        echo "+++ :hammer: Building"
+        ./scripts/eosio_build.sh -y
+        echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build/
     label: ":fedora: 27 Build"
     agents:
@@ -127,11 +127,11 @@ steps:
     timeout: 60
 
   - command: |
-      echo "--- Creating symbolic link to job directory :file_folder:" && \
-      sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job && \
-      echo "+++ Building :hammer:" && \
-      ./scripts/eosio_build.sh -y && \
-      echo "--- Compressing build directory :compression:" && \
+      echo "--- Creating symbolic link to job directory :file_folder:"
+      sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job
+      echo "+++ Building :hammer:"
+      ./scripts/eosio_build.sh -y
+      echo "--- Compressing build directory :compression:"
       tar -pczf build.tar.gz build/
     label: ":darwin: Mojave Build"
     agents:
@@ -141,11 +141,11 @@ steps:
     timeout: 60
 
   - command: |
-      echo "--- Creating symbolic link to job directory :file_folder:" && \
-      sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job && \
-      echo "+++ Building :hammer:" && \
-      ./scripts/eosio_build.sh -y && \
-      echo "--- Compressing build directory :compression:" && \
+      echo "--- Creating symbolic link to job directory :file_folder:"
+      sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job
+      echo "+++ Building :hammer:"
+      ./scripts/eosio_build.sh -y
+      echo "--- Compressing build directory :compression:"
       tar -pczf build.tar.gz build/
     label: ":darwin: High Sierra Build"
     agents:
@@ -158,9 +158,9 @@ steps:
 
   # Ubuntu 16.04 Tests
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 16.04 Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 16.04 Build"
+        echo "+++ :microscope: Running Tests"
         ./scripts/parallel-test.sh
     label: ":ubuntu: 16.04 Tests"
     agents:
@@ -178,9 +178,9 @@ steps:
     timeout: 60
 
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 16.04 Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 16.04 Build"
+        echo "+++ :microscope: Running Tests"
         ./scripts/serial-test.sh
     label: ":ubuntu: 16.04 NP Tests"
     agents:
@@ -199,9 +199,9 @@ steps:
   
   # Ubuntu 18.04 Tests
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build"
+        echo "+++ :microscope: Running Tests"
         ./scripts/parallel-test.sh
     label: ":ubuntu: 18.04 Tests"
     agents:
@@ -219,9 +219,9 @@ steps:
     timeout: 60
 
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build"
+        echo "+++ :microscope: Running Tests"
         ./scripts/serial-test.sh
     label: ":ubuntu: 18.04 NP Tests"
     agents:
@@ -240,9 +240,9 @@ steps:
 
   # centOS Tests
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":centos: 7 Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":centos: 7 Build"
+        echo "+++ :microscope: Running Tests"
         ./scripts/parallel-test.sh
     label: ":centos: 7 Tests"
     agents:
@@ -260,9 +260,9 @@ steps:
     timeout: 60
 
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":centos: 7 Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":centos: 7 Build"
+        echo "+++ :microscope: Running Tests"
         ./scripts/serial-test.sh
     label: ":centos: 7 NP Tests"
     agents:
@@ -281,9 +281,9 @@ steps:
 
   # Amazon AWS-1 Linux Tests
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 1 Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 1 Build"
+        echo "+++ :microscope: Running Tests"
         ./scripts/parallel-test.sh
     label: ":aws: 1 Tests"
     agents:
@@ -301,9 +301,9 @@ steps:
     timeout: 60
 
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 1 Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 1 Build"
+        echo "+++ :microscope: Running Tests"
         ./scripts/serial-test.sh
     label: ":aws: 1 NP Tests"
     agents:
@@ -322,9 +322,9 @@ steps:
 
   # Amazon AWS-2 Linux Tests
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build"
+        echo "+++ :microscope: Running Tests"
         ./scripts/parallel-test.sh
     label: ":aws: 2 Tests"
     agents:
@@ -342,9 +342,9 @@ steps:
     timeout: 60
 
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build"
+        echo "+++ :microscope: Running Tests"
         ./scripts/serial-test.sh
     label: ":aws: 2 NP Tests"
     agents:
@@ -363,9 +363,9 @@ steps:
 
   # Fedora Tests
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: 27 Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: 27 Build"
+        echo "+++ :microscope: Running Tests"
         ./scripts/parallel-test.sh
     label: ":fedora: 27 Tests"
     agents:
@@ -383,9 +383,9 @@ steps:
     timeout: 60
 
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: 27 Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: 27 Build"
+        echo "+++ :microscope: Running Tests"
         ./scripts/serial-test.sh
     label: ":fedora: 27 NP Tests"
     agents:
@@ -404,10 +404,10 @@ steps:
 
   # High Sierra Tests
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: High Sierra Build" && \
-        echo "+++ :microscope: Running Tests" && \
-        ln -s "$(pwd)" /data/job && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: High Sierra Build"
+        echo "+++ :microscope: Running Tests"
+        ln -s "$(pwd)" /data/job
         ./scripts/parallel-test.sh
     label: ":darwin: High Sierra Tests"
     agents:
@@ -416,9 +416,9 @@ steps:
     timeout: 60
 
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: High Sierra Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: High Sierra Build"
+        echo "+++ :microscope: Running Tests"
         ln -s "$(pwd)" /data/job && ./scripts/serial-test.sh
     label: ":darwin: High Sierra NP Tests"
     agents:
@@ -428,10 +428,10 @@ steps:
 
   # Mojave Tests
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build" && \
-        echo "+++ :microscope: Running Tests" && \
-        ln -s "$(pwd)" /data/job && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build"
+        echo "+++ :microscope: Running Tests"
+        ln -s "$(pwd)" /data/job
         ./scripts/parallel-test.sh
     label: ":darwin: Mojave Tests"
     agents:
@@ -440,9 +440,9 @@ steps:
     timeout: 60
 
   - command: |
-        echo "--- :arrow_down: Downloading Build Directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build" && \
-        echo "+++ :microscope: Running Tests" && \
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build"
+        echo "+++ :microscope: Running Tests"
         ln -s "$(pwd)" /data/job && ./scripts/serial-test.sh
     label: ":darwin: Mojave NP Tests"
     agents:
@@ -453,10 +453,10 @@ steps:
   - wait
 
   - command: |
-        echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: High Sierra Build" && \
-        tar -zxf build.tar.gz && \
-        echo "+++ :microscope: Starting package build" && \
+        echo "--- :arrow_down: Downloading build directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: High Sierra Build"
+        tar -zxf build.tar.gz
+        echo "+++ :microscope: Starting package build"
         ln -s "$(pwd)" /data/job && cd /data/job/build/packages && bash generate_package.sh brew
     label: ":darwin: High Sierra Package Builder"
     agents:
@@ -468,10 +468,10 @@ steps:
     timeout: 60
 
   - command: |
-        echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build" && \
-        tar -zxf build.tar.gz && \
-        echo "+++ :microscope: Starting package build" && \
+        echo "--- :arrow_down: Downloading build directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build"
+        tar -zxf build.tar.gz
+        echo "+++ :microscope: Starting package build"
         ln -s "$(pwd)" /data/job && cd /data/job/build/packages && bash generate_package.sh brew
     label: ":darwin: Mojave Package Builder"
     agents:
@@ -483,10 +483,10 @@ steps:
     timeout: 60
 
   - command: |
-        echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 16.04 Build" && \
-        tar -zxf build.tar.gz && \
-        echo "+++ :microscope: Starting package build" && \
+        echo "--- :arrow_down: Downloading build directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 16.04 Build"
+        tar -zxf build.tar.gz
+        echo "+++ :microscope: Starting package build"
         cd /data/job/build/packages && bash generate_package.sh deb
     label: ":ubuntu: 16.04 Package builder"
     agents:
@@ -509,10 +509,10 @@ steps:
     timeout: 60
 
   - command: |
-        echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build" && \
-        tar -zxf build.tar.gz && \
-        echo "+++ :microscope: Starting package build" && \
+        echo "--- :arrow_down: Downloading build directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build"
+        tar -zxf build.tar.gz
+        echo "+++ :microscope: Starting package build"
         cd /data/job/build/packages && bash generate_package.sh deb
     label: ":ubuntu: 18.04 Package builder"
     agents:
@@ -535,17 +535,17 @@ steps:
     timeout: 60
 
   - command: |
-        echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: 27 Build" && \
-        tar -zxf build.tar.gz && \
-        echo "+++ :microscope: Starting package build" && \
-        yum install -y rpm-build && \
-        mkdir -p /root/rpmbuild/BUILD && \
-        mkdir -p /root/rpmbuild/BUILDROOT && \
-        mkdir -p /root/rpmbuild/RPMS && \
-        mkdir -p /root/rpmbuild/SOURCES && \
-        mkdir -p /root/rpmbuild/SPECS && \
-        mkdir -p /root/rpmbuild/SRPMS && \
+        echo "--- :arrow_down: Downloading build directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: 27 Build"
+        tar -zxf build.tar.gz
+        echo "+++ :microscope: Starting package build"
+        yum install -y rpm-build
+        mkdir -p /root/rpmbuild/BUILD
+        mkdir -p /root/rpmbuild/BUILDROOT
+        mkdir -p /root/rpmbuild/RPMS
+        mkdir -p /root/rpmbuild/SOURCES
+        mkdir -p /root/rpmbuild/SPECS
+        mkdir -p /root/rpmbuild/SRPMS
         cd /data/job/build/packages && bash generate_package.sh rpm
     label: ":fedora: 27 Package builder"
     agents:
@@ -568,17 +568,17 @@ steps:
     timeout: 60
 
   - command: |
-        echo "--- :arrow_down: Downloading build directory" && \
-        buildkite-agent artifact download "build.tar.gz" . --step ":centos: 7 Build" && \
-        tar -zxf build.tar.gz && \
-        echo "+++ :microscope: Starting package build" && \
-        yum install -y rpm-build && \
-        mkdir -p /root/rpmbuild/BUILD && \
-        mkdir -p /root/rpmbuild/BUILDROOT && \
-        mkdir -p /root/rpmbuild/RPMS && \
-        mkdir -p /root/rpmbuild/SOURCES && \
-        mkdir -p /root/rpmbuild/SPECS && \
-        mkdir -p /root/rpmbuild/SRPMS && \
+        echo "--- :arrow_down: Downloading build directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":centos: 7 Build"
+        tar -zxf build.tar.gz
+        echo "+++ :microscope: Starting package build"
+        yum install -y rpm-build
+        mkdir -p /root/rpmbuild/BUILD
+        mkdir -p /root/rpmbuild/BUILDROOT
+        mkdir -p /root/rpmbuild/RPMS
+        mkdir -p /root/rpmbuild/SOURCES
+        mkdir -p /root/rpmbuild/SPECS
+        mkdir -p /root/rpmbuild/SRPMS
         cd /data/job/build/packages && bash generate_package.sh rpm
     label: ":centos: 7 Package builder"
     agents:
@@ -603,9 +603,9 @@ steps:
   - wait
 
   - command: |
-        echo "--- :arrow_down: Downloading brew files" && \
-        buildkite-agent artifact download "build/packages/eosio.rb" . --step ":darwin: High Sierra Package Builder" && \
-        mv build/packages/eosio.rb build/packages/eosio_highsierra.rb && \
+        echo "--- :arrow_down: Downloading brew files"
+        buildkite-agent artifact download "build/packages/eosio.rb" . --step ":darwin: High Sierra Package Builder"
+        mv build/packages/eosio.rb build/packages/eosio_highsierra.rb
         buildkite-agent artifact download "build/packages/eosio.rb" . --step ":darwin: Mojave Package Builder"
     label: ":darwin: Brew Updater"
     agents:
