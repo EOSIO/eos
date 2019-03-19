@@ -143,6 +143,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       fc::microseconds                                          _keosd_provider_timeout_us;
 
       std::vector<chain::digest_type>                           _protocol_features_to_activate;
+      bool                                                      _protocol_features_signaled = false; // to mark whether it has been signaled in start_block
 
       time_point _last_signed_block_time;
       time_point _start_time = fc::time_point::now();
@@ -979,6 +980,7 @@ void producer_plugin::schedule_protocol_feature_activations( const scheduled_pro
                invalid_protocol_features_to_activate, "duplicate digests" );
    chain.validate_protocol_features( schedule.protocol_features_to_activate );
    my->_protocol_features_to_activate = schedule.protocol_features_to_activate;
+   my->_protocol_features_signaled = false;
 }
 
 fc::variants producer_plugin::get_supported_protocol_features( const get_supported_protocol_features_params& params ) const {
@@ -1208,6 +1210,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                features_to_activate.clear();
             }
             std::swap( features_to_activate, protocol_features_to_activate );
+            _protocol_features_signaled = true;
             ilog( "signaling activation of the following protocol features in block ${num}: ${features_to_activate}",
                   ("num", hbs->block_num + 1)("features_to_activate", features_to_activate) );
          }
@@ -1662,7 +1665,10 @@ void producer_plugin_impl::produce_block() {
 
    EOS_ASSERT(signature_provider_itr != _signature_providers.end(), producer_priv_key_not_found, "Attempting to produce a block for which we don't have the private key");
 
-   _protocol_features_to_activate.clear(); // clear _protocol_features_to_activate as it is already set in pending_block
+   if (_protocol_features_signaled) {
+      _protocol_features_to_activate.clear(); // clear _protocol_features_to_activate as it is already set in pending_block
+      _protocol_features_signaled = false;
+   }
 
    //idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block( [&]( const digest_type& d ) {
