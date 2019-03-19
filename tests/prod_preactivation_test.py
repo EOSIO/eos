@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from testUtils import Utils
-from Cluster import Cluster
+from Cluster import Cluster, PFSetupPolicy
 from WalletMgr import WalletMgr
 from Node import Node
 from Node import ReturnType
@@ -67,7 +67,9 @@ try:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(pnodes=prodCount, totalNodes=prodCount, prodCount=1, onlyBios=onlyBios, dontBootstrap=dontBootstrap, p2pPlugin=p2pPlugin, useBiosBootFile=False, extraNodeosArgs=" --plugin eosio::producer_api_plugin") is False:
+        if cluster.launch(pnodes=prodCount, totalNodes=prodCount, prodCount=1, onlyBios=onlyBios,
+                         dontBootstrap=dontBootstrap, p2pPlugin=p2pPlugin, useBiosBootFile=False,
+                         pfSetupPolicy=PFSetupPolicy.NONE, extraNodeosArgs=" --plugin eosio::producer_api_plugin") is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
 
@@ -88,7 +90,7 @@ try:
         errorExit("feature list mismatch between node 0 and node 1")
     else:
         Print("feature list from node 0 matches with that from node 1")
-   
+
     if len(feature0) == 0:
         errorExit("No supported feature list")
 
@@ -99,9 +101,9 @@ try:
            continue
        else:
            digest = feature["feature_digest"]
-   
+
     if len(digest) == 0:
-        errorExit("code name PREACTIVATE_FEATURE not found") 
+        errorExit("code name PREACTIVATE_FEATURE not found")
 
     Print("found digest ", digest, " of PREACTIVATE_FEATURE")
 
@@ -136,10 +138,10 @@ try:
           break
        time.sleep(1)
        secwait = secwait - 1
-    
+
     if secwait <= 0:
        errorExit("No producer of node 0")
-    
+
     cmd = "curl --data-binary '{\"protocol_features_to_activate\":[\"%s\"]}' %s/v1/producer/schedule_protocol_feature_activations" % (digest, node.endpointHttp)
 
     Print("try to preactivate feature on node 1, cmd: %s" % (cmd))
