@@ -441,7 +441,7 @@ uint64_t apply_context::save_record( const char* data, size_t data_len ) {
        "No pending block to save archive record");
 
    auto block = block_state->block;
-   int id = block->archive_records.size();
+   int id = block->archive_records.size() + 1;
    block->archive_records.emplace_back(receiver, vector<char>(data, data+data_len));
 
    return (static_cast<uint64_t>(block->block_num()) << 32) | id;
@@ -449,7 +449,7 @@ uint64_t apply_context::save_record( const char* data, size_t data_len ) {
 
 int apply_context::lookup_record( uint64_t rec_id, account_name code, char* buffer, size_t buffer_size) {
    uint32_t block_num = rec_id >> 32;
-   uint32_t id = static_cast<uint32_t>(rec_id);
+   uint32_t id = static_cast<uint32_t>(rec_id) - 1;
 
    auto block = control.fetch_block_by_number(block_num);
    if( !block || id >= block->archive_records.size() ) {
