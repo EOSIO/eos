@@ -181,7 +181,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-1"
         workdir: /data/job
-    timeout: 60
+    timeout: 90
   
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -208,7 +208,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-1"
         workdir: /data/job
-    timeout: 60
+    timeout: 90
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -235,7 +235,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-1"
         workdir: /data/job
-    timeout: 60
+    timeout: 90
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -262,7 +262,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux1_2-1"
         workdir: /data/job
-    timeout: 60
+    timeout: 90
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -289,7 +289,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
         workdir: /data/job
-    timeout: 60
+    timeout: 90
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -316,7 +316,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-1"
         workdir: /data/job
-    timeout: 60
+    timeout: 90
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -334,7 +334,7 @@ steps:
       - "mongod.log"
       - "build/genesis.json"
       - "build/config.ini"
-    timeout: 60
+    timeout: 90
 
   - command: |
         echo "--- :arrow_down: Downloading build directory" && \
@@ -352,6 +352,6 @@ steps:
       - "mongod.log"
       - "build/genesis.json"
       - "build/config.ini"
-    timeout: 60
+    timeout: 90
 
   
