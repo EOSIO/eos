@@ -439,7 +439,10 @@ void resource_limits_manager::recall_proxied(
     EOS_ASSERT(1 <= pct && pct <= config::_100percent, transaction_exception, "pct must be between 0.01% and 100% (1-10000)");
     const auto* param = _chaindb.find<stake_param_object, by_id>(token_code.value);
     EOS_ASSERT(param, transaction_exception, "no staking for token");
-    EOS_ASSERT(std::find(param->purposes.begin(), param->purposes.end(), purpose_code) != param->purposes.end(), transaction_exception, "unknown purpose");
+    
+    EOS_ASSERT(std::find_if(param->purposes.begin(), param->purposes.end(), 
+            [purpose_code](const stake_purpose_param &p) { return p.code == purpose_code; }) != param->purposes.end(), 
+        transaction_exception, "unknown purpose");
 
     auto agents_table = _chaindb.get_table<stake_agent_object>();
     auto grants_table = _chaindb.get_table<stake_grant_object>();
