@@ -174,7 +174,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-1"
         workdir: /data/job
-    timeout: 60
+    timeout: 90
   
   - command: | # Ubuntu 18.04 Tests
         echo "--- :arrow_down: Downloading Build Directory" && \
@@ -194,7 +194,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-1"
         workdir: /data/job
-    timeout: 60
+    timeout: 90
 
   - command: | # centOS Tests
         echo "--- :arrow_down: Downloading Build Directory" && \
@@ -214,7 +214,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-1"
         workdir: /data/job
-    timeout: 60
+    timeout: 90
 
   - command: | # Amazon AWS-1 Linux Tests
         echo "--- :arrow_down: Downloading Build Directory" && \
@@ -234,7 +234,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux1_2-1"
         workdir: /data/job
-    timeout: 60
+    timeout: 90
 
   - command: | # Amazon AWS-2 Linux Tests
         echo "--- :arrow_down: Downloading Build Directory" && \
@@ -254,7 +254,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
         workdir: /data/job
-    timeout: 60
+    timeout: 90
 
   - command: | # Fedora Tests
         echo "--- :arrow_down: Downloading Build Directory" && \
@@ -274,7 +274,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-1"
         workdir: /data/job
-    timeout: 60
+    timeout: 90
 
   - command: | # High Sierra Tests
         echo "--- :arrow_down: Downloading Build Directory" && \
@@ -285,7 +285,7 @@ steps:
     agents:
       - "role=tester-v2-1"
       - "os=high-sierra"
-    timeout: 60
+    timeout: 90
 
   - command: | # Mojave Tests
         echo "--- :arrow_down: Downloading Build Directory" && \
@@ -296,4 +296,4 @@ steps:
     agents:
       - "role=tester-v2-1"
       - "os=mojave"
-    timeout: 60
+    timeout: 90
