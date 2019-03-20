@@ -672,7 +672,7 @@ struct controller_impl {
                                                                              conf.genesis.initial_timestamp );
    }
 
-   void set_blacklist(list_type list, list_action_type action, std::vector<account_name> name_list)
+   void set_blacklist(blacklist_type list, list_action_type action, std::vector<account_name> name_list)
    {
       //set list from set_blacklist action in system contract
       int64_t blacklist_type = static_cast<int64_t>(list);
@@ -712,13 +712,13 @@ struct controller_impl {
             };
 
             switch (list){
-            case list_type::actor_blacklist_type:
+            case blacklist_type::actor_blacklist_type:
                insert_blacklist(gp2.cfg.actor_blacklist);
                break;
-            case list_type::contract_blacklist_type:
+            case blacklist_type::contract_blacklist_type:
                insert_blacklist(gp2.cfg.actor_blacklist);
                break;
-            case list_type::resource_greylist_type:
+            case blacklist_type::resource_greylist_type:
                insert_blacklist(gp2.cfg.actor_blacklist);
                break;
             default:
@@ -733,13 +733,13 @@ struct controller_impl {
       };
 
       switch (list){
-      case list_type::actor_blacklist_type:
+      case blacklist_type::actor_blacklist_type:
          update_blacklists(gp2o.cfg.actor_blacklist, conf.actor_blacklist, multisig_blacklists.actor_blacklist);
          break;
-      case list_type::contract_blacklist_type:
+      case blacklist_type::contract_blacklist_type:
          update_blacklists(gp2o.cfg.actor_blacklist, conf.contract_blacklist, multisig_blacklists.contract_blacklist);
          break;
-      case list_type::resource_greylist_type:
+      case blacklist_type::resource_greylist_type:
          update_blacklists(gp2o.cfg.actor_blacklist, conf.resource_greylist, multisig_blacklists.resource_greylist);
          break;
       default:
@@ -748,7 +748,7 @@ struct controller_impl {
       }
    }
 
-   void check_msig_blacklist(list_type blacklist_type,account_name account)
+   void check_msig_blacklist(blacklist_type blacklist_type,account_name account)
     {
        auto check_blacklist = [&](const flat_set<account_name>& msig_blacklist){
             EOS_ASSERT(msig_blacklist.find(account) == msig_blacklist.end(), transaction_exception, 
@@ -757,13 +757,13 @@ struct controller_impl {
 
        switch (blacklist_type)
        {
-       case list_type::actor_blacklist_type:
+       case blacklist_type::actor_blacklist_type:
           check_blacklist(multisig_blacklists.actor_blacklist);
           break;
-       case list_type::contract_blacklist_type:
+       case blacklist_type::contract_blacklist_type:
           check_blacklist(multisig_blacklists.actor_blacklist);
           break;
-       case list_type::resource_greylist_type:
+       case blacklist_type::resource_greylist_type:
           check_blacklist(multisig_blacklists.actor_blacklist);
           break;
        default:
@@ -2327,7 +2327,7 @@ void controller::add_resource_greylist(const account_name &name) {
 }
 
 void controller::remove_resource_greylist(const account_name &name) {
-   my->check_list_in_contract_db(list_type::resource_greylist_type,name);
+   my->check_list_in_contract_db(blacklist_type::resource_greylist_type,name);
    my->conf.resource_greylist.erase(name);
 }
 
@@ -2344,6 +2344,6 @@ const global_property2_object& controller::get_global_properties2()const {
 }
 void controller::set_blacklist(int64_t list, int64_t action, std::vector<account_name> name_list)
 {
-   my->set_blacklist(static_cast<list_type>(list), static_cast<list_action_type>(action), name_list);
+   my->set_blacklist(static_cast<blacklist_type>(list), static_cast<list_action_type>(action), name_list);
 }
 } } /// eosio::chain

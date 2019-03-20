@@ -195,8 +195,8 @@ class privileged_api : public context_aware_api {
 
       void set_blacklist_packed(int64_t list, int64_t action, array_ptr<char> packed_blockchain_blacklist, size_t datalen)
       {
-         int64_t lstbegin = static_cast<int64_t>(list_type::actor_blacklist_type);
-         int64_t lstend = static_cast<int64_t>(list_type::list_type_count);
+         int64_t lstbegin = static_cast<int64_t>(blacklist_type::actor_blacklist_type);
+         int64_t lstend = static_cast<int64_t>(blacklist_type::list_type_count);
          int64_t actbegin = static_cast<int64_t>(list_action_type::insert_type);
          int64_t actend = static_cast<int64_t>(list_action_type::list_action_type_count);
          EOS_ASSERT(list >= lstbegin && list < lstend, wasm_execution_error, "unkown blacklist type!");

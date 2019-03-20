@@ -51,7 +51,7 @@ namespace eosio { namespace chain {
       FULL,
       LIGHT
    };
-    enum  class list_type:int64_t {
+    enum  class blacklist_type:int64_t {
       actor_blacklist_type=1,
       contract_blacklist_type,
       resource_greylist_type,
