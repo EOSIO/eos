@@ -979,6 +979,13 @@ void producer_plugin::schedule_protocol_feature_activations( const scheduled_pro
    EOS_ASSERT( set_of_features_to_activate.size() == schedule.protocol_features_to_activate.size(),
                invalid_protocol_features_to_activate, "duplicate digests" );
    chain.validate_protocol_features( schedule.protocol_features_to_activate );
+   const auto& pfs = chain.get_protocol_feature_manager().get_protocol_feature_set();
+   for (auto &feature_digest : set_of_features_to_activate) {
+      const auto& pf = pfs.get_protocol_feature(feature_digest);
+      EOS_ASSERT( !pf.preactivation_required, protocol_feature_exception,
+                  "protocol feature requires preactivation: ${digest}",
+                  ("digest", feature_digest));
+   }
    my->_protocol_features_to_activate = schedule.protocol_features_to_activate;
    my->_protocol_features_signaled = false;
 }
