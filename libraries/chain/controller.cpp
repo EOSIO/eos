@@ -125,7 +125,7 @@ struct controller_impl {
    resource_limits_manager        resource_limits;
    authorization_manager          authorization;
    controller::config             conf;
-   controller::config             conf_from_system_contract;///< backup blacklist from system contract,distinguish from config.ini,command line and chain api
+   controller::config             multisig_blacklists;///<  multisig blacklists in memory
    chain_id_type                  chain_id;
    bool                           replaying= false;
    optional<fc::time_point>       replay_head_time;
@@ -402,9 +402,7 @@ struct controller_impl {
          ilog( "database initialized with hash: ${hash}", ("hash", hash) );
       }
 
-      sync_name_list(list_type::actor_blacklist_type);
-      sync_name_list(list_type::contract_blacklist_type);
-      sync_name_list(list_type::resource_greylist_type);
+      merge_msig_blacklist_into_conf();
    }
 
    ~controller_impl() {
@@ -677,101 +675,122 @@ struct controller_impl {
    void set_name_list(list_type list, list_action_type action, std::vector<account_name> name_list)
    {
       //set list from set_name_list action in system contract
-       int64_t lst = static_cast<int64_t>(list);
-
-      EOS_ASSERT(list >= list_type::actor_blacklist_type && list < list_type::list_type_count, transaction_exception, "unknown list type : ${l}, action: ${n}", ("l", static_cast<int64_t>(list))("n", static_cast<int64_t>(action)));
-    vector<flat_set<account_name> *> lists = {&conf.actor_blacklist, &conf.contract_blacklist, &conf.resource_greylist};
-      vector<flat_set<account_name> *> clists = {&conf_from_system_contract.actor_blacklist, &conf_from_system_contract.contract_blacklist, &conf_from_system_contract.resource_greylist};
-      const auto &gprops2 = db.get<global_property2_object>();
-     vector<const shared_vector<account_name>*> dblists = {
-         &gprops2.cfg.actor_blacklist, &gprops2.cfg.contract_blacklist,
-         &gprops2.cfg.resource_greylist};
-      EOS_ASSERT(lists.size() == static_cast<int64_t>(list_type::list_type_count) - 1, transaction_exception, " list size wrong : ${l}, action: ${n}", ("l", static_cast<int64_t>(list))("n", static_cast<int64_t>(action)));
-      const shared_vector<account_name> &dblo = *dblists[lst - 1];
-      flat_set<account_name> &clo = *clists[lst - 1];
-      flat_set<account_name> &lo = *lists[lst - 1];
-  
-      for (auto &a : dblo) {
-         clo.insert(a);
-      }
-
-      auto  update_lists = [&](auto& lsto){
-        if (action == list_action_type::insert_type)
-      {
-         lsto.insert(name_list.begin(), name_list.end());
-      }
-      else if (action == list_action_type::remove_type)
-      {
-         flat_set<account_name> name_set(name_list.begin(), name_list.end());
-
-         flat_set<account_name> results;
-         results.reserve(lsto.size());
-         set_difference(lsto.begin(), lsto.end(),
-                        name_set.begin(), name_set.end(),
-                        std::inserter(results,results.begin()));
-
-         lsto = results;
-      }
-      };
-
-      update_lists(lo);
-      update_lists(clo);//save list from contract to memory,
-
-      auto insert_list = [&](auto &o) {
-        vector<shared_vector<account_name> *> olists = {
-            &o.cfg.actor_blacklist, 
-            &o.cfg.contract_blacklist,
-            &o.cfg.resource_greylist};
-          shared_vector<account_name> &olo = *olists[lst - 1];
-             // clear list from db and save merge result to db  object
-        olo.clear();
-        for (auto &a : clo) {
-          olo.push_back(a);
-        }
-      };
-
-      db.modify(gprops2, [&](auto &gp2) { 
-         insert_list(gp2); 
-         });
-   }
-
-   void check_list_in_contract_db(list_type list,account_name account) {
-     
-     int64_t lst = static_cast<int64_t>(list);
-
-      EOS_ASSERT(list >= list_type::actor_blacklist_type && list < list_type::list_type_count, transaction_exception, "unknown list type : ${l}, action: ${n}", ("l", static_cast<int64_t>(list))("n", account));
-
-      vector<flat_set<account_name> *> clists = {&conf_from_system_contract.actor_blacklist, &conf_from_system_contract.contract_blacklist, &conf_from_system_contract.resource_greylist};
-     
-      flat_set<account_name> &clo = *clists[lst - 1];
-
-      EOS_ASSERT(clo.find(account) == clo.end(), transaction_exception, " do not remove item in contract db list , account: ${n}", ("n", account));
-          
-   }
-
-   void sync_name_list(list_type list)
-   {
-      try
-      {
-       
-        int64_t lst = static_cast<int64_t>(list);
-      EOS_ASSERT( list >= list_type::actor_blacklist_type && list < list_type::list_type_count, transaction_exception, "unknown list type : ${l}", ("l", static_cast<int64_t>(list)));
-       const auto &gprops2 = db.get<global_property2_object>();
-      vector<const shared_vector<account_name> *> dblists = {&gprops2.cfg.actor_blacklist, &gprops2.cfg.contract_blacklist, &gprops2.cfg.resource_greylist};
-      vector<flat_set<account_name> *> lists = {&conf.actor_blacklist, &conf.contract_blacklist, &conf.resource_greylist};
-      EOS_ASSERT(lists.size() == static_cast<int64_t>(list_type::list_type_count) - 1, transaction_exception, " list size wrong : ${l}, ismerge: ${n}", ("l", static_cast<int64_t>(list)));
-      const  shared_vector<account_name> &dblo = *dblists[lst - 1];
-      flat_set<account_name> &lo = *lists[lst - 1];
-
-         //initialize,  merge elements and remove duplication between list and db.result save to  list
-         for (auto &a : dblo)
-         {
-            lo.insert(a);
+      int64_t blacklist_type = static_cast<int64_t>(list);
+      const auto &gp2o = db.get<global_property2_object>();
+      auto update_blacklists = [&](const shared_vector<account_name> &db_blacklist, flat_set<account_name> &conf_blacklist, flat_set<account_name> &msig_blacklist){
+         for (auto &a : db_blacklist){
+            conf_blacklist.insert(a);
+            msig_blacklist.insert(a);
          }
+
+         auto update_blacklist = [&](auto &blacklist) {
+            if (action == list_action_type::insert_type){
+               blacklist.insert(name_list.begin(), name_list.end());
+            }
+            else if (action == list_action_type::remove_type){
+               flat_set<account_name> name_set(name_list.begin(), name_list.end());
+               flat_set<account_name> results;
+               results.reserve(blacklist.size());
+               set_difference(blacklist.begin(), blacklist.end(),
+                              name_set.begin(), name_set.end(),
+                              std::inserter(results, results.begin()));
+
+               blacklist = results;
+            }
+         };
+
+         update_blacklist(conf_blacklist);
+         update_blacklist(msig_blacklist);
+
+         auto insert_blacklists = [&](auto &gp2) {
+            auto insert_blacklist = [&](shared_vector<account_name> &blacklist) {
+               blacklist.clear();
+
+               for (auto &a : msig_blacklist){
+                  blacklist.push_back(a);
+               }
+            };
+
+            switch (list){
+            case list_type::actor_blacklist_type:
+               insert_blacklist(gp2.cfg.actor_blacklist);
+               break;
+            case list_type::contract_blacklist_type:
+               insert_blacklist(gp2.cfg.actor_blacklist);
+               break;
+            case list_type::resource_greylist_type:
+               insert_blacklist(gp2.cfg.actor_blacklist);
+               break;
+            default:
+               EOS_ASSERT(false, transaction_exception,
+                          "unknown list type : ${blklsttype}", ("blklsttype", blacklist_type));
+            }
+         };
+
+         db.modify(gp2o, [&](auto &gp2) {
+            insert_blacklists(gp2);
+         });
+      };
+
+      switch (list){
+      case list_type::actor_blacklist_type:
+         update_blacklists(gp2o.cfg.actor_blacklist, conf.actor_blacklist, multisig_blacklists.actor_blacklist);
+         break;
+      case list_type::contract_blacklist_type:
+         update_blacklists(gp2o.cfg.actor_blacklist, conf.contract_blacklist, multisig_blacklists.contract_blacklist);
+         break;
+      case list_type::resource_greylist_type:
+         update_blacklists(gp2o.cfg.actor_blacklist, conf.resource_greylist, multisig_blacklists.resource_greylist);
+         break;
+      default:
+         EOS_ASSERT(false, transaction_exception,
+                    "unknown list type : ${blklsttype}", ("blklsttype", blacklist_type));
+      }
+   }
+
+   void check_msig_blacklist(list_type blacklist_type,account_name account)
+    {
+       auto check_blacklist = [&](const flat_set<account_name>& msig_blacklist){
+            EOS_ASSERT(msig_blacklist.find(account) == msig_blacklist.end(), transaction_exception, 
+            " do not remove account in multisig blacklist , account: ${account}", ("account", account));
+         };
+
+       switch (blacklist_type)
+       {
+       case list_type::actor_blacklist_type:
+          check_blacklist(multisig_blacklists.actor_blacklist);
+          break;
+       case list_type::contract_blacklist_type:
+          check_blacklist(multisig_blacklists.actor_blacklist);
+          break;
+       case list_type::resource_greylist_type:
+          check_blacklist(multisig_blacklists.actor_blacklist);
+          break;
+       default:
+          EOS_ASSERT(false, transaction_exception,
+                     "unknown list type : ${blklsttype}, account: ${account}", ("blklsttype",static_cast<uint64_t>(blacklist_type))("account", account));
+       }
+   }
+
+   void merge_msig_blacklist_into_conf()
+   {
+      try{
+         auto merge_blacklist = [&](const shared_vector<account_name>& msig_blacklist_in_db,flat_set<account_name>& conf_blacklist){
+   
+         for (auto& a : msig_blacklist_in_db)
+         {
+            conf_blacklist.insert(a);
+         }
+         };
+
+         const auto &gp2o = db.get<global_property2_object>();
+         merge_blacklist(gp2o.cfg.actor_blacklist,conf.actor_blacklist);
+         merge_blacklist(gp2o.cfg.contract_blacklist,conf.contract_blacklist);
+         merge_blacklist(gp2o.cfg.resource_greylist,conf.resource_greylist);
       }
       catch (...)
       {
-         wlog("plugin initialize  sync list ignore before initialize database");
+         wlog("when plugin initialize,execute merge multsig blacklist to ignore exception before create global property2 object");
       }
    }
 
