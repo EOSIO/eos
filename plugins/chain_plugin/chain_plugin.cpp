@@ -1214,30 +1214,24 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
     return results;
 }
 
-fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p )const {
-   fc::mutable_variant_object results;
+fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p ) const {
+    const name scope = eosio::chain::string_to_symbol(0, boost::algorithm::to_upper_copy(p.symbol).c_str()) >> 8;
+    auto& chaindb = db.chaindb();
+    auto itr = chaindb.begin({p.code, scope, N(stat), cyberway::chaindb::names::primary_index});
 
-   const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
-   //(void)get_index_type( abi, "stat" );
+    if (itr.pk == cyberway::chaindb::end_primary_key) {
+        return {};
+    }
 
-   uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
+    const auto currency_stat_object = chaindb.value_at_cursor({p.code, itr.cursor});
 
-// TODO: Removed by CyberWay
-//   walk_key_value_table(p.code, scope, N(stat), [&](const key_value_object& obj){
-//      EOS_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
-//
-//      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-//      read_only::get_currency_stats_result result;
-//
-//      fc::raw::unpack(ds, result.supply);
-//      fc::raw::unpack(ds, result.max_supply);
-//      fc::raw::unpack(ds, result.issuer);
-//
-//      results[result.supply.symbol_name()] = result;
-//      return true;
-//   });
+    asset supply;
+    fc::from_variant(currency_stat_object["supply"], supply);
 
-   return results;
+    asset max_supply;
+    fc::from_variant(currency_stat_object["max_supply"], max_supply);
+
+    return fc::mutable_variant_object{p.symbol, fc::variant{get_currency_stats_result{supply, max_supply, name(currency_stat_object["issuer"].as_string())}}};
 }
 
 // TODO: move this and similar functions to a header. Copied from wasm_interface.cpp.
