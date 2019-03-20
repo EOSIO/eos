@@ -1160,7 +1160,7 @@ struct controller_impl {
 
       pending->_pending_block_state->set_confirmed(confirm_block_count);
 
-      auto was_pending_promoted = pending->_pending_block_state->maybe_promote_pending();
+      auto was_pending_promoted = pending->_pending_block_state->update_active_schedule();
 
       //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
@@ -1187,30 +1187,14 @@ struct controller_impl {
                   });
             }
 
-         try {
-            auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
-            onbtrx->implicit = true;
-            auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
-                  in_trx_requiring_checks = old_value;
-               });
-            in_trx_requiring_checks = true;
-            auto trace = push_transaction( onbtrx, fc::time_point::maximum(), self.get_global_properties().configuration.min_transaction_cpu_usage, true );
-
-            if(trace && trace->except) {
-               edump((*trace));
-               throw *trace->except;
-           }
-
-         } catch( const boost::interprocess::bad_alloc& e  ) {
-            elog( "on block transaction failed due to a bad allocation" );
-            throw;
-         } catch( const fc::exception& e ) {
-            wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
-            edump((e.to_detail_string()));
-         } catch( ... ) {
-             wlog( "on block transaction failed" );
+         push_sys_transaction(config::system_account_name, N(onblock), fc::raw::pack(self.head_block_header()));
+         if (was_pending_promoted) {
+             vector<account_name> producer_names;
+             for (auto& prod : pending->_pending_block_state->active_schedule.producers) {
+                producer_names.emplace_back(prod.producer_name);
+             }
+             push_sys_transaction(config::govern_account_name, N(setactprods), fc::raw::pack(producer_names));
          }
-
          clear_expired_input_transactions();
          update_producers_authority();
       }
@@ -1614,21 +1598,40 @@ struct controller_impl {
     *  At the start of each block we notify the system contract with a transaction that passes in
     *  the block header of the prior block (which is currently our head block)
     */
-   signed_transaction get_on_block_transaction()
-   {
-      action on_block_act;
-      on_block_act.account = config::system_account_name;
-      on_block_act.name = N(onblock);
-      on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
-      on_block_act.data = fc::raw::pack(self.head_block_header());
 
-      signed_transaction trx;
-      trx.actions.emplace_back(std::move(on_block_act));
-      trx.set_reference_block(self.head_block_id());
-      trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
+    signed_transaction get_sys_transaction(account_name account, action_name name, const bytes& data) {
+        signed_transaction trx;
+        trx.actions.emplace_back(action(
+            vector<permission_level>{{account, config::active_name}}, account, name, data));
+        trx.set_reference_block(self.head_block_id());
+        trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
+        return trx;
+    }
+   
+    void push_sys_transaction(account_name account, action_name name, const bytes& data) {
+        try {
+            auto onbtrx = std::make_shared<transaction_metadata>(get_sys_transaction(account, name, data));
+            onbtrx->implicit = true;
+            auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
+                  in_trx_requiring_checks = old_value;
+               });
+            in_trx_requiring_checks = true;
+            auto trace = push_transaction( onbtrx, fc::time_point::maximum(), self.get_global_properties().configuration.min_transaction_cpu_usage, true );
 
-      return trx;
-   }
+            if(trace && trace->except) {
+                edump((*trace));
+                throw *trace->except;
+            }
+        } catch( const boost::interprocess::bad_alloc& e  ) {
+            elog( "system transaction failed due to a bad allocation" );
+            throw;
+        } catch( const fc::exception& e ) {
+            wlog( "system transaction failed, but shouldn't impact block generation, system contract needs update" );
+            edump((e.to_detail_string()));
+        } catch( ... ) {
+            wlog( "system transaction failed" );
+        }
+    }
 
 }; /// controller_impl
 

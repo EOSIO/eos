@@ -226,7 +226,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto new_bs = bsp->generate_next(new_block_header.timestamp);
 
          // for newly installed producers we can set their watermarks to the block they became active
-         if (new_bs.maybe_promote_pending() && bsp->active_schedule.version != new_bs.active_schedule.version) {
+         if (new_bs.update_active_schedule() && bsp->active_schedule.version != new_bs.active_schedule.version) {
             flat_set<account_name> new_producers;
             new_producers.reserve(new_bs.active_schedule.producers.size());
             for( const auto& p: new_bs.active_schedule.producers) {
