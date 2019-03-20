@@ -227,7 +227,7 @@ namespace eosio { namespace chain {
          void add_resource_greylist(const account_name &name);
          void remove_resource_greylist(const account_name &name);
          const global_property2_object&        get_global_properties2()const; 
-         void set_name_list(int64_t list, int64_t action, std::vector<account_name> name_list);
+         void set_blacklist(int64_t list, int64_t action, std::vector<account_name> name_list);
          bool is_resource_greylisted(const account_name &name) const;
          const flat_set<account_name> &get_resource_greylist() const;
 

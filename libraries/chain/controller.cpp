@@ -672,9 +672,9 @@ struct controller_impl {
                                                                              conf.genesis.initial_timestamp );
    }
 
-   void set_name_list(list_type list, list_action_type action, std::vector<account_name> name_list)
+   void set_blacklist(list_type list, list_action_type action, std::vector<account_name> name_list)
    {
-      //set list from set_name_list action in system contract
+      //set list from set_blacklist action in system contract
       int64_t blacklist_type = static_cast<int64_t>(list);
       const auto &gp2o = db.get<global_property2_object>();
       auto update_blacklists = [&](const shared_vector<account_name> &db_blacklist, flat_set<account_name> &conf_blacklist, flat_set<account_name> &msig_blacklist){
@@ -2342,8 +2342,8 @@ const flat_set<account_name> &controller::get_resource_greylist() const {
 const global_property2_object& controller::get_global_properties2()const {
    return my->db.get<global_property2_object>();
 }
-void controller::set_name_list(int64_t list, int64_t action, std::vector<account_name> name_list)
+void controller::set_blacklist(int64_t list, int64_t action, std::vector<account_name> name_list)
 {
-   my->set_name_list(static_cast<list_type>(list), static_cast<list_action_type>(action), name_list);
+   my->set_blacklist(static_cast<list_type>(list), static_cast<list_action_type>(action), name_list);
 }
 } } /// eosio::chain
