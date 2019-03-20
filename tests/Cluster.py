@@ -340,8 +340,8 @@ class Cluster(object):
 
         self.nodes=nodes
 
-        biosNode=Node(Cluster.__BiosHost, Cluster.__BiosPort, walletMgr=self.walletMgr)
-        if not biosNode.checkPulse():
+        biosNode=self.discoverBiosNode()
+        if not biosNode or not biosNode.checkPulse():
             Utils.Print("ERROR: Bios node doesn't appear to be running...")
             return False
 
@@ -361,23 +361,18 @@ class Cluster(object):
         if dontBootstrap:
             Utils.Print("Skipping bootstrap.")
             self.biosNode=biosNode
-            self.discoverBiosNodePid()
             return True
 
         Utils.Print("Bootstrap cluster.")
         if onlyBios or not useBiosBootFile:
-            Utils.Print("NON BIOS BOOTSTRAP")
             self.biosNode=self.bootstrap(biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios)
         else:
-            Utils.Print(" BIOS BOOTSTRAP")
             self.useBiosBootFile=True
             self.biosNode=self.bios_bootstrap(biosNode, totalNodes, pfSetupPolicy)
 
         if self.biosNode is None:
             Utils.Print("ERROR: Bootstrap failed.")
             return False
-
-        self.discoverBiosNodePid()
 
         # validate iniX accounts can be retrieved
 
@@ -1234,7 +1229,7 @@ class Cluster(object):
     @staticmethod
     def pgrepEosServerPattern(nodeInstance):
         dataLocation=Cluster.__dataDir + Cluster.nodeExtensionToName(nodeInstance)
-        return r"[\n]?(\d+) (.* --data-dir %s .*)\n" % (dataLocation)
+        return r"[\n]?(\d+) (.* --data-dir %s.*)\n" % (dataLocation)
 
     # Populates list of EosInstanceInfo objects, matched to actual running instances
     def discoverLocalNodes(self, totalNodes, timeout=None):
@@ -1263,15 +1258,16 @@ class Cluster(object):
         if Utils.Debug: Utils.Print("Found %d nodes" % (len(nodes)))
         return nodes
 
-    def discoverBiosNodePid(self, timeout=None):
+    def discoverBiosNode(self, timeout=None):
         psOut=Cluster.pgrepEosServers(timeout=timeout)
         pattern=Cluster.pgrepEosServerPattern("bios")
         Utils.Print("pattern={\n%s\n}, psOut=\n%s\n" % (pattern,psOut))
         m=re.search(pattern, psOut, re.MULTILINE)
         if m is None:
             Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
+            return None
         else:
-            self.biosNode.pid=int(m.group(1))
+            return Node(Cluster.__BiosHost, Cluster.__BiosPort, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr)
 
     # Kills a percentange of Eos instances starting from the tail and update eosInstanceInfos state
     def killSomeEosInstances(self, killCount, killSignalStr=Utils.SigKillTag):
@@ -1604,8 +1600,14 @@ class Cluster(object):
 
     @staticmethod
     def getDataDir(nodeId):
-        return os.path.abspath(os.path.join(Cluster.__dataDir, "node_%02d" % (nodeId)))
+        assert isinstance(nodeId, int) or (isinstance(nodeId, str) and nodeId == "bios"), "Invalid Node ID is passed"
+        extName = nodeId
+        if isinstance(nodeId, int): extName = "%02d" % (nodeId)
+        return os.path.abspath(os.path.join(Cluster.__dataDir, "node_{}".format(extName)))
 
     @staticmethod
     def getConfigDir(nodeId):
-        return os.path.abspath(os.path.join(Cluster.__configDir, "node_%02d" % (nodeId)))
+        assert isinstance(nodeId, int) or (isinstance(nodeId, str) and nodeId == "bios"), "Invalid Node ID is passed"
+        extName = nodeId
+        if isinstance(nodeId, int): extName = "%02d" % (nodeId)
+        return os.path.abspath(os.path.join(Cluster.__configDir, "node_{}".format(extName)))
