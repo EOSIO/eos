@@ -375,7 +375,14 @@ namespace eosiosystem {
          }
 
          if( from_voter->producers.size() || from_voter->proxy ) {
-            update_votes( from, from_voter->proxy, from_voter->producers, false );
+
+            std::vector<account_name> calculators;
+            auto calc_voter = _calc_voters.find(from);
+            if(calc_voter != _calc_voters.end()){
+               calculators = calc_voter->calculators;
+            }
+
+            update_votes( from, from_voter->proxy, from_voter->producers, false, calculators );
          }
       }
    }

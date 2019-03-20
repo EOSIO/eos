@@ -70,6 +70,39 @@ namespace eosiosystem {
       });
    }
 
+   void system_contract::regcalc(const account_name calculator, const std::string &url, uint16_t location) {
+       eosio_assert( url.size() < 512, "url too long" );
+       require_auth( calculator );
+
+       auto calc = _calculators.find( calculator );
+
+       if ( calc != _calculators.end() ) {
+           _calculators.modify( calc, calculator, [&]( calculator_info& info ){
+               info.is_active    = true;
+               info.url          = url;
+               info.location     = location;
+           });
+       } else {
+           _calculators.emplace( calculator, [&]( calculator_info& info ){
+               info.owner         = calculator;
+               info.total_votes   = 0;
+               info.is_active     = true;
+               info.url           = url;
+               info.location      = location;
+           });
+       }
+   }
+
+   void system_contract::unregcalc(const account_name calculator) {
+       require_auth( calculator );
+
+       const auto& calc = _calculators.get( calculator, "calculator not found" );
+
+       _calculators.modify( calc, 0, [&]( calculator_info& info ){
+           info.deactivate();
+       });
+   }
+
    void system_contract::update_elected_producers( block_timestamp block_time ) {
       _gstate.last_producer_schedule_update = block_time;
 
@@ -142,7 +175,26 @@ namespace eosiosystem {
     */
    void system_contract::voteproducer( const account_name voter_name, const account_name proxy, const std::vector<account_name>& producers ) {
       require_auth( voter_name );
-      update_votes( voter_name, proxy, producers, true );
+
+      std::vector<account_name> calculators;
+      auto calc_voter = _calc_voters.find(voter_name);
+      if(calc_voter != _calc_voters.end()){
+         calculators = calc_voter->calculators;
+      }
+
+      update_votes( voter_name, proxy, producers, true, calculators );
+   }
+
+   void system_contract::votecalc(const account_name voter_name, const std::vector<account_name> &calculators) {
+       require_auth( voter_name );
+       std::vector<account_name> producers;
+       account_name proxy = 0;
+       auto prod_voter = _voters.find(voter_name);
+       if(prod_voter != _voters.end()){
+           producers = prod_voter->producers;
+           proxy = prod_voter->proxy;
+       }
+       update_votes( voter_name, proxy, producers, true, calculators);
    }
 
    void system_contract::setrates(const account_name voter, const double social_rate, const double transfer_rate) {
@@ -171,11 +223,22 @@ namespace eosiosystem {
       ///update the votes
       auto from_voters = _voters.find(voter);
       if(from_voters != _voters.end()) {
-         update_votes(voter, from_voters->proxy, from_voters->producers, false);
+
+         std::vector<account_name> calculators;
+         auto calc_voter = _calc_voters.find(voter);
+         if(calc_voter != _calc_voters.end()){
+            calculators = calc_voter->calculators;
+         }
+
+         update_votes(voter, from_voters->proxy, from_voters->producers, false, calculators);
       }
    }
 
-   void system_contract::update_votes( const account_name voter_name, const account_name proxy, const std::vector<account_name>& producers, bool voting ) {
+   void system_contract::update_votes( const account_name voter_name,
+                                       const account_name proxy,
+                                       const std::vector<account_name>& producers,
+                                       bool voting,
+                                       const std::vector<account_name>& calculators ) {
       //validate input
       if ( proxy ) {
          eosio_assert( producers.size() == 0, "cannot vote for producers and proxy at same time" );
@@ -187,10 +250,20 @@ namespace eosiosystem {
             eosio_assert( producers[i-1] < producers[i], "producer votes must be unique and sorted" );
          }
       }
+       eosio_assert( calculators.size() <= 30, "attempt to vote for too many caculators" );
+       for( size_t i = 1; i < calculators.size(); ++i ) {
+          eosio_assert( calculators[i-1] < calculators[i], "calculator votes must be unique and sorted" );
+       }
 
       auto voter = _voters.find(voter_name);
       eosio_assert( voter != _voters.end(), "user must stake before they can vote" ); /// staking creates voter object
       eosio_assert( !proxy || !voter->is_proxy, "account registered as a proxy is not allowed to use a proxy" );
+
+       std::vector<account_name> old_calculators;
+       auto calc_voter = _calc_voters.find(voter_name);
+       if(calc_voter != _calc_voters.end()){
+           old_calculators = calc_voter->calculators;
+       }
 
       /**
        * The first time someone votes we calculate and set last_vote_weight, since they cannot unstake until
@@ -222,6 +295,7 @@ namespace eosiosystem {
       }
 
       boost::container::flat_map<account_name, pair<double, bool /*new*/> > producer_deltas;
+      boost::container::flat_map<account_name, pair<double, bool> > calculator_deltas;
       if ( voter->last_vote_weight > 0 ) {
          if( voter->proxy ) {
             auto old_proxy = _voters.find( voter->proxy );
@@ -236,6 +310,11 @@ namespace eosiosystem {
                d.first -= voter->last_vote_weight;
                d.second = false;
             }
+         }
+         for( const auto& c : old_calculators ) {
+             auto& cd = calculator_deltas[c];
+             cd.first -= voter->last_vote_weight;
+             cd.second = false;
          }
       }
 
@@ -258,6 +337,13 @@ namespace eosiosystem {
             }
          }
       }
+      if( new_vote_weight >= 0 ) {
+          for( const auto& c : calculators ) {
+              auto& cd = calculator_deltas[c];
+              cd.first += new_vote_weight;
+              cd.second = true;
+          }
+      }
 
       for( const auto& pd : producer_deltas ) {
          auto pitr = _producers.find( pd.first );
@@ -276,11 +362,38 @@ namespace eosiosystem {
          }
       }
 
+      for( const auto& cd : calculator_deltas ) {
+          auto citr = _calculators.find( cd.first );
+          if( citr != _calculators.end() ) {
+              eosio_assert( citr->active() || !cd.second.second /* not from new set */, "producer is not currently registered" );
+              _calculators.modify( citr, 0, [&]( auto& c ) {
+                  c.total_votes += cd.second.first;
+                  if ( c.total_votes < 0 ) { // floating point arithmetics can give small negative numbers
+                      c.total_votes = 0;
+                  }
+              });
+          } else {
+              eosio_assert( !cd.second.second /* not from new set */, "calculator is not registered" ); //data corruption
+          }
+      }
+
       _voters.modify( voter, 0, [&]( auto& av ) {
          av.last_vote_weight = new_vote_weight;
          av.producers = producers;
          av.proxy     = proxy;
       });
+
+      auto cv = _calc_voters.find( voter_name );
+      if(cv != _calc_voters.end()) {
+          _calc_voters.modify( cv, 0, [&]( auto& av ) {
+              av.calculators = calculators;
+          });
+      } else {
+         _calc_voters.emplace( voter_name, [&]( auto& av ) {
+            av.owner = voter_name;
+            av.calculators = calculators;
+         });
+      }
    }
 
    /**

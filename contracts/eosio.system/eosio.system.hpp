@@ -81,6 +81,24 @@ namespace eosiosystem {
                         (unpaid_blocks)(last_claim_time)(location) )
    };
 
+   struct calculator_info {
+       account_name          owner;
+       double                total_votes = 0;
+       bool                  is_active = true;
+       std::string           url;
+       uint32_t              unpaid_blocks = 0;
+       uint64_t              last_claim_time = 0;
+       uint16_t              location = 0;
+
+       uint64_t primary_key()const { return owner;                                   }
+       double   by_votes()const    { return is_active ? -total_votes : total_votes;  }
+       bool     active()const      { return is_active;                               }
+       void     deactivate()       { is_active = false;                              }
+
+       EOSLIB_SERIALIZE( calculator_info, (owner)(total_votes)(is_active)(url)
+               (unpaid_blocks)(last_claim_time)(location) )
+   };
+
    struct voter_info {
       account_name                owner = 0; /// the voter
       account_name                proxy = 0; /// the proxy set by the voter, if any
@@ -112,6 +130,16 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(proxied_vote_weight)(is_proxy)(reserved1)(reserved2)(reserved3) )
    };
 
+   struct calc_voter_info {
+      account_name                owner = 0; /// the voter
+      std::vector<account_name>   calculators; /// the calculators approved by this voter
+
+      uint64_t primary_key()const { return owner; }
+
+      // explicit serialization macro is not necessary, used here only to improve compilation time
+      EOSLIB_SERIALIZE( calc_voter_info, (owner)(calculators) )
+   };
+
     struct voter_rates {
         account_name                owner = 0; /// the voter
         double                      social_rate = 0; /// voter's share in the total social activity, a fraction between 0 and 1
@@ -124,11 +152,17 @@ namespace eosiosystem {
 
    typedef eosio::multi_index< N(voters), voter_info>  voters_table;
 
+   typedef eosio::multi_index< N(calcvoters), calc_voter_info>  calc_voters_table;
+
    typedef eosio::multi_index< N(rates), voter_rates> rates_table;
 
    typedef eosio::multi_index< N(producers), producer_info,
                                indexed_by<N(prototalvote), const_mem_fun<producer_info, double, &producer_info::by_votes>  >
                                >  producers_table;
+
+   typedef eosio::multi_index< N(calculators), calculator_info,
+                               indexed_by<N(caltotalvote), const_mem_fun<calculator_info, double, &calculator_info::by_votes>  >
+                               >  calculators_table;
 
    typedef eosio::singleton<N(global), eosio_global_state> global_state_singleton;
 
@@ -139,8 +173,10 @@ namespace eosiosystem {
    class system_contract : public native {
       private:
          voters_table           _voters;
+         calc_voters_table      _calc_voters;
          rates_table            _rates;
          producers_table        _producers;
+         calculators_table      _calculators;
          global_state_singleton _global;
 
          eosio_global_state     _gstate;
@@ -211,9 +247,15 @@ namespace eosiosystem {
 
          void unregprod( const account_name producer );
 
+         void regcalc( const account_name calculator, const std::string& url, uint16_t location );
+
+         void unregcalc( const account_name calculator );
+
          void setram( uint64_t max_ram_size );
 
          void voteproducer( const account_name voter, const account_name proxy, const std::vector<account_name>& producers );
+
+         void votecalc( const account_name voter, const std::vector<account_name>& calculators );
 
          void setrates(const account_name voter, const double social_rate, const  double transfer_rate);
 
@@ -241,7 +283,11 @@ namespace eosiosystem {
          //defined in voting.hpp
          static eosio_global_state get_default_parameters();
 
-         void update_votes( const account_name voter, const account_name proxy, const std::vector<account_name>& producers, bool voting );
+         void update_votes( const account_name voter,
+                            const account_name proxy,
+                            const std::vector<account_name>& producers,
+                            bool voting,
+                            const std::vector<account_name>& calculators );
 
          // defined in voting.cpp
          void propagate_weight_change( const voter_info& voter );
