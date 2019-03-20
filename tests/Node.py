@@ -1307,8 +1307,9 @@ class Node(object):
 
         assert(self.pid is None)
         assert(self.killed)
+        assert isinstance(nodeId, int) or (isinstance(nodeId, str) and nodeId == "bios"), "Invalid Node ID is passed"
 
-        if Utils.Debug: Utils.Print("Launching node process, Id: %d" % (nodeId))
+        if Utils.Debug: Utils.Print("Launching node process, Id: {}".format(nodeId))
 
         cmdArr=[]
         myCmd=self.cmd
@@ -1340,7 +1341,10 @@ class Node(object):
 
             myCmd=" ".join(cmdArr)
 
-        dataDir="var/lib/node_%02d" % (nodeId)
+        if nodeId == "bios":
+            dataDir="var/lib/node_bios"
+        else:
+            dataDir="var/lib/node_%02d" % (nodeId)
         dt = datetime.datetime.now()
         dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
             dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
@@ -1441,20 +1445,20 @@ class Node(object):
         res = self.sendRpcApi("v1/producer/get_supported_protocol_features", param)
         return res
 
-    # This will return supported protocol feature digests as a dict, i.e.
+    # This will return supported protocol feature digests as a dict (feature codename as the key), i.e.
     # {
-    #   "PREACTIVATE_FEATURE": "01234567",
-    #   "ONLY_LINK_TO_EXISTING_PERMISSION": "01234567"
+    #   "PREACTIVATE_FEATURE": {...},
+    #   "ONLY_LINK_TO_EXISTING_PERMISSION": {...},
     # }
     # Require producer_api_plugin
-    def getSupportedProtocolFeatureDigestDict(self, excludeDisabled=False, excludeUnactivatable=False):
+    def getSupportedProtocolFeatureDict(self, excludeDisabled=False, excludeUnactivatable=False):
         protocolFeatureDigestDict = {}
         supportedProtocolFeatures = self.getSupportedProtocolFeatures(excludeDisabled, excludeUnactivatable)
         for protocolFeature in supportedProtocolFeatures:
             for spec in protocolFeature["specification"]:
                 if (spec["name"] == "builtin_feature_codename"):
                     codename = spec["value"]
-                    protocolFeatureDigestDict[codename] = protocolFeature["feature_digest"]
+                    protocolFeatureDigestDict[codename] = protocolFeature
                     break
         return protocolFeatureDigestDict
 
@@ -1472,8 +1476,8 @@ class Node(object):
 
     # Require producer_api_plugin
     def activatePreactivateFeature(self):
-        protocolFeatureDigestDict = self.getSupportedProtocolFeatureDigestDict()
-        preactivateFeatureDigest = protocolFeatureDigestDict["PREACTIVATE_FEATURE"]
+        protocolFeatureDigestDict = self.getSupportedProtocolFeatureDict()
+        preactivateFeatureDigest = protocolFeatureDigestDict["PREACTIVATE_FEATURE"]["feature_digest"]
         assert preactivateFeatureDigest
 
         self.scheduleProtocolFeatureActivations([preactivateFeatureDigest])
@@ -1484,10 +1488,13 @@ class Node(object):
     # Return an array of feature digests to be preactivated
     # Require producer_api_plugin
     def getAllBuiltinFeatureDigestsToPreactivate(self):
-        protocolFeatureDigestDict = self.getSupportedProtocolFeatureDigestDict()
-        # Filter out "PREACTIVATE_FEATURE"
-        protocolFeatureDigestDict = {k: v for k, v in protocolFeatureDigestDict.items() if k != "PREACTIVATE_FEATURE"}
-        return list(protocolFeatureDigestDict.values())
+        protocolFeatures = []
+        protocolFeatureDict = self.getSupportedProtocolFeatureDict()
+        for k, v in protocolFeatureDict.items():
+            # Filter out "PREACTIVATE_FEATURE"
+            if k != "PREACTIVATE_FEATURE":
+                protocolFeatures.append(v["feature_digest"])
+        return protocolFeatures
 
     # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
     def preactivateProtocolFeatures(self, featureDigests:list):
