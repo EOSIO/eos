@@ -20,6 +20,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 
 #include <fc/static_variant.hpp>
+#include <eosio/chain/pbft.hpp>
 
 namespace fc { class variant; }
 
@@ -73,12 +74,13 @@ class read_only {
    const controller& db;
    const fc::microseconds abi_serializer_max_time;
    bool  shorten_abi_errors = true;
+   const chain::pbft_controller& pbft_ctrl;
 
 public:
    static const string KEYi64;
 
-   read_only(const controller& db, const fc::microseconds& abi_serializer_max_time)
-      : db(db), abi_serializer_max_time(abi_serializer_max_time) {}
+   read_only(const controller& db, const fc::microseconds& abi_serializer_max_time, const chain::pbft_controller& pbft_ctrl)
+      : db(db), abi_serializer_max_time(abi_serializer_max_time), pbft_ctrl(pbft_ctrl) {}
 
    void validate() const {}
 
@@ -95,7 +97,9 @@ public:
       chain::block_id_type    head_block_id;
       fc::time_point          head_block_time;
       account_name            head_block_producer;
-
+      uint32_t                current_view = 0;
+      uint32_t                target_view = 0;
+      uint32_t                last_stable_checkpoint_block_num = 0;
       uint64_t                virtual_block_cpu_limit = 0;
       uint64_t                virtual_block_net_limit = 0;
 
@@ -659,7 +663,7 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain(), get_abi_serializer_max_time()); }
+   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain(), get_abi_serializer_max_time(), pbft_ctrl()); }
    chain_apis::read_write get_read_write_api() { return chain_apis::read_write(chain(), get_abi_serializer_max_time()); }
 
    void accept_block( const chain::signed_block_ptr& block );
@@ -688,6 +692,11 @@ public:
    // Only call this after plugin_initialize()!
    const controller& chain() const;
 
+   // Only call this after plugin_initialize()!
+   chain::pbft_controller& pbft_ctrl();
+   // Only call this after plugin_initialize()!
+   const chain::pbft_controller& pbft_ctrl() const;
+
    chain::chain_id_type get_chain_id() const;
    fc::microseconds get_abi_serializer_max_time() const;
 
@@ -705,7 +714,7 @@ private:
 FC_REFLECT( eosio::chain_apis::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
-(server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)(server_version_string) )
+(server_version)(chain_id)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)(head_block_id)(head_block_time)(head_block_producer)(current_view)(target_view)(last_stable_checkpoint_block_num)(virtual_block_cpu_limit)(virtual_block_net_limit)(block_cpu_limit)(block_net_limit)(server_version_string) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
 FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_num_or_id))
 

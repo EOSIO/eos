@@ -1399,7 +1399,6 @@ struct bidname_info_subcommand {
                                // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
                                // Change to newname.value when cleos no longer needs to support nodeos versions older than 1.5.0
                                ("limit", 1));
-
          if ( print_json ) {
             std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
             return;
