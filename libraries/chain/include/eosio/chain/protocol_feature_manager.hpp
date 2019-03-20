@@ -130,10 +130,11 @@ public:
    bool validate_dependencies( const digest_type& feature_digest,
                                const std::function<bool(const digest_type&)>& validator )const;
 
-   builtin_protocol_feature make_default_builtin_protocol_feature(
-                              builtin_protocol_feature_t codename,
-                              const std::function<digest_type(builtin_protocol_feature_t dependency)>& handle_dependency
-                            )const;
+   static builtin_protocol_feature
+   make_default_builtin_protocol_feature(
+      builtin_protocol_feature_t codename,
+      const std::function<digest_type(builtin_protocol_feature_t dependency)>& handle_dependency
+   );
 
    const protocol_feature& add_feature( const builtin_protocol_feature& f );
 

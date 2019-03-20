@@ -241,7 +241,7 @@ Disallows linking an action to a non-existing permission.
    protocol_feature_set::make_default_builtin_protocol_feature(
       builtin_protocol_feature_t codename,
       const std::function<digest_type(builtin_protocol_feature_t dependency)>& handle_dependency
-   )const {
+   ) {
       auto itr = builtin_protocol_feature_codenames.find( codename );
 
       EOS_ASSERT( itr != builtin_protocol_feature_codenames.end(), protocol_feature_validation_exception,

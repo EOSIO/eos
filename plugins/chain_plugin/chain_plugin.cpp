@@ -520,7 +520,7 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
          return *res.first->second;
       }
 
-      auto f = pfs.make_default_builtin_protocol_feature( codename,
+      auto f = protocol_feature_set::make_default_builtin_protocol_feature( codename,
       [&add_missing_builtins]( builtin_protocol_feature_t d ) {
          return add_missing_builtins( d );
       } );

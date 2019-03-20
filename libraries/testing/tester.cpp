@@ -94,7 +94,7 @@ namespace eosio { namespace testing {
             return *res.first->second;
          }
 
-         auto f = pfs.make_default_builtin_protocol_feature( codename,
+         auto f = protocol_feature_set::make_default_builtin_protocol_feature( codename,
          [&add_builtins]( builtin_protocol_feature_t d ) {
             return add_builtins( d );
          } );
