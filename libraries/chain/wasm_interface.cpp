@@ -133,13 +133,6 @@ class privileged_api : public context_aware_api {
       }
 
       /**
-       * Returns true if the specified protocol feature is activated, false if not.
-       */
-      bool is_feature_activated( const digest_type& feature_digest ) {
-         return context.control.is_protocol_feature_activated( feature_digest );
-      }
-
-      /**
        *  Pre-activates the specified protocol feature.
        *  Fails if the feature is unrecognized, disabled, or not allowed to be activated at the current time.
        *  Also fails if the feature was already activated or pre-activated.
@@ -919,6 +912,13 @@ class system_api : public context_aware_api {
 
       uint64_t publication_time() {
          return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
+      }
+
+      /**
+       * Returns true if the specified protocol feature is activated, false if not.
+       */
+      bool is_feature_activated( const digest_type& feature_digest ) {
+         return context.control.is_protocol_feature_activated( feature_digest );
       }
 
 };
@@ -1720,7 +1720,6 @@ REGISTER_INTRINSICS(privileged_api,
    (set_blockchain_parameters_packed, void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
-   (is_feature_activated,             int(int)                              )
    (preactivate_feature,              void(int)                             )
 );
 
@@ -1798,8 +1797,9 @@ REGISTER_INTRINSICS(permission_api,
 
 
 REGISTER_INTRINSICS(system_api,
-   (current_time, int64_t()       )
-   (publication_time,   int64_t() )
+   (current_time,          int64_t() )
+   (publication_time,      int64_t() )
+   (is_feature_activated,  int(int)  )
 );
 
 REGISTER_INTRINSICS(context_free_system_api,

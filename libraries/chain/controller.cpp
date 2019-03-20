@@ -177,6 +177,8 @@ struct pending_state {
 
          if( activated_features.find( feature_digest ) != activated_features.end() ) return true;
 
+         if( bb._num_new_protocol_features_that_have_activated == 0 ) return false;
+
          auto end = bb._new_protocol_feature_activations.begin() + bb._num_new_protocol_features_that_have_activated;
          return (std::find( bb._new_protocol_feature_activations.begin(), end, feature_digest ) != end);
       }
