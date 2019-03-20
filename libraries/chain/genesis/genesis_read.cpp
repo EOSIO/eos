@@ -61,6 +61,12 @@ asset gbg2golos(const asset& gbg, const golos::price& price);
 asset golos2sys(const asset& golos);
 
 
+struct vesting_balance {
+    share_type vesting;
+    share_type delegated;
+    share_type received;
+};
+
 struct state_object_visitor {
     using result_type = void;
 
@@ -102,10 +108,15 @@ struct state_object_visitor {
 
     fc::flat_map<acc_idx, asset> gbg;
     fc::flat_map<acc_idx, asset> gls;
-    fc::flat_map<acc_idx, asset> gests;
+    fc::flat_map<acc_idx, vesting_balance> vests;
     asset total_gests;
     fc::flat_map<balance_type, asset> gbg_by_type;
     fc::flat_map<balance_type, asset> gls_by_type;
+
+    std::vector<golos::vesting_delegation_object> delegations;
+    std::vector<golos::vesting_delegation_expiration_object> delegation_expirations;
+    fc::flat_map<acc_idx, share_type> delegated_vests;
+    fc::flat_map<acc_idx, share_type> received_vests;
 
     template<typename T>
     void operator()(const T& x) {}
@@ -125,7 +136,10 @@ struct state_object_visitor {
         accounts[idx]   = acc;
         gls[idx]        = acc.balance + acc.savings_balance;
         gbg[idx]        = acc.sbd_balance + acc.savings_sbd_balance;
-        gests[idx]      = acc.vesting_shares;
+        vests[idx]      = vesting_balance{
+            acc.vesting_shares.get_amount(),
+            acc.delegated_vesting_shares.get_amount(),
+            acc.received_vesting_shares.get_amount()};
         total_gests          += acc.vesting_shares;
         gls_by_type[account] += acc.balance;
         gbg_by_type[account] += acc.sbd_balance;
@@ -173,6 +187,18 @@ struct state_object_visitor {
         }
     };
 
+    void operator()(const golos::vesting_delegation_object& d) {
+        delegations.emplace_back(d);
+        delegated_vests[d.delegator.id] += d.vesting_shares.get_amount();
+        received_vests[d.delegatee.id] += d.vesting_shares.get_amount();
+    }
+
+    void operator()(const golos::vesting_delegation_expiration_object& d) {
+        delegation_expirations.emplace_back(d);
+        delegated_vests[d.delegator.id] += d.vesting_shares.get_amount();
+        early_exit = true;
+    }
+
     // witnesses
     void operator()(const golos::witness_object& w) {
         witnesses.emplace_back(w);
@@ -202,6 +228,7 @@ struct genesis_read::genesis_read_impl final {
     vector<string> _plnk_map;
 
     state_object_visitor _visitor;
+    fc::flat_map<acc_idx, account_name> _acc_names;
 
     genesis_read_impl(const bfs::path& genesis_file, controller& ctrl, genesis_state conf)
     :   _state_file(genesis_file)
@@ -446,7 +473,7 @@ struct genesis_read::genesis_read_impl final {
 
         // vesting info
         // table_request tbl{config::gls_vest_account_name, vests_sym.value(), N(vesting)}; // TODO change scope
-        table_request tbl{gls_vest_account_name, gls_vest_account_name, N(vesting)};
+        table_request tbl{gls_vest_account_name, gls_vest_account_name, N(stat)};
         primary_key_t vests_pk = vests_sym.value() >> 8;
         auto vests_info = mvo
             ("supply", asset(data.total_gests.get_amount(), vests_sym))
@@ -462,10 +489,6 @@ struct genesis_read::genesis_read_impl final {
         // TODO: internal pool of posting contract
 
         // accounts GOLOS/GESTS
-        auto vests_obj = mvo
-            ("delegate_vesting", asset(0, vests_sym))
-            ("received_vesting", asset(0, vests_sym))
-            ("unlocked_limit", asset(0, vests_sym));
         asset total_gls = asset(0, golos_sym);
         for (const auto& balance: data.gbg) {
             auto acc = balance.first;
@@ -477,8 +500,19 @@ struct genesis_read::genesis_read_impl final {
 #ifdef IMPORT_SYS_BALANCES
             db.insert({config::token_account_name, n, N(accounts)}, sys_pk, mvo("balance", golos2sys(gls)), ram_payer);
 #endif
-            db.insert({gls_vest_account_name, n, N(accounts)}, vests_pk,
-                vests_obj("vesting", asset(data.gests[acc].get_amount(), vests_sym)), ram_payer);
+            const auto& vests = data.vests[acc];
+            EOS_ASSERT(vests.delegated == data.delegated_vests[acc], extract_genesis_state_exception,
+                "Calculated delegated vests doesn't equal to provided in object",
+                ("account", _accs_map[acc])("calculated", data.delegated_vests[acc])("provided", vests.delegated));
+            EOS_ASSERT(vests.received == data.received_vests[acc], extract_genesis_state_exception,
+                "Calculated received delegations doesn't equal to provided in object",
+                ("account", _accs_map[acc])("calculated", data.received_vests[acc])("provided", vests.received));
+            auto vests_obj = mvo
+                ("vesting", asset(vests.vesting, vests_sym))
+                ("delegated", asset(vests.delegated, vests_sym))
+                ("received", asset(vests.received, vests_sym))
+                ("unlocked_limit", asset(0, vests_sym));
+            db.insert({gls_vest_account_name, n, N(accounts)}, vests_pk, vests_obj, ram_payer);
             apply_db_changes();
         }
         // TODO: update gbg2golos to uniformly distribute rounded amount
@@ -487,6 +521,42 @@ struct genesis_read::genesis_read_impl final {
 
         // TODO: delegation / vesting withdraws
 
+        std::cout << "Done." << std::endl;
+    }
+
+    void create_delegation_records() {
+        std::cout << "Creating vesting delegation records..." << std::endl;
+        ram_payer_info ram_payer{};
+        const auto vests_sym = symbol(6,"GOLOS");   // Cyberway vesting
+
+        table_request tbl{gls_vest_account_name, vests_sym.value(), N(delegation)};
+        primary_key_t pk = 0;
+        for (const auto& d: _visitor.delegations) {
+            auto obj = mvo
+                ("id", pk)
+                ("delegator", _acc_names[d.delegator.id])
+                ("delegatee", _acc_names[d.delegatee.id])
+                ("quantity", asset(d.vesting_shares.get_amount(), vests_sym))
+                ("interest_rate", d.interest_rate)
+                ("payout_strategy", d.payout_strategy)
+                ("min_delegation_time", d.min_delegation_time);
+            db.insert(tbl, pk, obj, ram_payer);
+            pk++;
+            apply_db_changes();
+        }
+
+        table_request rtbl = {gls_vest_account_name, gls_vest_account_name, N(rdelegation)};
+        pk = 0;
+        for (const auto& d: _visitor.delegation_expirations) {
+            auto obj = mvo
+                ("id", pk)
+                ("delegator", _acc_names[d.delegator.id])
+                ("quantity", asset(d.vesting_shares.get_amount(), vests_sym))
+                ("date", d.expiration);
+            db.insert(rtbl, pk, obj, ram_payer);
+            pk++;
+            apply_db_changes();
+        }
         std::cout << "Done." << std::endl;
     }
 
@@ -575,7 +645,8 @@ void genesis_read::read() {
     _impl->init_accounts();
     _impl->read_state();
     _impl->create_accounts();
-    _impl->create_balances();       // TODO: delegation+withdraws
+    _impl->create_balances();
+    _impl->create_delegation_records();    // TODO: withdrawals
     _impl->create_witnesses();
     _impl->apply_db_changes(true);
 }
