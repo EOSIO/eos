@@ -958,7 +958,6 @@ class Node(object):
             cmdArr.append(data)
         if opts is not None:
             cmdArr += opts.split()
-        s=" ".join(cmdArr)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmdArr))
         start=time.perf_counter()
         try:
