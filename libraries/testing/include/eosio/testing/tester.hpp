@@ -76,7 +76,8 @@ namespace eosio { namespace testing {
    bool expect_assert_message(const fc::exception& ex, string expected);
 
    using subjective_restriction_map = std::map<builtin_protocol_feature_t, protocol_feature_subjective_restrictions>;
-   protocol_feature_set make_protocol_feature_set(const subjective_restriction_map custom_subjective_restrictions = {});
+
+   protocol_feature_set make_protocol_feature_set(const subjective_restriction_map& custom_subjective_restrictions = {});
 
    /**
     *  @class tester

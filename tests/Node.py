@@ -1445,7 +1445,7 @@ class Node(object):
         res = self.sendRpcApi("v1/producer/get_supported_protocol_features", param)
         return res
 
-    # This will return supported protocol feature digests as a dict (feature codename as the key), i.e.
+    # This will return supported protocol features in a dict (feature codename as the key), i.e.
     # {
     #   "PREACTIVATE_FEATURE": {...},
     #   "ONLY_LINK_TO_EXISTING_PERMISSION": {...},
