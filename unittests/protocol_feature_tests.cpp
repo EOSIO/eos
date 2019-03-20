@@ -238,4 +238,63 @@ BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
+   tester c( setup_policy::none );
+   auto restart_with_new_pfs = [&](protocol_feature_set&& pfs) {
+      c.close();
+      c.open(std::move(pfs), nullptr);
+   };
+   auto pfm = c.control->get_protocol_feature_manager();
+   auto preactivate_feature_digest = *pfm.get_builtin_digest(builtin_protocol_feature_t::preactivate_feature );
+   auto only_link_to_existing_permission_digest = *pfm.get_builtin_digest(builtin_protocol_feature_t::only_link_to_existing_permission );
+
+   // First, test PREACTIVATE_FEATURE with invalid earliest allowed activation time
+   subjective_restriction_map custom_subjective_restrictions = {
+      { builtin_protocol_feature_t::preactivate_feature, {fc::time_point::from_iso_string( "2200-01-01T00:00:00"), false, true} }
+   };
+   restart_with_new_pfs(make_protocol_feature_set(custom_subjective_restrictions));
+   // When a block is produced, the protocol feature activation should fail and throws an error
+   c.schedule_protocol_features_wo_preactivation({ preactivate_feature_digest });
+   BOOST_CHECK_EXCEPTION( c.produce_block(),
+                          protocol_feature_exception,
+                          fc_exception_message_starts_with( std::string("2020-01-01T00:00:00.000 is too early for the earliest ") +
+                                                            std::string("allowed activation time of the protocol feature")
+                                                          )
+                        );
+   //Revert back to the valid earliest allowed activation time
+   custom_subjective_restrictions = {
+      { builtin_protocol_feature_t::preactivate_feature, {fc::time_point::from_iso_string( "1970-01-01T00:00:00"), false, true} }
+   };
+   restart_with_new_pfs(make_protocol_feature_set(custom_subjective_restrictions));
+   // Now it should be fine, the feature should be activated after the block is produced
+   BOOST_CHECK_NO_THROW( c.produce_block() );
+   BOOST_CHECK( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
+
+   c.set_bios_contract();
+   c.produce_block();
+
+   // Second, test ONLY_LINK_TO_EXISTING_PERMISSION with subjective_restrictions enable == false
+   custom_subjective_restrictions = {
+      { builtin_protocol_feature_t::only_link_to_existing_permission, {fc::time_point{}, true, false} }
+   };
+   restart_with_new_pfs(make_protocol_feature_set(custom_subjective_restrictions));
+   // It should fail
+   BOOST_CHECK_EXCEPTION( c.preactivate_protocol_features({only_link_to_existing_permission_digest}),
+                          subjective_block_production_exception,
+                          fc_exception_message_starts_with( std::string("protocol feature with digest '") +
+                                                            std::string(only_link_to_existing_permission_digest)+
+                                                            std::string("' is disabled")
+                                                          )
+                        );
+   // Revert back with subjective_restrictions enable == true
+   custom_subjective_restrictions = {
+      { builtin_protocol_feature_t::only_link_to_existing_permission, {fc::time_point{}, true, true} }
+   };
+   restart_with_new_pfs(make_protocol_feature_set(custom_subjective_restrictions));
+   // Should be fine now, and activated in the next block
+   BOOST_CHECK_NO_THROW( c.preactivate_protocol_features({only_link_to_existing_permission_digest}) );
+   c.produce_block();
+   BOOST_CHECK( c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()

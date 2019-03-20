@@ -75,7 +75,8 @@ namespace eosio { namespace testing {
 
    bool expect_assert_message(const fc::exception& ex, string expected);
 
-   protocol_feature_set make_protocol_feature_set();
+   using subjective_restriction_map = std::map<builtin_protocol_feature_t, protocol_feature_subjective_restrictions>;
+   protocol_feature_set make_protocol_feature_set(const subjective_restriction_map custom_subjective_restrictions = {});
 
    /**
     *  @class tester
@@ -320,7 +321,7 @@ namespace eosio { namespace testing {
 
    class tester : public base_tester {
    public:
-      tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE ) {
+      tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE) {
          init(policy, read_mode);
       }
 

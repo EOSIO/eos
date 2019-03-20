@@ -79,13 +79,13 @@ namespace eosio { namespace testing {
       memcpy( data.data(), obj.value.data(), obj.value.size() );
    }
 
-   protocol_feature_set make_protocol_feature_set() {
+   protocol_feature_set make_protocol_feature_set(const subjective_restriction_map custom_subjective_restrictions) {
       protocol_feature_set pfs;
 
       map< builtin_protocol_feature_t, optional<digest_type> > visited_builtins;
 
       std::function<digest_type(builtin_protocol_feature_t)> add_builtins =
-      [&pfs, &visited_builtins, &add_builtins]( builtin_protocol_feature_t codename ) -> digest_type {
+      [&pfs, &visited_builtins, &add_builtins, &custom_subjective_restrictions]( builtin_protocol_feature_t codename ) -> digest_type {
          auto res = visited_builtins.emplace( codename, optional<digest_type>() );
          if( !res.second ) {
             EOS_ASSERT( res.first->second, protocol_feature_exception,
@@ -98,6 +98,11 @@ namespace eosio { namespace testing {
          [&add_builtins]( builtin_protocol_feature_t d ) {
             return add_builtins( d );
          } );
+
+         const auto itr = custom_subjective_restrictions.find(codename);
+         if (itr != custom_subjective_restrictions.end()) {
+            f.subjective_restrictions = itr->second;
+         }
 
          const auto& pf = pfs.add_feature( f );
          res.first->second = pf.feature_digest;
