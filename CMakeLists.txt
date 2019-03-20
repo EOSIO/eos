@@ -1,7 +1,7 @@
 cmake_minimum_required( VERSION 3.5 )
 
 project( EOSIO )
-
+include(CTest) # suppresses DartConfiguration.tcl error
 enable_testing()
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
