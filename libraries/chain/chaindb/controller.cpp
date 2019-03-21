@@ -794,6 +794,10 @@ namespace cyberway { namespace chaindb {
         return impl_->object_at_cursor(request).value;
     }
 
+    object_value chaindb_controller::object_at_cursor(const cursor_request& request) const {
+        return impl_->object_at_cursor(request);
+    }
+
     find_info chaindb_controller::opt_find_by_pk(const table_request& request, primary_key_t pk) {
         const auto& info = impl_->opt_find_by_pk(request, pk);
         return {info.id, info.pk};

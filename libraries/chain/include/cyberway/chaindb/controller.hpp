@@ -227,6 +227,7 @@ namespace cyberway { namespace chaindb {
 
         variant value_by_pk(const table_request& request, primary_key_t pk);
         variant value_at_cursor(const cursor_request& request);
+        object_value object_at_cursor(const cursor_request& request) const;
 
     private:
         struct controller_impl_;

@@ -1125,7 +1125,13 @@ read_only::get_table_rows_result read_only::walk_table_row_range(const read_only
         count < p.limit &&
         itr.pk != end_pk;
         itr.pk = next(chaindb, cursor), ++count, cur_time = fc::time_point::now()) {
-        result.rows.push_back(chaindb.value_at_cursor(cursor));
+        if (p.show_payer && *p.show_payer) {
+            const auto object = chaindb.object_at_cursor(cursor);
+            auto value = fc::mutable_variant_object()("data", object.value)("payer", object.service.payer);
+            result.rows.push_back(std::move(value));
+        } else {
+            result.rows.push_back(chaindb.value_at_cursor(cursor));
+        }
     }
 
     result.more = itr.pk != end_pk;
