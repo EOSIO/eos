@@ -26,6 +26,12 @@ Block.one is neither launching nor operating any initial public blockchains base
 
 There is no public testnet running currently.
 
+---
+
+**If you used our build scripts to install eosio, please be sure to uninstall before using our packages.**
+
+---
+
 #### Mac OS X Brew Install
 ```sh
 $ brew tap eosio/eosio
@@ -35,6 +41,7 @@ $ brew install eosio
 ```sh
 $ brew remove eosio
 ```
+
 #### Ubuntu 18.04 Debian Package Install
 ```sh
 $ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio_1.7.0-rc1-ubuntu-18.04_amd64.deb
