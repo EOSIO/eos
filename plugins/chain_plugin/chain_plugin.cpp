@@ -1345,78 +1345,71 @@ auto make_resolver(const Api* api, const fc::microseconds& max_serialization_tim
    return resolver_factory<Api>::make(api, max_serialization_time);
 }
 
+auto find_scheduled_transacions_begin(cyberway::chaindb::chaindb_controller& chaindb, const read_only::get_scheduled_transactions_params& p) {
+    auto by_delay_index = chaindb.get_index<generated_transaction_object, by_delay>();
+
+    if (p.lower_bound.empty()) {
+        return by_delay_index.begin();
+    }
+
+    try {
+        auto when = time_point::from_iso_string( p.lower_bound );
+        return by_delay_index.lower_bound(when);
+    } catch (...) {
+        auto by_trx_id_index = chaindb.get_index<generated_transaction_object, by_trx_id>();
+        auto trx_id = transaction_id_type(p.lower_bound);
+        auto trx_by_id_it = by_trx_id_index.find(trx_id);
+
+        EOS_ASSERT(trx_by_id_it != by_trx_id_index.end(), transaction_exception, "Unknown Transaction ID: ${txid}", ("txid", trx_id));
+
+        return by_delay_index.lower_bound(trx_by_id_it->delay_until);
+    }
+}
 
 read_only::get_scheduled_transactions_result
 read_only::get_scheduled_transactions( const read_only::get_scheduled_transactions_params& p ) const {
-   const auto& d = db.chaindb();
+    auto& chaindb = db.chaindb();
 
-// TODO: Removed by CyberWay
-//   const auto& idx_by_delay = d.get_index<generated_transaction_multi_index,by_delay>();
-//   auto itr = ([&](){
-//      if (!p.lower_bound.empty()) {
-//         try {
-//            auto when = time_point::from_iso_string( p.lower_bound );
-//            return idx_by_delay.lower_bound(boost::make_tuple(when));
-//         } catch (...) {
-//            try {
-//               auto txid = transaction_id_type(p.lower_bound);
-//               const auto& by_txid = d.get_index<generated_transaction_multi_index,by_trx_id>();
-//               auto itr = by_txid.find( txid );
-//               if (itr == by_txid.end()) {
-//                  EOS_THROW(transaction_exception, "Unknown Transaction ID: ${txid}", ("txid", txid));
-//               }
-//
-//               return d.get_index<generated_transaction_multi_index>().indices().project<by_delay>(itr);
-//
-//            } catch (...) {
-//               return idx_by_delay.end();
-//            }
-//         }
-//      } else {
-//         return idx_by_delay.begin();
-//      }
-//   })();
+    auto itr = find_scheduled_transacions_begin(chaindb, p);
+    const auto end = chaindb.get_index<generated_transaction_object, by_delay>().end();
 
-   read_only::get_scheduled_transactions_result result;
+    read_only::get_scheduled_transactions_result result;
 
-// TODO: Removed by CyberWay
-//   auto resolver = make_resolver(this, abi_serializer_max_time);
-//
-//   uint32_t remaining = p.limit;
-//   auto time_limit = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
-//   while (itr != idx_by_delay.end() && remaining > 0 && time_limit > fc::time_point::now()) {
-//      auto row = fc::mutable_variant_object()
-//              ("trx_id", itr->trx_id)
-//              ("sender", itr->sender)
-//              ("sender_id", itr->sender_id)
-//              ("payer", itr->payer)
-//              ("delay_until", itr->delay_until)
-//              ("expiration", itr->expiration)
-//              ("published", itr->published)
-//      ;
-//
-//      if (p.json) {
-//         fc::variant pretty_transaction;
-//
-//         transaction trx;
-//         fc::datastream<const char*> ds( itr->packed_trx.data(), itr->packed_trx.size() );
-//         fc::raw::unpack(ds,trx);
-//
-//         abi_serializer::to_variant(trx, pretty_transaction, resolver, abi_serializer_max_time);
-//         row("transaction", pretty_transaction);
-//      } else {
-//         auto packed_transaction = bytes(itr->packed_trx.begin(), itr->packed_trx.end());
-//         row("transaction", packed_transaction);
-//      }
-//
-//      result.transactions.emplace_back(std::move(row));
-//      ++itr;
-//      remaining--;
-//   }
-//
-//   if (itr != idx_by_delay.end()) {
-//      result.more = string(itr->trx_id);
-//   }
+
+    const auto resolver = make_resolver(this, abi_serializer_max_time);
+
+    auto time_limit = fc::time_point::now() + fc::microseconds(1000 * 10); /// 10ms max time
+    for (uint32_t count = 0; itr != end && time_limit > fc::time_point::now() && count < p.limit; ++itr, ++count) {
+        auto row = fc::mutable_variant_object()
+              ("trx_id", itr->trx_id)
+              ("sender", itr->sender)
+              ("sender_id", itr->sender_id)
+              ("payer", itr->payer)
+              ("delay_until", itr->delay_until)
+              ("expiration", itr->expiration)
+              ("published", itr->published)
+        ;
+
+      if (p.json) {
+         fc::variant pretty_transaction;
+
+         transaction trx;
+         fc::datastream<const char*> ds( itr->packed_trx.data(), itr->packed_trx.size() );
+         fc::raw::unpack(ds,trx);
+
+         abi_serializer::to_variant(trx, pretty_transaction, resolver, abi_serializer_max_time);
+         row("transaction", pretty_transaction);
+      } else {
+         auto packed_transaction = bytes(itr->packed_trx.begin(), itr->packed_trx.end());
+         row("transaction", packed_transaction);
+      }
+
+      result.transactions.emplace_back(std::move(row));
+   }
+
+   if (itr != end) {
+      result.more = string(itr->trx_id);
+   }
 
    return result;
 }
