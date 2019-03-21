@@ -2328,7 +2328,7 @@ void controller::add_resource_greylist(const account_name &name) {
 }
 
 void controller::remove_resource_greylist(const account_name &name) {
-   my->check_list_in_contract_db(blacklist_type::resource_greylist_type,name);
+   my->check_msig_blacklist(blacklist_type::resource_greylist_type,name);
    my->conf.resource_greylist.erase(name);
 }
 
