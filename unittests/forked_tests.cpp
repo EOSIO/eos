@@ -295,22 +295,23 @@ BOOST_AUTO_TEST_CASE( forking ) try {
  *  the highest last irreversible block over one that is longer.
  */
 BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
-   tester c(tester::default_config("_C_"), true);
-   c.produce_blocks(10);
-   auto r = c.create_accounts( {N(dan),N(sam),N(pam),N(scott)} );
-   auto res = c.set_producers( {N(dan),N(sam),N(pam),N(scott)} );
-   wlog("set producer schedule to [dan,sam,pam,scott]");
-   c.produce_blocks(50);
+   BOOST_TEST_MESSAGE("prune_remove_branch");
+   tester c1(tester::default_config("_C1_"), true);
+   c1.produce_blocks(10);
+   c1.create_accounts( {N(dan),N(sam),N(pam),N(scott)} );
+   c1.set_producers( {N(dan),N(sam),N(pam),N(scott)} );
+   BOOST_TEST_MESSAGE("-- set producer schedule to [dan,sam,pam,scott]");
+   c1.produce_blocks(50);
 
    tester c2(tester::default_config("_C2_"), true);
-   wlog( "push c1 blocks to c2" );
-   push_blocks(c, c2);
+   BOOST_TEST_MESSAGE("-- push c1 blocks => c2");
+   push_blocks(c1, c2);
 
    // fork happen after block 61
-   BOOST_REQUIRE_EQUAL(61, c.control->head_block_num());
-   BOOST_REQUIRE_EQUAL(61, c2.control->head_block_num());
+   BOOST_CHECK_EQUAL(61, c1.control->head_block_num());
+   BOOST_CHECK_EQUAL(61, c2.control->head_block_num());
 
-   int fork_num = c.control->head_block_num();
+   int fork_num = c1.control->head_block_num();
 
    auto nextproducer = [](tester &c, int skip_interval) ->account_name {
       auto head_time = c.control->head_block_time();
@@ -318,33 +319,40 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
       return c.control->head_block_state()->get_scheduled_producer(next_time).producer_name;   
    };
 
-   // fork c: 2 producers: dan, sam
-   // fork c2: 1 producer: scott
+   BOOST_TEST_MESSAGE("-- fork c1, 3 producers: dan, sam, pam");
+   BOOST_TEST_MESSAGE("-- fork c2, 1 producer: scott");
    int skip1 = 1, skip2 = 1;
    for (int i = 0; i < 50; ++i) {
-      account_name next1 = nextproducer(c, skip1);
-      if (next1 == N(dan) || next1 == N(sam)) {
-         c.produce_block(fc::milliseconds(config::block_interval_ms * skip1)); skip1 = 1;
-      } 
+      account_name next1 = nextproducer(c1, skip1);
+      if ((std::set<account_name>{N(dan), N(sam), N(pam)}).count(next1)) {
+         c1.produce_block(fc::milliseconds(config::block_interval_ms * skip1)); skip1 = 1;
+      }
       else ++skip1;
       account_name next2 = nextproducer(c2, skip2);
       if (next2 == N(scott)) {
          c2.produce_block(fc::milliseconds(config::block_interval_ms * skip2)); skip2 = 1;
-      } 
+      }
       else ++skip2;
    }
 
-   BOOST_REQUIRE_EQUAL(87, c.control->head_block_num());
-   BOOST_REQUIRE_EQUAL(73, c2.control->head_block_num());
-   
-   // push fork from c => c2
+   BOOST_CHECK_LT(c2.control->head_block_num(), c1.control->head_block_num());
+
+   auto c1_lib = c1.control->head_block_state()->dpos_irreversible_blocknum;
+   auto c2_lib = c2.control->head_block_state()->dpos_irreversible_blocknum;
+   BOOST_CHECK_LT(c2_lib, c1_lib);
+
+   BOOST_TEST_MESSAGE("-- push fork from c1 => c2");
    int p = fork_num;
-   while ( p < c.control->head_block_num()) {
-      auto fb = c.control->fetch_block_by_number(++p);
+   while ( p < c1.control->head_block_num()) {
+      auto fb = c1.control->fetch_block_by_number(++p);
       c2.push_block(fb);
    }
 
-   BOOST_REQUIRE_EQUAL(87, c2.control->head_block_num());
+   BOOST_CHECK_EQUAL(c1.control->head_block_num(), c2.control->head_block_num());
+
+   c1_lib = c1.control->head_block_state()->dpos_irreversible_blocknum;
+   c2_lib = c2.control->head_block_state()->dpos_irreversible_blocknum;
+   BOOST_CHECK_EQUAL(c1_lib, c2_lib);
 
 } FC_LOG_AND_RETHROW() 
 
