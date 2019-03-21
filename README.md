@@ -28,7 +28,7 @@ There is no public testnet running currently.
 
 ---
 
-**If you used our build scripts to install eosio, please be sure to uninstall before using our packages.**
+**If you used our build scripts to install eosio, [please be sure to uninstall](#build-script-uninstall) before using our packages.**
 
 ---
 
