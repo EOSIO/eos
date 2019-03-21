@@ -2,6 +2,7 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/fork_database.hpp>
+#include <eosio/chain/random.hpp>
 
 #include <eosio.token/eosio.token.wast.hpp>
 #include <eosio.token/eosio.token.abi.hpp>
@@ -360,18 +361,19 @@ BOOST_AUTO_TEST_CASE( read_modes ) try {
 
    tester head(tester::default_config("_HEAD_"), true, db_read_mode::HEAD);
    push_blocks(c, head);
-   BOOST_REQUIRE_EQUAL(head_block_num, head.control->fork_db_head_block_num());
-   BOOST_REQUIRE_EQUAL(head_block_num, head.control->head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, head.control->fork_db_head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, head.control->head_block_num());
 
    tester read_only(tester::default_config("_READ_ONLY_"), false, db_read_mode::READ_ONLY);
    push_blocks(c, read_only);
-   BOOST_REQUIRE_EQUAL(head_block_num, read_only.control->fork_db_head_block_num());
-   BOOST_REQUIRE_EQUAL(head_block_num, read_only.control->head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, read_only.control->fork_db_head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, read_only.control->head_block_num());
 
    tester irreversible(tester::default_config("_IRREVERSIBLE_"), true, db_read_mode::IRREVERSIBLE);
    push_blocks(c, irreversible);
-   BOOST_REQUIRE_EQUAL(head_block_num, irreversible.control->fork_db_head_block_num());
-   BOOST_REQUIRE_EQUAL(head_block_num - (config::producer_repetitions * 4 + 1), irreversible.control->head_block_num());
+   BOOST_CHECK_EQUAL(head_block_num, irreversible.control->fork_db_head_block_num());
+   // depends on shuffle
+   BOOST_CHECK_EQUAL(196, irreversible.control->head_block_num());
 
 } FC_LOG_AND_RETHROW()
 
