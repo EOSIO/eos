@@ -232,6 +232,8 @@ struct controller_impl {
          throw e;
       } catch ( fc::exception& e ) {
          wlog( "${details}", ("details", e.to_detail_string()) );
+      } catch (std::bad_alloc& e) {
+         wlog( "bad alloc: Noooooooooo" );
       } catch ( ... ) {
          wlog( "signal handler threw exception" );
       }
