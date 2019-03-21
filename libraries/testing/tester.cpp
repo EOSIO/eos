@@ -210,13 +210,14 @@ namespace eosio { namespace testing {
    signed_block_ptr base_tester::_finish_block() {
       FC_ASSERT( control->pending_block_state(), "must first start a block before it can be finished" );
 
-      auto producer = control->head_block_state()->get_scheduled_producer( control->pending_block_time() );
+      auto producer = control->pending_block_state()->header.producer;
+      auto block_signing_key = control->pending_block_state()->block_signing_key;
       private_key_type priv_key;
       // Check if signing private key exist in the list
-      auto private_key_itr = block_signing_private_keys.find( producer.block_signing_key );
+      auto private_key_itr = block_signing_private_keys.find( block_signing_key );
       if( private_key_itr == block_signing_private_keys.end() ) {
          // If it's not found, default to active k1 key
-         priv_key = get_private_key( producer.producer_name, "active" );
+         priv_key = get_private_key( producer, "active" );
       } else {
          priv_key = private_key_itr->second;
       }
@@ -232,14 +233,30 @@ namespace eosio { namespace testing {
       return control->head_block_state()->block;
    }
 
-   void base_tester::produce_blocks( uint32_t n, bool empty ) {
+
+   signed_block_ptr base_tester::wait_irreversible_block(const uint32_t lib, bool empty_blocks) {
+      signed_block_ptr b;
+      while (control->head_block_state()->dpos_irreversible_blocknum < lib) {
+         if (empty_blocks) {
+            b = produce_empty_block();
+         } else {
+            b = produce_block();
+         }
+      }
+      return b;
+   }
+
+
+   signed_block_ptr base_tester::produce_blocks( uint32_t n, bool empty ) {
+      signed_block_ptr b;
       if( empty ) {
          for( uint32_t i = 0; i < n; ++i )
-            produce_empty_block();
+            b = produce_empty_block();
       } else {
          for( uint32_t i = 0; i < n; ++i )
-            produce_block();
+            b = produce_block();
       }
+      return b;
    }
 
 

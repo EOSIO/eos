@@ -127,7 +127,7 @@ namespace eosio { namespace chain {
       else {
           EOS_ASSERT( active_schedule.producers.size(), producer_schedule_exception, "SYSTEM: no active producers" );
           EOS_ASSERT( when > promoting_block, producer_schedule_exception, "SYSTEM: wrong promoting_block value" );
-          if ((when.slot - promoting_block.slot) % active_schedule.producers.size() == 0) {
+          if ((when.slot - promoting_block.slot) % (active_schedule.producers.size() * config::producer_repetitions) == 0) {
              shuffle(active_schedule.producers, when.slot);
           }
       }

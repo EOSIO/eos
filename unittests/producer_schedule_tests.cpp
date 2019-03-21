@@ -1,6 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/random.hpp>
 #include <boost/range/algorithm.hpp>
 
 #ifdef NON_VALIDATING_TEST
@@ -19,7 +20,7 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
    account_name get_expected_producer(const vector<producer_key>& schedule, const uint64_t slot) {
       const auto& index = (slot % (schedule.size() * config::producer_repetitions)) / config::producer_repetitions;
       return schedule.at(index).producer_name;
-   };
+   }
 
    // Check if two schedule is equal
    bool is_schedule_equal(const vector<producer_key>& first, const vector<producer_key>& second) {
@@ -28,7 +29,11 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
          is_equal = is_equal && first.at(i) == second.at(i);
       }
       return is_equal;
-   };
+   }
+
+   bool compare_schedules( const vector<producer_key>& a, const producer_schedule_type& b ) {
+      return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
+   }
 
    // Calculate the block num of the next round first block
    // The new producer schedule will become effective when it's in the block of the next round first block
@@ -40,7 +45,7 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
          res++;
       }
       return res;
-   };
+   }
 #if 0
    BOOST_FIXTURE_TEST_CASE( verify_producer_schedule, TESTER ) try {
 
@@ -198,32 +203,39 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
 
 
 BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
-   create_accounts( {N(alice),N(bob),N(carol)} );
-   produce_block();
+   BOOST_TEST_MESSAGE("producer_schedule_promotion_test");
 
-   auto compare_schedules = [&]( const vector<producer_key>& a, const producer_schedule_type& b ) {
-      return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
-   };
+   create_accounts( {N(alice),N(bob),N(carol)} );
+   auto b = produce_blocks( config::producer_repetitions );
 
    auto res = set_producers( {N(alice),N(bob)} );
    vector<producer_key> sch1 = {
                                  {N(alice), get_public_key(N(alice), "active")},
                                  {N(bob),   get_public_key(N(bob),   "active")}
                                };
+
+   // One BP shift LIB on each series
+
    //wdump((fc::json::to_pretty_string(res)));
-   wlog("set producer schedule to [alice,bob]");
-   BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
+   BOOST_TEST_MESSAGE("-- set producer schedule to [alice,bob]");
+   BOOST_CHECK_EQUAL( true, control->proposed_producers().valid() );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, *control->proposed_producers() ) );
    BOOST_CHECK_EQUAL( control->pending_producers().version, 0 );
-   produce_block(); // Starts new block which promotes the proposed schedule to pending
+   // Starts new block which promotes the proposed schedule to pending
+   b = produce_blocks( config::producer_repetitions ); // One BP shift LIB
    BOOST_CHECK_EQUAL( control->pending_producers().version, 1 );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->pending_producers() ) );
    BOOST_CHECK_EQUAL( control->active_producers().version, 0 );
-   produce_block();
-   produce_block(); // Starts new block which promotes the pending schedule to active
+   // Starts new block which promotes the pending schedule to active
+   b = produce_blocks( config::producer_repetitions ); // One BP shift LIB
    BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
+   b = produce_blocks( config::producer_repetitions );
+   BOOST_CHECK_EQUAL( control->pending_block_state()->promoting_block.slot, b->timestamp.slot );
+   shuffle( sch1, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
-   produce_blocks(6 * config::producer_repetitions - control->head_block_num() % config::producer_repetitions);
+   b = produce_blocks( config::producer_repetitions * sch1.size() * 3 );
+
+   // Now, we have more than 1 BP and random schedule, LIB shifts on changing of BPs
 
    res = set_producers( {N(alice),N(bob),N(carol)} );
    vector<producer_key> sch2 = {
@@ -231,31 +243,26 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
                                  {N(bob),   get_public_key(N(bob),   "active")},
                                  {N(carol), get_public_key(N(carol), "active")}
                                };
-   wlog("set producer schedule to [alice,bob,carol]");
-   BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
+   BOOST_TEST_MESSAGE("-- set producer schedule to [alice,bob,carol]");
+   BOOST_CHECK_EQUAL( true, control->proposed_producers().valid() );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, *control->proposed_producers() ) );
 
-   produce_block();
-   produce_blocks(config::producer_repetitions * 2 - 1); // Alice produces the last block of her first round.
-                    // Bob's first block (which advances LIB to Alice's last block) is started but not finalized.
-   BOOST_REQUIRE_EQUAL( control->head_block_producer(), N(alice) );
-   BOOST_REQUIRE_EQUAL( control->pending_block_state()->header.producer, N(bob) );
+   // Starts new block which promotes the proposed schedule to pending
+   b = produce_block();
+   BOOST_CHECK_EQUAL( control->pending_producers().version, 1 );
+   b = wait_irreversible_block( b->block_num() );
    BOOST_CHECK_EQUAL( control->pending_producers().version, 2 );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->pending_producers() ) );
 
-   produce_blocks(config::producer_repetitions); // Bob produces his first 11 blocks
    BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
-   produce_blocks(config::producer_repetitions); // Bob produces his 12th block.
-                    // Alice's first block of the second round is started but not finalized (which advances LIB to Bob's last block).
-   BOOST_REQUIRE_EQUAL( control->head_block_producer(), N(alice) );
-   BOOST_REQUIRE_EQUAL( control->pending_block_state()->header.producer, N(bob) );
+   b = produce_block();
+   b = wait_irreversible_block( b->block_num() );
    BOOST_CHECK_EQUAL( control->active_producers().version, 2 );
+   shuffle( sch2, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
+   b = produce_block( );
 
-   produce_block(); // Alice produces the first block of her second round which has changed the active schedule.
-
-   // The next block will be produced according to the new schedule
-   produce_block();
-   BOOST_CHECK_EQUAL( control->head_block_producer(), N(carol) ); // And that next block happens to be produced by Carol.
+   BOOST_CHECK_EQUAL( control->head_block_producer(), get_expected_producer( sch2, b->timestamp.slot ) );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()
