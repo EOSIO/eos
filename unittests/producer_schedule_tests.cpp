@@ -221,19 +221,24 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    BOOST_CHECK_EQUAL( true, control->proposed_producers().valid() );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, *control->proposed_producers() ) );
    BOOST_CHECK_EQUAL( control->pending_producers().version, 0 );
+
    // Starts new block which promotes the proposed schedule to pending
    b = produce_blocks( config::producer_repetitions ); // One BP shift LIB
    BOOST_CHECK_EQUAL( control->pending_producers().version, 1 );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->pending_producers() ) );
    BOOST_CHECK_EQUAL( control->active_producers().version, 0 );
+
    // Starts new block which promotes the pending schedule to active
    b = produce_blocks( config::producer_repetitions ); // One BP shift LIB
    BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
+
    b = produce_blocks( config::producer_repetitions );
    BOOST_CHECK_EQUAL( control->pending_block_state()->promoting_block.slot, b->timestamp.slot );
    shuffle( sch1, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
-   b = produce_blocks( config::producer_repetitions * sch1.size() * 3 );
+
+   // Produce many blocks with active producers
+   b = produce_blocks( config::producer_repetitions * sch1.size() * 10 );
 
    // Now, we have more than 1 BP and random schedule, LIB shifts on changing of BPs
 
@@ -253,15 +258,16 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    b = wait_irreversible_block( b->block_num() );
    BOOST_CHECK_EQUAL( control->pending_producers().version, 2 );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->pending_producers() ) );
-
    BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
+
    b = produce_block();
    b = wait_irreversible_block( b->block_num() );
    BOOST_CHECK_EQUAL( control->active_producers().version, 2 );
+   BOOST_CHECK_EQUAL( control->pending_block_state()->promoting_block.slot, b->timestamp.slot );
    shuffle( sch2, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
-   b = produce_block( );
 
+   b = produce_block();
    BOOST_CHECK_EQUAL( control->head_block_producer(), get_expected_producer( sch2, b->timestamp.slot ) );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
@@ -285,11 +291,13 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
    BOOST_CHECK_EQUAL( true, control->proposed_producers().valid() );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, *control->proposed_producers() ) );
    BOOST_CHECK_EQUAL( control->pending_producers().version, 0 );
+
    // Starts new block which promotes the proposed schedule to pending
    b = produce_blocks( config::producer_repetitions ); // One BP shift LIB
    BOOST_CHECK_EQUAL( control->pending_producers().version, 1 );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->pending_producers() ) );
    BOOST_CHECK_EQUAL( control->active_producers().version, 0 );
+
    // Starts new block which promotes the pending schedule to active
    b = produce_blocks( config::producer_repetitions ); // One BP shift LIB
    BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
@@ -297,7 +305,9 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
    BOOST_CHECK_EQUAL( control->pending_block_state()->promoting_block.slot, b->timestamp.slot );
    shuffle( sch1, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
-   b = produce_blocks( config::producer_repetitions * sch1.size() * 3 );
+
+   // Producer many blocks with active producers
+   b = produce_blocks( config::producer_repetitions * sch1.size() * 10 );
 
    res = set_producers( {N(alice),N(bob)} );
    vector<producer_key> sch2 = {
@@ -313,16 +323,16 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
    b = wait_irreversible_block( b->block_num() );
    BOOST_CHECK_EQUAL( control->pending_producers().version, 2 );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->pending_producers() ) );
-
    BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
+
    b = produce_block();
    b = wait_irreversible_block( b->block_num() );
    BOOST_CHECK_EQUAL( control->active_producers().version, 2 );
    BOOST_CHECK_EQUAL( control->pending_block_state()->promoting_block.slot, b->timestamp.slot );
    shuffle( sch2, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
-   b = produce_block( );
 
+   b = produce_block( );
    BOOST_CHECK_EQUAL( control->head_block_producer(), get_expected_producer( sch2, b->timestamp.slot ) );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
@@ -348,25 +358,31 @@ BOOST_FIXTURE_TEST_CASE( empty_producer_schedule_has_no_effect, tester ) try {
    BOOST_CHECK_EQUAL( true, control->proposed_producers().valid() );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, *control->proposed_producers() ) );
    BOOST_CHECK_EQUAL( control->pending_producers().version, 0 );
+
    // Starts new block which promotes the proposed schedule to pending
    b = produce_blocks( config::producer_repetitions ); // One BP shift LIB
    BOOST_CHECK_EQUAL( control->pending_producers().version, 1 );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->pending_producers() ) );
    BOOST_CHECK_EQUAL( control->active_producers().version, 0 );
+
    // Starts new block which promotes the pending schedule to active
    b = produce_blocks( config::producer_repetitions ); // One BP shift LIB
    BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
+
    b = produce_blocks( config::producer_repetitions );
    BOOST_CHECK_EQUAL( control->pending_block_state()->promoting_block.slot, b->timestamp.slot );
    shuffle( sch1, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
-   b = produce_blocks( config::producer_repetitions * sch1.size() * 3 );
+
+   // Producer many blocks with active producers
+   b = produce_blocks( config::producer_repetitions * sch1.size() * 10 );
 
    res = set_producers( {} );
    BOOST_TEST_MESSAGE("-- set producer schedule to []");
    BOOST_CHECK_EQUAL( true, control->proposed_producers().valid() );
    BOOST_CHECK_EQUAL( control->proposed_producers()->producers.size(), 0 );
    BOOST_CHECK_EQUAL( control->proposed_producers()->version, 2 );
+
    b = produce_block();
    BOOST_CHECK_EQUAL( control->pending_producers().version, 1 );
    b = wait_irreversible_block( b->block_num() );
@@ -395,6 +411,7 @@ BOOST_FIXTURE_TEST_CASE( empty_producer_schedule_has_no_effect, tester ) try {
    BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
    BOOST_CHECK_EQUAL( control->pending_producers().version, 2 );
    BOOST_CHECK_EQUAL( 0, control->pending_producers().producers.size() );
+
    b = wait_irreversible_block( b->block_num() );
    BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
    BOOST_CHECK_EQUAL( control->pending_producers().version, 2 );
@@ -406,6 +423,9 @@ BOOST_FIXTURE_TEST_CASE( empty_producer_schedule_has_no_effect, tester ) try {
    BOOST_CHECK_EQUAL( control->pending_block_state()->promoting_block.slot, b->timestamp.slot );
    shuffle( sch2, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
+
+   b = produce_block( );
+   BOOST_CHECK_EQUAL( control->head_block_producer(), get_expected_producer( sch2, b->timestamp.slot ) );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()
