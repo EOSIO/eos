@@ -54,46 +54,70 @@ static int64_t safe_pct(int64_t arg, int64_t total) {
     return safe_prop(arg, total, config::_100percent);
 }
 
-template<typename AgentIndex, typename GrantIndex>
+template<typename AgentIndex, typename GrantIndex, typename GrantItr>
 int64_t recall_proxied_traversal(
     const ram_payer_info& ram, symbol_code purpose_code, symbol_code token_code,
     const AgentIndex& agents_idx, const GrantIndex& grants_idx,
-    const account_name& agent_name, int64_t share, int16_t break_fee
+    GrantItr& arg_grant_itr, int64_t pct, bool forced_erase = false
 ) {
-    auto agent = get_agent(purpose_code, token_code, agents_idx, agent_name);
+
+    auto share = safe_pct(arg_grant_itr->share, pct);
+    auto agent = get_agent(purpose_code, token_code, agents_idx, arg_grant_itr->agent_name);
 
     EOS_ASSERT(share >= 0, transaction_exception, "SYSTEM: share can't be negative");
     EOS_ASSERT(share <= agent->shares_sum, transaction_exception, "SYSTEM: incorrect share val");
-    if(share == 0)
-        return 0;
+    
+    int64_t ret = 0;
+    auto grantor_funds = safe_prop(agent->get_total_funds(), arg_grant_itr->share, agent->shares_sum);
+    
+    if (share > 0 && grantor_funds > 0) {
+        auto profit = std::max(grantor_funds - arg_grant_itr->granted, int64_t(0));
+        auto agent_fee_pct = safe_prop(std::min(agent->fee, arg_grant_itr->break_fee), profit, grantor_funds);
         
-    //TODO: fee should be taken _from the profit_
-    auto share_fee = safe_pct(std::min(agent->fee, break_fee), share);
-    auto share_net = share - share_fee;
-    auto balance_ret = safe_prop(agent->balance, share_net, agent->shares_sum);
-    EOS_ASSERT(balance_ret <= agent->balance, transaction_exception, "SYSTEM: incorrect balance_ret val");
+        auto share_fee = safe_pct(agent_fee_pct, share);
+        auto share_net = share - share_fee;
+        auto balance_ret = safe_prop(agent->balance, share_net, agent->shares_sum);
+        EOS_ASSERT(balance_ret <= agent->balance, transaction_exception, "SYSTEM: incorrect balance_ret val");
 
-    auto proxied_ret = 0;
-    auto grant_itr = grants_idx.lower_bound(grant_key(purpose_code, token_code, agent->account));
-    while ((grant_itr != grants_idx.end()) &&
-           (grant_itr->purpose_code   == purpose_code) &&
-           (grant_itr->token_code   == token_code) &&
-           (grant_itr->grantor_name == agent->account))
-    {
-        auto to_recall = safe_prop(share_net, grant_itr->share, agent->shares_sum);
-        proxied_ret += recall_proxied_traversal(ram, purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
-        grants_idx.modify(*grant_itr, [&](auto& g) { g.share -= to_recall; });
-        ++grant_itr;
+        auto proxied_ret = 0;
+        auto grant_itr = grants_idx.lower_bound(grant_key(purpose_code, token_code, agent->account));
+        while ((grant_itr != grants_idx.end()) &&
+               (grant_itr->purpose_code   == purpose_code) &&
+               (grant_itr->token_code   == token_code) &&
+               (grant_itr->grantor_name == agent->account))
+        {
+            auto to_recall = safe_prop(share_net, grant_itr->share, agent->shares_sum);
+            auto cur_pct = safe_prop(config::_100percent, share_net, agent->shares_sum);
+            proxied_ret += recall_proxied_traversal(ram, purpose_code, token_code, agents_idx, grants_idx, grant_itr, cur_pct);
+        }
+        EOS_ASSERT(proxied_ret <= agent->proxied, transaction_exception, "SYSTEM: incorrect proxied_ret val");
+
+        agents_idx.modify(*agent, [&](auto& a) {
+            a.balance -= balance_ret;
+            a.proxied -= proxied_ret;
+            a.own_share += share_fee;
+            a.shares_sum -= share_net;
+        });
+        
+        ret = balance_ret + proxied_ret;
     }
-    EOS_ASSERT(proxied_ret <= agent->proxied, transaction_exception, "SYSTEM: incorrect proxied_ret val");
 
-    agents_idx.modify(*agent, [&](auto& a) {
-        a.balance -= balance_ret;
-        a.proxied -= proxied_ret;
-        a.own_share += share_fee;
-        a.shares_sum -= share_net;
-    });
-    return balance_ret + proxied_ret;
+    if ((arg_grant_itr->pct || arg_grant_itr->share > share) && !forced_erase) {
+        if (share || pct) {
+            grants_idx.modify(*arg_grant_itr, [&](auto& g) {
+                g.share -= share;
+                g.granted = safe_pct(config::_100percent - pct, g.granted);
+            });
+        }
+        ++arg_grant_itr;
+    }
+    else {
+        const auto &arg_grant = *arg_grant_itr;
+        ++arg_grant_itr;
+        grants_idx.erase(arg_grant, ram);
+    }
+    
+    return ret;
 }
 
 template<typename AgentIndex, typename GrantIndex>
@@ -125,10 +149,7 @@ void update_proxied_traversal(
                 ++grant_itr;
             }
             else {
-                unstaked += recall_proxied_traversal(ram, purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, grant_itr->share, grant_itr->break_fee);
-                const auto &cur_grant = *grant_itr;
-                ++grant_itr;
-                grants_idx.erase(cur_grant, ram);
+                unstaked += recall_proxied_traversal(ram, purpose_code, token_code, agents_idx, grants_idx, grant_itr, config::_100percent, true);
             }
         }
         agents_idx.modify(*agent, [&](auto& a) {
@@ -437,17 +458,7 @@ void resource_limits_manager::recall_proxied(
            (grant_itr->grantor_name == grantor_name))
     {
         if (grant_itr->agent_name == agent_name) {
-            auto to_recall = safe_pct(grant_itr->share, pct);
-            amount = recall_proxied_traversal(ram, purpose_code, token_code, agents_idx, grants_idx, grant_itr->agent_name, to_recall, grant_itr->break_fee);
-            if (grant_itr->pct || grant_itr->share > to_recall) {
-                grants_table.modify(*grant_itr, [&](auto& g) { g.share -= to_recall; });
-                ++grant_itr;
-            }
-            else {
-                const auto &cur_grant = *grant_itr;
-                ++grant_itr;
-                grants_table.erase(cur_grant, ram);
-            }
+            amount = recall_proxied_traversal(ram, purpose_code, token_code, agents_idx, grants_idx, grant_itr, pct);
             break;
         }
         else

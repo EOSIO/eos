@@ -62,6 +62,7 @@ class stake_grant_object : public cyberway::chaindb::object<stake_grant_object_t
     account_name agent_name;
     int16_t pct;
     int64_t share;
+    int64_t granted;
     int16_t break_fee;
     int64_t break_min_own_staked;
     
@@ -147,7 +148,7 @@ FC_REFLECT(eosio::chain::stake_agent_object,
     (proxied)(shares_sum)(own_share)(fee)(min_own_staked)(signing_key))
     
 FC_REFLECT(eosio::chain::stake_grant_object, 
-    (id)(purpose_code)(token_code)(grantor_name)(agent_name)(pct)(share)(break_fee)(break_min_own_staked))
+    (id)(purpose_code)(token_code)(grantor_name)(agent_name)(pct)(share)(granted)(break_fee)(break_min_own_staked))
     
 FC_REFLECT(eosio::chain::stake_param_object, 
     (id)(token_symbol)(purposes)(max_proxies)(frame_length)(payout_step_lenght)(payout_steps_num))

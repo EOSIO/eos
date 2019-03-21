@@ -508,6 +508,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"agent_name", "name"},
         {"pct", "int16"},
         {"share", "int64"},
+        {"granted", "int64"},
         {"break_fee", "int16"},
         {"break_min_own_staked", "int64" }}});
         
