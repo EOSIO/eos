@@ -549,7 +549,11 @@ namespace eosio {
       optional<sync_state>    peer_requested;  // this peer is requesting info from us
       std::shared_ptr<boost::asio::io_context>  server_ioc; // keep ioc alive
       boost::asio::io_context::strand           strand;
+<<<<<<< HEAD
       socket_ptr                                socket;
+=======
+      socket_ptr                                socket; // only accessed through strand after construction
+>>>>>>> Protect start_read_message via strand
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
 <<<<<<< HEAD
@@ -777,7 +781,11 @@ namespace eosio {
    connection::connection( string endpoint )
       : peer_requested(),
         server_ioc( my_impl->server_ioc ),
+<<<<<<< HEAD
         strand( app().get_io_service() ),
+=======
+        strand( *my_impl->server_ioc ),
+>>>>>>> Protect start_read_message via strand
         socket( std::make_shared<tcp::socket>( std::ref( *my_impl->server_ioc ))),
         node_id(),
         connection_id( ++my_impl->current_connection_id ),
@@ -802,7 +810,11 @@ namespace eosio {
    connection::connection( socket_ptr s )
       : peer_requested(),
         server_ioc( my_impl->server_ioc ),
+<<<<<<< HEAD
         strand( app().get_io_service() ),
+=======
+        strand( *my_impl->server_ioc ),
+>>>>>>> Protect start_read_message via strand
         socket( s ),
         node_id(),
         connection_id( ++my_impl->current_connection_id ),
@@ -2001,7 +2013,7 @@ namespace eosio {
          return false;
       }
       else {
-         boost::asio::post(*server_ioc, [this, con]() {
+         con->strand.post( [this, con]() {
             start_read_message( con );
          });
          ++started_sessions;
@@ -2080,7 +2092,7 @@ namespace eosio {
       });
    }
 
-   // only called from server_ioc thread
+   // only called from strand thread
    void net_plugin_impl::start_read_message(const connection_ptr& conn) {
 
       try {
@@ -2167,7 +2179,7 @@ namespace eosio {
             if( !conn->read_delay_timer ) return;
             conn->read_delay_timer->expires_from_now( def_read_delay_for_full_write_queue );
             conn->read_delay_timer->async_wait(
-                  app().get_priority_queue().wrap( priority::low, [this, weak_conn]( boost::system::error_code ) {
+                  boost::asio::bind_executor(conn->strand, [this, weak_conn]( boost::system::error_code ) {
                auto conn = weak_conn.lock();
                if( !conn ) return;
                start_read_message( conn );
@@ -2288,7 +2300,7 @@ namespace eosio {
                      close( conn );
                   });
                }
-         });
+         }));
       } catch (...) {
          fc_elog( logger, "Undefined exception in start_read_message" );
          connection_wptr weak_conn = conn;
