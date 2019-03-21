@@ -87,8 +87,7 @@ ecmd set contract eosio $bioscontractpath eosio.bios.wasm eosio.bios.abi
 # Preactivate all digests
 for digest in "${featuredigests[@]}";
 do
-echo "$index";
-ecmd push action eosio preactivate '["'$digest'"]' -p eosio
+ecmd push action eosio preactivate "{\"feature_digest\":\"$digest\"}" -p eosio
 done
 
 # Create required system accounts
