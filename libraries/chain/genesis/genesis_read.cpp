@@ -171,7 +171,6 @@ struct state_object_visitor {
 
     void operator()(const golos::savings_withdraw_object& sw) {
         add_asset_balance(sw, &golos::savings_withdraw_object::to, &golos::savings_withdraw_object::amount, savings_withdraw);
-        early_exit = true;
     }
 
     template<typename T, typename A, typename F>
