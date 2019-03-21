@@ -78,7 +78,7 @@ printf "     \\__\\/         \\__\\/         \\__\\/                     \\__\\/
 
 printf "==============================================================================================\\n"
 printf "EOSIO has been installed into ${OPT_LOCATION}/eosio/bin!\\n"
-printf "If you need to, you can fully uninstall using ./scripts/full_uninstaller.sh.\\n"
+printf "If you need to, you can uninstall using: ./scripts/full_uninstaller.sh (it will leave your data directory).\\n"
 printf "==============================================================================================\\n\\n"
 
 printf "EOSIO website: https://eos.io\\n"
