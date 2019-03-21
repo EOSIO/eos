@@ -278,7 +278,6 @@ namespace eosio {
       bool process_next_message(const connection_ptr& conn, uint32_t message_length);
 
       void close(const connection_ptr& c);
-      size_t count_open_sockets() const;
 
       void accepted_block(const block_state_ptr&);
       void transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>&);
@@ -2349,16 +2348,6 @@ namespace eosio {
       return true;
    }
 
-   size_t net_plugin_impl::count_open_sockets() const
-   {
-      size_t count = 0;
-      for( auto &c : connections) {
-         if(c->socket->is_open())
-            ++count;
-      }
-      return count;
-   }
-
    bool net_plugin_impl::is_valid(const handshake_message& msg) {
       // Do some basic validation of an incoming handshake_message, so things
       // that really aren't handshake messages can be quickly discarded without
@@ -3441,10 +3430,6 @@ namespace eosio {
          fc_ilog( logger, "exit shutdown" );
       }
       FC_CAPTURE_AND_RETHROW()
-   }
-
-   size_t net_plugin::num_peers() const {
-      return my->count_open_sockets();
    }
 
    /**
