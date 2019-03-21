@@ -359,7 +359,7 @@ struct txn_test_gen_plugin_impl {
          send_transaction([this](const fc::exception_ptr& e){
             if (e) {
                elog("pushing transaction failed: ${e}", ("e", e->to_detail_string()));
-               stop_generation();
+               arm_timer(timer.expires_at());
             } else {
                arm_timer(timer.expires_at());
             }
