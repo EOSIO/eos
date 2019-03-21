@@ -28,6 +28,16 @@ As BOS continues to develop, developer rewards will be appropriately adjusted to
 ## Start
 1. Build from code : `bash ./eosio_build.sh -s BOS`
 2. Docker Style，check [Docker](./Docker/README.md)
+3. Mac OS X Brew install and uninstall 
+#### Mac OS X Brew Install
+```sh
+$ brew tap boscore/bos
+$ brew install bos
+```
+#### Mac OS X Brew Uninstall
+```sh
+$ brew remove bos
+```
 
 ## BOSCore Workflow
 BOSCore encourage community developer actively participate in contributing the code, members should follow the workflow below.

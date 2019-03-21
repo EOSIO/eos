@@ -28,6 +28,16 @@ BOS链的代码完全由社区贡献并维护，每个生态参与者都可以�
 ## 开始
 1. 源码直接编译: `bash ./eosio_build.sh -s BOS`
 2. Docker方式部署，参看 [Docker](./Docker/README.md)
+3. Mac OS X Brew 安装 和 卸载 
+#### Mac OS X Brew 安装
+```sh
+$ brew tap boscore/bos
+$ brew install bos
+```
+#### Mac OS X Brew 卸载
+```sh
+$ brew remove bos
+```
 
 ## BOSCore 开发流程 
 BOSCore 鼓励社区开发者参与代码贡献，社区成员应当遵循以下工作流：
