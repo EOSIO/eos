@@ -347,6 +347,7 @@ struct genesis_read::genesis_read_impl final {
             const auto n = a.account.value(_accs_map);
             const auto name = n.size() == 0 ? account_name() : generate_name(n);    //?config::null_account_name
             names[n] = name;
+            _acc_names[a.account.id] = name;
         }
 
         // fill auths
