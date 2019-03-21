@@ -483,9 +483,9 @@ struct genesis_read::genesis_read_impl final {
         // funds
         // TODO: convert vesting to staking and burn system tokens in reward pool?
         db.insert({config::token_account_name, gls_vest_account_name, N(accounts)}, gls_pk,
-            mvo("balance", gp.total_vesting_fund_steem), ram_payer);
+            mvo("balance", gp.total_vesting_fund_steem)("payments", asset(0, golos_sym)), ram_payer);
         db.insert({config::token_account_name, gls_post_account_name, N(accounts)}, gls_pk,
-            mvo("balance", gp.total_reward_fund_steem), ram_payer);
+            mvo("balance", gp.total_reward_fund_steem)("payments", asset(0, golos_sym)), ram_payer);
         // TODO: internal pool of posting contract
 
         // accounts GOLOS/GESTS
@@ -496,9 +496,9 @@ struct genesis_read::genesis_read_impl final {
             auto gls = data.gls[acc] + gbg2golos(gbg, price);
             total_gls += gls;
             auto n = generate_name(_accs_map[acc]);
-            db.insert({config::token_account_name, n, N(accounts)}, gls_pk, mvo("balance", gls), ram_payer);
+            db.insert({config::token_account_name, n, N(accounts)}, gls_pk, mvo("balance", gls)("payments", asset(0, golos_sym)), ram_payer);
 #ifdef IMPORT_SYS_BALANCES
-            db.insert({config::token_account_name, n, N(accounts)}, sys_pk, mvo("balance", golos2sys(gls)), ram_payer);
+            db.insert({config::token_account_name, n, N(accounts)}, sys_pk, mvo("balance", golos2sys(gls))("payments", asset(0, sys_sym)), ram_payer);
 #endif
             const auto& vests = data.vests[acc];
             EOS_ASSERT(vests.delegated == data.delegated_vests[acc], extract_genesis_state_exception,
