@@ -11,6 +11,7 @@
 #include <eosio/chain/wasm_eosio_validation.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/account_object.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>

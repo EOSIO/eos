@@ -80,4 +80,29 @@ namespace eosio { namespace chain {
       whitelisted_intrinsics.erase( itr );
    }
 
+   void reset_intrinsic_whitelist( whitelisted_intrinsics_type& whitelisted_intrinsics,
+                                   const std::set<std::string>& s )
+   {
+      whitelisted_intrinsics.clear();
+
+      for( const auto& name : s ) {
+         uint64_t h = static_cast<uint64_t>( std::hash<std::string>{}( name ) );
+         whitelisted_intrinsics.emplace( std::piecewise_construct,
+                                         std::forward_as_tuple( h ),
+                                         std::forward_as_tuple( name.c_str(), name.size(),
+                                                                whitelisted_intrinsics.get_allocator() )
+         );
+      }
+   }
+
+   std::set<std::string> convert_intrinsic_whitelist_to_set( const whitelisted_intrinsics_type& whitelisted_intrinsics ) {
+      std::set<std::string> s;
+
+      for( const auto& p : whitelisted_intrinsics ) {
+         s.emplace( p.second.c_str(), p.second.size() );
+      }
+
+      return s;
+   }
+
 } }

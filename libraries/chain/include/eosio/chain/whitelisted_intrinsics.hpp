@@ -19,4 +19,9 @@ namespace eosio { namespace chain {
 
    void remove_intrinsic_from_whitelist( whitelisted_intrinsics_type& whitelisted_intrinsics, const std::string& name );
 
+   void reset_intrinsic_whitelist( whitelisted_intrinsics_type& whitelisted_intrinsics,
+                                   const std::set<std::string>& s );
+
+   std::set<std::string> convert_intrinsic_whitelist_to_set( const whitelisted_intrinsics_type& whitelisted_intrinsics );
+
 } } // namespace eosio::chain

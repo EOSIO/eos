@@ -9,6 +9,7 @@
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>

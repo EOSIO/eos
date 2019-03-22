@@ -41,12 +41,12 @@ add_library( eosio_chain
              webassembly/wabt.cpp
 
 #             get_config.cpp
-#             global_property_object.cpp
 #
 #             contracts/chain_initializer.cpp
 
 
              transaction_metadata.cpp
+             protocol_state_object.cpp
              protocol_feature_activation.cpp
              protocol_feature_manager.cpp
              genesis_intrinsics.cpp

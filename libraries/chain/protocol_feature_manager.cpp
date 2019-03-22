@@ -4,7 +4,7 @@
  */
 
 #include <eosio/chain/protocol_feature_manager.hpp>
-#include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/exceptions.hpp>
 
 #include <fc/scoped_exit.hpp>
