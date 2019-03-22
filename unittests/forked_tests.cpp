@@ -144,6 +144,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
 } FC_LOG_AND_RETHROW();
 
 BOOST_AUTO_TEST_CASE( forking ) try {
+   BOOST_TEST_MESSAGE("forking");
    tester c(tester::default_config("_C_"), true);
    c.produce_block();
    c.produce_block();
@@ -155,7 +156,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
                                 {N(sam),get_public_key(N(sam), "active")},
                                 {N(pam),get_public_key(N(pam), "active")}};
    wdump((fc::json::to_pretty_string(res)));
-   wlog("set producer schedule to [dan,sam,pam]");
+   BOOST_TEST_MESSAGE("-- set producer schedule to [dan,sam,pam]");
    c.produce_blocks(30);
 
    auto r2 = c.create_accounts({config::token_account_name});
@@ -175,110 +176,112 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    cr = c.push_action(config::token_account_name, N(issue), config::system_account_name, mutable_variant_object()
               ("to",       "dan" )
               ("quantity", core_from_string("100.0000"))
-              ("memo", "")
+              ("memo",     "")
       );
 
    wdump((fc::json::to_pretty_string(cr)));
 
+   auto get_expected_producer = [](tester &c, int cnt = 1) ->account_name {
+      auto head_time = c.control->head_block_time();
+      auto next_time = head_time + fc::milliseconds(config::block_interval_ms * cnt);
+      return c.control->head_block_state()->get_scheduled_producer(next_time).producer_name;
+   };
+
 
    tester c2(tester::default_config("_C2_"), true);
-   wlog( "push c1 blocks to c2" );
+   BOOST_TEST_MESSAGE( "-- push c1 blocks to c2" );
    push_blocks(c, c2);
-   wlog( "end push c1 blocks to c2" );
+   BOOST_TEST_MESSAGE( "-- end push c1 blocks to c2" );
 
    wlog( "c1 blocks:" );
    c.produce_blocks(3);
    signed_block_ptr b;
+   account_name expected_producer = get_expected_producer(c);
    b = c.produce_block();
-   account_name expected_producer = N(dan);
-   BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
+   BOOST_CHECK_EQUAL( b->producer.to_string(), expected_producer.to_string() );
 
+   expected_producer = get_expected_producer(c);
    b = c.produce_block();
-   expected_producer = N(sam);
    BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
    c.produce_blocks(10);
    c.create_accounts( {N(cam)} );
    c.set_producers( {N(dan),N(sam),N(pam),N(cam)} );
-   wlog("set producer schedule to [dan,sam,pam,cam]");
+   BOOST_TEST_MESSAGE("-- set producer schedule to [dan,sam,pam,cam]");
    c.produce_block();
-   // The next block should be produced by pam.
 
    // Sync second chain with first chain.
-   wlog( "push c1 blocks to c2" );
+   BOOST_TEST_MESSAGE( "-- push c1 blocks to c2" );
    push_blocks(c, c2);
-   wlog( "end push c1 blocks to c2" );
+   BOOST_TEST_MESSAGE( "-- end push c1 blocks to c2" );
 
-   // Now sam and pam go on their own fork while dan is producing blocks by himself.
-
-   wlog( "sam and pam go off on their own fork on c2 while dan produces blocks by himself in c1" );
    auto fork_block_num = c.control->head_block_num();
 
-   wlog( "c2 blocks:" );
-   c2.produce_blocks(config::producer_repetitions); // pam produces series of blocks
-   b = c2.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions + 1)) ); // sam skips over dan's blocks
-   expected_producer = N(sam);
+   BOOST_TEST_MESSAGE( "-- produce c2 blocks" );
+   c2.produce_blocks(config::producer_repetitions); // BP produces series of blocks
+   expected_producer = get_expected_producer(c2, config::producer_repetitions + 1);
+   b = c2.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions + 1)) ); // skips over other BP blocks
    BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
    c2.produce_blocks(config::producer_repetitions * 2 - 1);
 
 
-   wlog( "c1 blocks:" );
-   b = c.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions + 1)) ); // dan skips over pam's blocks
-   expected_producer = N(dan);
-   BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
+   BOOST_TEST_MESSAGE( "-- produce c1 blocks" );
+   expected_producer = get_expected_producer(c, config::producer_repetitions + 1);
+   b = c.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions + 1)) ); // skips over previous BP blocks
+   BOOST_CHECK_EQUAL( b->producer.to_string(), expected_producer.to_string() );
    c.produce_blocks(config::producer_repetitions - 1);
 
-   // dan on chain 1 now gets all of the blocks from chain 2 which should cause fork switch
-   wlog( "push c2 blocks to c1" );
+   // the first BP on chain 1 now gets all of the blocks from chain 2 which should cause fork switch
+   BOOST_TEST_MESSAGE( "--- push c2 blocks to c1" );
    for( uint32_t start = fork_block_num + 1, end = c2.control->head_block_num(); start <= end; ++start ) {
       wdump((start));
       auto fb = c2.control->fetch_block_by_number( start );
       c.push_block( fb );
    }
-   wlog( "end push c2 blocks to c1" );
+   BOOST_TEST_MESSAGE( "--- end push c2 blocks to c1" );
 
-   wlog( "c1 blocks:" );
+   BOOST_TEST_MESSAGE( "-- produce c1 blocks" );
    c.produce_blocks(config::producer_repetitions * 2);
 
+   expected_producer = get_expected_producer(c);
    b = c.produce_block(); // Switching active schedule to version 2 happens in this block.
-   expected_producer = N(pam);
-   BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
+   BOOST_CHECK_EQUAL( b->producer.to_string(), expected_producer.to_string() );
 
+   expected_producer = get_expected_producer(c);
    b = c.produce_block();
-   expected_producer = N(cam);
-//   BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
-   c.produce_blocks(config::producer_repetitions - 2);
+   BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
+   c.produce_blocks(config::producer_repetitions);
 
-   wlog( "push c1 blocks to c2" );
+   BOOST_TEST_MESSAGE( "-- push c1 blocks to c2" );
    push_blocks(c, c2);
-   wlog( "end push c1 blocks to c2" );
+   BOOST_TEST_MESSAGE( "-- end push c1 blocks to c2" );
 
    // Now with four block producers active and two identical chains (for now),
    // we can test out the case that would trigger the bug in the old fork db code:
    fork_block_num = c.control->head_block_num();
-   wlog( "cam and dan go off on their own fork on c1 while sam and pam go off on their own fork on c2" );
-   wlog( "c1 blocks:" );
+   BOOST_TEST_MESSAGE( "-- two BPs go off on their own fork on c1 while other two BPs go off on their own fork on c2" );
+   BOOST_TEST_MESSAGE( "-- producer c1 blocks" );
    c.produce_blocks(config::producer_repetitions); // dan produces series of blocks
-   c.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions * 2 + 1)) ); // cam skips over sam and pam's blocks
-   c.produce_blocks(config::producer_repetitions * 2 - 1); // cam finishes the remaining 11 blocks then dan produces his 12 blocks
-   wlog( "c2 blocks:" );
-   c2.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions + 1)) ); // pam skips over dan and sam's blocks
-   c2.produce_blocks(config::producer_repetitions - 1); // pam finishes the remaining series of blocks
-   c2.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions * 2 + 1)) ); // sam skips over cam and dan's blocks
-   c2.produce_blocks(config::producer_repetitions - 1); // sam finishes the remaining series of blocks
+   c.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions * 2 + 1)) );
+   c.produce_blocks(config::producer_repetitions * 2 - 1);
+   BOOST_TEST_MESSAGE( "-- produce c2 blocks" );
+   c2.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions + 1)) );
+   c2.produce_blocks(config::producer_repetitions - 1);
+   c2.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions * 2 + 1)) );
+   c2.produce_blocks(config::producer_repetitions - 1);
 
-   wlog( "now cam and dan rejoin sam and pam on c2" );
-   c2.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions + 1)) ); // cam skips over pam's blocks (this block triggers a block on this branch to become irreversible)
-   c2.produce_blocks(config::producer_repetitions - 1); // cam produces the remaining series of blocks
-   b = c2.produce_block(); // dan produces a block
+   BOOST_TEST_MESSAGE( "-- now first two BPs rejoin other two BPs on c2" );
+   c2.produce_block( fc::milliseconds(config::block_interval_ms * (config::producer_repetitions + 1)) );
+   c2.produce_blocks(config::producer_repetitions - 1);
+   b = c2.produce_block();
 
    // a node on chain 1 now gets all but the last block from chain 2 which should cause a fork switch
-   wlog( "push c2 blocks (except for the last block by dan) to c1" );
+   BOOST_TEST_MESSAGE( "-- push c2 blocks (except for the last block) to c1" );
    for( uint32_t start = fork_block_num + 1, end = c2.control->head_block_num() - 1; start <= end; ++start ) {
       auto fb = c2.control->fetch_block_by_number( start );
       c.push_block( fb );
    }
-   wlog( "end push c2 blocks to c1" );
-   wlog( "now push dan's block to c1 but first corrupt it so it is a bad block" );
+   BOOST_TEST_MESSAGE( "-- end push c2 blocks to c1" );
+   BOOST_TEST_MESSAGE( "-- now push last block to c1 but first corrupt it so it is a bad block" );
    signed_block bad_block = std::move(*b);
    bad_block.transaction_mroot = bad_block.previous;
    auto bad_block_bs = c.control->create_block_state_future( std::make_shared<signed_block>(std::move(bad_block)) );
