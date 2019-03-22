@@ -254,8 +254,6 @@ namespace eosio {
       chain_plugin*                 chain_plug = nullptr;
       producer_plugin*              producer_plug = nullptr;
 
-      shared_ptr<tcp::resolver>     resolver;
-
       bool                          use_socket_read_watermark = false;
 
       compat::channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
@@ -268,7 +266,7 @@ namespace eosio {
 
 
       bool resolve_and_connect(const connection_ptr& c);
-      void connect(const connection_ptr& c, tcp::resolver::iterator endpoint_itr);
+      void connect(const connection_ptr& c, const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::iterator endpoint_itr);
       void start_listen_loop();
       void start_read_message(const connection_ptr& c);
 
@@ -594,7 +592,7 @@ namespace eosio {
       handshake_message       last_handshake_recv;
       handshake_message       last_handshake_sent;
       int16_t                 sent_handshake_count = 0;
-      bool                    connecting = false;
+      std::atomic<bool>       connecting{false};
       bool                    syncing = false;
       uint16_t                protocol_version  = 0;
    private:
@@ -609,7 +607,7 @@ namespace eosio {
       boost::asio::steady_timer             response_expected_timer;
       std::mutex                            read_delay_timer_mtx;
       boost::asio::steady_timer             read_delay_timer;
-      go_away_reason         no_retry = no_reason;
+      std::atomic<go_away_reason>           no_retry{no_reason};
       block_id_type          fork_head;
       std::atomic<uint32_t>  fork_head_num{0}; // provides memory barrier for fork_head
       optional<request_message> last_req;
@@ -1892,52 +1890,42 @@ struct msg_handler : public fc::visitor<void> {
 
    //------------------------------------------------------------------------
 
+   // called from any thread
    bool net_plugin_impl::resolve_and_connect(const connection_ptr& c) {
       if( c->no_retry != go_away_reason::no_reason) {
          fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( c->no_retry )));
          return false;
       }
 
-      auto colon = c->peer_address().find(':');
-
+      string::size_type colon = c->peer_address().find(':');
       if (colon == std::string::npos || colon == 0) {
          fc_elog( logger, "Invalid peer address. must be \"host:port\": ${p}", ("p",c->peer_address()) );
-         std::lock_guard<std::mutex> g( my_impl->connections_mtx );
-         for ( auto& cp : connections ) {
-            if( cp->peer_address() == c->peer_address() ) {
-               cp->reset();
-               cp->close();
-               connections.erase( cp );
-               break;
-            }
-         }
          return false;
       }
 
-      auto host = c->peer_address().substr( 0, colon );
-      auto port = c->peer_address().substr( colon + 1);
+      string host = c->peer_address().substr( 0, colon );
+      string port = c->peer_address().substr( colon + 1);
       idump((host)(port));
-      tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
+      tcp::resolver::query query( tcp::v4(), host, port );
       connection_wptr weak_conn = c;
       // Note: need to add support for IPv6 too
 
+      auto resolver = std::make_shared<tcp::resolver>( *server_ioc );
       resolver->async_resolve( query,
-                [weak_conn, this]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ) {
-                   app().post( priority::low, [err, endpoint_itr, weak_conn, this]() {
-                      auto c = weak_conn.lock();
-                      if( !c ) return;
-                      if( !err ) {
-                         connect( c, endpoint_itr );
-                      } else {
-                         fc_elog( logger, "Unable to resolve ${add}: ${error}",
-                                  ("add", c->peer_name())( "error", err.message()) );
-                      }
-                   } );
-                } );
+            [resolver, ioc = server_ioc, weak_conn, this]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ) {
+               auto c = weak_conn.lock();
+               if( !c ) return;
+               if( !err ) {
+                  connect( c, resolver, endpoint_itr );
+               } else {
+                  fc_elog( logger, "Unable to resolve ${add}: ${error}", ("add", c->peer_name())( "error", err.message() ) );
+               }
+            } );
       return true;
    }
 
-   void net_plugin_impl::connect(const connection_ptr& c, tcp::resolver::iterator endpoint_itr) {
+   // called from any thread
+   void net_plugin_impl::connect(const connection_ptr& c, const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::iterator endpoint_itr) {
       if( c->no_retry != go_away_reason::no_reason) {
          string rsn = reason_str(c->no_retry);
          return;
@@ -1946,7 +1934,7 @@ struct msg_handler : public fc::visitor<void> {
       ++endpoint_itr;
       c->connecting = true;
       c->socket.async_connect( current_endpoint,
-            boost::asio::bind_executor( c->strand, [c, endpoint_itr, this]( const boost::system::error_code& err ) {
+            boost::asio::bind_executor( c->strand, [resolver, c, endpoint_itr, this]( const boost::system::error_code& err ) {
             if( !err && c->socket.is_open()) {
                if( c->start_session() ) {
                   c->send_handshake();
@@ -1954,7 +1942,7 @@ struct msg_handler : public fc::visitor<void> {
             } else {
                if( endpoint_itr != tcp::resolver::iterator()) {
                   c->close();
-                  connect( c, endpoint_itr );
+                  connect( c, resolver, endpoint_itr );
                } else {
                   fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
                   c->connecting = false;
@@ -2620,19 +2608,17 @@ struct msg_handler : public fc::visitor<void> {
       }
    }
 
+   // called from any thread
    void net_plugin_impl::start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection) {
       std::lock_guard<std::mutex> g( connector_check_timer_mtx );
       connector_check_timer->expires_from_now( du);
       connector_check_timer->async_wait( [this, from_connection](boost::system::error_code ec) {
-            app().post( priority::low, [this, from_connection, ec]() {
             if( !ec) {
                connection_monitor(from_connection);
-            }
-            else {
+            } else {
                fc_elog( logger, "Error from connection check monitor: ${m}",( "m", ec.message()));
                start_conn_timer( connector_period, std::weak_ptr<connection>());
             }
-         });
       });
    }
 
@@ -2693,6 +2679,7 @@ struct msg_handler : public fc::visitor<void> {
       start_expire_timer();
    }
 
+   // called from any thread
    void net_plugin_impl::connection_monitor(std::weak_ptr<connection> from_connection) {
       auto max_time = fc::time_point::now();
       max_time += fc::milliseconds(max_cleanup_time_ms);
@@ -2707,7 +2694,10 @@ struct msg_handler : public fc::visitor<void> {
          }
          if( !(*it)->socket_is_open() && !(*it)->connecting) {
             if( (*it)->peer_address().length() > 0) {
-               resolve_and_connect(*it);
+               if( !resolve_and_connect(*it) ) {
+                  it = connections.erase(it);
+                  continue;
+               }
             } else {
                it = connections.erase(it);
                continue;
@@ -2997,14 +2987,14 @@ struct msg_handler : public fc::visitor<void> {
          boost::asio::post( *my->thread_pool, [ioc = my->server_ioc]() { ioc->run(); } );
       }
 
-      my->resolver = std::make_shared<tcp::resolver>( std::ref( *my->server_ioc ));
       if( my->p2p_address.size() > 0 ) {
          auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
          auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
          tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
          // Note: need to add support for IPv6 too?
 
-         my->listen_endpoint = *my->resolver->resolve( query );
+         tcp::resolver resolver( *my->server_ioc );
+         my->listen_endpoint = *resolver.resolve( query );
 
          my->acceptor.reset( new tcp::acceptor( *my->server_ioc ) );
 
@@ -3127,13 +3117,13 @@ struct msg_handler : public fc::visitor<void> {
       if( my->find_connection( host ) )
          return "already connected";
 
-      connection_ptr c = std::make_shared<connection>(host);
-      fc_dlog(logger,"adding new connection to the list");
-      std::unique_lock<std::mutex> g( my->connections_mtx );
-      my->connections.insert( c );
-      g.unlock();
-      fc_dlog(logger,"calling active connector");
-      my->resolve_and_connect( c );
+      connection_ptr c = std::make_shared<connection>( host );
+      fc_dlog( logger, "calling active connector" );
+      if( my->resolve_and_connect( c ) ) {
+         fc_dlog( logger, "adding new connection to the list" );
+         std::unique_lock<std::mutex> g( my->connections_mtx );
+         my->connections.insert( c );
+      }
       return "added connection";
    }
 
