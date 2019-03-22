@@ -43,7 +43,8 @@ abi_def golos_vesting_contract_abi(abi_def abi = abi_def()) {
     }});
     abi.tables.emplace_back(table_def{"delegation", "delegation", {
         {"primary", true, {{"id", "asc"}}},
-        {"delegator",  true, {{"delegator", "asc"}, {"delegatee", "asc"}}}
+        {"delegator",  true, {{"delegator", "asc"}, {"delegatee", "asc"}}},
+        {"delegatee",  false, {{"delegatee", "asc"}}}
     }});
     abi.tables.emplace_back(table_def{"rdelegation", "return_delegation", {
         {"primary", true, {{"id", "asc"}}},
