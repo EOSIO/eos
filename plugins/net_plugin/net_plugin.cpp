@@ -915,7 +915,7 @@ struct msg_handler : public fc::visitor<void> {
       sent_handshake_count = 0;
       last_handshake_recv = handshake_message();
       last_handshake_sent = handshake_message();
-      my_impl->sync_master->reset_lib_num(shared_from_this());
+      my_impl->sync_master->reset_lib_num(nullptr);
       fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
       cancel_wait();
 <<<<<<< HEAD
@@ -1366,6 +1366,7 @@ struct msg_handler : public fc::visitor<void> {
       if(state == in_sync) {
          source.reset();
       }
+      if( !c ) return;
       if( c->current() ) {
          if( c->last_handshake_recv.last_irreversible_block_num > sync_known_lib_num) {
             sync_known_lib_num =c->last_handshake_recv.last_irreversible_block_num;
