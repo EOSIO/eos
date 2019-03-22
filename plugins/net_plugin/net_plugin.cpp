@@ -53,7 +53,6 @@ namespace eosio {
    using connection_ptr = std::shared_ptr<connection>;
    using connection_wptr = std::weak_ptr<connection>;
 
-   using socket_ptr = std::shared_ptr<tcp::socket>;
    using io_work_t = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
    template <typename Strand>
@@ -207,7 +206,7 @@ namespace eosio {
       string                           p2p_server_address;
       uint32_t                         max_client_count = 0;
       uint32_t                         max_nodes_per_host = 1;
-      uint32_t                         current_connection_id = 0;
+      std::atomic<uint32_t>            current_connection_id{0};
 
       vector<string>                   supplied_peers;
       vector<chain::public_key_type>   allowed_peers; ///< peer keys allowed to connect
@@ -224,7 +223,7 @@ namespace eosio {
 
       connection_ptr find_connection(const string& host)const;
 
-      mutable std::mutex               connections_mtx;
+      mutable std::mutex               connections_mtx; // switch to shared_mutex in C++17
       std::set< connection_ptr >       connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
       bool                             done = false;
       unique_ptr< sync_manager >       sync_master;
@@ -254,7 +253,6 @@ namespace eosio {
       string                        user_agent_name;
       chain_plugin*                 chain_plug = nullptr;
       producer_plugin*              producer_plug = nullptr;
-      int                           started_sessions = 0;
 
       shared_ptr<tcp::resolver>     resolver;
 
@@ -271,7 +269,6 @@ namespace eosio {
 
       bool resolve_and_connect(const connection_ptr& c);
       void connect(const connection_ptr& c, tcp::resolver::iterator endpoint_itr);
-      bool start_session(const connection_ptr& c);
       void start_listen_loop();
       void start_read_message(const connection_ptr& c);
 
@@ -546,19 +543,18 @@ namespace eosio {
    public:
       explicit connection( string endpoint );
 
-      explicit connection( socket_ptr s );
+      connection();
       ~connection();
 
-      void start();
+      bool start_session();
 
-      bool socket_is_open() const { return socket_open.load(); } // thread safe
-      const string& peer_address() const { return peer_addr; } // thread safe
-      const string& remote_address() const { return socket_open.load() ? remote_endpoint_ip : unknown; } // thread safe, not updated after start()
+      bool socket_is_open() const { return socket_open.load(); } // thread safe, atomic
+      const string& peer_address() const { return peer_addr; } // thread safe, const
+      const string& remote_address() const { return socket_open.load() ? remote_endpoint_ip : unknown; } // thread safe, not updated after start_session()
 
    private:
       static const string unknown;
 
-      void initialize(); // only called from constructor
       void update_endpoints();
 
    public:
@@ -566,7 +562,7 @@ namespace eosio {
       optional<sync_state>    peer_requested;  // this peer is requesting info from us
       std::shared_ptr<boost::asio::io_context>  server_ioc; // keep ioc alive
       boost::asio::io_context::strand           strand;
-      socket_ptr                                socket; // only accessed through strand after construction
+      tcp::socket                               socket; // only accessed through strand after construction
    private:
       std::atomic<bool>                         socket_open{false};
    public:
@@ -596,9 +592,9 @@ namespace eosio {
    public:
 
       std::mutex                            response_expected_timer_mtx;
-      unique_ptr<boost::asio::steady_timer> response_expected_timer;
+      boost::asio::steady_timer             response_expected_timer;
       std::mutex                            read_delay_timer_mtx;
-      unique_ptr<boost::asio::steady_timer> read_delay_timer;
+      boost::asio::steady_timer             read_delay_timer;
       go_away_reason         no_retry = no_reason;
       block_id_type          fork_head;
       std::atomic<uint32_t>  fork_head_num{0}; // provides memory barrier for fork_head
@@ -634,6 +630,9 @@ namespace eosio {
       bool current();
       void reset();
       void close();
+   private:
+      static void _close( connection* self ); // for easy capture
+   public:
       void send_handshake();
 
       /** \name Peer Timestamps
@@ -755,7 +754,7 @@ struct msg_handler : public fc::visitor<void> {
       : peer_requested(),
         server_ioc( my_impl->server_ioc ),
         strand( *my_impl->server_ioc ),
-        socket( std::make_shared<tcp::socket>( std::ref( *my_impl->server_ioc ))),
+        socket( *my_impl->server_ioc ),
         node_id(),
         connection_id( ++my_impl->current_connection_id ),
         last_handshake_recv(),
@@ -765,20 +764,20 @@ struct msg_handler : public fc::visitor<void> {
         syncing(false),
         protocol_version(0),
         peer_addr(endpoint),
-        response_expected_timer(),
-        read_delay_timer(),
+        response_expected_timer( *my_impl->server_ioc ),
+        read_delay_timer( *my_impl->server_ioc ),
         no_retry(no_reason),
         last_req()
    {
       fc_ilog( logger, "created connection to ${n}", ("n", endpoint) );
-      initialize();
+      node_id.data()[0] = 0;
    }
 
-   connection::connection( socket_ptr s )
+   connection::connection()
       : peer_requested(),
         server_ioc( my_impl->server_ioc ),
         strand( *my_impl->server_ioc ),
-        socket( s ),
+        socket( *my_impl->server_ioc ),
         node_id(),
         connection_id( ++my_impl->current_connection_id ),
         last_handshake_recv(),
@@ -788,43 +787,47 @@ struct msg_handler : public fc::visitor<void> {
         syncing(false),
         protocol_version(0),
         peer_addr(),
-        response_expected_timer(),
-        read_delay_timer(),
+        response_expected_timer( *my_impl->server_ioc ),
+        read_delay_timer( *my_impl->server_ioc ),
         no_retry(no_reason),
         last_req()
    {
       fc_ilog( logger, "accepted network connection" );
-      initialize();
+      node_id.data()[0] = 0;
    }
 
    connection::~connection() {
       pending_message_buffer.reset();
    }
 
-   void connection::initialize() {
-      auto *rnd = node_id.data();
-      rnd[0] = 0;
-      // called only from constructor, no mutex needed
-      response_expected_timer.reset(new boost::asio::steady_timer( *my_impl->server_ioc ));
-      read_delay_timer.reset(new boost::asio::steady_timer( *my_impl->server_ioc ));
-   }
-
    void connection::update_endpoints() {
       boost::system::error_code ec;
-      auto rep = socket->remote_endpoint(ec);
+      auto rep = socket.remote_endpoint(ec);
       remote_endpoint_ip = ec ? unknown : rep.address().to_string();
       remote_endpoint_port = ec ? unknown : std::to_string(rep.port());
 
-      auto lep = socket->local_endpoint(ec);
+      auto lep = socket.local_endpoint(ec);
       local_endpoint_ip = ec ? unknown : lep.address().to_string();
       local_endpoint_port = ec ? unknown : std::to_string(lep.port());
    }
 
-   void connection::start() {
+   bool connection::start_session() {
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
 
       update_endpoints();
-      socket_open = true;
+      boost::asio::ip::tcp::no_delay nodelay( true );
+      boost::system::error_code ec;
+      socket.set_option( nodelay, ec );
+      if( ec ) {
+         fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", peer_name())( "error", ec.message() ) );
+         connecting = false;
+         close();
+         return false;
+      } else {
+         socket_open = true;
+         my_impl->start_read_message( shared_from_this() );
+         return true;
+      }
    }
 
    bool connection::connected() {
@@ -844,24 +847,30 @@ struct msg_handler : public fc::visitor<void> {
    }
 
    void connection::close() {
-      socket_open = false;
-      socket->close();
-      flush_queues();
-      connecting = false;
-      syncing = false;
-      if( last_req ) {
-         my_impl->dispatcher->retry_fetch(shared_from_this());
-      }
-      reset();
-      sent_handshake_count = 0;
-      last_handshake_recv = handshake_message();
-      last_handshake_sent = handshake_message();
-      my_impl->sync_master->reset_lib_num(nullptr);
-      fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
-      cancel_wait();
+      strand.dispatch( [self = shared_from_this()]() {
+         connection::_close( self.get() );
+      });
+   }
 
-      std::lock_guard<std::mutex> g( read_delay_timer_mtx );
-      if( read_delay_timer ) read_delay_timer->cancel();
+   void connection::_close( connection* self ) {
+      self->socket_open = false;
+      self->socket.close();
+      self->flush_queues();
+      self->connecting = false;
+      self->syncing = false;
+      if( self->last_req ) {
+         my_impl->dispatcher->retry_fetch( self->shared_from_this() );
+      }
+      self->reset();
+      self->sent_handshake_count = 0;
+      self->last_handshake_recv = handshake_message();
+      self->last_handshake_sent = handshake_message();
+      my_impl->sync_master->reset_lib_num( nullptr );
+      fc_dlog( logger, "canceling wait on ${p}", ("p", self->peer_name()) );
+      self->cancel_wait();
+
+      std::lock_guard<std::mutex> g( self->read_delay_timer_mtx );
+      self->read_delay_timer.cancel();
    }
 
    void connection::blk_send_branch() {
@@ -985,56 +994,36 @@ struct msg_handler : public fc::visitor<void> {
    void connection::do_queue_write(int priority) {
       if( !buffer_queue.ready_to_send() )
          return;
-      connection_wptr c(shared_from_this());
-      if(!socket->is_open()) {
-         fc_elog(logger,"socket not open to ${p}",("p",peer_name()));
-         close();
-         return;
-      }
+      connection_ptr c(shared_from_this());
+
       std::vector<boost::asio::const_buffer> bufs;
       buffer_queue.fill_out_buffer( bufs );
 
-      boost::asio::async_write(*socket, bufs, [c, priority]( boost::system::error_code ec, std::size_t w ) {
-         app().post(priority, [c, priority, ec, w]() {
+      boost::asio::async_write( socket, bufs,
+            boost::asio::bind_executor( strand, [c, priority]( boost::system::error_code ec, std::size_t w ) {
             try {
-               auto conn = c.lock();
-               if(!conn)
-                  return;
+               c->buffer_queue.out_callback( ec, w );
 
-               conn->buffer_queue.out_callback( ec, w );
-
-               if(ec) {
-                  string pname = conn ? conn->peer_name() : "no connection name";
-                  if( ec.value() != boost::asio::error::eof) {
-                     fc_elog( logger, "Error sending to peer ${p}: ${i}", ("p",pname)("i", ec.message()) );
+               if( ec ) {
+                  if( ec.value() != boost::asio::error::eof ) {
+                     fc_elog( logger, "Error sending to peer ${p}: ${i}", ("p", c->peer_name())( "i", ec.message() ) );
+                  } else {
+                     fc_wlog( logger, "connection closure detected on write to ${p}", ("p", c->peer_name()) );
                   }
-                  else {
-                     fc_wlog( logger, "connection closure detected on write to ${p}",("p",pname) );
-                  }
-                  conn->close();
+                  c->close();
                   return;
                }
-               conn->buffer_queue.clear_out_queue();
-               conn->enqueue_sync_block();
-               conn->do_queue_write( priority );
+               c->buffer_queue.clear_out_queue();
+               c->enqueue_sync_block();
+               c->do_queue_write( priority );
+            } catch( const std::exception& ex ) {
+               fc_elog( logger, "Exception in do_queue_write to ${p} ${s}", ("p", c->peer_name())( "s", ex.what() ) );
+            } catch( const fc::exception& ex ) {
+               fc_elog( logger, "Exception in do_queue_write to ${p} ${s}", ("p", c->peer_name())( "s", ex.to_string() ) );
+            } catch( ... ) {
+               fc_elog( logger, "Exception in do_queue_write to ${p}", ("p", c->peer_name()) );
             }
-            catch(const std::exception &ex) {
-               auto conn = c.lock();
-               string pname = conn ? conn->peer_name() : "no connection name";
-               fc_elog( logger,"Exception in do_queue_write to ${p} ${s}", ("p",pname)("s",ex.what()) );
-            }
-            catch(const fc::exception &ex) {
-               auto conn = c.lock();
-               string pname = conn ? conn->peer_name() : "no connection name";
-               fc_elog( logger,"Exception in do_queue_write to ${p} ${s}", ("p",pname)("s",ex.to_string()) );
-            }
-            catch(...) {
-               auto conn = c.lock();
-               string pname = conn ? conn->peer_name() : "no connection name";
-               fc_elog( logger,"Exception in do_queue_write to ${p}", ("p",pname) );
-            }
-         });
-      });
+      }));
    }
 
    void connection::cancel_sync(go_away_reason reason) {
@@ -1138,20 +1127,15 @@ struct msg_handler : public fc::visitor<void> {
                                     bool trigger_send, int priority, go_away_reason close_after_send,
                                     bool to_sync_queue)
    {
-      connection_wptr weak_this = shared_from_this();
+      connection_ptr self = shared_from_this();
       queue_write(send_buffer,trigger_send, priority,
-                  [weak_this, close_after_send](boost::system::error_code ec, std::size_t ) {
-                     connection_ptr conn = weak_this.lock();
-                     if (conn) {
+                  [conn{std::move(self)}, close_after_send](boost::system::error_code ec, std::size_t ) {
                         if (close_after_send != no_reason) {
                            fc_elog( logger, "sent a go away message: ${r}, closing connection to ${p}",
                                     ("r", reason_str(close_after_send))("p", conn->peer_name()) );
                            conn->close();
                            return;
                         }
-                     } else {
-                        fc_wlog(logger, "connection expired before enqueued net_message called callback!");
-                     }
                   },
                   to_sync_queue);
    }
@@ -1159,16 +1143,15 @@ struct msg_handler : public fc::visitor<void> {
    // thread safe
    void connection::cancel_wait() {
       std::lock_guard<std::mutex> g( response_expected_timer_mtx );
-      if (response_expected_timer)
-         response_expected_timer->cancel();
+      response_expected_timer.cancel();
    }
 
    // thread safe
    void connection::sync_wait() {
       connection_wptr c(shared_from_this());
       std::lock_guard<std::mutex> g( response_expected_timer_mtx );
-      response_expected_timer->expires_from_now( my_impl->resp_expected_period);
-      response_expected_timer->async_wait( [c]( boost::system::error_code ec ) {
+      response_expected_timer.expires_from_now( my_impl->resp_expected_period);
+      response_expected_timer.async_wait( [c]( boost::system::error_code ec ) {
          app().post(priority::low, [c, ec]() {
             connection_ptr conn = c.lock();
             if (!conn) {
@@ -1185,8 +1168,8 @@ struct msg_handler : public fc::visitor<void> {
    void connection::fetch_wait() {
       connection_wptr c(shared_from_this());
       std::lock_guard<std::mutex> g( response_expected_timer_mtx );
-      response_expected_timer->expires_from_now( my_impl->resp_expected_period);
-      response_expected_timer->async_wait( [c]( boost::system::error_code ec ) {
+      response_expected_timer.expires_from_now( my_impl->resp_expected_period);
+      response_expected_timer.async_wait( [c]( boost::system::error_code ec ) {
          app().post(priority::low, [c, ec]() {
             connection_ptr conn = c.lock();
             if (!conn) {
@@ -1942,13 +1925,10 @@ struct msg_handler : public fc::visitor<void> {
       auto current_endpoint = *endpoint_itr;
       ++endpoint_itr;
       c->connecting = true;
-      connection_wptr weak_conn = c;
-      c->socket->async_connect( current_endpoint, [weak_conn, endpoint_itr, this]( const boost::system::error_code& err ) {
-         app().post( priority::low, [weak_conn, endpoint_itr, this, err]() {
-            auto c = weak_conn.lock();
-            if( !c ) return;
-            if( !err && c->socket->is_open()) {
-               if( start_session( c )) {
+      c->socket.async_connect( current_endpoint,
+            boost::asio::bind_executor( c->strand, [c, endpoint_itr, this]( const boost::system::error_code& err ) {
+            if( !err && c->socket.is_open()) {
+               if( c->start_session() ) {
                   c->send_handshake();
                }
             } else {
@@ -1961,42 +1941,18 @@ struct msg_handler : public fc::visitor<void> {
                   c->close();
                }
             }
-         } );
-      } );
+      } ) );
    }
-
-   bool net_plugin_impl::start_session(const connection_ptr& con) {
-      boost::asio::ip::tcp::no_delay nodelay( true );
-      boost::system::error_code ec;
-      con->socket->set_option( nodelay, ec );
-      if (ec) {
-         fc_elog( logger, "connection failed to ${peer}: ${error}", ( "peer", con->peer_name())("error",ec.message()) );
-         con->connecting = false;
-         con->close();
-         return false;
-      } else {
-         con->strand.post( [this, con]() {
-            con->start();
-            start_read_message( con );
-         });
-         ++started_sessions;
-         return true;
-         // for now, we can just use the application main loop.
-         //     con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
-         //     con->writeloop_complete = bf::async( [=](){ write_loop con ); } );
-      }
-   }
-
 
    void net_plugin_impl::start_listen_loop() {
-      auto new_socket = std::make_shared<tcp::socket>( std::ref( *server_ioc ) );
-      acceptor->async_accept( *new_socket, [new_socket, this, ioc = server_ioc]( boost::system::error_code ec ) {
-         // called from thread_pool threads, new_socket not shared yet
+      connection_ptr new_connection = std::make_shared<connection>();
+      acceptor->async_accept( new_connection->socket,
+            boost::asio::bind_executor( new_connection->strand, [new_connection, this]( boost::system::error_code ec ) {
          if( !ec ) {
             uint32_t visitors = 0;
             uint32_t from_addr = 0;
             boost::system::error_code rec;
-            const auto& paddr_add = new_socket->remote_endpoint( rec ).address();
+            const auto& paddr_add = new_connection->socket.remote_endpoint( rec ).address();
             string paddr_str;
             if( rec ) {
                fc_elog( logger, "Error getting remote endpoint: ${m}", ("m", rec.message()) );
@@ -2015,8 +1971,7 @@ struct msg_handler : public fc::visitor<void> {
                }
                g.unlock();
                if( from_addr < max_nodes_per_host && (max_client_count == 0 || visitors < max_client_count) ) {
-                  connection_ptr new_connection = std::make_shared<connection>( new_socket );
-                  if( start_session( new_connection ) ) {
+                  if( new_connection->start_session() ) {
                      g.lock();
                      connections.insert( new_connection );
                      g.unlock();
@@ -2029,7 +1984,8 @@ struct msg_handler : public fc::visitor<void> {
                   } else {
                      fc_elog( logger, "Error max_client_count ${m} exceeded", ("m", max_client_count) );
                   }
-                  new_socket->close(); // new_socket never associated with a connection
+                  // new_connection never added to connections and start_session not called, lifetime will end
+                  new_connection->socket.close();
                }
             }
          } else {
@@ -2048,16 +2004,13 @@ struct msg_handler : public fc::visitor<void> {
             }
          }
          start_listen_loop();
-      });
+      }));
    }
 
    // only called from strand thread
    void net_plugin_impl::start_read_message(const connection_ptr& conn) {
 
       try {
-         if(!conn->socket) {
-            return;
-         }
          connection_wptr weak_conn = conn;
 
          std::size_t minimum_read =
@@ -2068,7 +2021,7 @@ struct msg_handler : public fc::visitor<void> {
             const size_t max_socket_read_watermark = 4096;
             std::size_t socket_read_watermark = std::min<std::size_t>(minimum_read, max_socket_read_watermark);
             boost::asio::socket_base::receive_low_watermark read_watermark_opt(socket_read_watermark);
-            conn->socket->set_option(read_watermark_opt);
+            conn->socket.set_option(read_watermark_opt);
          }
 
          auto completion_handler = [minimum_read](boost::system::error_code ec, std::size_t bytes_transferred) -> std::size_t {
@@ -2098,19 +2051,14 @@ struct msg_handler : public fc::visitor<void> {
                 reads_in_flight > 2*def_max_reads_in_flight   ||
                   trx_in_progress_size > 2*def_max_trx_in_progress_size )
             {
-               fc_wlog( logger, "queues over full, giving up on connection" );
-               app().post( priority::medium, [weak_conn]() {
-                  auto conn = weak_conn.lock();
-                  if( !conn ) return;
-                  fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
-                  conn->close();
-               });
+               fc_elog( logger, "queues over full, giving up on connection, closing connection to: ${p}",
+                        ("p", conn->peer_name()) );
+               conn->close();
                return;
             }
             std::lock_guard<std::mutex> g( conn->read_delay_timer_mtx );
-            if( !conn->read_delay_timer ) return;
-            conn->read_delay_timer->expires_from_now( def_read_delay_for_full_write_queue );
-            conn->read_delay_timer->async_wait(
+            conn->read_delay_timer.expires_from_now( def_read_delay_for_full_write_queue );
+            conn->read_delay_timer.async_wait(
                   boost::asio::bind_executor(conn->strand, [this, weak_conn]( boost::system::error_code ) {
                auto conn = weak_conn.lock();
                if( !conn ) return;
@@ -2120,15 +2068,10 @@ struct msg_handler : public fc::visitor<void> {
          }
 
          ++conn->reads_in_flight;
-         boost::asio::async_read(*conn->socket,
+         boost::asio::async_read( conn->socket,
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
             boost::asio::bind_executor( conn->strand,
-            [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
-               auto conn = weak_conn.lock();
-               if (!conn) {
-                  return;
-               }
-
+            [this, conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
                --conn->reads_in_flight;
                bool close_connection = false;
 
@@ -2199,23 +2142,13 @@ struct msg_handler : public fc::visitor<void> {
                }
 
                if( close_connection ) {
-                  app().post( priority::medium, [weak_conn]() {
-                     auto conn = weak_conn.lock();
-                     if( !conn ) return;
-                     fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
-                     conn->close();
-                  });
+                  fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
+                  conn->close();
                }
          }));
       } catch (...) {
-         fc_elog( logger, "Undefined exception in start_read_message" );
-         connection_wptr weak_conn = conn;
-         app().post( priority::medium, [weak_conn]() {
-            auto conn = weak_conn.lock();
-            if( !conn ) return;
-            fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
-            conn->close();
-         });
+         fc_elog( logger, "Undefined exception in start_read_message, closing connection to: ${p}", ("p", conn->peer_name()) );
+         conn->close();
       }
    }
 
@@ -2968,7 +2901,6 @@ struct msg_handler : public fc::visitor<void> {
          my->resp_expected_period = def_resp_expected_wait;
          my->max_client_count = options.at( "max-clients" ).as<int>();
          my->max_nodes_per_host = options.at( "p2p-max-nodes-per-host" ).as<int>();
-         my->started_sessions = 0;
 
          my->use_socket_read_watermark = options.at( "use-socket-read-watermark" ).as<bool>();
 
@@ -3131,6 +3063,9 @@ struct msg_handler : public fc::visitor<void> {
          if( my->server_ioc_work )
             my->server_ioc_work->reset();
 
+         if( my->server_ioc )
+            my->server_ioc->stop();
+
          {
             std::lock_guard<std::mutex> g( my->connector_check_timer_mtx );
             if( my->connector_check_timer )
@@ -3146,22 +3081,16 @@ struct msg_handler : public fc::visitor<void> {
          }
 
          my->done = true;
-         if( my->acceptor ) {
-            fc_ilog( logger, "close acceptor" );
-            my->acceptor->cancel();
-            my->acceptor->close();
-
-            fc_ilog( logger, "close ${s} connections",( "s",my->connections.size()) );
+         {
+            fc_ilog( logger, "close ${s} connections", ("s", my->connections.size()) );
             std::lock_guard<std::mutex> g( my->connections_mtx );
             for( auto& con : my->connections ) {
-               fc_dlog( logger, "close: ${p}", ("p",con->peer_name()) );
+               fc_dlog( logger, "close: ${p}", ("p", con->peer_name()) );
                con->close();
             }
             my->connections.clear();
          }
 
-         if( my->server_ioc )
-            my->server_ioc->stop();
          if( my->thread_pool ) {
             my->thread_pool->join();
             my->thread_pool->stop();
