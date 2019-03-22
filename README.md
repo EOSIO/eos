@@ -26,7 +26,11 @@ Block.one is neither launching nor operating any initial public blockchains base
 
 There is no public testnet running currently.
 
-**If you have previously installed EOSIO, please run the `eosio_uninstall` script (it is in the directory where you cloned EOSIO) before downloading and using the binary releases.**
+---
+
+**If you used our build scripts to install eosio, [please be sure to uninstall](#build-script-uninstall) before using our packages.**
+
+---
 
 #### Mac OS X Brew Install
 ```sh
@@ -37,6 +41,7 @@ $ brew install eosio
 ```sh
 $ brew remove eosio
 ```
+
 #### Ubuntu 18.04 Debian Package Install
 ```sh
 $ wget https://github.com/eosio/eos/releases/download/v1.6.0/eosio_1.7.0-rc1-ubuntu-18.04_amd64.deb
@@ -69,6 +74,13 @@ $ sudo yum install ./eosio-1.7.0-rc1.fc27.x86_64.rpm
 ```sh
 $ sudo yum remove eosio.cdt
 ```
+
+#### Build Script Uninstall
+
+If you have previously installed EOSIO using build scripts, you have two options (neither impact your data directory by default):
+
+1. `./scripts/eosio_uninstall.sh` - Will uninstall eosio, yet leave dependencies (you can use --full to delete your data directory).
+2. `./scripts/full_uninstaller.sh` - Will uninstall eosio and dependencies (can be forced; see script).
 
 ## Supported Operating Systems
 EOSIO currently supports the following operating systems:  
