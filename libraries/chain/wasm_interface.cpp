@@ -58,6 +58,30 @@ namespace eosio { namespace chain {
       my->get_instantiated_module(code_id, code, context.trx_context)->apply(context);
    }
 
+   void wasm_interface::account_code_change(const digest_type& from, const digest_type& to, const uint32_t pending_block_num) {
+      if(from != digest_type()) {
+         wasm_interface_impl::wasm_cache_index::iterator it = my->wasm_instantiation_cache.find(from);
+         if(it != my->wasm_instantiation_cache.end())
+            my->wasm_instantiation_cache.modify(it, [&pending_block_num](auto& e) {
+               if(!--e.reference_count)
+                  e.last_block_num_referenced = pending_block_num;
+            });
+      }
+      if(to != digest_type()) {
+         auto success = my->wasm_instantiation_cache.emplace(wasm_interface_impl::wasm_cache_entry{to, 1, UINT32_MAX, nullptr});
+         if(!success.second)
+            my->wasm_instantiation_cache.modify(success.first, [](auto& e) {
+               ++e.reference_count;
+               e.last_block_num_referenced = UINT32_MAX;
+            });
+      }
+   }
+
+   void wasm_interface::prune_wasm_cache(const uint32_t through_block_num) {
+      auto& blockidx = my->wasm_instantiation_cache.get<wasm_interface_impl::by_last_block_num>();
+      blockidx.erase(blockidx.begin(), blockidx.upper_bound(through_block_num));
+   }
+
    void wasm_interface::exit() {
       my->runtime_interface->immediately_exit_currently_running_module();
    }

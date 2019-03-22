@@ -62,6 +62,12 @@ namespace eosio { namespace chain {
          //validates code -- does a WASM validation pass and checks the wasm against EOSIO specific constraints
          static void validate(const controller& control, const bytes& code);
 
+         //indicate when code has changed on an account, effectively reducing the reference count on
+         //the old one and increasing the reference count on the new one
+         void account_code_change(const digest_type& from, const digest_type& to, const uint32_t pending_block_num);
+
+         void prune_wasm_cache(const uint32_t through_block_num);
+
          //Calls apply or error on a given code
          void apply(const digest_type& code_id, const shared_string& code, apply_context& context);
 

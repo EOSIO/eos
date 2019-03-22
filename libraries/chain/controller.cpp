@@ -295,6 +295,8 @@ struct controller_impl {
          }
          emit(self.irreversible_block, s);
       }
+
+      wasmif.prune_wasm_cache(s->block_num);
    }
 
    void replay(std::function<bool()> shutdown) {

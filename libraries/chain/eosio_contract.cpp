@@ -150,6 +150,8 @@ void apply_eosio_setcode(apply_context& context) {
 
    EOS_ASSERT( account.code_version != code_id, set_exact_code, "contract is already running this version of code" );
 
+   context.control.get_wasm_interface().account_code_change(account.code_version, code_id, context.control.head_block_num());
+
    db.modify( account, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       // TODO: update setcode message to include the hash, then validate it in validate
