@@ -4,6 +4,7 @@
  */
 #include <eosio/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
 #include <fc/variant.hpp>
@@ -94,6 +95,10 @@ struct txn_test_gen_plugin_impl {
    uint64_t _txcount = 0;
 
    int _remain = 0;
+
+   std::string cached_salt;
+   uint64_t cached_period;
+   uint64_t cached_batch_size;
 
    void push_next_transaction(const std::shared_ptr<std::vector<signed_transaction>>& trxs, size_t index, const std::function<void(const fc::exception_ptr&)>& next ) {
       chain_plugin& cp = app().get_plugin<chain_plugin>();
@@ -321,6 +326,9 @@ struct txn_test_gen_plugin_impl {
          throw fc::exception(fc::invalid_operation_exception_code);
 
       running = true;
+      cached_salt = salt;
+      cached_period = period;
+      cached_batch_size = batch_size;
 
       controller& cc = app().get_plugin<chain_plugin>().chain();
       auto abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
@@ -359,7 +367,15 @@ struct txn_test_gen_plugin_impl {
          send_transaction([this](const fc::exception_ptr& e){
             if (e) {
                elog("pushing transaction failed: ${e}", ("e", e->to_detail_string()));
-               arm_timer(timer.expires_at());
+               stop_generation();
+               auto peers_conn = app().get_plugin<net_plugin>().connections();
+               for(const auto c : peers_conn){
+                   app().get_plugin<net_plugin>().disconnect(c.peer);
+               }
+               for(const auto c : peers_conn){
+                   app().get_plugin<net_plugin>().connect(c.peer);
+               }
+               start_generation(cached_salt,cached_period,cached_batch_size);
             } else {
                arm_timer(timer.expires_at());
             }
