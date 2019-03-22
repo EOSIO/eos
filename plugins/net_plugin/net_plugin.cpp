@@ -458,33 +458,44 @@ namespace eosio {
       static void populate(handshake_message &hello);
    };
 
+   // thread safe
    class queued_buffer : boost::noncopyable {
    public:
       void clear_write_queue() {
+         std::lock_guard<std::mutex> g( _mtx );
          _write_queue.clear();
          _sync_write_queue.clear();
          _write_queue_size = 0;
       }
 
       void clear_out_queue() {
+         std::lock_guard<std::mutex> g( _mtx );
          while ( _out_queue.size() > 0 ) {
             _out_queue.pop_front();
          }
       }
 
-      // thread safe
-      uint32_t write_queue_size() const { return _write_queue_size; }
+      uint32_t write_queue_size() const {
+         std::lock_guard<std::mutex> g( _mtx );
+         return _write_queue_size;
+      }
 
-      bool is_out_queue_empty() const { return _out_queue.empty(); }
+      bool is_out_queue_empty() const {
+         std::lock_guard<std::mutex> g( _mtx );
+         return _out_queue.empty();
+      }
 
       bool ready_to_send() const {
+         std::lock_guard<std::mutex> g( _mtx );
          // if out_queue is not empty then async_write is in progress
          return ((!_sync_write_queue.empty() || !_write_queue.empty()) && _out_queue.empty());
       }
 
+      // @param callback must not callback into queued_buffer
       bool add_write_queue( const std::shared_ptr<vector<char>>& buff,
                             std::function<void( boost::system::error_code, std::size_t )> callback,
                             bool to_sync_queue ) {
+         std::lock_guard<std::mutex> g( _mtx );
          if( to_sync_queue ) {
             _sync_write_queue.push_back( {buff, callback} );
          } else {
@@ -498,6 +509,7 @@ namespace eosio {
       }
 
       void fill_out_buffer( std::vector<boost::asio::const_buffer>& bufs ) {
+         std::lock_guard<std::mutex> g( _mtx );
          if( _sync_write_queue.size() > 0 ) { // always send msgs from sync_write_queue first
             fill_out_buffer( bufs, _sync_write_queue );
          } else { // postpone real_time write_queue if sync queue is not empty
@@ -507,6 +519,7 @@ namespace eosio {
       }
 
       void out_callback( boost::system::error_code ec, std::size_t w ) {
+         std::lock_guard<std::mutex> g( _mtx );
          for( auto& m : _out_queue ) {
             m.callback( ec, w );
          }
@@ -531,7 +544,8 @@ namespace eosio {
          std::function<void( boost::system::error_code, std::size_t )> callback;
       };
 
-      std::atomic<uint32_t> _write_queue_size{0};
+      mutable std::mutex  _mtx;
+      uint32_t            _write_queue_size{0};
       deque<queued_write> _write_queue;
       deque<queued_write> _sync_write_queue; // sync_write_queue will be sent first
       deque<queued_write> _out_queue;
@@ -918,7 +932,7 @@ struct msg_handler : public fc::visitor<void> {
    }
 
    void connection::close() {
-      strand.dispatch( [self = shared_from_this()]() {
+      strand.post( [self = shared_from_this()]() {
          connection::_close( self.get() );
       });
    }
@@ -1051,12 +1065,15 @@ struct msg_handler : public fc::visitor<void> {
       syncing = false;
    }
 
+   // thread safe
    void connection::send_handshake() {
-      handshake_initializer::populate(last_handshake_sent);
-      last_handshake_sent.generation = ++sent_handshake_count;
-      fc_dlog(logger, "Sending handshake generation ${g} to ${ep}",
-              ("g",last_handshake_sent.generation)("ep", peer_name()));
-      enqueue(last_handshake_sent);
+      app().post( priority::low, [c = shared_from_this()]() {
+         handshake_initializer::populate( c->last_handshake_sent );
+         c->last_handshake_sent.generation = ++c->sent_handshake_count;
+         fc_dlog( logger, "Sending handshake generation ${g} to ${ep}",
+                  ("g", c->last_handshake_sent.generation)( "ep", c->peer_name() ) );
+         c->enqueue( c->last_handshake_sent );
+      });
    }
 
    void connection::send_time() {
@@ -1092,6 +1109,7 @@ struct msg_handler : public fc::visitor<void> {
       }
    }
 
+   // called from connection strand and application thread
    void connection::do_queue_write(int priority) {
       if( !buffer_queue.ready_to_send() )
          return;
@@ -1101,6 +1119,7 @@ struct msg_handler : public fc::visitor<void> {
       buffer_queue.fill_out_buffer( bufs );
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       boost::asio::async_write(*socket, bufs,
             boost::asio::bind_executor(strand, [c, priority]( boost::system::error_code ec, std::size_t w ) {
          app().post(priority, [c, priority, ec, w]() {
@@ -1108,6 +1127,11 @@ struct msg_handler : public fc::visitor<void> {
       boost::asio::async_write( socket, bufs,
             boost::asio::bind_executor( strand, [c, priority]( boost::system::error_code ec, std::size_t w ) {
 >>>>>>> Move socket ownership into connection.
+=======
+      strand.dispatch( [c{std::move(c)}, bufs{std::move(bufs)}, priority]() {
+         boost::asio::async_write( c->socket, bufs,
+            boost::asio::bind_executor( c->strand, [c, priority]( boost::system::error_code ec, std::size_t w ) {
+>>>>>>> Make queued_buffer thread safe
             try {
                c->buffer_queue.out_callback( ec, w );
 
@@ -1131,10 +1155,15 @@ struct msg_handler : public fc::visitor<void> {
                fc_elog( logger, "Exception in do_queue_write to ${p}", ("p", c->peer_name()) );
             }
 <<<<<<< HEAD
+<<<<<<< HEAD
          });
 =======
 >>>>>>> Move socket ownership into connection.
       }));
+=======
+         }));
+      });
+>>>>>>> Make queued_buffer thread safe
    }
 
    void connection::cancel_sync(go_away_reason reason) {
@@ -3188,8 +3217,8 @@ struct msg_handler : public fc::visitor<void> {
       return chain::signature_type();
    }
 
-   void
-   handshake_initializer::populate( handshake_message &hello) {
+   // call from main application thread
+   void handshake_initializer::populate( handshake_message& hello ) {
       hello.network_version = net_version_base + net_version;
       hello.chain_id = my_impl->chain_id;
       hello.node_id = my_impl->node_id;
