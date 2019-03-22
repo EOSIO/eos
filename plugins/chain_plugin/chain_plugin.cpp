@@ -1344,9 +1344,6 @@ read_only::get_activated_protocol_features( const read_only::get_activated_proto
       return itr;
    };
 
-   wlog( "lower_bound_value = ${value}", ("value", lower_bound_value) );
-   wlog( "upper_bound_value = ${value}", ("value", upper_bound_value) );
-
    auto lower = ( params.search_by_block_num ? pfm.lower_bound( lower_bound_value )
                                              : pfm.at_activation_ordinal( lower_bound_value ) );
 
