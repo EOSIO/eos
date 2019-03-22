@@ -22,14 +22,6 @@ killWallet=not dontKill
 keepLogs=args.keep_logs
 
 # The following test case will test the Protocol Feature JSON reader of the blockchain
-def modifyPFSubjectiveRestrictions(nodeId, featureCodename, subjectiveRestrictions):
-    jsonPath = join(Cluster.getConfigDir(nodeId), "protocol_features", "BUILTIN-{}.json".format(featureCodename))
-    protocolFeatureJson = []
-    with open(jsonPath) as f:
-        protocolFeatureJson = json.load(f)
-    protocolFeatureJson["subjective_restrictions"] = subjectiveRestrictions
-    with open(jsonPath, "w") as f:
-        json.dump(protocolFeatureJson, f, indent=2)
 
 def restartNode(node: Node, nodeId, chainArg=None, addOrSwapFlags=None):
     if not node.killed:
@@ -58,7 +50,7 @@ try:
         "preactivation_required": True,
         "enabled": False
     }
-    modifyPFSubjectiveRestrictions("bios", "PREACTIVATE_FEATURE", newSubjectiveRestrictions)
+    biosNode.modifyBuiltinPFSubjRestrictions("bios", "PREACTIVATE_FEATURE", newSubjectiveRestrictions)
     restartNode(biosNode, "bios")
 
     supportedProtocolFeatureDict = biosNode.getSupportedProtocolFeatureDict()

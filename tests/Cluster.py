@@ -144,8 +144,8 @@ class Cluster(object):
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", p2pPlugin="net", delay=1, onlyBios=False, dontBootstrap=False,
-               totalProducers=None, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None, pfSetupPolicy = PFSetupPolicy.FULL, alternateVersionLabelsFile=None,
-               associatedNodeLabels=None):
+               totalProducers=None, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
+               pfSetupPolicy=PFSetupPolicy.FULL, alternateVersionLabelsFile=None, associatedNodeLabels=None):
         """Launch cluster.
         pnodes: producer nodes count
         totalNodes: producer + non-producer nodes count
@@ -161,6 +161,7 @@ class Cluster(object):
           A value of false uses manual bootstrapping in this script, which does not do things like stake votes for producers.
         specificExtraNodeosArgs: dictionary of arguments to pass to a specific node (via --specific-num and
                                  --specific-nodeos flags on launcher), example: { "5" : "--plugin eosio::test_control_api_plugin" }
+        onlySetProds: Stop the bootstrap process after setting the producers (only if useBiosBootFile is false)
         pfSetupPolicy: determine the protocol feature setup policy (none, preactivate_feature_only, or full)
         alternateVersionLabelsFile: Supply an alternate version labels file to use with associatedNodeLabels.
         associatedNodeLabels: Supply a dictionary of node numbers to use an alternate label for a specific node.
@@ -420,7 +421,7 @@ class Cluster(object):
 
         Utils.Print("Bootstrap cluster.")
         if onlyBios or not useBiosBootFile:
-            self.biosNode=self.bootstrap(biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios)
+            self.biosNode=self.bootstrap(biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios, onlySetProds)
         else:
             self.useBiosBootFile=True
             self.biosNode=self.bios_bootstrap(biosNode, totalNodes, pfSetupPolicy)
@@ -998,7 +999,7 @@ class Cluster(object):
 
         return biosNode
 
-    def bootstrap(self, biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios=False):
+    def bootstrap(self, biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios=False, onlySetProds=False):
         """Create 'prodCount' init accounts and deposits 10000000000 SYS in each. If prodCount is -1 will initialize all possible producers.
         Ensure nodes are inter-connected prior to this call. One way to validate this will be to check if every node has block 1."""
 
@@ -1133,6 +1134,8 @@ class Cluster(object):
             if not ret:
                 Utils.Print("ERROR: Block production handover failed.")
                 return None
+
+        if onlySetProds: return biosNode
 
         eosioTokenAccount=copy.deepcopy(eosioAccount)
         eosioTokenAccount.name="eosio.token"

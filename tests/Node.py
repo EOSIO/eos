@@ -1303,7 +1303,8 @@ class Node(object):
 
     # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
-    def relaunch(self, nodeId, chainArg, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None, cachePopen=False):
+    # If nodeosPath is equal to None, it will use the existing nodeos path
+    def relaunch(self, nodeId, chainArg, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None, cachePopen=False, nodeosPath=None):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1312,12 +1313,14 @@ class Node(object):
         if Utils.Debug: Utils.Print("Launching node process, Id: {}".format(nodeId))
 
         cmdArr=[]
-        myCmd=self.cmd
+        splittedCmd=self.cmd.split()
+        if nodeosPath: splittedCmd[0] = nodeosPath
+        myCmd="".join(splittedCmd)
         toAddOrSwap=copy.deepcopy(addOrSwapFlags) if addOrSwapFlags is not None else {}
         if not newChain:
             skip=False
             swapValue=None
-            for i in self.cmd.split():
+            for i in splittedCmd:
                 Utils.Print("\"%s\"" % (i))
                 if skip:
                     skip=False
@@ -1338,9 +1341,7 @@ class Node(object):
             for k,v in toAddOrSwap.items():
                 cmdArr.append(k)
                 cmdArr.append(v)
-
             myCmd=" ".join(cmdArr)
-
         if nodeId == "bios":
             dataDir="var/lib/node_bios"
         else:
@@ -1466,13 +1467,13 @@ class Node(object):
         currentHead = self.getHeadBlockNum()
         def isHeadAdvancing():
             return self.getHeadBlockNum() > currentHead
-        Utils.waitForBool(isHeadAdvancing, timeout)
+        return Utils.waitForBool(isHeadAdvancing, timeout)
 
-    def waitForLibToAdvance(self, timeout=6):
+    def waitForLibToAdvance(self, timeout=30):
         currentLib = self.getIrreversibleBlockNum()
         def isLibAdvancing():
             return self.getIrreversibleBlockNum() > currentLib
-        Utils.waitForBool(isLibAdvancing, timeout)
+        return Utils.waitForBool(isLibAdvancing, timeout)
 
     # Require producer_api_plugin
     def activatePreactivateFeature(self):
@@ -1522,3 +1523,17 @@ class Node(object):
     def getActivatedProtocolFeatures(self):
         latestBlockHeaderState = self.getLatestBlockHeaderState()
         return latestBlockHeaderState["activated_protocol_features"]["protocol_features"]
+
+    def modifyBuiltinPFSubjRestrictions(self, nodeId, featureCodename, subjectiveRestriction={}):
+        from Cluster import Cluster
+        jsonPath = os.path.join(Cluster.getConfigDir(nodeId),
+                                "protocol_features",
+                                "BUILTIN-{}.json".format(featureCodename))
+        protocolFeatureJson = []
+        with open(jsonPath) as f:
+            protocolFeatureJson = json.load(f)
+        protocolFeatureJson["subjective_restrictions"] = {
+            **protocolFeatureJson["subjective_restrictions"], **subjectiveRestriction
+        }
+        with open(jsonPath, "w") as f:
+            json.dump(protocolFeatureJson, f, indent=2)
