@@ -16,6 +16,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include <eosio/chain/apply_context.hpp>
+#include <eosio/chain/resource_limits.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -59,17 +60,23 @@ namespace cyberway { namespace chaindb {
     driver_interface::~driver_interface() = default;
 
     namespace { namespace _detail {
-        std::unique_ptr<driver_interface> create_driver(chaindb_type t, journal& jrnl, string p) {
-            switch(t) {
+        std::unique_ptr<driver_interface> create_driver(
+            chaindb_type type, journal& jrnl, string address, string sys_name
+        ) {
+            if (sys_name.empty()) {
+                sys_name = names::system_code;
+            }
+
+            switch(type) {
                 case chaindb_type::MongoDB:
-                    return std::make_unique<mongodb_driver>(jrnl, std::move(p));
+                    return std::make_unique<mongodb_driver>(jrnl, std::move(address), std::move(sys_name));
 
                 default:
                     break;
             }
             CYBERWAY_ASSERT(
                 false, unknown_connection_type_exception,
-                "Invalid type ${type} of ChainDB connection", ("type", t));
+                "Invalid type ${type} of ChainDB connection", ("type", type));
         }
 
         variant get_pk_value(const table_info& table, const primary_key_t pk) {
@@ -104,6 +111,9 @@ namespace cyberway { namespace chaindb {
     } } // namespace _detail
 
     void ram_payer_info::add_usage(const account_name new_payer, const int64_t delta) const {
+        if (delta < 0 && rl) {
+            rl->add_pending_ram_usage( new_payer, delta );
+        }
         if (!ctx || new_payer.empty() || !delta) return;
 
         const_cast<apply_context&>(*ctx).update_db_usage(new_payer, delta);
@@ -116,8 +126,8 @@ namespace cyberway { namespace chaindb {
         cache_map cache_;
         undo_stack undo_;
 
-        controller_impl_(chaindb_controller& controller, const chaindb_type t, string p)
-        : driver_ptr_(_detail::create_driver(t, journal_, std::move(p))),
+        controller_impl_(chaindb_controller& controller, const chaindb_type t, string address, string sys_name)
+        : driver_ptr_(_detail::create_driver(t, journal_, std::move(address), std::move(sys_name))),
           driver_(*driver_ptr_.get()),
           undo_(controller, driver_, journal_, cache_) {
         }
@@ -177,6 +187,16 @@ namespace cyberway { namespace chaindb {
             auto index = get_index(request);
             auto value = index.abi->to_object(index, key, size);
             return driver_.upper_bound(std::move(index), std::move(value));
+        }
+
+        const cursor_info& lower_bound(const index_request& request, const fc::variant& orders) const {
+            auto index = get_index(request);
+            return driver_.lower_bound(std::move(index), orders);
+        }
+
+        const cursor_info& upper_bound(const index_request& request, const fc::variant& orders) const {
+            auto index = get_index(request);
+            return driver_.upper_bound(std::move(index), orders);
         }
 
         const cursor_info& find(const index_request& request, primary_key_t pk, const char* key, size_t size) const {
@@ -272,6 +292,13 @@ namespace cyberway { namespace chaindb {
             itm.set_object(std::move(obj));
 
             return delta;
+        }
+
+        // From genesis
+        int64_t insert(const table_request& request, primary_key_t pk, variant value, const ram_payer_info& ram) {
+            auto table = get_table(request);
+            auto obj = object_value{{table, pk}, std::move(value)};
+            return insert(table, ram, obj);
         }
 
         // From contracts
@@ -410,8 +437,10 @@ namespace cyberway { namespace chaindb {
             if (itm) return itm->object();
 
             auto obj = driver_.object_by_pk(table, pk);
-            validate_object(table, obj, pk);
-            cache_.emplace(table, obj);
+            if (!obj.value.is_null()) {
+                validate_object(table, obj, pk);
+                cache_.emplace(table, obj);
+            }
             return obj;
         }
 
@@ -569,8 +598,8 @@ namespace cyberway { namespace chaindb {
         }
     }; // class chaindb_controller::controller_impl_
 
-    chaindb_controller::chaindb_controller(const chaindb_type t, string p)
-    : impl_(new controller_impl_(*this, t, std::move(p))) {
+    chaindb_controller::chaindb_controller(const chaindb_type t, string address, string sys_name)
+    : impl_(new controller_impl_(*this, t, std::move(address), std::move(sys_name))) {
     }
 
     chaindb_controller::~chaindb_controller() = default;
@@ -652,6 +681,17 @@ namespace cyberway { namespace chaindb {
         return {info.id, info.pk};
     }
 
+    find_info chaindb_controller::lower_bound(const index_request& request, const fc::variant& orders) const {
+        auto info = impl_->lower_bound(request, orders);
+        return {info.id, info.pk};
+    }
+
+     find_info chaindb_controller::upper_bound(const index_request& request, const fc::variant& orders) const {
+        auto info = impl_->lower_bound(request, orders);
+        return {info.id, info.pk};
+    }
+
+
     find_info chaindb_controller::find(const index_request& request, primary_key_t pk, const char* key, size_t size) {
         const auto& info = impl_->find(request, pk, key, size);
         return {info.id, info.pk};
@@ -728,6 +768,12 @@ namespace cyberway { namespace chaindb {
         return impl_->remove(request, ram, pk);
     }
 
+    int64_t chaindb_controller::insert(
+        const table_request& request, primary_key_t pk, variant data, const ram_payer_info& ram
+    ) {
+         return impl_->insert(request, pk, std::move(data), ram);
+    }
+
     int64_t chaindb_controller::insert(cache_item& itm, variant data, const ram_payer_info& ram) {
         return impl_->insert(itm, std::move(data), ram);
     }
@@ -746,6 +792,10 @@ namespace cyberway { namespace chaindb {
 
     variant chaindb_controller::value_at_cursor(const cursor_request& request) {
         return impl_->object_at_cursor(request).value;
+    }
+
+    object_value chaindb_controller::object_at_cursor(const cursor_request& request) const {
+        return impl_->object_at_cursor(request);
     }
 
     find_info chaindb_controller::opt_find_by_pk(const table_request& request, primary_key_t pk) {

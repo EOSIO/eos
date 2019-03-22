@@ -1,6 +1,29 @@
 #include <cyberway/chaindb/names.hpp>
+#include <boost/algorithm/string.hpp>
 
 namespace cyberway { namespace chaindb {
+
+    string db_name_to_string(const uint64_t& value) {
+        // Copy-paste of eosio::name::to_string(),
+        //     but instead of the symbol '.' the symbol '_' is used
+        static const char* charmap = "_12345abcdefghijklmnopqrstuvwxyz";
+
+        string str(13,'_');
+
+        uint64_t tmp = value;
+
+        str[12] = charmap[tmp & 0x0f];
+        tmp >>= 4;
+
+        for (uint32_t i = 1; i <= 12; ++i) {
+            char c = charmap[tmp & 0x1f];
+            str[12-i] = c;
+            tmp >>= 5;
+        }
+
+        boost::algorithm::trim_right_if( str, [](char c){ return c == '_'; } );
+        return str;
+    }
 
     // name can't contains _ that is why they are used for internal db and key names
 
@@ -33,5 +56,4 @@ namespace cyberway { namespace chaindb {
 
     const string names::asc_order        = "asc";
     const string names::desc_order       = "desc";
-
 } } // namespace cyberway::chaindb

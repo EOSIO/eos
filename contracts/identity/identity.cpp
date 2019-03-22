@@ -6,7 +6,6 @@
 namespace identity {
    using eosio::action_meta;
    using eosio::singleton;
-   using eosio::key256;
    using std::string;
    using std::vector;
 
@@ -121,7 +120,7 @@ namespace identity {
                auto idx = certs.template get_index<N(bytuple)>();
                if (value.confidence) {
                   eosio_assert(value.type.size() <= 32, "certrow::type should be not longer than 32 bytes");
-                  auto itr = idx.lower_bound( certrow::key(value.property, trusted, certifier) );
+                  auto itr = idx.lower_bound( std::make_tuple(value.property, trusted, certifier) );
 
                   if (itr != idx.end() && itr->property == value.property && itr->trusted == trusted && itr->certifier == certifier) {
                      idx.modify(itr, 0, [&](certrow& row) {
@@ -142,7 +141,7 @@ namespace identity {
                         });
                   }
 
-                  auto itr_old = idx.lower_bound( certrow::key(value.property, !trusted, certifier) );
+                  auto itr_old = idx.lower_bound( std::make_tuple(value.property, !trusted, certifier) );
                   if (itr_old != idx.end() && itr_old->property == value.property && itr_old->trusted == !trusted && itr_old->certifier == certifier) {
                      idx.erase(itr_old);
                   }
@@ -157,13 +156,13 @@ namespace identity {
                   }
                } else {
                   bool removed = false;
-                  auto itr = idx.lower_bound( certrow::key(value.property, trusted, certifier) );
+                  auto itr = idx.lower_bound( std::make_tuple(value.property, trusted, certifier) );
                   if (itr != idx.end() && itr->property == value.property && itr->trusted == trusted && itr->certifier == certifier) {
                      idx.erase(itr);
                   } else {
                      removed = true;
                   }
-                  itr = idx.lower_bound( certrow::key(value.property, !trusted, certifier) );
+                  itr = idx.lower_bound( std::make_tuple(value.property, !trusted, certifier) );
                   if (itr != idx.end() && itr->property == value.property && itr->trusted == !trusted && itr->certifier == certifier) {
                      idx.erase(itr);
                   } else {

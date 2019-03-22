@@ -10,7 +10,7 @@ namespace cyberway { namespace chaindb {
 
     class mongodb_driver final: public driver_interface {
     public:
-        mongodb_driver(journal&, const std::string&);
+        mongodb_driver(journal&, string, string);
         ~mongodb_driver();
 
         std::vector<table_def> db_tables(const account_name& code) const override;

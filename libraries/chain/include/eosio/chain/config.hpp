@@ -21,7 +21,7 @@ const static auto default_state_dir_name     = "state";
 const static auto forkdb_filename            = "forkdb.dat";
 const static auto default_state_size            = 1*1024*1024*1024ll;
 const static auto default_state_guard_size      =    128*1024*1024ll;
-
+const static uint64_t default_virtual_ram_limit = 1024ll*1024*1024*64;
 
 const static uint64_t system_account_name    = N(cyber);
 const static uint64_t msig_account_name      = N(cyber.msig);
@@ -31,8 +31,6 @@ const static uint64_t token_account_name     = N(cyber.token);
 const static uint64_t domain_account_name    = N(cyber.domain);
 const static uint64_t govern_account_name    = N(cyber.govern);
 const static uint64_t stake_account_name     = N(cyber.stake);
-// genesis
-const static uint64_t gls_vest_account_name  = N(gls.vesting);
 
 // Active permission of producers account requires greater than 2/3 of the producers to authorize
 const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
@@ -112,7 +110,7 @@ const static uint32_t   default_abi_serializer_max_time_ms = 15*1000; ///< defau
 /**
  *  The number of sequential blocks produced by a single producer
  */
-const static int producer_repetitions = 3;
+const static int producer_repetitions = 1;
 const static int max_producers = 125;
 
 const static size_t maximum_tracked_dpos_confirmations = 1024;     ///<

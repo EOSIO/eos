@@ -124,41 +124,10 @@ namespace eosio { namespace chain { namespace resource_limits {
 
    using usage_accumulator = impl::exponential_moving_average_accumulator<>;
 
-   /**
-    * Every account that authorizes a transaction is billed for the full size of that transaction. This object
-    * tracks the average usage of that account.
-    */
-   struct resource_limits_object : public cyberway::chaindb::object<resource_limits_object_type, resource_limits_object> {
-
-      OBJECT_CTOR(resource_limits_object)
-
-      id_type id;
-      account_name owner;
-      bool pending = false;
-
-      int64_t net_weight = -1;
-      int64_t cpu_weight = -1;
-      int64_t ram_bytes = -1;
-
-   };
-
    struct by_owner;
    struct by_dirty;
 
-   using resource_limits_table = cyberway::chaindb::table_container<
-      resource_limits_object,
-      cyberway::chaindb::indexed_by<
-         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_limits_object, resource_limits_object::id_type, id)>,
-         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_owner>,
-            cyberway::chaindb::composite_key<resource_limits_object,
-               BOOST_MULTI_INDEX_MEMBER(resource_limits_object, bool, pending),
-               BOOST_MULTI_INDEX_MEMBER(resource_limits_object, account_name, owner)
-            >
-         >
-      >
-   >;
-
-   struct resource_usage_object : public cyberway::chaindb::object<resource_usage_object_type, resource_usage_object> {
+   struct resource_usage_object : public chainbase::object<resource_usage_object_type, resource_usage_object> {
       OBJECT_CTOR(resource_usage_object)
 
       id_type id;
@@ -223,10 +192,6 @@ namespace eosio { namespace chain { namespace resource_limits {
       uint64_t pending_net_usage = 0ULL;
       uint64_t pending_cpu_usage = 0ULL;
 
-      uint64_t total_net_weight = 0ULL;
-      uint64_t total_cpu_weight = 0ULL;
-      uint64_t total_ram_bytes = 0ULL;
-
       /**
        * The virtual number of bytes that would be consumed over blocksize_average_window_ms
        * if all blocks were at their maximum virtual size. This is virtual because the
@@ -248,7 +213,9 @@ namespace eosio { namespace chain { namespace resource_limits {
        *  Increases when average_bloc
        */
       uint64_t virtual_cpu_limit = 0ULL;
-
+      
+      //TODO: smoothly increase this value when starting the chain
+      uint64_t virtual_ram_limit = config::default_virtual_ram_limit;
    };
 
    using resource_limits_state_table = cyberway::chaindb::table_container<
@@ -260,19 +227,16 @@ namespace eosio { namespace chain { namespace resource_limits {
 
 } } } /// eosio::chain::resource_limits
 
-CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_limits_object,        eosio::chain::resource_limits::resource_limits_table)
 CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_usage_object,         eosio::chain::resource_limits::resource_usage_table)
 CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_limits_config_object, eosio::chain::resource_limits::resource_limits_config_table)
-CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_limits_state_object,  eosio::chain::resource_limits::resource_limits_state_table)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_limits_state_object, eosio::chain::resource_limits::resource_limits_state_table)
 
-CHAINDB_TAG(eosio::chain::resource_limits::resource_limits_object,        reslimit)
 CHAINDB_TAG(eosio::chain::resource_limits::resource_usage_object,         resusage)
 CHAINDB_TAG(eosio::chain::resource_limits::resource_limits_config_object, resconfig)
 CHAINDB_TAG(eosio::chain::resource_limits::resource_limits_state_object,  resstate)
 
 FC_REFLECT(eosio::chain::resource_limits::usage_accumulator, (last_ordinal)(value_ex)(consumed))
 
-FC_REFLECT(eosio::chain::resource_limits::resource_limits_object, (id)(owner)(pending)(net_weight)(cpu_weight)(ram_bytes))
 FC_REFLECT(eosio::chain::resource_limits::resource_usage_object, (id)(owner)(net_usage)(cpu_usage)(ram_usage))
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (id)(cpu_limit_parameters)(net_limit_parameters)(account_cpu_usage_average_window)(account_net_usage_average_window))
-FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)(average_block_net_usage)(average_block_cpu_usage)(pending_net_usage)(pending_cpu_usage)(total_net_weight)(total_cpu_weight)(total_ram_bytes)(virtual_net_limit)(virtual_cpu_limit))
+FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)(average_block_net_usage)(average_block_cpu_usage)(pending_net_usage)(pending_cpu_usage)(virtual_net_limit)(virtual_cpu_limit)(virtual_ram_limit))

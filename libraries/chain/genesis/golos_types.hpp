@@ -7,9 +7,6 @@
 namespace cyberway { namespace golos {
 
 
-struct gls_shared_str {
-    std::string value;
-};
 struct gls_mapped_str {
     fc::unsigned_int id;
 
@@ -25,7 +22,7 @@ using eosio::chain::share_type;
 
 using account_name_type = gls_mapped_str;//gls_acc_name;
 using shared_permlink   = gls_mapped_str;
-using shared_string     = gls_shared_str;
+using shared_string     = std::string;
 using id_type       = int64_t;
 using digest_type   = fc::sha256;
 using block_id_type = fc::ripemd160;
@@ -92,7 +89,7 @@ struct beneficiary_route_type {
 };
 
 enum bandwidth_type {post, forum, market, custom_json};
-enum delegator_payout_strategy {to_delegator, to_delegated_vesting, _size};
+enum delegator_payout_strategy {to_delegator, to_delegated_vesting};
 enum witness_schedule_type {top19, timeshare, miner, none};
 enum comment_mode {not_set, first_payout, second_payout, archived};
 enum auction_window_reward_destination_type {to_reward_fund, to_curators, to_author};
@@ -108,7 +105,6 @@ struct delegator_vote_interest_rate {
 
 
 FC_REFLECT(cyberway::golos::gls_mapped_str, (id))
-FC_REFLECT(cyberway::golos::gls_shared_str, (value))
 
 FC_REFLECT(cyberway::golos::shared_authority, (weight_threshold)(account_auths)(key_auths))
 FC_REFLECT(cyberway::golos::chain_properties_17, (account_creation_fee)(maximum_block_size)(sbd_interest_rate))

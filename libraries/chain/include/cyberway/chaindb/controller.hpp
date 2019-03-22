@@ -62,7 +62,7 @@ namespace cyberway { namespace chaindb {
         chaindb_controller() = delete;
         chaindb_controller(const chaindb_controller&) = delete;
 
-        chaindb_controller(chaindb_type, string);
+        chaindb_controller(chaindb_type, string, string);
         ~chaindb_controller();
 
         template<typename Object>
@@ -191,6 +191,10 @@ namespace cyberway { namespace chaindb {
 
         find_info lower_bound(const index_request&, const char* key, size_t);
         find_info upper_bound(const index_request&, const char* key, size_t);
+
+        find_info lower_bound(const index_request& request, const fc::variant& orders) const;
+        find_info upper_bound(const index_request& request, const fc::variant& orders) const;
+
         find_info find(const index_request&, primary_key_t, const char* key, size_t);
 
         find_info begin(const index_request&);
@@ -215,12 +219,15 @@ namespace cyberway { namespace chaindb {
         int64_t update(const table_request&, const ram_payer_info&, primary_key_t, const char*, size_t);
         int64_t remove(const table_request&, const ram_payer_info&, primary_key_t);
 
+        int64_t insert(const table_request&, primary_key_t, variant, const ram_payer_info&);
+
         int64_t insert(cache_item&, variant, const ram_payer_info&);
         int64_t update(cache_item&, variant, const ram_payer_info&);
         int64_t remove(cache_item&, const ram_payer_info&);
 
         variant value_by_pk(const table_request& request, primary_key_t pk);
         variant value_at_cursor(const cursor_request& request);
+        object_value object_at_cursor(const cursor_request& request) const;
 
     private:
         struct controller_impl_;

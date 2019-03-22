@@ -1,5 +1,5 @@
 {
-  "version": "eosio::abi/1.0",
+  "version": "cyberway::abi/1.0",
   "types": [{
       "new_type_name": "my_account_name",
       "type": "name"
@@ -27,19 +27,6 @@
       "type": "message"
     }
   ],
-  "tables": [{
-      "name": "msgsent",
-      "type": "messages_count",
-      "index_type": "i64",
-      "key_names" : ["user"],
-      "key_types" : ["my_account_name"]
-    },{
-      "name": "msgreceived",
-      "type": "messages_count",
-      "index_type": "i64",
-      "key_names" : ["user"],
-      "key_types" : ["my_account_name"]
-    }
-  ],
+  "tables": [],
   "abi_extensions": []
 }

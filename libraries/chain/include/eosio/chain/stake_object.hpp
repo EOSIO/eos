@@ -62,6 +62,7 @@ class stake_grant_object : public cyberway::chaindb::object<stake_grant_object_t
     account_name agent_name;
     int16_t pct;
     int64_t share;
+    int64_t granted;
     int16_t break_fee;
     int64_t break_min_own_staked;
     
@@ -82,16 +83,20 @@ using stake_grant_table = cyberway::chaindb::table_container<
         >
     >
 >;
+
+struct stake_purpose_param {
+    symbol_code code;
+    int64_t payout_step_lenght;
+    uint16_t payout_steps_num;
+};
     
 class stake_param_object : public cyberway::chaindb::object<stake_param_object_type, stake_param_object> {
     OBJECT_CTOR(stake_param_object)
     id_type id;
     symbol token_symbol;
-    std::vector<symbol_code> purposes;
+    std::vector<stake_purpose_param> purposes;
     std::vector<uint8_t> max_proxies;
     int64_t frame_length;
-    int64_t payout_step_lenght; //TODO: these parameters should
-    uint16_t payout_steps_num;  //--/--  depend on the purposes
 };
 
 using stake_param_table = cyberway::chaindb::table_container<
@@ -107,6 +112,7 @@ class stake_stat_object : public cyberway::chaindb::object<stake_stat_object_typ
     symbol_code purpose_code;
     symbol_code token_code;
     int64_t total_staked;
+    bool enabled;
     struct by_key {};
 };
 
@@ -146,10 +152,12 @@ FC_REFLECT(eosio::chain::stake_agent_object,
     (proxied)(shares_sum)(own_share)(fee)(min_own_staked)(signing_key))
     
 FC_REFLECT(eosio::chain::stake_grant_object, 
-    (id)(purpose_code)(token_code)(grantor_name)(agent_name)(pct)(share)(break_fee)(break_min_own_staked))
+    (id)(purpose_code)(token_code)(grantor_name)(agent_name)(pct)(share)(granted)(break_fee)(break_min_own_staked))
+    
+FC_REFLECT(eosio::chain::stake_purpose_param, (code)(payout_step_lenght)(payout_steps_num) )
     
 FC_REFLECT(eosio::chain::stake_param_object, 
-    (id)(token_symbol)(purposes)(max_proxies)(frame_length)(payout_step_lenght)(payout_steps_num))
+    (id)(token_symbol)(purposes)(max_proxies)(frame_length))
     
 FC_REFLECT(eosio::chain::stake_stat_object, 
-    (id)(purpose_code)(token_code)(total_staked))
+    (id)(purpose_code)(token_code)(total_staked)(enabled))

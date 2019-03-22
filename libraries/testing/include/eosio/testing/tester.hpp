@@ -65,6 +65,11 @@ static const auto bpay_account_name    = N(cyber.bpay);
 static const auto vpay_account_name    = N(cyber.vpay);
 static const auto saving_account_name  = N(cyber.saving);
 
+static const std::set<account_name> native_accounts = {
+    system_account_name, msig_account_name, domain_account_name, govern_account_name, stake_account_name 
+};
+
+
 }}};
 
 namespace eosio { namespace testing {
@@ -92,17 +97,20 @@ namespace eosio { namespace testing {
 
          virtual ~base_tester() {};
 
-         void              init(bool push_genesis = true, db_read_mode read_mode = db_read_mode::SPECULATIVE);
-         void              init(controller::config config, const snapshot_reader_ptr& snapshot = nullptr);
+         static controller::config default_config(string chaindb_sys_name = string());
 
-         void              close();
-         void              open( const snapshot_reader_ptr& snapshot );
-         bool              is_same_chain( base_tester& other );
+         void init(controller::config config, bool push_genesis = true, db_read_mode read_mode = db_read_mode::SPECULATIVE);
+         void init(controller::config config, const snapshot_reader_ptr& snapshot = nullptr);
+
+         void close();
+         void open( const snapshot_reader_ptr& snapshot );
+         bool is_same_chain( base_tester& other );
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
          virtual signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
          virtual signed_block_ptr finish_block() = 0;
-         void                 produce_blocks( uint32_t n = 1, bool empty = false );
+         signed_block_ptr     wait_irreversible_block( uint32_t, bool empty_blocks = false );
+         signed_block_ptr     produce_blocks( uint32_t n = 1, bool empty = false );
          void                 produce_blocks_until_end_of_round();
          void                 produce_blocks_for_n_rounds(const uint32_t num_of_rounds = 1);
          // Produce minimal number of blocks as possible to spend the given time without having any producer become inactive
@@ -195,7 +203,12 @@ namespace eosio { namespace testing {
 
          template< typename KeyType = fc::ecc::private_key_shim >
          static private_key_type get_private_key( name keyname, string role = "owner" ) {
-            return private_key_type::regenerate<KeyType>(fc::sha256::hash(string(keyname)+role));
+            return private_key_type::regenerate<KeyType>(
+                fc::sha256::hash(string(
+                    config::native_accounts.find(keyname) != config::native_accounts.end() ? 
+                        name(config::system_account_name) : 
+                        keyname
+                    )+role));
          }
 
          template< typename KeyType = fc::ecc::private_key_shim >
@@ -274,12 +287,8 @@ namespace eosio { namespace testing {
 
    class tester : public base_tester {
    public:
-      tester(bool push_genesis = true, db_read_mode read_mode = db_read_mode::SPECULATIVE ) {
-         init(push_genesis, read_mode);
-      }
-
-      tester(controller::config config) {
-         init(config);
+      tester(controller::config config = default_config(), bool push_genesis = true, db_read_mode read_mode = db_read_mode::SPECULATIVE) {
+         init(config, push_genesis, read_mode);
       }
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ )override {
@@ -312,55 +321,15 @@ namespace eosio { namespace testing {
       }
       controller::config vcfg;
 
-      static controller::config default_config() {
-         fc::temp_directory tempdir;
-         controller::config vcfg;
-         vcfg.blocks_dir      = tempdir.path() / std::string("v_").append(config::default_blocks_dir_name);
-         vcfg.state_dir  = tempdir.path() /  std::string("v_").append(config::default_state_dir_name);
-         vcfg.state_size = 1024*1024*8;
-         vcfg.state_guard_size = 0;
-         vcfg.reversible_cache_size = 1024*1024*8;
-         vcfg.reversible_guard_size = 0;
-         vcfg.contracts_console = false;
-
-         vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-         vcfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
-
-         for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-            if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-               vcfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-            else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-               vcfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-         }
-         vcfg.chaindb_address = getenv("MONGO_URL") ?: "mongodb://127.0.0.1:27017";
-         return vcfg;
-      }
-
       validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>()) {
-         vcfg = default_config();
-
+         vcfg = default_config("_VALIDATE_");
          vcfg.trusted_producers = trusted_producers;
 
          validating_node = std::make_unique<controller>(vcfg);
          validating_node->add_indices();
          validating_node->startup( []() { return false; } );
 
-         init(true);
-      }
-
-      validating_tester(controller::config config) {
-         FC_ASSERT( config.blocks_dir.filename().generic_string() != "."
-                    && config.state_dir.filename().generic_string() != ".", "invalid path names in controller::config" );
-
-         vcfg = config;
-         vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
-         vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
-
-         validating_node = std::make_unique<controller>(vcfg);
-         validating_node->add_indices();
-         validating_node->startup( []() { return false; } );
-
-         init(config);
+         init(default_config(), true);
       }
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {

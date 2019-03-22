@@ -77,41 +77,45 @@ namespace eosio { namespace testing {
      return control->head_block_id() == other.control->head_block_id();
    }
 
-   void base_tester::init(bool push_genesis, db_read_mode read_mode) {
-      fc::exception::enable_detailed_strace();
+   controller::config base_tester::default_config(string chaindb_sys_name) {
+     fc::exception::enable_detailed_strace();
 
-      cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
-      cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
-      cfg.state_size = 1024*1024*8;
-      cfg.state_guard_size = 0;
-      cfg.reversible_cache_size = 1024*1024*8;
-      cfg.reversible_guard_size = 0;
-      cfg.contracts_console = true;
+     fc::temp_directory tempdir;
+     controller::config result;
+     result.blocks_dir = tempdir.path() / string(chaindb_sys_name).append(config::default_blocks_dir_name);
+     result.state_dir  = tempdir.path() / string(chaindb_sys_name).append(config::default_state_dir_name);
+     result.state_size = 1024*1024*8;
+     result.state_guard_size = 0;
+     result.reversible_cache_size = 1024*1024*8;
+     result.reversible_guard_size = 0;
+     result.contracts_console = true;
+
+     result.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+     result.genesis.initial_key = get_public_key( config::system_account_name, "active" );
+
+     for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
+       if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
+         result.wasm_runtime = chain::wasm_interface::vm_type::wavm;
+       else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
+         result.wasm_runtime = chain::wasm_interface::vm_type::wabt;
+     }
+     result.chaindb_address  = getenv("MONGO_URL") ?: "mongodb://127.0.0.1:27017";
+     result.chaindb_sys_name = chaindb_sys_name;
+     return result;
+   }
+
+   void base_tester::init(controller::config config, bool push_genesis, db_read_mode read_mode) {
+      cfg = config;
       cfg.read_mode = read_mode;
-
-      cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-      cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
-
-      for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-         if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-            cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-         else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-            cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-      }
-      cfg.chaindb_address = getenv("MONGO_URL") ?: "mongodb://127.0.0.1:27017";
 
       open(nullptr);
 
       if (push_genesis)
-         push_genesis_block();
+        push_genesis_block();
    }
 
-
    void base_tester::init(controller::config config, const snapshot_reader_ptr& snapshot) {
-      fc::exception::enable_detailed_strace();
-
       cfg = config;
-      cfg.chaindb_address = getenv("MONGO_URL") ?: "mongodb://127.0.0.1:27017";
       open(snapshot);
    }
 
@@ -206,13 +210,14 @@ namespace eosio { namespace testing {
    signed_block_ptr base_tester::_finish_block() {
       FC_ASSERT( control->pending_block_state(), "must first start a block before it can be finished" );
 
-      auto producer = control->head_block_state()->get_scheduled_producer( control->pending_block_time() );
+      auto producer = control->pending_block_state()->header.producer;
+      auto block_signing_key = control->pending_block_state()->block_signing_key;
       private_key_type priv_key;
       // Check if signing private key exist in the list
-      auto private_key_itr = block_signing_private_keys.find( producer.block_signing_key );
+      auto private_key_itr = block_signing_private_keys.find( block_signing_key );
       if( private_key_itr == block_signing_private_keys.end() ) {
          // If it's not found, default to active k1 key
-         priv_key = get_private_key( producer.producer_name, "active" );
+         priv_key = get_private_key( producer, "active" );
       } else {
          priv_key = private_key_itr->second;
       }
@@ -228,14 +233,30 @@ namespace eosio { namespace testing {
       return control->head_block_state()->block;
    }
 
-   void base_tester::produce_blocks( uint32_t n, bool empty ) {
+
+   signed_block_ptr base_tester::wait_irreversible_block(const uint32_t lib, bool empty_blocks) {
+      signed_block_ptr b;
+      while (control->head_block_state()->dpos_irreversible_blocknum < lib) {
+         if (empty_blocks) {
+            b = produce_empty_block();
+         } else {
+            b = produce_block();
+         }
+      }
+      return b;
+   }
+
+
+   signed_block_ptr base_tester::produce_blocks( uint32_t n, bool empty ) {
+      signed_block_ptr b;
       if( empty ) {
          for( uint32_t i = 0; i < n; ++i )
-            produce_empty_block();
+            b = produce_empty_block();
       } else {
          for( uint32_t i = 0; i < n; ++i )
-            produce_block();
+            b = produce_block();
       }
+      return b;
    }
 
 

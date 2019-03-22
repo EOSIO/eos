@@ -29,6 +29,14 @@ vector<type_def> common_type_defs() {
    return types;
 }
 
+void set_common_defs(abi_def& abi) {
+    if (abi.version.size() == 0) {
+        abi.version = "cyberway::abi/1.0";
+    }
+    fc::move_append(abi.types, common_type_defs());
+}
+
+
 abi_def eosio_contract_abi(abi_def eos_abi)
 {
    if( eos_abi.version.size() == 0 ) {
@@ -390,24 +398,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    namespace rl = resource_limits;
 
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
-      "resource_limit_object", "", {
-         {"id", "uint64"},
-         {"owner", "name"},
-         {"pending", "bool"},
-         {"net_weight", "int64"},
-         {"cpu_weight", "int64"},
-         {"ram_bytes", "int64"}
-      }
-   });
-
-   eos_abi.tables.emplace_back( eosio::chain::table_def {
-      cyberway::chaindb::tag<rl::resource_limits_object>::get_code(), "resource_limit_object", {
-         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"pending","asc"}, {"owner","asc"}}}
-      }
-   });
-
-   eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "usage_accumulator", "", {
          {"last_ordinal", "uint32"},
          {"value_ex", "uint64"},
@@ -472,11 +462,9 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"avg_block_cpu_usage", "usage_accumulator"},
          {"pending_net_usage", "uint64"},
          {"pending_cpu_usage", "uint64"},
-         {"total_net_weight", "uint64"},
-         {"total_cpu_weight", "uint64"},
-         {"total_ram_bytes", "uint64"},
          {"virtual_net_limit", "uint64"},
-         {"virtual_cpu_limit", "uint64"}
+         {"virtual_cpu_limit", "uint64"},
+         {"virtual_ram_limit", "uint64"}
       }
    });
 
@@ -520,6 +508,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"agent_name", "name"},
         {"pct", "int16"},
         {"share", "int64"},
+        {"granted", "int64"},
         {"break_fee", "int16"},
         {"break_min_own_staked", "int64" }}});
         
@@ -530,16 +519,20 @@ abi_def eosio_contract_abi(abi_def eos_abi)
              {{"purpose_code", "asc"},{"token_code", "asc"},{"grantor_name", "asc"},{"agent_name", "asc"}}}
       }
    });
+   
+   eos_abi.structs.emplace_back( struct_def {
+      "purpose_param_struct", "", {
+         {"code", "symbol_code"},
+         {"payout_step_lenght", "int64"},
+         {"payout_steps_num", "uint16"}}});
 
    eos_abi.structs.emplace_back( eosio::chain::struct_def {
       "param_struct", "",{
         {"id", "uint64"},
         {"token_symbol", "symbol"},
-        {"purposes", "symbol_code[]"},
+        {"purposes", "purpose_param_struct[]"},
         {"max_proxies", "uint8[]"},
-        {"frame_length", "int64"},
-        {"payout_step_lenght", "int64"},
-        {"payout_steps_num", "uint16"}}});
+        {"frame_length", "int64"}}});
         
    eos_abi.tables.emplace_back( eosio::chain::table_def {
       cyberway::chaindb::tag<stake_param_object>::get_code(), "param_struct", {
@@ -551,7 +544,8 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"id", "uint64"},
         {"purpose_code", "symbol_code"},
         {"token_code", "symbol_code"},
-        {"total_staked", "int64"}}});
+        {"total_staked", "int64"},
+        {"enabled", "bool"}}});
         
    eos_abi.tables.emplace_back( eosio::chain::table_def {
       cyberway::chaindb::tag<stake_stat_object>::get_code(), "stat_struct", {
@@ -682,11 +676,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
 
 
 abi_def domain_contract_abi(abi_def abi) {
-    if (abi.version.size() == 0) {
-        abi.version = "cyberway::abi/1.0";
-    }
-    fc::move_append(abi.types, common_type_defs());
-
+    set_common_defs(abi);
     abi.structs.emplace_back(struct_def {"newusername", "", {
         {"creator", "name"},
         {"owner",   "name"},
@@ -722,15 +712,11 @@ abi_def domain_contract_abi(abi_def abi) {
 
 // this abi contains only tables needed for genesis
 abi_def token_contract_abi(abi_def abi) {
-    if (abi.version.size() == 0) {
-        abi.version = "cyberway::abi/1.0";
-    }
-    fc::move_append(abi.types, common_type_defs());
-
-    abi.structs.emplace_back(struct_def {"account", "", {
+    set_common_defs(abi);
+    abi.structs.emplace_back(struct_def{"account", "", {
         {"balance", "asset"}}
     });
-    abi.structs.emplace_back(struct_def {"currency_stats", "", {
+    abi.structs.emplace_back(struct_def{"currency_stats", "", {
         {"supply", "asset"},
         {"max_supply", "asset"},
         {"issuer", "name"}}
@@ -746,13 +732,5 @@ abi_def token_contract_abi(abi_def abi) {
     return abi;
 }
 
-abi_def golos_vesting_contract_abi(abi_def abi) {
-    if (abi.version.size() == 0) {
-        abi.version = "cyberway::abi/1.0";
-    }
-    fc::move_append(abi.types, common_type_defs());
-
-    return abi;
-}
 
 } } /// eosio::chain

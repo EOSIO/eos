@@ -51,7 +51,12 @@ namespace resource_limits {
       int64_t used = 0; ///< quantity used in current window
       int64_t available = 0; ///< quantity available in current window (based upon fractional reserve)
       int64_t max = 0; ///< max per window under current congestion
+      int64_t staked_virtual_balance = 0;
    };
+   
+   static auto const cpu_code = symbol(0,"CPU").to_symbol_code();
+   static auto const net_code = symbol(0,"NET").to_symbol_code();
+   static auto const ram_code = symbol(0,"RAM").to_symbol_code();
 
    class resource_limits_manager {
       public:
@@ -69,16 +74,10 @@ namespace resource_limits {
          void set_block_parameters( const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters );
 
          void update_account_usage( const flat_set<account_name>& accounts, uint32_t ordinal );
-         void add_transaction_usage( const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t ordinal );
+         void add_transaction_usage( const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t ordinal, int64_t now = -1 );
 
          void add_pending_ram_usage( const account_name account, int64_t ram_delta );
-         void verify_account_ram_usage( const account_name accunt )const;
 
-         /// set_account_limits returns true if new ram_bytes limit is more restrictive than the previously set one
-         bool set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
-         void get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight) const;
-
-         void process_account_limit_updates();
          void process_block_usage( uint32_t block_num );
 
          // accessors
@@ -88,11 +87,7 @@ namespace resource_limits {
          uint64_t get_block_cpu_limit() const;
          uint64_t get_block_net_limit() const;
 
-         int64_t get_account_cpu_limit( const account_name& name, bool elastic = true) const;
-         int64_t get_account_net_limit( const account_name& name, bool elastic = true) const;
-
-         account_resource_limit get_account_cpu_limit_ex( const account_name& name, bool elastic = true) const;
-         account_resource_limit get_account_net_limit_ex( const account_name& name, bool elastic = true) const;
+         account_resource_limit get_account_limit_ex(int64_t now, const account_name& account, symbol_code purpose_code);
 
          int64_t get_account_ram_usage( const account_name& name ) const;
          
@@ -106,5 +101,5 @@ namespace resource_limits {
 
 FC_REFLECT( eosio::chain::resource_limits::ratio, (numerator)(denominator))
 FC_REFLECT( eosio::chain::resource_limits::elastic_limit_parameters, (target)(max)(periods)(max_multiplier)(contract_rate)(expand_rate))
-FC_REFLECT( eosio::chain::resource_limits::account_resource_limit, (used)(available)(max) )
+FC_REFLECT( eosio::chain::resource_limits::account_resource_limit, (used)(available)(max)(staked_virtual_balance) )
 

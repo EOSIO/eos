@@ -1,5 +1,5 @@
 {
-  "version": "eosio::abi/1.0",
+  "version": "cyberway::abi/1.0",
   "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -11,6 +11,7 @@
       "fields": [
         { "name": "key", "type": "name" },
         { "name": "owner", "type": "name" },
+        { "name": "delay", "type": "uint32" },
         { "name": "next_id", "type": "uint32" }
       ]
     },{
@@ -30,9 +31,12 @@
   "tables": [{
       "name": "configs",
       "type": "config",
-      "index_type": "i64",
-      "key_names" : ["key"],
-      "key_types" : ["name"]
+      "indexes": [{
+          "name": "primary",
+          "unique": "true",
+          "orders": [{"field": "key", "order": "asc"}]
+        }
+      ]
     }
   ],
   "abi_extensions": []
