@@ -109,7 +109,8 @@ namespace eosio { namespace testing {
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
          virtual signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
          virtual signed_block_ptr finish_block() = 0;
-         void                 produce_blocks( uint32_t n = 1, bool empty = false );
+         signed_block_ptr     wait_irreversible_block( uint32_t, bool empty_blocks = false );
+         signed_block_ptr     produce_blocks( uint32_t n = 1, bool empty = false );
          void                 produce_blocks_until_end_of_round();
          void                 produce_blocks_for_n_rounds(const uint32_t num_of_rounds = 1);
          // Produce minimal number of blocks as possible to spend the given time without having any producer become inactive

@@ -79,7 +79,7 @@ std::pair<signed_block_ptr, signed_block_ptr> corrupt_trx_in_block(validating_te
    // Re-sign the block
    auto header_bmroot = digest_type::hash( std::make_pair( copy_b->digest(), main.control->head_block_state()->blockroot_merkle.get_root() ) );
    auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, main.control->head_block_state()->pending_schedule_hash) );
-   copy_b->producer_signature = main.get_private_key(b->producer, "active").sign(sig_digest);
+   copy_b->producer_signature = main.get_private_key(copy_b->producer, "active").sign(sig_digest);
    return std::pair<signed_block_ptr, signed_block_ptr>(b, copy_b);
 }
 
@@ -97,22 +97,31 @@ BOOST_AUTO_TEST_CASE(trusted_producer_test)
    for (auto prod : producers)
        main.create_account(prod);
    auto b = main.produce_block();
+   BOOST_REQUIRE_EQUAL(b->producer, config::system_account_name);
 
    std::vector<account_name> schedule(producers.cbegin(), producers.cend());
    auto trace = main.set_producers(schedule);
 
-   while (b->producer != N(defproducera)) {
-      b = main.produce_block();
-   }
+   while (true) {
+      auto when = b->timestamp;
+      when.slot++;
 
-   auto blocks = corrupt_trx_in_block(main, N(tstproducera));
-   main.validate_push_block( blocks.second );
+      auto key = main.control->head_block_state()->get_scheduled_producer(when);
+      if (trusted_producers.count( key.producer_name )) {
+         auto blocks = corrupt_trx_in_block(main, N(tstproducera));
+         main.validate_push_block( blocks.second );
+         break;
+      } else {
+         b = main.produce_block();
+      }
+   }
 }
 
 // like trusted_producer_test, except verify that any entry in the trusted_producer list is accepted
 BOOST_AUTO_TEST_CASE(trusted_producer_verify_2nd_test)
 {
    flat_set<account_name> trusted_producers = { N(defproducera), N(defproducerc) };
+   std::deque<account_name> corrupted_accounts = {N(tstproducera), N(tstproducerc) };
    validating_tester main(trusted_producers);
    // only using validating_tester to keep the 2 chains in sync, not to validate that the validating_node matches the main node,
    // since it won't be
@@ -127,18 +136,34 @@ BOOST_AUTO_TEST_CASE(trusted_producer_verify_2nd_test)
    std::vector<account_name> schedule(producers.cbegin(), producers.cend());
    auto trace = main.set_producers(schedule);
 
-   while (b->producer != N(defproducerc)) {
-      b = main.produce_block();
-   }
+   while (!trusted_producers.empty()) {
+      auto when = b->timestamp;
+      when.slot++;
 
-   auto blocks = corrupt_trx_in_block(main, N(tstproducera));
-   main.validate_push_block( blocks.second );
+      auto key = main.control->head_block_state()->get_scheduled_producer(when);
+      if (trusted_producers.count( key.producer_name )) {
+         trusted_producers.erase( key.producer_name );
+
+         auto blocks = corrupt_trx_in_block(main, corrupted_accounts.back());
+         corrupted_accounts.pop_back();
+
+         // push the corrupted block
+         BOOST_REQUIRE_NO_THROW(main.validate_push_block( blocks.second ));
+         // pop the corrupted block
+         main.validating_node->pop_block();
+         // push the normal block for success linking of the next in the round block
+         main.validate_push_block( blocks.first );
+      } else {
+         b = main.produce_block();
+      }
+   }
 }
 
 // verify that a block with a transaction with an incorrect signature, is rejected if it is not from a trusted producer
 BOOST_AUTO_TEST_CASE(untrusted_producer_test)
 {
    flat_set<account_name> trusted_producers = { N(defproducera), N(defproducerc) };
+   std::deque<account_name> corrupted_accounts = {N(tstproducera), N(tstproducerc) };
    validating_tester main(trusted_producers);
    // only using validating_tester to keep the 2 chains in sync, not to validate that the validating_node matches the main node,
    // since it won't be
@@ -146,23 +171,44 @@ BOOST_AUTO_TEST_CASE(untrusted_producer_test)
 
    // First we create a valid block with valid transaction
    std::set<account_name> producers = { N(defproducera), N(defproducerb), N(defproducerc), N(defproducerd) };
-   for (auto prod : producers)
-       main.create_account(prod);
+   std::set<account_name> untrusted_producers;
+   for (auto prod : producers) {
+      main.create_account(prod);
+      if (!trusted_producers.count(prod))
+         untrusted_producers.insert(prod);
+   }
+
    auto b = main.produce_block();
 
    std::vector<account_name> schedule(producers.cbegin(), producers.cend());
    auto trace = main.set_producers(schedule);
 
-   // Depends on blocks per producer, fix if change it
-   while (b->producer != N(defproducerd)) {
+   // waiting of applying of proposed producers to active state
+   while (b->producer == config::system_account_name) {
       b = main.produce_block();
    }
 
-   auto blocks = corrupt_trx_in_block(main, N(tstproducera));
-   BOOST_REQUIRE_EXCEPTION(main.validate_push_block( blocks.second ), fc::exception ,
-   [] (const fc::exception &e)->bool {
-      return e.code() == unsatisfied_authorization::code_value ;
-   }) ;
+   while (!untrusted_producers.empty()) {
+      auto when = b->timestamp;
+      when.slot++;
+
+      auto key = main.control->head_block_state()->get_scheduled_producer(when);
+      if (untrusted_producers.count( key.producer_name )) {
+         untrusted_producers.erase( key. producer_name );
+
+         auto blocks = corrupt_trx_in_block(main, corrupted_accounts.back());
+         corrupted_accounts.pop_back();
+
+         BOOST_REQUIRE_EXCEPTION(main.validate_push_block( blocks.second ), fc::exception,
+            [] (const fc::exception& e)->bool {
+               return e.code() == unsatisfied_authorization::code_value;
+            });
+         // push the good block for success linking of the next in the round block
+         main.validate_push_block( blocks.first );
+      } else {
+         b = main.produce_block();
+      }
+   }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
