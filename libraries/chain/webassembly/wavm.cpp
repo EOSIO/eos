@@ -12,7 +12,8 @@
 #include "Runtime/Linker.h"
 #include "Runtime/Intrinsics.h"
 
-#include <mutex>
+#include <vector>
+#include <iterator>
 
 using namespace IR;
 using namespace Runtime;
@@ -21,13 +22,46 @@ namespace eosio { namespace chain { namespace webassembly { namespace wavm {
 
 running_instance_context the_running_instance_context;
 
+namespace detail {
+struct wavm_runtime_initializer {
+   wavm_runtime_initializer() {
+      Runtime::init();
+   }
+};
+
+using live_module_ref = std::list<ObjectInstance*>::iterator;
+
+struct wavm_live_modules {
+   live_module_ref add_live_module(ModuleInstance* module_instance) {
+      return live_modules.insert(live_modules.begin(), asObject(module_instance));
+   }
+
+   void remove_live_module(live_module_ref it) {
+      live_modules.erase(it);
+      std::vector<ObjectInstance*> root;
+      std::copy(live_modules.begin(), live_modules.end(), std::back_inserter(root));
+      Runtime::freeUnreferencedObjects(std::move(root));
+   }
+
+   std::list<ObjectInstance*> live_modules;
+};
+
+static wavm_live_modules the_wavm_live_modules;
+
+}
+
 class wavm_instantiated_module : public wasm_instantiated_module_interface {
    public:
       wavm_instantiated_module(ModuleInstance* instance, std::unique_ptr<Module> module, std::vector<uint8_t> initial_mem) :
          _initial_memory(initial_mem),
          _instance(instance),
-         _module(std::move(module))
+         _module(std::move(module)),
+         _module_ref(detail::the_wavm_live_modules.add_live_module(instance))
       {}
+
+      ~wavm_instantiated_module() {
+         detail::the_wavm_live_modules.remove_live_module(_module_ref);
+      }
 
       void apply(apply_context& context) override {
          vector<Value> args = {Value(uint64_t(context.receiver)),
@@ -79,30 +113,11 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       //_instance is deleted via WAVM's object garbage collection when wavm_rutime is deleted
       ModuleInstance*          _instance;
       std::unique_ptr<Module>  _module;
+      detail::live_module_ref  _module_ref;
 };
 
-
-wavm_runtime::runtime_guard::runtime_guard() {
-   // TODO clean this up
-   //check_wasm_opcode_dispositions();
-   Runtime::init();
-}
-
-wavm_runtime::runtime_guard::~runtime_guard() {
-   Runtime::freeUnreferencedObjects({});
-}
-
-static weak_ptr<wavm_runtime::runtime_guard> __runtime_guard_ptr;
-static std::mutex __runtime_guard_lock;
-
 wavm_runtime::wavm_runtime() {
-   std::lock_guard<std::mutex> l(__runtime_guard_lock);
-   if (__runtime_guard_ptr.use_count() == 0) {
-      _runtime_guard = std::make_shared<runtime_guard>();
-      __runtime_guard_ptr = _runtime_guard;
-   } else {
-      _runtime_guard = __runtime_guard_ptr.lock();
-   }
+   static detail::wavm_runtime_initializer the_wavm_runtime_initializer;
 }
 
 wavm_runtime::~wavm_runtime() {
