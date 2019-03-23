@@ -28,9 +28,13 @@ using namespace eosio::testing;
 
 namespace eosio { namespace detail {
   struct txn_test_gen_empty {};
+  struct txn_test_gen_status {
+     string status;
+  };
 }}
 
 FC_REFLECT(eosio::detail::txn_test_gen_empty, );
+FC_REFLECT(eosio::detail::txn_test_gen_status, (status));
 
 namespace eosio {
 
@@ -53,8 +57,8 @@ using io_work_t = boost::asio::executor_work_guard<boost::asio::io_context::exec
 
 #define INVOKE_V_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
-     api_handle->call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>()); \
-     eosio::detail::txn_test_gen_empty result;
+     auto status = api_handle->call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>()); \
+     eosio::detail::txn_test_gen_status result = { status };
 
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
@@ -179,7 +183,7 @@ struct txn_test_gen_plugin_impl {
             trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountT, owner_auth, active_auth});
             }
 
-            trx.expiration = cc.head_block_time() + fc::seconds(30);
+            trx.expiration = cc.head_block_time() + fc::seconds(180);
             trx.set_reference_block(cc.head_block_id());
             trx.sign(creator_priv_key, chainid);
             trxs.emplace_back(std::move(trx));
@@ -249,7 +253,7 @@ struct txn_test_gen_plugin_impl {
                trx.actions.push_back(act);
             }
 
-            trx.expiration = cc.head_block_time() + fc::seconds(30);
+            trx.expiration = cc.head_block_time() + fc::seconds(180);
             trx.set_reference_block(cc.head_block_id());
             trx.max_net_usage_words = 5000;
             trx.sign(txn_test_receiver_C_priv_key, chainid);
@@ -263,15 +267,17 @@ struct txn_test_gen_plugin_impl {
       push_transactions(std::move(trxs), next);
    }
 
-   void start_generation(const std::string& salt, const uint64_t& period, const uint64_t& batch_size) {
+   string start_generation(const std::string& salt, const uint64_t& period, const uint64_t& batch_size) {
+      ilog("Starting transaction test plugin");
       if(running)
-         throw fc::exception(fc::invalid_operation_exception_code);
+         return "start_generation already running";
       if(period < 1 || period > 2500)
-         throw fc::exception(fc::invalid_operation_exception_code);
+         return "period must be between 1 and 2500";
       if(batch_size < 1 || batch_size > 250)
-         throw fc::exception(fc::invalid_operation_exception_code);
+         return "batch_size must be between 1 and 250";
       if(batch_size & 1)
-         throw fc::exception(fc::invalid_operation_exception_code);
+         return "batch_size must be even";
+      ilog("Starting transaction test plugin valid");
 
       running = true;
 
@@ -312,6 +318,7 @@ struct txn_test_gen_plugin_impl {
       boost::asio::post( *gen_ioc, [this]() {
          arm_timer(boost::asio::high_resolution_timer::clock_type::now());
       });
+      return "success";
    }
 
    void arm_timer(boost::asio::high_resolution_timer::time_point s) {
