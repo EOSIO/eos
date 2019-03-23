@@ -1253,6 +1253,10 @@ class Node(object):
         except subprocess.TimeoutExpired:
             Utils.errorExit("Terminate call failed on node: %s" % (self.cmd))
 
+        # mark node as killed
+        self.pid=None
+        self.killed=True
+
     def verifyAlive(self, silent=False):
         if not silent and Utils.Debug: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
         if self.killed or self.pid is None:
@@ -1318,7 +1322,7 @@ class Node(object):
 
     # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
-    def relaunch(self, nodeId, chainArg, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None, cachePopen=False):
+    def relaunch(self, nodeId, chainArg=None, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None, cachePopen=False):
 
         assert(self.pid is None)
         assert(self.killed)
