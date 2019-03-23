@@ -20,7 +20,7 @@ namespace cyberway { namespace chaindb {
             auto itr = map.find(pk);
 
             if (map.end() == itr) {
-                auto itm = std::make_shared<cache_item>(std::move((obj)));
+                cache_item_ptr itm = new cache_item(std::move(obj));
                 itr = map.emplace(pk, std::move(itm)).first;
             } else {
                 itr->second->set_object(std::move(obj));

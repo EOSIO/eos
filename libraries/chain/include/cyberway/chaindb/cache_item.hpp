@@ -5,13 +5,19 @@
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/chaindb/object_value.hpp>
 
+#include <boost/smart_ptr/intrusive_ptr.hpp>
+#include <boost/smart_ptr/intrusive_ref_counter.hpp>
+
+#include <boost/intrusive/set.hpp>
+#include <boost/intrusive/list.hpp>
+
 namespace cyberway { namespace chaindb {
 
     class cache_item;
     struct cache_item_data;
     struct cache_converter_interface;
 
-    using cache_item_ptr = std::shared_ptr<cache_item>;
+    using cache_item_ptr = boost::intrusive_ptr<cache_item>;
     using cache_item_data_ptr = std::unique_ptr<cache_item_data>;
 
     struct cache_item_data {
@@ -25,7 +31,7 @@ namespace cyberway { namespace chaindb {
         virtual cache_item_data_ptr convert_variant(cache_item&, const object_value&) const = 0;
     }; // struct cache_load_interface
 
-    class cache_item final {
+    class cache_item final: public boost::intrusive_ref_counter<cache_item> {
         table_name   table_ = 0;
         object_value object_;
         bool         is_deleted_ = false;
