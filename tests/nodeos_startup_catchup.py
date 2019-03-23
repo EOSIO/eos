@@ -20,9 +20,11 @@ import re
 #  txn_test_gen_plugin.  Each non-producing node starts generating transactions and sending them
 #  to the producing node.
 #  1) After 10 seconds a new node is started.
-#  2) 10 seconds later, that node is checked to see if it has caught up to the producing node and
-#     that node is killed and a new node is started.
-#  3) Repeat step 2, <--catchup-count - 1> more times
+#  2) the node is allowed to catch up to the producing node
+#  3) that node is killed
+#  4) restart the node
+#  5) the node is allowed to catch up to the producing node
+#  3) Repeat steps 2-5, <--catchup-count - 1> more times
 ###############################################################
 
 Print=Utils.Print
@@ -80,14 +82,6 @@ try:
         txnGenNodes.append(cluster.getNode(nodeNum))
 
     txnGenNodes[0].txnGenCreateTestAccounts(cluster.eosioAccount.name, cluster.eosioAccount.activePrivateKey)
-    time.sleep(20)
-
-    for genNum in range(0, len(txnGenNodes)):
-        salt="%d" % genNum
-        txnGenNodes[genNum].txnGenStart(salt, 1500, 150)
-        time.sleep(1)
-
-    node0=cluster.getNode(0)
 
     def lib(node):
         return node.getBlockNum(BlockType.lib)
@@ -95,67 +89,47 @@ try:
     def head(node):
         return node.getBlockNum(BlockType.head)
 
-    time.sleep(10)
-    retryCountMax=100
-    for catchup_num in range(0, catchupCount):
-        lastLibNum=lib(node0)
-        lastHeadNum=head(node0)
-        lastCatchupLibNum=None
+    node0=cluster.getNode(0)
 
+    blockNum=head(node0)
+    node0.waitForBlock(blockNum, blockType=BlockType.lib)
+
+    for genNum in range(0, len(txnGenNodes)):
+        salt="%d" % genNum
+        txnGenNodes[genNum].txnGenStart(salt, 1500, 150)
+        time.sleep(1)
+
+    blockNum=head(node0)
+    node0.waitForBlock(blockNum+20)
+
+    twoRounds=21*2*12
+    for catchup_num in range(0, catchupCount):
         cluster.launchUnstarted(cachePopen=True)
-        retryCount=0
-        # verify that production node is advancing (sanity check)
-        while lib(node0)<=lastLibNum:
-            time.sleep(4)
-            retryCount+=1
-            # give it some more time if the head is still moving forward
-            if retryCount>=20 or head(node0)<=lastHeadNum:
-                Utils.errorExit("Node 0 failing to advance lib.  Was %s, now %s." % (lastLibNum, lib(node0)))
-            if Utils.Debug: Utils.Print("Node 0 head was %s, now %s.  Waiting for lib to advance" % (lastLibNum, lib(node0)))
-            lastHeadNum=head(node0)
+        lastLibNum=lib(node0)
+        # verify producer lib is still advancing
+        node0.waitForBlock(lastLibNum+1, timeout=twoRounds/2, blockType=BlockType.lib)
 
         catchupNode=cluster.getNodes()[-1]
-        time.sleep(9)
+        catchupNodeNum=cluster.getNodes().index(catchupNode)
         lastCatchupLibNum=lib(catchupNode)
-        lastCatchupHeadNum=head(catchupNode)
-        retryCount=0
-        while lib(catchupNode)<=lastCatchupLibNum:
-            time.sleep(5)
-            retryCount+=1
-            # give it some more time if the head is still moving forward
-            if retryCount>=100 or head(catchupNode)<=lastCatchupHeadNum:
-                Utils.errorExit("Catchup Node %s failing to advance lib.  Was %s, now %s." %
-                                (cluster.getNodes().index(catchupNode), lastCatchupLibNum, lib(catchupNode)))
-            if Utils.Debug: Utils.Print("Catchup Node %s head was %s, now %s.  Waiting for lib to advance" % (cluster.getNodes().index(catchupNode), lastCatchupLibNum, lib(catchupNode)))
-            lastCatchupHeadNum=head(catchupNode)
+        # verify lib is advancing (before we wait for it to have to catchup with producer)
+        catchupNode.waitForBlock(lastCatchupLibNum+1, timeout=twoRounds/2, blockType=BlockType.lib)
 
-        retryCount=0
-        lastLibNum=lib(node0)
-        trailingLibNum=lastLibNum-lib(catchupNode)
-        lastHeadNum=head(node0)
-        libNotMovingCount=0
-        while trailingLibNum>0:
-            delay=5
-            time.sleep(delay)
-            libMoving=lib(catchupNode)>lastCatchupLibNum
-            if libMoving:
-                trailingLibNum=lastLibNum-lib(catchupNode)
-                libNotMovingCount=0
-            else:
-                libNotMovingCount+=1
-                if Utils.Debug and libNotMovingCount%10==0:
-                    Utils.Print("Catchup node %s lib has not moved for %s seconds, lib is %s" %
-                                (cluster.getNodes().index(catchupNode), (delay*libNotMovingCount), lib(catchupNode)))
-            retryCount+=1
-            # give it some more time if the head is still moving forward
-            if retryCount>=retryCountMax or head(catchupNode)<=lastCatchupHeadNum or libNotMovingCount>100:
-                Utils.errorExit("Catchup Node %s failing to advance lib along with node 0.  Catchup node lib is %s, node 0 lib is %s." %
-                                (cluster.getNodes().index(catchupNode), lib(catchupNode), lastLibNum))
-            if Utils.Debug: Utils.Print("Catchup Node %s head is %s, node 0 head is %s.  Waiting for lib to advance from %s to %s" % (cluster.getNodes().index(catchupNode), head(catchupNode), head(node0), lib(catchupNode), lastLibNum))
-            lastCatchupHeadNum=head(catchupNode)
+        numBlocksToCatchup=(lastLibNum-lastCatchupLibNum-1)+twoRounds
+        catchupNode.waitForBlock(lastLibNum, timeout=(numBlocksToCatchup)/2, blockType=BlockType.lib)
 
         catchupNode.interruptAndVerifyExitStatus(60)
-        retryCountMax*=3
+
+        catchupNode.relaunch(catchupNodeNum)
+        lastCatchupLibNum=lib(catchupNode)
+        # verify catchup node is advancing to producer
+        catchupNode.waitForBlock(lastCatchupLibNum+1, timeout=twoRounds/2, blockType=BlockType.lib)
+
+        lastLibNum=lib(node0)
+        # verify producer lib is still advancing
+        node0.waitForBlock(lastLibNum+1, timeout=twoRounds/2, blockType=BlockType.lib)
+        # verify catchup node is advancing to producer
+        catchupNode.waitForBlock(lastLibNum, timeout=(numBlocksToCatchup)/2, blockType=BlockType.lib)
 
     testSuccessful=True
 
