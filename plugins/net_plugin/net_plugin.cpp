@@ -25,6 +25,8 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/thread/locks.hpp>
+#include <boost/thread/shared_mutex.hpp>
 
 #include <atomic>
 
@@ -223,7 +225,7 @@ namespace eosio {
 
       connection_ptr find_connection(const string& host)const;
 
-      mutable std::mutex               connections_mtx; // switch to shared_mutex in C++17
+      mutable boost::shared_mutex      connections_mtx; // switch to std::shared_mutex in C++17
       std::set< connection_ptr >       connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
       bool                             done = false;
       unique_ptr< sync_manager >       sync_master;
@@ -620,7 +622,7 @@ namespace eosio {
       handshake_message       last_handshake_sent;
       int16_t                 sent_handshake_count = 0;
       std::atomic<bool>       connecting{false};
-      bool                    syncing = false;
+      std::atomic<bool>       syncing{false};
       uint16_t                protocol_version  = 0;
    private:
       const string            peer_addr;
@@ -1447,7 +1449,7 @@ struct msg_handler : public fc::visitor<void> {
       if (conn && conn->current() ) {
          source = conn;
       } else {
-         std::lock_guard<std::mutex> g( my_impl->connections_mtx );
+         boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
          if (my_impl->connections.size() == 1) {
             if (!source) {
                source = *my_impl->connections.begin();
@@ -1513,7 +1515,7 @@ struct msg_handler : public fc::visitor<void> {
 
    void sync_manager::send_handshakes()
    {
-      std::lock_guard<std::mutex> g( my_impl->connections_mtx );
+      boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
       for( auto& ci : my_impl->connections ) {
          if( ci->current() ) {
             ci->send_handshake();
@@ -1633,7 +1635,7 @@ struct msg_handler : public fc::visitor<void> {
    void sync_manager::verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id) {
       request_message req;
       req.req_blocks.mode = catch_up;
-      std::unique_lock<std::mutex> g( my_impl->connections_mtx );
+      boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
       for (const auto& cc : my_impl->connections) {
          // fork_head_num provides memory barrier for fork_head
          if( cc->fork_head_num > num || cc->fork_head == id ) {
@@ -1708,7 +1710,7 @@ struct msg_handler : public fc::visitor<void> {
          source.reset();
 
          block_id_type null_id;
-         std::unique_lock<std::mutex> g( my_impl->connections_mtx );
+         boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
          for( const auto& cp : my_impl->connections ) {
             uint32_t fork_head_num = cp->fork_head_num.load(); // fork_head_num provides memory barrier for fork_head
             if (cp->fork_head == null_id) {
@@ -1837,31 +1839,43 @@ struct msg_handler : public fc::visitor<void> {
       stale_blk.erase( stale_blk.lower_bound(1), stale_blk.upper_bound(lib_num) );
    }
 
+   // thread safe
    void dispatch_manager::bcast_block(const block_state_ptr& bs) {
-      uint32_t bnum = bs->block_num;
-      peer_block_state pbstate{bs->id, bnum};
-      fc_dlog( logger, "bcast block ${b}", ("b", bnum) );
+      fc_dlog( logger, "bcast block ${b}", ("b", bs->block_num) );
 
-      std::shared_ptr<std::vector<char>> send_buffer;
-      std::lock_guard<std::mutex> g( my_impl->connections_mtx );
+      boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
+      bool have_connection = false;
       for( auto& cp : my_impl->connections ) {
          if( !cp->current() ) {
             continue;
          }
-         bool has_block = cp->last_handshake_recv.last_irreversible_block_num >= bnum;
-         if( !has_block ) {
-            pbstate.connection_id = cp->connection_id;
-            if( !add_peer_block( pbstate ) ) {
-               continue;
-            }
-            if( !send_buffer ) {
-               send_buffer = create_send_buffer( bs->block );
-            }
-            fc_dlog( logger, "bcast block ${b} to ${p}", ("b", bnum)( "p", cp->peer_name() ) );
-            cp->enqueue_buffer( send_buffer, true, priority::high, no_reason );
-         }
+         have_connection = true;
+         break;
       }
+      g.unlock();
 
+      if( !have_connection ) return;
+      std::shared_ptr<std::vector<char>> send_buffer = create_send_buffer( bs->block );
+
+      g.lock();
+      for( auto& cp : my_impl->connections ) {
+         if( !cp->current() ) {
+            continue;
+         }
+         cp->strand.post( [this, cp, bs, send_buffer]() {
+            uint32_t bnum = bs->block_num;
+            // todo protect cp->last_handshake_recv
+            bool has_block = cp->last_handshake_recv.last_irreversible_block_num >= bnum;
+            if( !has_block ) {
+               peer_block_state pbstate{bs->id, bnum, cp->connection_id};
+               if( !add_peer_block( pbstate ) ) {
+                  return;
+               }
+               fc_dlog( logger, "bcast block ${b} to ${p}", ("b", bnum)( "p", cp->peer_name() ) );
+               cp->enqueue_buffer( send_buffer, true, priority::high, no_reason );
+            }
+         });
+      }
    }
 
    void dispatch_manager::recv_block(const connection_ptr& c, const block_id_type& id, uint32_t bnum) {
@@ -1890,7 +1904,7 @@ struct msg_handler : public fc::visitor<void> {
       node_transaction_state nts = {id, trx_expiration, 0, 0};
 
       std::shared_ptr<std::vector<char>> send_buffer;
-      std::lock_guard<std::mutex> g( my_impl->connections_mtx );
+      boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
       for( auto& cp : my_impl->connections ) {
          if( !cp->current() ) {
             continue;
@@ -1986,7 +2000,7 @@ struct msg_handler : public fc::visitor<void> {
                   ("b",modes_str(c->last_req->req_blocks.mode))("t",modes_str(c->last_req->req_trx.mode)));
          return;
       }
-      std::unique_lock<std::mutex> g( my_impl->connections_mtx );
+      boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
       for (auto& conn : my_impl->connections) {
          if (conn == c || conn->last_req) {
             continue;
@@ -2144,7 +2158,7 @@ struct msg_handler : public fc::visitor<void> {
                fc_elog( logger, "Error getting remote endpoint: ${m}", ("m", rec.message()) );
             } else {
                paddr_str = paddr_add.to_string();
-               std::unique_lock<std::mutex> g( connections_mtx );
+               boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
                for( auto& conn : connections ) {
                   if( conn->socket_is_open() ) {
                      if( conn->peer_address().empty() ) {
@@ -2512,7 +2526,7 @@ struct msg_handler : public fc::visitor<void> {
 
          if( c->peer_address().empty() || c->last_handshake_recv.node_id == fc::sha256()) {
             fc_dlog(logger, "checking for duplicate" );
-            std::lock_guard<std::mutex> g( connections_mtx );
+            boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
             for(const auto& check : connections) {
                if(check == c)
                   continue;
@@ -3049,7 +3063,7 @@ struct msg_handler : public fc::visitor<void> {
             if( ec ) {
                fc_wlog( logger, "Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()) );
             }
-            std::lock_guard<std::mutex> g( connections_mtx );
+            boost::shared_lock<boost::shared_mutex> g( connections_mtx );
             for( auto& c : connections ) {
                if( c->socket_is_open() ) {
                   c->send_time();
@@ -3108,7 +3122,7 @@ struct msg_handler : public fc::visitor<void> {
       auto max_time = fc::time_point::now();
       max_time += fc::milliseconds(max_cleanup_time_ms);
       auto from = from_connection.lock();
-      std::unique_lock<std::mutex> g( connections_mtx );
+      boost::unique_lock<boost::shared_mutex> g( connections_mtx );
       auto it = (from ? connections.find(from) : connections.begin());
       if (it == connections.end()) it = connections.begin();
       while (it != connections.end()) {
@@ -3134,8 +3148,10 @@ struct msg_handler : public fc::visitor<void> {
    }
 
    void net_plugin_impl::accepted_block(const block_state_ptr& block) {
-      fc_dlog(logger,"signaled, id = ${id}",("id", block->id));
-      dispatcher->bcast_block(block);
+      boost::asio::post( *server_ioc, [this, ioc=server_ioc, block]() {
+         fc_dlog( logger, "signaled, id = ${id}", ("id", block->id) );
+         dispatcher->bcast_block( block );
+      });
    }
 
    void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>& results) {
@@ -3517,7 +3533,7 @@ struct msg_handler : public fc::visitor<void> {
          my->done = true;
          {
             fc_ilog( logger, "close ${s} connections", ("s", my->connections.size()) );
-            std::lock_guard<std::mutex> g( my->connections_mtx );
+            boost::unique_lock<boost::shared_mutex> g( my->connections_mtx );
             for( auto& con : my->connections ) {
                fc_dlog( logger, "close: ${p}", ("p", con->peer_name()) );
                con->close();
@@ -3545,14 +3561,14 @@ struct msg_handler : public fc::visitor<void> {
       fc_dlog( logger, "calling active connector" );
       if( my->resolve_and_connect( c ) ) {
          fc_dlog( logger, "adding new connection to the list" );
-         std::unique_lock<std::mutex> g( my->connections_mtx );
+         boost::unique_lock<boost::shared_mutex> g( my->connections_mtx );
          my->connections.insert( c );
       }
       return "added connection";
    }
 
    string net_plugin::disconnect( const string& host ) {
-      std::lock_guard<std::mutex> g( my->connections_mtx );
+      boost::unique_lock<boost::shared_mutex> g( my->connections_mtx );
       for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr ) {
          if( (*itr)->peer_address() == host ) {
             (*itr)->reset();
@@ -3574,7 +3590,7 @@ struct msg_handler : public fc::visitor<void> {
 
    vector<connection_status> net_plugin::connections()const {
       vector<connection_status> result;
-      std::lock_guard<std::mutex> g( my->connections_mtx );
+      boost::shared_lock<boost::shared_mutex> g( my->connections_mtx );
       result.reserve( my->connections.size() );
       for( const auto& c : my->connections ) {
          result.push_back( c->get_status() );
@@ -3582,7 +3598,7 @@ struct msg_handler : public fc::visitor<void> {
       return result;
    }
    connection_ptr net_plugin_impl::find_connection(const string& host )const {
-      std::lock_guard<std::mutex> g( connections_mtx );
+      boost::shared_lock<boost::shared_mutex> g( connections_mtx );
       for( const auto& c : connections )
          if( c->peer_address() == host ) return c;
       return connection_ptr();
