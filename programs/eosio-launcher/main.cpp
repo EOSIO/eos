@@ -892,7 +892,7 @@ launcher_def::bind_nodes () {
    int extra = producers % non_bios;
    unsigned int i = 0;
    unsigned int producer_number = 0;
-   const auto to_not_start_node = total_nodes - unstarted_nodes;
+   const auto to_not_start_node = total_nodes - unstarted_nodes - 1;
    for (auto &h : bindings) {
       for (auto &inst : h.instances) {
          bool is_bios = inst.name == "bios";
