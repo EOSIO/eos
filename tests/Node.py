@@ -62,7 +62,7 @@ class Node(object):
 
     def __str__(self):
         #return "Host: %s, Port:%d, Pid:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.cmd)
-        return "Host: %s, Port:%d" % (self.host, self.port)
+        return "Host: %s, Port:%d, Pid:%s" % (self.host, self.port, self.pid)
 
     @staticmethod
     def validateTransaction(trans):
@@ -1095,6 +1095,8 @@ class Node(object):
             if Utils.Debug:
                 end=time.perf_counter()
                 Utils.Print("cmd Duration: %.3f sec" % (end-start))
+                printReturn=json.dumps(rtn) if returnType==ReturnType.json else rtn
+                Utils.Print("cmd returned: %s" % (printReturn))
         except subprocess.CalledProcessError as ex:
             if not silentErrors:
                 end=time.perf_counter()
@@ -1241,12 +1243,12 @@ class Node(object):
         self.killed=True
         return True
 
-    def interruptAndVerifyExitStatus(self):
+    def interruptAndVerifyExitStatus(self, timeout=15):
         if Utils.Debug: Utils.Print("terminating node: %s" % (self.cmd))
         assert self.popenProc is not None, "node: \"%s\" does not have a popenProc, this may be because it is only set after a relaunch." % (self.cmd)
         self.popenProc.send_signal(signal.SIGINT)
         try:
-            outs, _ = self.popenProc.communicate(timeout=15)
+            outs, _ = self.popenProc.communicate(timeout=timeout)
             assert self.popenProc.returncode == 0, "Expected terminating \"%s\" to have an exit status of 0, but got %d" % (self.cmd, self.popenProc.returncode)
         except subprocess.TimeoutExpired:
             Utils.errorExit("Terminate call failed on node: %s" % (self.cmd))
@@ -1376,18 +1378,17 @@ class Node(object):
         self.killed=False
         return True
 
-    def launchUnstarted(self, nodeId, cachePopen=False):
+    @staticmethod
+    def unstartedFile(nodeId):
+        assert(isinstance(nodeId, int))
         startFile=Utils.getNodeDataDir(nodeId, "start.cmd")
         if not os.path.exists(startFile):
-            Utils.Print("Cannot launch unstarted process since %s file does not exist" % startFile)
-            return False
+            Utils.errorExit("Cannot find unstarted node since %s file does not exist" % startFile)
+        return startFile
 
-        with open(startFile, 'r') as file:
-            cmd=file.read()
-            Utils.Print("launchUnstarted cmd: %s" % (cmd))
-
-        self.launchCmd(cmd, nodeId, cachePopen)
-        return True
+    def launchUnstarted(self, nodeId, cachePopen=False):
+        Utils.Print("launchUnstarted cmd: %s" % (self.cmd))
+        self.launchCmd(self.cmd, nodeId, cachePopen)
 
     def launchCmd(self, cmd, nodeId, cachePopen=False):
         dataDir=Utils.getNodeDataDir(nodeId)
@@ -1401,7 +1402,7 @@ class Node(object):
             if cachePopen:
                 self.popenProc=popen
             self.pid=popen.pid
-            if Utils.Debug: Utils.Print("restart Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
+            if Utils.Debug: Utils.Print("start Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
 
     def trackCmdTransaction(self, trans, ignoreNonTrans=False):
         if trans is None:

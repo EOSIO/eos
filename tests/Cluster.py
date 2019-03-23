@@ -50,6 +50,7 @@ class Cluster(object):
         """
         self.accounts={}
         self.nodes={}
+        self.unstartedNodes=[]
         self.localCluster=localCluster
         self.wallet=None
         self.walletd=walletd
@@ -379,6 +380,9 @@ class Cluster(object):
 
         self.nodes=nodes
 
+        if unstartedNodes > 0:
+            self.unstartedNodes=self.discoverUnstartedLocalNodes(unstartedNodes, totalNodes)
+
         if onlyBios:
             biosNode=Node(Cluster.__BiosHost, Cluster.__BiosPort, walletMgr=self.walletMgr)
             if not biosNode.checkPulse():
@@ -644,6 +648,16 @@ class Cluster(object):
 
     def getNodes(self):
         return self.nodes
+
+    def launchUnstarted(self, numToLaunch=1, cachePopen=False):
+        assert(isinstance(numToLaunch, int))
+        assert(numToLaunch>0)
+        launchList=self.unstartedNodes[:numToLaunch]
+        del self.unstartedNodes[:numToLaunch]
+        for node in launchList:
+            # the node number is indexed off of the started nodes list
+            node.launchUnstarted(len(self.nodes), cachePopen=cachePopen)
+            self.nodes.append(node)
 
     # Spread funds across accounts with transactions spread through cluster nodes.
     #  Validate transactions are synchronized on root node
@@ -1484,6 +1498,23 @@ class Cluster(object):
                 return False
 
         return True
+
+    def discoverUnstartedLocalNodes(self, unstartedNodes, totalNodes):
+        unstarted=[]
+        firstUnstartedNode=totalNodes-unstartedNodes
+        for nodeId in range(firstUnstartedNode, totalNodes):
+            unstarted.append(self.discoverUnstartedLocalNode(nodeId))
+        return unstarted
+
+    def discoverUnstartedLocalNode(self, nodeId):
+        startFile=Node.unstartedFile(nodeId)
+        with open(startFile, 'r') as file:
+            cmd=file.read()
+            Utils.Print("unstarted local node cmd: %s" % (cmd))
+        p=re.compile(r'^\s*(\w+)\s*=\s*([^\s](?:.*[^\s])?)\s*$')
+        instance=Node(self.host, port=self.port+nodeId, pid=None, cmd=cmd, walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+        if Utils.Debug: Utils.Print("Unstarted Node>", instance)
+        return instance
 
     def getInfos(self, silentErrors=False, exitOnError=False):
         infos=[]
