@@ -20,12 +20,12 @@ namespace cyberway { namespace chaindb {
 
         cache_item_ptr emplace(const table_info&, object_value) const;
         void remove(const table_info&, primary_key_t) const;
+        void set_revision(const object_value&, revision_t) const;
 
         void clear();
 
     private:
-        struct cache_map_impl_;
-        std::unique_ptr<cache_map_impl_> impl_;
+        std::unique_ptr<table_cache_map> impl_;
     }; // class cache_map
 
 } } // namespace cyberway::chaindb

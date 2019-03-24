@@ -14,48 +14,8 @@ namespace cyberway { namespace chaindb {
 
     using eosio::chain::abi_def;
 
-    using table_name_t = eosio::chain::table_name::value_type;
-    using index_name_t = eosio::chain::index_name::value_type;
-    using account_name_t = account_name::value_type;
-
-    using cursor_t = int32_t;
-    static constexpr cursor_t invalid_cursor = (0);
-
     template<class> struct object_to_table;
     struct ram_payer_info;
-
-    struct index_request final {
-        const account_name code;
-        const account_name scope;
-        const table_name_t table;
-        const index_name_t index;
-    }; // struct index_request
-
-    struct table_request final {
-        const account_name code;
-        const account_name scope;
-        const table_name_t table;
-    }; // struct table_request
-
-    struct cursor_request final {
-        const account_name code;
-        const cursor_t     id;
-    }; // struct cursor_request
-
-    struct index_info: public table_info {
-        const index_def* index = nullptr;
-
-        using table_info::table_info;
-
-        index_info(const table_info& src)
-        : table_info(src) {
-        }
-    }; // struct index_info
-
-    struct find_info final {
-        cursor_t      cursor = invalid_cursor;
-        primary_key_t pk     = end_primary_key;
-    }; // struct find_info
 
     class chaindb_controller final {
     public:

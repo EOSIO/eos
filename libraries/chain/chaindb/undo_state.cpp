@@ -277,8 +277,14 @@ namespace cyberway { namespace chaindb {
     }
 
     struct undo_stack::undo_stack_impl_ final {
-        undo_stack_impl_(chaindb_controller& controller, driver_interface& driver, journal& jrnl, cache_map& cache)
-        : controller_(controller),
+        undo_stack_impl_(
+            revision_t& revision,
+            chaindb_controller& controller,
+            driver_interface& driver,
+            journal& jrnl,
+            cache_map& cache)
+        : revision_(revision),
+          controller_(controller),
           driver_(driver),
           journal_(jrnl),
           cache_(cache) {
@@ -405,7 +411,6 @@ namespace cyberway { namespace chaindb {
         }
 
         void insert(const table_info& table, object_value obj) {
-            obj.service.revision = revision_;
             if (enabled()) {
                 insert(get_table(table), std::move(obj));
             } else {
@@ -414,7 +419,6 @@ namespace cyberway { namespace chaindb {
         }
 
         void update(const table_info& table, object_value orig_obj, object_value obj) {
-            obj.service.revision = revision_;
             if (enabled()) {
                 update(get_table(table), std::move(orig_obj), std::move(obj));
             } else {
@@ -606,7 +610,10 @@ namespace cyberway { namespace chaindb {
             auto ctx = journal_.create_ctx(table.info());
 
             process_state(state, [&](bool has_data, auto& obj, auto& rev) {
-                if (has_data) journal_.write_data(ctx, write_operation::revision(rev, obj.clone_service()));
+                if (has_data) {
+                    cache_.set_revision(obj, rev - 1);
+                    journal_.write_data(ctx, write_operation::revision(rev, obj.clone_service()));
+                }
                 journal_.write_undo(ctx, write_operation::revision(rev, obj.clone_service()));
                 obj.service.revision = rev - 1;
             });
@@ -623,7 +630,10 @@ namespace cyberway { namespace chaindb {
             auto ctx = journal_.create_ctx(table.info());
 
             process_state(state, [&](bool has_data, auto& obj, auto& rev) {
-                if (has_data) journal_.write_data(ctx, write_operation::revision(rev, obj.clone_service()));
+                if (has_data) {
+                    cache_.set_revision(obj, rev - 1);
+                    journal_.write_data(ctx, write_operation::revision(rev, obj.clone_service()));
+                }
                 journal_.write_undo(ctx, write_operation::remove(rev, obj.clone_service()));
             });
 
@@ -726,6 +736,7 @@ namespace cyberway { namespace chaindb {
                 }
 
                 if (exists) {
+                    cache_.set_revision(obj.second, prev_state.revision());
                     journal_.write(ctx,
                         write_operation::revision(state.revision(), obj.second.clone_service()),
                         write_operation::remove(  state.revision(), obj.second.clone_service()));
@@ -738,6 +749,7 @@ namespace cyberway { namespace chaindb {
 
                 // nop+upd(was=Y) -> upd(was=Y), type B
 
+                cache_.set_revision(obj.second, prev_state.revision());
                 journal_.write(ctx,
                     write_operation::revision(state.revision(), obj.second.clone_service()),
                     write_operation::revision(state.revision(), obj.second.clone_service()));
@@ -764,6 +776,7 @@ namespace cyberway { namespace chaindb {
                 } else {
                     // *+new, but we assume the N/A cases don't happen, leaving type B nop+new -> new
 
+                    cache_.set_revision(obj.second, prev_state.revision());
                     journal_.write(ctx,
                         write_operation::revision(state.revision(), obj.second.clone_service()),
                         write_operation::revision(state.revision(), obj.second.clone_service()));
@@ -989,7 +1002,7 @@ namespace cyberway { namespace chaindb {
         using index_t_ = table_object::index<table_undo_stack>;
 
         undo_stage          stage_ = undo_stage::Unknown;
-        revision_t          revision_ = 0;
+        revision_t&         revision_;
         revision_t          tail_revision_ = 0;
         abi_def             undo_abi_;
         table_info          undo_table_ = {account_name(), account_name()};
@@ -1002,7 +1015,8 @@ namespace cyberway { namespace chaindb {
     }; // struct undo_stack::undo_stack_impl_
 
     undo_stack::undo_stack(chaindb_controller& controller, driver_interface& driver, journal& jrnl, cache_map& cache)
-    : impl_(new undo_stack_impl_(controller, driver, jrnl, cache)) {
+    : impl_(new undo_stack_impl_(revision_, controller, driver, jrnl, cache)) {
+        revision_ = 0;
     }
 
     undo_stack::~undo_stack() = default;
@@ -1025,10 +1039,6 @@ namespace cyberway { namespace chaindb {
 
     void undo_stack::set_revision(const revision_t rev) {
         impl_->set_revision(rev);
-    }
-
-    revision_t undo_stack::revision() const {
-        return impl_->revision();
     }
 
     bool undo_stack::enabled() const {

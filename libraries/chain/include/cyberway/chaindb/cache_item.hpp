@@ -13,7 +13,7 @@
 
 namespace cyberway { namespace chaindb {
 
-    class cache_item;
+    class  cache_item;
     struct cache_item_data;
     struct cache_converter_interface;
 
@@ -31,30 +31,37 @@ namespace cyberway { namespace chaindb {
         virtual cache_item_data_ptr convert_variant(cache_item&, const object_value&) const = 0;
     }; // struct cache_load_interface
 
-    class cache_item final: public boost::intrusive_ref_counter<cache_item> {
-        table_name   table_ = 0;
-        object_value object_;
-        bool         is_deleted_ = false;
+    struct table_cache_map;
+
+    class cache_item final:
+        public boost::intrusive_ref_counter<cache_item>,
+        public boost::intrusive::set_base_hook<>,
+        public boost::intrusive::list_base_hook<>
+    {
+        table_cache_map* table_cache_map_ = nullptr;
+        object_value     object_;
 
     public:
-        cache_item(object_value obj)
-        : table_(obj.service.table),
-          object_(std::move(obj)) {
+        cache_item(table_cache_map& map, object_value obj)
+        : table_cache_map_(&map), object_(std::move(obj)) {
         }
+
+        cache_item(cache_item&&) = default;
 
         ~cache_item() = default;
 
         bool is_deleted() const {
-            return is_deleted_;
+            return nullptr != table_cache_map_;
         }
 
-        void mark_deleted() {
-            assert(!is_deleted_);
-            is_deleted_ = true;
-        }
+        void mark_deleted();
 
-        bool is_valid_table(const table_name table) const {
-            return table_ == table;
+        template <typename Request>
+        bool is_valid_table(const Request& request) const {
+            return
+                object_.service.code  == request.code  &&
+                object_.service.scope == request.scope &&
+                object_.service.table == request.table;
         }
 
         primary_key_t pk() const {
@@ -62,8 +69,12 @@ namespace cyberway { namespace chaindb {
         }
 
         void set_object(object_value obj) {
-            assert(is_valid_table(obj.service.table));
+            assert(is_valid_table(obj.service));
             object_ = std::move(obj);
+        }
+
+        void set_revision(const revision_t rev) {
+            object_.service.revision = rev;
         }
 
         const object_value& object() const {

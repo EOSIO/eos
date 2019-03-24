@@ -177,7 +177,7 @@ struct key_comparator<boost::tuple<Indices...>> {
 
 template<typename Key>
 struct key_converter {
-    static Key convert(const Key& key) {
+    static const Key& convert(const Key& key) {
         return key;
     }
 }; // struct key_converter
@@ -479,11 +479,11 @@ private:
                 ("pk", primary_key_)("index", get_index_name()));
         }
 
-        static table_request& get_table_request() {
+        static const table_request& get_table_request() {
             return multi_index::get_table_request();
         }
 
-        static index_request get_index_request() {
+        static const index_request& get_index_request() {
             static index_request request{code_name(), scope_name(), table_name(), index_name()};
             return request;
         }
@@ -622,7 +622,7 @@ public:
 
         const_iterator iterator_to(const T& obj) const {
             const auto& d = item_data::get_cache(obj);
-            CYBERWAY_ASSERT(d.is_valid_table(table_name()), chaindb_midx_logic_exception,
+            CYBERWAY_ASSERT(d.is_valid_table(get_table_request()), chaindb_midx_logic_exception,
                 "Object ${obj} passed to iterator_to is not from the index ${index}",
                 ("obj", obj)("index", get_index_name()));
 
@@ -671,7 +671,7 @@ public:
         template<typename Lambda>
         int64_t modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
             auto& itm = item_data::get_cache(obj);
-            CYBERWAY_ASSERT(itm.is_valid_table(table_name()), chaindb_midx_logic_exception,
+            CYBERWAY_ASSERT(itm.is_valid_table(get_table_request()), chaindb_midx_logic_exception,
                 "Object ${obj} passed to modify is not from the index ${index}",
                 ("obj", obj)("index", get_index_name()));
 
@@ -697,7 +697,7 @@ public:
 
         int64_t erase(const T& obj, const ram_payer_info& ram = {}) const {
             auto& itm = item_data::get_cache(obj);
-            CYBERWAY_ASSERT(itm.is_valid_table(table_name()), chaindb_midx_logic_exception,
+            CYBERWAY_ASSERT(itm.is_valid_table(get_table_request()), chaindb_midx_logic_exception,
                 "Object ${obj} passed to erase is not from the index ${index}",
                 ("obj", obj)("index", get_index_name()));
 
@@ -730,7 +730,7 @@ public:
     constexpr static account_name_t code_name()  { return 0; }
     constexpr static account_name_t scope_name() { return 0; }
 
-    static table_request& get_table_request() {
+    static const table_request& get_table_request() {
         static table_request request{code_name(), scope_name(), table_name()};
         return request;
     }

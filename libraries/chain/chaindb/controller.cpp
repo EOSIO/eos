@@ -144,7 +144,7 @@ namespace cyberway { namespace chaindb {
             assert(itr != abi_map_.end());
 
             auto system_abi = std::move(itr->second);
-            cache_.clear();
+            cache_.clear(); // reset all cached values
             undo_.clear(); // remove all undo states
             journal_.clear(); // remove all pending changes
             driver_.drop_db(); // drop database
@@ -545,8 +545,9 @@ namespace cyberway { namespace chaindb {
 
         int64_t insert(const table_info& table, const ram_payer_info& ram, object_value& obj) {
             validate_object(table, obj, obj.pk());
-            obj.service.size  = calc_ram_usage(ram, table, obj);
-            obj.service.payer = ram.payer;
+            obj.service.revision = undo_.revision();
+            obj.service.size     = calc_ram_usage(ram, table, obj);
+            obj.service.payer    = ram.payer;
 
             // charge the payer
             auto delta = static_cast<int64_t>(obj.service.size);
@@ -558,7 +559,8 @@ namespace cyberway { namespace chaindb {
 
         int64_t update(const table_info& table, const ram_payer_info& ram, object_value& obj) {
             validate_object(table, obj, obj.pk());
-            obj.service.size = calc_ram_usage(ram, table, obj);
+            obj.service.revision = undo_.revision();
+            obj.service.size     = calc_ram_usage(ram, table, obj);
 
             auto orig_obj = object_by_pk(table, obj.pk());
             if (ram.payer.empty()) {
@@ -651,6 +653,7 @@ namespace cyberway { namespace chaindb {
     int64_t chaindb_controller::revision() const {
         return impl_->undo_.revision();
     }
+
     void chaindb_controller::set_revision(uint64_t revision) {
         return impl_->undo_.set_revision(revision);
     }
