@@ -126,8 +126,8 @@ struct controller_impl {
    optional<block_id_type>        pending_pbft_checkpoint;
    optional<block_num_type>       last_proposed_schedule_block_num;
    optional<block_num_type>       last_promoted_proposed_schedule_block_num;
-   optional<block_id_type>        pbft_prepared;
-   optional<block_id_type>        my_prepare;
+   block_state_ptr                pbft_prepared;
+   block_state_ptr                my_prepare;
    block_state_ptr                head;
    fork_database                  fork_db;
    wasm_interface                 wasmif;
@@ -790,11 +790,19 @@ struct controller_impl {
             pending->_pending_block_state->validated = true;
             auto new_bsp = fork_db.add(pending->_pending_block_state, true);
             emit(self.accepted_block_header, pending->_pending_block_state);
-            fork_db.mark_pbft_prepared_fork(head->id);
-            fork_db.mark_pbft_my_prepare_fork(head->id);
 
-            if (pbft_prepared) fork_db.mark_pbft_prepared_fork(*pbft_prepared);
-            if (my_prepare) fork_db.mark_pbft_my_prepare_fork(*my_prepare);
+            if (pbft_prepared) {
+               fork_db.mark_pbft_prepared_fork(pbft_prepared);
+            } else if (head) {
+               fork_db.mark_pbft_prepared_fork(head);
+            }
+
+            if (my_prepare) {
+               fork_db.mark_pbft_my_prepare_fork(my_prepare);
+            } else if (head) {
+               fork_db.mark_pbft_my_prepare_fork(head);
+            }
+
             head = fork_db.head();
             EOS_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
          }
@@ -1421,6 +1429,7 @@ struct controller_impl {
          emit( self.pre_accepted_block, b );
 
          auto current_head = head->id;
+         auto new_head = new_header_state->id;
 
          fork_db.add( new_header_state, false );
 
@@ -1430,13 +1439,12 @@ struct controller_impl {
          emit( self.accepted_block_header, new_header_state );
 
          set_pbft_lib();
-         set_pbft_lscb();
-         fork_db.mark_pbft_my_prepare_fork(current_head);
-         fork_db.mark_pbft_prepared_fork(current_head);
 
          if ( read_mode != db_read_mode::IRREVERSIBLE ) {
              maybe_switch_forks( s );
          }
+
+         set_pbft_lscb();
 
       } FC_LOG_AND_RETHROW( )
    }
@@ -1510,8 +1518,18 @@ struct controller_impl {
 
    void maybe_switch_forks( controller::block_status s ) {
 
-      if (pbft_prepared) fork_db.mark_pbft_prepared_fork(*pbft_prepared);
-      if (my_prepare) fork_db.mark_pbft_my_prepare_fork(*my_prepare);
+      if (pbft_prepared) {
+          fork_db.mark_pbft_prepared_fork(pbft_prepared);
+      } else if (head) {
+          fork_db.mark_pbft_prepared_fork(head);
+      }
+
+      if (my_prepare) {
+          fork_db.mark_pbft_my_prepare_fork(my_prepare);
+      } else if (head) {
+          fork_db.mark_pbft_my_prepare_fork(head);
+      }
+
       auto new_head = fork_db.head();
 
       if( new_head->header.previous == head->id ) {
@@ -2353,27 +2371,33 @@ chain_id_type controller::get_chain_id()const {
 
 void controller::set_pbft_prepared(const block_id_type& id) const {
    my->pbft_prepared.reset();
-   my->pbft_prepared.emplace(id);
-   my->fork_db.mark_pbft_prepared_fork(id);
+   auto bs = fetch_block_state_by_id(id);
+   if (bs) {
+      my->pbft_prepared = bs;
+      my->fork_db.mark_pbft_prepared_fork(bs);
+   }
    dlog( "fork_db head ${h}", ("h", fork_db().head()->id));
    dlog( "prepared block id ${b}", ("b", id));
 }
 
 void controller::set_pbft_my_prepare(const block_id_type& id) const {
    my->my_prepare.reset();
-   my->my_prepare.emplace(id);
-   my->fork_db.mark_pbft_my_prepare_fork(id);
+   auto bs = fetch_block_state_by_id(id);
+   if (bs) {
+      my->my_prepare = bs;
+      my->fork_db.mark_pbft_my_prepare_fork(bs);
+   }
    dlog( "fork_db head ${h}", ("h", fork_db().head()->id));
    dlog( "my prepare block id ${b}", ("b", id));
 }
 
 block_id_type controller::get_pbft_my_prepare() const {
-   if (my->my_prepare) return *my->my_prepare;
+   if (my->my_prepare) return my->my_prepare->id;
    return block_id_type{};
 }
 
 void controller::reset_pbft_my_prepare() const {
-   if (my->my_prepare) my->fork_db.remove_pbft_my_prepare_fork(*my->my_prepare);
+   if (my->my_prepare) my->fork_db.remove_pbft_my_prepare_fork(my->my_prepare->id);
    my->my_prepare.reset();
 }
 

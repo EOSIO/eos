@@ -286,9 +286,9 @@ namespace eosio { namespace chain {
       return block_state_ptr();
    }
 
-   void fork_database::mark_pbft_prepared_fork(const block_id_type &id) const {
+   void fork_database::mark_pbft_prepared_fork(const block_state_ptr& h) const {
        auto& by_id_idx = my->index.get<by_block_id>();
-       auto itr = by_id_idx.find( id );
+       auto itr = by_id_idx.find( h->id );
        EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
        by_id_idx.modify( itr, [&]( auto& bsp ) { bsp->pbft_prepared = true; });
 
@@ -310,16 +310,16 @@ namespace eosio { namespace chain {
            return updated;
        };
 
-       vector<block_id_type> queue{id};
+       vector<block_id_type> queue{ h->id };
        while(!queue.empty()) {
            queue = update( queue );
        }
        my->head = *my->index.get<by_lib_block_num>().begin();
    }
 
-   void fork_database::mark_pbft_my_prepare_fork(const block_id_type &id) const {
+   void fork_database::mark_pbft_my_prepare_fork(const block_state_ptr& h) const {
        auto& by_id_idx = my->index.get<by_block_id>();
-       auto itr = by_id_idx.find( id );
+       auto itr = by_id_idx.find( h->id );
        EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
        by_id_idx.modify( itr, [&]( auto& bsp ) { bsp->pbft_my_prepare = true; });
 
@@ -341,7 +341,7 @@ namespace eosio { namespace chain {
            return updated;
        };
 
-       vector<block_id_type> queue{id};
+       vector<block_id_type> queue{ h->id };
        while(!queue.empty()) {
            queue = update( queue );
        }

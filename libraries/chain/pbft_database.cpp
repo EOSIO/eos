@@ -845,7 +845,7 @@ namespace eosio {
             try {
                 auto &ext = b->block_extensions;
 
-                for (auto it = ext.begin(); it != ext.end(); it++) {
+                for (auto it = ext.begin(); it != ext.end();) {
                     if (it->first == static_cast<uint16_t>(block_extension_type::pbft_stable_checkpoint))
                     {
                         auto scp_v = it->second;
@@ -859,6 +859,8 @@ namespace eosio {
                         } else {
                             it = ext.erase(it);
                         }
+                    } else {
+                        it++;
                     }
                 }
             } catch(...) {
