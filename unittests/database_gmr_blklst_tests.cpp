@@ -119,8 +119,8 @@ BOOST_AUTO_TEST_CASE(set_name_list_test)
       const global_property2_object &ptr1 = db.get<global_property2_object>();
       chain_config2 c = ptr1.cfg;
 
-      BOOST_TEST(c.resource_greylist.size() == 1);
-      BOOST_TEST(rg.size() == 1);
+      BOOST_TEST(c.resource_greylist.size() == 3);
+      BOOST_TEST(rg.size() == 3);
 
       convert_names(c.actor_blacklist, aab);
       convert_names(c.contract_blacklist, acb);

@@ -40,9 +40,9 @@ BOOST_FIXTURE_TEST_CASE(check_block_limits_cpu, gmr_fixture)
 try
 {
    const account_name account(1);
-   const uint64_t increment = 10000;
+   const uint64_t increment = 100000;
    initialize_account(account);
-   set_account_limits(account, 1000, 0, 0);
+   set_account_limits(account, 9000, 0, 0);
    initialize_account(N(dan));
    initialize_account(N(everyone));
    set_account_limits(N(dan), 0, 0, 10000);
@@ -61,7 +61,7 @@ try
 
    const uint64_t expected_iterations = config::default_gmr_cpu_limit / increment;
 
-   for (int idx = 0; idx < expected_iterations-1; idx++)
+   for (int idx = 0; idx < expected_iterations - 1; idx++)
    {
       add_transaction_usage({account}, increment, 0, 0);
       process_block_usage(idx);
@@ -69,8 +69,8 @@ try
 
    auto arl = get_account_cpu_limit_ex(account, true);
 
- BOOST_TEST(arl.available >= 9997);
- BOOST_REQUIRE_THROW(add_transaction_usage({account}, increment, 0, 0), block_resource_exhausted);
+   BOOST_TEST(arl.available >= 9997);
+   BOOST_REQUIRE_THROW(add_transaction_usage({account}, increment, 0, 0), block_resource_exhausted);
 }
 FC_LOG_AND_RETHROW();
 
@@ -165,7 +165,7 @@ try
    bool raw = false;
    get_account_limits(account, ram_bytes, net_weight, cpu_weight, raw);
 
-   BOOST_TEST(1024*2 == ram_bytes);
+   BOOST_TEST(1000 == ram_bytes);
    BOOST_TEST(10 == net_weight);
    BOOST_TEST(10 == cpu_weight);
 
@@ -173,7 +173,7 @@ try
     raw = true;
    get_account_limits(account, ram_bytes, net_weight, cpu_weight, raw);
 
-   BOOST_TEST(1024 == ram_bytes);
+   BOOST_TEST(1000 == ram_bytes);
    BOOST_TEST(10 == net_weight);
    BOOST_TEST(10 == cpu_weight);
 
