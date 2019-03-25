@@ -1164,8 +1164,6 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 
    produce_blocks(10);
 
-#warning re-enable deferred transaction replacement test after bug has been fixed
-   #if 0
    //schedule twice with replace_existing flag (second deferred transaction should replace first one)
    {
       transaction_trace_ptr trace;
@@ -1186,7 +1184,6 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       BOOST_CHECK_EQUAL( 1, trace->action_traces.size() );
       c.disconnect();
    }
-   #endif
 
    produce_blocks(10);
 

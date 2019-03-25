@@ -2962,6 +2962,10 @@ void controller::add_to_ram_correction( account_name account, uint64_t ram_bytes
    }
 }
 
+bool controller::all_subjective_mitigations_disabled()const {
+   return my->conf.disable_all_subjective_mitigations;
+}
+
 /// Protocol feature activation handlers:
 
 template<>

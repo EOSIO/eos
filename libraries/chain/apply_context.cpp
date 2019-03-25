@@ -365,7 +365,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
       bool replace_deferred_activated = control.is_builtin_activated(builtin_protocol_feature_t::replace_deferred);
 
-      EOS_ASSERT( replace_deferred_activated || !control.is_producing_block(),
+      EOS_ASSERT( replace_deferred_activated || !control.is_producing_block()
+                     || control.all_subjective_mitigations_disabled(),
                   subjective_block_production_exception,
                   "Replacing a deferred transaction is temporarily disabled." );
 

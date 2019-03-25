@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/resource_limits.hpp>
 #include <eosio/testing/tester.hpp>
 
 #include <Runtime/Runtime.h>
@@ -346,6 +346,143 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
    BOOST_CHECK_NO_THROW( c.preactivate_protocol_features({only_link_to_existing_permission_digest}) );
    c.produce_block();
    BOOST_CHECK( c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+} FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   c.create_accounts( {N(alice), N(bob), N(test)} );
+   c.set_code( N(test), contracts::deferred_test_wasm() );
+   c.set_abi( N(test), contracts::deferred_test_abi().data() );
+   c.produce_block();
+
+   auto alice_ram_usage0 = c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) );
+
+   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      ("payer", "alice")
+      ("sender_id", 42)
+      ("contract", "test")
+      ("payload", 100)
+   );
+
+   auto alice_ram_usage1 = c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) );
+
+   // Verify subjective mitigation is in place
+   BOOST_CHECK_EXCEPTION(
+      c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+                        ("payer", "alice")
+                        ("sender_id", 42)
+                        ("contract", "test")
+                        ("payload", 101 )
+                   ),
+      subjective_block_production_exception,
+      fc_exception_message_is( "Replacing a deferred transaction is temporarily disabled." )
+   );
+
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage1 );
+
+   c.control->abort_block();
+
+   c.close();
+   auto cfg = c.get_config();
+   cfg.disable_all_subjective_mitigations = true;
+   c.init( cfg, nullptr );
+
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage0 );
+
+   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      ("payer", "alice")
+      ("sender_id", 42)
+      ("contract", "test")
+      ("payload", 100)
+   );
+
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage1 );
+   auto dtrxs = c.get_scheduled_transactions();
+   BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
+   auto first_dtrx_id = dtrxs[0];
+
+   // With the subjective mitigation disabled, replacing the deferred transaction is allowed.
+   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      ("payer", "alice")
+      ("sender_id", 42)
+      ("contract", "test")
+      ("payload", 101)
+   );
+
+   auto alice_ram_usage2 = c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) );
+   BOOST_CHECK_EQUAL( alice_ram_usage2, alice_ram_usage1 + (alice_ram_usage1 - alice_ram_usage0) );
+
+   dtrxs = c.get_scheduled_transactions();
+   BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
+   BOOST_CHECK_EQUAL( first_dtrx_id, dtrxs[0] ); // Incorrectly kept as the old transaction ID.
+
+   c.produce_block();
+
+   auto alice_ram_usage3 = c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) );
+   BOOST_CHECK_EQUAL( alice_ram_usage3, alice_ram_usage1 );
+
+   dtrxs = c.get_scheduled_transactions();
+   BOOST_CHECK_EQUAL( dtrxs.size(), 0 );
+
+   c.produce_block();
+
+   c.close();
+   cfg.disable_all_subjective_mitigations = false;
+   c.init( cfg, nullptr );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+
+   auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred );
+   BOOST_REQUIRE( d );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage0 );
+
+   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      ("payer", "alice")
+      ("sender_id", 42)
+      ("contract", "test")
+      ("payload", 100)
+   );
+
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage1 );
+
+   dtrxs = c.get_scheduled_transactions();
+   BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
+   auto first_dtrx_id2 = dtrxs[0];
+
+   // With REPLACE_DEFERRED activated, replacing the deferred transaction is allowed and now should work properly.
+   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      ("payer", "alice")
+      ("sender_id", 42)
+      ("contract", "test")
+      ("payload", 101)
+   );
+
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage1 );
+
+   dtrxs = c.get_scheduled_transactions();
+   BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
+   BOOST_CHECK( first_dtrx_id2 != dtrxs[0] );
+
+   // Replace again with a deferred transaction identical to the first one
+   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      ("payer", "alice")
+      ("sender_id", 42)
+      ("contract", "test")
+      ("payload", 100),
+      100 // Needed to make this input transaction unique
+   );
+
+   BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage1 );
+
+   dtrxs = c.get_scheduled_transactions();
+   BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
+   BOOST_CHECK_EQUAL( first_dtrx_id2, dtrxs[0] );
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
