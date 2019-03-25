@@ -75,11 +75,31 @@ namespace eosio { namespace chain {
       >
    >;
 
+   class account_ram_correction_object : public chainbase::object<account_ram_correction_object_type, account_ram_correction_object>
+   {
+      OBJECT_CTOR(account_ram_correction_object);
+
+      id_type      id;
+      account_name name;
+      uint64_t     ram_correction = 0;
+   };
+
+   struct by_name;
+   using account_ram_correction_index = chainbase::shared_multi_index_container<
+      account_ram_correction_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<account_ram_correction_object, account_ram_correction_object::id_type, &account_ram_correction_object::id>>,
+         ordered_unique<tag<by_name>, member<account_ram_correction_object, account_name, &account_ram_correction_object::name>>
+      >
+   >;
+
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_sequence_object, eosio::chain::account_sequence_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_ram_correction_object, eosio::chain::account_ram_correction_index)
 
 
 FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date)(code)(abi))
 FC_REFLECT(eosio::chain::account_sequence_object, (name)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence))
+FC_REFLECT(eosio::chain::account_ram_correction_object, (name)(ram_correction))
