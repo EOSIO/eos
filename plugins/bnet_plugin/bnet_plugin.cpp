@@ -51,6 +51,7 @@
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/log/logger_config.hpp>
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
@@ -1398,7 +1399,13 @@ namespace eosio {
 
       my->_socket_threads.reserve( my->_num_threads );
       for( auto i = 0; i < my->_num_threads; ++i ) {
-         my->_socket_threads.emplace_back( [&ioc]{ wlog( "start thread" ); ioc.run(); wlog( "end thread" ); } );
+         my->_socket_threads.emplace_back( [&ioc, i]{
+            std::string tn = "bnet-" + std::to_string( i );
+            fc::set_os_thread_name( tn );
+            wlog( "start thread" );
+            ioc.run();
+            wlog( "end thread" );
+         } );
       }
 
       for( const auto& peer : my->_connect_to_peers ) {
