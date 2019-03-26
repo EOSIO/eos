@@ -161,13 +161,13 @@ namespace eosio {
       static void send_handshakes();
 
    public:
-      explicit sync_manager(uint32_t span);
-      void sync_reset_lib_num(const connection_ptr& conn);
-      void sync_reassign_fetch(const connection_ptr& c, go_away_reason reason);
-      void rejected_block(const connection_ptr& c, uint32_t blk_num);
-      void sync_recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num);
-      void recv_handshake(const connection_ptr& c, const handshake_message& msg);
-      void sync_recv_notice( const connection_ptr& c, const notice_message& msg);
+      explicit sync_manager( uint32_t span );
+      void sync_reset_lib_num( const connection_ptr& conn );
+      void sync_reassign_fetch( const connection_ptr& c, go_away_reason reason );
+      void rejected_block( const connection_ptr& c, uint32_t blk_num );
+      void sync_recv_block( const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num );
+      void recv_handshake( const connection_ptr& c, const handshake_message& msg );
+      void sync_recv_notice( const connection_ptr& c, const notice_message& msg );
    };
 
    class dispatch_manager {
@@ -1609,10 +1609,15 @@ namespace eosio {
       }
    }
 
-   void sync_manager::recv_handshake(const connection_ptr& c, const handshake_message& msg) {
-      controller& cc = chain_plug->chain();
-      uint32_t lib_num = cc.last_irreversible_block_num();
+   void sync_manager::recv_handshake( const connection_ptr& c, const handshake_message& msg ) {
+      uint32_t lib_num = 0;
       uint32_t peer_lib = msg.last_irreversible_block_num;
+      uint32_t head = 0;
+      block_id_type head_id;
+
+      std::tie( lib_num, std::ignore, head,
+                std::ignore, std::ignore, head_id ) = my_impl->get_chain_info();
+
       sync_reset_lib_num(c);
       c->syncing = false;
 
@@ -1628,8 +1633,6 @@ namespace eosio {
       //
       //-----------------------------
 
-      uint32_t head = cc.fork_db_head_block_num();
-      block_id_type head_id = cc.fork_db_head_block_id();
       if (head_id == msg.head_id) {
          fc_dlog(logger, "sync check state 0");
          // notify peer of our pending transactions
@@ -1644,7 +1647,7 @@ namespace eosio {
          fc_dlog(logger, "sync check state 1");
          // wait for receipt of a notice message before initiating sync
          if (c->protocol_version < proto_explicit_sync) {
-            start_sync( c, peer_lib);
+            start_sync( c, peer_lib );
          }
          return;
       }
