@@ -156,7 +156,7 @@ try:
     # "bridge" shape connects defprocera through defproducerk (in node0) to each other and defproducerl through defproduceru (in node01)
     # and the only connection between those 2 groups is through the bridge node
 
-    if cluster.launch(prodCount=prodCount, onlyBios=False, topo="bridge", pnodes=totalProducerNodes,
+    if cluster.launch(prodCount=prodCount, topo="bridge", pnodes=totalProducerNodes,
                       totalNodes=totalNodes, totalProducers=totalProducers, p2pPlugin=p2pPlugin,
                       useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
         Utils.cmdError("launcher")

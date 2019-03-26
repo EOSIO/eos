@@ -11,6 +11,7 @@
 #include <eosio/chain/wasm_eosio_validation.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/account_object.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
@@ -46,7 +47,9 @@ namespace eosio { namespace chain {
       wasm_validations::wasm_binary_validation validator(control, module);
       validator.validate();
 
-      root_resolver resolver(true);
+      const auto& pso = control.db().get<protocol_state_object>();
+
+      root_resolver resolver( pso.whitelisted_intrinsics );
       LinkResult link_result = linkModule(module, resolver);
 
       //there are a couple opportunties for improvement here--
@@ -128,6 +131,15 @@ class privileged_api : public context_aware_api {
        */
       void activate_feature( int64_t feature_name ) {
          EOS_ASSERT( false, unsupported_feature, "Unsupported Hardfork Detected" );
+      }
+
+      /**
+       *  Pre-activates the specified protocol feature.
+       *  Fails if the feature is unrecognized, disabled, or not allowed to be activated at the current time.
+       *  Also fails if the feature was already activated or pre-activated.
+       */
+      void preactivate_feature( const digest_type& feature_digest ) {
+         context.control.preactivate_feature( feature_digest );
       }
 
       /**
@@ -901,6 +913,13 @@ class system_api : public context_aware_api {
 
       uint64_t publication_time() {
          return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
+      }
+
+      /**
+       * Returns true if the specified protocol feature is activated, false if not.
+       */
+      bool is_feature_activated( const digest_type& feature_digest ) {
+         return context.control.is_protocol_feature_activated( feature_digest );
       }
 
 };
@@ -1702,6 +1721,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_blockchain_parameters_packed, void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
+   (preactivate_feature,              void(int)                             )
 );
 
 REGISTER_INJECTED_INTRINSICS(transaction_context,
@@ -1778,8 +1798,9 @@ REGISTER_INTRINSICS(permission_api,
 
 
 REGISTER_INTRINSICS(system_api,
-   (current_time, int64_t()       )
-   (publication_time,   int64_t() )
+   (current_time,          int64_t() )
+   (publication_time,      int64_t() )
+   (is_feature_activated,  int(int)  )
 );
 
 REGISTER_INTRINSICS(context_free_system_api,

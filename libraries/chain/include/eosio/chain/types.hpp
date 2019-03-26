@@ -8,7 +8,7 @@
 
 #include <chainbase/chainbase.hpp>
 
-#include <fc/container/flat_fwd.hpp>
+#include <fc/interprocess/container.hpp>
 #include <fc/io/varint.hpp>
 #include <fc/io/enum_type.hpp>
 #include <fc/crypto/sha224.hpp>
@@ -95,6 +95,8 @@ namespace eosio { namespace chain {
    using shared_vector = boost::interprocess::vector<T, allocator<T>>;
    template<typename T>
    using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
+   template<typename K, typename V>
+   using shared_flat_multimap = boost::interprocess::flat_multimap< K, V, std::less<K>, allocator< std::pair<K,V> > >;
 
    /**
     * For bugs in boost interprocess we moved our blob data to shared_string
@@ -187,6 +189,7 @@ namespace eosio { namespace chain {
       account_history_object_type,              ///< Defined by history_plugin
       action_history_object_type,               ///< Defined by history_plugin
       reversible_block_object_type,
+      protocol_state_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -222,6 +225,48 @@ namespace eosio { namespace chain {
     */
    typedef vector<std::pair<uint16_t,vector<char>>> extensions_type;
 
+
+   template<typename Container>
+   class end_insert_iterator : public std::iterator< std::output_iterator_tag, void, void, void, void >
+   {
+   protected:
+      Container* container;
+
+   public:
+      using container_type = Container;
+
+      explicit end_insert_iterator( Container& c )
+      :container(&c)
+      {}
+
+      end_insert_iterator& operator=( typename Container::const_reference value ) {
+         container->insert( container->cend(), value );
+         return *this;
+      }
+
+      end_insert_iterator& operator*() { return *this; }
+      end_insert_iterator& operator++() { return *this; }
+      end_insert_iterator  operator++(int) { return *this; }
+   };
+
+   template<typename Container>
+   inline end_insert_iterator<Container> end_inserter( Container& c ) {
+      return end_insert_iterator<Container>( c );
+   }
+
+   template<typename T>
+   struct enum_hash
+   {
+      static_assert( std::is_enum<T>::value, "enum_hash can only be used on enumeration types" );
+
+      using underlying_type = typename std::underlying_type<T>::type;
+
+      std::size_t operator()(T t) const
+      {
+           return std::hash<underlying_type>{}( static_cast<underlying_type>(t) );
+      }
+   };
+   // enum_hash needed to support old gcc compiler of Ubuntu 16.04
 
 } }  // eosio::chain
 

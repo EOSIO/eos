@@ -28,25 +28,37 @@ namespace detail {
 }
 
 struct pending_block_header_state : public detail::block_header_state_common {
-   detail::schedule_info             prev_pending_schedule;
-   bool                              was_pending_promoted = false;
-   block_id_type                     previous;
-   account_name                      producer;
-   block_timestamp_type              timestamp;
-   uint32_t                          active_schedule_version = 0;
-   uint16_t                          confirmed = 1;
+   protocol_feature_activation_set_ptr  prev_activated_protocol_features;
+   detail::schedule_info                prev_pending_schedule;
+   bool                                 was_pending_promoted = false;
+   block_id_type                        previous;
+   account_name                         producer;
+   block_timestamp_type                 timestamp;
+   uint32_t                             active_schedule_version = 0;
+   uint16_t                             confirmed = 1;
 
    signed_block_header make_block_header( const checksum256_type& transaction_mroot,
                                           const checksum256_type& action_mroot,
-                                          optional<producer_schedule_type>&& new_producers )const;
+                                          optional<producer_schedule_type>&& new_producers,
+                                          vector<digest_type>&& new_protocol_feature_activations )const;
 
-   block_header_state  finish_next( const signed_block_header& h, bool skip_validate_signee = false )&&;
+   block_header_state  finish_next( const signed_block_header& h,
+                                    const std::function<void( block_timestamp_type,
+                                                              const flat_set<digest_type>&,
+                                                              const vector<digest_type>& )>& validator,
+                                    bool skip_validate_signee = false )&&;
 
    block_header_state  finish_next( signed_block_header& h,
-                                   const std::function<signature_type(const digest_type&)>& signer )&&;
+                                    const std::function<void( block_timestamp_type,
+                                                              const flat_set<digest_type>&,
+                                                              const vector<digest_type>& )>& validator,
+                                    const std::function<signature_type(const digest_type&)>& signer )&&;
 
 protected:
-   block_header_state  _finish_next( const signed_block_header& h )&&;
+   block_header_state  _finish_next( const signed_block_header& h,
+                                     const std::function<void( block_timestamp_type,
+                                                               const flat_set<digest_type>&,
+                                                               const vector<digest_type>& )>& validator )&&;
 };
 
 
@@ -55,9 +67,14 @@ protected:
  *  @brief defines the minimum state necessary to validate transaction headers
  */
 struct block_header_state : public detail::block_header_state_common {
-   block_id_type                     id;
-   signed_block_header               header;
-   detail::schedule_info             pending_schedule;
+   block_id_type                        id;
+   signed_block_header                  header;
+   detail::schedule_info                pending_schedule;
+   protocol_feature_activation_set_ptr  activated_protocol_features;
+
+   /// this data is redundant with the data stored in header, but it acts as a cache that avoids
+   /// duplication of work
+   vector<block_header_extensions>      header_exts;
 
    block_header_state() = default;
 
@@ -67,7 +84,11 @@ struct block_header_state : public detail::block_header_state_common {
 
    pending_block_header_state  next( block_timestamp_type when, uint16_t num_prev_blocks_to_confirm )const;
 
-   block_header_state   next( const signed_block_header& h, bool skip_validate_signee = false )const;
+   block_header_state   next( const signed_block_header& h,
+                              const std::function<void( block_timestamp_type,
+                                                        const flat_set<digest_type>&,
+                                                        const vector<digest_type>& )>& validator,
+                              bool skip_validate_signee = false )const;
 
    bool                 has_pending_producers()const { return pending_schedule.schedule.producers.size(); }
    uint32_t             calc_dpos_last_irreversible( account_name producer_of_next_block )const;
@@ -79,6 +100,8 @@ struct block_header_state : public detail::block_header_state_common {
    void                 sign( const std::function<signature_type(const digest_type&)>& signer );
    public_key_type      signee()const;
    void                 verify_signee(const public_key_type& signee)const;
+
+   const vector<digest_type>& get_new_protocol_feature_activations()const;
 };
 
 using block_header_state_ptr = std::shared_ptr<block_header_state>;
@@ -107,4 +130,5 @@ FC_REFLECT_DERIVED(  eosio::chain::block_header_state, (eosio::chain::detail::bl
                      (id)
                      (header)
                      (pending_schedule)
+                     (activated_protocol_features)
 )

@@ -8,6 +8,7 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/snapshot.hpp>
+#include <eosio/chain/protocol_feature_manager.hpp>
 
 namespace chainbase {
    class database;
@@ -97,16 +98,33 @@ namespace eosio { namespace chain {
          };
 
          explicit controller( const config& cfg );
+         controller( const config& cfg, protocol_feature_set&& pfs );
          ~controller();
 
          void add_indices();
          void startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot = nullptr );
 
+         void preactivate_feature( const digest_type& feature_digest );
+
+         vector<digest_type> get_preactivated_protocol_features()const;
+
+         void validate_protocol_features( const vector<digest_type>& features_to_activate )const;
+
+         /**
+          *  Starts a new pending block session upon which new transactions can
+          *  be pushed.
+          *
+          *  Will only activate protocol features that have been pre-activated.
+          */
+         void start_block( block_timestamp_type time = block_timestamp_type(), uint16_t confirm_block_count = 0 );
+
          /**
           * Starts a new pending block session upon which new transactions can
           * be pushed.
           */
-         void start_block( block_timestamp_type time = block_timestamp_type(), uint16_t confirm_block_count = 0 );
+         void start_block( block_timestamp_type time,
+                           uint16_t confirm_block_count,
+                           const vector<digest_type>& new_protocol_feature_activations );
 
          void abort_block();
 
@@ -153,6 +171,7 @@ namespace eosio { namespace chain {
          resource_limits_manager&              get_mutable_resource_limits_manager();
          const authorization_manager&          get_authorization_manager()const;
          authorization_manager&                get_mutable_authorization_manager();
+         const protocol_feature_manager&       get_protocol_feature_manager()const;
 
          const flat_set<account_name>&   get_actor_whitelist() const;
          const flat_set<account_name>&   get_actor_blacklist() const;
@@ -229,6 +248,9 @@ namespace eosio { namespace chain {
          void validate_tapos( const transaction& t )const;
          void validate_db_available_size() const;
          void validate_reversible_available_size() const;
+
+         bool is_protocol_feature_activated( const digest_type& feature_digest )const;
+         bool is_builtin_activated( builtin_protocol_feature_t f )const;
 
          bool is_known_unexpired_transaction( const transaction_id_type& id) const;
 

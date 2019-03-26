@@ -7,6 +7,10 @@ import re
 import datetime
 import json
 import signal
+import urllib.request
+import urllib.parse
+from urllib.error import HTTPError
+import tempfile
 
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
@@ -1303,8 +1307,9 @@ class Node(object):
 
         assert(self.pid is None)
         assert(self.killed)
+        assert isinstance(nodeId, int) or (isinstance(nodeId, str) and nodeId == "bios"), "Invalid Node ID is passed"
 
-        if Utils.Debug: Utils.Print("Launching node process, Id: %d" % (nodeId))
+        if Utils.Debug: Utils.Print("Launching node process, Id: {}".format(nodeId))
 
         cmdArr=[]
         myCmd=self.cmd
@@ -1336,7 +1341,10 @@ class Node(object):
 
             myCmd=" ".join(cmdArr)
 
-        dataDir="var/lib/node_%02d" % (nodeId)
+        if nodeId == "bios":
+            dataDir="var/lib/node_bios"
+        else:
+            dataDir="var/lib/node_%02d" % (nodeId)
         dt = datetime.datetime.now()
         dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
             dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
@@ -1406,3 +1414,111 @@ class Node(object):
         status="last getInfo returned None" if not self.infoValid else "at last call to getInfo"
         Utils.Print(" hbn   : %s (%s)" % (self.lastRetrievedHeadBlockNum, status))
         Utils.Print(" lib   : %s (%s)" % (self.lastRetrievedLIB, status))
+
+    def sendRpcApi(self, relativeUrl, data={}):
+        url = urllib.parse.urljoin(self.endpointHttp, relativeUrl)
+        req = urllib.request.Request(url)
+        req.add_header('Content-Type', 'application/json; charset=utf-8')
+        reqData = json.dumps(data).encode("utf-8")
+        rpcApiResult = None
+        try:
+           response = urllib.request.urlopen(req, reqData)
+           rpcApiResult = json.loads(response.read().decode("utf-8"))
+        except HTTPError as e:
+           Utils.Print("Fail to send RPC API to {} with data {} ({})".format(url, data, e.read()))
+           raise e
+        except Exception as e:
+           Utils.Print("Fail to send RPC API to {} with data {} ({})".format(url, data, e))
+           raise e
+        return rpcApiResult
+
+    # Require producer_api_plugin
+    def scheduleProtocolFeatureActivations(self, featureDigests=[]):
+        self.sendRpcApi("v1/producer/schedule_protocol_feature_activations", {"protocol_features_to_activate": featureDigests})
+
+    # Require producer_api_plugin
+    def getSupportedProtocolFeatures(self, excludeDisabled=False, excludeUnactivatable=False):
+        param = {
+           "exclude_disabled": excludeDisabled,
+           "exclude_unactivatable": excludeUnactivatable
+        }
+        res = self.sendRpcApi("v1/producer/get_supported_protocol_features", param)
+        return res
+
+    # This will return supported protocol features in a dict (feature codename as the key), i.e.
+    # {
+    #   "PREACTIVATE_FEATURE": {...},
+    #   "ONLY_LINK_TO_EXISTING_PERMISSION": {...},
+    # }
+    # Require producer_api_plugin
+    def getSupportedProtocolFeatureDict(self, excludeDisabled=False, excludeUnactivatable=False):
+        protocolFeatureDigestDict = {}
+        supportedProtocolFeatures = self.getSupportedProtocolFeatures(excludeDisabled, excludeUnactivatable)
+        for protocolFeature in supportedProtocolFeatures:
+            for spec in protocolFeature["specification"]:
+                if (spec["name"] == "builtin_feature_codename"):
+                    codename = spec["value"]
+                    protocolFeatureDigestDict[codename] = protocolFeature
+                    break
+        return protocolFeatureDigestDict
+
+    def waitForHeadToAdvance(self, timeout=6):
+        currentHead = self.getHeadBlockNum()
+        def isHeadAdvancing():
+            return self.getHeadBlockNum() > currentHead
+        Utils.waitForBool(isHeadAdvancing, timeout)
+
+    def waitForLibToAdvance(self, timeout=6):
+        currentLib = self.getIrreversibleBlockNum()
+        def isLibAdvancing():
+            return self.getIrreversibleBlockNum() > currentLib
+        Utils.waitForBool(isLibAdvancing, timeout)
+
+    # Require producer_api_plugin
+    def activatePreactivateFeature(self):
+        protocolFeatureDigestDict = self.getSupportedProtocolFeatureDict()
+        preactivateFeatureDigest = protocolFeatureDigestDict["PREACTIVATE_FEATURE"]["feature_digest"]
+        assert preactivateFeatureDigest
+
+        self.scheduleProtocolFeatureActivations([preactivateFeatureDigest])
+
+        # Wait for the next block to be produced so the scheduled protocol feature is activated
+        self.waitForHeadToAdvance()
+
+    # Return an array of feature digests to be preactivated
+    # Require producer_api_plugin
+    def getAllBuiltinFeatureDigestsToPreactivate(self):
+        protocolFeatures = []
+        protocolFeatureDict = self.getSupportedProtocolFeatureDict()
+        for k, v in protocolFeatureDict.items():
+            # Filter out "PREACTIVATE_FEATURE"
+            if k != "PREACTIVATE_FEATURE":
+                protocolFeatures.append(v["feature_digest"])
+        return protocolFeatures
+
+    # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
+    def preactivateProtocolFeatures(self, featureDigests:list):
+        for digest in featureDigests:
+            Utils.Print("push preactivate action with digest {}".format(digest))
+            data="{{\"feature_digest\":{}}}".format(digest)
+            opts="--permission eosio@active"
+            trans=self.pushMessage("eosio", "preactivate", data, opts)
+            if trans is None or not trans[0]:
+                Utils.Print("ERROR: Failed to preactive digest {}".format(digest))
+                return None
+        self.waitForHeadToAdvance()
+
+    # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
+    def preactivateAllBuiltinProtocolFeature(self):
+        allBuiltinProtocolFeatureDigests = self.getAllBuiltinFeatureDigestsToPreactivate()
+        self.preactivateProtocolFeatures(allBuiltinProtocolFeatureDigests)
+
+    def getLatestBlockHeaderState(self):
+        headBlockNum = self.getHeadBlockNum()
+        cmdDesc = "get block {} --header-state".format(headBlockNum)
+        latestBlockHeaderState = self.processCleosCmd(cmdDesc, cmdDesc)
+        return latestBlockHeaderState
+
+    def getActivatedProtocolFeatures(self):
+        latestBlockHeaderState = self.getLatestBlockHeaderState()
+        return latestBlockHeaderState["activated_protocol_features"]["protocol_features"]

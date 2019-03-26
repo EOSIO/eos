@@ -9,11 +9,15 @@
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/reversible_block_object.hpp>
+#include <eosio/chain/genesis_intrinsics.hpp>
+#include <eosio/chain/whitelisted_intrinsics.hpp>
 
+#include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
@@ -32,6 +36,7 @@ using controller_index_set = index_set<
    account_index,
    account_sequence_index,
    global_property_multi_index,
+   protocol_state_multi_index,
    dynamic_global_property_multi_index,
    block_summary_multi_index,
    transaction_multi_index,
@@ -94,12 +99,18 @@ class maybe_session {
 };
 
 struct building_block {
-   building_block( const block_header_state& prev, block_timestamp_type when, uint16_t num_prev_blocks_to_confirm )
+   building_block( const block_header_state& prev,
+                   block_timestamp_type when,
+                   uint16_t num_prev_blocks_to_confirm,
+                   const vector<digest_type>& new_protocol_feature_activations )
    :_pending_block_header_state( prev.next( when, num_prev_blocks_to_confirm ) )
+   ,_new_protocol_feature_activations( new_protocol_feature_activations )
    {}
 
    pending_block_header_state         _pending_block_header_state;
    optional<producer_schedule_type>   _new_pending_producer_schedule;
+   vector<digest_type>                _new_protocol_feature_activations;
+   size_t                             _num_new_protocol_features_that_have_activated = 0;
    vector<transaction_metadata_ptr>   _pending_trx_metas;
    vector<transaction_receipt>        _pending_trx_receipts;
    vector<action_receipt>             _actions;
@@ -120,9 +131,11 @@ using block_stage_type = fc::static_variant<building_block, assembled_block, com
 
 struct pending_state {
    pending_state( maybe_session&& s, const block_header_state& prev,
-                  block_timestamp_type when, uint16_t num_prev_blocks_to_confirm )
+                  block_timestamp_type when,
+                  uint16_t num_prev_blocks_to_confirm,
+                  const vector<digest_type>& new_protocol_feature_activations )
    :_db_session( move(s) )
-   ,_block_stage( building_block( prev, when, num_prev_blocks_to_confirm ) )
+   ,_block_stage( building_block( prev, when, num_prev_blocks_to_confirm, new_protocol_feature_activations ) )
    {}
 
    maybe_session                      _db_session;
@@ -158,6 +171,32 @@ struct pending_state {
       return _block_stage.get<completed_block>()._block_state->trxs;
    }
 
+   bool is_protocol_feature_activated( const digest_type& feature_digest )const {
+      if( _block_stage.contains<building_block>() ) {
+         auto& bb = _block_stage.get<building_block>();
+         const auto& activated_features = bb._pending_block_header_state.prev_activated_protocol_features->protocol_features;
+
+         if( activated_features.find( feature_digest ) != activated_features.end() ) return true;
+
+         if( bb._num_new_protocol_features_that_have_activated == 0 ) return false;
+
+         auto end = bb._new_protocol_feature_activations.begin() + bb._num_new_protocol_features_that_have_activated;
+         return (std::find( bb._new_protocol_feature_activations.begin(), end, feature_digest ) != end);
+      }
+
+      if( _block_stage.contains<assembled_block>() ) {
+         // Calling is_protocol_feature_activated during the assembled_block stage is not efficient.
+         // We should avoid doing it.
+         // In fact for now it isn't even implemented.
+         EOS_THROW( misc_exception,
+                    "checking if protocol feature is activated in the assembled_block stage is not yet supported" );
+         // TODO: implement this
+      }
+
+      const auto& activated_features = _block_stage.get<completed_block>()._block_state->activated_protocol_features->protocol_features;
+      return (activated_features.find( feature_digest ) != activated_features.end());
+   }
+
    void push() {
       _db_session.push();
    }
@@ -174,6 +213,7 @@ struct controller_impl {
    wasm_interface                 wasmif;
    resource_limits_manager        resource_limits;
    authorization_manager          authorization;
+   protocol_feature_manager       protocol_features;
    controller::config             conf;
    chain_id_type                  chain_id;
    optional<fc::time_point>       replay_head_time;
@@ -186,6 +226,7 @@ struct controller_impl {
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
+   unordered_map< builtin_protocol_feature_t, std::function<void(controller_impl&)>, enum_hash<builtin_protocol_feature_t> > protocol_feature_activation_handlers;
 
    /**
     *  Transactions that were undone by pop_block or abort_block, transactions
@@ -215,14 +256,30 @@ struct controller_impl {
 
       head = prev;
       db.undo();
+
+      protocol_features.popped_blocks_to( prev->block_num );
    }
 
+   template<builtin_protocol_feature_t F>
+   void on_activation();
+
+   template<builtin_protocol_feature_t F>
+   inline void set_activation_handler() {
+      auto res = protocol_feature_activation_handlers.emplace( F, &controller_impl::on_activation<F> );
+      EOS_ASSERT( res.second, misc_exception, "attempting to set activation handler twice" );
+   }
+
+   inline void trigger_activation_handler( builtin_protocol_feature_t f ) {
+      auto itr = protocol_feature_activation_handlers.find( f );
+      if( itr == protocol_feature_activation_handlers.end() ) return;
+      (itr->second)( *this );
+   }
 
    void set_apply_handler( account_name receiver, account_name contract, action_name action, apply_handler v ) {
       apply_handlers[receiver][make_pair(contract,action)] = v;
    }
 
-   controller_impl( const controller::config& cfg, controller& s  )
+   controller_impl( const controller::config& cfg, controller& s, protocol_feature_set&& pfs  )
    :self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
@@ -235,11 +292,21 @@ struct controller_impl {
     wasmif( cfg.wasm_runtime ),
     resource_limits( db ),
     authorization( s, db ),
+    protocol_features( std::move(pfs) ),
     conf( cfg ),
     chain_id( cfg.genesis.compute_chain_id() ),
     read_mode( cfg.read_mode ),
     thread_pool( cfg.thread_pool_size )
    {
+
+      fork_db.open( [this]( block_timestamp_type timestamp,
+                            const flat_set<digest_type>& cur_features,
+                            const vector<digest_type>& new_features )
+                           { check_protocol_features( timestamp, cur_features, new_features ); }
+      );
+
+      set_activation_handler<builtin_protocol_feature_t::preactivate_feature>();
+
 
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
@@ -313,7 +380,7 @@ struct controller_impl {
 
          for( auto bitr = branch.rbegin(); bitr != branch.rend(); ++bitr ) {
             if( read_mode == db_read_mode::IRREVERSIBLE ) {
-               apply_block( (*bitr)->block, controller::block_status::complete );
+               apply_block( *bitr, controller::block_status::complete );
                head = (*bitr);
                fork_db.mark_valid( head );
             }
@@ -363,6 +430,7 @@ struct controller_impl {
 
       head = std::make_shared<block_state>();
       static_cast<block_header_state&>(*head) = genheader;
+      head->activated_protocol_features = std::make_shared<protocol_feature_activation_set>();
       head->block = std::make_shared<signed_block>(genheader.header);
       db.set_revision( head->block_num );
       initialize_database();
@@ -504,6 +572,8 @@ struct controller_impl {
       while( db.revision() > head->block_num ) {
          db.undo();
       }
+
+      protocol_features.init( db );
 
       const auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
       auto last_block_num = lib_num;
@@ -806,13 +876,20 @@ struct controller_impl {
 
       const auto& tapos_block_summary = db.get<block_summary_object>(1);
       db.modify( tapos_block_summary, [&]( auto& bs ) {
-        bs.block_id = head->id;
+         bs.block_id = head->id;
       });
 
       conf.genesis.initial_configuration.validate();
       db.create<global_property_object>([&](auto& gpo ){
-        gpo.configuration = conf.genesis.initial_configuration;
+         gpo.configuration = conf.genesis.initial_configuration;
       });
+
+      db.create<protocol_state_object>([&](auto& pso ){
+         for( const auto& i : genesis_intrinsics ) {
+            add_intrinsic_to_whitelist( pso.whitelisted_intrinsics, i );
+         }
+      });
+
       db.create<dynamic_global_property_object>([](auto&){});
 
       authorization.initialize_database();
@@ -898,6 +975,8 @@ struct controller_impl {
          trx_context.squash();
          restore.cancel();
          return trace;
+      } catch( const protocol_feature_bad_block_exception& ) {
+         throw;
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
          trace->except = e;
@@ -1030,6 +1109,8 @@ struct controller_impl {
          restore.cancel();
 
          return trace;
+      } catch( const protocol_feature_bad_block_exception& ) {
+         throw;
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
          trace->except = e;
@@ -1234,13 +1315,16 @@ struct controller_impl {
       } FC_CAPTURE_AND_RETHROW((trace))
    } /// push_transaction
 
-
-   void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s,
+   void start_block( block_timestamp_type when,
+                     uint16_t confirm_block_count,
+                     const vector<digest_type>& new_protocol_feature_activations,
+                     controller::block_status s,
                      const optional<block_id_type>& producer_block_id )
    {
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
 
-      auto guard_pending = fc::make_scoped_exit([this](){
+      auto guard_pending = fc::make_scoped_exit([this, head_block_num=head->block_num](){
+         protocol_features.popped_blocks_to( head_block_num );
          pending.reset();
       });
 
@@ -1248,20 +1332,88 @@ struct controller_impl {
          EOS_ASSERT( db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                      ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-         pending.emplace( maybe_session(db), *head, when, confirm_block_count );
+         pending.emplace( maybe_session(db), *head, when, confirm_block_count, new_protocol_feature_activations );
       } else {
-         pending.emplace( maybe_session(), *head, when, confirm_block_count );
+         pending.emplace( maybe_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
       }
 
       pending->_block_status = s;
       pending->_producer_block_id = producer_block_id;
 
-      const auto& pbhs = pending->get_pending_block_header_state();
+      auto& bb = pending->_block_stage.get<building_block>();
+      const auto& pbhs = bb._pending_block_header_state;
 
-      //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
+      // modify state of speculative block only if we are in speculative read mode (otherwise we need clean state for head or read-only modes)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete )
       {
+         const auto& pso = db.get<protocol_state_object>();
+
+         auto num_preactivated_protocol_features = pso.preactivated_protocol_features.size();
+         bool handled_all_preactivated_features = (num_preactivated_protocol_features == 0);
+
+         if( new_protocol_feature_activations.size() > 0 ) {
+            flat_map<digest_type, bool> activated_protocol_features;
+            activated_protocol_features.reserve( std::max( num_preactivated_protocol_features,
+                                                           new_protocol_feature_activations.size() ) );
+            for( const auto& feature_digest : pso.preactivated_protocol_features ) {
+               activated_protocol_features.emplace( feature_digest, false );
+            }
+
+            size_t num_preactivated_features_that_have_activated = 0;
+
+            const auto& pfs = protocol_features.get_protocol_feature_set();
+            for( const auto& feature_digest : new_protocol_feature_activations ) {
+               const auto& f = pfs.get_protocol_feature( feature_digest );
+
+               auto res = activated_protocol_features.emplace( feature_digest, true );
+               if( res.second ) {
+                  // feature_digest was not preactivated
+                  EOS_ASSERT( !f.preactivation_required, protocol_feature_exception,
+                              "attempted to activate protocol feature without prior required preactivation: ${digest}",
+                              ("digest", feature_digest)
+                  );
+               } else {
+                  EOS_ASSERT( !res.first->second, block_validate_exception,
+                              "attempted duplicate activation within a single block: ${digest}",
+                              ("digest", feature_digest)
+                  );
+                  // feature_digest was preactivated
+                  res.first->second = true;
+                  ++num_preactivated_features_that_have_activated;
+               }
+
+               if( f.builtin_feature ) {
+                  trigger_activation_handler( *f.builtin_feature );
+               }
+
+               protocol_features.activate_feature( feature_digest, pbhs.block_num );
+
+               ++bb._num_new_protocol_features_that_have_activated;
+            }
+
+            if( num_preactivated_features_that_have_activated == num_preactivated_protocol_features ) {
+               handled_all_preactivated_features = true;
+            }
+         }
+
+         EOS_ASSERT( handled_all_preactivated_features, block_validate_exception,
+                     "There are pre-activated protocol features that were not activated at the start of this block"
+         );
+
+         if( new_protocol_feature_activations.size() > 0 ) {
+            db.modify( pso, [&]( auto& ps ) {
+               ps.preactivated_protocol_features.clear();
+
+               ps.activated_protocol_features.reserve( ps.activated_protocol_features.size()
+                                                         + new_protocol_feature_activations.size() );
+               for( const auto& feature_digest : new_protocol_feature_activations ) {
+                  ps.activated_protocol_features.emplace_back( feature_digest, pbhs.block_num );
+               }
+            });
+         }
+
          const auto& gpo = db.get<global_property_object>();
+
          if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
              ( *gpo.proposed_schedule_block_num <= pbhs.dpos_irreversible_blocknum ) && // ... that has now become irreversible ...
              pbhs.prev_pending_schedule.schedule.producers.size() == 0 // ... and there was room for a new pending schedule prior to any possible promotion
@@ -1280,8 +1432,8 @@ struct controller_impl {
 
             pending->_block_stage.get<building_block>()._new_pending_producer_schedule = gpo.proposed_schedule;
             db.modify( gpo, [&]( auto& gp ) {
-                  gp.proposed_schedule_block_num = optional<block_num_type>();
-                  gp.proposed_schedule.clear();
+               gp.proposed_schedule_block_num = optional<block_num_type>();
+               gp.proposed_schedule.clear();
             });
          }
 
@@ -1335,7 +1487,8 @@ struct controller_impl {
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
          calculate_trx_merkle(),
          calculate_action_merkle(),
-         std::move( bb._new_pending_producer_schedule )
+         std::move( bb._new_pending_producer_schedule ),
+         std::move( bb._new_protocol_feature_activations )
       ) );
 
       block_ptr->transactions = std::move( bb._pending_trx_receipts );
@@ -1412,11 +1565,76 @@ struct controller_impl {
       pending->push();
    }
 
-   void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
+   /**
+    *  This method is called from other threads. The controller_impl should outlive those threads.
+    *  However, to avoid race conditions, it means that the behavior of this function should not change
+    *  after controller_impl construction.
+
+    *  This should not be an issue since the purpose of this function is to ensure all of the protocol features
+    *  in the supplied vector are recognized by the software, and the set of recognized protocol features is
+    *  determined at startup and cannot be changed without a restart.
+    */
+   void check_protocol_features( block_timestamp_type timestamp,
+                                 const flat_set<digest_type>& currently_activated_protocol_features,
+                                 const vector<digest_type>& new_protocol_features )
+   {
+      const auto& pfs = protocol_features.get_protocol_feature_set();
+
+      for( auto itr = new_protocol_features.begin(); itr != new_protocol_features.end(); ++itr ) {
+         const auto& f = *itr;
+
+         auto status = pfs.is_recognized( f, timestamp );
+         switch( status ) {
+            case protocol_feature_set::recognized_t::unrecognized:
+               EOS_THROW( protocol_feature_exception,
+                          "protocol feature with digest '${digest}' is unrecognized", ("digest", f) );
+            break;
+            case protocol_feature_set::recognized_t::disabled:
+               EOS_THROW( protocol_feature_exception,
+                          "protocol feature with digest '${digest}' is disabled", ("digest", f) );
+            break;
+            case protocol_feature_set::recognized_t::too_early:
+               EOS_THROW( protocol_feature_exception,
+                          "${timestamp} is too early for the earliest allowed activation time of the protocol feature with digest '${digest}'", ("digest", f)("timestamp", timestamp) );
+            break;
+            case protocol_feature_set::recognized_t::ready:
+            break;
+            default:
+               EOS_THROW( protocol_feature_exception, "unexpected recognized_t status" );
+            break;
+         }
+
+         EOS_ASSERT( currently_activated_protocol_features.find( f ) == currently_activated_protocol_features.end(),
+                     protocol_feature_exception,
+                     "protocol feature with digest '${digest}' has already been activated",
+                     ("digest", f)
+         );
+
+         auto dependency_checker = [&currently_activated_protocol_features, &new_protocol_features, &itr]
+                                   ( const digest_type& f ) -> bool
+         {
+            if( currently_activated_protocol_features.find( f ) != currently_activated_protocol_features.end() )
+               return true;
+
+            return (std::find( new_protocol_features.begin(), itr, f ) != itr);
+         };
+
+         EOS_ASSERT( pfs.validate_dependencies( f, dependency_checker ), protocol_feature_exception,
+                     "not all dependencies of protocol feature with digest '${digest}' have been activated",
+                     ("digest", f)
+         );
+      }
+   }
+
+   void apply_block( const block_state_ptr& bsp, controller::block_status s )
+   { try {
       try {
-         EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
+         const signed_block_ptr& b = bsp->block;
+         const auto& new_protocol_feature_activations = bsp->get_new_protocol_feature_activations();
+
+         EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported block extensions" );
          auto producer_block_id = b->id();
-         start_block( b->timestamp, b->confirmed, s , producer_block_id);
+         start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id);
 
          std::vector<transaction_metadata_ptr> packed_transactions;
          packed_transactions.reserve( b->transactions.size() );
@@ -1478,6 +1696,10 @@ struct controller_impl {
                         std::move( ab._pending_block_header_state ),
                         b,
                         std::move( ab._trx_metas ),
+                        []( block_timestamp_type timestamp,
+                            const flat_set<digest_type>& cur_features,
+                            const vector<digest_type>& new_features )
+                        {}, // validation of any new protocol features should have already occurred prior to apply_block
                         true // signature should have already been verified (assuming untrusted) prior to apply_block
                     );
 
@@ -1505,9 +1727,17 @@ struct controller_impl {
       EOS_ASSERT( prev, unlinkable_block_exception,
                   "unlinkable block ${id}", ("id", id)("previous", b->previous) );
 
-      return async_thread_pool( thread_pool, [b, prev]() {
+      return async_thread_pool( thread_pool, [b, prev, control=this]() {
          const bool skip_validate_signee = false;
-         return std::make_shared<block_state>( *prev, move( b ), skip_validate_signee );
+         return std::make_shared<block_state>(
+                        *prev,
+                        move( b ),
+                        [control]( block_timestamp_type timestamp,
+                                   const flat_set<digest_type>& cur_features,
+                                   const vector<digest_type>& new_features )
+                        { control->check_protocol_features( timestamp, cur_features, new_features ); },
+                        skip_validate_signee
+         );
       } );
    }
 
@@ -1554,7 +1784,15 @@ struct controller_impl {
          emit( self.pre_accepted_block, b );
          const bool skip_validate_signee = !conf.force_all_checks;
 
-         auto bsp = std::make_shared<block_state>( *head, b, skip_validate_signee );
+         auto bsp = std::make_shared<block_state>(
+                        *head,
+                        b,
+                        [this]( block_timestamp_type timestamp,
+                                const flat_set<digest_type>& cur_features,
+                                const vector<digest_type>& new_features )
+                        { check_protocol_features( timestamp, cur_features, new_features ); },
+                        skip_validate_signee
+         );
 
          if( s != controller::block_status::irreversible ) {
             fork_db.add( bsp, true );
@@ -1563,7 +1801,7 @@ struct controller_impl {
          emit( self.accepted_block_header, bsp );
 
          if( s == controller::block_status::irreversible ) {
-            apply_block( bsp->block, s );
+            apply_block( bsp, s );
             head = bsp;
 
             // On replay, log_irreversible is not called and so no irreversible_block signal is emittted.
@@ -1582,7 +1820,7 @@ struct controller_impl {
       bool head_changed = true;
       if( new_head->header.previous == head->id ) {
          try {
-            apply_block( new_head->block, s );
+            apply_block( new_head, s );
             fork_db.mark_valid( new_head );
             head = new_head;
          } catch ( const fc::exception& e ) {
@@ -1606,7 +1844,8 @@ struct controller_impl {
          for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr ) {
             optional<fc::exception> except;
             try {
-               apply_block( (*ritr)->block, (*ritr)->is_valid() ? controller::block_status::validated : controller::block_status::complete );
+               apply_block( *ritr, (*ritr)->is_valid() ? controller::block_status::validated
+                                                       : controller::block_status::complete );
                fork_db.mark_valid( *ritr );
                head = *ritr;
             } catch (const fc::exception& e) {
@@ -1630,7 +1869,7 @@ struct controller_impl {
 
                // re-apply good blocks
                for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
-                  apply_block( (*ritr)->block, controller::block_status::validated /* we previously validated these blocks*/ );
+                  apply_block( *ritr, controller::block_status::validated /* we previously validated these blocks*/ );
                   head = *ritr;
                }
                throw *except;
@@ -1653,6 +1892,7 @@ struct controller_impl {
                unapplied_transactions[t->signed_id] = t;
          }
          pending.reset();
+         protocol_features.popped_blocks_to( head->block_num );
       }
    }
 
@@ -1920,8 +2160,18 @@ authorization_manager&         controller::get_mutable_authorization_manager()
    return my->authorization;
 }
 
+const protocol_feature_manager& controller::get_protocol_feature_manager()const
+{
+   return my->protocol_features;
+}
+
 controller::controller( const controller::config& cfg )
-:my( new controller_impl( cfg, *this ) )
+:my( new controller_impl( cfg, *this, protocol_feature_set{} ) )
+{
+}
+
+controller::controller( const config& cfg, protocol_feature_set&& pfs )
+:my( new controller_impl( cfg, *this, std::move(pfs) ) )
 {
 }
 
@@ -1961,10 +2211,163 @@ chainbase::database& controller::mutable_db()const { return my->db; }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
 
+void controller::preactivate_feature( const digest_type& feature_digest ) {
+   const auto& pfs = my->protocol_features.get_protocol_feature_set();
+   auto cur_time = pending_block_time();
 
-void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count) {
+   auto status = pfs.is_recognized( feature_digest, cur_time );
+   switch( status ) {
+      case protocol_feature_set::recognized_t::unrecognized:
+         if( is_producing_block() ) {
+            EOS_THROW( subjective_block_production_exception,
+                       "protocol feature with digest '${digest}' is unrecognized", ("digest", feature_digest) );
+         } else {
+            EOS_THROW( protocol_feature_bad_block_exception,
+                       "protocol feature with digest '${digest}' is unrecognized", ("digest", feature_digest) );
+         }
+      break;
+      case protocol_feature_set::recognized_t::disabled:
+         if( is_producing_block() ) {
+            EOS_THROW( subjective_block_production_exception,
+                       "protocol feature with digest '${digest}' is disabled", ("digest", feature_digest) );
+         } else {
+            EOS_THROW( protocol_feature_bad_block_exception,
+                       "protocol feature with digest '${digest}' is disabled", ("digest", feature_digest) );
+         }
+      break;
+      case protocol_feature_set::recognized_t::too_early:
+         if( is_producing_block() ) {
+            EOS_THROW( subjective_block_production_exception,
+                       "${timestamp} is too early for the earliest allowed activation time of the protocol feature with digest '${digest}'", ("digest", feature_digest)("timestamp", cur_time) );
+         } else {
+            EOS_THROW( protocol_feature_bad_block_exception,
+                       "${timestamp} is too early for the earliest allowed activation time of the protocol feature with digest '${digest}'", ("digest", feature_digest)("timestamp", cur_time) );
+         }
+      break;
+      case protocol_feature_set::recognized_t::ready:
+      break;
+      default:
+         if( is_producing_block() ) {
+            EOS_THROW( subjective_block_production_exception, "unexpected recognized_t status" );
+         } else {
+            EOS_THROW( protocol_feature_bad_block_exception, "unexpected recognized_t status" );
+         }
+      break;
+   }
+
+   // The above failures depend on subjective information.
+   // Because of deferred transactions, this complicates things considerably.
+
+   // If producing a block, we throw a subjective failure if the feature is not properly recognized in order
+   // to try to avoid retiring into a block a deferred transacton driven by subjective information.
+
+   // But it is still possible for a producer to retire a deferred transaction that deals with this subjective
+   // information. If they recognized the feature, they would retire it successfully, but a validator that
+   // does not recognize the feature should reject the entire block (not just fail the deferred transaction).
+   // Even if they don't recognize the feature, the producer could change their nodeos code to treat it like an
+   // objective failure thus leading the deferred transaction to retire with soft_fail or hard_fail.
+   // In this case, validators that don't recognize the feature would reject the whole block immediately, and
+   // validators that do recognize the feature would likely lead to a different retire status which would
+   // ultimately cause a validation failure and thus rejection of the block.
+   // In either case, it results in rejection of the block which is the desired behavior in this scenario.
+
+   // If the feature is properly recognized by producer and validator, we have dealt with the subjectivity and
+   // now only consider the remaining failure modes which are deterministic and objective.
+   // Thus the exceptions that can be thrown below can be regular objective exceptions
+   // that do not cause immediate rejection of the block.
+
+   EOS_ASSERT( !is_protocol_feature_activated( feature_digest ),
+               protocol_feature_exception,
+               "protocol feature with digest '${digest}' is already activated",
+               ("digest", feature_digest)
+   );
+
+   const auto& pso = my->db.get<protocol_state_object>();
+
+   EOS_ASSERT( std::find( pso.preactivated_protocol_features.begin(),
+                          pso.preactivated_protocol_features.end(),
+                          feature_digest
+               ) == pso.preactivated_protocol_features.end(),
+               protocol_feature_exception,
+               "protocol feature with digest '${digest}' is already pre-activated",
+               ("digest", feature_digest)
+   );
+
+   auto dependency_checker = [&]( const digest_type& d ) -> bool
+   {
+      if( is_protocol_feature_activated( d ) ) return true;
+
+      return ( std::find( pso.preactivated_protocol_features.begin(),
+                          pso.preactivated_protocol_features.end(),
+                          d ) != pso.preactivated_protocol_features.end() );
+   };
+
+   EOS_ASSERT( pfs.validate_dependencies( feature_digest, dependency_checker ),
+               protocol_feature_exception,
+               "not all dependencies of protocol feature with digest '${digest}' have been activated or pre-activated",
+               ("digest", feature_digest)
+   );
+
+   my->db.modify( pso, [&]( auto& ps ) {
+      ps.preactivated_protocol_features.push_back( feature_digest );
+   } );
+}
+
+vector<digest_type> controller::get_preactivated_protocol_features()const {
+   const auto& pso = my->db.get<protocol_state_object>();
+
+   if( pso.preactivated_protocol_features.size() == 0 ) return {};
+
+   vector<digest_type> preactivated_protocol_features;
+
+   for( const auto& f : pso.preactivated_protocol_features ) {
+      preactivated_protocol_features.emplace_back( f );
+   }
+
+   return preactivated_protocol_features;
+}
+
+void controller::validate_protocol_features( const vector<digest_type>& features_to_activate )const {
+   my->check_protocol_features( my->head->header.timestamp,
+                                my->head->activated_protocol_features->protocol_features,
+                                features_to_activate );
+}
+
+void controller::start_block( block_timestamp_type when, uint16_t confirm_block_count )
+{
    validate_db_available_size();
-   my->start_block(when, confirm_block_count, block_status::incomplete, optional<block_id_type>() );
+
+   EOS_ASSERT( !my->pending, block_validate_exception, "pending block already exists" );
+
+   vector<digest_type> new_protocol_feature_activations;
+
+   const auto& pso = my->db.get<protocol_state_object>();
+   if( pso.preactivated_protocol_features.size() > 0 ) {
+      for( const auto& f : pso.preactivated_protocol_features ) {
+         new_protocol_feature_activations.emplace_back( f );
+      }
+   }
+
+   if( new_protocol_feature_activations.size() > 0 ) {
+      validate_protocol_features( new_protocol_feature_activations );
+   }
+
+   my->start_block( when, confirm_block_count, new_protocol_feature_activations,
+                    block_status::incomplete, optional<block_id_type>() );
+}
+
+void controller::start_block( block_timestamp_type when,
+                              uint16_t confirm_block_count,
+                              const vector<digest_type>& new_protocol_feature_activations )
+{
+   validate_db_available_size();
+
+   if( new_protocol_feature_activations.size() > 0 ) {
+      validate_protocol_features( new_protocol_feature_activations );
+   }
+
+   my->start_block( when, confirm_block_count, new_protocol_feature_activations,
+                    block_status::incomplete, optional<block_id_type>() );
 }
 
 block_state_ptr controller::finalize_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
@@ -1978,6 +2381,10 @@ block_state_ptr controller::finalize_block( const std::function<signature_type( 
                   std::move( ab._pending_block_header_state ),
                   std::move( ab._unsigned_block ),
                   std::move( ab._trx_metas ),
+                  []( block_timestamp_type timestamp,
+                      const flat_set<digest_type>& cur_features,
+                      const vector<digest_type>& new_features )
+                  {},
                   signer_callback
               );
 
@@ -2497,6 +2904,24 @@ void controller::validate_reversible_available_size() const {
    EOS_ASSERT(free >= guard, reversible_guard_exception, "reversible free: ${f}, guard size: ${g}", ("f", free)("g",guard));
 }
 
+bool controller::is_protocol_feature_activated( const digest_type& feature_digest )const {
+   if( my->pending )
+      return my->pending->is_protocol_feature_activated( feature_digest );
+
+   const auto& activated_features = my->head->activated_protocol_features->protocol_features;
+   return (activated_features.find( feature_digest ) != activated_features.end());
+}
+
+bool controller::is_builtin_activated( builtin_protocol_feature_t f )const {
+   uint32_t current_block_num = head_block_num();
+
+   if( my->pending ) {
+      ++current_block_num;
+   }
+
+   return my->protocol_features.is_builtin_activated( f, current_block_num );
+}
+
 bool controller::is_known_unexpired_transaction( const transaction_id_type& id) const {
    return db().find<transaction_object, by_trx_id>(id);
 }
@@ -2520,5 +2945,17 @@ bool controller::is_resource_greylisted(const account_name &name) const {
 const flat_set<account_name> &controller::get_resource_greylist() const {
    return  my->conf.resource_greylist;
 }
+
+/// Protocol feature activation handlers:
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::preactivate_feature>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "preactivate_feature" );
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "is_feature_activated" );
+   } );
+}
+
+/// End of protocol feature activation handlers
 
 } } /// eosio::chain

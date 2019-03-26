@@ -55,16 +55,34 @@ namespace eosio { namespace chain {
    }
 
    struct fork_database_impl {
+      fork_database_impl( fork_database& self, const fc::path& data_dir )
+      :self(self)
+      ,datadir(data_dir)
+      {}
+
+      fork_database&        self;
       fork_multi_index_type index;
       block_state_ptr       root; // Only uses the block_header_state portion
       block_state_ptr       head;
       fc::path              datadir;
+
+      void add( const block_state_ptr& n,
+                bool ignore_duplicate, bool validate,
+                const std::function<void( block_timestamp_type,
+                                          const flat_set<digest_type>&,
+                                          const vector<digest_type>& )>& validator );
    };
 
 
-   fork_database::fork_database( const fc::path& data_dir ):my( new fork_database_impl() ) {
-      my->datadir = data_dir;
+   fork_database::fork_database( const fc::path& data_dir )
+   :my( new fork_database_impl( *this, data_dir ) )
+   {}
 
+
+   void fork_database::open( const std::function<void( block_timestamp_type,
+                                                       const flat_set<digest_type>&,
+                                                       const vector<digest_type>& )>& validator )
+   {
       if (!fc::is_directory(my->datadir))
          fc::create_directories(my->datadir);
 
@@ -113,7 +131,8 @@ namespace eosio { namespace chain {
                      s.trxs.push_back( std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>(pt) ) );
                   }
                }
-               add( std::make_shared<block_state>( move( s ) ) );
+               s.header_exts = s.block->validate_and_extract_header_extensions();
+               my->add( std::make_shared<block_state>( move( s ) ), false, true, validator );
             }
             block_id_type head_id;
             fc::raw::unpack( ds, head_id );
@@ -277,23 +296,50 @@ namespace eosio { namespace chain {
       return block_header_state_ptr();
    }
 
-   void fork_database::add( const block_state_ptr& n, bool ignore_duplicate ) {
-      EOS_ASSERT( my->root, fork_database_exception, "root not yet set" );
+   void fork_database_impl::add( const block_state_ptr& n,
+                                 bool ignore_duplicate, bool validate,
+                                 const std::function<void( block_timestamp_type,
+                                                           const flat_set<digest_type>&,
+                                                           const vector<digest_type>& )>& validator )
+   {
+      EOS_ASSERT( root, fork_database_exception, "root not yet set" );
       EOS_ASSERT( n, fork_database_exception, "attempt to add null block state" );
 
-      EOS_ASSERT( get_block_header( n->header.previous ), unlinkable_block_exception,
+      auto prev_bh = self.get_block_header( n->header.previous );
+
+      EOS_ASSERT( prev_bh, unlinkable_block_exception,
                   "unlinkable block", ("id", n->id)("previous", n->header.previous) );
 
-      auto inserted = my->index.insert(n);
+      if( validate ) {
+         try {
+            const auto& exts = n->header_exts;
+
+            if( exts.size() > 0 ) {
+               const auto& new_protocol_features = exts.front().get<protocol_feature_activation>().protocol_features;
+               validator( n->header.timestamp, prev_bh->activated_protocol_features->protocol_features, new_protocol_features );
+            }
+         } EOS_RETHROW_EXCEPTIONS( fork_database_exception, "serialized fork database is incompatible with configured protocol features"  )
+      }
+
+      auto inserted = index.insert(n);
       if( !inserted.second ) {
          if( ignore_duplicate ) return;
          EOS_THROW( fork_database_exception, "duplicate block added", ("id", n->id) );
       }
 
-      auto candidate = my->index.get<by_lib_block_num>().begin();
+      auto candidate = index.get<by_lib_block_num>().begin();
       if( (*candidate)->is_valid() ) {
-         my->head = *candidate;
+         head = *candidate;
       }
+   }
+
+   void fork_database::add( const block_state_ptr& n, bool ignore_duplicate ) {
+      my->add( n, ignore_duplicate, false,
+               []( block_timestamp_type timestamp,
+                   const flat_set<digest_type>& cur_features,
+                   const vector<digest_type>& new_features )
+               {}
+      );
    }
 
    const block_state_ptr& fork_database::root()const { return my->root; }
