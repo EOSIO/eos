@@ -10,6 +10,7 @@
 #include <eosio/chain/types.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/log/logger_config.hpp>
 #include <fc/utf8.hpp>
 #include <fc/variant.hpp>
 
@@ -1527,7 +1528,10 @@ void mongo_db_plugin_impl::init() {
 
    ilog("starting db plugin thread");
 
-   consume_thread = std::thread([this] { consume_blocks(); });
+   consume_thread = std::thread([this] {
+      fc::set_os_thread_name( "mongodb" );
+      consume_blocks();
+   });
 
    startup = false;
 }
