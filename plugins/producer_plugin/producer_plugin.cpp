@@ -706,9 +706,10 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_thread_pool.emplace( thread_pool_size );
 
    // name threads in thread pool for logger
-   boost::asio::post( *my->_thread_pool, [&tp = *my->_thread_pool, sz = thread_pool_size]() {
+   auto fut = eosio::chain::async_thread_pool( *my->_thread_pool, [&tp = *my->_thread_pool, sz = thread_pool_size]() {
       set_thread_name( tp, 0, sz );
    });
+   fut.wait();
 
    if( options.count( "snapshots-dir" )) {
       auto sd = options.at( "snapshots-dir" ).as<bfs::path>();
