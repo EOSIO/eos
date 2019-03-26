@@ -1743,9 +1743,10 @@ void set_thread_name( boost::asio::thread_pool& tp, uint16_t i, uint16_t sz ) {
 
 void controller::startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot ) {
    // name threads in thread pool for logger
-   boost::asio::post( get_thread_pool(), [&tp = get_thread_pool(), sz = my->conf.thread_pool_size]() {
+   auto fut = eosio::chain::async_thread_pool( get_thread_pool(), [&tp = get_thread_pool(), sz = my->conf.thread_pool_size]() {
       set_thread_name( tp, 0, sz );
    });
+   fut.wait();
 
    my->head = my->fork_db.head();
    if( snapshot ) {
