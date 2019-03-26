@@ -21,6 +21,7 @@
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
+#include <fc/log/logger_config.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 
@@ -1727,7 +1728,25 @@ void controller::add_indices() {
    my->add_indices();
 }
 
+void set_thread_name( boost::asio::thread_pool& tp, uint16_t i, uint16_t sz ) {
+   std::string tn = "chain-" + std::to_string( i );
+   fc::set_os_thread_name( tn );
+   ++i;
+   if( i < sz ) {
+      // post recursively so we consume all the threads
+      auto fut = eosio::chain::async_thread_pool( tp, [&tp, i, sz]() {
+         set_thread_name( tp, i, sz );
+      });
+      fut.wait();
+   }
+}
+
 void controller::startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot ) {
+   // name threads in thread pool for logger
+   boost::asio::post( get_thread_pool(), [&tp = get_thread_pool(), sz = my->conf.thread_pool_size]() {
+      set_thread_name( tp, 0, sz );
+   });
+
    my->head = my->fork_db.head();
    if( snapshot ) {
       ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
