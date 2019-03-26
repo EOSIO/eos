@@ -8,9 +8,11 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
+#include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/snapshot.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/log/logger_config.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <fc/scoped_exit.hpp>
 
@@ -620,6 +622,19 @@ make_keosd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl,
    };
 }
 
+void set_thread_name( boost::asio::thread_pool& tp, uint16_t i, uint16_t sz ) {
+   std::string tn = "prod-" + std::to_string( i );
+   fc::set_os_thread_name( tn );
+   ++i;
+   if( i < sz ) {
+      // post recursively so we consume all the threads
+      auto fut = eosio::chain::async_thread_pool( tp, [&tp, i, sz]() {
+         set_thread_name( tp, i, sz );
+      });
+      fut.wait();
+   }
+}
+
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
    my->chain_plug = app().find_plugin<chain_plugin>();
@@ -690,6 +705,11 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
                "producer-threads ${num} must be greater than 0", ("num", thread_pool_size));
    my->_thread_pool.emplace( thread_pool_size );
 
+   // name threads in thread pool for logger
+   boost::asio::post( *my->_thread_pool, [&tp = *my->_thread_pool, sz = thread_pool_size]() {
+      set_thread_name( tp, 0, sz );
+   });
+
    if( options.count( "snapshots-dir" )) {
       auto sd = options.at( "snapshots-dir" ).as<bfs::path>();
       if( sd.is_relative()) {
@@ -738,9 +758,9 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
 void producer_plugin::plugin_startup()
 { try {
-   handle_sighup(); // Sets loggers
-
    ilog("producer plugin:  plugin_startup() begin");
+
+   handle_sighup(); // Sets loggers
 
    chain::controller& chain = my->chain_plug->chain();
    EOS_ASSERT( my->_producers.empty() || chain.get_read_mode() == chain::db_read_mode::SPECULATIVE, plugin_config_exception,
