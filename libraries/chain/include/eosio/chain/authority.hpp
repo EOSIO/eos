@@ -66,6 +66,15 @@ struct authority {
       }
    }
 
+   authority( permission_level p, uint32_t delay_sec = 0 )
+   :threshold(1),accounts({{p,1}})
+   {
+      if( delay_sec > 0 ) {
+         threshold = 2;
+         waits.push_back(wait_weight{delay_sec, 1});
+      }
+   }
+
    authority( uint32_t t, vector<key_weight> k, vector<permission_level_weight> p = {}, vector<wait_weight> w = {} )
    :threshold(t),keys(move(k)),accounts(move(p)),waits(move(w)){}
    authority(){}

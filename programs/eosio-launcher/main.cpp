@@ -850,7 +850,7 @@ launcher_def::bind_nodes () {
       cerr << "Unable to allocate producers due to insufficient prod_nodes = " << prod_nodes << "\n";
       exit (10);
    }
-   int non_bios = prod_nodes - 1;
+   size_t non_bios = prod_nodes - 1;
    int per_node = producers / non_bios;
    int extra = producers % non_bios;
    unsigned int i = 0;
@@ -2006,7 +2006,7 @@ int main (int argc, char *argv[]) {
 
 
 //-------------------------------------------------------------
-
+// @ignore local_config_file
 FC_REFLECT( remote_deploy,
             (ssh_cmd)(scp_cmd)(ssh_identity)(ssh_args) )
 
@@ -2016,16 +2016,20 @@ FC_REFLECT( prodkey_def,
 FC_REFLECT( producer_set_def,
             (schedule))
 
+// @ignore listen_addr, p2p_count, http_count, dot_label_str
 FC_REFLECT( host_def,
             (genesis)(ssh_identity)(ssh_args)(eosio_home)
             (host_name)(public_name)
             (base_p2p_port)(base_http_port)(def_file_size)
             (instances) )
 
+// @ignore node, dot_label_str
 FC_REFLECT( eosd_def,
-            (name)(config_dir_name)(data_dir_name)(has_db)
-            (p2p_port)(http_port)(file_size) )
+            (config_dir_name)(data_dir_name)(p2p_port)
+            (http_port)(file_size)(has_db)(name)(host)
+            (p2p_endpoint) )
 
+// @ignore instance, gelf_endpoint
 FC_REFLECT( tn_node_def, (name)(keys)(peers)(producers) )
 
 FC_REFLECT( testnet_def, (name)(ssh_helper)(nodes) )

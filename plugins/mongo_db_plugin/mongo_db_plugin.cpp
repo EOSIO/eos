@@ -652,6 +652,18 @@ optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name 
                      }
                   }
                }
+               // mongo does not like empty json keys
+               // make abi_serializer use empty_name instead of "" for the action data
+               for( auto& s : abi.structs ) {
+                  if( s.name.empty() ) {
+                     s.name = "empty_struct_name";
+                  }
+                  for( auto& f : s.fields ) {
+                     if( f.name.empty() ) {
+                        f.name = "empty_field_name";
+                     }
+                  }
+               }
                abis.set_abi( abi, abi_serializer_max_time );
                entry.serializer.emplace( std::move( abis ) );
                abi_cache_index.insert( entry );

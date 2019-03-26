@@ -22,6 +22,7 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <fstream>
+#include <string.h>
 
 namespace eosio { namespace chain {
    using namespace webassembly;
@@ -211,6 +212,8 @@ class softfloat_api : public context_aware_api {
       softfloat_api( apply_context& ctx )
       :context_aware_api(ctx, true) {}
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
       // float binops
       float _eosio_f32_add( float a, float b ) {
          float32_t ret = f32_add( to_softfloat32(a), to_softfloat32(b) );
@@ -228,6 +231,7 @@ class softfloat_api : public context_aware_api {
          float32_t ret = f32_mul( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
+#pragma GCC diagnostic pop
       float _eosio_f32_min( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
@@ -901,6 +905,8 @@ class system_api : public context_aware_api {
 
 };
 
+constexpr size_t max_assert_message = 1024;
+
 class context_free_system_api :  public context_aware_api {
 public:
    explicit context_free_system_api( apply_context& ctx )
@@ -913,14 +919,16 @@ public:
    // Kept as intrinsic rather than implementing on WASM side (using eosio_assert_message and strlen) because strlen is faster on native side.
    void eosio_assert( bool condition, null_terminated_ptr msg ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         std::string message( msg );
+         const size_t sz = strnlen( msg, max_assert_message );
+         std::string message( msg, sz );
          EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
    void eosio_assert_message( bool condition, array_ptr<const char> msg, size_t msg_len ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         std::string message( msg, msg_len );
+         const size_t sz = msg_len > max_assert_message ? max_assert_message : msg_len;
+         std::string message( msg, sz );
          EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
@@ -1067,7 +1075,10 @@ class console_api : public context_aware_api {
             console.precision( std::numeric_limits<long double>::digits10 );
             extFloat80_t val_approx;
             f128M_to_extF80M(&val, &val_approx);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
             context.console_append( *(long double*)(&val_approx) );
+#pragma GCC diagnostic pop
 #else
             console.precision( std::numeric_limits<double>::digits10 );
             double val_approx = from_softfloat64( f128M_to_f64(&val) );
@@ -1266,7 +1277,7 @@ class memory_api : public context_aware_api {
       :context_aware_api(ctx,true){}
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
-         EOS_ASSERT((std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
+         EOS_ASSERT((size_t)(std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
                overlapping_memory_error, "memcpy can only accept non-aliasing pointers");
          return (char *)::memcpy(dest, src, length);
       }

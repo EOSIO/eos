@@ -44,6 +44,7 @@ class bnet_plugin : public plugin<bnet_plugin> {
       void plugin_initialize(const variables_map& options);
       void plugin_startup();
       void plugin_shutdown();
+      void handle_sighup() override;
 
    private:
       bnet_ptr my;
