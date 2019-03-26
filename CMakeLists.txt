@@ -1,7 +1,7 @@
 cmake_minimum_required( VERSION 3.5 )
 
 project( EOSIO )
-
+include(CTest) # suppresses DartConfiguration.tcl error
 enable_testing()
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -192,7 +192,7 @@ set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build EOSIO for code coverage anal
 
 if(ENABLE_COVERAGE_TESTING)
   SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
-  find_program( LCOV_PATH  lcov )
+  find_program( LCOV_PATH lcov )
   find_program( LLVMCOV_PATH  llvm-cov )
   find_program( GENHTML_PATH NAMES genhtml)
 endif()

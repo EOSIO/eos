@@ -28,10 +28,10 @@ chain_api_plugin::~chain_api_plugin(){}
 void chain_api_plugin::set_program_options(options_description&, options_description&) {}
 void chain_api_plugin::plugin_initialize(const variables_map&) {}
 
-struct async_result_visitor : public fc::visitor<std::string> {
+struct async_result_visitor : public fc::visitor<fc::variant> {
    template<typename T>
-   std::string operator()(const T& v) const {
-      return fc::json::to_string(v);
+   fc::variant operator()(const T& v) const {
+      return fc::variant(v);
    }
 };
 
@@ -41,8 +41,8 @@ struct async_result_visitor : public fc::visitor<std::string> {
           api_handle.validate(); \
           try { \
              if (body.empty()) body = "{}"; \
-             auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()); \
-             cb(http_response_code, fc::json::to_string(result)); \
+             fc::variant result( api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()) ); \
+             cb(http_response_code, std::move(result)); \
           } catch (...) { \
              http_plugin::handle_exception(#api_name, #call_name, body, cb); \
           } \

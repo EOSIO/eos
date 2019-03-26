@@ -68,8 +68,8 @@ void login_plugin::plugin_initialize(const variables_map& options) {
          try {                                                                                                         \
             if (body.empty())                                                                                          \
                body = "{}";                                                                                            \
-            auto result = call_name(fc::json::from_string(body).as<login_plugin::call_name##_params>());               \
-            cb(http_response_code, fc::json::to_string(result));                                                       \
+            fc::variant result( call_name(fc::json::from_string(body).as<login_plugin::call_name##_params>()) );       \
+            cb(http_response_code, std::move(result));                                                                 \
          } catch (...) {                                                                                               \
             http_plugin::handle_exception("login", #call_name, body, cb);                                              \
          }                                                                                                             \

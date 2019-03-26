@@ -145,7 +145,7 @@ const char* error_advice_authority_type_exception = R"=====(Ensure that your aut
 )=====";
 const char* error_advice_action_type_exception = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
 const char* error_advice_transaction_type_exception = R"=====(Ensure that your transaction JSON follows the right transaction format!
-You can refer to contracts/eosiolib/transaction.hpp for reference)=====";
+You can refer to eosio.cdt/libraries/eosiolib/transaction.hpp for reference)=====";
 const char* error_advice_abi_type_exception =  R"=====(Ensure that your abi JSON follows the following format!
 {
   "types" : [{ "new_type_name":"type_name", "type":"type_name" }],
