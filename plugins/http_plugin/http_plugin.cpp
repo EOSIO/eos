@@ -522,7 +522,11 @@ namespace eosio {
       my->server_ioc = std::make_shared<boost::asio::io_context>();
       my->server_ioc_work.emplace( boost::asio::make_work_guard(*my->server_ioc) );
       for( uint16_t i = 0; i < my->thread_pool_size; ++i ) {
-         boost::asio::post( *my->thread_pool, [ioc = my->server_ioc]() { ioc->run(); } );
+         boost::asio::post( *my->thread_pool, [ioc = my->server_ioc, i]() {
+            std::string tn = "http-" + std::to_string( i );
+            fc::set_os_thread_name( tn );
+            ioc->run();
+         } );
       }
 
       if(my->listen_endpoint) {
