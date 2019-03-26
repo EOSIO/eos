@@ -98,6 +98,7 @@ class Cluster(object):
 
         self.useBiosBootFile=False
         self.filesToCleanup=[]
+        self.alternateVersionLabels=Cluster.__defaultAlternateVersionLabels()
 
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
@@ -108,14 +109,43 @@ class Cluster(object):
     def setWalletMgr(self, walletMgr):
         self.walletMgr=walletMgr
 
+    @staticmethod
+    def __defaultAlternateVersionLabels():
+        """Return a labels dictionary with just the "current" label to path set."""
+        labels={}
+        labels["current"]="./"
+        return labels
+
+    def setAlternateVersionLabels(self, file):
+        """From the provided file return a dictionary of labels to paths."""
+        Utils.Print("alternate file=%s" % (file))
+        self.alternateVersionLabels=Cluster.__defaultAlternateVersionLabels()
+        if file is None:
+            # only have "current"
+            return
+        if not os.path.exists(file):
+            Utils.errorExit("Alternate Version Labels file \"%s\" does not exist" % (file))
+        with open(file, 'r') as f:
+            content=f.read()
+            p=re.compile(r'^\s*(\w+)\s*=\s*([^\s](?:.*[^\s])?)\s*$', re.MULTILINE)
+            all=p.findall(content)
+            for match in all:
+                label=match[0]
+                path=match[1]
+                if label=="current":
+                    Utils.Print("ERROR: cannot overwrite default label %s with path=%s" % (label, path))
+                    continue
+                self.alternateVersionLabels[label]=path
+                if Utils.Debug: Utils.Print("Version label \"%s\" maps to \"%s\"" % (label, path))
+
     # launch local nodes and set self.nodes
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-return-statements
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", p2pPlugin="net", delay=1, onlyBios=False, dontBootstrap=False,
-               totalProducers=None, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None,
-               pfSetupPolicy = PFSetupPolicy.FULL):
+               totalProducers=None, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None, pfSetupPolicy = PFSetupPolicy.FULL, alternateVersionLabelsFile=None,
+               associatedNodeLabels=None):
         """Launch cluster.
         pnodes: producer nodes count
         totalNodes: producer + non-producer nodes count
@@ -132,9 +162,20 @@ class Cluster(object):
         specificExtraNodeosArgs: dictionary of arguments to pass to a specific node (via --specific-num and
                                  --specific-nodeos flags on launcher), example: { "5" : "--plugin eosio::test_control_api_plugin" }
         pfSetupPolicy: determine the protocol feature setup policy (none, preactivate_feature_only, or full)
+        alternateVersionLabelsFile: Supply an alternate version labels file to use with associatedNodeLabels.
+        associatedNodeLabels: Supply a dictionary of node numbers to use an alternate label for a specific node.
         """
         assert(isinstance(topo, str))
         assert PFSetupPolicy.isValid(pfSetupPolicy)
+        if alternateVersionLabelsFile is not None:
+            assert(isinstance(alternateVersionLabelsFile, str))
+        elif associatedNodeLabels is not None:
+            associatedNodeLabels=None    # need to supply alternateVersionLabelsFile to use labels
+
+        if associatedNodeLabels is not None:
+            assert(isinstance(associatedNodeLabels, dict))
+            Utils.Print("associatedNodeLabels size=%s" % (len(associatedNodeLabels)))
+        Utils.Print("alternateVersionLabelsFile=%s" % (alternateVersionLabelsFile))
 
         if not self.localCluster:
             Utils.Print("WARNING: Cluster not local, not launching %s." % (Utils.EosServerName))
@@ -153,6 +194,8 @@ class Cluster(object):
         if totalProducers:
             assert(isinstance(totalProducers, (str,int)))
             producerFlag="--producers %s" % (totalProducers)
+
+        self.setAlternateVersionLabels(alternateVersionLabelsFile)
 
         tries = 30
         while not Utils.arePortsAvailable(set(range(self.port, self.port+totalNodes+1))):
@@ -200,6 +243,18 @@ class Cluster(object):
         cmdArr.append(str(160000000))
         cmdArr.append("--max-transaction-cpu-usage")
         cmdArr.append(str(150000000))
+
+        if associatedNodeLabels is not None:
+            for nodeNum,label in associatedNodeLabels.items():
+                assert(isinstance(nodeNum, (str,int)))
+                assert(isinstance(label, str))
+                path=self.alternateVersionLabels.get(label)
+                if path is None:
+                    Utils.errorExit("associatedNodeLabels passed in indicates label %s for node num %s, but it was not identified in %s" % (label, nodeNum, alternateVersionLabelsFile))
+                cmdArr.append("--spcfc-inst-num")
+                cmdArr.append(str(nodeNum))
+                cmdArr.append("--spcfc-inst-nodeos")
+                cmdArr.append(path)
 
         # must be last cmdArr.append before subprocess.call, so that everything is on the command line
         # before constructing the shape.json file for "bridge"
@@ -293,7 +348,7 @@ class Cluster(object):
                                 producerGroup2.append(nodeName)
                                 Utils.Print("Group2 grouping producerIndex=%s, secondGroupStart=%s" % (producerIndex,secondGroupStart))
                         if group!=prodGroup:
-                            errorExit("Node configuration not consistent with \"bridge\" topology. Node %s has producers that fall into both halves of the bridged network" % (nodeName))
+                            Utils.errorExit("Node configuration not consistent with \"bridge\" topology. Node %s has producers that fall into both halves of the bridged network" % (nodeName))
 
             for _,bridgeNode in bridgeNodes.items():
                 bridgeNode["peers"]=[]

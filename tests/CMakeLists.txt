@@ -127,7 +127,7 @@ if(ENABLE_COVERAGE_TESTING)
 
   if(NOT LLVMCOV_PATH)
     message(FATAL_ERROR "llvm-cov not found! Aborting...")
-  endif() # NOT LCOV_PATH
+  endif()
 
   if(NOT GENHTML_PATH)
     message(FATAL_ERROR "genhtml not found! Aborting...")

@@ -408,6 +408,7 @@ struct launcher_def {
    bool skip_transaction_signatures = false;
    string eosd_extra_args;
    std::map<uint,string> specific_nodeos_args;
+   std::map<uint,string> specific_nodeos_installation_paths;
    testnet_def network;
    string gelf_endpoint;
    vector <string> aliases;
@@ -488,8 +489,10 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("genesis,g",bpo::value<string>()->default_value("./genesis.json"),"set the path to genesis.json")
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "nodeos does not require transaction signatures.")
     ("nodeos", bpo::value<string>(&eosd_extra_args), "forward nodeos command line argument(s) to each instance of nodeos, enclose arg(s) in quotes")
-    ("specific-num", bpo::value<vector<uint>>()->composing(), "forward nodeos command line argument(s) (using \"--specific-nodeos\" flag) to this specific instance of nodeos. This parameter can be entered multiple times and requires a paired \"--specific-nodeos\" flag")
+    ("specific-num", bpo::value<vector<uint>>()->composing(), "forward nodeos command line argument(s) (using \"--specific-nodeos\" flag) to this specific instance of nodeos. This parameter can be entered multiple times and requires a paired \"--specific-nodeos\" flag each time it is used")
     ("specific-nodeos", bpo::value<vector<string>>()->composing(), "forward nodeos command line argument(s) to its paired specific instance of nodeos(using \"--specific-num\"), enclose arg(s) in quotes")
+    ("spcfc-inst-num", bpo::value<vector<uint>>()->composing(), "Specify a specific version installation path (using \"--spcfc-inst-nodeos\" flag) for launching this specific instance of nodeos. This parameter can be entered multiple times and requires a paired \"--spcfc-inst-nodeos\" flag each time it is used")
+    ("spcfc-inst-nodeos", bpo::value<vector<string>>()->composing(), "Provide a specific version installation path to its paired specific instance of nodeos(using \"--spcfc-inst-num\")")
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
     ("boot",bpo::bool_switch(&boot)->default_value(false),"After deploying the nodes and generating a boot script, invoke it.")
     ("nogen",bpo::bool_switch(&nogen)->default_value(false),"launch nodes without writing new config files")
@@ -511,6 +514,28 @@ inline enum_type& operator|=(enum_type&lhs, const enum_type& rhs)
 {
   using T = std::underlying_type_t <enum_type>;
   return lhs = static_cast<enum_type>(static_cast<T>(lhs) | static_cast<T>(rhs));
+}
+
+template <typename T>
+void retrieve_paired_array_parameters (const variables_map &vmap, const std::string& num_selector, const std::string& paired_selector, std::map<uint,T>& selector_map) {
+   if (vmap.count(num_selector)) {
+     const auto specific_nums = vmap[num_selector].as<vector<uint>>();
+     const auto specific_args = vmap[paired_selector].as<vector<string>>();
+     if (specific_nums.size() != specific_args.size()) {
+       cerr << "ERROR: every " << num_selector << " argument must be paired with a " << paired_selector << " argument" << endl;
+       exit (-1);
+     }
+     const auto total_nodes = vmap["nodes"].as<size_t>();
+     for(uint i = 0; i < specific_nums.size(); ++i)
+     {
+       const auto& num = specific_nums[i];
+       if (num >= total_nodes) {
+         cerr << "\"--" << num_selector << "\" provided value= " << num << " is higher than \"--nodes\" provided value=" << total_nodes << endl;
+         exit (-1);
+       }
+       selector_map[num] = specific_args[i];
+     }
+   }
 }
 
 void
@@ -550,24 +575,8 @@ launcher_def::initialize (const variables_map &vmap) {
      server_ident_file = vmap["servers"].as<string>();
   }
 
-  if (vmap.count("specific-num")) {
-    const auto specific_nums = vmap["specific-num"].as<vector<uint>>();
-    const auto specific_args = vmap["specific-nodeos"].as<vector<string>>();
-    if (specific_nums.size() != specific_args.size()) {
-      cerr << "ERROR: every specific-num argument must be paired with a specific-nodeos argument" << endl;
-      exit (-1);
-    }
-    const auto total_nodes = vmap["nodes"].as<size_t>();
-    for(uint i = 0; i < specific_nums.size(); ++i)
-    {
-      const auto& num = specific_nums[i];
-      if (num >= total_nodes) {
-        cerr << "\"--specific-num\" provided value= " << num << " is higher than \"--nodes\" provided value=" << total_nodes << endl;
-        exit (-1);
-      }
-      specific_nodeos_args[num] = specific_args[i];
-    }
-  }
+  retrieve_paired_array_parameters(vmap, "specific-num", "specific-nodeos", specific_nodeos_args);
+  retrieve_paired_array_parameters(vmap, "spcfc-inst-num", "spcfc-inst-nodeos", specific_nodeos_installation_paths);
 
   using namespace std::chrono;
   system_clock::time_point now = system_clock::now();
@@ -1511,7 +1520,14 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   node_rt_info info;
   info.remote = !host->is_local();
 
-  string eosdcmd = "programs/nodeos/nodeos ";
+  string install_path;
+  if (instance.name != "bios" && !specific_nodeos_installation_paths.empty()) {
+     const auto node_num = boost::lexical_cast<uint16_t,string>(instance.get_node_num());
+     if (specific_nodeos_installation_paths.count(node_num)) {
+        install_path = specific_nodeos_installation_paths[node_num] + "/";
+     }
+  }
+  string eosdcmd = install_path + "programs/nodeos/nodeos ";
   if (skip_transaction_signatures) {
     eosdcmd += "--skip-transaction-signatures ";
   }

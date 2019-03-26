@@ -32,13 +32,13 @@ EOSIO_STUFF_DIR=$(mktemp -d)
 trap "rm -rf $EOSIO_STUFF_DIR" EXIT
 NODEOS_LAUNCH_PARAMS="./programs/nodeos/nodeos -d $EOSIO_STUFF_DIR --config-dir $EOSIO_STUFF_DIR \
 --chain-state-db-size-mb 8 --chain-state-db-guard-size-mb 0 --reversible-blocks-db-size-mb 1 \
---reversible-blocks-db-guard-size-mb 0 --https-server-address "''" --p2p-listen-endpoint "''" -e -peosio"
+--reversible-blocks-db-guard-size-mb 0 -e -peosio"
 
 run_nodeos() {
    if (( $VERBOSE == 0 )); then
-      $NODEOS_LAUNCH_PARAMS "$@" 2>/dev/null &
+      $NODEOS_LAUNCH_PARAMS --http-server-address '' --p2p-listen-endpoint '' "$@" 2>/dev/null &
    else
-      $NODEOS_LAUNCH_PARAMS "$@" &
+      $NODEOS_LAUNCH_PARAMS --http-server-address '' --p2p-listen-endpoint '' "$@" &
    fi
 }
 
