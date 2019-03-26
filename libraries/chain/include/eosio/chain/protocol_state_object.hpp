@@ -40,6 +40,7 @@ namespace eosio { namespace chain {
       shared_vector<activated_protocol_feature>  activated_protocol_features;
       shared_vector<digest_type>                 preactivated_protocol_features;
       whitelisted_intrinsics_type                whitelisted_intrinsics;
+      uint32_t                                   num_supported_key_types = 0;
    };
 
    using protocol_state_multi_index = chainbase::shared_multi_index_container<
@@ -55,6 +56,7 @@ namespace eosio { namespace chain {
       vector<protocol_state_object::activated_protocol_feature> activated_protocol_features;
       vector<digest_type>                                       preactivated_protocol_features;
       std::set<std::string>                                     whitelisted_intrinsics;
+      uint32_t                                                  num_supported_key_types = 0;
    };
 
    namespace detail {
@@ -81,9 +83,9 @@ FC_REFLECT(eosio::chain::protocol_state_object::activated_protocol_feature,
           )
 
 FC_REFLECT(eosio::chain::protocol_state_object,
-            (activated_protocol_features)(preactivated_protocol_features)(whitelisted_intrinsics)
+            (activated_protocol_features)(preactivated_protocol_features)(whitelisted_intrinsics)(num_supported_key_types)
           )
 
 FC_REFLECT(eosio::chain::snapshot_protocol_state_object,
-            (activated_protocol_features)(preactivated_protocol_features)(whitelisted_intrinsics)
+            (activated_protocol_features)(preactivated_protocol_features)(whitelisted_intrinsics)(num_supported_key_types)
           )

@@ -26,6 +26,8 @@ namespace eosio { namespace chain {
 
          res.whitelisted_intrinsics = convert_intrinsic_whitelist_to_set( value.whitelisted_intrinsics );
 
+         res.num_supported_key_types = value.num_supported_key_types;
+
          return res;
       }
 
@@ -47,6 +49,8 @@ namespace eosio { namespace chain {
          }
 
          reset_intrinsic_whitelist( value.whitelisted_intrinsics, row.whitelisted_intrinsics );
+
+         value.num_supported_key_types = row.num_supported_key_types;
       }
 
    }
