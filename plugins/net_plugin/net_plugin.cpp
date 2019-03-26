@@ -18,6 +18,7 @@
 #include <fc/io/json.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/log/appender.hpp>
+#include <fc/log/logger_config.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/crypto/rand.hpp>
 #include <fc/exception/exception.hpp>
@@ -3016,7 +3017,11 @@ namespace eosio {
       my->server_ioc_work.emplace( boost::asio::make_work_guard( *my->server_ioc ) );
       // currently thread_pool only used for server_ioc
       for( uint16_t i = 0; i < my->thread_pool_size; ++i ) {
-         boost::asio::post( *my->thread_pool, [ioc = my->server_ioc]() { ioc->run(); } );
+         boost::asio::post( *my->thread_pool, [ioc = my->server_ioc, i]() {
+            std::string tn = "net-" + std::to_string( i );
+            fc::set_os_thread_name( tn );
+            ioc->run();
+         } );
       }
 
       my->resolver = std::make_shared<tcp::resolver>( std::ref( *my->server_ioc ));
