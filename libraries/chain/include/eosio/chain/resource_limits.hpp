@@ -91,8 +91,8 @@ namespace resource_limits {
 
          int64_t get_account_ram_usage( const account_name& name ) const;
          
-         void update_proxied(const ram_payer_info&, int64_t now, symbol_code purpose_code, symbol_code token_code, const account_name& account, int64_t frame_length, bool force);
-         void recall_proxied(const ram_payer_info&, int64_t now, symbol_code purpose_code, symbol_code token_code, account_name grantor_name, account_name agent_name, int16_t pct);
+         void update_proxied(const ram_payer_info&, int64_t now, symbol_code token_code, const account_name& account, int64_t frame_length, bool force);
+         void recall_proxied(const ram_payer_info&, int64_t now, symbol_code token_code, account_name grantor_name, account_name agent_name, int16_t pct);
 
       private:
          cyberway::chaindb::chaindb_controller& _chaindb;
