@@ -84,6 +84,7 @@ enum return_codes {
 int main(int argc, char** argv)
 {
    try {
+      fc::set_os_thread_name( "main" );
       app().set_version(eosio::nodeos::config::version);
 
       auto root = fc::app_path();
