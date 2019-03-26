@@ -1023,7 +1023,7 @@ class Cluster(object):
                     else:
                         setProdsStr += ','
 
-                    setProdsStr += ' { "producer_name": "%s", "block_signing_key": "%s" }' % (keys["name"], keys["public"])
+                    setProdsStr += ' { "producer_name": "%s", "block_signing_key": "%s","url":"xxxx","location":"0" }' % (keys["name"], keys["public"])
                     prodNames.append(keys["name"])
                     counts[keys["node"]] += 1
 
