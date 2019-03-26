@@ -58,9 +58,7 @@ void apply_context::exec_one( action_trace& trace )
             (*native)( *this );
          }
 
-         if( a.code.size() > 0
-             && !(act.account == config::system_account_name && act.name == N( setcode ) &&
-                  receiver == config::system_account_name) ) {
+         if( a.code.size() > 0 ) {
             if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
                control.check_contract_list( receiver );
                control.check_action_list( act.account, act.name );
