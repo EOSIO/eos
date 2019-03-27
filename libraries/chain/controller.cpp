@@ -228,14 +228,18 @@ struct controller_impl {
          wlog( "bad alloc" );
          throw e;
       } catch ( controller_emit_signal_exception& e ) {
-         wlog( "${details}", ("details", e.to_detail_string()) );
+         wlog( "controller_emit_signal_exception: ${details}", ("details", e.to_detail_string()) );
          throw e;
       } catch ( fc::exception& e ) {
-         wlog( "${details}", ("details", e.to_detail_string()) );
+         wlog( "fc::exception: ${details}", ("details", e.to_detail_string()) );
       } catch (std::bad_alloc& e) {
-         wlog( "bad alloc: Noooooooooo" );
+         wlog( "std::bad_alloc" );
+      } catch ( boost::exception& e ) {
+         wlog( "boost::exception: ${msg}", ("msg", diagnostic_information(e)) );
+      } catch ( std::exception& e ) {
+         wlog( "std::exception: ${msg}", ("msg", e.what()) );
       } catch ( ... ) {
-         wlog( "signal handler threw exception" );
+         wlog( "unknown exception: signal handler threw exception" );
       }
    }
 
