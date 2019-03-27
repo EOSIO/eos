@@ -228,7 +228,7 @@ namespace eosio {
 
       connection_ptr find_connection(const string& host)const;
 
-      mutable boost::shared_mutex      connections_mtx; // switch to std::shared_mutex in C++17
+      mutable boost::shared_mutex      connections_mtx; // switch to std::shared_mutex in C++17, also protects connection::last_req
       std::set< connection_ptr >       connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
       bool                             done = false;
       unique_ptr< sync_manager >       sync_master;
@@ -635,7 +635,7 @@ namespace eosio {
       std::atomic<go_away_reason>           no_retry{no_reason};
       block_id_type          fork_head;
       std::atomic<uint32_t>  fork_head_num{0}; // provides memory barrier for fork_head
-      optional<request_message> last_req;
+      optional<request_message> last_req; // mutex protected by connections_mtx
 
       connection_status get_status()const {
          connection_status stat;
@@ -1004,7 +1004,11 @@ namespace eosio {
       self->flush_queues();
       self->connecting = false;
       self->syncing = false;
-      if( self->last_req ) {
+
+      boost::shared_lock<boost::shared_mutex> g_conn( my_impl->connections_mtx );
+      bool has_last_req = !!self->last_req;
+      g_conn.unlock();
+      if( has_last_req ) {
          my_impl->dispatcher->retry_fetch( self->shared_from_this() );
       }
 <<<<<<< HEAD
@@ -1044,7 +1048,7 @@ namespace eosio {
       self->sent_handshake_count = 0;
       self->last_handshake_recv = handshake_message();
       self->last_handshake_sent = handshake_message();
-      my_impl->sync_master->sync_reset_lib_num( nullptr );
+      my_impl->sync_master->sync_reset_lib_num( self->shared_from_this() );
       fc_dlog( logger, "canceling wait on ${p}", ("p", self->peer_name()) );
       self->cancel_wait();
 
@@ -1958,13 +1962,16 @@ namespace eosio {
    void dispatch_manager::recv_block(const connection_ptr& c, const block_id_type& id, uint32_t bnum) {
       peer_block_state pbstate{id, bnum, c->connection_id};
       add_peer_block( pbstate );
+      boost::unique_lock<boost::shared_mutex> g( my_impl->connections_mtx );
       if (c &&
           c->last_req &&
           c->last_req->req_blocks.mode != none &&
           !c->last_req->req_blocks.ids.empty() &&
           c->last_req->req_blocks.ids.back() == id) {
+         fc_dlog( logger, "reseting last_req" );
          c->last_req.reset();
       }
+      g.unlock();
 
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
       c->cancel_wait();
@@ -2053,6 +2060,7 @@ namespace eosio {
                      fc_dlog( logger, "send req" );
                      c->enqueue( req );
                      c->fetch_wait();
+                     boost::unique_lock<boost::shared_mutex> g( my_impl->connections_mtx );
                      c->last_req = std::move( req );
                   });
                }
@@ -2065,6 +2073,8 @@ namespace eosio {
    }
 
    void dispatch_manager::retry_fetch(const connection_ptr& c) {
+      fc_dlog( logger, "retry fetch" );
+      boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
       if (!c->last_req) {
          return;
       }
@@ -2077,24 +2087,37 @@ namespace eosio {
                   ("b", modes_str( c->last_req->req_blocks.mode ))( "t", modes_str( c->last_req->req_trx.mode ) ) );
          return;
       }
-      boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
-      for (auto& conn : my_impl->connections) {
-         if (conn == c || conn->last_req) {
+      for( auto& conn : my_impl->connections ) {
+         if( conn == c || conn->last_req ) {
             continue;
          }
-         bool sendit = peer_has_block( bid, c->connection_id );
-         if (sendit) {
+         bool sendit = peer_has_block( bid, conn->connection_id );
+         if( sendit ) {
             conn->strand.post( [conn, last_req = *c->last_req]() {
                conn->enqueue( last_req );
                conn->fetch_wait();
+               boost::unique_lock<boost::shared_mutex> g( my_impl->connections_mtx );
                conn->last_req = last_req;
             } );
             return;
          }
       }
-      g.unlock();
+      // found no peer that we know has it, so ask some random connection
+      for( auto& conn : my_impl->connections ) {
+         if( conn == c || conn->last_req ) {
+            continue;
+         }
+         conn->strand.post( [conn, last_req = *c->last_req]() {
+            conn->enqueue( last_req );
+            conn->fetch_wait();
+            boost::unique_lock<boost::shared_mutex> g( my_impl->connections_mtx );
+            conn->last_req = last_req;
+         } );
+         return;
+      }
 
       // at this point no other peer has it, re-request or do nothing?
+      fc_wlog( logger, "no peer has last_req" );
       if( c->connected() ) {
          c->enqueue(*c->last_req);
          c->fetch_wait();
@@ -2195,8 +2218,10 @@ namespace eosio {
                }
             } else {
                if( endpoint_itr != tcp::resolver::iterator() ) {
-                  c->close();
-                  c->connect( resolver, endpoint_itr );
+                  c->close(); // close posts to strand, so also post connect otherwise connect will happen before close
+                  c->strand.post( [resolver, c, endpoint_itr]() {
+                     c->connect( resolver, endpoint_itr );
+                  } );
                } else {
                   fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
                   c->connecting = false;
