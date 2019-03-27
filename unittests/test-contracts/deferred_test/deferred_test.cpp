@@ -15,7 +15,8 @@ void deferred_test::defercall( name payer, uint64_t sender_id, name contract, ui
    transaction trx;
    deferfunc_action a( contract, {get_self(), "active"_n} );
    trx.actions.emplace_back( a.to_action( payload ) );
-   trx.send( (static_cast<uint128_t>(payer.value) << 64) | sender_id, payer );
+   bool replace_existing = (payload >= 100);
+   trx.send( (static_cast<uint128_t>(payer.value) << 64) | sender_id, payer, replace_existing );
 }
 
 void deferred_test::deferfunc( uint64_t payload ) {

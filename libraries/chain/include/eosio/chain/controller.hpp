@@ -76,6 +76,7 @@ namespace eosio { namespace chain {
             bool                     disable_replay_opts    =  false;
             bool                     contracts_console      =  false;
             bool                     allow_ram_billing_in_notify = false;
+            bool                     disable_all_subjective_mitigations = false; //< for testing purposes only
 
             genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
@@ -270,6 +271,9 @@ namespace eosio { namespace chain {
          validation_mode get_validation_mode()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
+
+         void add_to_ram_correction( account_name account, uint64_t ram_bytes );
+         bool all_subjective_mitigations_disabled()const;
 
          signal<void(const signed_block_ptr&)>         pre_accepted_block;
          signal<void(const block_state_ptr&)>          accepted_block_header;

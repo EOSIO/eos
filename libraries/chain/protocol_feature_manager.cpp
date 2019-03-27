@@ -41,6 +41,18 @@ Disallows linking an action to a non-existing permission.
 */
             {}
          } )
+         (  builtin_protocol_feature_t::replace_deferred, builtin_protocol_feature_spec{
+            "REPLACE_DEFERRED",
+            fc::variant("9908b3f8413c8474ab2a6be149d3f4f6d0421d37886033f27d4759c47a26d944").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: REPLACE_DEFERRED
+
+Fix the problems associated with replacing an existing deferred transaction.
+Also corrects the RAM usage of accounts affected by the replace deferred transaction bug.
+*/
+            {}
+         } )
    ;
 
 

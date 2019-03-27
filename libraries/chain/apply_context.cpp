@@ -363,35 +363,45 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    if ( auto ptr = db.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
 
-      // TODO: Remove the following subjective check when the deferred trx replacement RAM bug has been fixed with a hard fork.
-      EOS_ASSERT( !control.is_producing_block(), subjective_block_production_exception,
+      bool replace_deferred_activated = control.is_builtin_activated(builtin_protocol_feature_t::replace_deferred);
+
+      EOS_ASSERT( replace_deferred_activated || !control.is_producing_block()
+                     || control.all_subjective_mitigations_disabled(),
+                  subjective_block_production_exception,
                   "Replacing a deferred transaction is temporarily disabled." );
 
-      // TODO: The logic of the next line needs to be incorporated into the next hard fork.
-      // add_ram_usage( ptr->payer, -(config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size()) );
+      uint64_t orig_trx_ram_bytes = config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size();
+      if( replace_deferred_activated ) {
+         add_ram_usage( ptr->payer, -static_cast<int64_t>( orig_trx_ram_bytes ) );
+      } else {
+         control.add_to_ram_correction( ptr->payer, orig_trx_ram_bytes );
+      }
 
       db.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
-            gtx.sender      = receiver;
-            gtx.sender_id   = sender_id;
-            gtx.payer       = payer;
-            gtx.published   = control.pending_block_time();
-            gtx.delay_until = gtx.published + delay;
-            gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
+         if( replace_deferred_activated ) {
+            gtx.trx_id = trx.id();
+         }
+         gtx.sender      = receiver;
+         gtx.sender_id   = sender_id;
+         gtx.payer       = payer;
+         gtx.published   = control.pending_block_time();
+         gtx.delay_until = gtx.published + delay;
+         gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
 
-            trx_size = gtx.set( trx );
-         });
+         trx_size = gtx.set( trx );
+      } );
    } else {
       db.create<generated_transaction_object>( [&]( auto& gtx ) {
-            gtx.trx_id      = trx.id();
-            gtx.sender      = receiver;
-            gtx.sender_id   = sender_id;
-            gtx.payer       = payer;
-            gtx.published   = control.pending_block_time();
-            gtx.delay_until = gtx.published + delay;
-            gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
+         gtx.trx_id      = trx.id();
+         gtx.sender      = receiver;
+         gtx.sender_id   = sender_id;
+         gtx.payer       = payer;
+         gtx.published   = control.pending_block_time();
+         gtx.delay_until = gtx.published + delay;
+         gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
 
-            trx_size = gtx.set( trx );
-         });
+         trx_size = gtx.set( trx );
+      } );
    }
 
    EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account) || (receiver == payer) || privileged,

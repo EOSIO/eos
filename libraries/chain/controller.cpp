@@ -35,6 +35,7 @@ using resource_limits::resource_limits_manager;
 using controller_index_set = index_set<
    account_index,
    account_sequence_index,
+   account_ram_correction_index,
    global_property_multi_index,
    protocol_state_multi_index,
    dynamic_global_property_multi_index,
@@ -306,6 +307,7 @@ struct controller_impl {
       );
 
       set_activation_handler<builtin_protocol_feature_t::preactivate_feature>();
+      set_activation_handler<builtin_protocol_feature_t::replace_deferred>();
 
 
 #define SET_APP_HANDLER( receiver, contract, action) \
@@ -885,6 +887,7 @@ struct controller_impl {
       });
 
       db.create<protocol_state_object>([&](auto& pso ){
+         pso.num_supported_key_types = 2;
          for( const auto& i : genesis_intrinsics ) {
             add_intrinsic_to_whitelist( pso.whitelisted_intrinsics, i );
          }
@@ -2946,6 +2949,24 @@ const flat_set<account_name> &controller::get_resource_greylist() const {
    return  my->conf.resource_greylist;
 }
 
+
+void controller::add_to_ram_correction( account_name account, uint64_t ram_bytes ) {
+   if( auto ptr = my->db.find<account_ram_correction_object, by_name>( account ) ) {
+      my->db.modify<account_ram_correction_object>( *ptr, [&]( auto& rco ) {
+         rco.ram_correction += ram_bytes;
+      } );
+   } else {
+      my->db.create<account_ram_correction_object>( [&]( auto& rco ) {
+         rco.name = account;
+         rco.ram_correction = ram_bytes;
+      } );
+   }
+}
+
+bool controller::all_subjective_mitigations_disabled()const {
+   return my->conf.disable_all_subjective_mitigations;
+}
+
 /// Protocol feature activation handlers:
 
 template<>
@@ -2954,6 +2975,23 @@ void controller_impl::on_activation<builtin_protocol_feature_t::preactivate_feat
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "preactivate_feature" );
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "is_feature_activated" );
    } );
+}
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred>() {
+   const auto& indx = db.get_index<account_ram_correction_index, by_id>();
+   for( auto itr = indx.begin(); itr != indx.end(); itr = indx.begin() ) {
+      int64_t current_ram_usage = resource_limits.get_account_ram_usage( itr->name );
+      int64_t ram_delta = -static_cast<int64_t>(itr->ram_correction);
+      if( itr->ram_correction > static_cast<uint64_t>(current_ram_usage) ) {
+         ram_delta = -current_ram_usage;
+         elog( "account ${name} was to be reduced by ${adjust} bytes of RAM despite only using ${current} bytes of RAM",
+               ("name", itr->name)("adjust", itr->ram_correction)("current", current_ram_usage) );
+      }
+
+      resource_limits.add_pending_ram_usage( itr->name, ram_delta );
+      db.remove( *itr );
+   }
 }
 
 /// End of protocol feature activation handlers
