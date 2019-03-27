@@ -122,8 +122,10 @@ FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
     locale
     iostreams)
 
-# Some new stdlibc++s will #error on <experimental/string_view>
-add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
+# Some new stdlibc++s will #error on <experimental/string_view>; a problem for boost pre-1.69
+if( APPLE AND UNIX )
+   add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
+endif()
 
 if( WIN32 )
 
