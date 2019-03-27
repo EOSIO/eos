@@ -63,12 +63,6 @@ export MONGO_C_DRIVER_VERSION=1.13.0
 export MONGO_C_DRIVER_ROOT=${SRC_LOCATION}/mongo-c-driver-${MONGO_C_DRIVER_VERSION}
 export MONGO_CXX_DRIVER_VERSION=3.4.0
 export MONGO_CXX_DRIVER_ROOT=${SRC_LOCATION}/mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}
-export BOOST_VERSION_MAJOR=1
-export BOOST_VERSION_MINOR=67
-export BOOST_VERSION_PATCH=0
-export BOOST_VERSION=${BOOST_VERSION_MAJOR}_${BOOST_VERSION_MINOR}_${BOOST_VERSION_PATCH}
-export BOOST_ROOT=${SRC_LOCATION}/boost_${BOOST_VERSION}
-export BOOST_LINK_LOCATION=${OPT_LOCATION}/boost
 export LLVM_VERSION=release_40
 export LLVM_ROOT=${OPT_LOCATION}/llvm
 export LLVM_DIR=${LLVM_ROOT}/lib/cmake/llvm
@@ -261,7 +255,20 @@ if [ "$ARCH" == "Darwin" ]; then
    CXX_COMPILER=clang++
    C_COMPILER=clang
    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+   
+   # temporarily upgrade to 1.68 for OSX to address issues with xcode 10.2
+   export BOOST_VERSION_MAJOR=1
+   export BOOST_VERSION_MINOR=68
+   export BOOST_VERSION_PATCH=0
+else
+   export BOOST_VERSION_MAJOR=1
+   export BOOST_VERSION_MINOR=67
+   export BOOST_VERSION_PATCH=0
 fi
+
+export BOOST_VERSION=${BOOST_VERSION_MAJOR}_${BOOST_VERSION_MINOR}_${BOOST_VERSION_PATCH}
+export BOOST_ROOT=${SRC_LOCATION}/boost_${BOOST_VERSION}
+export BOOST_LINK_LOCATION=${OPT_LOCATION}/boost
 
 # Cleanup old installation
 . ./scripts/full_uninstaller.sh $NONINTERACTIVE

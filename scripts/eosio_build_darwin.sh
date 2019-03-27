@@ -171,7 +171,7 @@ if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST
 	&& tar -xjf boost_$BOOST_VERSION.tar.bz2 \
 	&& cd $BOOST_ROOT \
 	&& ./bootstrap.sh --prefix=$BOOST_ROOT \
-	&& ./b2 -q -j$(sysctl -in machdep.cpu.core_count) install \
+	&& ./b2 -q -j$(sysctl -in machdep.cpu.core_count) link=static,shared --layout=tagged threading=multi,single cxxflags=-std=c++14 cxxflags=-stdlib=libc++ linkflags=-stdlib=libc++ cxxflags=-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW install \
 	&& cd .. \
 	&& rm -f boost_$BOOST_VERSION.tar.bz2 \
 	&& rm -rf $BOOST_LINK_LOCATION \
