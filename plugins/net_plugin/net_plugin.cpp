@@ -3621,7 +3621,7 @@ namespace eosio {
       my->incoming_transaction_ack_subscription = app().get_channel<compat::channels::transaction_ack>().subscribe(
             boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
       my->incoming_irreversible_block_subscription = app().get_channel<channels::irreversible_block>().subscribe(
-            [this]( block_state_ptr s ) {
+            [this]( const block_state_ptr& s ) {
                my->on_irreversible_block( s );
             });
 
