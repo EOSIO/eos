@@ -11,6 +11,8 @@
 
 namespace eosio {
 
+using namespace chain;
+
 class login_plugin : public plugin<login_plugin> {
  public:
    APPBASE_PLUGIN_REQUIRES((chain_plugin)(http_plugin))

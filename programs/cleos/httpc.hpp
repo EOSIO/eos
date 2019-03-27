@@ -4,6 +4,12 @@
  */
 #pragma once
 
+#include <fc/string.hpp>
+#include <fc/vector.hpp>
+
+using namespace fc;
+using namespace std;
+
 namespace eosio { namespace client { namespace http {
 
    namespace detail {

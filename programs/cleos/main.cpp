@@ -92,6 +92,8 @@ Options:
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/trace.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain_api_plugin/chain_api_plugin_results.hpp>
+
 #include <eosio/chain/contract_types.hpp>
 
 #pragma push_macro("N")
@@ -136,6 +138,13 @@ using namespace eosio::client::http;
 using namespace eosio::client::localize;
 using namespace eosio::client::config;
 using namespace boost::filesystem;
+using namespace appbase;
+using namespace Runtime;
+
+namespace eosio {
+    using name = chain::name;
+    using account_name = chain::account_name;
+}
 
 static const auto wrap_contract = N(cyber.wrap);
 static const auto msig_contract = N(cyber.msig);
@@ -216,7 +225,7 @@ eosio::client::http::http_context context;
 bool have_domain_contract();
 bytes variant_to_bin(const account_name& account, const action_name& action, const fc::variant& action_args_var);
 
-void add_name_to_declare(const string& textual_name, const chain_apis::read_only::resolve_names_item& i) {
+void add_name_to_declare(const string& textual_name, const eosio::resolve_names_item& i) {
     vector<string> parts;
     split(parts, textual_name, boost::algorithm::is_any_of("@"));
     auto user = parts[0];
@@ -387,8 +396,8 @@ template<>
 fc::variant call( const std::string& url,
                   const std::string& path) { return call( url, path, fc::variant() ); }
 
-eosio::chain_apis::read_only::get_info_results get_info() {
-   return call(url, get_info_func).as<eosio::chain_apis::read_only::get_info_results>();
+eosio::get_info_results get_info() {
+   return call(url, get_info_func).as<eosio::get_info_results>();
 }
 
 string generate_nonce_string() {
@@ -534,7 +543,7 @@ auto abi_serializer_resolver = [](const name& account) -> optional<abi_serialize
    auto it = abi_cache.find( account );
    if ( it == abi_cache.end() ) {
       auto result = call(get_abi_func, fc::mutable_variant_object("account_name", account));
-      auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
+      auto abi_results = result.as<eosio::get_abi_results>();
 
       optional<abi_serializer> abis;
       if( abi_results.abi.valid() ) {
@@ -636,7 +645,7 @@ bytes variant_to_bin(const account_name& account, const action_name& action, con
         //...
 
         fc::variant json = call(resolve_names_func, names);
-        auto res = json.as<eosio::chain_apis::read_only::resolve_names_results>();
+        auto res = json.as<eosio::resolve_names_results>();
         auto p = 0;
         string n;
         for (const auto& ni: res) {
@@ -915,7 +924,7 @@ asset to_asset( account_name code, const string& s ) {
       auto obj = json.get_object();
       auto obj_it = obj.find( sym_str );
       if (obj_it != obj.end()) {
-         auto result = obj_it->value().as<eosio::chain_apis::read_only::get_currency_stats_result>();
+         auto result = obj_it->value().as<eosio::get_currency_stats_result>();
          auto p = cache.emplace( make_pair( code, sym ), result.max_supply.get_symbol() );
          it = p.first;
       } else {
@@ -972,7 +981,7 @@ struct set_account_permission_subcommand {
 
          if ( need_parent || need_auth ) {
             fc::variant json = call(get_account_func, fc::mutable_variant_object("account_name", account.to_string()));
-            auto res = json.as<eosio::chain_apis::read_only::get_account_results>();
+            auto res = json.as<eosio::get_account_results>();
             auto itr = std::find_if(res.permissions.begin(), res.permissions.end(), [&](const auto& perm) {
                return perm.perm_name == permission;
             });
@@ -1373,7 +1382,7 @@ struct approve_producer_subcommand {
                                // Change to voter.value when cleos no longer needs to support nodeos versions older than 1.5.0
                                ("limit", 1)
             );
-            auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+            auto res = result.as<eosio::get_table_rows_result>();
             // Condition in if statement below can simply be res.rows.empty() when cleos no longer needs to support nodeos versions older than 1.5.0
             // Although since this subcommand will actually change the voter's vote, it is probably better to just keep this check to protect
             //  against future potential chain_plugin bugs.
@@ -1426,7 +1435,7 @@ struct unapprove_producer_subcommand {
                                // Change to voter.value when cleos no longer needs to support nodeos versions older than 1.5.0
                                ("limit", 1)
             );
-            auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+            auto res = result.as<eosio::get_table_rows_result>();
             // Condition in if statement below can simply be res.rows.empty() when cleos no longer needs to support nodeos versions older than 1.5.0
             // Although since this subcommand will actually change the voter's vote, it is probably better to just keep this check to protect
             //  against future potential chain_plugin bugs.
@@ -1473,7 +1482,7 @@ struct list_producers_subcommand {
             std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
             return;
          }
-         auto result = rawResult.as<eosio::chain_apis::read_only::get_producers_result>();
+         auto result = rawResult.as<eosio::get_producers_result>();
          if ( result.rows.empty() ) {
             std::cout << "No producers found" << std::endl;
             return;
@@ -1653,7 +1662,7 @@ struct bidname_info_subcommand {
             std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
             return;
          }
-         auto result = rawResult.as<eosio::chain_apis::read_only::get_table_rows_result>();
+         auto result = rawResult.as<eosio::get_table_rows_result>();
          // Condition in if statement below can simply be res.rows.empty() when cleos no longer needs to support nodeos versions older than 1.5.0
          if( result.rows.empty() || result.rows[0].get_object()["newname"].as_string() != newname.to_string() ) {
             std::cout << "No bidname record found" << std::endl;
@@ -1692,7 +1701,7 @@ struct list_bw_subcommand {
                                ("table", "delband")
             );
             if (!print_json) {
-               auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+               auto res = result.as<eosio::get_table_rows_result>();
                if ( !res.rows.empty() ) {
                   std::cout << std::setw(13) << std::left << "Receiver" << std::setw(21) << std::left << "Net bandwidth"
                             << std::setw(21) << std::left << "CPU bandwidth" << std::endl;
@@ -1835,10 +1844,10 @@ struct canceldelay_subcommand {
    }
 };
 
-eosio::chain_apis::read_only::resolve_names_item resolve_name(const string& textual_name, bool silent = false) {
+eosio::resolve_names_item resolve_name(const string& textual_name, bool silent = false) {
     vector<string> names{textual_name};
     fc::variant json = call(resolve_names_func, names);
-    auto res = json.as<eosio::chain_apis::read_only::resolve_names_results>();
+    auto res = json.as<eosio::resolve_names_results>();
     auto n = res[0];
     if (silent) {
         return n;
@@ -1881,7 +1890,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
       json = call(get_account_func, fc::mutable_variant_object("account_name", accName)("expected_core_symbol", symbol::from_string(coresym)));
    }
 
-   auto res = json.as<eosio::chain_apis::read_only::get_account_results>();
+   auto res = json.as<eosio::get_account_results>();
    if (!json_format) {
       asset staked;
       asset unstaking;
@@ -1901,7 +1910,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
       std::cout << "permissions: " << std::endl;
       unordered_map<name, vector<name>/*children*/> tree;
       vector<name> roots; //we don't have multiple roots, but we can easily handle them here, so let's do it just in case
-      unordered_map<name, eosio::chain_apis::permission> cache;
+      unordered_map<name, eosio::permission> cache;
       for ( auto& perm : res.permissions ) {
          if ( perm.parent ) {
             tree[perm.parent].push_back( perm.perm_name );

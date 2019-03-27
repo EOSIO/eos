@@ -3,17 +3,16 @@
  *  @copyright defined in eos/LICENSE
  */
 #pragma once
+
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
+
+#include <memory>
 
 #include <appbase/application.hpp>
 #include <eosio/chain/controller.hpp>
 
 namespace eosio {
-   using eosio::chain::controller;
-   using std::unique_ptr;
-   using namespace appbase;
-
    class chain_api_plugin : public plugin<chain_api_plugin> {
       public:
         APPBASE_PLUGIN_REQUIRES((chain_plugin)(http_plugin))
@@ -25,10 +24,12 @@ namespace eosio {
 
         void plugin_initialize(const variables_map&);
         void plugin_startup();
-        void plugin_shutdown();
+        void plugin_shutdown() {}
 
       private:
-        unique_ptr<class chain_api_plugin_impl> my;
+        fc::unique_ptr<class chain_api_plugin_impl> my;
    };
 
 }
+
+

@@ -12,10 +12,7 @@ namespace eosio {
 
    class net_plugin_impl;
    struct handshake_message;
-
-   namespace chain_apis {
-      class read_only;
-   }
+   struct get_info_results;
 
 namespace chain {
 
@@ -43,7 +40,7 @@ namespace chain {
          template<typename T>
          friend T fc::variant::as()const;
 
-         friend class eosio::chain_apis::read_only;
+         friend struct eosio::get_info_results;
 
          friend class eosio::net_plugin_impl;
          friend struct eosio::handshake_message;

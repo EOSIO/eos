@@ -20,6 +20,7 @@ add_subdirectory(mongo_db_plugin)
 add_subdirectory(login_plugin)
 add_subdirectory(test_control_plugin)
 add_subdirectory(test_control_api_plugin)
+add_subdirectory(plugins_common)
 
 add_subdirectory(event_engine_plugin)
 
