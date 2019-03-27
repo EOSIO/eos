@@ -1462,10 +1462,10 @@ void mongo_db_plugin_impl::init() {
          }
 
          try {
-            // Due to the vast amounts of data, we suggest MongoDB administrators:
+            // MongoDB administrators (to enable sharding) :
             //   1. enableSharding database (default to EOS)
             //   2. shardCollection: blocks, action_traces, transaction_traces, especially action_traces
-            //   3. Use compound index with shard key (default to _id), to improve query performance.
+            //   3. Compound index with shard key (default to _id below), to improve query performance.
 
             // blocks indexes
             auto blocks = mongo_conn[db_name][blocks_col];
