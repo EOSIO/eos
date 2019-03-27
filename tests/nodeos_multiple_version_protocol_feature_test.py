@@ -9,7 +9,7 @@ from Node import Node
 import signal
 import json
 import time
-from os.path import join
+from os.path import join, exists
 from datetime import datetime
 
 # Parse command line arguments
@@ -73,11 +73,10 @@ try:
 
     # Create a cluster of 4 nodes, each node has 1 producer. The first 3 nodes use the latest vesion,
     # While the 4th node use the version that doesn't support protocol feature activation (i.e. 1.7.0)
-    if not alternateVersionLabelsFile:
-        alternateVersionLabelsFile="/Users/andrianto/alternate-version-labels-file.txt"
     associatedNodeLabels = {
         "3": "170"
     }
+    assert exists(alternateVersionLabelsFile), "Alternate version labels file does not exist"
     cluster.launch(pnodes=4, totalNodes=4, prodCount=1, totalProducers=4,
                    extraNodeosArgs=" --plugin eosio::producer_api_plugin ",
                    useBiosBootFile=False,
