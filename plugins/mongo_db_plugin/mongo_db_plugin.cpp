@@ -1462,39 +1462,44 @@ void mongo_db_plugin_impl::init() {
          }
 
          try {
+            // MongoDB administrators (to enable sharding) :
+            //   1. enableSharding database (default to EOS)
+            //   2. shardCollection: blocks, action_traces, transaction_traces, especially action_traces
+            //   3. Compound index with shard key (default to _id below), to improve query performance.
+
             // blocks indexes
             auto blocks = mongo_conn[db_name][blocks_col];
-            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
-            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
+            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1, "_id" : 1 })xxx" ));
+            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1, "_id" : 1 })xxx" ));
 
             auto block_states = mongo_conn[db_name][block_states_col];
-            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
-            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
+            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1, "_id" : 1 })xxx" ));
+            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1, "_id" : 1 })xxx" ));
 
             // accounts indexes
-            accounts.create_index( bsoncxx::from_json( R"xxx({ "name" : 1 })xxx" ));
+            accounts.create_index( bsoncxx::from_json( R"xxx({ "name" : 1, "_id" : 1 })xxx" ));
 
             // transactions indexes
             auto trans = mongo_conn[db_name][trans_col];
-            trans.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
+            trans.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1, "_id" : 1 })xxx" ));
 
             auto trans_trace = mongo_conn[db_name][trans_traces_col];
-            trans_trace.create_index( bsoncxx::from_json( R"xxx({ "id" : 1 })xxx" ));
+            trans_trace.create_index( bsoncxx::from_json( R"xxx({ "id" : 1, "_id" : 1 })xxx" ));
 
             // action traces indexes
             auto action_traces = mongo_conn[db_name][action_traces_col];
-            action_traces.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
+            action_traces.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1, "_id" : 1 })xxx" ));
 
             // pub_keys indexes
             auto pub_keys = mongo_conn[db_name][pub_keys_col];
-            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "account" : 1, "permission" : 1 })xxx" ));
-            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "public_key" : 1 })xxx" ));
+            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "account" : 1, "permission" : 1, "_id" : 1 })xxx" ));
+            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "public_key" : 1, "_id" : 1 })xxx" ));
 
             // account_controls indexes
             auto account_controls = mongo_conn[db_name][account_controls_col];
             account_controls.create_index(
-                  bsoncxx::from_json( R"xxx({ "controlled_account" : 1, "controlled_permission" : 1 })xxx" ));
-            account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlling_account" : 1 })xxx" ));
+                  bsoncxx::from_json( R"xxx({ "controlled_account" : 1, "controlled_permission" : 1, "_id" : 1 })xxx" ));
+            account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlling_account" : 1, "_id" : 1 })xxx" ));
 
          } catch (...) {
             handle_mongo_exception( "create indexes", __LINE__ );
