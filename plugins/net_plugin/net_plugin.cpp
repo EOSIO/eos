@@ -1254,7 +1254,7 @@ namespace eosio {
       if(num == peer_requested->end_block) {
          peer_requested.reset();
       }
-      app().post( priority::low, [num, trigger_send, c = shared_from_this()]() {
+      app().post( priority::medium, [num, trigger_send, c = shared_from_this()]() {
          controller& cc = my_impl->chain_plug->chain();
          signed_block_ptr sb = cc.fetch_block_by_number( num );
          if( sb ) {
