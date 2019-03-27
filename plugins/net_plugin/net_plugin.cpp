@@ -1129,8 +1129,10 @@ namespace eosio {
       strand.post( [c = shared_from_this()]() {
          handshake_initializer::populate( c->last_handshake_sent );
          c->last_handshake_sent.generation = ++c->sent_handshake_count;
-         fc_dlog( logger, "Sending handshake generation ${g} to ${ep}",
-                  ("g", c->last_handshake_sent.generation)( "ep", c->peer_address() ) );
+         fc_dlog( logger, "Sending handshake generation ${g} to ${ep}, lib ${lib}, head ${head}",
+                  ("g", c->last_handshake_sent.generation)( "ep", c->peer_address() )
+                  ( "lib", c->last_handshake_sent.last_irreversible_block_num )
+                  ( "head", c->last_handshake_sent.head_num ) );
          c->enqueue( c->last_handshake_sent );
       });
    }
@@ -2815,7 +2817,6 @@ namespace eosio {
       peer_ilog( c, "received notice_message" );
       c->connecting = false;
       request_message req;
-      bool send_req = false;
       if( msg.known_trx.mode != none ) {
          fc_dlog( logger, "this is a ${m} notice with ${n} transactions",
                   ("m", modes_str( msg.known_trx.mode ))( "n", msg.known_trx.pending ) );
@@ -2855,10 +2856,6 @@ namespace eosio {
       default: {
          peer_elog(c, "bad notice_message : invalid known_blocks.mode ${m}",("m",static_cast<uint32_t>(msg.known_blocks.mode)));
       }
-      }
-      fc_dlog(logger, "send req = ${sr}", ("sr",send_req));
-      if( send_req) {
-         c->enqueue(req);
       }
    }
 
