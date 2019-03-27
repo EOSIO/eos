@@ -53,6 +53,18 @@ Also corrects the RAM usage of accounts affected by the replace deferred transac
 */
             {}
          } )
+         (  builtin_protocol_feature_t::fix_linkauth_restriction, builtin_protocol_feature_spec{
+            "FIX_LINKAUTH_RESTRICTION",
+            fc::variant("a98241c83511dc86c857221b9372b4aa7cea3aaebc567a48604e1d3db3557050").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: FIX_LINKAUTH_RESTRICTION
+
+Removes the restriction on eosio::linkauth for non-native actions named one of the five special action names:
+updateauth, deleteauth, linkauth, unlinkauth, or canceldelay.
+*/
+            {}
+         } )
    ;
 
 
