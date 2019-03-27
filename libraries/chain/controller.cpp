@@ -2980,7 +2980,6 @@ void controller_impl::on_activation<builtin_protocol_feature_t::preactivate_feat
 template<>
 void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred>() {
    const auto& indx = db.get_index<account_ram_correction_index, by_id>();
-   auto itr = indx.begin();
    for( auto itr = indx.begin(); itr != indx.end(); itr = indx.begin() ) {
       int64_t current_ram_usage = resource_limits.get_account_ram_usage( itr->name );
       int64_t ram_delta = -static_cast<int64_t>(itr->ram_correction);
