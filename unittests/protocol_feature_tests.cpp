@@ -489,18 +489,14 @@ BOOST_AUTO_TEST_CASE( fix_linkauth_restriction ) { try {
    tester chain( setup_policy::preactivate_feature_and_new_bios );
 
    const auto& tester_account = N(tester);
-   std::vector<transaction_id_type> ids;
 
    chain.produce_blocks();
    chain.create_account(N(currency));
-
-   chain.produce_blocks();
-   chain.create_account(N(tester));
-   chain.create_account(N(tester2));
+   chain.create_account(tester_account);
    chain.produce_blocks();
    
    chain.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
-           ("account", "tester")
+           ("account", name(tester_account).to_string())
            ("permission", "first")
            ("parent", "active")
            ("auth",  authority(chain.get_public_key(tester_account, "first"), 5))
@@ -509,7 +505,7 @@ BOOST_AUTO_TEST_CASE( fix_linkauth_restriction ) { try {
    auto validate_disallow = [&] (const char *code, const char *type) {
       BOOST_REQUIRE_EXCEPTION(
          chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
-               ("account", "tester")
+               ("account", name(tester_account).to_string())
                ("code", code)
                ("type", type)
                ("requirement", "first")),
@@ -539,7 +535,7 @@ BOOST_AUTO_TEST_CASE( fix_linkauth_restriction ) { try {
 
    auto validate_allowed = [&] (const char *code, const char *type) {
      chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
-            ("account", "tester")
+            ("account", name(tester_account).to_string())
             ("code", code)
             ("type", type)
             ("requirement", "first"));
