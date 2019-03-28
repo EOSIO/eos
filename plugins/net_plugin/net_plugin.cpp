@@ -631,13 +631,13 @@ namespace eosio {
       std::mutex                            read_delay_timer_mtx;
       boost::asio::steady_timer             read_delay_timer;
       std::atomic<go_away_reason>           no_retry{no_reason};
-      block_id_type          fork_head;
-      std::atomic<uint32_t>  fork_head_num{0}; // provides memory barrier for fork_head
 
-      mutable std::mutex          conn_mtx; // mtx for last_req, last_handshake_recv, last_handshake_sent
+      mutable std::mutex          conn_mtx; // mtx for last_req, last_handshake_recv, last_handshake_sent, fork_head, fork_head_num
       optional<request_message>   last_req;
       handshake_message           last_handshake_recv;
       handshake_message           last_handshake_sent;
+      block_id_type               fork_head;
+      uint32_t                    fork_head_num{0};
 
       connection_status get_status()const;
 
@@ -1266,7 +1266,6 @@ namespace eosio {
 
    bool connection::enqueue_sync_block() {
       if( !peer_requested ) {
-         fc_dlog( logger, "enqueue sync block, with no peer_requested" );
          return false;
       } else {
          fc_dlog( logger, "enqueue sync block ${num}", ("num", peer_requested->last + 1) );
@@ -1719,7 +1718,7 @@ namespace eosio {
       req.req_blocks.mode = catch_up;
       boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
       for (const auto& cc : my_impl->connections) {
-         // fork_head_num provides memory barrier for fork_head
+         std::lock_guard<std::mutex> g_conn( cc->conn_mtx );
          if( cc->fork_head_num > num || cc->fork_head == id ) {
             req.req_blocks.mode = none;
             break;
@@ -1727,8 +1726,10 @@ namespace eosio {
       }
       g.unlock();
       if( req.req_blocks.mode == catch_up ) {
+         std::unique_lock<std::mutex> g_conn( c->conn_mtx );
          c->fork_head = id;
          c->fork_head_num = num;
+         g_conn.unlock();
          std::lock_guard<std::mutex> g( sync_mtx );
          fc_ilog( logger, "got a catch_up notice while in ${s}, fork head num = ${fhn} "
                           "target LIB = ${lib} next_expected = ${ne}",
@@ -1738,6 +1739,7 @@ namespace eosio {
             return;
          set_state( head_catchup );
       } else {
+         std::lock_guard<std::mutex> g_conn( c->conn_mtx );
          c->fork_head = block_id_type();
          c->fork_head_num = 0;
       }
@@ -1786,14 +1788,16 @@ namespace eosio {
 
    // called from connection strand
    void sync_manager::sync_recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num) {
-      fc_dlog( logger, "got block ${bn} from ${p}", ("bn", blk_num)( "p", c->peer_address() ) );
+      fc_dlog( logger, "got block ${bn} from ${p}", ("bn", blk_num)( "p", c->peer_name() ) );
       std::unique_lock<std::mutex> g_sync( sync_mtx );
       stages state = sync_state;
       fc_dlog( logger, "state ${s}", ("s", stage_str( state )) );
       if( state == lib_catchup ) {
          if (blk_num != sync_next_expected_num) {
+            auto sync_next_expected = sync_next_expected_num;
+            g_sync.unlock();
             fc_wlog( logger, "expected block ${ne} but got ${bn}, closing connection: ${p}",
-                     ("ne",sync_next_expected_num)("bn",blk_num)("p",c->peer_address()) );
+                     ("ne", sync_next_expected)( "bn", blk_num )( "p", c->peer_name() ) );
             c->close();
             return;
          }
@@ -1809,11 +1813,15 @@ namespace eosio {
          bool set_state_to_head_catchup = false;
          boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
          for( const auto& cp : my_impl->connections ) {
-            uint32_t fork_head_num = cp->fork_head_num.load(); // fork_head_num provides memory barrier for fork_head
-            if (cp->fork_head == null_id) {
+            std::unique_lock<std::mutex> g_cp_conn( cp->conn_mtx );
+            uint32_t fork_head_num = cp->fork_head_num;
+            block_id_type fork_head_id = cp->fork_head;
+            g_cp_conn.unlock();
+            if( fork_head_id == null_id ) {
                continue;
             }
-            if( fork_head_num < blk_num || cp->fork_head == blk_id ) {
+            if( fork_head_num < blk_num || fork_head_id == blk_id ) {
+               std::lock_guard<std::mutex> g_conn( c->conn_mtx );
                c->fork_head = null_id;
                c->fork_head_num = 0;
             } else {
@@ -2031,7 +2039,7 @@ namespace eosio {
          }
 
          cp->strand.post( [cp, send_buffer]() {
-            fc_dlog( logger, "sending trx to ${n}", ("n", cp->peer_address()) );
+            fc_dlog( logger, "sending trx to ${n}", ("n", cp->peer_name()) );
             cp->enqueue_buffer( send_buffer, true, priority::low, no_reason );
          } );
       }
@@ -2699,7 +2707,7 @@ namespace eosio {
          return;
       }
       fc_dlog( logger, "received handshake gen ${g} from ${ep}, lib ${lib}, head ${head}",
-               ("g", msg.generation)( "ep", c->peer_address() )
+               ("g", msg.generation)( "ep", c->peer_name() )
                ( "lib", msg.last_irreversible_block_num )( "head", msg.head_num ) );
 
       if( c->connecting ) {
