@@ -190,7 +190,7 @@ if [ $? -ne 0 ]; then exit -1; fi
 printf "\\n"
 
 
-export CPATH="$CPATH:/opt/rh/python33/root/usr/include/python3.3m" # m on the end causes problems with boost finding python3
+export CPATH="$CPATH:/opt/rh/rh-python36/root/usr/include/python3.6m" # m on the end causes problems with boost finding python3
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
 BOOSTVERSION=$( grep "#define BOOST_VERSION" "$HOME/opt/boost/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
 if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
