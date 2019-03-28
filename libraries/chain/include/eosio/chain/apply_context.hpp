@@ -180,6 +180,7 @@ class apply_context {
             int store( uint64_t scope, uint64_t table, const account_name& payer,
                        uint64_t id, secondary_key_proxy_const_type value )
             {
+               EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
                EOS_ASSERT( payer != account_name(), invalid_table_payer, "must specify a valid account to pay for new record" );
 
 //               context.require_write_lock( scope );
@@ -248,6 +249,7 @@ class apply_context {
             }
 
             int find_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_const_type secondary, uint64_t& primary ) {
+               EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
@@ -262,6 +264,7 @@ class apply_context {
             }
 
             int lowerbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_type secondary, uint64_t& primary ) {
+               EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
@@ -279,6 +282,7 @@ class apply_context {
             }
 
             int upperbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_type secondary, uint64_t& primary ) {
+               EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
@@ -296,6 +300,7 @@ class apply_context {
             }
 
             int end_secondary( uint64_t code, uint64_t scope, uint64_t table ) {
+               EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
@@ -350,6 +355,7 @@ class apply_context {
             }
 
             int find_primary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_type secondary, uint64_t primary ) {
+               EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
@@ -363,6 +369,7 @@ class apply_context {
             }
 
             int lowerbound_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary ) {
+               EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
                auto tab = context.find_table( code, scope, table );
                if (!tab) return -1;
 
@@ -377,6 +384,7 @@ class apply_context {
             }
 
             int upperbound_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary ) {
+               EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
                auto tab = context.find_table( code, scope, table );
                if ( !tab ) return -1;
 
