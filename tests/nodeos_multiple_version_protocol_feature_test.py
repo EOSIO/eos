@@ -9,6 +9,7 @@ from Node import Node
 import signal
 import json
 import time
+import os
 from os.path import join, exists
 from datetime import datetime
 
@@ -140,7 +141,7 @@ try:
     # Then we set the earliest_allowed_activation_time of 2nd node and 3rd node with valid value
     # Once the 1st node activate PREACTIVATE_FEATURE, all of them should have PREACTIVATE_FEATURE activated in the next block
     # They will be in sync and their LIB will advance since they control > 2/3 of the producers
-    # However, the 4th node will be out of sync with them, and his LIB will never advance
+    # However, the 4th node will be out of sync with them, and its LIB will stuck
     setValidityOfActTimeSubjRestriction(newNodes[1], newNodeIds[1], "PREACTIVATE_FEATURE", True)
     setValidityOfActTimeSubjRestriction(newNodes[2], newNodeIds[2], "PREACTIVATE_FEATURE", True)
 
@@ -151,15 +152,24 @@ try:
     assert not shouldNodesBeInSync(allNodes), "Nodes should not be in sync after preactivation"
     for node in newNodes: assert shouldNodeContainPreactivateFeature(node), "New node should contain PREACTIVATE_FEATURE"
     assert newNodes[0].waitForLibToAdvance(), "1st node LIB should advance"
-    newNode0Lib = newNodes[0].getIrreversibleBlockNum()
-    assert newNodes[1].getIrreversibleBlockNum() >= newNode0Lib and \
-           newNodes[2].getIrreversibleBlockNum() >= newNode0Lib, "2nd and 3rd node LIB should also advance"
-    assert not oldNode.waitForLibToAdvance(), "4th node LIB should not advance"
+    nextLibAfterPreactivateFeature = newNodes[0].getIrreversibleBlockNum()
+    assert newNodes[1].getIrreversibleBlockNum() >= nextLibAfterPreactivateFeature and \
+           newNodes[2].getIrreversibleBlockNum() >= nextLibAfterPreactivateFeature, "2nd and 3rd node LIB should also advance"
+    assert oldNode.getIrreversibleBlockNum() < nextLibAfterPreactivateFeature, "4th node LIB should stuck"
 
     # Restart old node with newest version
+    # Before we are migrating to new version, use --export-reversible-blocks as the old version
+    # and --import-reversible-blocks with the new version to ensure the compatibility of the reversible blocks
     # Finally, when we restart the 4th node with the version of nodeos that supports protocol feature,
     # all nodes should be in sync, and the 4th node will also contain PREACTIVATE_FEATURE
-    restartNode(oldNode, oldNodeId, chainArg=" --replay ", nodeosPath="programs/nodeos/nodeos")
+    portableRevBlkPath = join(Cluster.getDataDir(oldNodeId), "rev_blk_portable_format")
+    oldNode.kill(signal.SIGTERM)
+    # Note, for the following relaunch, these will fail to relaunch immediately (expected behavior of export/import), so the chainArg will not replace the old cmd
+    oldNode.relaunch(oldNodeId, chainArg="--export-reversible-blocks {}".format(portableRevBlkPath), timeout=1)
+    oldNode.relaunch(oldNodeId, chainArg="--import-reversible-blocks {}".format(portableRevBlkPath), timeout=1, nodeosPath="programs/nodeos/nodeos")
+    os.remove(portableRevBlkPath)
+
+    restartNode(oldNode, oldNodeId, chainArg="--replay", nodeosPath="programs/nodeos/nodeos")
     time.sleep(2) # Give some time to replay
 
     assert shouldNodesBeInSync(allNodes), "All nodes should be in sync"
