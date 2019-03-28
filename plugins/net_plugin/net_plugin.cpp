@@ -572,46 +572,19 @@ namespace eosio {
       optional<sync_state>    peer_requested;  // this peer is requesting info from us
       std::shared_ptr<boost::asio::io_context>  server_ioc; // keep ioc alive
       boost::asio::io_context::strand           strand;
-<<<<<<< HEAD
-<<<<<<< HEAD
-      socket_ptr                                socket;
-=======
-      socket_ptr                                socket; // only accessed through strand after construction
-<<<<<<< HEAD
->>>>>>> Protect start_read_message via strand
-=======
-=======
       tcp::socket                               socket; // only accessed through strand after construction
->>>>>>> Move socket ownership into connection.
    private:
       std::atomic<bool>                         socket_open{false};
    public:
->>>>>>> Made all access to impl->connections thread safe
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
-<<<<<<< HEAD
-<<<<<<< HEAD
       std::atomic<std::size_t>         outstanding_read_bytes{0}; // accessed only from server_ioc threads
-=======
-      std::atomic<std::size_t>         outstanding_read_bytes{0};
->>>>>>> Test of multi-threaded reading
-=======
-      std::atomic<std::size_t>         outstanding_read_bytes{0}; // accessed only from server_ioc threads
->>>>>>> Use appbase with FIFO priority queue. priority queue in net_plugin no longer needed.
 
 
       queued_buffer           buffer_queue;
 
       std::atomic<uint32_t>   reads_in_flight{0};
-<<<<<<< HEAD
-<<<<<<< HEAD
       std::atomic<uint32_t>   trx_in_progress_size{0};
-=======
-      uint32_t                trx_in_progress_size = 0;
->>>>>>> Test of multi-threaded reading
-=======
-      std::atomic<uint32_t>   trx_in_progress_size{0};
->>>>>>> Make delay_timer thread safe
       fc::sha256              node_id;
       const uint32_t          connection_id;
       int16_t                 sent_handshake_count = 0;
@@ -773,15 +746,7 @@ namespace eosio {
       void operator()( signed_block&& msg ) const {
          shared_ptr<signed_block> ptr = std::make_shared<signed_block>( std::move( msg ) );
          connection_wptr weak = c;
-<<<<<<< HEAD
-<<<<<<< HEAD
          app().post(priority::high, [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
-=======
-         app().post(priority::high, "handle blk", [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
->>>>>>> Test of multi-threaded reading
-=======
-         app().post(priority::high, [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
->>>>>>> Remove descriptions of tasks as not merged into develop yet
             connection_ptr c = weak.lock();
             if( c ) impl->handle_message( c, ptr );
          });
@@ -791,19 +756,7 @@ namespace eosio {
          // continue call to handle_message on connection strand
          fc_dlog( logger, "handle packed_transaction" );
          shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>( std::move( msg ) );
-<<<<<<< HEAD
-<<<<<<< HEAD
          impl.handle_message( c, ptr );
-=======
-         connection_wptr weak = c;
-         app().post(priority::low, [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
-            connection_ptr c = weak.lock();
-            if( c) impl->handle_message( c, ptr );
-         });
->>>>>>> Test of multi-threaded reading
-=======
-         impl.handle_message( c, ptr );
->>>>>>> Move more of incoming transaction processing to thread pool
       }
 
       void operator()( const handshake_message& msg ) const {
@@ -813,28 +766,9 @@ namespace eosio {
       }
 
       void operator()( const chain_size_message& msg ) const {
-<<<<<<< HEAD
-         connection_wptr weak = c;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-         app().post(priority::low, [impl = &impl, msg{std::forward<T>(msg)}, weak{std::move(weak)}] {
-=======
-         app().post(priority::low, "handle msg", [impl = &impl, msg{std::forward<T>(msg)}, weak{std::move(weak)}] {
->>>>>>> Test of multi-threaded reading
-=======
-         app().post(priority::low, [impl = &impl, msg{std::forward<T>(msg)}, weak{std::move(weak)}] {
->>>>>>> Remove descriptions of tasks as not merged into develop yet
-=======
-         app().post(priority::low, [impl = &impl, msg{std::move(msg)}, weak{std::move(weak)}] {
-            connection_ptr c = weak.lock();
-            if(c) impl->handle_message( c, msg );
-         });
-=======
          // continue call to handle_message on connection strand
          fc_dlog( logger, "handle chain_size_message" );
          impl.handle_message( c, msg );
->>>>>>> Handle almost every net_message on net_plugin thread pool. Optimize bcast_block to not send when syncing.
       }
 
       void operator()( const go_away_message& msg ) const {
@@ -862,18 +796,9 @@ namespace eosio {
       }
 
       void operator()( const sync_request_message& msg ) const {
-<<<<<<< HEAD
-         connection_wptr weak = c;
-         app().post(priority::low, [impl = &impl, msg{std::move(msg)}, weak{std::move(weak)}] {
->>>>>>> Work toward making sync_manager and handshake message thread safe.
-            connection_ptr c = weak.lock();
-            if(c) impl->handle_message( c, msg );
-         });
-=======
          // continue call to handle_message on connection strand
          fc_dlog( logger, "handle sync_request_message" );
          impl.handle_message( c, msg );
->>>>>>> Handle almost every net_message on net_plugin thread pool. Optimize bcast_block to not send when syncing.
       }
    };
 
@@ -882,16 +807,8 @@ namespace eosio {
    connection::connection( string endpoint )
       : peer_requested(),
         server_ioc( my_impl->server_ioc ),
-<<<<<<< HEAD
-        strand( app().get_io_service() ),
-=======
         strand( *my_impl->server_ioc ),
-<<<<<<< HEAD
->>>>>>> Protect start_read_message via strand
-        socket( std::make_shared<tcp::socket>( std::ref( *my_impl->server_ioc ))),
-=======
         socket( *my_impl->server_ioc ),
->>>>>>> Move socket ownership into connection.
         node_id(),
         connection_id( ++my_impl->current_connection_id ),
         sent_handshake_count(0),
@@ -913,16 +830,8 @@ namespace eosio {
    connection::connection()
       : peer_requested(),
         server_ioc( my_impl->server_ioc ),
-<<<<<<< HEAD
-        strand( app().get_io_service() ),
-=======
         strand( *my_impl->server_ioc ),
-<<<<<<< HEAD
->>>>>>> Protect start_read_message via strand
-        socket( s ),
-=======
         socket( *my_impl->server_ioc ),
->>>>>>> Move socket ownership into connection.
         node_id(),
         connection_id( ++my_impl->current_connection_id ),
         sent_handshake_count(0),
@@ -1015,40 +924,7 @@ namespace eosio {
       if( has_last_req ) {
          my_impl->dispatcher->retry_fetch( self->shared_from_this() );
       }
-<<<<<<< HEAD
-<<<<<<< HEAD
-      reset();
-      sent_handshake_count = 0;
-      last_handshake_recv = handshake_message();
-      last_handshake_sent = handshake_message();
-      my_impl->sync_master->reset_lib_num(nullptr);
-      fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
-      cancel_wait();
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> Make delay_timer thread safe
-      {
-         std::lock_guard<std::mutex> g( read_delay_timer_mutex );
-         if( read_delay_timer ) read_delay_timer->cancel();
-      }
-<<<<<<< HEAD
-=======
-      if( read_delay_timer ) read_delay_timer->cancel();
->>>>>>> Test of multi-threaded reading
-=======
->>>>>>> Make delay_timer thread safe
-=======
-
-      std::lock_guard<std::mutex> g( read_delay_timer_mtx );
-      if( read_delay_timer ) read_delay_timer->cancel();
->>>>>>> Use unique_lock instead of lock_guard to clean up code
-=======
-      self->reset();
-=======
       self->peer_requested.reset();
->>>>>>> Handle almost every net_message on net_plugin thread pool. Optimize bcast_block to not send when syncing.
       self->sent_handshake_count = 0;
       g_conn.lock();
       self->last_handshake_recv = handshake_message();
@@ -1060,12 +936,8 @@ namespace eosio {
 
       std::lock_guard<std::mutex> g( self->read_delay_timer_mtx );
       self->read_delay_timer.cancel();
-<<<<<<< HEAD
->>>>>>> Move socket ownership into connection.
-=======
 
       self->pending_message_buffer.reset();
->>>>>>> Add protection for last_handshake_*, last_req, and socket close
    }
 
    void connection::blk_send_branch() {
@@ -1195,20 +1067,9 @@ namespace eosio {
       std::vector<boost::asio::const_buffer> bufs;
       buffer_queue.fill_out_buffer( bufs );
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-      boost::asio::async_write(*socket, bufs,
-            boost::asio::bind_executor(strand, [c, priority]( boost::system::error_code ec, std::size_t w ) {
-         app().post(priority, [c, priority, ec, w]() {
-=======
-      boost::asio::async_write( socket, bufs,
-            boost::asio::bind_executor( strand, [c, priority]( boost::system::error_code ec, std::size_t w ) {
->>>>>>> Move socket ownership into connection.
-=======
       strand.dispatch( [c{std::move(c)}, bufs{std::move(bufs)}, priority]() {
          boost::asio::async_write( c->socket, bufs,
             boost::asio::bind_executor( c->strand, [c, priority]( boost::system::error_code ec, std::size_t w ) {
->>>>>>> Make queued_buffer thread safe
             try {
                // May have closed connection and cleared buffer_queue
                if( !c->socket_is_open() ) return;
@@ -1234,16 +1095,8 @@ namespace eosio {
             } catch( ... ) {
                fc_elog( logger, "Exception in do_queue_write to ${p}", ("p", c->peer_name()) );
             }
-<<<<<<< HEAD
-<<<<<<< HEAD
-         });
-=======
->>>>>>> Move socket ownership into connection.
-      }));
-=======
          }));
       });
->>>>>>> Make queued_buffer thread safe
    }
 
    void connection::cancel_sync(go_away_reason reason) {
@@ -2182,24 +2035,6 @@ namespace eosio {
       connection_wptr weak_conn = shared_from_this();
       // Note: need to add support for IPv6 too
 
-<<<<<<< HEAD
-      resolver->async_resolve( query, boost::asio::bind_executor( c->strand,
-                [weak_conn, this]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ) {
-                   app().post( priority::low, [err, endpoint_itr, weak_conn, this]() {
-                      auto c = weak_conn.lock();
-                      if( !c ) return;
-                      if( !err ) {
-                         connect( c, endpoint_itr );
-                      } else {
-                         fc_elog( logger, "Unable to resolve ${add}: ${error}",
-                                  ("add", c->peer_name())( "error", err.message()) );
-                      }
-                   } );
-<<<<<<< HEAD
-                } ) );
-=======
-                } );
-=======
       auto resolver = std::make_shared<tcp::resolver>( *server_ioc );
       resolver->async_resolve( query, boost::asio::bind_executor( strand,
             [resolver, ioc = server_ioc, weak_conn]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ) {
@@ -2210,14 +2045,8 @@ namespace eosio {
                } else {
                   fc_elog( logger, "Unable to resolve ${add}: ${error}", ("add", c->peer_name())( "error", err.message() ) );
                }
-<<<<<<< HEAD
-            } );
->>>>>>> Make use of resolver thread safe
-=======
             } ) );
->>>>>>> Work toward making sync_manager and handshake message thread safe.
       return true;
->>>>>>> Made all access to impl->connections thread safe
    }
 
    // called from connection strand
@@ -2227,29 +2056,11 @@ namespace eosio {
       }
       auto current_endpoint = *endpoint_itr;
       ++endpoint_itr;
-<<<<<<< HEAD
-      c->connecting = true;
-<<<<<<< HEAD
-      connection_wptr weak_conn = c;
-      c->socket->async_connect( current_endpoint, boost::asio::bind_executor( c->strand,
-            [weak_conn, endpoint_itr, this]( const boost::system::error_code& err ) {
-         app().post( priority::low, [weak_conn, endpoint_itr, this, err]() {
-            auto c = weak_conn.lock();
-            if( !c ) return;
-            if( !err && c->socket->is_open()) {
-               if( start_session( c )) {
-=======
-      c->socket.async_connect( current_endpoint,
-            boost::asio::bind_executor( c->strand, [resolver, c, endpoint_itr, this]( const boost::system::error_code& err ) {
-            if( !err && c->socket.is_open()) {
-=======
       connecting = true;
       socket.async_connect( current_endpoint,
             boost::asio::bind_executor( strand, [resolver, c = shared_from_this(), endpoint_itr]( const boost::system::error_code& err ) {
             if( !err && c->socket.is_open() ) {
->>>>>>> Work toward making sync_manager and handshake message thread safe.
                if( c->start_session() ) {
->>>>>>> Move socket ownership into connection.
                   c->send_handshake();
                }
             } else {
@@ -2264,34 +2075,7 @@ namespace eosio {
                   c->close();
                }
             }
-<<<<<<< HEAD
-         } );
       } ) );
-   }
-
-   bool net_plugin_impl::start_session(const connection_ptr& con) {
-      boost::asio::ip::tcp::no_delay nodelay( true );
-      boost::system::error_code ec;
-      con->socket->set_option( nodelay, ec );
-      if (ec) {
-         fc_elog( logger, "connection failed to ${peer}: ${error}", ( "peer", con->peer_name())("error",ec.message()) );
-         con->connecting = false;
-         con->close();
-         return false;
-      } else {
-         con->strand.post( [this, con]() {
-            con->start();
-            start_read_message( con );
-         });
-         ++started_sessions;
-         return true;
-         // for now, we can just use the application main loop.
-         //     con->readloop_complete  = bf::async( [=](){ read_loop( con ); } );
-         //     con->writeloop_complete = bf::async( [=](){ write_loop con ); } );
-      }
-=======
-      } ) );
->>>>>>> Move socket ownership into connection.
    }
 
    void net_plugin_impl::start_listen_loop() {
@@ -2360,24 +2144,9 @@ namespace eosio {
    // only called from strand thread
    void connection::start_read_message() {
       try {
-<<<<<<< HEAD
-         connection_wptr weak_conn = conn;
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-         std::size_t minimum_read =
-               std::atomic_exchange<decltype(conn->outstanding_read_bytes.load())>( &conn->outstanding_read_bytes, 0 );
-         minimum_read = minimum_read != 0 ? minimum_read : message_header_size;
-=======
-         std::size_t minimum_read = conn->outstanding_read_bytes != 0 ? conn->outstanding_read_bytes.load() : message_header_size;
->>>>>>> Test of multi-threaded reading
-=======
-=======
->>>>>>> Work toward making sync_manager and handshake message thread safe.
          std::size_t minimum_read =
                std::atomic_exchange<decltype(outstanding_read_bytes.load())>( &outstanding_read_bytes, 0 );
          minimum_read = minimum_read != 0 ? minimum_read : message_header_size;
->>>>>>> Remove unneeded access to atomic
 
          if (my_impl->use_socket_read_watermark) {
             const size_t max_socket_read_watermark = 4096;
@@ -2399,36 +2168,13 @@ namespace eosio {
              trx_in_progress_size > def_max_trx_in_progress_size )
          {
             // too much queued up, reschedule
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> Make delay_timer thread safe
-            uint32_t write_queue_size = conn->buffer_queue.write_queue_size();
-            uint32_t trx_in_progress_size = conn->trx_in_progress_size;
-            uint32_t reads_in_flight = conn->reads_in_flight;
-=======
             uint32_t write_queue_size = buffer_queue.write_queue_size();
             uint32_t trx_in_progress_size = this->trx_in_progress_size.load();
             uint32_t reads_in_flight = this->reads_in_flight.load();
->>>>>>> Work toward making sync_manager and handshake message thread safe.
             if( write_queue_size > def_max_write_queue_size ) {
                peer_wlog( this, "write_queue full ${s} bytes", ("s", write_queue_size) );
             } else if( reads_in_flight > def_max_reads_in_flight ) {
-<<<<<<< HEAD
-               peer_wlog( conn, "max reads in flight ${s}", ("s", reads_in_flight) );
-<<<<<<< HEAD
-=======
-            if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ) {
-               peer_wlog( conn, "write_queue full ${s} bytes", ("s", conn->buffer_queue.write_queue_size()) );
-            } else if( conn->reads_in_flight > def_max_reads_in_flight ) {
-               peer_wlog( conn, "max reads in flight ${s}", ("s", conn->reads_in_flight.load()) );
->>>>>>> Test of multi-threaded reading
-=======
->>>>>>> Make delay_timer thread safe
-=======
                peer_wlog( this, "max reads in flight ${s}", ("s", reads_in_flight) );
->>>>>>> Work toward making sync_manager and handshake message thread safe.
             } else {
                peer_wlog( this, "max trx in progress ${s} bytes", ("s", trx_in_progress_size) );
             }
@@ -2436,28 +2182,9 @@ namespace eosio {
                 reads_in_flight > 2*def_max_reads_in_flight   ||
                 trx_in_progress_size > 2*def_max_trx_in_progress_size )
             {
-<<<<<<< HEAD
-               fc_wlog( logger, "queues over full, giving up on connection" );
-<<<<<<< HEAD
-               app().post( priority::medium, [weak_conn]() {
-=======
-               app().post( priority::medium, [this, weak_conn]() {
->>>>>>> Make delay_timer thread safe
-                  auto conn = weak_conn.lock();
-                  if( !conn ) return;
-                  fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
-                  conn->close();
-               });
-=======
                fc_elog( logger, "queues over full, giving up on connection, closing connection to: ${p}",
-<<<<<<< HEAD
-                        ("p", conn->peer_name()) );
-               conn->close();
->>>>>>> Move socket ownership into connection.
-=======
                         ("p", peer_name()) );
                close();
->>>>>>> Work toward making sync_manager and handshake message thread safe.
                return;
             }
             std::lock_guard<std::mutex> g( read_delay_timer_mtx );
@@ -2477,17 +2204,6 @@ namespace eosio {
             boost::asio::bind_executor( strand,
             [conn = shared_from_this()]( boost::system::error_code ec, std::size_t bytes_transferred ) {
                --conn->reads_in_flight;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-               conn->outstanding_read_bytes = 0;
->>>>>>> Test of multi-threaded reading
-=======
->>>>>>> Remove unneeded access to atomic
-               bool close_connection = false;
-=======
->>>>>>> Add protection for last_handshake_*, last_req, and socket close
 
                // may have closed connection and cleared pending_message_buffer
                if( !conn->socket_is_open() ) return;
@@ -2560,40 +2276,8 @@ namespace eosio {
                }
 
                if( close_connection ) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-                  connection_wptr weak_conn = conn;
->>>>>>> Remove descriptions of tasks as not merged into develop yet
-=======
->>>>>>> Make delay_timer thread safe
-                  app().post( priority::medium, [this, weak_conn]() {
-=======
-                  connection_wptr weak_conn = conn;
-<<<<<<< HEAD
-                  app().post( priority::medium, "close conn", [this, weak_conn]() {
->>>>>>> Test of multi-threaded reading
-=======
-=======
->>>>>>> Make delay_timer thread safe
-                  app().post( priority::medium, [this, weak_conn]() {
->>>>>>> Remove descriptions of tasks as not merged into develop yet
-=======
-                  app().post( priority::medium, [weak_conn]() {
->>>>>>> Made all access to impl->connections thread safe
-                     auto conn = weak_conn.lock();
-                     if( !conn ) return;
-                     fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
-                     conn->close();
-                  });
-=======
                   fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
                   conn->close();
->>>>>>> Move socket ownership into connection.
                }
          }));
       } catch (...) {
@@ -3005,16 +2689,7 @@ namespace eosio {
             auto trace = result.get<transaction_trace_ptr>();
             if (!trace->except) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
-<<<<<<< HEAD
-<<<<<<< HEAD
                accepted = true;
-=======
-               this->dispatcher->bcast_transaction(ptrx);
-               return;
->>>>>>> Add trx id to log message
-=======
-               accepted = true;
->>>>>>> Move more of incoming transaction processing to thread pool
             }
 
             if( !accepted ) {
@@ -3035,168 +2710,21 @@ namespace eosio {
       });
    }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
    // called from application thread
->>>>>>> Work toward making sync_manager and handshake message thread safe.
    void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& msg) {
       controller& cc = chain_plug->chain();
       block_id_type blk_id = msg->id();
       uint32_t blk_num = msg->block_num();
-=======
-   void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& m) {
-      signed_block_ptr msg = m;
-      controller& cc = chain_plug->chain();
-      block_id_type blk_id = msg ? msg->id() : block_id_type();
-      uint32_t blk_num = msg ? msg->block_num() : 0;
->>>>>>> Test of multi-threaded reading
-=======
-   void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& msg) {
-      controller& cc = chain_plug->chain();
-      block_id_type blk_id = msg->id();
-      uint32_t blk_num = msg->block_num();
->>>>>>> Revert unneeded changes to handle_message
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
       c->cancel_wait();
 
       try {
-<<<<<<< HEAD
-<<<<<<< HEAD
          if( cc.fetch_block_by_id(blk_id) ) {
-<<<<<<< HEAD
-            sync_master->recv_block(c, blk_id, blk_num);
-            return;
-         }
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
-         if( msg && cc.fetch_block_by_id(blk_id)) {
-=======
-         if( cc.fetch_block_by_id(blk_id) ) {
-<<<<<<< HEAD
->>>>>>> Revert unneeded changes to handle_message
-            sync_master->recv_block(c, blk_id, blk_num);
-=======
-            sync_master->sync_recv_block(c, blk_id, blk_num);
->>>>>>> Consolidate transaction tracking, reducing memory requirements and making thread safe.
-=======
             c->strand.post( [sync_master = sync_master.get(), c, blk_id, blk_num]() {
                sync_master->sync_recv_block( c, blk_id, blk_num );
             });
->>>>>>> Work toward making sync_manager and handshake message thread safe.
             return;
          }
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> Test of multi-threaded reading
-=======
->>>>>>> Test of multi-threaded reading
-         signed_block_ptr prev = msg ? cc.fetch_block_by_id( msg->previous ) : msg;
-         if( prev == nullptr ){ //&& sync_master->is_active(c) ) {
-            // see if top is ready
-            if( !sync_master->incoming_blocks.empty() ) {
-               prev = sync_master->incoming_blocks.top();
-               auto prev_prev = cc.fetch_block_by_id( prev->previous );
-               if( prev_prev != nullptr ) {
-                  sync_master->incoming_blocks.pop();
-                  if(msg) sync_master->incoming_blocks.emplace( msg );
-                  msg = prev;
-                  blk_id = msg->id();
-                  blk_num = msg->block_num();
-                  connection_wptr weak = c;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                  app().post(priority::medium, [this, weak](){
-=======
-                  app().post(priority::medium, "re post blk", [this, weak](){
->>>>>>> Test of multi-threaded reading
-=======
-                  app().post(priority::medium, [this, weak](){
->>>>>>> Remove descriptions of tasks as not merged into develop yet
-=======
-                  app().post(priority::medium, "re post blk", [this, weak](){
->>>>>>> Test of multi-threaded reading
-=======
-                  app().post(priority::medium, [this, weak](){
->>>>>>> Remove descriptions of tasks as not merged into develop yet
-                     connection_ptr c = weak.lock();
-                     if( c ) handle_message( c, signed_block_ptr() );
-                  });
-               } else {
-                  if( msg ) {
-                     sync_master->incoming_blocks.emplace( msg );
-
-                     connection_wptr weak = c;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                     app().post( priority::medium, [this, weak]() {
-=======
-                     app().post( priority::medium, "re post blk", [this, weak]() {
->>>>>>> Test of multi-threaded reading
-=======
-                     app().post( priority::medium, [this, weak]() {
->>>>>>> Remove descriptions of tasks as not merged into develop yet
-=======
-                     app().post( priority::medium, "re post blk", [this, weak]() {
->>>>>>> Test of multi-threaded reading
-=======
-                     app().post( priority::medium, [this, weak]() {
->>>>>>> Remove descriptions of tasks as not merged into develop yet
-                        connection_ptr c = weak.lock();
-                        if( c ) handle_message( c, signed_block_ptr() );
-                     } );
-                  }
-                  return;
-               }
-            } else {
-               if( msg ) {
-                  sync_master->incoming_blocks.emplace( msg );
-
-                  connection_wptr weak = c;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                  app().post( priority::medium, [this, weak]() {
-=======
-                  app().post( priority::medium, "re post blk", [this, weak]() {
->>>>>>> Test of multi-threaded reading
-=======
-                  app().post( priority::medium, [this, weak]() {
->>>>>>> Remove descriptions of tasks as not merged into develop yet
-=======
-                  app().post( priority::medium, "re post blk", [this, weak]() {
->>>>>>> Test of multi-threaded reading
-=======
-                  app().post( priority::medium, [this, weak]() {
->>>>>>> Remove descriptions of tasks as not merged into develop yet
-                     connection_ptr c = weak.lock();
-                     if( c ) handle_message( c, signed_block_ptr() );
-                  } );
-               }
-               return;
-            }
-         }
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> Use appbase with FIFO priority queue. priority queue in net_plugin no longer needed.
-=======
->>>>>>> Test of multi-threaded reading
-=======
->>>>>>> Use appbase with FIFO priority queue. priority queue in net_plugin no longer needed.
-=======
->>>>>>> Test of multi-threaded reading
-=======
->>>>>>> Use appbase with FIFO priority queue. priority queue in net_plugin no longer needed.
       } catch( ...) {
          // should this even be caught?
          fc_elog( logger,"Caught an unknown exception trying to recall blockID" );
@@ -3314,31 +2842,10 @@ namespace eosio {
       uint32_t lib = 0;
       std::tie( lib, std::ignore, std::ignore, std::ignore, std::ignore, std::ignore ) = get_chain_info();
       dispatcher->expire_blocks( lib );
-<<<<<<< HEAD
-      for ( auto& c : connections ) {
-         auto &stale_txn = c->trx_state.get<by_block_num>();
-         stale_txn.erase( stale_txn.lower_bound(1), stale_txn.upper_bound(lib) );
-         auto &stale_txn_e = c->trx_state.get<by_expiry>();
-         stale_txn_e.erase(stale_txn_e.lower_bound(time_point_sec()), stale_txn_e.upper_bound(time_point::now()));
-      }
-<<<<<<< HEAD
-<<<<<<< HEAD
-      fc_dlog( logger, "expire_txns ${n}us", ("n", time_point::now() - now) );
-=======
-      fc_dlog( logger, "expire_txns ${n}us size ${s} removed ${r}",
-               ("n", time_point::now() - now)("s", start_size)("r", start_size - local_txns.size()) );
->>>>>>> force a build
-=======
-=======
       dispatcher->expire_txns( lib );
->>>>>>> Consolidate transaction tracking, reducing memory requirements and making thread safe.
       fc_dlog( logger, "expire_txns ${n}us", ("n", time_point::now() - now) );
-<<<<<<< HEAD
->>>>>>> Move more of incoming transaction processing to thread pool
-=======
 
       start_expire_timer();
->>>>>>> Break expire into two steps
    }
 
    // called from any thread
