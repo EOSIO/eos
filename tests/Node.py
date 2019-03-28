@@ -62,7 +62,7 @@ class Node(object):
 
     def __str__(self):
         #return "Host: %s, Port:%d, Pid:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.cmd)
-        return "Host: %s, Port:%d" % (self.host, self.port)
+        return "Host: %s, Port:%d, Pid:%s" % (self.host, self.port, self.pid)
 
     @staticmethod
     def validateTransaction(trans):
@@ -1075,8 +1075,12 @@ class Node(object):
         assert(isinstance(blockType, BlockType))
         assert(isinstance(returnType, ReturnType))
         basedOnLib="true" if blockType==BlockType.lib else "false"
-        cmd="curl %s/v1/test_control/kill_node_on_producer -d '{ \"producer\":\"%s\", \"where_in_sequence\":%d, \"based_on_lib\":\"%s\" }' -X POST -H \"Content-Type: application/json\"" % \
-            (self.endpointHttp, producer, whereInSequence, basedOnLib)
+        payload="{ \"producer\":\"%s\", \"where_in_sequence\":%d, \"based_on_lib\":\"%s\" }" % (producer, whereInSequence, basedOnLib)
+        return self.processCurlCmd("test_control", "kill_node_on_producer", payload, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=exitMsg, returnType=returnType)
+
+    def processCurlCmd(self, resource, command, payload, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
+        cmd="curl %s/v1/%s/%s -d '%s' -X POST -H \"Content-Type: application/json\"" % \
+            (self.endpointHttp, resource, command, payload)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         rtn=None
         start=time.perf_counter()
@@ -1091,6 +1095,8 @@ class Node(object):
             if Utils.Debug:
                 end=time.perf_counter()
                 Utils.Print("cmd Duration: %.3f sec" % (end-start))
+                printReturn=json.dumps(rtn) if returnType==ReturnType.json else rtn
+                Utils.Print("cmd returned: %s" % (printReturn))
         except subprocess.CalledProcessError as ex:
             if not silentErrors:
                 end=time.perf_counter()
@@ -1112,6 +1118,23 @@ class Node(object):
             Utils.errorExit("Failed to \"%s\"" % (cmd))
 
         return rtn
+
+    def txnGenCreateTestAccounts(self, genAccount, genKey, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
+        assert(isinstance(genAccount, str))
+        assert(isinstance(genKey, str))
+        assert(isinstance(returnType, ReturnType))
+
+        payload="[ \"%s\", \"%s\" ]" % (genAccount, genKey)
+        return self.processCurlCmd("txn_test_gen", "create_test_accounts", payload, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=exitMsg, returnType=returnType)
+
+    def txnGenStart(self, salt, period, batchSize, silentErrors=True, exitOnError=False, exitMsg=None, returnType=ReturnType.json):
+        assert(isinstance(salt, str))
+        assert(isinstance(period, int))
+        assert(isinstance(batchSize, int))
+        assert(isinstance(returnType, ReturnType))
+
+        payload="[ \"%s\", %d, %d ]" % (salt, period, batchSize)
+        return self.processCurlCmd("txn_test_gen", "start_generation", payload, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=exitMsg, returnType=returnType)
 
     def waitForTransBlockIfNeeded(self, trans, waitForTransBlock, exitOnError=False):
         if not waitForTransBlock:
@@ -1220,15 +1243,19 @@ class Node(object):
         self.killed=True
         return True
 
-    def interruptAndVerifyExitStatus(self):
+    def interruptAndVerifyExitStatus(self, timeout=15):
         if Utils.Debug: Utils.Print("terminating node: %s" % (self.cmd))
         assert self.popenProc is not None, "node: \"%s\" does not have a popenProc, this may be because it is only set after a relaunch." % (self.cmd)
         self.popenProc.send_signal(signal.SIGINT)
         try:
-            outs, _ = self.popenProc.communicate(timeout=15)
+            outs, _ = self.popenProc.communicate(timeout=timeout)
             assert self.popenProc.returncode == 0, "Expected terminating \"%s\" to have an exit status of 0, but got %d" % (self.cmd, self.popenProc.returncode)
         except subprocess.TimeoutExpired:
             Utils.errorExit("Terminate call failed on node: %s" % (self.cmd))
+
+        # mark node as killed
+        self.pid=None
+        self.killed=True
 
     def verifyAlive(self, silent=False):
         if not silent and Utils.Debug: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
@@ -1295,7 +1322,7 @@ class Node(object):
 
     # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
-    def relaunch(self, nodeId, chainArg, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None, cachePopen=False):
+    def relaunch(self, nodeId, chainArg=None, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None, cachePopen=False):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1332,20 +1359,8 @@ class Node(object):
 
             myCmd=" ".join(cmdArr)
 
-        dataDir="var/lib/node_%02d" % (nodeId)
-        dt = datetime.datetime.now()
-        dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
-            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-        stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
-        stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
-        with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
-            cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
-            Utils.Print("cmd: %s" % (cmd))
-            popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
-            if cachePopen:
-                self.popenProc=popen
-            self.pid=popen.pid
-            if Utils.Debug: Utils.Print("restart Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
+        cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
+        self.launchCmd(cmd, nodeId, cachePopen)
 
         def isNodeAlive():
             """wait for node to be responsive."""
@@ -1366,6 +1381,32 @@ class Node(object):
         self.cmd=cmd
         self.killed=False
         return True
+
+    @staticmethod
+    def unstartedFile(nodeId):
+        assert(isinstance(nodeId, int))
+        startFile=Utils.getNodeDataDir(nodeId, "start.cmd")
+        if not os.path.exists(startFile):
+            Utils.errorExit("Cannot find unstarted node since %s file does not exist" % startFile)
+        return startFile
+
+    def launchUnstarted(self, nodeId, cachePopen=False):
+        Utils.Print("launchUnstarted cmd: %s" % (self.cmd))
+        self.launchCmd(self.cmd, nodeId, cachePopen)
+
+    def launchCmd(self, cmd, nodeId, cachePopen=False):
+        dataDir=Utils.getNodeDataDir(nodeId)
+        dt = datetime.datetime.now()
+        dateStr=Utils.getDateString(dt)
+        stdoutFile="%s/stdout.%s.txt" % (dataDir, dateStr)
+        stderrFile="%s/stderr.%s.txt" % (dataDir, dateStr)
+        with open(stdoutFile, 'w') as sout, open(stderrFile, 'w') as serr:
+            Utils.Print("cmd: %s" % (cmd))
+            popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
+            if cachePopen:
+                self.popenProc=popen
+            self.pid=popen.pid
+            if Utils.Debug: Utils.Print("start Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
 
     def trackCmdTransaction(self, trans, ignoreNonTrans=False):
         if trans is None:
