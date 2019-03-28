@@ -8,13 +8,13 @@ DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
 DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
 DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
 
-if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then
+if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then # Amazonlinux1
 	DEP_ARRAY=( 
 		sudo procps util-linux which gcc72 gcc72-c++ autoconf automake libtool make doxygen graphviz \
-		bzip2 bzip2-devel openssl-devel gmp gmp-devel libstdc++72 python27 python27-devel python34 python34-devel \
+		bzip2 bzip2-devel openssl-devel gmp gmp-devel libstdc++72 python27 python27-devel python36 python36-devel \
 		libedit-devel ncurses-devel swig wget file libcurl-devel libusb1-devel
 	)
-else
+else # Amazonlinux2
 	DEP_ARRAY=( 
 		git procps-ng util-linux gcc gcc-c++ autoconf automake libtool make bzip2 \
 		bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel libusbx-devel \
