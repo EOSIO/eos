@@ -1421,7 +1421,7 @@ namespace eosio {
             connection_ptr c = sync_source;
             g_sync.unlock();
             c->strand.post( [c, start, end]() {
-               fc_ilog( logger, "requesting range ${s} to ${e}, from ${n}", ("n", c->peer_address())( "s", start )( "e", end ) );
+               fc_ilog( logger, "requesting range ${s} to ${e}, from ${n}", ("n", c->peer_name())( "s", start )( "e", end ) );
                c->request_sync_blocks( start, end );
             } );
          }
@@ -1470,7 +1470,7 @@ namespace eosio {
       }
 
       fc_ilog( logger, "Catching up with chain, our last req is ${cc}, theirs is ${t} peer ${p}",
-               ("cc", sync_last_requested_num)( "t", target )( "p", c->peer_address() ) );
+               ("cc", sync_last_requested_num)( "t", target )( "p", c->peer_name() ) );
 
       request_next_chunk( std::move( g_sync ), c );
    }
@@ -1479,7 +1479,7 @@ namespace eosio {
    void sync_manager::sync_reassign_fetch(const connection_ptr& c, go_away_reason reason) {
       std::unique_lock<std::mutex> g( sync_mtx );
       fc_ilog( logger, "reassign_fetch, our last req is ${cc}, next expected is ${ne} peer ${p}",
-               ("cc", sync_last_requested_num)( "ne", sync_next_expected_num )( "p", c->peer_address() ) );
+               ("cc", sync_last_requested_num)( "ne", sync_next_expected_num )( "p", c->peer_name() ) );
 
       if( c == sync_source ) {
          c->cancel_sync(reason);
@@ -1686,6 +1686,7 @@ namespace eosio {
             g_sync.lock();
             set_state( head_catchup );
             g_sync.unlock();
+            send_handshakes();
          } else {
             send_handshakes();
          }
