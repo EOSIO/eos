@@ -177,6 +177,31 @@ BOOST_AUTO_TEST_CASE( require_preactivation_test ) try {
                           protocol_feature_exception,
                           fc_exception_message_starts_with( "attempted to activate protocol feature without prior required preactivation:" )
    );
+
+   c.protocol_features_to_be_activated_wo_preactivation.clear();
+
+   BOOST_CHECK( !c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+
+   c.preactivate_protocol_features( {*d} );
+   c.finish_block();
+
+   BOOST_CHECK( !c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+
+   BOOST_CHECK_EXCEPTION( c.control->start_block(
+                              c.control->head_block_time() + fc::milliseconds(config::block_interval_ms),
+                              0,
+                              {}
+                          ),
+                          block_validate_exception,
+                          fc_exception_message_is( "There are pre-activated protocol features that were not activated at the start of this block" )
+   );
+
+   BOOST_CHECK( !c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+
+   c.produce_block();
+
+   BOOST_CHECK( c.control->is_builtin_activated( builtin_protocol_feature_t::only_link_to_existing_permission ) );
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
