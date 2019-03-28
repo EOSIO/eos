@@ -1315,7 +1315,7 @@ class Node(object):
         cmdArr=[]
         splittedCmd=self.cmd.split()
         if nodeosPath: splittedCmd[0] = nodeosPath
-        myCmd="".join(splittedCmd)
+        myCmd=" ".join(splittedCmd)
         toAddOrSwap=copy.deepcopy(addOrSwapFlags) if addOrSwapFlags is not None else {}
         if not newChain:
             skip=False
@@ -1532,8 +1532,6 @@ class Node(object):
         protocolFeatureJson = []
         with open(jsonPath) as f:
             protocolFeatureJson = json.load(f)
-        protocolFeatureJson["subjective_restrictions"] = {
-            **protocolFeatureJson["subjective_restrictions"], **subjectiveRestriction
-        }
+        protocolFeatureJson["subjective_restrictions"].update(subjectiveRestriction)
         with open(jsonPath, "w") as f:
             json.dump(protocolFeatureJson, f, indent=2)

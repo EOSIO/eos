@@ -42,7 +42,7 @@ def shouldNodeContainPreactivateFeature(node):
     activatedProtocolFeatures = blockHeaderState["activated_protocol_features"]["protocol_features"]
     return preactivateFeatureDigest in activatedProtocolFeatures
 
-def waitUntilBeginningOfProdTurn(node, producerName, timeout=30, sleepTime=0.5):
+def waitUntilBeginningOfProdTurn(node, producerName, timeout=30, sleepTime=0.4):
     def isDesiredProdTurn():
         headBlockNum = node.getHeadBlockNum()
         res =  node.getBlock(headBlockNum)["producer"] == producerName and \
@@ -153,7 +153,7 @@ try:
     assert newNodes[0].waitForLibToAdvance(), "1st node LIB should advance"
     newNode0Lib = newNodes[0].getIrreversibleBlockNum()
     assert newNodes[1].getIrreversibleBlockNum() >= newNode0Lib and \
-           newNodes[1].getIrreversibleBlockNum() >= newNode0Lib, "2nd and 3rd node LIB should also advance"
+           newNodes[2].getIrreversibleBlockNum() >= newNode0Lib, "2nd and 3rd node LIB should also advance"
     assert not oldNode.waitForLibToAdvance(), "4th node LIB should not advance"
 
     # Restart old node with newest version
