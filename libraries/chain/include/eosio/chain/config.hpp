@@ -12,6 +12,10 @@ namespace eosio { namespace chain { namespace config {
 
 typedef __uint128_t uint128_t;
 
+/** Percentages are fixed point with a denominator of 10,000 */
+const static int percent_100 = 10000;
+const static int percent_1   = 100;
+
 const static auto default_blocks_dir_name    = "blocks";
 const static auto reversible_blocks_dir_name = "reversible";
 const static auto default_reversible_cache_size = 340*1024*1024ll;/// 1MB * 340 blocks based on 21 producer BFT delay
@@ -22,6 +26,7 @@ const static auto forkdb_filename            = "forkdb.dat";
 const static auto default_state_size            = 1*1024*1024*1024ll;
 const static auto default_state_guard_size      =    128*1024*1024ll;
 const static uint64_t default_virtual_ram_limit = 1024ll*1024*1024*64;
+const static uint64_t min_resource_usage_pct = percent_1 / 10;
 
 const static uint64_t system_account_name    = N(cyber);
 const static uint64_t msig_account_name      = N(cyber.msig);
@@ -51,10 +56,6 @@ const static uint64_t provide_bw_action = N(providebw);
 const static int      block_interval_ms = 3000;
 const static int      block_interval_us = block_interval_ms*1000;
 const static uint64_t block_timestamp_epoch = 946684800000ll; // epoch is year 2000.
-
-/** Percentages are fixed point with a denominator of 10,000 */
-const static int percent_100 = 10000;
-const static int percent_1   = 100;
 
 static const uint32_t account_cpu_usage_average_window_ms  = 24*60*60*1000l;
 static const uint32_t account_net_usage_average_window_ms  = 24*60*60*1000l;

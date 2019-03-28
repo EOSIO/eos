@@ -110,7 +110,7 @@ public:
    struct producer_info {
       name                       producer_name;
    };
-
+   
    using account_resource_limit = chain::resource_limits::account_resource_limit;
 
    struct get_account_results {
@@ -128,8 +128,8 @@ public:
       int64_t                    ram_quota  = 0;
       int64_t                    net_weight = 0;
       int64_t                    cpu_weight = 0;
-
-      account_resource_limit     net_limit;
+      
+      account_resource_limit     net_limit; 
       account_resource_limit     cpu_limit;
       int64_t                    ram_usage = 0;
 

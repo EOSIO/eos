@@ -38,15 +38,9 @@ static const stake_agent_object* get_agent(symbol_code token_code, const AgentIn
     EOS_ASSERT(agent != agents_idx.end(), transaction_exception, "agent doesn't exist");
     return &(*agent);
 }
-
-static int64_t safe_prop(int64_t arg, int64_t numer, int64_t denom) {
-    return !arg || !numer ? 0 : impl::downgrade_cast<int64_t>((static_cast<int128_t>(arg) * numer) / denom);
 }
 
-static int64_t safe_pct(int64_t arg, int64_t total) {
-    return safe_prop(arg, total, config::_100percent);
-}
-
+namespace resource_limits {
 template<typename AgentIndex, typename GrantIndex, typename GrantItr>
 int64_t recall_proxied_traversal(const ram_payer_info& ram, symbol_code token_code,
     const AgentIndex& agents_idx, const GrantIndex& grants_idx,
@@ -64,7 +58,7 @@ int64_t recall_proxied_traversal(const ram_payer_info& ram, symbol_code token_co
     
     if (share > 0 && grantor_funds > 0) {
         auto profit = std::max(grantor_funds - arg_grant_itr->granted, int64_t(0));
-        auto agent_fee_pct = safe_prop(std::min(agent->fee, arg_grant_itr->break_fee), profit, grantor_funds);
+        auto agent_fee_pct = safe_prop<int64_t>(std::min(agent->fee, arg_grant_itr->break_fee), profit, grantor_funds);
         
         auto share_fee = safe_pct(agent_fee_pct, share);
         auto share_net = share - share_fee;
@@ -78,7 +72,7 @@ int64_t recall_proxied_traversal(const ram_payer_info& ram, symbol_code token_co
                (grant_itr->grantor_name == agent->account))
         {
             auto to_recall = safe_prop(share_net, grant_itr->share, agent->shares_sum);
-            auto cur_pct = safe_prop(config::_100percent, share_net, agent->shares_sum);
+            auto cur_pct = safe_prop<int64_t>(config::percent_100, share_net, agent->shares_sum);
             proxied_ret += recall_proxied_traversal(ram, token_code, agents_idx, grants_idx, grant_itr, cur_pct);
         }
         EOS_ASSERT(proxied_ret <= agent->proxied, transaction_exception, "SYSTEM: incorrect proxied_ret val");
@@ -97,7 +91,7 @@ int64_t recall_proxied_traversal(const ram_payer_info& ram, symbol_code token_co
         if (share || pct) {
             grants_idx.modify(*arg_grant_itr, [&](auto& g) {
                 g.share -= share;
-                g.granted = safe_pct(config::_100percent - pct, g.granted);
+                g.granted = safe_pct(config::percent_100 - pct, g.granted);
             });
         }
         ++arg_grant_itr;
@@ -136,7 +130,7 @@ void update_proxied_traversal(
                 ++grant_itr;
             }
             else {
-                unstaked += recall_proxied_traversal(ram, token_code, agents_idx, grants_idx, grant_itr, config::_100percent, true);
+                unstaked += recall_proxied_traversal(ram, token_code, agents_idx, grants_idx, grant_itr, config::percent_100, true);
             }
         }
         agents_idx.modify(*agent, [&](auto& a) {
@@ -232,31 +226,25 @@ void resource_limits_manager::update_account_usage(const flat_set<account_name>&
 }
 
 
-void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot, int64_t now) {
+void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, fc::time_point now) {
    auto state_table = _chaindb.get_table<resource_limits_state_object>();
    const auto& state = state_table.get();
    const auto& config = _chaindb.get<resource_limits_config_object>();
    auto usage_table = _chaindb.get_table<resource_usage_object>();
    auto owner_idx = usage_table.get_index<by_owner>();
+   const pricelist& prices = get_pricelist();
+   auto time_slot = block_timestamp_type(now).slot; 
 
    for( const auto& a : accounts ) {
 
       const auto& usage = owner_idx.get( a );
 
-      usage_table.modify( usage, [&]( auto& bu ){
+      usage_table.modify( usage, [&]( auto& bu ) {
           bu.net_usage.add( net_usage, time_slot, config.account_net_usage_average_window );
           bu.cpu_usage.add( cpu_usage, time_slot, config.account_cpu_usage_average_window );
       });
-      
-      if (now >= 0) {
-          auto net_limit_ex = get_account_limit_ex(now, a, resource_limits::net_code);
-          EOS_ASSERT(net_limit_ex.used <= net_limit_ex.max, tx_net_usage_exceeded, 
-             "authorizing account '${n}' has insufficient net resources for this transaction", ("n", name(a))); 
-          
-          auto cpu_limit_ex = get_account_limit_ex(now, a, resource_limits::cpu_code);
-          EOS_ASSERT(cpu_limit_ex.used <= cpu_limit_ex.max, tx_cpu_usage_exceeded, 
-             "authorizing account '${n}' has insufficient cpu resources for this transaction", ("n", name(a)));
-      }
+      EOS_ASSERT(get_account_balance(now.sec_since_epoch(), a, prices).stake >= 0, resource_exhausted_exception, 
+             "authorizing account '${n}' has insufficient resources for this transaction", ("n", name(a))); 
    }
 
    // account for this transaction in the block and do not exceed those limits either
@@ -274,6 +262,8 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
       return;
    }
    const auto& usage  = _chaindb.get<resource_usage_object,by_owner>( account );
+   auto state_table = _chaindb.get_table<resource_limits_state_object>();
+   const auto& state = state_table.get();
 
    EOS_ASSERT( ram_delta <= 0 || UINT64_MAX - usage.ram_usage >= (uint64_t)ram_delta, transaction_exception,
               "Ram usage delta would overflow UINT64_MAX");
@@ -283,10 +273,27 @@ void resource_limits_manager::add_pending_ram_usage( const account_name account,
    _chaindb.modify( usage, [&]( auto& u ) {
      u.ram_usage += ram_delta;
    });
+   
+   state_table.modify(state, [&](resource_limits_state_object& rls){
+      rls.pending_ram_usage += ram_delta;
+   });
 }
 
-int64_t resource_limits_manager::get_account_ram_usage( const account_name& name )const {
-   return _chaindb.get<resource_usage_object,by_owner>( name ).ram_usage;
+std::map<symbol_code, uint64_t> resource_limits_manager::get_account_usage(const account_name& account)const {
+    const auto& config = _chaindb.get<resource_limits_config_object>();
+    auto usage_table = _chaindb.get_table<resource_usage_object>();
+    auto usage_owner_idx = usage_table.get_index<by_owner>();
+    const auto& usage = usage_owner_idx.get(account);
+    
+    std::map<symbol_code, uint64_t> ret;
+    ret[cpu_code] = downgrade_cast<uint64_t>(integer_divide_ceil(
+                            static_cast<uint128_t>(usage.cpu_usage.value_ex) * config.account_cpu_usage_average_window, 
+                            static_cast<uint128_t>(config::rate_limiting_precision)));
+    ret[net_code] = downgrade_cast<uint64_t>(integer_divide_ceil(
+                            static_cast<uint128_t>(usage.net_usage.value_ex) * config.account_net_usage_average_window, 
+                            static_cast<uint128_t>(config::rate_limiting_precision)));
+    ret[ram_code] = usage.ram_usage;
+    return ret;
 }
 
 void resource_limits_manager::process_block_usage(uint32_t block_num) {
@@ -303,7 +310,9 @@ void resource_limits_manager::process_block_usage(uint32_t block_num) {
       state.average_block_net_usage.add(state.pending_net_usage, block_num, config.net_limit_parameters.periods);
       state.update_virtual_net_limit(config);
       state.pending_net_usage = 0;
-
+      
+      state.ram_usage += state.pending_ram_usage;
+      state.pending_ram_usage = 0;
    });
 }
 
@@ -329,13 +338,61 @@ uint64_t resource_limits_manager::get_block_net_limit() const {
    return config.net_limit_parameters.max - state.pending_net_usage;
 }
 
-account_resource_limit resource_limits_manager::get_account_limit_ex(int64_t now, const account_name& account, symbol_code purpose_code){
-        
-    static constexpr account_resource_limit no_limits{-1, -1, -1};
+pricelist resource_limits_manager::get_pricelist() const {
     
-    EOS_ASSERT(purpose_code == cpu_code || purpose_code == net_code || purpose_code == ram_code, chain_exception,
-        "SYSTEM: incorrect purpose_code");
+    struct resource_stat {
+        symbol_code code;
+        uint64_t used_pct;
+        uint64_t capacity;
+    };
+    const auto& state  = _chaindb.get<resource_limits_state_object>();
+
+    std::array<resource_stat, 3> res_stats = {{
+        {
+            .code = cpu_code,
+            .used_pct = safe_share_to_pct(state.average_block_cpu_usage.average(), state.virtual_cpu_limit),
+            .capacity = state.virtual_cpu_limit
+        },{
+            .code = net_code,
+            .used_pct = safe_share_to_pct(state.average_block_net_usage.average(), state.virtual_net_limit),
+            .capacity = state.virtual_net_limit
+        },{
+            .code = ram_code,
+            .used_pct = safe_share_to_pct(state.ram_usage, state.virtual_ram_limit),
+            .capacity = state.virtual_ram_limit
+        }
+    }};
     
+    pricelist ret;
+    uint64_t used_pct_sum = 0;
+    for (auto& r : res_stats) {
+        r.used_pct = std::max(config::min_resource_usage_pct, r.used_pct);
+        used_pct_sum += r.used_pct;
+        ret[r.code] = ratio{0ll, 1ll};
+    }
+    
+    symbol_code token_code { symbol(CORE_SYMBOL).to_symbol_code() };
+    const stake_param_object* param = nullptr;
+    const stake_stat_object* stat = nullptr;
+    
+    if ((param = _chaindb.find<stake_param_object, by_id>(token_code.value)) && 
+        (stat  = _chaindb.find<stake_stat_object, by_id>(token_code.value)) && stat->enabled && stat->total_staked != 0) {
+        EOS_ASSERT(stat->total_staked > 0, chain_exception, "SYSTEM: incorrect total_staked");
+        for (auto& r : res_stats) {
+            ret[r.code] = ratio{
+                safe_prop<uint64_t>(stat->total_staked, r.used_pct, used_pct_sum), 
+                r.capacity
+            };
+        }
+    }
+    
+    return ret;
+}
+
+account_balance resource_limits_manager::get_account_balance(int64_t now, const account_name& account, const pricelist& prices) {
+
+    static constexpr auto max_int64 = std::numeric_limits<int64_t>::max();
+    static constexpr account_balance no_limits{max_int64, max_int64};
     symbol_code token_code { symbol(CORE_SYMBOL).to_symbol_code() };
     
     const stake_param_object* param = nullptr;
@@ -354,7 +411,7 @@ account_resource_limit resource_limits_manager::get_account_limit_ex(int64_t now
     auto agents_table = _chaindb.get_table<stake_agent_object>();
     auto agents_idx = agents_table.get_index<stake_agent_object::by_key>();
     
-    int64_t staked = 0;
+    uint64_t staked = 0;
     auto agent = agents_idx.find(agent_key(token_code, account));
     if (agent != agents_idx.end()) {
         auto grants_table = _chaindb.get_table<stake_grant_object>();
@@ -363,45 +420,38 @@ account_resource_limit resource_limits_manager::get_account_limit_ex(int64_t now
         ram_payer_info ram(*this, account);
         update_proxied_traversal(ram, now, token_code, agents_idx, grants_idx, &*agent, param->frame_length, false);
         auto total_funds = agent->get_total_funds();
-        staked = safe_prop(total_funds, agent->own_share, agent->shares_sum);
-        EOS_ASSERT(staked >= 0, chain_exception, "SYSTEM: incorrect staked value");
+        EOS_ASSERT(total_funds >= 0, chain_exception, "SYSTEM: incorrect total_funds value");
+        EOS_ASSERT(agent->own_share >= 0, chain_exception, "SYSTEM: incorrect own_share value");
+        EOS_ASSERT(agent->shares_sum >= 0, chain_exception, "SYSTEM: incorrect shares_sum value");
+        staked = safe_prop<uint64_t>(total_funds, agent->own_share, agent->shares_sum);
     }
-    const auto& config = _chaindb.get<resource_limits_config_object>();
-    const auto& state  = _chaindb.get<resource_limits_state_object>();
-    auto usage_table = _chaindb.get_table<resource_usage_object>();
-    auto usage_owner_idx = usage_table.get_index<by_owner>();
-    const auto& usage = usage_owner_idx.get(account);
     
-    int64_t capacity = 0;
-    int64_t used = 0;
-    if (purpose_code == cpu_code || purpose_code == net_code) {
-        bool cpu = (purpose_code == cpu_code);
-        int128_t window_size = cpu ? config.account_cpu_usage_average_window : config.account_net_usage_average_window;
-        
-        EOS_ASSERT((cpu ? state.virtual_cpu_limit : state.virtual_net_limit) <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), 
-            chain_exception, cpu ? "SYSTEM: incorrect virtual_cpu_limit" : "SYSTEM: incorrect virtual_net_limit");
-        capacity = static_cast<int64_t>(cpu ? state.virtual_cpu_limit : state.virtual_net_limit);
-        
-        used = impl::downgrade_cast<int64_t>(impl::integer_divide_ceil(
-            static_cast<int128_t>(cpu ? usage.cpu_usage.value_ex : usage.net_usage.value_ex) * window_size, 
-            static_cast<int128_t>(config::rate_limiting_precision)));
+    const auto& state  = _chaindb.get<resource_limits_state_object>();
+    auto max_ram_usage = safe_prop<uint64_t>(state.virtual_ram_limit, staked, stat->total_staked);
+    auto res_usage = get_account_usage(account);
+    
+    EOS_ASSERT(max_ram_usage >= res_usage[ram_code], ram_usage_exceeded,
+        "account ${a} has insufficient staked tokens (${s}) for use ram.\n ram usage ${ur};\n total staked ${ts};\n total ram ${tr};\n max ram usage ${mr}", 
+        ("a", account)("s",staked)("ur", res_usage[ram_code])("ts", stat->total_staked)("tr", state.virtual_ram_limit)("mr", max_ram_usage));
+    
+    uint64_t cost = 0;
+    for (auto& u : res_usage) {
+        auto price_itr = prices.find(u.first);
+        EOS_ASSERT(price_itr != prices.end(), transaction_exception, "SYSTEM: resource does not exist");
+        auto add = safe_prop(u.second, price_itr->second.numerator, price_itr->second.denominator);
+        cost = (UINT64_MAX - cost) > add ? cost + add : UINT64_MAX;
     }
-    else {
-        EOS_ASSERT(state.virtual_ram_limit <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), 
-            chain_exception, "SYSTEM: incorrect virtual_ram_limit");
-        EOS_ASSERT(usage.ram_usage <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), 
-            chain_exception, "SYSTEM: incorrect ram_usage");
-        capacity = static_cast<int64_t>(state.virtual_ram_limit);
-        used = static_cast<int64_t>(usage.ram_usage);
-    }
-    auto max_use = safe_prop(capacity, staked, stat->total_staked);
-     
-    int64_t diff_use = max_use - used;
-    return account_resource_limit {
-        .used = used,
-        .available = std::max(diff_use, int64_t(0)),
-        .max = max_use,
-        .staked_virtual_balance = safe_prop(stat->total_staked, diff_use, capacity)
+    
+    EOS_ASSERT(staked >= cost, resource_exhausted_exception, 
+        "account ${a} has insufficient staked tokens (${s}).\n usage: cpu ${uc}, net ${un}, ram ${ur}; \n prices: cpu ${pc}, net ${pn}, ram ${pr};\n cost ${c}", 
+        ("a", account)("s",staked)
+        ("uc", res_usage[cpu_code])          ("un", res_usage[net_code])          ("ur", res_usage[ram_code])
+        ("pc", prices.find(cpu_code)->second)("pn", prices.find(net_code)->second)("pr", prices.find(ram_code)->second)
+        ("c", cost));
+
+    return account_balance {
+        .stake = staked - cost,
+        .ram =   max_ram_usage - res_usage[ram_code]
     };
 }
 
@@ -423,7 +473,7 @@ void resource_limits_manager::recall_proxied(
     account_name grantor_name, account_name agent_name, int16_t pct
 ) {
                         
-    EOS_ASSERT(1 <= pct && pct <= config::_100percent, transaction_exception, "pct must be between 0.01% and 100% (1-10000)");
+    EOS_ASSERT(1 <= pct && pct <= config::percent_100, transaction_exception, "pct must be between 0.01% and 100% (1-10000)");
     const auto* param = _chaindb.find<stake_param_object, by_id>(token_code.value);
     EOS_ASSERT(param, transaction_exception, "no staking for token");
 
