@@ -1511,8 +1511,20 @@ struct controller_impl {
 
    void set_pbft_lscb() {
        if ((!pending || pending->_block_status != controller::block_status::incomplete) && pending_pbft_checkpoint ) {
-           fork_db.set_latest_checkpoint(*pending_pbft_checkpoint);
+
+           auto checkpoint_block_state = fork_db.get_block(*pending_pbft_checkpoint);
+           if (checkpoint_block_state) {
+              fork_db.set_latest_checkpoint(*pending_pbft_checkpoint);
+              auto checkpoint_num = checkpoint_block_state->block_num;
+              if (pbft_prepared && pbft_prepared->block_num < checkpoint_num) {
+                 pbft_prepared.reset();
+              }
+              if (my_prepare && my_prepare->block_num < checkpoint_num) {
+                 my_prepare.reset();
+              }
+           }
            pending_pbft_checkpoint.reset();
+
        }
    }
 
