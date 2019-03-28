@@ -264,10 +264,10 @@ if [ "$ARCH" == "Darwin" ]; then
       APPLE_LLVM_VERSION_PATCH=$(echo "$APPLE_LLVM_VERSION" | cut -f 3 -d .)
 
       if [ "$APPLE_LLVM_VERSION_MAJOR" -gt "10" ] || ( \
-         [ "$APPLE_LLVM_VERSION_MAJOR" -eq "10"] && ( \
-            ["$APPLE_LLVM_VERSION_MINOR" -gt "0" ] || (\
-               [ "$APPLE_LLVM_VERSION_MAJOR" -eq "0"] && \
-               [ "$APPLE_LLVM_VERSION_PATCH" -gt "0"] \
+         [ "$APPLE_LLVM_VERSION_MAJOR" -eq "10" ] && ( \
+            [ "$APPLE_LLVM_VERSION_MINOR" -gt "0" ] || (\
+               [ "$APPLE_LLVM_VERSION_MINOR" -eq "0" ] && \
+               [ "$APPLE_LLVM_VERSION_PATCH" -gt "0" ] \
             )\
          )\
       ); then 
@@ -278,7 +278,7 @@ if [ "$ARCH" == "Darwin" ]; then
    fi
 fi
 
-if [ -z $BOOOST_VERSION_MAJOR ]; then
+if [ -z $BOOST_VERSION_MAJOR ]; then
    export BOOST_VERSION_MAJOR=1
    export BOOST_VERSION_MINOR=67
    export BOOST_VERSION_PATCH=0
