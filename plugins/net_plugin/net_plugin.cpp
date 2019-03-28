@@ -1275,8 +1275,7 @@ namespace eosio {
       if(num == peer_requested->end_block) {
          peer_requested.reset();
       }
-      const int higher_than_low = priority::low + 2; // otherwise client gets very little if we are syncing to a peer
-      app().post( higher_than_low, [num, trigger_send, c = shared_from_this()]() {
+      app().post( priority::medium, [num, trigger_send, c = shared_from_this()]() {
          controller& cc = my_impl->chain_plug->chain();
          signed_block_ptr sb = cc.fetch_block_by_number( num );
          if( sb ) {
@@ -2323,9 +2322,9 @@ namespace eosio {
                g.unlock();
                if( from_addr < max_nodes_per_host && (max_client_count == 0 || visitors < max_client_count) ) {
                   if( new_connection->start_session() ) {
-                     g.lock();
+                     boost::unique_lock<boost::shared_mutex> g_unique( connections_mtx );
                      connections.insert( new_connection );
-                     g.unlock();
+                     g_unique.unlock();
                   }
 
                } else {
@@ -3203,9 +3202,9 @@ namespace eosio {
          fc_elog( logger,"Caught an unknown exception trying to recall blockID" );
       }
 
-      c->strand.post( [dispatcher = dispatcher.get(), c, blk_id, blk_num]() {
-         dispatcher->recv_block( c, blk_id, blk_num );
-      });
+//      c->strand.post( [dispatcher = dispatcher.get(), c, blk_id, blk_num]() {
+//         dispatcher->recv_block( c, blk_id, blk_num );
+//      });
       fc::microseconds age( fc::time_point::now() - msg->timestamp);
       peer_ilog(c, "received signed_block : #${n} block age in secs = ${age}",
               ("n",blk_num)("age",age.to_seconds()));
@@ -3237,7 +3236,8 @@ namespace eosio {
          boost::asio::post( *server_ioc, [self = this, msg]() {
             self->dispatcher->update_txns_block_num( msg );
          });
-         c->strand.post( [sync_master = sync_master.get(), c, blk_id, blk_num]() {
+         c->strand.post( [sync_master = sync_master.get(), dispatcher = dispatcher.get(), c, blk_id, blk_num]() {
+            dispatcher->recv_block( c, blk_id, blk_num );
             sync_master->sync_recv_block( c, blk_id, blk_num );
          });
       } else {
@@ -3375,7 +3375,7 @@ namespace eosio {
    void net_plugin_impl::on_accepted_block(const block_state_ptr& block) {
       update_chain_info();
       boost::asio::post( *server_ioc, [this, ioc=server_ioc, block]() {
-         fc_dlog( logger, "signaled, id = ${id}", ("id", block->id) );
+         fc_dlog( logger, "signaled, blk id = ${id}", ("id", block->id) );
          dispatcher->bcast_block( block );
       });
    }
