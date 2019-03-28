@@ -65,6 +65,11 @@ def setValidityOfActTimeSubjRestriction(node, nodeId, codename, valid):
     node.modifyBuiltinPFSubjRestrictions(nodeId, codename, actTimeSubjRestriction)
     restartNode(node, nodeId)
 
+def waitUntilBlockBecomeIrr(node, blockNum, timeout=60):
+    def hasBlockBecomeIrr():
+        return node.getIrreversibleBlockNum() >= blockNum
+    return Utils.waitForBool(hasBlockBecomeIrr, timeout)
+
 # List to contain the test result message
 testSuccessful = False
 try:
@@ -141,21 +146,27 @@ try:
     # Then we set the earliest_allowed_activation_time of 2nd node and 3rd node with valid value
     # Once the 1st node activate PREACTIVATE_FEATURE, all of them should have PREACTIVATE_FEATURE activated in the next block
     # They will be in sync and their LIB will advance since they control > 2/3 of the producers
+    # Also the LIB should be able to advance past the block that contains PREACTIVATE_FEATURE
     # However, the 4th node will be out of sync with them, and its LIB will stuck
     setValidityOfActTimeSubjRestriction(newNodes[1], newNodeIds[1], "PREACTIVATE_FEATURE", True)
     setValidityOfActTimeSubjRestriction(newNodes[2], newNodeIds[2], "PREACTIVATE_FEATURE", True)
 
     waitUntilBeginningOfProdTurn(newNodes[0], "defproducera")
+    libBeforePreactivation = newNodes[0].getIrreversibleBlockNum()
     newNodes[0].activatePreactivateFeature()
 
     assert shouldNodesBeInSync(newNodes), "New nodes should be in sync"
     assert not shouldNodesBeInSync(allNodes), "Nodes should not be in sync after preactivation"
     for node in newNodes: assert shouldNodeContainPreactivateFeature(node), "New node should contain PREACTIVATE_FEATURE"
-    assert newNodes[0].waitForLibToAdvance(), "1st node LIB should advance"
-    nextLibAfterPreactivateFeature = newNodes[0].getIrreversibleBlockNum()
-    assert newNodes[1].getIrreversibleBlockNum() >= nextLibAfterPreactivateFeature and \
-           newNodes[2].getIrreversibleBlockNum() >= nextLibAfterPreactivateFeature, "2nd and 3rd node LIB should also advance"
-    assert oldNode.getIrreversibleBlockNum() < nextLibAfterPreactivateFeature, "4th node LIB should stuck"
+
+    activatedBlockNum = newNodes[0].getHeadBlockNum() # The PREACTIVATE_FEATURE should have been activated before or at this block num
+    assert waitUntilBlockBecomeIrr(newNodes[0], activatedBlockNum), \
+           "1st node LIB should be able to advance past the block that contains PREACTIVATE_FEATURE"
+    assert newNodes[1].getIrreversibleBlockNum() >= activatedBlockNum and \
+           newNodes[2].getIrreversibleBlockNum() >= activatedBlockNum, \
+           "2nd and 3rd node LIB should also be able to advance past the block that contains PREACTIVATE_FEATURE"
+    assert oldNode.getIrreversibleBlockNum() <= libBeforePreactivation, \
+           "4th node LIB should stuck on LIB before PREACTIVATE_FEATURE is activated"
 
     # Restart old node with newest version
     # Before we are migrating to new version, use --export-reversible-blocks as the old version
