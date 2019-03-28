@@ -1795,7 +1795,7 @@ REGISTER_INTRINSICS(action_api,
 );
 
 REGISTER_INTRINSICS(authorization_api,
-   (require_recipient,     void(int64_t)          )
+   // (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(authorization_api::*)(const account_name&) )
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
    (has_authorization,     int(int64_t), "has_auth", bool(authorization_api::*)(const account_name&)const )
@@ -1828,8 +1828,8 @@ REGISTER_INTRINSICS(context_free_transaction_api,
 REGISTER_INTRINSICS(transaction_api,
    (send_inline,               void(int, int)               )
    (send_context_free_inline,  void(int, int)               )
-   (send_deferred,             void(int, int64_t, int, int, int32_t) )
-   (cancel_deferred,           int(int)                     )
+   // (send_deferred,             void(int, int64_t, int, int, int32_t) )
+   // (cancel_deferred,           int(int)                     )
 );
 
 REGISTER_INTRINSICS(context_free_api,

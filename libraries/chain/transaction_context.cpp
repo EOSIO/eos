@@ -575,6 +575,8 @@ namespace bacc = boost::accumulators;
    }
 
    void transaction_context::schedule_transaction() {
+      EOS_ASSERT( false, transaction_exception, "deferred transactions are disabled on this chain" );
+
       // Charge ahead of time for the additional net usage needed to retire the delayed transaction
       // whether that be by successfully executing, soft failure, hard failure, or expiration.
       if( trx.delay_sec.value == 0 ) { // Do not double bill. Only charge if we have not already charged for the delay.
