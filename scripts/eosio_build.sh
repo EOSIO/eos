@@ -256,11 +256,29 @@ if [ "$ARCH" == "Darwin" ]; then
    C_COMPILER=clang
    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
    
-   # temporarily upgrade to 1.68 for OSX to address issues with xcode 10.2
-   export BOOST_VERSION_MAJOR=1
-   export BOOST_VERSION_MINOR=68
-   export BOOST_VERSION_PATCH=0
-else
+   # temporarily upgrade to 1.68 if the Apple version of LLVM is being used and it is greater than version 10.0.0 to address compilation issues 
+   APPLE_LLVM_VERSION=$($CXX_COMPILER --version | grep -o 'Apple LLVM version [0-9]*\.[0-9]*\.[0-9]*' | cut -f 4 -d ' ')
+   if [ ! -z $APPLE_LLVM_VERSION ]; then
+      APPLE_LLVM_VERSION_MAJOR=$(echo "$APPLE_LLVM_VERSION" | cut -f 1 -d .)
+      APPLE_LLVM_VERSION_MINOR=$(echo "$APPLE_LLVM_VERSION" | cut -f 2 -d .)
+      APPLE_LLVM_VERSION_PATCH=$(echo "$APPLE_LLVM_VERSION" | cut -f 3 -d .)
+
+      if [ "$APPLE_LLVM_VERSION_MAJOR" -gt "10" ] || ( \
+         [ "$APPLE_LLVM_VERSION_MAJOR" -eq "10"] && ( \
+            ["$APPLE_LLVM_VERSION_MINOR" -gt "0" ] || (\
+               [ "$APPLE_LLVM_VERSION_MAJOR" -eq "0"] && \
+               [ "$APPLE_LLVM_VERSION_PATCH" -gt "0"] \
+            )\
+         )\
+      ); then 
+         export BOOST_VERSION_MAJOR=1
+         export BOOST_VERSION_MINOR=68
+         export BOOST_VERSION_PATCH=0
+      fi
+   fi
+fi
+
+if [ -z $BOOOST_VERSION_MAJOR ]; then
    export BOOST_VERSION_MAJOR=1
    export BOOST_VERSION_MINOR=67
    export BOOST_VERSION_PATCH=0
