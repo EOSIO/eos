@@ -121,7 +121,7 @@ printf "\\n"
 DEP_ARRAY=( 
 	git autoconf automake libtool make bzip2 doxygen graphviz \
 	bzip2-devel openssl-devel gmp-devel \
-	ocaml libicu-devel python python-devel python33 \
+	ocaml libicu-devel python python-devel rh-python36 \
 	gettext-devel file sudo libusbx-devel libcurl-devel
  )
 COUNT=1
@@ -160,10 +160,10 @@ else
 	printf " - No required YUM dependencies to install.\\n\\n"
 fi
 
-if [ -d /opt/rh/python33 ]; then
-	printf "Enabling python33...\\n"
-	source /opt/rh/python33/enable || exit 1
-	printf " - Python33 successfully enabled!\\n"
+if [ -d /opt/rh/rh-python36 ]; then
+	printf "Enabling python36...\\n"
+	source /opt/rh/rh-python36/enable || exit 1
+	printf " - Python36 successfully enabled!\\n"
 fi
 
 printf "\\n"
@@ -190,7 +190,7 @@ if [ $? -ne 0 ]; then exit -1; fi
 printf "\\n"
 
 
-export CPATH="$CPATH:/opt/rh/python33/root/usr/include/python3.3m" # m on the end causes problems with boost finding python3
+export CPATH="$CPATH:/opt/rh/rh-python36/root/usr/include/python3.6m" # m on the end causes problems with boost finding python3
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
 BOOSTVERSION=$( grep "#define BOOST_VERSION" "$HOME/opt/boost/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
 if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
