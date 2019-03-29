@@ -2061,7 +2061,7 @@ namespace eosio {
             [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
             app().post( priority::medium, [this,weak_conn, ec, bytes_transferred]() {
                auto conn = weak_conn.lock();
-               if (!conn || !conn->connected()) {
+               if (!conn || !conn->socket || !conn->socket->is_open()) {
                   return;
                }
 
