@@ -2720,6 +2720,10 @@ namespace eosio {
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
       c->cancel_wait();
 
+      // if we have closed connection then stop processing
+      if( !c->socket_is_open() )
+         return;
+
       try {
          if( cc.fetch_block_by_id(blk_id) ) {
             c->strand.post( [sync_master = sync_master.get(), c, blk_id, blk_num]() {
