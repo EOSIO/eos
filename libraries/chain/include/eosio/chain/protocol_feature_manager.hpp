@@ -16,7 +16,8 @@ enum class protocol_feature_t : uint32_t {
 enum class builtin_protocol_feature_t : uint32_t {
    preactivate_feature,
    only_link_to_existing_permission,
-   replace_deferred
+   replace_deferred,
+   fix_linkauth_restriction
 };
 
 struct protocol_feature_subjective_restrictions {

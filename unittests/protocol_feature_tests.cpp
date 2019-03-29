@@ -510,4 +510,74 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE( fix_linkauth_restriction ) { try {
+   tester chain( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& tester_account = N(tester);
+
+   chain.produce_blocks();
+   chain.create_account(N(currency));
+   chain.create_account(tester_account);
+   chain.produce_blocks();
+   
+   chain.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
+           ("account", name(tester_account).to_string())
+           ("permission", "first")
+           ("parent", "active")
+           ("auth",  authority(chain.get_public_key(tester_account, "first"), 5))
+   );
+
+   auto validate_disallow = [&] (const char *code, const char *type) {
+      BOOST_REQUIRE_EXCEPTION(
+         chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
+               ("account", name(tester_account).to_string())
+               ("code", code)
+               ("type", type)
+               ("requirement", "first")),
+         action_validate_exception,
+         fc_exception_message_is(std::string("Cannot link eosio::") + std::string(type) + std::string(" to a minimum permission"))
+      );
+   };
+
+   validate_disallow("eosio", "linkauth");
+   validate_disallow("eosio", "unlinkauth");
+   validate_disallow("eosio", "deleteauth");
+   validate_disallow("eosio", "updateauth");
+   validate_disallow("eosio", "canceldelay");
+
+   validate_disallow("currency", "linkauth");
+   validate_disallow("currency", "unlinkauth");
+   validate_disallow("currency", "deleteauth");
+   validate_disallow("currency", "updateauth");
+   validate_disallow("currency", "canceldelay");
+
+   const auto& pfm = chain.control->get_protocol_feature_manager();
+   auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::fix_linkauth_restriction );
+   BOOST_REQUIRE( d );
+
+   chain.preactivate_protocol_features( {*d} );
+   chain.produce_block();
+
+   auto validate_allowed = [&] (const char *code, const char *type) {
+     chain.push_action(config::system_account_name, linkauth::get_name(), tester_account, fc::mutable_variant_object()
+            ("account", name(tester_account).to_string())
+            ("code", code)
+            ("type", type)
+            ("requirement", "first"));
+   };
+
+   validate_disallow("eosio", "linkauth");
+   validate_disallow("eosio", "unlinkauth");
+   validate_disallow("eosio", "deleteauth");
+   validate_disallow("eosio", "updateauth");
+   validate_disallow("eosio", "canceldelay");
+
+   validate_allowed("currency", "linkauth");
+   validate_allowed("currency", "unlinkauth");
+   validate_allowed("currency", "deleteauth");
+   validate_allowed("currency", "updateauth");
+   validate_allowed("currency", "canceldelay");
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
