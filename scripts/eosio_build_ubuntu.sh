@@ -38,6 +38,16 @@ case "${OS_NAME}" in
 			printf "Exiting now.\\n"
 			exit 1
 		fi
+		OS_NAME="Ubuntu"
+		if [ "${OS_MAJ}" -eq 18 ]; then
+			OS_MAJ=16
+		fi
+		if [ "${OS_MAJ}" -gt 18 ]; then
+			OS_MAJ=18
+			export MONGODB_VERSION=4.1.1
+		fi
+		OS_MIN="04"
+		export MONGODB_ROOT=${OPT_LOCATION}/mongodb-${MONGODB_VERSION}
 	;;
 	"Ubuntu")
 		if [ "${OS_MAJ}" -lt 16 ]; then

@@ -18,3 +18,9 @@
 [submodule "libraries/yubihsm"]
 	path = libraries/yubihsm
 	url = https://github.com/Yubico/yubihsm-shell
+[submodule "plugins/uos_plugins"]
+	path = plugins/uos_plugins
+	url = https://github.com/UOSnetwork/uos.plugins
+[submodule "libraries/singularity"]
+	path = libraries/singularity
+	url = https://github.com/UOSnetwork/singularity

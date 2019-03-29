@@ -35,8 +35,10 @@ CMAKE_BUILD_TYPE=Release
 export DISK_MIN=20
 DOXYGEN=false
 ENABLE_COVERAGE_TESTING=false
-CORE_SYMBOL_NAME="SYS"
+CORE_SYMBOL_NAME="UOS"
 START_MAKE=true
+BUILD_MONGO_DB_PLUGIN=false
+BUILD_UOS_BLOCKS_EXPORTER=true
 
 TIME_BEGIN=$( date -u +%s )
 txtbld=$(tput bold)
@@ -281,7 +283,8 @@ cd $BUILD_DIR
 
 $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
    -DCMAKE_C_COMPILER="${C_COMPILER}" -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
-   -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
+   -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN="${BUILD_MONGO_DB_PLUGIN}" \
+   -DBUILD_UOS_BLOCKS_EXPORTER="${BUILD_UOS_BLOCKS_EXPORTER}" \
    -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
    -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio $LOCAL_CMAKE_FLAGS "${REPO_ROOT}"
 if [ $? -ne 0 ]; then exit -1; fi
@@ -292,26 +295,32 @@ cd $REPO_ROOT
 
 TIME_END=$(( $(date -u +%s) - $TIME_BEGIN ))
 
-printf "${bldred}\n\n _______  _______  _______ _________ _______\n"
-printf '(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
-printf "| (    \/| (   ) || (    \/   ) (   | (   ) |\n"
-printf "| (__    | |   | || (_____    | |   | |   | |\n"
-printf "|  __)   | |   | |(_____  )   | |   | |   | |\n"
-printf "| (      | |   | |      ) |   | |   | |   | |\n"
-printf "| (____/\| (___) |/\____) |___) (___| (___) |\n"
-printf "(_______/(_______)\_______)\_______/(_______)\n\n${txtrst}"
+printf "\n\n${bldred}\t UUUUUUUU     UUUUUUUU     OOOOOOOOO        SSSSSSSSSSSSSSS\n"
+printf "\tU::::::U     U::::::U   OO:::::::::OO    SS:::::::::::::::S\n"
+printf "\tU::::::U     U::::::U OO:::::::::::::OO S:::::SSSSSS::::::S\n"
+printf "\tUU:::::U     U:::::UUO:::::::OOO:::::::OS:::::S     SSSSSSS\n"
+printf "\t U:::::U     U:::::U O::::::O   O::::::OS:::::S\n"            
+printf "\t U:::::D     D:::::U O:::::O     O:::::OS:::::S\n"            
+printf "\t U:::::D     D:::::U O:::::O     O:::::O S::::SSSS\n"         
+printf "\t U:::::D     D:::::U O:::::O     O:::::O  SS::::::SSSSS\n"    
+printf "\t U:::::D     D:::::U O:::::O     O:::::O    SSS::::::::SS \n" 
+printf "\t U:::::D     D:::::U O:::::O     O:::::O       SSSSSS::::S \n"
+printf "\t U:::::D     D:::::U O:::::O     O:::::O            S:::::S\n"
+printf "\t U::::::U   U::::::U O::::::O   O::::::O            S:::::S\n"
+printf "\t U:::::::UUU:::::::U O:::::::OOO:::::::OSSSSSSS     S:::::S\n"
+printf "\t  UU:::::::::::::UU   OO:::::::::::::OO S::::::SSSSSS:::::S\n"
+printf "\t    UU:::::::::UU       OO:::::::::OO   S:::::::::::::::SS \n"
+printf "\t      UUUUUUUUU           OOOOOOOOO      SSSSSSSSSSSSSSS  \n${txtrst}"
+ 
+ 
+  
 
-printf "\\nEOSIO has been successfully built. %02d:%02d:%02d\\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
-printf "==============================================================================================\\n${bldred}"
-printf "(Optional) Testing Instructions:\\n"
-print_instructions
-printf "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
-printf "cd ./build && PATH=\$PATH:$HOME/opt/mongodb/bin make test\\n" # PATH is set as currently 'mongo' binary is required for the mongodb test
-printf "${txtrst}==============================================================================================\\n"
-printf "For more information:\\n"
-printf "EOSIO website: https://eos.io\\n"
-printf "EOSIO Telegram channel @ https://t.me/EOSProject\\n"
-printf "EOSIO resources: https://eos.io/resources/\\n"
-printf "EOSIO Stack Exchange: https://eosio.stackexchange.com\\n"
-printf "EOSIO wiki: https://github.com/EOSIO/eos/wiki\\n\\n\\n"
+   printf "\\n\\tUOS has been successfully built. %02d:%02d:%02d\\n\\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
+   printf "\\tTo verify your installation run the following commands:\\n"
+
+   print_instructions
+
+   printf "\\tFor more information:\\n"
+   printf "\\tUOS website: https://u.community\\n"
+   printf "\\tUOS github: https://github.com/UOSnetwork/uos\\n\\n\\n"
 
