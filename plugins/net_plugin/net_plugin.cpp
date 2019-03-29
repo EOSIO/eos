@@ -2406,6 +2406,7 @@ namespace eosio {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
          if( c->peer_address().empty() || c->last_handshake_recv.node_id == fc::sha256()) {
             g_conn.unlock();
+            /* todo temp
             fc_dlog(logger, "checking for duplicate" );
             boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
             for(const auto& check : connections) {
@@ -2433,6 +2434,7 @@ namespace eosio {
                   return;
                }
             }
+             */
          } else {
             fc_dlog( logger, "skipping duplicate check, addr == ${pa}, id = ${ni}",
                      ("pa", c->peer_address())( "ni", c->last_handshake_recv.node_id ) );
