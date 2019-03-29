@@ -913,6 +913,8 @@ namespace eosio {
 
    void connection::_close( connection* self ) {
       self->socket_open = false;
+      boost::system::error_code ec;
+      self->socket.shutdown( tcp::socket::shutdown_both, ec );
       self->socket.close();
       self->flush_queues();
       self->connecting = false;
@@ -1699,7 +1701,7 @@ namespace eosio {
             request_next_chunk( std::move( g_sync) );
          } else {
             g_sync.unlock();
-            fc_dlog( logger, "calling sync_wait on connection ${p}", ("p", c->peer_address()) );
+            fc_dlog( logger, "calling sync_wait on connection ${p}", ("p", c->peer_name()) );
             c->sync_wait();
          }
       }
@@ -2113,8 +2115,8 @@ namespace eosio {
 
                } else {
                   if( from_addr >= max_nodes_per_host ) {
-                     fc_elog( logger, "Number of connections (${n}) from ${ra} exceeds limit",
-                              ("n", from_addr + 1)( "ra", paddr_str ) );
+                     fc_elog( logger, "Number of connections (${n}) from ${ra} exceeds limit ${l}",
+                              ("n", from_addr + 1)( "ra", paddr_str )("l", max_nodes_per_host) );
                   } else {
                      fc_elog( logger, "Error max_client_count ${m} exceeded", ("m", max_client_count) );
                   }
