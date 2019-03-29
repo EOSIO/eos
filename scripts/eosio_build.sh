@@ -74,7 +74,7 @@ export LLVM_DIR=${LLVM_ROOT}/lib/cmake/llvm
 export DOXYGEN_VERSION=1_8_14
 export DOXYGEN_ROOT=${SRC_LOCATION}/doxygen-${DOXYGEN_VERSION}
 export TINI_VERSION=0.18.0
-export DISK_MIN=3
+export DISK_MIN=5
 
 # Setup directories
 mkdir -p $SRC_LOCATION
