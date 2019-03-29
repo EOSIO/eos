@@ -15,6 +15,7 @@ namespace eosio { namespace chain {
 
 class transaction_metadata;
 using transaction_metadata_ptr = std::shared_ptr<transaction_metadata>;
+using signing_keys_future_type = std::shared_future<std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>>>;
 /**
  *  This data structure should store context-free cached data about a transaction such as
  *  packed/unpacked/compressed and recovered keys
@@ -26,8 +27,7 @@ class transaction_metadata {
       packed_transaction_ptr                                     packed_trx;
       fc::microseconds                                           sig_cpu_usage;
       optional<pair<chain_id_type, flat_set<public_key_type>>>   signing_keys;
-      std::future<std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>>>
-                                                                 signing_keys_future;
+      signing_keys_future_type                                   signing_keys_future;
       bool                                                       accepted = false;
       bool                                                       implicit = false;
       bool                                                       scheduled = false;
@@ -52,8 +52,11 @@ class transaction_metadata {
 
       const flat_set<public_key_type>& recover_keys( const chain_id_type& chain_id );
 
-      static void create_signing_keys_future( const transaction_metadata_ptr& mtrx, boost::asio::thread_pool& thread_pool,
-                                              const chain_id_type& chain_id, fc::microseconds time_limit );
+      // must be called from main application thread
+      // signing_keys_future should only be accessed by main application thread
+      static signing_keys_future_type
+      create_signing_keys_future( const transaction_metadata_ptr& mtrx, boost::asio::thread_pool& thread_pool,
+                                  const chain_id_type& chain_id, fc::microseconds time_limit );
 
 };
 

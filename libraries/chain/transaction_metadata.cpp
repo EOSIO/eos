@@ -23,10 +23,11 @@ const flat_set<public_key_type>& transaction_metadata::recover_keys( const chain
    return signing_keys->second;
 }
 
-void transaction_metadata::create_signing_keys_future( const transaction_metadata_ptr& mtrx,
-      boost::asio::thread_pool& thread_pool, const chain_id_type& chain_id, fc::microseconds time_limit ) {
+signing_keys_future_type transaction_metadata::create_signing_keys_future( const transaction_metadata_ptr& mtrx,
+      boost::asio::thread_pool& thread_pool, const chain_id_type& chain_id, fc::microseconds time_limit )
+{
    if( mtrx->signing_keys_future.valid() || mtrx->signing_keys.valid() ) // already created
-      return;
+      return mtrx->signing_keys_future;
 
    std::weak_ptr<transaction_metadata> mtrx_wp = mtrx;
    mtrx->signing_keys_future = async_thread_pool( thread_pool, [time_limit, chain_id, mtrx_wp]() {
@@ -41,6 +42,8 @@ void transaction_metadata::create_signing_keys_future( const transaction_metadat
       }
       return std::make_tuple( chain_id, cpu_usage, std::move( recovered_pub_keys ));
    } );
+
+   return mtrx->signing_keys_future;
 }
 
 
