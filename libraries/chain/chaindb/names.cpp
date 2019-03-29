@@ -1,7 +1,10 @@
 #include <cyberway/chaindb/names.hpp>
+#include <cyberway/chaindb/exception.hpp>
 #include <boost/algorithm/string.hpp>
 
 namespace cyberway { namespace chaindb {
+
+    using eosio::chain::name_type_exception;
 
     string db_name_to_string(const uint64_t& value) {
         // Copy-paste of eosio::name::to_string(),
@@ -23,6 +26,36 @@ namespace cyberway { namespace chaindb {
 
         boost::algorithm::trim_right_if( str, [](char c){ return c == '_'; } );
         return str;
+    }
+
+    uint64_t db_char_to_symbol(char c) {
+        if (c >= 'a' && c <= 'z') {
+            return (c - 'a') + 6;
+        }
+        if (c >= '1' && c <= '5') {
+            return (c - '1') + 1;
+        }
+
+        CYBERWAY_ASSERT('_' == c, name_type_exception,
+            "Name contains bad character '${c}'", ("c", string(1, c)));
+        return 0;
+    }
+
+    uint64_t db_string_to_name(const char* str) {
+        const auto len = strnlen(str, 14);
+        CYBERWAY_ASSERT(len <= 13, name_type_exception,
+            "Name is longer than 13 characters (${name}...)", ("name", string(str, len)));
+
+        uint64_t value = 0;
+        int i = 0;
+        for ( ; str[i] && i < 12; ++i) {
+            value |= (db_char_to_symbol(str[i]) & 0x1f) << (64 - 5 * (i + 1));
+        }
+
+        if (len == 13) {
+            value |= db_char_to_symbol(str[12]) & 0x0F;
+        }
+        return value;
     }
 
     // name can't contains _ that is why they are used for internal db and key names

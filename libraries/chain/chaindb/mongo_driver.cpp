@@ -63,7 +63,7 @@ namespace cyberway { namespace chaindb {
     namespace { namespace _detail {
         static const string pk_index_postfix = "_pk";
         static const string mongodb_id_index = "_id_";
-        static const string mongodb_indexes  = "system.indexes";
+        static const string mongodb_system   = "system.";
 
         template <typename Exception>
         mongo_code get_mongo_code(const Exception& e) {
@@ -536,11 +536,14 @@ namespace cyberway { namespace chaindb {
                 auto itr = info.find("name");
                 if (info.end() == itr) continue;
                 auto iname = itr->get_utf8().value;
+
+                if (iname.ends_with(_detail::pk_index_postfix)) continue;
+                if (!iname.compare( _detail::mongodb_id_index)) continue;
+
                 try {
-                    index.name = index_name(iname.data());
+                    index.name = db_string_to_name(iname.data());
                 } catch (const eosio::chain::name_type_exception&) {
-                    if (iname.ends_with(_detail::pk_index_postfix)) continue;
-                    if (iname.compare(  _detail::mongodb_id_index)) db_table.indexes().drop_one(iname);
+                    db_table.indexes().drop_one(iname);
                     continue;
                 }
 
@@ -589,10 +592,14 @@ namespace cyberway { namespace chaindb {
                 for (auto& tname: names) {
                     table_def table;
 
+                    if (!tname.compare(0, _detail::mongodb_system.size(), _detail::mongodb_system)) {
+                        continue;
+                    }
+
                     try {
-                        table.name = table_name(tname);
-                    } catch (const eosio::chain::name_type_exception&) {
-                        if (tname != _detail::mongodb_indexes) db.collection(tname).drop();
+                        table.name = db_string_to_name(tname.c_str());
+                    } catch (const eosio::chain::name_type_exception& e) {
+                        db.collection(tname).drop();
                         continue;
                     }
                     auto db_table = db.collection(tname);
