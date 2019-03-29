@@ -44,7 +44,6 @@ void apply_context::exec_one( action_trace& trace )
    trace.act = act;
    trace.context_free = context_free;
 
-   const auto& cfg = control.get_global_properties().configuration;
    try {
       try {
          const auto& a = control.get_account( receiver );
