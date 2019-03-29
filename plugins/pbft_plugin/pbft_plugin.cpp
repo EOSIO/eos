@@ -129,6 +129,8 @@ namespace eosio {
 
     bool pbft_plugin_impl::pbft_ready() {
         // only trigger pbft related logic if I am in sync and replayed.
-        return (!is_syncing() && !is_replaying());
+        bool upgraded;
+        if (true) upgraded = true; else upgraded = false;
+        return (upgraded && (!is_syncing() && !is_replaying()));
     }
 }

@@ -30,6 +30,7 @@ namespace eosio { namespace chain {
    class dynamic_global_property_object;
    class global_property_object;
    class global_property2_object;     // *bos*
+   class upgrade_property_object;
    class permission_object;
    class account_object;
    using resource_limits::resource_limits_manager;
@@ -305,6 +306,8 @@ namespace eosio { namespace chain {
          signal<void(const int&)>                      bad_alloc;
 
          void set_lib()const;
+
+         const upgrade_property_object&        get_upgrade_properties()const;
 
          /*
          signal<void()>                                  pre_apply_block;

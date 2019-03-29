@@ -60,30 +60,37 @@ namespace eosio { namespace chain {
 
     result.active_schedule                       = active_schedule;
     result.pending_schedule                      = pending_schedule;
-//    result.dpos_proposed_irreversible_blocknum   = dpos_proposed_irreversible_blocknum;
+    result.dpos_proposed_irreversible_blocknum   = dpos_proposed_irreversible_blocknum;
     result.bft_irreversible_blocknum             = bft_irreversible_blocknum;
     result.pbft_stable_checkpoint_blocknum       = pbft_stable_checkpoint_blocknum;
 
-    result.producer_to_last_implied_irb[prokey.producer_name] = result.dpos_proposed_irreversible_blocknum;
-//    result.dpos_irreversible_blocknum                         = result.calc_dpos_last_irreversible();
+
+    if (header.block_num() > 50000) {
+        result.dpos_irreversible_blocknum = dpos_irreversible_blocknum;
+    } else {
+        result.producer_to_last_implied_irb[prokey.producer_name] = result.dpos_proposed_irreversible_blocknum;
+        result.dpos_irreversible_blocknum = result.calc_dpos_last_irreversible();
+    }
+
+
 
     /// grow the confirmed count
     static_assert(std::numeric_limits<uint8_t>::max() >= (config::max_producers * 2 / 3) + 1, "8bit confirmations may not be able to hold all of the needed confirmations");
 
     // This uses the previous block active_schedule because thats the "schedule" that signs and therefore confirms _this_ block
-//    auto num_active_producers = active_schedule.producers.size();
-//    uint32_t required_confs = (uint32_t)(num_active_producers * 2 / 3) + 1;
+    auto num_active_producers = active_schedule.producers.size();
+    uint32_t required_confs = (uint32_t)(num_active_producers * 2 / 3) + 1;
 
-//    if( confirm_count.size() < config::maximum_tracked_dpos_confirmations ) {
-//       result.confirm_count.reserve( confirm_count.size() + 1 );
-//       result.confirm_count  = confirm_count;
-//       result.confirm_count.resize( confirm_count.size() + 1 );
-//       result.confirm_count.back() = (uint8_t)required_confs;
-//    } else {
-//       result.confirm_count.resize( confirm_count.size() );
-//       memcpy( &result.confirm_count[0], &confirm_count[1], confirm_count.size() - 1 );
-//       result.confirm_count.back() = (uint8_t)required_confs;
-//    }
+    if( confirm_count.size() < config::maximum_tracked_dpos_confirmations ) {
+       result.confirm_count.reserve( confirm_count.size() + 1 );
+       result.confirm_count  = confirm_count;
+       result.confirm_count.resize( confirm_count.size() + 1 );
+       result.confirm_count.back() = (uint8_t)required_confs;
+    } else {
+       result.confirm_count.resize( confirm_count.size() );
+       memcpy( &result.confirm_count[0], &confirm_count[1], confirm_count.size() - 1 );
+       result.confirm_count.back() = (uint8_t)required_confs;
+    }
 
     return result;
   } /// generate_next
@@ -163,7 +170,9 @@ namespace eosio { namespace chain {
      /// below this point is state changes that cannot be validated with headers alone, but never-the-less,
      /// must result in header state changes
 
-//    result.set_confirmed( h.confirmed );
+
+    result.set_confirmed( h.confirmed );
+
 
     auto was_pending_promoted = result.maybe_promote_pending();
 
@@ -195,6 +204,8 @@ namespace eosio { namespace chain {
         std::cerr << "confirm_count["<<i<<"] = " << int(confirm_count[i]) << "\n";
      }
      */
+
+     if (header.block_num() > 50000) return;
      header.confirmed = num_prev_blocks;
 
      int32_t i = (int32_t)(confirm_count.size() - 1);

@@ -35,6 +35,7 @@ using controller_index_set = index_set<
    global_property_multi_index,
    global_property2_multi_index,
    dynamic_global_property_multi_index,
+   upgrade_property_multi_index,
    block_summary_multi_index,
    transaction_multi_index,
    generated_transaction_multi_index,
@@ -673,6 +674,9 @@ struct controller_impl {
 
       // *bos end*
 
+
+       db.create<upgrade_property_object>([](auto&){});
+
       authorization.initialize_database();
       resource_limits.initialize_database();
 
@@ -1240,7 +1244,7 @@ struct controller_impl {
       pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
 
-//      pending->_pending_block_state->set_confirmed(confirm_block_count);
+      pending->_pending_block_state->set_confirmed(confirm_block_count);
 
       auto was_pending_promoted = pending->_pending_block_state->maybe_promote_pending();
 
@@ -1428,14 +1432,11 @@ struct controller_impl {
          auto& b = new_header_state->block;
          emit( self.pre_accepted_block, b );
 
-         auto current_head = head->id;
-         auto new_head = new_header_state->id;
-
          fork_db.add( new_header_state, false );
 
          if (conf.trusted_producers.count(b->producer)) {
             trusted_producer_light_validation = true;
-         };
+         }
          emit( self.accepted_block_header, new_header_state );
 
          set_pbft_lib();
@@ -2582,4 +2583,7 @@ void controller::set_lib() const {
    my->set_pbft_lscb();
 }
 
+const upgrade_property_object& controller::get_upgrade_properties()const {
+    return my->db.get<upgrade_property_object>();
+}
 } } /// eosio::chain
