@@ -42,6 +42,7 @@ namespace cyberway { namespace chaindb {
     ///----
 
     string db_name_to_string(const uint64_t&);
+    uint64_t db_string_to_name(const char*);
 
     inline account_name get_system_code() {
         return account_name();
