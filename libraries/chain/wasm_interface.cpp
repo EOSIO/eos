@@ -1306,8 +1306,8 @@ class transaction_api : public context_aware_api {
 
       void send_inline( array_ptr<char> data, size_t data_len ) {
          //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
-         EOS_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
-                    "inline action too big" );
+         // EOS_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
+         //            "inline action too big" );
 
          action act;
          fc::raw::unpack<action>(data, data_len, act);
@@ -1316,8 +1316,8 @@ class transaction_api : public context_aware_api {
 
       void send_context_free_inline( array_ptr<char> data, size_t data_len ) {
          //TODO: Why is this limit even needed? And why is it not consistently checked on actions in input or deferred transactions
-         EOS_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
-                   "inline action too big" );
+         // EOS_ASSERT( data_len < context.control.get_global_properties().configuration.max_inline_action_size, inline_action_too_big,
+         //           "inline action too big" );
 
          action act;
          fc::raw::unpack<action>(data, data_len, act);
