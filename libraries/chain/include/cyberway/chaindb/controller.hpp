@@ -155,7 +155,7 @@ namespace cyberway { namespace chaindb {
         find_info lower_bound(const index_request& request, const fc::variant& orders) const;
         find_info upper_bound(const index_request& request, const fc::variant& orders) const;
 
-        find_info find(const index_request&, primary_key_t, const char* key, size_t);
+        find_info locate_to(const index_request&, const char* key, size_t, primary_key_t);
 
         find_info begin(const index_request&);
         find_info end(const index_request&);

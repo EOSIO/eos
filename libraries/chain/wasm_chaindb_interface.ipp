@@ -48,7 +48,7 @@ namespace eosio { namespace chain {
             primary_key_t pk, array_ptr<const char> key, size_t size
         ) {
             context.lazy_init_chaindb_abi(code);
-            return context.chaindb.find({code, scope, table, index}, pk, key, size).cursor;
+            return context.chaindb.locate_to({code, scope, table, index}, key, size, pk).cursor;
         }
 
         cursor_t chaindb_end(

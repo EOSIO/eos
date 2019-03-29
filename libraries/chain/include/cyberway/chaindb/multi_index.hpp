@@ -57,7 +57,6 @@ namespace cyberway { namespace chaindb {
         static constexpr cursor_t state = 0;
         static constexpr cursor_t end = -1;
         static constexpr cursor_t begin = -2;
-        static constexpr cursor_t find_by_pk = -3;
     }
 
 template<typename O>
@@ -449,12 +448,6 @@ private:
             primary_key_ = info.pk;
         }
 
-        void lazy_open_find_by_pk() const {
-            auto info = controller().opt_find_by_pk(get_table_request(), primary_key_);
-            cursor_ = info.cursor;
-            primary_key_ = info.pk;
-        }
-
         void lazy_open() const {
             if (BOOST_LIKELY(is_cursor_initialized())) return;
 
@@ -465,10 +458,6 @@ private:
 
                 case uninitilized_cursor::end:
                     cursor_ = controller().end(get_index_request()).cursor;
-                    break;
-
-                case uninitilized_cursor::find_by_pk:
-                    lazy_open_find_by_pk();
                     break;
 
                 default:

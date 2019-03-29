@@ -30,8 +30,7 @@ namespace cyberway { namespace chaindb {
 
         const cursor_info& lower_bound(index_info, variant key) override;
         const cursor_info& upper_bound(index_info, variant key) override;
-        const cursor_info& find(index_info, primary_key_t, variant key) override;
-        const cursor_info& opt_find_by_pk(index_info, primary_key_t, variant key) override;
+        const cursor_info& locate_to(index_info, variant key, primary_key_t) override;
 
         const cursor_info& begin(index_info) override;
         const cursor_info& end(index_info) override;

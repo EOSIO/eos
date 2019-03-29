@@ -19,7 +19,7 @@ namespace fc {
 
 namespace cyberway { namespace chaindb {
 
-    class mongo_big_int_converter {
+    class mongo_bigint_converter {
         union raw_value {
             __int128            int128_val;
             unsigned __int128   uint128_val;
@@ -36,9 +36,9 @@ namespace cyberway { namespace chaindb {
         static const std::string STRING_FIELD;
 
     public:
-        mongo_big_int_converter(const bsoncxx::document::view& document);
-        mongo_big_int_converter(const __int128& int128_val);
-        mongo_big_int_converter(const unsigned __int128& int128_val);
+        mongo_bigint_converter(const bsoncxx::document::view& document);
+        mongo_bigint_converter(const __int128& int128_val);
+        mongo_bigint_converter(const unsigned __int128& int128_val);
 
         bool is_valid_value() const;
 

@@ -178,36 +178,42 @@ namespace cyberway { namespace chaindb {
         }
 
         const cursor_info& lower_bound(const index_request& request, const char* key, const size_t size) const {
-            auto index = get_index(request);
-            auto value = index.abi->to_object(index, key, size);
-            return driver_.lower_bound(std::move(index), std::move(value));
+            auto  index = get_index(request);
+            auto  value = index.abi->to_object(index, key, size);
+            auto& cursor = driver_.lower_bound(std::move(index), std::move(value));
+            return driver_.current(cursor);
         }
 
         const cursor_info& upper_bound(const index_request& request, const char* key, const size_t size) const {
-            auto index = get_index(request);
-            auto value = index.abi->to_object(index, key, size);
-            return driver_.upper_bound(std::move(index), std::move(value));
+            auto  index = get_index(request);
+            auto  value = index.abi->to_object(index, key, size);
+            auto& cursor = driver_.upper_bound(std::move(index), std::move(value));
+            return driver_.current(cursor);
         }
 
         const cursor_info& lower_bound(const index_request& request, const fc::variant& orders) const {
-            auto index = get_index(request);
-            return driver_.lower_bound(std::move(index), orders);
+            auto  index = get_index(request);
+            auto& cursor = driver_.lower_bound(std::move(index), orders);
+            return driver_.current(cursor);
         }
 
         const cursor_info& upper_bound(const index_request& request, const fc::variant& orders) const {
-            auto index = get_index(request);
-            return driver_.upper_bound(std::move(index), orders);
+            auto  index = get_index(request);
+            auto& cursor = driver_.upper_bound(std::move(index), orders);
+            return driver_.current(cursor);
         }
 
-        const cursor_info& find(const index_request& request, primary_key_t pk, const char* key, size_t size) const {
-            auto index = get_index(request);
-            auto value = index.abi->to_object(index, key, size);
-            return driver_.find(std::move(index), pk, std::move(value));
+        const cursor_info& locate_to(const index_request& request, const char* key, size_t size, primary_key_t pk) const {
+            auto  index = get_index(request);
+            auto  value = index.abi->to_object(index, key, size);
+            auto& cursor = driver_.locate_to(std::move(index), std::move(value), pk);
+            return driver_.current(cursor);
         }
 
         const cursor_info& begin(const index_request& request) const {
-            auto index = get_index(request);
-            return driver_.begin(std::move(index));
+            auto  index = get_index(request);
+            auto& cursor = driver_.begin(std::move(index));
+            return driver_.current(cursor);
         }
 
         const cursor_info& end(const index_request& request) const {
@@ -362,7 +368,7 @@ namespace cyberway { namespace chaindb {
             index_info index(table);
             index.index = &get_pk_index(table);
             auto pk_key_value = _detail::get_pk_value(table, pk);
-            return driver_.opt_find_by_pk(index, pk, std::move(pk_key_value));
+            return driver_.current(driver_.lower_bound(index, std::move(pk_key_value)));
         }
 
         table_info get_table(const cache_item& itm) const {
@@ -694,9 +700,8 @@ namespace cyberway { namespace chaindb {
         return {info.id, info.pk};
     }
 
-
-    find_info chaindb_controller::find(const index_request& request, primary_key_t pk, const char* key, size_t size) {
-        const auto& info = impl_->find(request, pk, key, size);
+    find_info chaindb_controller::locate_to(const index_request& request, const char* key, size_t size, primary_key_t pk) {
+        const auto& info = impl_->locate_to(request, key, size, pk);
         return {info.id, info.pk};
     }
 

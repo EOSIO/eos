@@ -4,7 +4,7 @@
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/chaindb/driver_interface.hpp>
 #include <cyberway/chaindb/mongo_driver_utils.hpp>
-#include <cyberway/chaindb/mongo_big_int_converter.hpp>
+#include <cyberway/chaindb/mongo_bigint_converter.hpp>
 #include <cyberway/chaindb/exception.hpp>
 #include <cyberway/chaindb/names.hpp>
 
@@ -63,13 +63,13 @@ namespace cyberway { namespace chaindb {
     using bsoncxx::binary_sub_type;
     using bsoncxx::oid;
 
-    string to_json(const document_view& row) { try {
+    string to_json(const document_view& row) try {
         auto s = bsoncxx::to_json(row);
         if (s.empty()) s = "?";
         return s;
     } catch(...) {
         return string("?");
-    } }
+    }
 
     bsoncxx::types::b_decimal128 to_decimal128(uint64_t val) {
         bsoncxx::decimal128 decimal = {DECIMAL_128_HIGH, val};
@@ -164,17 +164,15 @@ namespace cyberway { namespace chaindb {
         return dst;
     }
 
-    primary_key_t get_pk_value(const table_info& table, const bsoncxx::document::view& row) { try {
+    primary_key_t get_pk_value(const table_info& table, const bsoncxx::document::view& row) try {
         document_view view = row;
         auto& pk_order = *table.pk_order;
         auto pos = pk_order.path.size();
         for (auto& key: pk_order.path) {
             auto itr = view.find(key);
             CYBERWAY_ASSERT(view.end() != itr, driver_primary_key_exception,
-                "Can't find the part ${key} for the primary key ${pk} in the row '${row}' "
-                "from the table ${table} for the scope '${scope}'",
-                ("key", key)("pk", pk_order.field)("row", to_json(row))
-                ("table", get_full_table_name(table))("scope", get_scope_name(table)));
+                "Can't find the part ${key} for the primary key ${pk} in the row '${row}' from the table ${table}",
+                ("key", key)("pk", pk_order.field)("row", to_json(row))("table", get_full_table_name(table)));
 
             --pos;
             if (0 == pos) {
@@ -195,19 +193,15 @@ namespace cyberway { namespace chaindb {
             }
         }
         CYBERWAY_ASSERT(false, driver_primary_key_exception,
-                        "Wrong logic on parsing of the primary key ${pk} in the row '${row}' "
-                        "from the table ${table} for the scope '${scope}'",
-                        ("pk", pk_order.field)("row", to_json(row))
-                            ("table", get_full_table_name(table))("scope", get_scope_name(table)));
+            "Wrong logic on parsing of the primary key ${pk} in the row '${row}' from the table ${table}",
+            ("pk", pk_order.field)("row", to_json(row))("table", get_full_table_name(table)));
     } catch(const driver_primary_key_exception&) {
         throw;
     } catch (...) {
         CYBERWAY_ASSERT(false, driver_primary_key_exception,
-                        "External database can't read the the primary key ${pk} in the row '${row}' "
-                        "from the table ${table} for the scope '${scope}'",
-                        ("pk", table.pk_order->field)("row", to_json(row))
-                            ("table", get_full_table_name(table))("scope", get_scope_name(table)));
-    } }
+            "External database can't read the the primary key ${pk} in the row '${row}' from the table ${table}",
+            ("pk", table.pk_order->field)("row", to_json(row))("table", get_full_table_name(table)));
+    }
 
     void validate_field_name(const bool test, const document_view& doc, const element& itm) {
         CYBERWAY_ASSERT(test, driver_wrong_field_name_exception,
@@ -379,7 +373,7 @@ namespace cyberway { namespace chaindb {
     }
 
     variant build_variant(service_state* state, const document_view& src) {
-        const mongo_big_int_converter converter(src);
+        const mongo_bigint_converter converter(src);
         if (converter.is_valid_value()) {
             return converter.get_raw_value();
         }
@@ -410,7 +404,7 @@ namespace cyberway { namespace chaindb {
         return b_binary{binary_sub_type::k_binary, size, data};
     }
 
-    sub_document& build_bigint(sub_document& dst, const mongo_big_int_converter& src) {
+    sub_document& build_bigint(sub_document& dst, const mongo_bigint_converter& src) {
         blob binary;
         binary.data = src.get_blob_value();
         dst.append(kvp(src.BINARY_FIELD, build_binary(binary)));
@@ -434,12 +428,12 @@ namespace cyberway { namespace chaindb {
                     break;
                 case variant::type_id::int128_type:
                     dst.append([&](sub_document sub_doc){
-                        build_bigint(sub_doc, mongo_big_int_converter(item.as_int128()));
+                        build_bigint(sub_doc, mongo_bigint_converter(item.as_int128()));
                     });
                     break;
                 case variant::type_id::uint128_type:
                     dst.append([&](sub_document sub_doc){
-                        build_bigint(sub_doc, mongo_big_int_converter(item.as_uint128()));
+                        build_bigint(sub_doc, mongo_bigint_converter(item.as_uint128()));
                     });
                     break;
                 case variant::type_id::double_type:
@@ -469,7 +463,8 @@ namespace cyberway { namespace chaindb {
         return dst;
     }
 
-    sub_document& build_document(sub_document& dst, const string& key, const variant& src) {
+    template<typename BigIntBuilder>
+    sub_document& build_document(sub_document& dst, const string& key, const variant& src, BigIntBuilder&& bigint) {
         switch (src.get_type()) {
             case variant::type_id::null_type:
                 dst.append(kvp(key, b_null()));
@@ -481,14 +476,10 @@ namespace cyberway { namespace chaindb {
                 dst.append(kvp(key, to_decimal128(src.as_uint64())));
                 break;
             case variant::type_id::int128_type:
-                dst.append(kvp(key, [&](sub_document sub_doc){
-                    build_bigint(sub_doc, mongo_big_int_converter(src.as_int128()));
-                } ));
+                bigint.build(dst, key, src.as_int128());
                 break;
             case variant::type_id::uint128_type:
-                dst.append(kvp(key, [&](sub_document sub_doc){
-                    build_bigint(sub_doc, mongo_big_int_converter(src.as_uint128()));
-                } ));
+                bigint.build(dst, key, src.as_uint128());
                 break;
             case variant::type_id::double_type:
                 dst.append(kvp(key, b_double{src.as_double()}));
@@ -516,9 +507,28 @@ namespace cyberway { namespace chaindb {
         return dst;
     }
 
+    struct bigint_value final {
+        template<typename Value> void build(sub_document& dst, const string& key, const Value& value) const {
+            auto binary = blob{mongo_bigint_converter(value).get_blob_value()};
+            dst.append(kvp(key, build_binary(binary)));
+        }
+    }; // struct bigint_value
+
+    sub_document& build_document(sub_document& dst, const string& key, const variant& src) {
+        return build_document(dst, key, src, bigint_value());
+    }
+
+    struct bigint_subdocument final {
+        template<typename Value> void build(sub_document& dst, const string& key, const Value& value) const {
+            dst.append(kvp(key, [&](sub_document sub_doc){
+                build_bigint(sub_doc, mongo_bigint_converter(value));
+            }));
+        }
+    }; // struct bigint_subdocument
+
     sub_document& build_document(sub_document& dst, const variant_object& src) {
         for (auto& item: src) {
-            build_document(dst, item.key(), item.value());
+            build_document(dst, item.key(), item.value(), bigint_subdocument());
         }
         return dst;
     }
@@ -557,29 +567,32 @@ namespace cyberway { namespace chaindb {
         return doc;
     }
 
-    sub_document& build_find_pk_document(sub_document& doc, const table_info& table, const object_value& obj) {
-        doc.append(kvp(names::scope_path, get_scope_name(table)));
-
+    sub_document& append_pk_value(sub_document& doc, const table_info& table, const primary_key_t pk) {
         auto& pk_field = table.pk_order->field;
         switch (table.pk_order->type.front()) {
             case 'i': // int64
-                doc.append(kvp(pk_field, static_cast<int64_t>(obj.service.pk)));
+                doc.append(kvp(pk_field, static_cast<int64_t>(pk)));
                 break;
             case 'u': // uint64
-                doc.append(kvp(pk_field, to_decimal128(obj.service.pk)));
+                doc.append(kvp(pk_field, to_decimal128(pk)));
                 break;
             case 'n': // name
-                doc.append(kvp(pk_field, name(obj.service.pk).to_string()));
+                doc.append(kvp(pk_field, name(pk).to_string()));
                 break;
             case 's': // symbol_code
-                doc.append(kvp(pk_field, symbol(obj.service.pk << 8).name()));
+                doc.append(kvp(pk_field, symbol(pk << 8).name()));
                 break;
             default:
                 CYBERWAY_ASSERT(false, driver_primary_key_exception,
-                    "Invalid type ${type} for the primary key ${pk} in the table ${table} for the scope '${scope}'",
-                    ("type", table.pk_order->type)("pk", obj.service.pk)
-                    ("table", get_full_table_name(table))("scope", get_scope_name(obj.service)));
+                    "Invalid type ${type} for the primary key ${pk} in the table ${table}",
+                    ("type", table.pk_order->type)("pk", pk)("table", get_full_table_name(table)));
         }
+        return doc;
+    }
+
+    sub_document& build_find_pk_document(sub_document& doc, const table_info& table, const object_value& obj) {
+        doc.append(kvp(names::scope_path, get_scope_name(table)));
+        append_pk_value(doc, table, obj.service.pk);
         return doc;
     }
 
@@ -587,7 +600,5 @@ namespace cyberway { namespace chaindb {
         doc.append(kvp(names::undo_pk_path, to_decimal128(obj.service.undo_pk)));
         return doc;
     }
-
-
 
 } } // namespace cyberway::chaindb
