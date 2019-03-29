@@ -65,6 +65,17 @@ updateauth, deleteauth, linkauth, unlinkauth, or canceldelay.
 */
             {}
          } )
+         (  builtin_protocol_feature_t::disallow_empty_producer_schedule, builtin_protocol_feature_spec{
+            "DISALLOW_EMPTY_PRODUCER_SCHEDULE",
+            fc::variant("2853617cec3eabd41881eb48882e6fc5e81a0db917d375057864b3befbe29acd").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: DISALLOW_EMPTY_PRODUCER_SCHEDULE
+
+Disallows proposing an empty producer schedule.
+*/
+            {}
+         } )
    ;
 
 

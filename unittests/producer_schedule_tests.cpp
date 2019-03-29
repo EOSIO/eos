@@ -328,81 +328,84 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( empty_producer_schedule_has_no_effect, tester ) try {
-   create_accounts( {N(alice),N(bob),N(carol)} );
-   while (control->head_block_num() < 3) {
-      produce_block();
+BOOST_AUTO_TEST_CASE( empty_producer_schedule_has_no_effect ) try {
+   validating_tester c( validating_tester::default_config() );
+   c.execute_setup_policy( setup_policy::preactivate_feature_and_new_bios );
+
+   c.create_accounts( {N(alice),N(bob),N(carol)} );
+   while (c.control->head_block_num() < 3) {
+      c.produce_block();
    }
 
    auto compare_schedules = [&]( const vector<producer_key>& a, const producer_schedule_type& b ) {
       return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
    };
 
-   auto res = set_producers( {N(alice),N(bob)} );
+   auto res = c.set_producers( {N(alice),N(bob)} );
    vector<producer_key> sch1 = {
                                  {N(alice), get_public_key(N(alice), "active")},
                                  {N(bob),   get_public_key(N(bob),   "active")}
                                };
    wlog("set producer schedule to [alice,bob]");
-   BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
-   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, *control->proposed_producers() ) );
-   BOOST_CHECK_EQUAL( control->pending_producers().producers.size(), 0u );
+   BOOST_REQUIRE_EQUAL( true, c.control->proposed_producers().valid() );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, *c.control->proposed_producers() ) );
+   BOOST_CHECK_EQUAL( c.control->pending_producers().producers.size(), 0u );
 
    // Start a new block which promotes the proposed schedule to pending
-   produce_block();
-   BOOST_CHECK_EQUAL( control->pending_producers().version, 1u );
-   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->pending_producers() ) );
-   BOOST_CHECK_EQUAL( control->active_producers().version, 0u );
+   c.produce_block();
+   BOOST_CHECK_EQUAL( c.control->pending_producers().version, 1u );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, c.control->pending_producers() ) );
+   BOOST_CHECK_EQUAL( c.control->active_producers().version, 0u );
 
    // Start a new block which promotes the pending schedule to active
-   produce_block();
-   BOOST_CHECK_EQUAL( control->active_producers().version, 1u );
-   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
-   produce_blocks(6);
+   c.produce_block();
+   BOOST_CHECK_EQUAL( c.control->active_producers().version, 1u );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, c.control->active_producers() ) );
+   c.produce_blocks(6);
 
-   res = set_producers( {} );
+   res = c.set_producers( {} );
    wlog("set producer schedule to []");
-   BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
-   BOOST_CHECK_EQUAL( control->proposed_producers()->producers.size(), 0u );
-   BOOST_CHECK_EQUAL( control->proposed_producers()->version, 2u );
+   BOOST_REQUIRE_EQUAL( true, c.control->proposed_producers().valid() );
+   BOOST_CHECK_EQUAL( c.control->proposed_producers()->producers.size(), 0u );
+   BOOST_CHECK_EQUAL( c.control->proposed_producers()->version, 2u );
 
-   produce_blocks(12);
-   BOOST_CHECK_EQUAL( control->pending_producers().version, 1u );
+   c.produce_blocks(12);
+   BOOST_CHECK_EQUAL( c.control->pending_producers().version, 1u );
 
    // Empty producer schedule does get promoted from proposed to pending
-   produce_block();
-   BOOST_CHECK_EQUAL( control->pending_producers().version, 2u );
-   BOOST_CHECK_EQUAL( false, control->proposed_producers().valid() );
+   c.produce_block();
+   BOOST_CHECK_EQUAL( c.control->pending_producers().version, 2u );
+   BOOST_CHECK_EQUAL( false, c.control->proposed_producers().valid() );
 
    // However it should not get promoted from pending to active
-   produce_blocks(24);
-   BOOST_CHECK_EQUAL( control->active_producers().version, 1u );
-   BOOST_CHECK_EQUAL( control->pending_producers().version, 2u );
+   c.produce_blocks(24);
+   BOOST_CHECK_EQUAL( c.control->active_producers().version, 1u );
+   BOOST_CHECK_EQUAL( c.control->pending_producers().version, 2u );
 
    // Setting a new producer schedule should still use version 2
-   res = set_producers( {N(alice),N(bob),N(carol)} );
+   res = c.set_producers( {N(alice),N(bob),N(carol)} );
    vector<producer_key> sch2 = {
                                  {N(alice), get_public_key(N(alice), "active")},
                                  {N(bob),   get_public_key(N(bob),   "active")},
                                  {N(carol), get_public_key(N(carol), "active")}
                                };
    wlog("set producer schedule to [alice,bob,carol]");
-   BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
-   BOOST_CHECK_EQUAL( true, compare_schedules( sch2, *control->proposed_producers() ) );
-   BOOST_CHECK_EQUAL( control->proposed_producers()->version, 2u );
+   BOOST_REQUIRE_EQUAL( true, c.control->proposed_producers().valid() );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch2, *c.control->proposed_producers() ) );
+   BOOST_CHECK_EQUAL( c.control->proposed_producers()->version, 2u );
 
    // Produce enough blocks to promote the proposed schedule to pending, which it can do because the existing pending has zero producers
-   produce_blocks(24);
-   BOOST_CHECK_EQUAL( control->active_producers().version, 1u );
-   BOOST_CHECK_EQUAL( control->pending_producers().version, 2u );
-   BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->pending_producers() ) );
+   c.produce_blocks(24);
+   BOOST_CHECK_EQUAL( c.control->active_producers().version, 1u );
+   BOOST_CHECK_EQUAL( c.control->pending_producers().version, 2u );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch2, c.control->pending_producers() ) );
 
    // Produce enough blocks to promote the pending schedule to active
-   produce_blocks(24);
-   BOOST_CHECK_EQUAL( control->active_producers().version, 2u );
-   BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
+   c.produce_blocks(24);
+   BOOST_CHECK_EQUAL( c.control->active_producers().version, 2u );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch2, c.control->active_producers() ) );
 
-   BOOST_REQUIRE_EQUAL( validate(), true );
+   BOOST_REQUIRE_EQUAL( c.validate(), true );
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE( producer_watermark_test ) try {

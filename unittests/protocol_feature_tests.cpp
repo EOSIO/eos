@@ -519,7 +519,7 @@ BOOST_AUTO_TEST_CASE( fix_linkauth_restriction ) { try {
    chain.create_account(N(currency));
    chain.create_account(tester_account);
    chain.produce_blocks();
-   
+
    chain.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
            ("account", name(tester_account).to_string())
            ("permission", "first")
@@ -577,6 +577,33 @@ BOOST_AUTO_TEST_CASE( fix_linkauth_restriction ) { try {
    validate_allowed("currency", "deleteauth");
    validate_allowed("currency", "updateauth");
    validate_allowed("currency", "canceldelay");
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( disallow_empty_producer_schedule_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::disallow_empty_producer_schedule );
+   BOOST_REQUIRE( d );
+
+   // Before activation, it is allowed to set empty producer schedule
+   c.set_producers( {} );
+
+   // After activation, it should not be allowed
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+   BOOST_REQUIRE_EXCEPTION( c.set_producers( {} ),
+                            wasm_execution_error,
+                            fc_exception_message_is( "Producer schedule cannot be empty" ) );
+
+   // Setting non empty producer schedule should still be fine
+   vector<name> producer_names = {N(alice),N(bob),N(carol)};
+   c.create_accounts( producer_names );
+   c.set_producers( producer_names );
+   c.produce_blocks(2);
+   const auto& schedule = c.get_producer_keys( producer_names );
+   BOOST_CHECK( std::equal( schedule.begin(), schedule.end(), c.control->active_producers().producers.begin()) );
 
 } FC_LOG_AND_RETHROW() }
 
