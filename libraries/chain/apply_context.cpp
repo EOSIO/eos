@@ -410,12 +410,10 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
 }
 
 const table_id_object* apply_context::find_table( name code, name scope, name table ) {
-   EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
    return db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
 }
 
 const table_id_object& apply_context::find_or_create_table( name code, name scope, name table, const account_name &payer ) {
-   EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
    const auto* existing_tid =  db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
    if (existing_tid != nullptr) {
       return *existing_tid;
@@ -510,13 +508,11 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
 }
 
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
-   EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
    return db_store_i64( receiver, scope, table, payer, id, buffer, buffer_size);
 }
 
 int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
 //   require_write_lock( scope );
-   EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
    const auto& tab = find_or_create_table( code, scope, table, payer );
    auto tableid = tab.id;
 
@@ -652,7 +648,6 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
 }
 
 int apply_context::db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-   EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -667,7 +662,6 @@ int apply_context::db_find_i64( uint64_t code, uint64_t scope, uint64_t table, u
 }
 
 int apply_context::db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-   EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -684,7 +678,6 @@ int apply_context::db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t ta
 }
 
 int apply_context::db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-   EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -701,7 +694,6 @@ int apply_context::db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t ta
 }
 
 int apply_context::db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
-   EOS_ASSERT( !scope, contract_exception, "scope must be 0" );
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
