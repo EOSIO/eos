@@ -30,9 +30,8 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
 
-VERSION=2.1 # Build script version
+VERSION=2.2 # Build script version
 CMAKE_BUILD_TYPE=Release
-export DISK_MIN=20
 DOXYGEN=false
 ENABLE_COVERAGE_TESTING=false
 CORE_SYMBOL_NAME="SYS"
@@ -75,6 +74,7 @@ export LLVM_DIR=${LLVM_ROOT}/lib/cmake/llvm
 export DOXYGEN_VERSION=1_8_14
 export DOXYGEN_ROOT=${SRC_LOCATION}/doxygen-${DOXYGEN_VERSION}
 export TINI_VERSION=0.18.0
+export DISK_MIN=3
 
 # Setup directories
 mkdir -p $SRC_LOCATION
