@@ -457,6 +457,7 @@ bytes apply_context::get_packed_transaction() {
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
    if( delta > 0 ) {
       if( !(privileged || payer == account_name(receiver)) ) {
+         EOS_ASSERT( false, invalid_table_payer, "Cannot charge RAM to other accounts" );
          EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account),
                      subjective_block_production_exception, "Cannot charge RAM to other accounts during notify." );
          require_authorization( payer );
