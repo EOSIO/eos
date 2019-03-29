@@ -83,31 +83,31 @@ try:
         "3": "170"
     }
     assert exists(alternateVersionLabelsFile), "Alternate version labels file does not exist"
-    cluster.launch(pnodes=4, totalNodes=4, prodCount=1, totalProducers=4,
-                   extraNodeosArgs=" --plugin eosio::producer_api_plugin ",
-                   useBiosBootFile=False,
-                   onlySetProds=True,
-                   pfSetupPolicy=PFSetupPolicy.NONE,
-                   alternateVersionLabelsFile=alternateVersionLabelsFile,
-                   associatedNodeLabels=associatedNodeLabels)
+    assert cluster.launch(pnodes=4, totalNodes=4, prodCount=1, totalProducers=4,
+                          extraNodeosArgs=" --plugin eosio::producer_api_plugin ",
+                          useBiosBootFile=False,
+                          onlySetProds=True,
+                          pfSetupPolicy=PFSetupPolicy.NONE,
+                          alternateVersionLabelsFile=alternateVersionLabelsFile,
+                          associatedNodeLabels=associatedNodeLabels), "Unable to launch cluster"
 
-    def pauseBlockProduction():
-        for node in cluster.nodes:
+    def pauseBlockProduction(nodes:[Node]):
+        for node in nodes:
             node.sendRpcApi("v1/producer/pause")
 
-    def resumeBlockProduction():
-        for node in cluster.nodes:
+    def resumeBlockProduction(nodes:[Node]):
+        for node in nodes:
             node.sendRpcApi("v1/producer/resume")
 
     def shouldNodesBeInSync(nodes:[Node]):
         # Pause all block production to ensure the head is not moving
-        pauseBlockProduction()
+        pauseBlockProduction(nodes)
         time.sleep(1) # Wait for some time to ensure all blocks are propagated
         headBlockIds = []
         for node in nodes:
             headBlockId = node.getInfo()["head_block_id"]
             headBlockIds.append(headBlockId)
-        resumeBlockProduction()
+        resumeBlockProduction(nodes)
         return len(set(headBlockIds)) == 1
 
     newNodeIds = [0, 1, 2]
