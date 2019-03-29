@@ -291,7 +291,7 @@ bool mongo_db_plugin_impl::filter_include( const transaction& trx ) const
 
 template<typename Queue, typename Entry>
 void mongo_db_plugin_impl::queue( Queue& queue, const Entry& e ) {
-   std::scoped_lock lock( mtx );
+   std::unique_lock<std::mutex> lock( mtx );
    auto queue_size = queue.size();
    if( queue_size > max_queue_size ) {
       lock.unlock();
@@ -407,7 +407,7 @@ void mongo_db_plugin_impl::consume_blocks() {
       _account_controls = mongo_conn[db_name][account_controls_col];
 
       while (true) {
-         std::scoped_lock lock(mtx);
+         std::unique_lock<std::mutex> lock(mtx);
          while ( transaction_metadata_queue.empty() &&
                  transaction_trace_queue.empty() &&
                  block_state_queue.empty() &&
