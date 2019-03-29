@@ -117,6 +117,10 @@ if( APPLE AND UNIX )
    add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
 endif()
 
+set(THREADS_PREFER_PTHREAD_FLAG 1)
+find_package(Threads)
+link_libraries(Threads::Threads)
+
 if( WIN32 )
 
     message( STATUS "Configuring EOSIO on WIN32")
