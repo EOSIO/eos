@@ -333,17 +333,23 @@ namespace bacc = boost::accumulators;
 
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
-            trace->action_traces.emplace_back();
-            dispatch_action( trace->action_traces.back(), act, true );
+            schedule_action( act, act.account, true );
          }
       }
 
       if( delay == fc::microseconds() ) {
          for( const auto& act : trx.actions ) {
-            trace->action_traces.emplace_back();
-            dispatch_action( trace->action_traces.back(), act );
+            schedule_action( act, act.account );
          }
-      } else {
+      }
+
+      auto& action_traces = trace->action_traces;
+      int32_t num_original_actions_to_execute = action_traces.size();
+      for( int32_t i = 0; i < num_original_actions_to_execute; ++i ) {
+         execute_action( action_traces[i], 0 );
+      }
+
+      if( delay != fc::microseconds() ) {
          schedule_transaction();
       }
    }
@@ -566,13 +572,50 @@ namespace bacc = boost::accumulators;
       return std::make_tuple(account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu);
    }
 
-   void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
-      apply_context  acontext( control, *this, a, recurse_depth );
-      acontext.context_free = context_free;
-      acontext.receiver     = receiver;
+   int32_t transaction_context::schedule_action( const action& act, account_name receiver, bool context_free,
+                                                 int32_t creator_action_ordinal, int32_t parent_action_ordinal )
+   {
+      int32_t action_ordinal = trace->action_traces.size();
 
-      acontext.exec( trace );
+      trace->action_traces.emplace_back( *trace, act, receiver, context_free,
+                                         action_ordinal, creator_action_ordinal, parent_action_ordinal );
+
+      return action_ordinal;
    }
+
+   int32_t transaction_context::schedule_action( action&& act, account_name receiver, bool context_free,
+                                                 int32_t creator_action_ordinal, int32_t parent_action_ordinal )
+   {
+      int32_t action_ordinal = trace->action_traces.size();
+
+      trace->action_traces.emplace_back( *trace, std::move(act), receiver, context_free,
+                                         action_ordinal, creator_action_ordinal, parent_action_ordinal );
+
+      return action_ordinal;
+   }
+
+   action_trace& transaction_context::get_action_trace( int32_t action_ordinal ) {
+      EOS_ASSERT( 0 <= action_ordinal && action_ordinal < trace->action_traces.size() ,
+                  transaction_exception, "invalid action_ordinal" );
+      return trace->action_traces[action_ordinal];
+   }
+
+   const action_trace& transaction_context::get_action_trace( int32_t action_ordinal )const {
+      EOS_ASSERT( 0 <= action_ordinal && action_ordinal < trace->action_traces.size() ,
+                  transaction_exception, "invalid action_ordinal" );
+      return trace->action_traces[action_ordinal];
+   }
+
+   void transaction_context::execute_action( action_trace& act_trace, uint32_t recurse_depth ) {
+      apply_context  acontext( control, *this, act_trace.act, recurse_depth );
+      acontext.receiver                      = act_trace.receiver;
+      acontext.first_receiver_action_ordinal = act_trace.action_ordinal;
+      acontext.action_ordinal                = act_trace.action_ordinal;
+      acontext.context_free                  = act_trace.context_free;
+
+      acontext.exec( act_trace );
+   }
+
 
    void transaction_context::schedule_transaction() {
       // Charge ahead of time for the additional net usage needed to retire the delayed transaction
@@ -597,7 +640,9 @@ namespace bacc = boost::accumulators;
         trx_size = gto.set( trx );
       });
 
-      add_ram_usage( cgto.payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
+      int64_t ram_delta = (config::billable_size_v<generated_transaction_object> + trx_size);
+      add_ram_usage( cgto.payer, ram_delta );
+      trace->account_ram_delta = account_delta( cgto.payer, ram_delta );
    }
 
    void transaction_context::record_transaction( const transaction_id_type& id, fc::time_point_sec expire ) {

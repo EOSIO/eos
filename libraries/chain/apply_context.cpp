@@ -37,13 +37,6 @@ void apply_context::exec_one( action_trace& trace )
    r.receiver         = receiver;
    r.act_digest       = digest_type::hash(act);
 
-   trace.trx_id = trx_context.id;
-   trace.block_num = control.head_block_num() + 1;
-   trace.block_time = control.pending_block_time();
-   trace.producer_block_id = control.pending_producer_block_id();
-   trace.act = act;
-   trace.context_free = context_free;
-
    const auto& cfg = control.get_global_properties().configuration;
    try {
       try {
@@ -71,7 +64,6 @@ void apply_context::exec_one( action_trace& trace )
          }
       } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output) )
    } catch( fc::exception& e ) {
-      trace.receipt = r; // fill with known data
       trace.except = e;
       finalize_trace( trace, start );
       throw;
@@ -90,7 +82,7 @@ void apply_context::exec_one( action_trace& trace )
 
    trace.receipt = r;
 
-   trx_context.executed.emplace_back( move(r) );
+   trx_context.executed.emplace_back( std::move(r) );
 
    finalize_trace( trace, start );
 
@@ -112,12 +104,11 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
 
 void apply_context::exec( action_trace& trace )
 {
-   _notified.push_back(receiver);
+   _notified.emplace_back( receiver, action_ordinal );
    exec_one( trace );
    for( uint32_t i = 1; i < _notified.size(); ++i ) {
-      receiver = _notified[i];
-      trace.inline_traces.emplace_back( );
-      exec_one( trace.inline_traces.back() );
+      std::tie( receiver, action_ordinal ) = _notified[i];
+      exec_one( trx_context.get_action_trace( action_ordinal ) );
    }
 
    if( _cfa_inline_actions.size() > 0 || _inline_actions.size() > 0 ) {
@@ -125,14 +116,12 @@ void apply_context::exec( action_trace& trace )
                   transaction_exception, "max inline action depth per transaction reached" );
    }
 
-   for( const auto& inline_action : _cfa_inline_actions ) {
-      trace.inline_traces.emplace_back();
-      trx_context.dispatch_action( trace.inline_traces.back(), inline_action, inline_action.account, true, recurse_depth + 1 );
+   for( int32_t ordinal : _cfa_inline_actions ) {
+      trx_context.execute_action( ordinal, recurse_depth + 1 );
    }
 
-   for( const auto& inline_action : _inline_actions ) {
-      trace.inline_traces.emplace_back();
-      trx_context.dispatch_action( trace.inline_traces.back(), inline_action, inline_action.account, false, recurse_depth + 1 );
+   for( int32_t ordinal : _inline_actions ) {
+      trx_context.execute_action( ordinal, recurse_depth + 1 );
    }
 
 } /// exec()
@@ -172,15 +161,18 @@ void apply_context::require_authorization(const account_name& account,
 }
 
 bool apply_context::has_recipient( account_name code )const {
-   for( auto a : _notified )
-      if( a == code )
+   for( const auto& p : _notified )
+      if( p.first == code )
          return true;
    return false;
 }
 
 void apply_context::require_recipient( account_name recipient ) {
    if( !has_recipient(recipient) ) {
-      _notified.push_back(recipient);
+      _notified.emplace_back(
+         recipient,
+         trx_context.schedule_action( act, recipient, false, action_ordinal, first_receiver_action_ordinal )
+      );
    }
 }
 
@@ -271,7 +263,10 @@ void apply_context::execute_inline( action&& a ) {
       }
    }
 
-   _inline_actions.emplace_back( move(a) );
+   auto inline_receiver = a.account;
+   _inline_actions.emplace_back(
+      trx_context.schedule_action( std::move(a), inline_receiver, false, action_ordinal, first_receiver_action_ordinal )
+   );
 }
 
 void apply_context::execute_context_free_inline( action&& a ) {
@@ -282,7 +277,11 @@ void apply_context::execute_context_free_inline( action&& a ) {
    EOS_ASSERT( a.authorization.size() == 0, action_validate_exception,
                "context-free actions cannot have authorizations" );
 
-   _cfa_inline_actions.emplace_back( move(a) );
+
+   auto inline_receiver = a.account;
+   _cfa_inline_actions.emplace_back(
+      trx_context.schedule_action( std::move(a), inline_receiver, true, action_ordinal, first_receiver_action_ordinal )
+   );
 }
 
 

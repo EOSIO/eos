@@ -64,10 +64,20 @@ namespace eosio { namespace chain {
 
          void add_ram_usage( account_name account, int64_t ram_delta );
 
-         void dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free = false, uint32_t recurse_depth = 0 );
-         inline void dispatch_action( action_trace& trace, const action& a, bool context_free = false ) {
-            dispatch_action(trace, a, a.account, context_free);
-         };
+         int32_t schedule_action( const action& act, account_name receiver, bool context_free = false,
+                                  int32_t creator_action_ordinal = -1, int32_t parent_action_ordinal = -1 );
+
+         int32_t schedule_action( action&& act, account_name receiver, bool context_free = false, 
+                                  int32_t creator_action_ordinal = -1, int32_t parent_action_ordinal = -1 );
+
+         action_trace& get_action_trace( int32_t action_ordinal );
+         const action_trace& get_action_trace( int32_t action_ordinal )const;
+
+         void execute_action( action_trace& act_trace, uint32_t recurse_depth );
+         inline void execute_action( int32_t action_ordinal, uint32_t recurse_depth = 0 ) {
+            execute_action( get_action_trace( action_ordinal ), recurse_depth );
+         }
+
          void schedule_transaction();
          void record_transaction( const transaction_id_type& id, fc::time_point_sec expire );
 

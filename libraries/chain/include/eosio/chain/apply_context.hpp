@@ -570,6 +570,8 @@ class apply_context {
       account_name                  receiver; ///< the code that is currently running
       vector<bool> used_authorizations; ///< Parallel to act.authorization; tracks which permissions have been used while processing the message
       uint32_t                      recurse_depth; ///< how deep inline actions can recurse
+      int32_t                       first_receiver_action_ordinal = -1;
+      int32_t                       action_ordinal = -1;
       bool                          privileged   = false;
       bool                          context_free = false;
       bool                          used_context_free_api = false;
@@ -583,9 +585,9 @@ class apply_context {
    private:
 
       iterator_cache<key_value_object>    keyval_cache;
-      vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
-      vector<action>                      _inline_actions; ///< queued inline messages
-      vector<action>                      _cfa_inline_actions; ///< queued inline messages
+      vector< std::pair<account_name, int32_t> > _notified; ///< keeps track of new accounts to be notifed of current message
+      vector<int32_t>                     _inline_actions; ///< action_ordinals of queued inline actions
+      vector<int32_t>                     _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions
       std::string                         _pending_console_output;
       flat_set<account_delta>             _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
 
