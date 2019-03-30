@@ -4,35 +4,32 @@
 
 namespace eosio { namespace chain {
 
-
-const flat_set<public_key_type>& transaction_metadata::recover_keys( const chain_id_type& chain_id ) {
+recovery_keys_type transaction_metadata::recover_keys( const chain_id_type& chain_id ) {
    // Unlikely for more than one chain_id to be used in one nodeos instance
-   if( !signing_keys || signing_keys->first != chain_id ) {
-      if( signing_keys_future.valid() ) {
-         std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>> sig_keys = signing_keys_future.get();
-         if( std::get<0>( sig_keys ) == chain_id ) {
-            sig_cpu_usage = std::get<1>( sig_keys );
-            signing_keys.emplace( std::get<0>( sig_keys ), std::move( std::get<2>( sig_keys )));
-            return signing_keys->second;
-         }
+   if( signing_keys_future.valid() ) {
+      const std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>>& sig_keys = signing_keys_future.get();
+      if( std::get<0>( sig_keys ) == chain_id ) {
+         return std::make_pair( std::get<1>( sig_keys ), std::cref( std::get<2>( sig_keys ) ) );
       }
-      flat_set<public_key_type> recovered_pub_keys;
-      sig_cpu_usage = packed_trx->get_signed_transaction().get_signature_keys( chain_id, fc::time_point::maximum(), recovered_pub_keys );
-      signing_keys.emplace( chain_id, std::move( recovered_pub_keys ));
+      EOS_ASSERT( false, chain_id_type_exception, "chain id ${cid} does not match start_recover_keys ${sid}",
+                  ("cid", chain_id)( "sid", std::get<0>( sig_keys ) ) );
    }
-   return signing_keys->second;
+
+   EOS_ASSERT( false, chain_id_type_exception, "start_recover_keys for ${cid} is required", ("cid", chain_id) );
 }
 
-signing_keys_future_type transaction_metadata::create_signing_keys_future( const transaction_metadata_ptr& mtrx,
-      boost::asio::thread_pool& thread_pool, const chain_id_type& chain_id, fc::microseconds time_limit )
+signing_keys_future_type transaction_metadata::start_recover_keys( const transaction_metadata_ptr& mtrx,
+                                                                   boost::asio::thread_pool& thread_pool,
+                                                                   const chain_id_type& chain_id,
+                                                                   fc::microseconds time_limit )
 {
-   if( mtrx->signing_keys_future.valid() || mtrx->signing_keys.valid() ) // already created
+   if( mtrx->signing_keys_future.valid() && std::get<0>( mtrx->signing_keys_future.get() ) == chain_id ) // already created
       return mtrx->signing_keys_future;
 
    std::weak_ptr<transaction_metadata> mtrx_wp = mtrx;
    mtrx->signing_keys_future = async_thread_pool( thread_pool, [time_limit, chain_id, mtrx_wp]() {
       fc::time_point deadline = time_limit == fc::microseconds::maximum() ?
-            fc::time_point::maximum() : fc::time_point::now() + time_limit;
+                                fc::time_point::maximum() : fc::time_point::now() + time_limit;
       auto mtrx = mtrx_wp.lock();
       fc::microseconds cpu_usage;
       flat_set<public_key_type> recovered_pub_keys;
