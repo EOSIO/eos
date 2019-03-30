@@ -10,13 +10,14 @@ namespace eosio { namespace chain {
  *  @brief defines the minimum state necessary to validate transaction headers
  */
 struct block_header_state {
+  uint32_t                          pbft_stable_checkpoint_blocknum = 0;
     block_id_type                     id;
     uint32_t                          block_num = 0;
     signed_block_header               header;
     uint32_t                          dpos_proposed_irreversible_blocknum = 0;
     uint32_t                          dpos_irreversible_blocknum = 0;
     uint32_t                          bft_irreversible_blocknum = 0;
-    uint32_t                          pbft_stable_checkpoint_blocknum = 0;
+
     uint32_t                          pending_schedule_lib_num = 0; /// last irr block num
     digest_type                       pending_schedule_hash;
     producer_schedule_type            pending_schedule;
@@ -61,8 +62,9 @@ struct block_header_state {
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::block_header_state,
-            (id)(block_num)(header)(dpos_proposed_irreversible_blocknum)(dpos_irreversible_blocknum)(bft_irreversible_blocknum)
             (pbft_stable_checkpoint_blocknum)
+            (id)(block_num)(header)(dpos_proposed_irreversible_blocknum)(dpos_irreversible_blocknum)(bft_irreversible_blocknum)
+
             (pending_schedule_lib_num)(pending_schedule_hash)
             (pending_schedule)(active_schedule)(blockroot_merkle)
             (producer_to_last_produced)(producer_to_last_implied_irb)(block_signing_key)
