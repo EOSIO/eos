@@ -305,7 +305,7 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const
    trx = signed_trx.as<signed_transaction>();
 }
 
-fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
+fc::variant push_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none ) {
    auto info = get_info();
 
    if (trx.signatures.size() == 0) { // #5445 can't change txn content if already signed
@@ -347,11 +347,11 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    }
 }
 
-fc::variant push_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu, packed_transaction::compression_type compression = packed_transaction::none ) {
+fc::variant push_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none ) {
    signed_transaction trx;
    trx.actions = std::forward<decltype(actions)>(actions);
 
-   return push_transaction(trx, extra_kcpu, compression);
+   return push_transaction(trx, compression);
 }
 
 void print_action( const fc::variant& at ) {
@@ -497,8 +497,8 @@ void print_result( const fc::variant& result ) { try {
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
 using std::cout;
-void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
-   auto result = push_actions( move(actions), extra_kcpu, compression);
+void send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none ) {
+   auto result = push_actions( move(actions), compression);
 
    if( tx_print_json ) {
       cout << fc::json::to_pretty_string( result ) << endl;
@@ -507,8 +507,8 @@ void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 100
    }
 }
 
-void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_transaction::compression_type compression = packed_transaction::none  ) {
-   auto result = push_transaction(trx, extra_kcpu, compression);
+void send_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none  ) {
+   auto result = push_transaction(trx, compression);
 
    if( tx_print_json ) {
       cout << fc::json::to_pretty_string( result ) << endl;
@@ -2971,7 +2971,7 @@ int main( int argc, char** argv ) {
          actions.emplace_back( create_setcode(account, code_bytes ) );
          if ( shouldSend ) {
             std::cerr << localized("Setting Code...") << std::endl;
-            send_actions(std::move(actions), 10000, packed_transaction::zlib);
+            send_actions(std::move(actions), packed_transaction::zlib);
          }
       } else {
          std::cerr << localized("Skipping set code because the new code is the same as the existing code") << std::endl;
@@ -3019,7 +3019,7 @@ int main( int argc, char** argv ) {
          } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
          if ( shouldSend ) {
             std::cerr << localized("Setting ABI...") << std::endl;
-            send_actions(std::move(actions), 10000, packed_transaction::zlib);
+            send_actions(std::move(actions), packed_transaction::zlib);
          }
       } else {
          std::cerr << localized("Skipping set abi because the new abi is the same as the existing abi") << std::endl;
@@ -3036,7 +3036,7 @@ int main( int argc, char** argv ) {
       set_abi_callback();
       if (actions.size()) {
          std::cerr << localized("Publishing contract...") << std::endl;
-         send_actions(std::move(actions), 10000, packed_transaction::zlib);
+         send_actions(std::move(actions), packed_transaction::zlib);
       } else {
          std::cout << "no transaction is sent" << std::endl;
       }
