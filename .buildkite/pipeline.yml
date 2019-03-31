@@ -84,26 +84,26 @@ steps:
         workdir: /data/job
     timeout: 60
 
-  - command: |
-        echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
-        echo "--- :compression: Compressing build directory"
-        tar -pczf build.tar.gz build/
-    label: ":aws: 2 Build"
-    agents:
-      queue: "automation-large-builder-fleet"
-    artifact_paths: "build.tar.gz"
-    plugins:
-      ecr#v1.1.4:
-        login: true
-        account_ids: "436617320021"
-        no-include-email: true
-        region: "us-west-2"
-      docker#v2.1.0:
-        debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
-        workdir: /data/job
-    timeout: 60
+  # - command: |
+  #       echo "+++ :hammer: Building"
+  #       ./scripts/eosio_build.sh -y
+  #       echo "--- :compression: Compressing build directory"
+  #       tar -pczf build.tar.gz build/
+  #   label: ":aws: 2 Build"
+  #   agents:
+  #     queue: "automation-large-builder-fleet"
+  #   artifact_paths: "build.tar.gz"
+  #   plugins:
+  #     ecr#v1.1.4:
+  #       login: true
+  #       account_ids: "436617320021"
+  #       no-include-email: true
+  #       region: "us-west-2"
+  #     docker#v2.1.0:
+  #       debug: true
+  #       image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
+  #       workdir: /data/job
+  #   timeout: 60
 
   - command: |
         echo "+++ :hammer: Building"
@@ -321,45 +321,45 @@ steps:
     timeout: 60
 
   # Amazon AWS-2 Linux Tests
-  - command: |
-        echo "--- :arrow_down: Downloading Build Directory"
-        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build"
-        echo "+++ :microscope: Running Tests"
-        ./scripts/parallel-test.sh
-    label: ":aws: 2 Tests"
-    agents:
-      queue: "automation-large-builder-fleet"
-    plugins:
-      ecr#v1.1.4:
-        login: true
-        account_ids: "436617320021"
-        no-include-email: true
-        region: "us-west-2"
-      docker#v2.1.0:
-        debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
-        workdir: /data/job
-    timeout: 60
+  # - command: |
+  #       echo "--- :arrow_down: Downloading Build Directory"
+  #       buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build"
+  #       echo "+++ :microscope: Running Tests"
+  #       ./scripts/parallel-test.sh
+  #   label: ":aws: 2 Tests"
+  #   agents:
+  #     queue: "automation-large-builder-fleet"
+  #   plugins:
+  #     ecr#v1.1.4:
+  #       login: true
+  #       account_ids: "436617320021"
+  #       no-include-email: true
+  #       region: "us-west-2"
+  #     docker#v2.1.0:
+  #       debug: true
+  #       image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
+  #       workdir: /data/job
+  #   timeout: 60
 
-  - command: |
-        echo "--- :arrow_down: Downloading Build Directory"
-        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build"
-        echo "+++ :microscope: Running Tests"
-        ./scripts/serial-test.sh
-    label: ":aws: 2 NP Tests"
-    agents:
-      queue: "automation-large-builder-fleet"
-    plugins:
-      ecr#v1.1.4:
-        login: true
-        account_ids: "436617320021"
-        no-include-email: true
-        region: "us-west-2"
-      docker#v2.1.0:
-        debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
-        workdir: /data/job
-    timeout: 60
+  # - command: |
+  #       echo "--- :arrow_down: Downloading Build Directory"
+  #       buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build"
+  #       echo "+++ :microscope: Running Tests"
+  #       ./scripts/serial-test.sh
+  #   label: ":aws: 2 NP Tests"
+  #   agents:
+  #     queue: "automation-large-builder-fleet"
+  #   plugins:
+  #     ecr#v1.1.4:
+  #       login: true
+  #       account_ids: "436617320021"
+  #       no-include-email: true
+  #       region: "us-west-2"
+  #     docker#v2.1.0:
+  #       debug: true
+  #       image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
+  #       workdir: /data/job
+  #   timeout: 60
 
   # Fedora Tests
   - command: |
