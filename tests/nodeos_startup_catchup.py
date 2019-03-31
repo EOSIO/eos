@@ -77,10 +77,12 @@ try:
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
 
+    Print("Create txn generate nodes")
     txnGenNodes=[]
     for nodeNum in range(txnGenNodeNum, txnGenNodeNum+startedNonProdNodes):
         txnGenNodes.append(cluster.getNode(nodeNum))
 
+    Print("Create accounts for generated txns")
     txnGenNodes[0].txnGenCreateTestAccounts(cluster.eosioAccount.name, cluster.eosioAccount.activePrivateKey)
 
     def lib(node):
@@ -91,43 +93,78 @@ try:
 
     node0=cluster.getNode(0)
 
+    Print("Wait for account creation to be irreversible")
     blockNum=head(node0)
     node0.waitForBlock(blockNum, blockType=BlockType.lib)
 
+    Print("Startup txn generation")
+    period=1500
+    transPerPeriod=150
     for genNum in range(0, len(txnGenNodes)):
         salt="%d" % genNum
-        txnGenNodes[genNum].txnGenStart(salt, 1500, 150)
+        txnGenNodes[genNum].txnGenStart(salt, period, transPerPeriod)
         time.sleep(1)
 
     blockNum=head(node0)
-    node0.waitForBlock(blockNum+20)
+    timePerBlock=500
+    blocksPerPeriod=period/timePerBlock
+    transactionsPerBlock=transPerPeriod/blocksPerPeriod
+    steadyStateWait=20
+    startBlockNum=blockNum+steadyStateWait
+    numBlocks=20
+    endBlockNum=startBlockNum+numBlocks
+    node0.waitForBlock(endBlockNum)
+    transactions=0
+    avg=0
+    for blockNum in range(startBlockNum, endBlockNum):
+        block=node0.getBlock(blockNum)
+        transactions+=len(block["transactions"])
 
+    avg=transactions / (blockNum - startBlockNum + 1)
+
+    Print("Validate transactions are generating")
+    minRequiredTransactions=transactionsPerBlock
+    assert avg>minRequiredTransactions, "Expected to at least receive %s transactions per block, but only getting %s" % (minRequiredTransactions, avg)
+
+    Print("Cycle through catchup scenarios")
     twoRounds=21*2*12
     for catchup_num in range(0, catchupCount):
+        Print("Start catchup node")
         cluster.launchUnstarted(cachePopen=True)
         lastLibNum=lib(node0)
+        time.sleep(2)
         # verify producer lib is still advancing
         node0.waitForBlock(lastLibNum+1, timeout=twoRounds/2, blockType=BlockType.lib)
 
         catchupNode=cluster.getNodes()[-1]
         catchupNodeNum=cluster.getNodes().index(catchupNode)
         lastCatchupLibNum=lib(catchupNode)
+
+        Print("Verify catchup node %s's LIB is advancing" % (catchupNodeNum))
         # verify lib is advancing (before we wait for it to have to catchup with producer)
         catchupNode.waitForBlock(lastCatchupLibNum+1, timeout=twoRounds/2, blockType=BlockType.lib)
 
+        Print("Verify catchup node is advancing to producer")
         numBlocksToCatchup=(lastLibNum-lastCatchupLibNum-1)+twoRounds
         catchupNode.waitForBlock(lastLibNum, timeout=(numBlocksToCatchup)/2, blockType=BlockType.lib)
 
+        Print("Shutdown catchup node and validate exit code")
         catchupNode.interruptAndVerifyExitStatus(60)
 
+        Print("Restart catchup node")
         catchupNode.relaunch(catchupNodeNum)
         lastCatchupLibNum=lib(catchupNode)
+
+        Print("Verify catchup node is advancing")
         # verify catchup node is advancing to producer
         catchupNode.waitForBlock(lastCatchupLibNum+1, timeout=twoRounds/2, blockType=BlockType.lib)
 
+        Print("Verify producer is still advancing LIB")
         lastLibNum=lib(node0)
         # verify producer lib is still advancing
         node0.waitForBlock(lastLibNum+1, timeout=twoRounds/2, blockType=BlockType.lib)
+
+        Print("Verify catchup node is advancing to producer")
         # verify catchup node is advancing to producer
         catchupNode.waitForBlock(lastLibNum, timeout=(numBlocksToCatchup)/2, blockType=BlockType.lib)
 
