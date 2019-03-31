@@ -851,6 +851,36 @@ struct set_action_permission_subcommand {
    }
 };
 
+struct set_personal_subcommand {
+   string accountStr;
+   string keyStr;
+   string valueStr;
+
+   set_personal_subcommand(CLI::App* actionRoot) {
+      auto personal = actionRoot->add_subcommand("personal", localized("set personal data for account"));
+      personal->add_option("account", accountStr, localized("the account to set personal data for"))->required();
+      personal->add_option("key", keyStr, localized("the key of personal data"))->required();
+      personal->add_option("value", valueStr, localized("the value of personal data"))->required();
+
+      add_standard_transaction_options(personal, "account@active");
+
+      personal->set_callback([this] {
+         name account = name(accountStr);
+         auto action_var = fc::mutable_variant_object()
+                  ("account", account)
+                  ("key", keyStr)
+                  ("value", valueStr);
+
+		 send_actions(
+            {create_action(
+               {permission_level{account,config::active_name}},
+               N(personal.bos),
+               N(setpersonal),
+               action_var)
+            });
+      });
+   }
+};
 
 bool local_port_used() {
     using namespace boost::asio;
@@ -1845,6 +1875,12 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
             std::cout << "proxy:" << indent << proxy << std::endl;
          }
       }
+
+      if( res.homepage.size() > 0 ){
+         std::cout <<"homepage:";
+         std::cout << indent << res.homepage << std::endl;
+      }
+
       std::cout << std::endl;
    } else {
       std::cout << fc::json::to_pretty_string(json) << std::endl;
@@ -2602,6 +2638,9 @@ int main( int argc, char** argv ) {
 
    // set action permission
    auto setActionPermission = set_action_permission_subcommand(setAction);
+
+   //set personal
+   auto setPersonal = set_personal_subcommand(setSubcommand);
 
    // Transfer subcommand
    string con = "eosio.token";

@@ -293,6 +293,8 @@ struct testnet_def {
 struct prodkey_def {
   string producer_name;
   public_key_type block_signing_key;
+  string url;
+  string location;
 };
 
 struct producer_set_def {
@@ -869,7 +871,7 @@ launcher_def::bind_nodes () {
          if (is_bios) {
             string prodname = "eosio";
             node.producers.push_back(prodname);
-            producer_set.schedule.push_back({prodname,pubkey});
+            producer_set.schedule.push_back({prodname,pubkey,"xxx","0"});
          }
         else {
            if (i < non_bios) {
@@ -881,7 +883,7 @@ launcher_def::bind_nodes () {
               while (count--) {
                  const auto prodname = producer_names::producer_name(producer_number);
                  node.producers.push_back(prodname);
-                 producer_set.schedule.push_back({prodname,pubkey});
+                 producer_set.schedule.push_back({prodname,pubkey,"xxx","0"});
                  ++producer_number;
               }
            }
@@ -1263,7 +1265,7 @@ launcher_def::write_bios_boot () {
                   continue;
                }
                brb << "cacmd " << p.producer_name
-                   << " " << string(p.block_signing_key) << " " << string(p.block_signing_key) << "\n";
+                   << " " << string(p.block_signing_key) << " " << string(p.block_signing_key) <<" "<< string("xxxx") << " "<< string("0") << "\n";
             }
          }
       }
