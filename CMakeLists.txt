@@ -1,6 +1,7 @@
 cmake_minimum_required( VERSION 3.5 )
 
-project( EOSIO )
+project( EOSIO VERSION 1.8.0)
+set(VERSION_SUFFIX develop)
 include(CTest) # suppresses DartConfiguration.tcl error
 enable_testing()
 
@@ -29,15 +30,9 @@ set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 
-set(VERSION_MAJOR 1)
-set(VERSION_MINOR 8)
-set(VERSION_PATCH 0)
-set(VERSION_SUFFIX develop)
-
+set(VERSION_FULL "${PROJECT_VERSION}")
 if(VERSION_SUFFIX)
-    set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}-${VERSION_SUFFIX}")
-else()
-    set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+   string(APPEND VERSION_FULL "-${VERSION_SUFFIX}")
 endif()
 
 set( CLI_CLIENT_EXECUTABLE_NAME cleos )
@@ -104,17 +99,17 @@ IF( WIN32 )
   set(BOOST_ALL_DYN_LINK OFF) # force dynamic linking for all libraries
 ENDIF(WIN32)
 FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
-    thread
     date_time
     filesystem
     system
     program_options
-    serialization
     chrono
     unit_test_framework
-    context
-    locale
     iostreams)
+
+set(THREADS_PREFER_PTHREAD_FLAG 1)
+find_package(Threads)
+link_libraries(Threads::Threads)
 
 if( WIN32 )
 
@@ -218,7 +213,6 @@ add_subdirectory( scripts )
 add_subdirectory( unittests )
 add_subdirectory( tests )
 add_subdirectory( tools )
-add_subdirectory( debian )
 
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
 
@@ -274,3 +268,34 @@ file(WRITE "${CMAKE_BINARY_DIR}/CTestCustom.cmake" "SET(CTEST_CUSTOM_TESTS_IGNOR
 
 include(package)
 include(doxygen)
+
+### Packaging
+### Add targets to the "base" install component to have them added to the package
+set(CPACK_GENERATOR TGZ)
+find_program(DPKG_BUILDPACKAGE dpkg-buildpackage)
+if(DPKG_BUILDPACKAGE)
+   list(APPEND CPACK_GENERATOR DEB)
+endif()
+find_program(RPMBUILD rpmbuild)
+if(RPMBUILD)
+   list(APPEND CPACK_GENERATOR RPM)
+endif()
+if(UNIX AND APPLE)
+   #set(CPACK_PACKAGING_INSTALL_PREFIX "/eosio/${VERSION_FULL}/")
+   set(CPACK_ARCHIVE_BASE_FILE_NAME "bottle")
+endif()
+
+set(CPACK_COMPONENTS_ALL base)
+set(CPACK_PACKAGE_CONTACT "support@block.one")
+set(CPACK_PACKAGE_VERSION "${VERSION_FULL}")
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_DEB_COMPONENT_INSTALL ON)
+set(CPACK_DEBIAN_BASE_PACKAGE_NAME eosio)
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+set(CPACK_RPM_COMPONENT_INSTALL ON)
+set(CPACK_RPM_BASE_PACKAGE_NAME eosio)
+set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
+set(CPACK_RPM_PACKAGE_AUTOREQ ON)
+set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
+
+include(CPack)
