@@ -517,18 +517,28 @@ class Cluster(object):
         """Wait for all nodes to have targetBlockNum finalized."""
         assert(self.nodes)
 
-        def doNodesHaveBlockNum(nodes, targetBlockNum, blockType):
+        def doNodesHaveBlockNum(nodes, targetBlockNum, blockType, printCount):
+            ret=True
             for node in nodes:
                 try:
                     if (not node.killed) and (not node.isBlockPresent(targetBlockNum, blockType=blockType)):
-                        return False
+                        ret=False
+                        break
                 except (TypeError) as _:
                     # This can happen if client connects before server is listening
-                    return False
+                    ret=False
+                    break
 
-            return True
+            printCount+=1
+            if Utils.Debug and not ret and printCount%5==0:
+                blockNums=[]
+                for i in range(0, len(nodes)):
+                    blockNums.append(nodes[i].getBlockNum())
+                Utils.Print("Cluster still not in sync, head blocks for nodes: [ %s ]" % (", ".join(blockNums)))
+            return ret
 
-        lam = lambda: doNodesHaveBlockNum(self.nodes, targetBlockNum, blockType)
+        printCount=0
+        lam = lambda: doNodesHaveBlockNum(self.nodes, targetBlockNum, blockType, printCount)
         ret=Utils.waitForBool(lam, timeout)
         return ret
 

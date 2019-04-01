@@ -17,7 +17,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -38,7 +38,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -59,7 +59,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -80,7 +80,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux1_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux1_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -101,7 +101,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -122,7 +122,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -173,7 +173,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -193,7 +193,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-2"
         workdir: /data/job
     timeout: 60
   
@@ -214,7 +214,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -234,7 +234,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -255,7 +255,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -275,7 +275,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -296,7 +296,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux1_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux1_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -316,7 +316,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux1_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux1_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -337,7 +337,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -357,7 +357,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -378,7 +378,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -398,7 +398,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-2"
         workdir: /data/job
     timeout: 60
 
@@ -501,7 +501,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-2"
         workdir: /data/job
     env:
       OS: "ubuntu-16.04"
@@ -527,7 +527,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-2"
         workdir: /data/job
     env:
       OS: "ubuntu-18.04"
@@ -560,7 +560,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-2"
         workdir: /data/job
     env:
       OS: "fc27"
@@ -593,7 +593,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
         workdir: /data/job
     env:
       OS: "el7"

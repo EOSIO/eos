@@ -104,17 +104,22 @@ IF( WIN32 )
   set(BOOST_ALL_DYN_LINK OFF) # force dynamic linking for all libraries
 ENDIF(WIN32)
 FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
-    thread
     date_time
     filesystem
     system
     program_options
-    serialization
     chrono
     unit_test_framework
-    context
-    locale
     iostreams)
+
+# Some new stdlibc++s will #error on <experimental/string_view>; a problem for boost pre-1.69
+if( APPLE AND UNIX )
+   add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
+endif()
+
+set(THREADS_PREFER_PTHREAD_FLAG 1)
+find_package(Threads)
+link_libraries(Threads::Threads)
 
 if( WIN32 )
 
