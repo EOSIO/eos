@@ -25,10 +25,9 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/steady_timer.hpp>
-#include <boost/thread/locks.hpp>
-#include <boost/thread/shared_mutex.hpp>
 
 #include <atomic>
+#include <shared_mutex>
 
 using namespace eosio::chain::plugin_interface;
 
@@ -228,7 +227,7 @@ namespace eosio {
 
       connection_ptr find_connection(const string& host)const;
 
-      mutable boost::shared_mutex      connections_mtx; // switch to std::shared_mutex in C++17, also protects connection::last_req
+      mutable std::shared_timed_mutex  connections_mtx; // switch to std::shared_mutex in C++17
       std::set< connection_ptr >       connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
       bool                             done = false;
       unique_ptr< sync_manager >       sync_master;
@@ -1361,7 +1360,7 @@ namespace eosio {
       if (conn && conn->current() ) {
          sync_source = conn;
       } else {
-         boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
+         std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
          if (my_impl->connections.size() == 1) {
             if (!sync_source) {
                sync_source = *my_impl->connections.begin();
@@ -1430,7 +1429,7 @@ namespace eosio {
 
    // static, thread safe
    void sync_manager::send_handshakes() {
-      boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
+      std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
       for( auto& ci : my_impl->connections ) {
          if( ci->current() ) {
             ci->send_handshake();
@@ -1568,7 +1567,7 @@ namespace eosio {
    void sync_manager::verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id) {
       request_message req;
       req.req_blocks.mode = catch_up;
-      boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
+      std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
       for (const auto& cc : my_impl->connections) {
          std::lock_guard<std::mutex> g_conn( cc->conn_mtx );
          if( cc->fork_head_num > num || cc->fork_head == id ) {
@@ -1663,7 +1662,7 @@ namespace eosio {
 
          block_id_type null_id;
          bool set_state_to_head_catchup = false;
-         boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
+         std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
          for( const auto& cp : my_impl->connections ) {
             std::unique_lock<std::mutex> g_cp_conn( cp->conn_mtx );
             uint32_t fork_head_num = cp->fork_head_num;
@@ -1808,7 +1807,7 @@ namespace eosio {
 
       if( my_impl->sync_master->syncing_with_peer() ) return;
       bool have_connection = false;
-      boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
+      std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
       for( auto& cp : my_impl->connections ) {
 
          peer_dlog( cp, "socket_is_open ${s}, connecting ${c}, syncing ${ss}",
@@ -1877,7 +1876,7 @@ namespace eosio {
       node_transaction_state nts = {id, trx_expiration, 0, 0};
 
       std::shared_ptr<std::vector<char>> send_buffer;
-      boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
+      std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
       for( auto& cp : my_impl->connections ) {
          if( !cp->current() ) {
             continue;
@@ -1977,7 +1976,7 @@ namespace eosio {
          return;
       }
       g_c_conn.unlock();
-      boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
+      std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
       for( auto& conn : my_impl->connections ) {
          if( conn == c ) continue;
 
@@ -2093,7 +2092,7 @@ namespace eosio {
                fc_elog( logger, "Error getting remote endpoint: ${m}", ("m", rec.message()) );
             } else {
                paddr_str = paddr_add.to_string();
-               boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
+               std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
                for( auto& conn : connections ) {
                   if( conn->socket_is_open() ) {
                      if( conn->peer_address().empty() ) {
@@ -2107,7 +2106,7 @@ namespace eosio {
                g.unlock();
                if( from_addr < max_nodes_per_host && (max_client_count == 0 || visitors < max_client_count) ) {
                   if( new_connection->start_session() ) {
-                     boost::unique_lock<boost::shared_mutex> g_unique( connections_mtx );
+                     std::unique_lock<std::shared_timed_mutex> g_unique( connections_mtx );
                      connections.insert( new_connection );
                      g_unique.unlock();
                   }
@@ -2408,7 +2407,7 @@ namespace eosio {
          if( c->peer_address().empty() || c->last_handshake_recv.node_id == fc::sha256()) {
             g_conn.unlock();
             fc_dlog(logger, "checking for duplicate" );
-            boost::shared_lock<boost::shared_mutex> g( my_impl->connections_mtx );
+            std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
             for(const auto& check : connections) {
                if(check == c)
                   continue;
@@ -2818,7 +2817,7 @@ namespace eosio {
             if( ec ) {
                fc_wlog( logger, "Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()) );
             }
-            boost::shared_lock<boost::shared_mutex> g( connections_mtx );
+            std::shared_lock<std::shared_timed_mutex> g( connections_mtx );
             for( auto& c : connections ) {
                if( c->socket_is_open() ) {
                   c->strand.post( [c]() {
@@ -2858,7 +2857,7 @@ namespace eosio {
       auto max_time = fc::time_point::now();
       max_time += fc::milliseconds(max_cleanup_time_ms);
       auto from = from_connection.lock();
-      boost::unique_lock<boost::shared_mutex> g( connections_mtx );
+      std::unique_lock<std::shared_timed_mutex> g( connections_mtx );
       auto it = (from ? connections.find(from) : connections.begin());
       if (it == connections.end()) it = connections.begin();
       while (it != connections.end()) {
@@ -3262,7 +3261,7 @@ namespace eosio {
          my->done = true;
          {
             fc_ilog( logger, "close ${s} connections", ("s", my->connections.size()) );
-            boost::unique_lock<boost::shared_mutex> g( my->connections_mtx );
+            std::unique_lock<std::shared_timed_mutex> g( my->connections_mtx );
             for( auto& con : my->connections ) {
                fc_dlog( logger, "close: ${p}", ("p", con->peer_name()) );
                con->close();
@@ -3290,14 +3289,14 @@ namespace eosio {
       fc_dlog( logger, "calling active connector" );
       if( c->resolve_and_connect() ) {
          fc_dlog( logger, "adding new connection to the list" );
-         boost::unique_lock<boost::shared_mutex> g( my->connections_mtx );
+         std::unique_lock<std::shared_timed_mutex> g( my->connections_mtx );
          my->connections.insert( c );
       }
       return "added connection";
    }
 
    string net_plugin::disconnect( const string& host ) {
-      boost::unique_lock<boost::shared_mutex> g( my->connections_mtx );
+      std::unique_lock<std::shared_timed_mutex> g( my->connections_mtx );
       for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr ) {
          if( (*itr)->peer_address() == host ) {
             fc_ilog( logger, "disconnecting: ${p}", ("p", (*itr)->peer_name()) );
@@ -3318,7 +3317,7 @@ namespace eosio {
 
    vector<connection_status> net_plugin::connections()const {
       vector<connection_status> result;
-      boost::shared_lock<boost::shared_mutex> g( my->connections_mtx );
+      std::shared_lock<std::shared_timed_mutex> g( my->connections_mtx );
       result.reserve( my->connections.size() );
       for( const auto& c : my->connections ) {
          result.push_back( c->get_status() );
@@ -3326,7 +3325,7 @@ namespace eosio {
       return result;
    }
    connection_ptr net_plugin_impl::find_connection(const string& host )const {
-      boost::shared_lock<boost::shared_mutex> g( connections_mtx );
+      std::shared_lock<std::shared_timed_mutex> g( connections_mtx );
       for( const auto& c : connections )
          if( c->peer_address() == host ) return c;
       return connection_ptr();
