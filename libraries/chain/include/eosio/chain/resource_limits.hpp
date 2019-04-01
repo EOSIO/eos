@@ -1,7 +1,7 @@
 #pragma once
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
-#include <eosio/chain/stake_object.hpp>
+#include <eosio/chain/symbol.hpp>
 
 #include <eosio/chain/abi_def.hpp>
 #include <eosio/chain/snapshot.hpp>
@@ -95,9 +95,6 @@ namespace resource_limits {
          account_balance get_account_balance(int64_t now, const account_name& account, const pricelist&);
 
          std::map<symbol_code, uint64_t> get_account_usage(const account_name& account) const;
-         
-         void update_proxied(const ram_payer_info&, int64_t now, symbol_code token_code, const account_name& account, int64_t frame_length, bool force);
-         void recall_proxied(const ram_payer_info&, int64_t now, symbol_code token_code, account_name grantor_name, account_name agent_name, int16_t pct);
 
       private:
          cyberway::chaindb::chaindb_controller& _chaindb;

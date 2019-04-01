@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
+#include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/symbol.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/database_utils.hpp>

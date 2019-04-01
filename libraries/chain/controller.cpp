@@ -16,6 +16,7 @@
 
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/stake.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/thread_utils.hpp>
 
@@ -500,6 +501,7 @@ struct controller_impl {
 
       authorization.add_indices();
       resource_limits.add_indices();
+      stake::stake_index_set::add_indices(chaindb);
    }
 
 // TODO: removed by CyberWay
