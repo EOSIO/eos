@@ -857,6 +857,17 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       BOOST_CHECK_EQUAL(1u, keys3.second.size());
       BOOST_CHECK_EQUAL(public_key, *keys3.second.begin());
 
+      // recover keys without first calling start_recover_keys
+      transaction_metadata_ptr mtrx4 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::none) );
+      transaction_metadata_ptr mtrx5 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::zlib) );
+
+      auto keys4 = mtrx4->recover_keys( test.control->get_chain_id() );
+      BOOST_CHECK_EQUAL(1u, keys4.second.size());
+      BOOST_CHECK_EQUAL(public_key, *keys4.second.begin());
+
+      auto keys5 = mtrx5->recover_keys( test.control->get_chain_id() );
+      BOOST_CHECK_EQUAL(1u, keys5.second.size());
+      BOOST_CHECK_EQUAL(public_key, *keys5.second.begin());
 
 } FC_LOG_AND_RETHROW() }
 
