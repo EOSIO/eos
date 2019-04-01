@@ -208,7 +208,7 @@ void resource_limits_manager::verify_account_ram_usage( const account_name accou
    const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
 
    if( ram_bytes >= 0 ) {
-      EOS_ASSERT( usage.ram_usage <= ram_bytes, ram_usage_exceeded,
+      EOS_ASSERT( usage.ram_usage <= static_cast<uint64_t>(ram_bytes), ram_usage_exceeded,
                   "account ${account} has insufficient ram; needs ${needs} bytes has ${available} bytes",
                   ("account", account)("needs",usage.ram_usage)("available",ram_bytes)              );
    }
@@ -291,12 +291,12 @@ void resource_limits_manager::process_account_limit_updates() {
    // convenience local lambda to reduce clutter
    auto update_state_and_value = [](uint64_t &total, int64_t &value, int64_t pending_value, const char* debug_which) -> void {
       if (value > 0) {
-         EOS_ASSERT(total >= value, rate_limiting_state_inconsistent, "underflow when reverting old value to ${which}", ("which", debug_which));
+         EOS_ASSERT(total >= static_cast<uint64_t>(value), rate_limiting_state_inconsistent, "underflow when reverting old value to ${which}", ("which", debug_which));
          total -= value;
       }
 
       if (pending_value > 0) {
-         EOS_ASSERT(UINT64_MAX - total >= pending_value, rate_limiting_state_inconsistent, "overflow when applying new value to ${which}", ("which", debug_which));
+         EOS_ASSERT(UINT64_MAX - total >= static_cast<uint64_t>(pending_value), rate_limiting_state_inconsistent, "overflow when applying new value to ${which}", ("which", debug_which));
          total += pending_value;
       }
 
