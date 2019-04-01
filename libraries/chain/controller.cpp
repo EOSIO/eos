@@ -134,6 +134,7 @@ struct controller_impl {
    bool                           trusted_producer_light_validation = false;
    uint32_t                       snapshot_head_block = 0;
    boost::asio::thread_pool       thread_pool;
+   boost::asio::io_context        ioc;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -404,6 +405,9 @@ struct controller_impl {
    }
 
    ~controller_impl() {
+      ioc.stop();
+      thread_pool.stop();
+      thread_pool.join();
       pending.reset();
    }
 
@@ -1728,25 +1732,14 @@ void controller::add_indices() {
    my->add_indices();
 }
 
-void set_thread_name( boost::asio::thread_pool& tp, uint16_t i, uint16_t sz ) {
-   std::string tn = "chain-" + std::to_string( i );
-   fc::set_os_thread_name( tn );
-   ++i;
-   if( i < sz ) {
-      // post recursively so we consume all the threads
-      auto fut = eosio::chain::async_thread_pool( tp, [&tp, i, sz]() {
-         set_thread_name( tp, i, sz );
-      });
-      fut.wait();
-   }
-}
-
 void controller::startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot ) {
-   // name threads in thread pool for logger
-   auto fut = eosio::chain::async_thread_pool( get_thread_pool(), [&tp = get_thread_pool(), sz = my->conf.thread_pool_size]() {
-      set_thread_name( tp, 0, sz );
-   });
-   fut.wait();
+   for( uint16_t i = 0; i < my->conf.thread_pool_size; ++i ) {
+      boost::asio::post( my->ioc, [&ioc = my->ioc, i]() {
+         std::string tn = "chain-" + std::to_string( i );
+         fc::set_os_thread_name( tn );
+         ioc.run();
+      } );
+   }
 
    my->head = my->fork_db.head();
    if( snapshot ) {
@@ -1799,8 +1792,8 @@ void controller::abort_block() {
    my->abort_block();
 }
 
-boost::asio::thread_pool& controller::get_thread_pool() {
-   return my->thread_pool;
+boost::asio::io_context& controller::get_thread_pool() {
+   return my->ioc;
 }
 
 std::future<block_state_ptr> controller::create_block_state_future( const signed_block_ptr& b ) {
