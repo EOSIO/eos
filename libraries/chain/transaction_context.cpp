@@ -346,7 +346,7 @@ namespace bacc = boost::accumulators;
       auto& action_traces = trace->action_traces;
       int32_t num_original_actions_to_execute = action_traces.size();
       for( int32_t i = 0; i < num_original_actions_to_execute; ++i ) {
-         execute_action( action_traces[i], 0 );
+         execute_action( i, 0 );
       }
 
       if( delay != fc::microseconds() ) {
@@ -575,23 +575,40 @@ namespace bacc = boost::accumulators;
    int32_t transaction_context::schedule_action( const action& act, account_name receiver, bool context_free,
                                                  int32_t creator_action_ordinal, int32_t parent_action_ordinal )
    {
-      int32_t action_ordinal = trace->action_traces.size();
+      int32_t new_action_ordinal = trace->action_traces.size();
 
       trace->action_traces.emplace_back( *trace, act, receiver, context_free,
-                                         action_ordinal, creator_action_ordinal, parent_action_ordinal );
+                                         new_action_ordinal, creator_action_ordinal, parent_action_ordinal );
 
-      return action_ordinal;
+      return new_action_ordinal;
    }
 
    int32_t transaction_context::schedule_action( action&& act, account_name receiver, bool context_free,
                                                  int32_t creator_action_ordinal, int32_t parent_action_ordinal )
    {
-      int32_t action_ordinal = trace->action_traces.size();
+      int32_t new_action_ordinal = trace->action_traces.size();
 
       trace->action_traces.emplace_back( *trace, std::move(act), receiver, context_free,
-                                         action_ordinal, creator_action_ordinal, parent_action_ordinal );
+                                         new_action_ordinal, creator_action_ordinal, parent_action_ordinal );
 
-      return action_ordinal;
+      return new_action_ordinal;
+   }
+
+   int32_t transaction_context::schedule_action( int32_t action_ordinal, account_name receiver, bool context_free,
+                                                 int32_t creator_action_ordinal, int32_t parent_action_ordinal )
+   {
+      int32_t new_action_ordinal = trace->action_traces.size();
+
+      trace->action_traces.reserve( new_action_ordinal + 1 );
+
+      const action& provided_action = get_action_trace( action_ordinal ).act;
+
+      // The reserve above is required so that the emplace_back below does not invalidate the provided_action reference.
+
+      trace->action_traces.emplace_back( *trace, provided_action, receiver, context_free,
+                                         new_action_ordinal, creator_action_ordinal, parent_action_ordinal );
+
+      return new_action_ordinal;
    }
 
    action_trace& transaction_context::get_action_trace( int32_t action_ordinal ) {
@@ -606,14 +623,9 @@ namespace bacc = boost::accumulators;
       return trace->action_traces[action_ordinal];
    }
 
-   void transaction_context::execute_action( action_trace& act_trace, uint32_t recurse_depth ) {
-      apply_context  acontext( control, *this, act_trace.act, recurse_depth );
-      acontext.receiver                      = act_trace.receiver;
-      acontext.first_receiver_action_ordinal = act_trace.action_ordinal;
-      acontext.action_ordinal                = act_trace.action_ordinal;
-      acontext.context_free                  = act_trace.context_free;
-
-      acontext.exec( act_trace );
+   void transaction_context::execute_action( int32_t action_ordinal, uint32_t recurse_depth ) {
+      apply_context acontext( control, *this, action_ordinal, recurse_depth );
+      acontext.exec();
    }
 
 
