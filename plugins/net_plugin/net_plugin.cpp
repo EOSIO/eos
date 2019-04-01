@@ -826,7 +826,6 @@ namespace eosio {
       fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
       cancel_wait();
       if( read_delay_timer ) read_delay_timer->cancel();
-      pending_message_buffer.reset();
    }
 
    void connection::txn_send_pending(const vector<transaction_id_type>& ids) {
@@ -1886,6 +1885,7 @@ namespace eosio {
       auto current_endpoint = *endpoint_itr;
       ++endpoint_itr;
       c->connecting = true;
+      c->pending_message_buffer.reset();
       connection_wptr weak_conn = c;
       c->socket->async_connect( current_endpoint, boost::asio::bind_executor( c->strand,
             [weak_conn, endpoint_itr, this]( const boost::system::error_code& err ) {
@@ -2061,7 +2061,7 @@ namespace eosio {
             [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
             app().post( priority::medium, [this,weak_conn, ec, bytes_transferred]() {
                auto conn = weak_conn.lock();
-               if (!conn) {
+               if (!conn || !conn->socket || !conn->socket->is_open()) {
                   return;
                }
 
