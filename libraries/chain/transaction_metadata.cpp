@@ -11,11 +11,18 @@ recovery_keys_type transaction_metadata::recover_keys( const chain_id_type& chai
       if( std::get<0>( sig_keys ) == chain_id ) {
          return std::make_pair( std::get<1>( sig_keys ), std::cref( std::get<2>( sig_keys ) ) );
       }
-      EOS_ASSERT( false, chain_id_type_exception, "chain id ${cid} does not match start_recover_keys ${sid}",
-                  ("cid", chain_id)( "sid", std::get<0>( sig_keys ) ) );
    }
 
-   EOS_ASSERT( false, chain_id_type_exception, "start_recover_keys for ${cid} is required", ("cid", chain_id) );
+   // shared_keys_future not created or different chain_id
+   std::promise<signing_keys_future_value_type> p;
+   flat_set<public_key_type> recovered_pub_keys;
+   const signed_transaction& trn = packed_trx->get_signed_transaction();
+   fc::microseconds cpu_usage = trn.get_signature_keys( chain_id, fc::time_point::maximum(), recovered_pub_keys );
+   p.set_value( std::make_tuple( chain_id, cpu_usage, std::move( recovered_pub_keys ) ) );
+   signing_keys_future = p.get_future().share();
+
+   const std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>>& sig_keys = signing_keys_future.get();
+   return std::make_pair( std::get<1>( sig_keys ), std::cref( std::get<2>( sig_keys ) ) );
 }
 
 signing_keys_future_type transaction_metadata::start_recover_keys( const transaction_metadata_ptr& mtrx,
