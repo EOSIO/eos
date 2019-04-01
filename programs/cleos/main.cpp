@@ -2565,9 +2565,12 @@ int main( int argc, char** argv ) {
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
    getCode->add_flag("--wasm", code_as_wasm, localized("Save contract as wasm"));
    getCode->set_callback([&] {
+      uint64_t code_seq, abi_seq = 0;
       string code_hash, wasm, wast, abi;
       try {
          const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", accountName));
+         code_seq = result["code_sequence"].as_uint64();
+         abi_seq  = result["abi_sequence"].as_uint64();
          const std::vector<char> wasm_v = result["wasm"].as_blob().data;
          const std::vector<char> abi_v = result["abi"].as_blob().data;
 
@@ -2587,6 +2590,8 @@ int main( int argc, char** argv ) {
       catch(chain::missing_chain_api_plugin_exception&) {
          //see if this is an old nodeos that doesn't support get_raw_code_and_abi
          const auto old_result = call(get_code_func, fc::mutable_variant_object("account_name", accountName)("code_as_wasm",code_as_wasm));
+         code_seq = old_result["code_sequence"].as_uint64();
+         abi_seq  = old_result["abi_sequence"].as_uint64();
          code_hash = old_result["code_hash"].as_string();
          if(code_as_wasm) {
             wasm = old_result["wasm"].as_string();
@@ -2597,6 +2602,8 @@ int main( int argc, char** argv ) {
          abi = fc::json::to_pretty_string(old_result["abi"]);
       }
 
+      std::cout << localized("abi sequence: ${abi_seq}", ("abi_seq", abi_seq)) << std::endl;
+      std::cout << localized("code sequence: ${code_seq}", ("code_seq", code_seq)) << std::endl;
       std::cout << localized("code hash: ${code_hash}", ("code_hash", code_hash)) << std::endl;
 
       if( codeFilename.size() ){
