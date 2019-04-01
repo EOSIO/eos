@@ -167,8 +167,8 @@ fi
 
 if [ ! -d "${REPO_ROOT}/.git" ]; then
    printf "\\nThis build script only works with sources cloned from git\\n"
-   printf "Please clone a new eos directory with 'git clone https://github.com/EOSIO/eos --recursive'\\n"
-   printf "See the wiki for instructions: https://github.com/EOSIO/eos/wiki\\n"
+   printf "Please clone a new eos directory with 'git clone https://github.com/UOSNetwork/uos --recursive'\\n"
+   printf "See the wiki for instructions: https://github.com/UOSnetwork/uos/wiki , https://github.com/EOSIO/eos/wiki\\n"
    exit 1
 fi
 
@@ -274,7 +274,7 @@ pushd $SRC_LOCATION &> /dev/null
 popd &> /dev/null
 
 printf "\\n========================================================================\\n"
-printf "======================= Starting EOSIO Build =======================\\n"
+printf "======================= Starting UOS Build =======================\\n"
 printf "## CMAKE_BUILD_TYPE=%s\\n" "${CMAKE_BUILD_TYPE}"
 printf "## ENABLE_COVERAGE_TESTING=%s\\n" "${ENABLE_COVERAGE_TESTING}"
 
