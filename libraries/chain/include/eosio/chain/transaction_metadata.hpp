@@ -15,7 +15,8 @@ namespace eosio { namespace chain {
 
 class transaction_metadata;
 using transaction_metadata_ptr = std::shared_ptr<transaction_metadata>;
-using signing_keys_future_type = std::shared_future<std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>>>;
+using signing_keys_future_value_type = std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>>;
+using signing_keys_future_type = std::shared_future<signing_keys_future_value_type>;
 using recovery_keys_type = std::pair<fc::microseconds, const flat_set<public_key_type>&>;
 
 /**
