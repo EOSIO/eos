@@ -28,6 +28,7 @@
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
+using ioc_work_t = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
 using controller_index_set = index_set<
    account_index,
@@ -135,6 +136,7 @@ struct controller_impl {
    uint32_t                       snapshot_head_block = 0;
    boost::asio::thread_pool       thread_pool;
    boost::asio::io_context        ioc;
+   fc::optional<ioc_work_t>       ioc_work;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -405,6 +407,7 @@ struct controller_impl {
    }
 
    ~controller_impl() {
+      ioc_work.reset();
       ioc.stop();
       thread_pool.stop();
       thread_pool.join();
@@ -1199,7 +1202,7 @@ struct controller_impl {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( pt ) );
                if( !self.skip_auth_check() ) {
-                  transaction_metadata::create_signing_keys_future( mtrx, thread_pool, chain_id, microseconds::maximum() );
+                  transaction_metadata::create_signing_keys_future( mtrx, ioc, chain_id, microseconds::maximum() );
                }
                packed_transactions.emplace_back( std::move( mtrx ) );
             }
@@ -1277,7 +1280,7 @@ struct controller_impl {
       auto prev = fork_db.get_block( b->previous );
       EOS_ASSERT( prev, unlinkable_block_exception, "unlinkable block ${id}", ("id", id)("previous", b->previous) );
 
-      return async_thread_pool( thread_pool, [b, prev]() {
+      return async_thread_pool( ioc, [b, prev]() {
          const bool skip_validate_signee = false;
          return std::make_shared<block_state>( *prev, move( b ), skip_validate_signee );
       } );
@@ -1733,8 +1736,9 @@ void controller::add_indices() {
 }
 
 void controller::startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot ) {
+   my->ioc_work.emplace( boost::asio::make_work_guard( my->ioc ) );
    for( uint16_t i = 0; i < my->conf.thread_pool_size; ++i ) {
-      boost::asio::post( my->ioc, [&ioc = my->ioc, i]() {
+      boost::asio::post( my->thread_pool, [&ioc = my->ioc, i]() {
          std::string tn = "chain-" + std::to_string( i );
          fc::set_os_thread_name( tn );
          ioc.run();
