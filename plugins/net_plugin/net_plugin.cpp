@@ -938,8 +938,6 @@ namespace eosio {
 
       std::lock_guard<std::mutex> g( self->read_delay_timer_mtx );
       self->read_delay_timer.cancel();
-
-      self->pending_message_buffer.reset();
    }
 
    void connection::blk_send_branch() {
@@ -2059,6 +2057,7 @@ namespace eosio {
       auto current_endpoint = *endpoint_itr;
       ++endpoint_itr;
       connecting = true;
+      pending_message_buffer.reset();
       socket.async_connect( current_endpoint,
             boost::asio::bind_executor( strand, [resolver, c = shared_from_this(), endpoint_itr]( const boost::system::error_code& err ) {
             if( !err && c->socket.is_open() ) {
