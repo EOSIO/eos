@@ -1,7 +1,7 @@
 FROM ubuntu:18.04
 
 LABEL author="xiaobo <peterwillcn@gmail.com>" maintainer="Xiaobo <peterwillcn@gmail.com> Huang-Ming Huang <huangh@objectcomputing.com>" version="0.1.1" \
-  description="This is a base image for building eosio/eos"
+  description="This is a base image for building uosproject/uos"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
   && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \

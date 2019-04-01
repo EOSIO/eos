@@ -1,20 +1,20 @@
 #!/bin/sh
-cd /opt/eosio/bin
+cd /opt/uosproject/bin
 
-if [ ! -d "/opt/eosio/bin/data-dir" ]; then
-    mkdir /opt/eosio/bin/data-dir
+if [ ! -d "/opt/uosproject/bin/data-dir" ]; then
+    mkdir /opt/uosproject/bin/data-dir
 fi
 
-if [ -f '/opt/eosio/bin/data-dir/config.ini' ]; then
+if [ -f '/opt/uosproject/bin/data-dir/config.ini' ]; then
     echo
   else
-    cp /config.ini /opt/eosio/bin/data-dir
+    cp /config.ini /opt/uosproject/bin/data-dir
 fi
 
-if [ -d '/opt/eosio/bin/data-dir/contracts' ]; then
+if [ -d '/opt/uosproject/bin/data-dir/contracts' ]; then
     echo
   else
-    cp -r /contracts /opt/eosio/bin/data-dir
+    cp -r /contracts /opt/uosproject/bin/data-dir
 fi
 
 while :; do
@@ -29,9 +29,9 @@ while :; do
 done
 
 if [ ! "$CONFIG_DIR" ]; then
-    CONFIG_DIR="--config-dir=/opt/eosio/bin/data-dir"
+    CONFIG_DIR="--config-dir=/opt/uosproject/bin/data-dir"
 else
     CONFIG_DIR=""
 fi
 
-exec /opt/eosio/bin/nodeos $CONFIG_DIR "$@"
+exec /opt/uosproject/bin/nodeos $CONFIG_DIR "$@"
