@@ -939,7 +939,7 @@ namespace eosio {
       g.unlock();
 
       // try to re-connect now
-      my_impl->connection_monitor( connection_wptr() );
+      my_impl->start_conn_timer( std::chrono::milliseconds( 1 ), connection_wptr());
    }
 
    void connection::blk_send_branch() {
