@@ -781,8 +781,8 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    }
 
    string signing_keys_json;
-   if( t->signing_keys.valid() ) {
-      signing_keys_json = fc::json::to_string( t->signing_keys->second );
+   if( t->signing_keys_future.valid() ) {
+      signing_keys_json = fc::json::to_string( std::get<2>( t->signing_keys_future.get() ) );
    } else {
       flat_set<public_key_type> keys;
       trx.get_signature_keys( *chain_id, fc::time_point::maximum(), keys, false );
