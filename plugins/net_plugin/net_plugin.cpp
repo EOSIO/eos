@@ -317,7 +317,7 @@ namespace eosio {
       void start_monitors();
 
       void expire();
-      void connection_monitor(std::weak_ptr<connection> from_connection);
+      void connection_monitor(std::weak_ptr<connection> from_connection, bool reschedule);
       /** \name Peer Timestamps
        *  Time message handling
        *  @{
@@ -939,7 +939,7 @@ namespace eosio {
       g.unlock();
 
       // try to re-connect now
-      my_impl->start_conn_timer( std::chrono::milliseconds( 1 ), connection_wptr());
+      my_impl->connection_monitor( connection_wptr(), false );
    }
 
    void connection::blk_send_branch() {
@@ -2786,10 +2786,10 @@ namespace eosio {
    // called from any thread
    void net_plugin_impl::start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection) {
       std::lock_guard<std::mutex> g( connector_check_timer_mtx );
-      connector_check_timer->expires_from_now( du);
+      connector_check_timer->expires_from_now( du );
       connector_check_timer->async_wait( [this, from_connection](boost::system::error_code ec) {
-            if( !ec) {
-               connection_monitor(from_connection);
+            if( !ec ) {
+               connection_monitor(from_connection, true);
             } else {
                fc_elog( logger, "Error from connection check monitor: ${m}",( "m", ec.message()));
                start_conn_timer( connector_period, std::weak_ptr<connection>());
@@ -2856,7 +2856,7 @@ namespace eosio {
    }
 
    // called from any thread
-   void net_plugin_impl::connection_monitor(std::weak_ptr<connection> from_connection) {
+   void net_plugin_impl::connection_monitor(std::weak_ptr<connection> from_connection, bool reschedule) {
       auto max_time = fc::time_point::now();
       max_time += fc::milliseconds(max_cleanup_time_ms);
       auto from = from_connection.lock();
@@ -2865,7 +2865,9 @@ namespace eosio {
       if (it == connections.end()) it = connections.begin();
       while (it != connections.end()) {
          if (fc::time_point::now() >= max_time) {
-            start_conn_timer(std::chrono::milliseconds(1), *it); // avoid exhausting
+            if( reschedule ) {
+               start_conn_timer( std::chrono::milliseconds( 1 ), *it ); // avoid exhausting
+            }
             return;
          }
          if( !(*it)->socket_is_open() && !(*it)->connecting) {
@@ -2882,7 +2884,9 @@ namespace eosio {
          ++it;
       }
       g.unlock();
-      start_conn_timer(connector_period, std::weak_ptr<connection>());
+      if( reschedule ) {
+         start_conn_timer( connector_period, std::weak_ptr<connection>());
+      }
    }
 
    // called from application thread
