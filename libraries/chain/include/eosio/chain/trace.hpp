@@ -25,15 +25,15 @@ namespace eosio { namespace chain {
 
    struct action_trace {
       action_trace(  const transaction_trace& trace, const action& act, account_name receiver, bool context_free,
-                     int32_t action_ordinal, int32_t creator_action_ordinal, int32_t parent_action_ordinal );
+                     uint32_t action_ordinal, uint32_t creator_action_ordinal, uint32_t parent_action_ordinal );
       action_trace(  const transaction_trace& trace, action&& act, account_name receiver, bool context_free,
-                     int32_t action_ordinal, int32_t creator_action_ordinal, int32_t parent_action_ordinal );
+                     uint32_t action_ordinal, uint32_t creator_action_ordinal, uint32_t parent_action_ordinal );
       //action_trace( const action_receipt& r ):receipt(r){}
       action_trace(){}
 
-      int32_t                         action_ordinal = 0;
-      int32_t                         creator_action_ordinal = -1;
-      int32_t                         parent_action_ordinal = -1;
+      fc::unsigned_int                action_ordinal;
+      fc::unsigned_int                creator_action_ordinal;
+      fc::unsigned_int                parent_action_ordinal;
       fc::optional<action_receipt>    receipt;
       action_name                     receiver;
       action                          act;

@@ -344,8 +344,8 @@ namespace bacc = boost::accumulators;
       }
 
       auto& action_traces = trace->action_traces;
-      int32_t num_original_actions_to_execute = action_traces.size();
-      for( int32_t i = 0; i < num_original_actions_to_execute; ++i ) {
+      uint32_t num_original_actions_to_execute = action_traces.size();
+      for( uint32_t i = 1; i <= num_original_actions_to_execute; ++i ) {
          execute_action( i, 0 );
       }
 
@@ -572,10 +572,22 @@ namespace bacc = boost::accumulators;
       return std::make_tuple(account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu);
    }
 
-   int32_t transaction_context::schedule_action( const action& act, account_name receiver, bool context_free,
-                                                 int32_t creator_action_ordinal, int32_t parent_action_ordinal )
+   action_trace& transaction_context::get_action_trace( uint32_t action_ordinal ) {
+      EOS_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
+                  transaction_exception, "invalid action_ordinal" );
+      return trace->action_traces[action_ordinal-1];
+   }
+
+   const action_trace& transaction_context::get_action_trace( uint32_t action_ordinal )const {
+      EOS_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
+                  transaction_exception, "invalid action_ordinal" );
+      return trace->action_traces[action_ordinal-1];
+   }
+
+   uint32_t transaction_context::schedule_action( const action& act, account_name receiver, bool context_free,
+                                                  uint32_t creator_action_ordinal, uint32_t parent_action_ordinal )
    {
-      int32_t new_action_ordinal = trace->action_traces.size();
+      uint32_t new_action_ordinal = trace->action_traces.size() + 1;
 
       trace->action_traces.emplace_back( *trace, act, receiver, context_free,
                                          new_action_ordinal, creator_action_ordinal, parent_action_ordinal );
@@ -583,10 +595,10 @@ namespace bacc = boost::accumulators;
       return new_action_ordinal;
    }
 
-   int32_t transaction_context::schedule_action( action&& act, account_name receiver, bool context_free,
-                                                 int32_t creator_action_ordinal, int32_t parent_action_ordinal )
+   uint32_t transaction_context::schedule_action( action&& act, account_name receiver, bool context_free,
+                                                  uint32_t creator_action_ordinal, uint32_t parent_action_ordinal )
    {
-      int32_t new_action_ordinal = trace->action_traces.size();
+      uint32_t new_action_ordinal = trace->action_traces.size() + 1;
 
       trace->action_traces.emplace_back( *trace, std::move(act), receiver, context_free,
                                          new_action_ordinal, creator_action_ordinal, parent_action_ordinal );
@@ -594,12 +606,12 @@ namespace bacc = boost::accumulators;
       return new_action_ordinal;
    }
 
-   int32_t transaction_context::schedule_action( int32_t action_ordinal, account_name receiver, bool context_free,
-                                                 int32_t creator_action_ordinal, int32_t parent_action_ordinal )
+   uint32_t transaction_context::schedule_action( uint32_t action_ordinal, account_name receiver, bool context_free,
+                                                  uint32_t creator_action_ordinal, uint32_t parent_action_ordinal )
    {
-      int32_t new_action_ordinal = trace->action_traces.size();
+      uint32_t new_action_ordinal = trace->action_traces.size() + 1;
 
-      trace->action_traces.reserve( new_action_ordinal + 1 );
+      trace->action_traces.reserve( new_action_ordinal );
 
       const action& provided_action = get_action_trace( action_ordinal ).act;
 
@@ -611,19 +623,7 @@ namespace bacc = boost::accumulators;
       return new_action_ordinal;
    }
 
-   action_trace& transaction_context::get_action_trace( int32_t action_ordinal ) {
-      EOS_ASSERT( 0 <= action_ordinal && action_ordinal < trace->action_traces.size() ,
-                  transaction_exception, "invalid action_ordinal" );
-      return trace->action_traces[action_ordinal];
-   }
-
-   const action_trace& transaction_context::get_action_trace( int32_t action_ordinal )const {
-      EOS_ASSERT( 0 <= action_ordinal && action_ordinal < trace->action_traces.size() ,
-                  transaction_exception, "invalid action_ordinal" );
-      return trace->action_traces[action_ordinal];
-   }
-
-   void transaction_context::execute_action( int32_t action_ordinal, uint32_t recurse_depth ) {
+   void transaction_context::execute_action( uint32_t action_ordinal, uint32_t recurse_depth ) {
       apply_context acontext( control, *this, action_ordinal, recurse_depth );
       acontext.exec();
    }

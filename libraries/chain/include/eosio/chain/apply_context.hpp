@@ -466,10 +466,8 @@ class apply_context {
       bool cancel_deferred_transaction( const uint128_t& sender_id ) { return cancel_deferred_transaction(sender_id, receiver); }
 
    protected:
-      int32_t schedule_action( int32_t ordinal_of_action_to_schedule, account_name receiver, bool context_free = false,
-                               int32_t creator_action_ordinal = -1, int32_t parent_action_ordinal = -1 );
-      int32_t schedule_action( action&& act_to_schedule, account_name receiver, bool context_free = false,
-                               int32_t creator_action_ordinal = -1, int32_t parent_action_ordinal = -1 );
+      uint32_t schedule_action( uint32_t ordinal_of_action_to_schedule, account_name receiver, bool context_free = false );
+      uint32_t schedule_action( action&& act_to_schedule, account_name receiver, bool context_free = false );
 
 
    /// Authorization methods:
@@ -568,8 +566,8 @@ class apply_context {
       // act pointer may be invalidated on call to trx_context.schedule_action
       account_name                  receiver; ///< the code that is currently running
       uint32_t                      recurse_depth; ///< how deep inline actions can recurse
-      int32_t                       first_receiver_action_ordinal = -1;
-      int32_t                       action_ordinal = -1;
+      uint32_t                      first_receiver_action_ordinal = 0;
+      uint32_t                      action_ordinal = 0;
       bool                          privileged   = false;
       bool                          context_free = false;
 
@@ -583,9 +581,9 @@ class apply_context {
    private:
 
       iterator_cache<key_value_object>    keyval_cache;
-      vector< std::pair<account_name, int32_t> > _notified; ///< keeps track of new accounts to be notifed of current message
-      vector<int32_t>                     _inline_actions; ///< action_ordinals of queued inline actions
-      vector<int32_t>                     _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions
+      vector< std::pair<account_name, uint32_t> > _notified; ///< keeps track of new accounts to be notifed of current message
+      vector<uint32_t>                    _inline_actions; ///< action_ordinals of queued inline actions
+      vector<uint32_t>                    _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions
       std::string                         _pending_console_output;
       flat_set<account_delta>             _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
 

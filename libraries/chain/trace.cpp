@@ -8,7 +8,7 @@ namespace eosio { namespace chain {
 
 action_trace::action_trace(
    const transaction_trace& trace, const action& act, account_name receiver, bool context_free,
-   int32_t action_ordinal, int32_t creator_action_ordinal, int32_t parent_action_ordinal
+   uint32_t action_ordinal, uint32_t creator_action_ordinal, uint32_t parent_action_ordinal
 )
 :action_ordinal( action_ordinal )
 ,creator_action_ordinal( creator_action_ordinal )
@@ -23,8 +23,8 @@ action_trace::action_trace(
 {}
 
 action_trace::action_trace(
-   const transaction_trace& trace, action&& act, account_name receiver, bool context_free, 
-   int32_t action_ordinal, int32_t creator_action_ordinal, int32_t parent_action_ordinal
+   const transaction_trace& trace, action&& act, account_name receiver, bool context_free,
+   uint32_t action_ordinal, uint32_t creator_action_ordinal, uint32_t parent_action_ordinal
 )
 :action_ordinal( action_ordinal )
 ,creator_action_ordinal( creator_action_ordinal )

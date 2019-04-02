@@ -64,22 +64,22 @@ namespace eosio { namespace chain {
 
          void add_ram_usage( account_name account, int64_t ram_delta );
 
-         action_trace& get_action_trace( int32_t action_ordinal );
-         const action_trace& get_action_trace( int32_t action_ordinal )const;
+         action_trace& get_action_trace( uint32_t action_ordinal );
+         const action_trace& get_action_trace( uint32_t action_ordinal )const;
 
          /** invalidates any action_trace references returned by get_action_trace */
-         int32_t schedule_action( const action& act, account_name receiver, bool context_free = false,
-                                  int32_t creator_action_ordinal = -1, int32_t parent_action_ordinal = -1 );
+         uint32_t schedule_action( const action& act, account_name receiver, bool context_free = false,
+                                   uint32_t creator_action_ordinal = 0, uint32_t parent_action_ordinal = 0 );
 
          /** invalidates any action_trace references returned by get_action_trace */
-         int32_t schedule_action( action&& act, account_name receiver, bool context_free = false,
-                                  int32_t creator_action_ordinal = -1, int32_t parent_action_ordinal = -1 );
+         uint32_t schedule_action( action&& act, account_name receiver, bool context_free = false,
+                                   uint32_t creator_action_ordinal = 0, uint32_t parent_action_ordinal = 0 );
 
          /** invalidates any action_trace references returned by get_action_trace */
-         int32_t schedule_action( int32_t action_ordinal, account_name receiver, bool context_free = false,
-                                  int32_t creator_action_ordinal = -1, int32_t parent_action_ordinal = -1 );
+         uint32_t schedule_action( uint32_t action_ordinal, account_name receiver, bool context_free = false,
+                                   uint32_t creator_action_ordinal = 0, uint32_t parent_action_ordinal = 0 );
 
-         void execute_action( int32_t action_ordinal, uint32_t recurse_depth = 0 );
+         void execute_action( uint32_t action_ordinal, uint32_t recurse_depth = 0 );
 
          void schedule_transaction();
          void record_transaction( const transaction_id_type& id, fc::time_point_sec expire );

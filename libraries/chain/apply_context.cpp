@@ -137,11 +137,11 @@ void apply_context::exec()
                   transaction_exception, "max inline action depth per transaction reached" );
    }
 
-   for( int32_t ordinal : _cfa_inline_actions ) {
+   for( uint32_t ordinal : _cfa_inline_actions ) {
       trx_context.execute_action( ordinal, recurse_depth + 1 );
    }
 
-   for( int32_t ordinal : _inline_actions ) {
+   for( uint32_t ordinal : _inline_actions ) {
       trx_context.execute_action( ordinal, recurse_depth + 1 );
    }
 
@@ -190,7 +190,7 @@ void apply_context::require_recipient( account_name recipient ) {
    if( !has_recipient(recipient) ) {
       _notified.emplace_back(
          recipient,
-         schedule_action( action_ordinal, recipient, false, action_ordinal, first_receiver_action_ordinal )
+         schedule_action( action_ordinal, recipient, false )
       );
    }
 }
@@ -284,7 +284,7 @@ void apply_context::execute_inline( action&& a ) {
 
    auto inline_receiver = a.account;
    _inline_actions.emplace_back(
-      schedule_action( std::move(a), inline_receiver, false, action_ordinal, first_receiver_action_ordinal )
+      schedule_action( std::move(a), inline_receiver, false )
    );
 }
 
@@ -299,7 +299,7 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
    auto inline_receiver = a.account;
    _cfa_inline_actions.emplace_back(
-      schedule_action( std::move(a), inline_receiver, true, action_ordinal, first_receiver_action_ordinal )
+      schedule_action( std::move(a), inline_receiver, true )
    );
 }
 
@@ -437,21 +437,21 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
    return gto;
 }
 
-int32_t apply_context::schedule_action( int32_t ordinal_of_action_to_schedule, account_name receiver, bool context_free,
-                                        int32_t creator_action_ordinal, int32_t parent_action_ordinal )
+uint32_t apply_context::schedule_action( uint32_t ordinal_of_action_to_schedule, account_name receiver, bool context_free )
 {
-   int32_t scheduled_action_ordinal = trx_context.schedule_action( ordinal_of_action_to_schedule, receiver, context_free,
-                                                                   creator_action_ordinal, parent_action_ordinal );
+   uint32_t scheduled_action_ordinal = trx_context.schedule_action( ordinal_of_action_to_schedule,
+                                                                    receiver, context_free,
+                                                                    action_ordinal, first_receiver_action_ordinal );
 
    act = &trx_context.get_action_trace( action_ordinal ).act;
    return scheduled_action_ordinal;
 }
 
-int32_t apply_context::schedule_action( action&& act_to_schedule, account_name receiver, bool context_free,
-                                        int32_t creator_action_ordinal, int32_t parent_action_ordinal )
+uint32_t apply_context::schedule_action( action&& act_to_schedule, account_name receiver, bool context_free )
 {
-   int32_t scheduled_action_ordinal = trx_context.schedule_action( std::move(act_to_schedule), receiver, context_free,
-                                                                   creator_action_ordinal, parent_action_ordinal );
+   uint32_t scheduled_action_ordinal = trx_context.schedule_action( std::move(act_to_schedule),
+                                                                    receiver, context_free,
+                                                                    action_ordinal, first_receiver_action_ordinal );
 
    act = &trx_context.get_action_trace( action_ordinal ).act;
    return scheduled_action_ordinal;

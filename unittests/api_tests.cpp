@@ -702,7 +702,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       auto ttrace = CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action", {} );
 
       BOOST_REQUIRE_EQUAL(ttrace->action_traces.size(), 2);
-      BOOST_CHECK_EQUAL(ttrace->action_traces[1].creator_action_ordinal, 0);
+      BOOST_CHECK_EQUAL(ttrace->action_traces[1].creator_action_ordinal.value, 1);
       BOOST_CHECK_EQUAL(ttrace->action_traces[1].receiver, account_name("dummy"));
       BOOST_CHECK_EQUAL(ttrace->action_traces[1].act.account, account_name("dummy"));
       BOOST_CHECK_EQUAL(ttrace->action_traces[1].act.name, account_name("event1"));
