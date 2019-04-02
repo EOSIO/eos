@@ -93,9 +93,9 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "action_trace_v0", "fields": [
-                { "name": "action_ordinal", "type": "int32" },
-                { "name": "creator_action_ordinal", "type": "int32" },
-                { "name": "parent_action_ordinal", "type": "int32" },
+                { "name": "action_ordinal", "type": "varuint32" },
+                { "name": "creator_action_ordinal", "type": "varuint32" },
+                { "name": "parent_action_ordinal", "type": "varuint32" },
                 { "name": "receipt", "type": "action_receipt?" },
                 { "name": "receiver", "type": "name" },
                 { "name": "act", "type": "action" },
