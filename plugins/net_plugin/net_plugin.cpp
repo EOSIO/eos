@@ -229,7 +229,6 @@ namespace eosio {
 
       mutable std::shared_timed_mutex  connections_mtx; // switch to std::shared_mutex in C++17
       std::set< connection_ptr >       connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
-      bool                             done = false;
       unique_ptr< sync_manager >       sync_master;
       unique_ptr< dispatch_manager >   dispatcher;
 
@@ -935,8 +934,12 @@ namespace eosio {
       fc_dlog( logger, "canceling wait on ${p}", ("p", self->peer_name()) ); // peer_name(), do not hold conn_mtx
       self->cancel_wait();
 
-      std::lock_guard<std::mutex> g( self->read_delay_timer_mtx );
+      std::unique_lock<std::mutex> g( self->read_delay_timer_mtx );
       self->read_delay_timer.cancel();
+      g.unlock();
+
+      // try to re-connect now
+      my_impl->connection_monitor( connection_wptr() );
    }
 
    void connection::blk_send_branch() {
@@ -3258,7 +3261,6 @@ namespace eosio {
                my->keepalive_timer->cancel();
          }
 
-         my->done = true;
          {
             fc_ilog( logger, "close ${s} connections", ("s", my->connections.size()) );
             std::unique_lock<std::shared_timed_mutex> g( my->connections_mtx );
