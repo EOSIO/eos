@@ -5,6 +5,7 @@
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/http_plugin/local_endpoint.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/thread_utils.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/log/logger_config.hpp>
@@ -123,7 +124,6 @@ namespace eosio {
    using websocket_local_server_type = websocketpp::server<detail::asio_local_with_stub_log>;
    using websocket_server_tls_type =  websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>;
    using ssl_context_ptr =  websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
-   using io_work_t = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
    static bool verbose_http_errors = false;
 
@@ -140,9 +140,7 @@ namespace eosio {
          websocket_server_type    server;
 
          uint16_t                                    thread_pool_size = 2;
-         optional<boost::asio::thread_pool>          thread_pool;
-         std::shared_ptr<boost::asio::io_context>    server_ioc;
-         optional<io_work_t>                         server_ioc_work;
+         optional<eosio::chain::named_thread_pool>   thread_pool;
          std::atomic<int64_t>                        bytes_in_flight{0};
          size_t                                      max_bytes_in_flight = 0;
 
@@ -301,12 +299,12 @@ namespace eosio {
                   con->defer_http_response();
                   bytes_in_flight += body.size();
                   app().post( appbase::priority::low,
-                              [ioc = this->server_ioc, &bytes_in_flight = this->bytes_in_flight, handler_itr,
+                              [&ioc = thread_pool->get_executor(), &bytes_in_flight = this->bytes_in_flight, handler_itr,
                                resource{std::move( resource )}, body{std::move( body )}, con]() {
                      try {
                         handler_itr->second( resource, body,
-                              [ioc{std::move(ioc)}, &bytes_in_flight, con]( int code, fc::variant response_body ) {
-                           boost::asio::post( *ioc, [ioc, response_body{std::move( response_body )}, &bytes_in_flight, con, code]() mutable {
+                              [&ioc, &bytes_in_flight, con]( int code, fc::variant response_body ) {
+                           boost::asio::post( ioc, [&ioc, response_body{std::move( response_body )}, &bytes_in_flight, con, code]() mutable {
                               std::string json = fc::json::to_string( response_body );
                               response_body.clear();
                               const size_t json_size = json.size();
@@ -340,11 +338,11 @@ namespace eosio {
          void create_server_for_endpoint(const tcp::endpoint& ep, websocketpp::server<detail::asio_with_stub_log<T>>& ws) {
             try {
                ws.clear_access_channels(websocketpp::log::alevel::all);
-               ws.init_asio(&(*server_ioc));
+               ws.init_asio( &thread_pool->get_executor() );
                ws.set_reuse_addr(true);
                ws.set_max_http_body_size(max_body_size);
                // capture server_ioc shared_ptr in http handler to keep it alive while in use
-               ws.set_http_handler([&, ioc = this->server_ioc](connection_hdl hdl) {
+               ws.set_http_handler([&](connection_hdl hdl) {
                   handle_http_request<detail::asio_with_stub_log<T>>(ws.get_con_from_hdl(hdl));
                });
             } catch ( const fc::exception& e ){
@@ -518,16 +516,7 @@ namespace eosio {
 
    void http_plugin::plugin_startup() {
 
-      my->thread_pool.emplace( my->thread_pool_size );
-      my->server_ioc = std::make_shared<boost::asio::io_context>();
-      my->server_ioc_work.emplace( boost::asio::make_work_guard(*my->server_ioc) );
-      for( uint16_t i = 0; i < my->thread_pool_size; ++i ) {
-         boost::asio::post( *my->thread_pool, [ioc = my->server_ioc, i]() {
-            std::string tn = "http-" + std::to_string( i );
-            fc::set_os_thread_name( tn );
-            ioc->run();
-         } );
-      }
+      my->thread_pool.emplace( "http", my->thread_pool_size );
 
       if(my->listen_endpoint) {
          try {
@@ -551,10 +540,10 @@ namespace eosio {
       if(my->unix_endpoint) {
          try {
             my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
-            my->unix_server.init_asio(&(*my->server_ioc));
+            my->unix_server.init_asio( &my->thread_pool->get_executor() );
             my->unix_server.set_max_http_body_size(my->max_body_size);
             my->unix_server.listen(*my->unix_endpoint);
-            my->unix_server.set_http_handler([&, ioc = my->server_ioc](connection_hdl hdl) {
+            my->unix_server.set_http_handler([&, &ioc = my->thread_pool->get_executor()](connection_hdl hdl) {
                my->handle_http_request<detail::asio_local_with_stub_log>( my->unix_server.get_con_from_hdl(hdl));
             });
             my->unix_server.start_accept();
@@ -614,12 +603,7 @@ namespace eosio {
       if(my->unix_server.is_listening())
          my->unix_server.stop_listening();
 
-      if( my->server_ioc_work )
-         my->server_ioc_work->reset();
-      if( my->server_ioc )
-         my->server_ioc->stop();
       if( my->thread_pool ) {
-         my->thread_pool->join();
          my->thread_pool->stop();
       }
    }
