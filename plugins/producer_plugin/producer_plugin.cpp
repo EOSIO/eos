@@ -62,7 +62,6 @@ static appbase::abstract_plugin& _producer_plugin = app().register_plugin<produc
 
 using namespace eosio::chain;
 using namespace eosio::chain::plugin_interface;
-using ioc_work_t = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
 namespace {
    bool failure_is_subjective(const fc::exception& e, bool deadline_is_subjective) {
@@ -135,9 +134,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::map<chain::account_name, uint32_t>                   _producer_watermarks;
       pending_block_mode                                        _pending_block_mode;
       transaction_id_with_expiry_index                          _persistent_transactions;
-      fc::optional<boost::asio::thread_pool>                    _thread_pool;
-      boost::asio::io_context                                   _ioc;
-      fc::optional<ioc_work_t>                                  _ioc_work;
+      fc::optional<named_thread_pool>                           _thread_pool;
 
       int32_t                                                   _max_transaction_time_ms;
       fc::microseconds                                          _max_irreversible_block_age_us;
@@ -356,9 +353,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void on_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
          const auto& cfg = chain.get_global_properties().configuration;
-         signing_keys_future_type future = transaction_metadata::start_recover_keys( trx, _ioc,
+         signing_keys_future_type future = transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
                chain.get_chain_id(), fc::microseconds( cfg.max_transaction_cpu_usage ) );
-         boost::asio::post( _ioc, [self = this, future, trx, persist_until_expired, next]() {
+         boost::asio::post( _thread_pool->get_executor(), [self = this, future, trx, persist_until_expired, next]() {
             if( future.valid() )
                future.wait();
             app().post(priority::low, [self, trx, persist_until_expired, next]() {
@@ -694,16 +691,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    auto thread_pool_size = options.at( "producer-threads" ).as<uint16_t>();
    EOS_ASSERT( thread_pool_size > 0, plugin_config_exception,
                "producer-threads ${num} must be greater than 0", ("num", thread_pool_size));
-   my->_thread_pool.emplace( thread_pool_size );
-
-   my->_ioc_work.emplace( boost::asio::make_work_guard( my->_ioc ) );
-   for( uint16_t i = 0; i < thread_pool_size; ++i ) {
-      boost::asio::post( *my->_thread_pool, [&ioc = my->_ioc, i]() {
-         std::string tn = "prod-" + std::to_string( i );
-         fc::set_os_thread_name( tn );
-         ioc.run();
-      } );
-   }
+   my->_thread_pool.emplace( "prod", thread_pool_size );
 
    if( options.count( "snapshots-dir" )) {
       auto sd = options.at( "snapshots-dir" ).as<bfs::path>();
@@ -799,10 +787,7 @@ void producer_plugin::plugin_shutdown() {
       edump((e.to_detail_string()));
    }
 
-   my->_ioc_work.reset();
-   my->_ioc.stop();
    if( my->_thread_pool ) {
-      my->_thread_pool->join();
       my->_thread_pool->stop();
    }
    my->_accepted_block_connection.reset();

@@ -7,13 +7,13 @@
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/thread_utils.hpp>
 #include <eosio/testing/tester.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
 #include <appbase/execution_priority_queue.hpp>
 
-#include <boost/asio/thread_pool.hpp>
 #include <boost/test/unit_test.hpp>
 
 #ifdef NON_VALIDATING_TEST
@@ -830,30 +830,20 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       BOOST_CHECK_EQUAL(trx.id(), mtrx->id);
       BOOST_CHECK_EQUAL(trx.id(), mtrx2->id);
 
-      using ioc_work_t = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
-      const int num_threads = 5;
-      boost::asio::thread_pool thread_pool( num_threads );
-      boost::asio::io_context ioc;
-      fc::optional<ioc_work_t> ioc_work( boost::asio::make_work_guard( ioc ) );
-      for( int i = 0; i < num_threads; ++i) {
-         boost::asio::post( thread_pool, [&ioc]() {
-            fc::set_os_thread_name( "misc_test" );
-            ioc.run();
-         } );
-      }
+      named_thread_pool thread_pool( "misc", 5 );
 
       BOOST_CHECK( !mtrx->signing_keys_future.valid() );
       BOOST_CHECK( !mtrx2->signing_keys_future.valid() );
 
-      transaction_metadata::start_recover_keys( mtrx, ioc, test.control->get_chain_id(), fc::microseconds::maximum() );
-      transaction_metadata::start_recover_keys( mtrx2, ioc, test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( mtrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( mtrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
 
       BOOST_CHECK( mtrx->signing_keys_future.valid() );
       BOOST_CHECK( mtrx2->signing_keys_future.valid() );
 
       // no-op
-      transaction_metadata::start_recover_keys( mtrx, ioc, test.control->get_chain_id(), fc::microseconds::maximum() );
-      transaction_metadata::start_recover_keys( mtrx2, ioc, test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( mtrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( mtrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
 
       auto keys = mtrx->recover_keys( test.control->get_chain_id() );
       BOOST_CHECK_EQUAL(1u, keys.second.size());
@@ -880,10 +870,7 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       BOOST_CHECK_EQUAL(1u, keys5.second.size());
       BOOST_CHECK_EQUAL(public_key, *keys5.second.begin());
 
-      ioc_work.reset();
-      ioc.stop();
       thread_pool.stop();
-      thread_pool.join();
 
 } FC_LOG_AND_RETHROW() }
 
