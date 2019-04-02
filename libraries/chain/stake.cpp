@@ -40,7 +40,7 @@ int64_t recall_proxied_traversal(const cyberway::chaindb::ram_payer_info& ram, s
         EOS_ASSERT(proxied_ret <= agent->proxied, transaction_exception, "SYSTEM: incorrect proxied_ret val");
 
         agents_idx.modify(*agent, [&](auto& a) {
-            a.balance -= balance_ret;
+            a.set_balance(a.balance - balance_ret);
             a.proxied -= proxied_ret;
             a.own_share += share_fee;
             a.shares_sum -= share_net;
@@ -96,7 +96,7 @@ void update_proxied_traversal(
             }
         }
         agents_idx.modify(*agent, [&](auto& a) {
-            a.balance += unstaked;
+            a.set_balance(a.balance + unstaked);
             a.proxied = new_proxied;
             a.last_proxied_update = time_point_sec(now);
         });
@@ -144,7 +144,7 @@ void recall_proxied(cyberway::chaindb::chaindb_controller& db, const cyberway::c
     
     EOS_ASSERT(amount > 0, transaction_exception, "amount to recall must be positive");
     agents_table.modify(*grantor_as_agent, [&](auto& a) {
-        a.balance += amount;
+        a.set_balance(a.balance + amount);
         a.proxied -= amount;
     });
 }

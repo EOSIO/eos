@@ -18,7 +18,7 @@ class stake_agent_object : public cyberway::chaindb::object<stake_agent_object_t
     symbol_code token_code;
     account_name account;
     uint8_t proxy_level;
-    bool ultimate;
+    int64_t votes;
     time_point_sec last_proxied_update;
     int64_t balance;
     int64_t proxied;
@@ -29,7 +29,13 @@ class stake_agent_object : public cyberway::chaindb::object<stake_agent_object_t
     public_key_type signing_key;
     int64_t get_total_funds()const { return balance + proxied; };
     struct by_key {};
-    struct by_ultimate {};
+    struct by_votes {};
+    void set_balance(int64_t arg) {
+        balance = arg;
+        if (!proxy_level) {
+            votes = balance;
+        }
+    };
 };
 
 using stake_agent_table = cyberway::chaindb::table_container<
@@ -42,10 +48,10 @@ using stake_agent_table = cyberway::chaindb::table_container<
               BOOST_MULTI_INDEX_MEMBER(stake_agent_object, symbol_code, token_code),
               BOOST_MULTI_INDEX_MEMBER(stake_agent_object, account_name, account)>
         >,
-        cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<stake_agent_object::by_ultimate>,
+        cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<stake_agent_object::by_votes>,
            cyberway::chaindb::composite_key<stake_agent_object,
               BOOST_MULTI_INDEX_MEMBER(stake_agent_object, symbol_code, token_code),
-              BOOST_MULTI_INDEX_MEMBER(stake_agent_object, bool, ultimate),
+              BOOST_MULTI_INDEX_MEMBER(stake_agent_object, int64_t, votes),
               BOOST_MULTI_INDEX_MEMBER(stake_agent_object, account_name, account)>
         >
     >
@@ -117,7 +123,7 @@ using stake_stat_table = cyberway::chaindb::table_container<
 
 CHAINDB_SET_TABLE_TYPE(eosio::chain::stake_agent_object, eosio::chain::stake_agent_table)
 CHAINDB_TAG(eosio::chain::stake_agent_object::by_key, bykey)
-CHAINDB_TAG(eosio::chain::stake_agent_object::by_ultimate, byultimate)
+CHAINDB_TAG(eosio::chain::stake_agent_object::by_votes, byvotes)
 CHAINDB_TAG(eosio::chain::stake_agent_object, stake.agent)
 
 CHAINDB_SET_TABLE_TYPE(eosio::chain::stake_grant_object, eosio::chain::stake_grant_table)
@@ -131,7 +137,7 @@ CHAINDB_SET_TABLE_TYPE(eosio::chain::stake_stat_object, eosio::chain::stake_stat
 CHAINDB_TAG(eosio::chain::stake_stat_object, stake.stat)
 
 FC_REFLECT(eosio::chain::stake_agent_object, 
-    (id)(token_code)(account)(proxy_level)(ultimate)(last_proxied_update)(balance)
+    (id)(token_code)(account)(proxy_level)(votes)(last_proxied_update)(balance)
     (proxied)(shares_sum)(own_share)(fee)(min_own_staked)(signing_key))
     
 FC_REFLECT(eosio::chain::stake_grant_object, 

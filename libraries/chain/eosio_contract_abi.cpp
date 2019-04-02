@@ -480,7 +480,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"token_code", "symbol_code"},
         {"account", "name"},
         {"proxy_level", "uint8"},
-        {"ultimate", "bool"},
+        {"votes", "int64"},
         {"last_proxied_update", "time_point_sec"},
         {"balance", "int64"},
         {"proxied", "int64" },
@@ -494,7 +494,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
       cyberway::chaindb::tag<stake_agent_object>::get_code(), "agent_struct", {
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {cyberway::chaindb::tag<stake_agent_object::by_key>::get_code(), true, {{"token_code", "asc"},{"account", "asc"}}},
-         {cyberway::chaindb::tag<stake_agent_object::by_ultimate>::get_code(), true, {{"token_code", "asc"},{"ultimate", "desc"},{"account", "asc"}}}
+         {cyberway::chaindb::tag<stake_agent_object::by_votes>::get_code(), true, {{"token_code", "asc"},{"votes", "desc"},{"account", "asc"}}}
       }
    });
    
