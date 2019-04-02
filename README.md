@@ -53,7 +53,7 @@ $ sudo apt remove eosio
 ```
 #### Centos RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.7.0/eosio-1.7.1-1.el7.x86_64.rpm
+$ wget https://github.com/eosio/eos/releases/download/v1.7.1/eosio-1.7.1-1.el7.x86_64.rpm
 $ sudo yum install ./eosio-1.7.1-1.el7.x86_64.rpm
 ```
 #### Centos RPM Package Uninstall
@@ -62,7 +62,7 @@ $ sudo yum remove eosio.cdt
 ```
 #### Fedora RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.7.0/eosio-1.7.1-1.fc27.x86_64.rpm
+$ wget https://github.com/eosio/eos/releases/download/v1.7.1/eosio-1.7.1-1.fc27.x86_64.rpm
 $ sudo yum install ./eosio-1.7.1-1.fc27.x86_64.rpm
 ```
 #### Fedora RPM Package Uninstall
@@ -76,9 +76,9 @@ EOSIO currently supports the following operating systems:
 2. Centos 7
 3. Fedora 25 and higher (Fedora 27 recommended)
 4. Mint 18
-5. Ubuntu 16.04 (Ubuntu 16.10 recommended)
+5. Ubuntu 16.04
 6. Ubuntu 18.04
-7. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended)
+7. MacOS Darwin 10.12 and higher (MacOS 10.14.x recommended)
 
 ## Resources
 1. [Website](https://eos.io)
