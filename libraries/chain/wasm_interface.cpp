@@ -193,6 +193,17 @@ class privileged_api : public context_aware_api {
          });
       }
 
+      void set_upgrade_parameters_packed( array_ptr<char> packed_upgrade_parameters, size_t datalen) {
+         datastream<const char*> ds( packed_upgrade_parameters, datalen );
+         uint32_t target_num;
+         fc::raw::unpack(ds, target_num);
+
+         context.db.modify( context.control.get_upgrade_properties(),
+                 [&]( auto& uprops ) {
+             uprops.upgrade_target_block_num = target_num;
+         });
+      }
+
       // *bos  begin*
       void set_name_list_packed(int64_t list, int64_t action, array_ptr<char> packed_name_list, size_t datalen)
       {

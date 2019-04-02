@@ -32,8 +32,8 @@ namespace eosio { namespace chain {
          >,
          ordered_non_unique< tag<by_lib_block_num>,
             composite_key< block_state,
-//                member<block_header_state,uint32_t,&block_header_state::dpos_irreversible_blocknum>,
                 member<block_header_state,uint32_t,&block_header_state::bft_irreversible_blocknum>,
+//                member<block_header_state,uint32_t,&block_header_state::dpos_irreversible_blocknum>,
                 member<block_state,bool,&block_state::pbft_prepared>,
                 member<block_state,bool,&block_state::pbft_my_prepare>,
                 member<block_header_state,uint32_t,&block_header_state::block_num>
@@ -144,7 +144,7 @@ namespace eosio { namespace chain {
       /// we cannot normally prune the lib if it is the head block because
       /// the next block needs to build off of the head block. We are exiting
       /// now so we can prune this block as irreversible before exiting.
-      auto lib    = my->head->bft_irreversible_blocknum;
+      auto lib = std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum);
       auto checkpoint = my->head->pbft_stable_checkpoint_blocknum;
       auto oldest = *my->index.get<by_block_num>().begin();
       if( oldest->block_num < lib && oldest->block_num < checkpoint ) {
@@ -188,7 +188,7 @@ namespace eosio { namespace chain {
 
       my->head = *my->index.get<by_lib_block_num>().begin();
 
-      auto lib    = my->head->bft_irreversible_blocknum;
+      auto lib = std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum);
       auto checkpoint = my->head->pbft_stable_checkpoint_blocknum;
       auto oldest = *my->index.get<by_block_num>().begin();
 
@@ -199,7 +199,7 @@ namespace eosio { namespace chain {
       return n;
    }
 
-   block_state_ptr fork_database::add( signed_block_ptr b, bool skip_validate_signee ) {
+   block_state_ptr fork_database::add( signed_block_ptr b, bool skip_validate_signee, bool new_version ) {
       EOS_ASSERT( b, fork_database_exception, "attempt to add null block" );
       EOS_ASSERT( my->head, fork_db_block_not_found, "no head block set" );
       const auto& by_id_idx = my->index.get<by_block_id>();
@@ -209,7 +209,7 @@ namespace eosio { namespace chain {
       auto prior = by_id_idx.find( b->previous );
       EOS_ASSERT( prior != by_id_idx.end(), unlinkable_block_exception, "unlinkable block", ("id", string(b->id()))("previous", string(b->previous)) );
 
-      auto result = std::make_shared<block_state>( **prior, move(b), skip_validate_signee );
+      auto result = std::make_shared<block_state>( **prior, move(b), skip_validate_signee, new_version);
       EOS_ASSERT( result, fork_database_exception , "fail to add new block state" );
       return add(result, true);
    }

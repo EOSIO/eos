@@ -165,7 +165,6 @@ namespace eosio { namespace chain {
       global_property_object_type,
       global_property2_object_type,
       dynamic_global_property_object_type,
-      upgrade_property_object_type,
       block_summary_object_type,
       transaction_object_type,
       generated_transaction_object_type,
@@ -190,6 +189,7 @@ namespace eosio { namespace chain {
       account_history_object_type,              ///< Defined by history_plugin
       action_history_object_type,               ///< Defined by history_plugin
       reversible_block_object_type,
+      upgrade_property_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 

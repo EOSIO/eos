@@ -50,7 +50,7 @@ namespace eosio { namespace chain {
       //TODO: should use a more complicated struct to include id, digest and status of every single upgrade.
 
        id_type                       id;
-       block_num_type                upgrade_target_block_num = 44500;
+       block_num_type                upgrade_target_block_num = 1000;
    };
 
 

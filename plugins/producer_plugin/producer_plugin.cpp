@@ -224,10 +224,20 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto new_block_header = bsp->header;
          new_block_header.timestamp = new_block_header.timestamp.next();
          new_block_header.previous = bsp->id;
-         auto new_bs = bsp->generate_next(new_block_header.timestamp);
+
+         auto new_version = false;
+
+         try {
+             const auto& upo = chain.get_upgrade_properties();
+             new_version = chain.last_irreversible_block_num() >= upo.upgrade_target_block_num;
+         } catch( const boost::exception& e) {
+             wlog("get upo failed: ${e}, regenerating...", ("e", boost::diagnostic_information(e)));
+         }
+
+         auto new_bs = bsp->generate_next(new_block_header.timestamp, new_version);
 
          // for newly installed producers we can set their watermarks to the block they became active
-         if (new_bs.maybe_promote_pending() && bsp->active_schedule.version != new_bs.active_schedule.version) {
+         if (new_bs.maybe_promote_pending(new_version) && bsp->active_schedule.version != new_bs.active_schedule.version) {
             flat_set<account_name> new_producers;
             new_producers.reserve(new_bs.active_schedule.producers.size());
             for( const auto& p: new_bs.active_schedule.producers) {

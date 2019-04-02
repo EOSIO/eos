@@ -33,7 +33,7 @@ namespace eosio { namespace chain {
    *  contain a transaction mroot, action mroot, or new_producers as those components
    *  are derived from chain state.
    */
-  block_header_state block_header_state::generate_next( block_timestamp_type when )const {
+  block_header_state block_header_state::generate_next( block_timestamp_type when, bool new_version )const {
     block_header_state result;
 
     if( when != block_timestamp_type() ) {
@@ -65,7 +65,7 @@ namespace eosio { namespace chain {
     result.pbft_stable_checkpoint_blocknum       = pbft_stable_checkpoint_blocknum;
 
 
-    if (header.block_num() > 50000) {
+    if (new_version) {
         result.dpos_irreversible_blocknum = dpos_irreversible_blocknum;
     } else {
         result.producer_to_last_implied_irb[prokey.producer_name] = result.dpos_proposed_irreversible_blocknum;
@@ -81,24 +81,30 @@ namespace eosio { namespace chain {
     auto num_active_producers = active_schedule.producers.size();
     uint32_t required_confs = (uint32_t)(num_active_producers * 2 / 3) + 1;
 
-    if( confirm_count.size() < config::maximum_tracked_dpos_confirmations ) {
-       result.confirm_count.reserve( confirm_count.size() + 1 );
-       result.confirm_count  = confirm_count;
-       result.confirm_count.resize( confirm_count.size() + 1 );
-       result.confirm_count.back() = (uint8_t)required_confs;
-    } else {
-       result.confirm_count.resize( confirm_count.size() );
-       memcpy( &result.confirm_count[0], &confirm_count[1], confirm_count.size() - 1 );
-       result.confirm_count.back() = (uint8_t)required_confs;
+    if (!new_version) {
+        if (confirm_count.size() < config::maximum_tracked_dpos_confirmations) {
+            result.confirm_count.reserve(confirm_count.size() + 1);
+            result.confirm_count = confirm_count;
+            result.confirm_count.resize(confirm_count.size() + 1);
+            result.confirm_count.back() = (uint8_t) required_confs;
+        } else {
+            result.confirm_count.resize(confirm_count.size());
+            memcpy(&result.confirm_count[0], &confirm_count[1], confirm_count.size() - 1);
+            result.confirm_count.back() = (uint8_t) required_confs;
+        }
     }
 
     return result;
   } /// generate_next
 
-   bool block_header_state::maybe_promote_pending() {
-      if (pending_schedule.producers.size())
-          //TODO: is this actually safe?
-//          bft_irreversible_blocknum >= pending_schedule_lib_num )
+   bool block_header_state::maybe_promote_pending( bool new_version ) {
+
+      bool should_promote_pending = pending_schedule.producers.size();
+      if ( !new_version ) {
+          should_promote_pending = should_promote_pending && dpos_irreversible_blocknum >= pending_schedule_lib_num;
+      }
+
+      if (should_promote_pending)
       {
          active_schedule = move( pending_schedule );
 
@@ -108,6 +114,7 @@ namespace eosio { namespace chain {
             if( existing != producer_to_last_produced.end() ) {
                new_producer_to_last_produced[pro.producer_name] = existing->second;
             } else {
+               //TODO: max of bft and dpos lib
                new_producer_to_last_produced[pro.producer_name] = bft_irreversible_blocknum;
             }
          }
@@ -118,6 +125,7 @@ namespace eosio { namespace chain {
             if( existing != producer_to_last_implied_irb.end() ) {
                new_producer_to_last_implied_irb[pro.producer_name] = existing->second;
             } else {
+               //TODO: max of bft and dpos lib
                new_producer_to_last_implied_irb[pro.producer_name] = bft_irreversible_blocknum;
             }
          }
@@ -150,18 +158,19 @@ namespace eosio { namespace chain {
    *
    *  If the header specifies new_producers then apply them accordingly.
    */
-  block_header_state block_header_state::next( const signed_block_header& h, bool skip_validate_signee )const {
+  block_header_state block_header_state::next( const signed_block_header& h, bool skip_validate_signee, bool new_version  )const {
     EOS_ASSERT( h.timestamp != block_timestamp_type(), block_validate_exception, "", ("h",h) );
     //EOS_ASSERT( h.header_extensions.size() == 0, block_validate_exception, "no supported extensions" );
 
     EOS_ASSERT( h.timestamp > header.timestamp, block_validate_exception, "block must be later in time" );
     EOS_ASSERT( h.previous == id, unlinkable_block_exception, "block must link to current state" );
-    auto result = generate_next( h.timestamp );
+    auto result = generate_next( h.timestamp, new_version);
     EOS_ASSERT( result.header.producer == h.producer, wrong_producer, "wrong producer specified" );
     EOS_ASSERT( result.header.schedule_version == h.schedule_version, producer_schedule_exception, "schedule_version in signed block is corrupted" );
 
     auto itr = producer_to_last_produced.find(h.producer);
     if( itr != producer_to_last_produced.end() ) {
+       ilog("itr: ${i}   header: ${h}", ("i", *itr)("h", h.confirmed));
        EOS_ASSERT( itr->second < result.block_num - h.confirmed, producer_double_confirm, "producer ${prod} double-confirming known range", ("prod", h.producer) );
     }
 
@@ -171,10 +180,10 @@ namespace eosio { namespace chain {
      /// must result in header state changes
 
 
-    result.set_confirmed( h.confirmed );
+    result.set_confirmed(h.confirmed, new_version);
 
 
-    auto was_pending_promoted = result.maybe_promote_pending();
+    auto was_pending_promoted = result.maybe_promote_pending(new_version);
 
     if( h.new_producers ) {
       EOS_ASSERT( !was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
@@ -196,7 +205,7 @@ namespace eosio { namespace chain {
     return result;
   } /// next
 
-  void block_header_state::set_confirmed( uint16_t num_prev_blocks ) {
+  void block_header_state::set_confirmed( uint16_t num_prev_blocks, bool new_version ) {
      /*
      idump((num_prev_blocks)(confirm_count.size()));
 
@@ -204,8 +213,10 @@ namespace eosio { namespace chain {
         std::cerr << "confirm_count["<<i<<"] = " << int(confirm_count[i]) << "\n";
      }
      */
-
-     if (header.block_num() > 50000) return;
+     if (new_version) {
+         header.confirmed = 0;
+         return;
+     }
      header.confirmed = num_prev_blocks;
 
      int32_t i = (int32_t)(confirm_count.size() - 1);

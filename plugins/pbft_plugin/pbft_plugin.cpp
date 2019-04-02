@@ -5,6 +5,7 @@
 #include <eosio/chain/pbft.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
+#include <eosio/chain/global_property_object.hpp>
 
 namespace eosio {
     static appbase::abstract_plugin &_pbft_plugin = app().register_plugin<pbft_plugin>();
@@ -129,8 +130,17 @@ namespace eosio {
 
     bool pbft_plugin_impl::pbft_ready() {
         // only trigger pbft related logic if I am in sync and replayed.
-        bool upgraded;
-        if (true) upgraded = true; else upgraded = false;
-        return (upgraded && (!is_syncing() && !is_replaying()));
+
+        auto new_version = false;
+        auto& chain = app().get_plugin<chain_plugin>().chain();
+
+        try {
+            const auto& upo = chain.get_upgrade_properties().upgrade_target_block_num;
+            new_version = chain.last_irreversible_block_num() >= upo + 500;
+        } catch( const boost::exception& e) {
+            wlog("get upo failed: ${e}, regenerating...", ("e", boost::diagnostic_information(e)));
+        }
+
+        return (new_version && (!is_syncing() && !is_replaying()));
     }
 }
