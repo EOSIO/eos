@@ -1,24 +1,28 @@
 #pragma once
-#include "custom_unpack.hpp"
 #include <eosio/chain/asset.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/crypto/public_key.hpp>
-#include <string>
+
+namespace cyberway { namespace golos {
 
 
-namespace cw {
-using std::string;
+struct gls_mapped_str {
+    fc::unsigned_int id;
+
+    std::string value(const std::vector<std::string>& lookup) const {
+        return lookup.at(id.value);
+    };
+};
+
+using fc::uint128_t;
+using fc::time_point_sec;
+using eosio::chain::asset;
 using eosio::chain::share_type;
-}
 
-namespace cw { namespace golos {
-
-
-using account_name_type = gls_acc_name;
-template<int N>
-using shared_string = gls_shared_str<N>;
-using asset         = gls_asset;
+using account_name_type = gls_mapped_str;//gls_acc_name;
+using shared_permlink   = gls_mapped_str;
+using shared_string     = std::string;
 using id_type       = int64_t;
 using digest_type   = fc::sha256;
 using block_id_type = fc::ripemd160;
@@ -26,9 +30,13 @@ using weight_type   = uint16_t;
 
 using public_key_type = fc::ecc::public_key_data;   // eosio public key is static variant: ecc/r1
 
+using witness_id_type = id_type;
+using account_id_type = id_type;
+using comment_id_type = id_type;
+
 struct shared_authority {
     uint32_t weight_threshold;
-    std::map<account_name_type, weight_type> account_auths;
+    std::vector<std::pair<account_name_type, weight_type>> account_auths;   // was map, but it requires to have operator< for accs
     std::map<public_key_type, weight_type> key_auths;
 };
 
@@ -75,6 +83,46 @@ struct price {
 using version = uint32_t;
 using hardfork_version = version;
 
-enum sstr_type {permlink, url, meta, memo};
+struct beneficiary_route_type {
+    account_name_type account;
+    uint16_t weight;
+};
 
-}} // cw::golos
+enum bandwidth_type {post, forum, market, custom_json};
+enum delegator_payout_strategy {to_delegator, to_delegated_vesting};
+enum witness_schedule_type {top19, timeshare, miner, none};
+enum comment_mode {not_set, first_payout, second_payout, archived};
+enum auction_window_reward_destination_type {to_reward_fund, to_curators, to_author};
+
+struct delegator_vote_interest_rate {
+    account_name_type account;
+    uint16_t interest_rate;
+    delegator_payout_strategy payout_strategy;
+};
+
+
+}} // cyberway::golos
+
+
+FC_REFLECT(cyberway::golos::gls_mapped_str, (id))
+
+FC_REFLECT(cyberway::golos::shared_authority, (weight_threshold)(account_auths)(key_auths))
+FC_REFLECT(cyberway::golos::chain_properties_17, (account_creation_fee)(maximum_block_size)(sbd_interest_rate))
+FC_REFLECT_DERIVED(cyberway::golos::chain_properties_18, (cyberway::golos::chain_properties_17),
+    (create_account_min_golos_fee)(create_account_min_delegation)(create_account_delegation_time)(min_delegation))
+FC_REFLECT_DERIVED(cyberway::golos::chain_properties_19, (cyberway::golos::chain_properties_18),
+    (max_referral_interest_rate)(max_referral_term_sec)(min_referral_break_fee)(max_referral_break_fee)
+    (posts_window)(posts_per_window)(comments_window)(comments_per_window)(votes_window)(votes_per_window)
+    (auction_window_size)(max_delegated_vesting_interest_rate)(custom_ops_bandwidth_multiplier)
+    (min_curation_percent)(max_curation_percent)(curation_reward_curve)
+    (allow_distribute_auction_reward)(allow_return_auction_reward_to_fund))
+FC_REFLECT(cyberway::golos::price, (base)(quote))
+FC_REFLECT(cyberway::golos::beneficiary_route_type, (account)(weight))
+FC_REFLECT(cyberway::golos::delegator_vote_interest_rate, (account)(interest_rate)(payout_strategy))
+
+FC_REFLECT_ENUM(cyberway::golos::comment_mode,    (not_set)(first_payout)(second_payout)(archived))
+FC_REFLECT_ENUM(cyberway::golos::bandwidth_type,  (post)(forum)(market)(custom_json))
+FC_REFLECT_ENUM(cyberway::golos::curation_curve,  (detect)(bounded)(linear)(square_root)(_size))
+FC_REFLECT_ENUM(cyberway::golos::witness_schedule_type, (top19)(timeshare)(miner)(none))
+FC_REFLECT_ENUM(cyberway::golos::delegator_payout_strategy, (to_delegator)(to_delegated_vesting))
+FC_REFLECT_ENUM(cyberway::golos::auction_window_reward_destination_type, (to_reward_fund)(to_curators)(to_author))

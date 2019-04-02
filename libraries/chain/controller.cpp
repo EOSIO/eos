@@ -585,18 +585,10 @@ struct controller_impl {
             a.set_abi(eosio_contract_abi());
          } else if (name == config::domain_account_name) {
             a.set_abi(domain_contract_abi());
-         } else if (name == config::token_account_name) {
-            a.set_abi(token_contract_abi());
          }
       });
       chaindb.emplace<account_sequence_object>([&](auto & a) {
         a.name = name;
-      });
-      // to test domain names table, create records in it; TODO: remove
-      chaindb.emplace<domain_object>([&](auto& a) {
-         a.owner = name;
-         a.creation_date = conf.genesis.initial_timestamp;
-         a.name = string(name);
       });
 
       const auto& owner_permission  = authorization.create_permission({}, name, config::owner_name, 0,
@@ -644,7 +636,6 @@ struct controller_impl {
       create_native_account(config::domain_account_name, system_auth, system_auth);
       create_native_account(config::govern_account_name, system_auth, system_auth, true);
       create_native_account(config::stake_account_name, system_auth, system_auth, true);
-      // create_native_account(config::token_account_name, system_auth, system_auth);
 
       auto empty_authority = authority(1, {}, {});
       auto active_producers_authority = authority(1, {}, {});
