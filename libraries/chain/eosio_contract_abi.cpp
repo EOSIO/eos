@@ -525,7 +525,8 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"max_proxies", "uint8[]"},
         {"frame_length", "int64"},
         {"payout_step_lenght", "int64"},
-        {"payout_steps_num", "uint16"}}});
+        {"payout_steps_num", "uint16"},
+        {"min_own_staked_for_election", "int64"}}});
         
    eos_abi.tables.emplace_back( eosio::chain::table_def {
       cyberway::chaindb::tag<stake_param_object>::get_code(), "param_struct", {
