@@ -10,6 +10,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/plugin_interface.hpp>
+#include <eosio/chain/thread_utils.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/chain/contract_types.hpp>
 
@@ -158,11 +159,8 @@ namespace eosio {
 
       channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
 
-      uint16_t                                  thread_pool_size = 1; // currently used by server_ioc
-      optional<boost::asio::thread_pool>        thread_pool;
-      std::shared_ptr<boost::asio::io_context>  server_ioc;
-      optional<io_work_t>                       server_ioc_work;
-
+      uint16_t                                  thread_pool_size = 1;
+      optional<eosio::chain::named_thread_pool> thread_pool;
 
       void connect(const connection_ptr& c);
       void connect(const connection_ptr& c, tcp::resolver::iterator endpoint_itr);
@@ -497,7 +495,7 @@ namespace eosio {
       peer_block_state_index  blk_state;
       transaction_state_index trx_state;
       optional<sync_state>    peer_requested;  // this peer is requesting info from us
-      std::shared_ptr<boost::asio::io_context>  server_ioc; // keep ioc alive
+      boost::asio::io_context&                  server_ioc;
       boost::asio::io_context::strand           strand;
       socket_ptr                                socket;
 
@@ -731,9 +729,9 @@ namespace eosio {
       : blk_state(),
         trx_state(),
         peer_requested(),
-        server_ioc( my_impl->server_ioc ),
+        server_ioc( my_impl->thread_pool->get_executor() ),
         strand( app().get_io_service() ),
-        socket( std::make_shared<tcp::socket>( std::ref( *my_impl->server_ioc ))),
+        socket( std::make_shared<tcp::socket>( my_impl->thread_pool->get_executor() ) ),
         node_id(),
         last_handshake_recv(),
         last_handshake_sent(),
@@ -757,7 +755,7 @@ namespace eosio {
       : blk_state(),
         trx_state(),
         peer_requested(),
-        server_ioc( my_impl->server_ioc ),
+        server_ioc( my_impl->thread_pool->get_executor() ),
         strand( app().get_io_service() ),
         socket( s ),
         node_id(),
@@ -784,8 +782,8 @@ namespace eosio {
    void connection::initialize() {
       auto *rnd = node_id.data();
       rnd[0] = 0;
-      response_expected.reset(new boost::asio::steady_timer( *my_impl->server_ioc ));
-      read_delay_timer.reset(new boost::asio::steady_timer( *my_impl->server_ioc ));
+      response_expected.reset(new boost::asio::steady_timer( my_impl->thread_pool->get_executor() ));
+      read_delay_timer.reset(new boost::asio::steady_timer( my_impl->thread_pool->get_executor() ));
    }
 
    bool connection::connected() {
@@ -1933,9 +1931,9 @@ namespace eosio {
 
 
    void net_plugin_impl::start_listen_loop() {
-      auto socket = std::make_shared<tcp::socket>( std::ref( *server_ioc ) );
-      acceptor->async_accept( *socket, [socket, this, ioc = server_ioc]( boost::system::error_code ec ) {
-            app().post( priority::low, [socket, this, ec, ioc{std::move(ioc)}]() {
+      auto socket = std::make_shared<tcp::socket>( my_impl->thread_pool->get_executor() );
+      acceptor->async_accept( *socket, [socket, this]( boost::system::error_code ec ) {
+            app().post( priority::low, [socket, this, ec]() {
             if( !ec ) {
                uint32_t visitors = 0;
                uint32_t from_addr = 0;
@@ -2662,8 +2660,8 @@ namespace eosio {
    }
 
    void net_plugin_impl::start_monitors() {
-      connector_check.reset(new boost::asio::steady_timer( *server_ioc ));
-      transaction_check.reset(new boost::asio::steady_timer( *server_ioc ));
+      connector_check.reset(new boost::asio::steady_timer( my_impl->thread_pool->get_executor() ));
+      transaction_check.reset(new boost::asio::steady_timer( my_impl->thread_pool->get_executor() ));
       start_conn_timer(connector_period, std::weak_ptr<connection>());
       start_txn_timer();
    }
@@ -3012,19 +3010,10 @@ namespace eosio {
    void net_plugin::plugin_startup() {
       my->producer_plug = app().find_plugin<producer_plugin>();
 
-      my->thread_pool.emplace( my->thread_pool_size );
-      my->server_ioc = std::make_shared<boost::asio::io_context>();
-      my->server_ioc_work.emplace( boost::asio::make_work_guard( *my->server_ioc ) );
       // currently thread_pool only used for server_ioc
-      for( uint16_t i = 0; i < my->thread_pool_size; ++i ) {
-         boost::asio::post( *my->thread_pool, [ioc = my->server_ioc, i]() {
-            std::string tn = "net-" + std::to_string( i );
-            fc::set_os_thread_name( tn );
-            ioc->run();
-         } );
-      }
+      my->thread_pool.emplace( "net", my->thread_pool_size );
 
-      my->resolver = std::make_shared<tcp::resolver>( std::ref( *my->server_ioc ));
+      my->resolver = std::make_shared<tcp::resolver>( my->thread_pool->get_executor() );
       if( my->p2p_address.size() > 0 ) {
          auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
          auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
@@ -3033,7 +3022,7 @@ namespace eosio {
 
          my->listen_endpoint = *my->resolver->resolve( query );
 
-         my->acceptor.reset( new tcp::acceptor( *my->server_ioc ) );
+         my->acceptor.reset( new tcp::acceptor( my_impl->thread_pool->get_executor() ) );
 
          if( !my->p2p_server_address.empty() ) {
             my->p2p_address = my->p2p_server_address;
@@ -3053,7 +3042,7 @@ namespace eosio {
          }
       }
 
-      my->keepalive_timer.reset( new boost::asio::steady_timer( *my->server_ioc ) );
+      my->keepalive_timer.reset( new boost::asio::steady_timer( my->thread_pool->get_executor() ) );
       my->ticker();
 
       if( my->acceptor ) {
@@ -3098,9 +3087,6 @@ namespace eosio {
    void net_plugin::plugin_shutdown() {
       try {
          fc_ilog( logger, "shutdown.." );
-         if( my->server_ioc_work )
-            my->server_ioc_work->reset();
-
          if( my->connector_check )
             my->connector_check->cancel();
          if( my->transaction_check )
@@ -3122,10 +3108,7 @@ namespace eosio {
             my->connections.clear();
          }
 
-         if( my->server_ioc )
-            my->server_ioc->stop();
          if( my->thread_pool ) {
-            my->thread_pool->join();
             my->thread_pool->stop();
          }
          fc_ilog( logger, "exit shutdown" );
