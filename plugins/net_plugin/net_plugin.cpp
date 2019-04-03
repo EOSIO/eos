@@ -234,7 +234,7 @@ namespace eosio {
 
       std::mutex                            connector_check_timer_mtx; 
       unique_ptr<boost::asio::steady_timer> connector_check_timer;
-      std::atomic<bool>                     connector_check_canceled{false};
+      int                                   connector_checks_in_flight{-1};
       std::mutex                            expire_timer_mtx;
       unique_ptr<boost::asio::steady_timer> expire_timer;
       std::mutex                            keepalive_timer_mtx;
@@ -313,7 +313,7 @@ namespace eosio {
       void handle_message(const connection_ptr& c, const packed_transaction& msg) = delete; // packed_transaction_ptr overload used instead
       void handle_message(const connection_ptr& c, const packed_transaction_ptr& msg);
 
-      void start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection, bool cancel_previous);
+      void start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection);
       void start_expire_timer();
       void start_monitors();
 
@@ -634,7 +634,7 @@ namespace eosio {
       bool current();
       void close();
    private:
-      static void _close( connection* self ); // for easy capture
+      static void _close( connection* self, bool reconnect ); // for easy capture
    public:
 
       bool resolve_and_connect();
@@ -906,11 +906,11 @@ namespace eosio {
 
    void connection::close() {
       strand.post( [self = shared_from_this()]() {
-         connection::_close( self.get() );
+         connection::_close( self.get(), true );
       });
    }
 
-   void connection::_close( connection* self ) {
+   void connection::_close( connection* self, bool reconnect ) {
       self->socket_open = false;
       boost::system::error_code ec;
       self->socket.shutdown( tcp::socket::shutdown_both, ec );
@@ -939,8 +939,9 @@ namespace eosio {
       self->read_delay_timer.cancel();
       g.unlock();
 
-      // try to re-connect now
-      my_impl->start_conn_timer( std::chrono::milliseconds( 5 ), connection_wptr(), true );
+      if( reconnect ) {
+         my_impl->start_conn_timer( std::chrono::milliseconds( 5 ), connection_wptr() );
+      }
    }
 
    void connection::blk_send_branch() {
@@ -2069,8 +2070,8 @@ namespace eosio {
                }
             } else {
                if( endpoint_itr != tcp::resolver::iterator() ) {
-                  c->close(); // close posts to strand, so also post connect otherwise connect will happen before close
                   c->strand.post( [resolver, c, endpoint_itr]() {
+                     connection::_close( c.get(), false ); // close posts to strand, so also post connect otherwise connect can happen before close
                      c->connect( resolver, endpoint_itr );
                   } );
                } else {
@@ -2785,17 +2786,20 @@ namespace eosio {
    }
 
    // called from any thread
-   void net_plugin_impl::start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection, bool cancel_previous) {
+   void net_plugin_impl::start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection) {
       std::lock_guard<std::mutex> g( connector_check_timer_mtx );
-      connector_check_canceled = cancel_previous;
+      ++connector_checks_in_flight;
       connector_check_timer->expires_from_now( du );
       connector_check_timer->async_wait( [this, from_connection](boost::system::error_code ec) {
+            std::unique_lock<std::mutex> g( connector_check_timer_mtx );
+            int num_in_flight = --connector_checks_in_flight;
+            g.unlock();
             if( !ec ) {
                connection_monitor(from_connection);
             } else {
-               if( !connector_check_canceled.exchange( false ) ) {
+               if( num_in_flight == 0 ) {
                   fc_elog( logger, "Error from connection check monitor: ${m}", ("m", ec.message()));
-                  start_conn_timer( connector_period, std::weak_ptr<connection>(), false );
+                  start_conn_timer( connector_period, std::weak_ptr<connection>() );
                }
             }
       });
@@ -2844,7 +2848,7 @@ namespace eosio {
          std::lock_guard<std::mutex> g( expire_timer_mtx );
          expire_timer.reset( new boost::asio::steady_timer( *server_ioc ) );
       }
-      start_conn_timer(connector_period, std::weak_ptr<connection>(), false);
+      start_conn_timer(connector_period, std::weak_ptr<connection>());
       start_expire_timer();
    }
 
@@ -2867,9 +2871,13 @@ namespace eosio {
       std::unique_lock<std::shared_timed_mutex> g( connections_mtx );
       auto it = (from ? connections.find(from) : connections.begin());
       if (it == connections.end()) it = connections.begin();
+      size_t num_rm = 0;
       while (it != connections.end()) {
          if (fc::time_point::now() >= max_time) {
-            start_conn_timer( std::chrono::milliseconds( 1 ), *it, false ); // avoid exhausting
+            connection_wptr wit = *it;
+            g.unlock();
+            fc_dlog( logger, "Exiting connection monitor early, ran out of time: ${t}", ("t", max_time - fc::time_point::now()) );
+            start_conn_timer( std::chrono::milliseconds( 1 ), wit ); // avoid exhausting
             return;
          }
          if( !(*it)->socket_is_open() && !(*it)->connecting) {
@@ -2886,7 +2894,8 @@ namespace eosio {
          ++it;
       }
       g.unlock();
-      start_conn_timer( connector_period, std::weak_ptr<connection>(), false );
+      fc_dlog( logger, "connection monitor, removed ${n} connections", ("n", num_rm) );
+      start_conn_timer( connector_period, std::weak_ptr<connection>() );
    }
 
    // called from application thread
