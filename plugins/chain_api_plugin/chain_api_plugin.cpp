@@ -62,9 +62,7 @@ public:
 
 private:
    get_table_rows_result walk_table_row_range(const get_table_rows_params& p,
-                                              cyberway::chaindb::find_info& itr,
-                                              cyberway::chaindb::primary_key_t end_pk,
-                                              const std::function<cyberway::chaindb::primary_key_t (cyberway::chaindb::chaindb_controller&, const cyberway::chaindb::cursor_request&)>& next) const;
+                                              cyberway::chaindb::find_info& itr, cyberway::chaindb::primary_key_t end_pk) const;
 
 
     const chain::controller& chain_controller_;
@@ -419,22 +417,17 @@ get_table_rows_result chain_api_plugin_impl::get_table_rows( const get_table_row
    const cyberway::chaindb::index_request request{p.code, p.scope, p.table, p.index};
 
    if (p.reverse && *p.reverse) {
-       auto begin = p.upper_bound.is_null() ? chaindb.end(request) : chaindb.upper_bound(request, p.upper_bound);
-
-       begin.pk = chaindb.prev({p.code, begin.cursor});
-
-       const auto end_pk = p.lower_bound.is_null() ? cyberway::chaindb::end_primary_key : chaindb.prev({p.code, chaindb.lower_bound(request, p.lower_bound).cursor});
-
-       return walk_table_row_range(p, begin, end_pk, [] (auto& chaindb, const auto& move_cursor_request) {return chaindb.prev(move_cursor_request);});
+       // TODO: implement rbegin end rend methods in mongo driver https://github.com/GolosChain/cyberway/issues/446
+       EOS_THROW(cyberway::chaindb::driver_unsupported_operation_exception, "Backward iteration through table not supported yet");
    } else {
        auto begin = p.lower_bound.is_null() ? chaindb.begin(request) : chaindb.lower_bound(request, p.lower_bound);
        const auto end_pk = p.upper_bound.is_null() ? cyberway::chaindb::end_primary_key : chaindb.upper_bound(request, p.upper_bound).pk;
-       return walk_table_row_range(p, begin, end_pk, [] (auto& chaindb, const auto& move_cursor_request) {return chaindb.next(move_cursor_request);});
+       return walk_table_row_range(p, begin, end_pk);
    }
 
 }
 
-get_table_rows_result chain_api_plugin_impl::walk_table_row_range(const get_table_rows_params& p, cyberway::chaindb::find_info& itr, cyberway::chaindb::primary_key_t end_pk, const std::function<cyberway::chaindb::primary_key_t (cyberway::chaindb::chaindb_controller&, const cyberway::chaindb::cursor_request&)>& next) const {
+get_table_rows_result chain_api_plugin_impl::walk_table_row_range(const get_table_rows_params& p, cyberway::chaindb::find_info& itr, cyberway::chaindb::primary_key_t end_pk) const {
     get_table_rows_result result;
 
     auto cur_time = fc::time_point::now();
@@ -444,10 +437,8 @@ get_table_rows_result chain_api_plugin_impl::walk_table_row_range(const get_tabl
     cyberway::chaindb::cursor_request cursor{p.code, itr.cursor};
 
     for(unsigned int count = 0;
-        cur_time <= end_time &&
-        count < p.limit &&
-        itr.pk != end_pk;
-        itr.pk = next(chaindb, cursor), ++count, cur_time = fc::time_point::now()) {
+        cur_time <= end_time && count < p.limit && itr.pk != end_pk;
+        itr.pk = chaindb.next(cursor), ++count, cur_time = fc::time_point::now()) {
         if (p.show_payer && *p.show_payer) {
             const auto object = chaindb.object_at_cursor(cursor);
             auto value = fc::mutable_variant_object()("data", object.value)("payer", object.service.payer);
