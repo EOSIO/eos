@@ -1,6 +1,14 @@
 steps:
 
   - command: |
+        echo "+++ :microscope: Running git submodule regression check" && \
+        ./scripts/submodule_check.sh
+    label: "Git submodule regression check"
+    agents:
+      queue: "automation-large-builder-fleet"
+    timeout: 240
+
+  - command: |
         echo "+++ :hammer: Building"
         ./scripts/eosio_build.sh -y
         echo "--- :compression: Compressing build directory"
