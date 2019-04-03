@@ -46,11 +46,11 @@ namespace eosio { namespace chain {
 
    class upgrade_property_object : public chainbase::object<upgrade_property_object_type, upgrade_property_object>
    {
-       OBJECT_CTOR(upgrade_property_object)
+      OBJECT_CTOR(upgrade_property_object)
       //TODO: should use a more complicated struct to include id, digest and status of every single upgrade.
 
-       id_type                       id;
-       block_num_type                upgrade_target_block_num = 1000;
+      id_type                       id;
+      block_num_type                upgrade_target_block_num = 2000;
    };
 
 

@@ -1252,10 +1252,13 @@ struct controller_impl {
       }
 
       auto new_version = false;
+      auto under_upgradation = false;
 
       try {
           const auto& upo = db.get<upgrade_property_object>();
           new_version = head->dpos_irreversible_blocknum >= upo.upgrade_target_block_num;
+          under_upgradation = (head->block_num + 1 >= upo.upgrade_target_block_num) 
+                  && head->dpos_irreversible_blocknum <= upo.upgrade_target_block_num + 12;
       } catch( const boost::exception& e) {
           wlog("get upo failed: ${e}, regenerating...", ("e", boost::diagnostic_information(e)));
           db.create<upgrade_property_object>([](auto&){});
@@ -1298,15 +1301,19 @@ struct controller_impl {
 
          if ( should_promote_pending_schedule )
             {
-               // Promote proposed schedule to pending schedule.
-               if( !replaying ) {
-                  ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
-                        ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
-                        ("lib", std::max(pending->_pending_block_state->bft_irreversible_blocknum, pending->_pending_block_state->dpos_irreversible_blocknum))
-                        ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
+               if (!under_upgradation) {
+                   // Promote proposed schedule to pending schedule.
+                   if (!replaying) {
+                       ilog("promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+                            ("proposed_num", *gpo.proposed_schedule_block_num)("n",
+                                                                               pending->_pending_block_state->block_num)
+                                    ("lib", std::max(pending->_pending_block_state->bft_irreversible_blocknum,
+                                                     pending->_pending_block_state->dpos_irreversible_blocknum))
+                                    ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule)));
 
+                   }
+                   pending->_pending_block_state->set_new_producers(gpo.proposed_schedule);
                }
-               pending->_pending_block_state->set_new_producers( gpo.proposed_schedule );
                db.modify( gpo, [&]( auto& gp ) {
                      gp.proposed_schedule_block_num = optional<block_num_type>();
                      gp.proposed_schedule.clear();

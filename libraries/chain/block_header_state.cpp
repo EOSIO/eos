@@ -115,7 +115,12 @@ namespace eosio { namespace chain {
                new_producer_to_last_produced[pro.producer_name] = existing->second;
             } else {
                //TODO: max of bft and dpos lib
-               new_producer_to_last_produced[pro.producer_name] = bft_irreversible_blocknum;
+               if (new_version) {
+                   new_producer_to_last_produced[pro.producer_name] = bft_irreversible_blocknum;
+               } else {
+                   new_producer_to_last_produced[pro.producer_name] = dpos_irreversible_blocknum;
+               }
+
             }
          }
 
@@ -126,7 +131,12 @@ namespace eosio { namespace chain {
                new_producer_to_last_implied_irb[pro.producer_name] = existing->second;
             } else {
                //TODO: max of bft and dpos lib
-               new_producer_to_last_implied_irb[pro.producer_name] = bft_irreversible_blocknum;
+               if (new_version) {
+                   new_producer_to_last_implied_irb[pro.producer_name] = bft_irreversible_blocknum;
+               } else {
+                   new_producer_to_last_implied_irb[pro.producer_name] = dpos_irreversible_blocknum;
+               }
+
             }
          }
 

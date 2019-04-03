@@ -33,9 +33,9 @@ namespace eosio {
         void checkpoint_timer_tick();
 
     private:
-        bool is_replaying();
-        bool is_syncing();
-        bool pbft_ready();
+        static bool is_replaying();
+        static bool is_syncing();
+        static bool pbft_ready();
     };
 
     pbft_plugin::pbft_plugin() : my(new pbft_plugin_impl()) {}
@@ -136,7 +136,7 @@ namespace eosio {
 
         try {
             const auto& upo = chain.get_upgrade_properties().upgrade_target_block_num;
-            new_version = chain.last_irreversible_block_num() >= upo + 500;
+            new_version = chain.last_irreversible_block_num() >= upo;
         } catch( const boost::exception& e) {
             wlog("get upo failed: ${e}, regenerating...", ("e", boost::diagnostic_information(e)));
         }
