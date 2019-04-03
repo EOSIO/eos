@@ -886,6 +886,7 @@ namespace eosio {
          close();
          return false;
       } else {
+         fc_dlog( logger, "connected to ${peer}", ("peer", peer_name()) );
          socket_open = true;
          start_read_message();
          return true;
@@ -3297,14 +3298,14 @@ namespace eosio {
     *  Used to trigger a new connection from RPC API
     */
    string net_plugin::connect( const string& host ) {
+      std::unique_lock<std::shared_timed_mutex> g( my->connections_mtx );
       if( my->find_connection( host ) )
          return "already connected";
 
       connection_ptr c = std::make_shared<connection>( host );
-      fc_dlog( logger, "calling active connector" );
+      fc_dlog( logger, "calling active connector: ${h}", ("h", host) );
       if( c->resolve_and_connect() ) {
-         fc_dlog( logger, "adding new connection to the list" );
-         std::unique_lock<std::shared_timed_mutex> g( my->connections_mtx );
+         fc_dlog( logger, "adding new connection to the list: ${c}", ("c", c->peer_name()) );
          my->connections.insert( c );
       }
       return "added connection";
@@ -3324,6 +3325,7 @@ namespace eosio {
    }
 
    optional<connection_status> net_plugin::status( const string& host )const {
+      std::shared_lock<std::shared_timed_mutex> g( my->connections_mtx );
       auto con = my->find_connection( host );
       if( con )
          return con->get_status();
@@ -3339,8 +3341,9 @@ namespace eosio {
       }
       return result;
    }
-   connection_ptr net_plugin_impl::find_connection(const string& host )const {
-      std::shared_lock<std::shared_timed_mutex> g( connections_mtx );
+
+   // call with connections_mtx
+   connection_ptr net_plugin_impl::find_connection( const string& host )const {
       for( const auto& c : connections )
          if( c->peer_address() == host ) return c;
       return connection_ptr();
