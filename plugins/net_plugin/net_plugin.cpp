@@ -805,7 +805,7 @@ namespace eosio {
    void connection::close() {
       if(socket) {
          boost::system::error_code ec;
-         socket->shutdown( tcp::socket::shutdown_both, ec )
+         socket->shutdown( tcp::socket::shutdown_both, ec );
          socket->close();
       }
       else {
