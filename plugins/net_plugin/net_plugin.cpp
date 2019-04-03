@@ -2793,7 +2793,7 @@ namespace eosio {
             if( !ec ) {
                connection_monitor(from_connection);
             } else {
-               if( connector_check_canceled.exchange( false ) ) {
+               if( !connector_check_canceled.exchange( false ) ) {
                   fc_elog( logger, "Error from connection check monitor: ${m}", ("m", ec.message()));
                   start_conn_timer( connector_period, std::weak_ptr<connection>(), false );
                }
