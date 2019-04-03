@@ -614,3 +614,11 @@ steps:
       - "build/packages/eosio_highsierra.rb"
       - "build/packages/eosio.rb"
     timeout: 60
+
+  - command: |
+        echo "+++ :microscope: Running git submodule regression check" && \
+        ./scripts/submodule_check.sh
+    label: "Git submodule regression check"
+    agents:
+      queue: "automation-large-builder-fleet"
+    timeout: 240
