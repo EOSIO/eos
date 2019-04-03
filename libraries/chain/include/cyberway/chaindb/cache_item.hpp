@@ -13,48 +13,61 @@
 
 namespace cyberway { namespace chaindb {
 
-    class  cache_item;
-    struct cache_item_data;
+    class  cache_object;
+    struct cache_data;
+    struct cache_index_value;
     struct cache_converter_interface;
 
-    using cache_item_ptr = boost::intrusive_ptr<cache_item>;
-    using cache_item_data_ptr = std::unique_ptr<cache_item_data>;
+    using cache_object_ptr = boost::intrusive_ptr<cache_object>;
+    using cache_data_ptr   = std::unique_ptr<cache_data>;
 
-    struct cache_item_data {
-        virtual ~cache_item_data() = default;
-    }; // struct cache_item_data
+    struct cache_data {
+        virtual ~cache_data() = default;
+    }; // struct cache_object_data
 
     struct cache_converter_interface {
-        cache_converter_interface();
-        virtual ~cache_converter_interface();
+        cache_converter_interface() = default;
+        virtual ~cache_converter_interface() = default;
 
-        virtual cache_item_data_ptr convert_variant(cache_item&, const object_value&) const = 0;
+        virtual void convert_variant(cache_object&) const = 0;
     }; // struct cache_load_interface
 
     struct table_cache_map;
 
-    class cache_item final:
-        public boost::intrusive_ref_counter<cache_item>,
+    struct cache_index_value final: public boost::intrusive::set_base_hook<> {
+        const account_name      code;
+        const account_name      scope;
+        const table_name        table;
+        const index_name        index;
+        const std::vector<char> data;
+        const cache_object&     object;
+
+        cache_index_value() = default;
+        cache_index_value(cache_index_value&&) = default;
+
+        ~cache_index_value() = default;
+    }; // struct cache_index_value
+
+    class cache_object final:
+        public boost::intrusive_ref_counter<cache_object>,
         public boost::intrusive::set_base_hook<>,
         public boost::intrusive::list_base_hook<>
     {
         table_cache_map* table_cache_map_ = nullptr;
         object_value     object_;
-
+        cache_data_ptr   data_;
     public:
-        cache_item(table_cache_map& map, object_value obj)
+        cache_object(table_cache_map& map, object_value obj)
         : table_cache_map_(&map), object_(std::move(obj)) {
         }
 
-        cache_item(cache_item&&) = default;
+        cache_object(cache_object&&) = default;
 
-        ~cache_item() = default;
+        ~cache_object() = default;
 
         bool is_deleted() const {
             return nullptr != table_cache_map_;
         }
-
-        void mark_deleted();
 
         template <typename Request>
         bool is_valid_table(const Request& request) const {
@@ -64,24 +77,34 @@ namespace cyberway { namespace chaindb {
                 object_.service.table == request.table;
         }
 
-        primary_key_t pk() const {
-            return object_.pk();
-        }
+        void mark_deleted();
 
-        void set_object(object_value obj) {
-            assert(is_valid_table(obj.service));
-            object_ = std::move(obj);
-        }
+        void set_object(object_value);
 
         void set_revision(const revision_t rev) {
             object_.service.revision = rev;
+        }
+
+        template <typename T, typename... Args> void set_data(Args&&... args) {
+            data_ = std::make_unique<T>(*this, std::forward<Args>(args)...);
+        }
+
+        primary_key_t pk() const {
+            return object_.pk();
         }
 
         const object_value& object() const {
             return object_;
         }
 
-        cache_item_data_ptr data;
-    }; // class cache_item
+        bool has_data() const {
+            return !!data_;
+        }
+
+        template <typename T> T& get_data() const {
+            assert(has_data());
+            return *static_cast<T*>(data_.get());
+        }
+    }; // class cache_object
 
 } } // namespace cyberway::chaindb

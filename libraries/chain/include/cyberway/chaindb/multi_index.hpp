@@ -71,8 +71,9 @@ void unpack_object(O& o, const char* data, const size_t size) {
     fc::raw::unpack(ds, o);
 }
 
-template<typename Size, typename Lambda>
-void safe_allocate(const Size size, const char* error_msg, Lambda&& callback) {
+template<typename Value, typename Lambda>
+void safe_allocate(const Value& value, const char* error_msg, Lambda&& callback) {
+    auto size = fc::raw::pack_size(value);
     CYBERWAY_ASSERT(size > 0, chaindb_midx_logic_exception, error_msg);
 
     constexpr static size_t max_stack_data_size = 65536;
@@ -100,7 +101,7 @@ void safe_allocate(const Size size, const char* error_msg, Lambda&& callback) {
 template<typename Key>
 find_info lower_bound(chaindb_controller& chaindb, const index_request& request, const Key& key) {
     find_info info;
-    safe_allocate(fc::raw::pack_size(key), "Invalid size of key on lower_bound", [&](auto& data, auto& size) {
+    safe_allocate(key, "Invalid size of key on lower_bound", [&](auto& data, auto& size) {
         pack_object(key, data, size);
         info = chaindb.lower_bound(request, data, size);
     });
@@ -110,7 +111,7 @@ find_info lower_bound(chaindb_controller& chaindb, const index_request& request,
 template<typename Key>
 find_info upper_bound(chaindb_controller& chaindb, const index_request& request, const Key& key) {
     find_info info;
-    safe_allocate(fc::raw::pack_size(key), "Invalid size of key on upper_bound", [&](auto& data, auto& size) {
+    safe_allocate(key, "Invalid size of key on upper_bound", [&](auto& data, auto& size) {
         pack_object(key, data, size);
         info = chaindb.upper_bound(request, data, size);
     });
@@ -226,48 +227,51 @@ public:
 private:
     static_assert(sizeof...(Indices) <= 16, "multi_index only supports a maximum of 16 secondary indices");
 
-    struct item_data final: public cache_item_data {
+    struct item_data final: public cache_data {
         struct item_type: public T {
             template<typename Constructor>
-            item_type(cache_item& cache, Constructor&& constructor)
+            item_type(cache_object& cache, Constructor&& constructor)
             : T(std::forward<Constructor>(constructor), 0),
               cache(cache) {
             }
 
-            cache_item& cache;
+            cache_object& cache;
         } item;
 
         template<typename Constructor>
-        item_data(cache_item& cache, Constructor&& constructor)
+        item_data(cache_object& cache, Constructor&& constructor)
         : item(cache, std::forward<Constructor>(constructor)) {
         }
 
-        static const T& get_T(const cache_item_ptr& cache) {
-            return static_cast<const T&>(static_cast<const item_data*>(cache->data.get())->item);
+        static const T& get_T(const cache_object& cache) {
+            return static_cast<const T&>(cache.get_data<const item_data>().item);
         }
 
-        static cache_item& get_cache(const T& o) {
-            return const_cast<cache_item&>(static_cast<const item_type&>(o).cache);
+        static const T& get_T(const cache_object_ptr& cache) {
+            return get_T(*cache.get());
+        }
+
+        static cache_object& get_cache(const T& o) {
+            return const_cast<cache_object&>(static_cast<const item_type&>(o).cache);
         }
 
         using value_type = T;
     }; // struct item_data
 
     struct cache_converter_ final: public cache_converter_interface {
-        cache_converter_() = default;
+        cache_converter_()  = default;
         ~cache_converter_() = default;
 
-        cache_item_data_ptr convert_variant(cache_item& itm, const object_value& obj) const override {
-            auto ptr = std::make_unique<item_data>(itm, [&](auto& o) {
+        void convert_variant(cache_object& cache) const override {
+            auto& obj = cache.object();
+            cache.set_data<item_data>([&](auto& o) {
                 T& data = static_cast<T&>(o);
                 fc::from_variant(obj.value, data);
             });
 
-            auto& data = static_cast<const T&>(ptr->item);
-            auto ptr_pk = primary_key_extractor_type()(data);
-            CYBERWAY_ASSERT(ptr_pk == obj.pk(), chaindb_midx_pk_exception,
+            const auto ptr_pk = primary_key_extractor_type()(item_data::get_T(cache));
+            CYBERWAY_ASSERT(ptr_pk == cache.object().pk(), chaindb_midx_pk_exception,
                 "invalid primary key ${pk} for the object ${obj}", ("pk", obj.pk())("obj", obj.value));
-            return ptr;
         }
     }; // struct cache_converter_
 
@@ -409,7 +413,7 @@ private:
         const_iterator_impl(chaindb_controller* ctrl, const cursor_t cursor, const primary_key_t pk)
         : controller_(ctrl), cursor_(cursor), primary_key_(pk) { }
 
-        const_iterator_impl(chaindb_controller* ctrl, const cursor_t cursor, const primary_key_t pk, cache_item_ptr item)
+        const_iterator_impl(chaindb_controller* ctrl, const cursor_t cursor, const primary_key_t pk, cache_object_ptr item)
         : controller_(ctrl), cursor_(cursor), primary_key_(pk), item_(std::move(item)) { }
 
         chaindb_controller& controller() const {
@@ -421,7 +425,7 @@ private:
         chaindb_controller* controller_ = nullptr;
         mutable cursor_t cursor_ = uninitilized_cursor::state;
         mutable primary_key_t primary_key_ = end_primary_key;
-        mutable cache_item_ptr item_;
+        mutable cache_object_ptr item_;
 
         void lazy_load_object() const {
             if (item_ && !item_->is_deleted()) return;
@@ -430,7 +434,7 @@ private:
             CYBERWAY_ASSERT(primary_key_ != end_primary_key, chaindb_midx_pk_exception,
                 "Cannot load object from the end iterator for the index ${index}", ("index", get_index_name()));
 
-            auto ptr = controller().get_cache_item({code_name(), cursor_}, get_table_request(), primary_key_);
+            auto ptr = controller().get_cache_object({code_name(), cursor_}, get_table_request(), primary_key_);
 
             auto& obj = item_data::get_T(ptr);
             auto ptr_pk = primary_key_extractor_type()(obj);
@@ -618,7 +622,7 @@ public:
             auto key = extractor_type()(obj);
             auto pk = primary_key_extractor_type()(obj);
             find_info info;
-            safe_allocate(fc::raw::pack_size(key), "Invalid size of key on iterator_to", [&](auto& data, auto& size) {
+            safe_allocate(key, "Invalid size of key on iterator_to", [&](auto& data, auto& size) {
                 pack_object(key, data, size);
                 info = controller_.find(get_index_request(), pk, data, size);
             });
@@ -627,15 +631,15 @@ public:
 
         template<typename Lambda>
         emplace_result emplace(const ram_payer_info& ram, Lambda&& constructor) const {
-            auto itm = controller_.create_cache_item(get_table_request());
+            auto cache = controller_.create_cache_object(get_table_request());
             try {
-                auto pk = itm->pk();
-                itm->data = std::make_unique<item_data>(*itm.get(), [&](auto& o) {
+                auto pk = cache->pk();
+                cache->template set_data<item_data>([&](auto& o) {
                     o.id = pk;
                     constructor(static_cast<T&>(o));
                 });
 
-                auto& obj = item_data::get_T(itm);
+                auto& obj = item_data::get_T(cache);
                 auto obj_pk = primary_key_extractor_type()(obj);
                 CYBERWAY_ASSERT(obj_pk == pk, chaindb_midx_pk_exception,
                     "Invalid value of primary key ${pk} for the object ${obj} on emplace for the index ${index}",
@@ -643,11 +647,11 @@ public:
 
                 fc::variant value;
                 fc::to_variant(obj, value);
-                auto delta = controller_.insert(*itm.get(), std::move(value), ram);
+                auto delta = controller_.insert(*cache.get(), std::move(value), ram);
 
                 return {obj, delta};
             } catch (...) {
-                itm->mark_deleted();
+                cache->mark_deleted();
                 throw;
             }
         }
@@ -698,7 +702,7 @@ public:
     private:
         friend multi_index;
 
-        static index_request& get_index_request() {
+        static const index_request& get_index_request() {
             static index_request request{code_name(), scope_name(), table_name(), index_name()};
             return request;
         }

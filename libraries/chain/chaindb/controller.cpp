@@ -123,12 +123,14 @@ namespace cyberway { namespace chaindb {
         journal journal_;
         std::unique_ptr<driver_interface> driver_ptr_;
         driver_interface& driver_;
+        abi_map abi_map_;
         cache_map cache_;
         undo_stack undo_;
 
         controller_impl_(chaindb_controller& controller, const chaindb_type t, string address, string sys_name)
         : driver_ptr_(_detail::create_driver(t, journal_, std::move(address), std::move(sys_name))),
           driver_(*driver_ptr_.get()),
+          cache_(abi_map_),
           undo_(controller, driver_, journal_, cache_) {
         }
 
@@ -249,7 +251,7 @@ namespace cyberway { namespace chaindb {
             cache_.set_cache_converter(table, converter);
         }
 
-        cache_item_ptr create_cache_item(const table_request& req) {
+        cache_object_ptr create_cache_object_value(const table_request& req) {
             auto table = get_table(req);
             auto item = cache_.create(table);
             if (BOOST_UNLIKELY(!item)) {
@@ -260,7 +262,7 @@ namespace cyberway { namespace chaindb {
             return item;
         }
 
-        cache_item_ptr get_cache_item(
+        cache_object_ptr get_cache_object_value(
             const cursor_request& cursor_req, const table_request& table_req, const primary_key_t pk
         ) {
             auto table = get_table(table_req);
@@ -290,7 +292,7 @@ namespace cyberway { namespace chaindb {
         }
 
         // From internal
-        int64_t insert(cache_item& itm, variant value, const ram_payer_info& ram) {
+        int64_t insert(cache_object& itm, variant value, const ram_payer_info& ram) {
             auto table = get_table(itm);
             auto obj = object_value{{table, itm.pk()}, std::move(value)};
 
@@ -323,7 +325,7 @@ namespace cyberway { namespace chaindb {
         }
 
         // From internal
-        int64_t update(cache_item& itm, variant value, const ram_payer_info& ram) {
+        int64_t update(cache_object& itm, variant value, const ram_payer_info& ram) {
             auto table = get_table(itm);
             auto obj = object_value{{table, itm.pk()}, std::move(value)};
 
@@ -342,7 +344,7 @@ namespace cyberway { namespace chaindb {
         }
 
         // From internal
-        int64_t remove(cache_item& itm, const ram_payer_info& ram) {
+        int64_t remove(cache_object& itm, const ram_payer_info& ram) {
             auto table = get_table(itm);
             auto orig_obj = itm.object();
 
@@ -362,8 +364,6 @@ namespace cyberway { namespace chaindb {
         }
 
     private:
-        abi_map abi_map_;
-
         const cursor_info& opt_find_by_pk(const table_info& table, primary_key_t pk) {
             index_info index(table);
             index.index = &get_pk_index(table);
@@ -371,7 +371,7 @@ namespace cyberway { namespace chaindb {
             return driver_.current(driver_.lower_bound(index, std::move(pk_key_value)));
         }
 
-        table_info get_table(const cache_item& itm) const {
+        table_info get_table(const cache_object& itm) const {
             auto& service = itm.object().service;
             auto info = find_table<index_info>(service);
             CYBERWAY_ASSERT(info.table, unknown_table_exception,
@@ -434,7 +434,7 @@ namespace cyberway { namespace chaindb {
             auto& obj = driver_.object_at_cursor(cursor);
             validate_object(cursor.index, obj, cursor.pk);
 
-            auto buffer = cursor.index.abi->to_bytes(cursor.index, obj.value);
+            auto buffer = cursor.index.abi->to_bytes(static_cast<const table_info&>(cursor.index), obj.value);
             driver_.set_blob(cursor, std::move(buffer));
         }
 
@@ -450,7 +450,7 @@ namespace cyberway { namespace chaindb {
             return obj;
         }
 
-        void validate_pk_field(const table_info& table, const variant& row, const primary_key_t pk) const { try {
+        void validate_pk_field(const table_info& table, const variant& row, const primary_key_t pk) const try {
             CYBERWAY_ASSERT(pk != unset_primary_key && pk != end_primary_key, primary_key_exception,
                 "Value ${pk} can't be used as primary key in the row ${row} "
                 "from the table ${table} for the scope '${scope}'",
@@ -522,7 +522,7 @@ namespace cyberway { namespace chaindb {
                 "Wrong value of the primary key in the row ${row} "
                 "from the table ${table} for the scope '${scope}'",
                 ("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-        } }
+        }
 
         void validate_object(const table_info& table, const object_value& obj, const primary_key_t pk) const {
             CYBERWAY_ASSERT(obj.value.get_type() == variant::type_id::object_type, invalid_abi_store_type_exception,
@@ -744,14 +744,14 @@ namespace cyberway { namespace chaindb {
         impl_->set_cache_converter(table, conv);
     }
 
-    cache_item_ptr chaindb_controller::create_cache_item(const table_request& table) {
-        return impl_->create_cache_item(table);
+    cache_object_ptr chaindb_controller::create_cache_object(const table_request& table) {
+        return impl_->create_cache_object_value(table);
     }
 
-    cache_item_ptr chaindb_controller::get_cache_item(
+    cache_object_ptr chaindb_controller::get_cache_object(
         const cursor_request& cursor, const table_request& table, const primary_key_t pk
     ) {
-        return impl_->get_cache_item(cursor, table, pk);
+        return impl_->get_cache_object_value(cursor, table, pk);
     }
 
     primary_key_t chaindb_controller::available_pk(const table_request& request) {
@@ -782,15 +782,15 @@ namespace cyberway { namespace chaindb {
          return impl_->insert(request, pk, std::move(data), ram);
     }
 
-    int64_t chaindb_controller::insert(cache_item& itm, variant data, const ram_payer_info& ram) {
+    int64_t chaindb_controller::insert(cache_object& itm, variant data, const ram_payer_info& ram) {
         return impl_->insert(itm, std::move(data), ram);
     }
 
-    int64_t chaindb_controller::update(cache_item& itm, variant data, const ram_payer_info& ram) {
+    int64_t chaindb_controller::update(cache_object& itm, variant data, const ram_payer_info& ram) {
         return impl_->update(itm, std::move(data), ram);
     }
 
-    int64_t chaindb_controller::remove(cache_item& itm, const ram_payer_info& ram) {
+    int64_t chaindb_controller::remove(cache_object& itm, const ram_payer_info& ram) {
         return impl_->remove(itm, ram);
     }
 

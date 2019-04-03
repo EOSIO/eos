@@ -123,11 +123,14 @@ namespace cyberway { namespace chaindb {
 
         void build_index(table_def& table, index_def& index, const struct_def& table_struct) {
             _detail::struct_def_map_type dst_struct_map;
-            std::deque<struct_def*> dst_structs;
+            std::vector<struct_def*> dst_structs;
 
+            auto max_size = index.orders.size() * abi_info::max_path_depth();
+            dst_struct_map.reserve(max_size);
+            dst_structs.reserve(max_size);
             auto struct_name = get_root_index_name(table, index);
             auto& root_struct = dst_struct_map.emplace(struct_name, struct_def(struct_name, "", {})).first->second;
-            dst_structs.push_front(&root_struct);
+            dst_structs.push_back(&root_struct);
             for (auto& order: index.orders) {
                 CYBERWAY_ASSERT(order.order == names::asc_order || order.order == names::desc_order,
                     invalid_index_description_exception,
@@ -135,6 +138,8 @@ namespace cyberway { namespace chaindb {
                     ("type", order.order)("index", root_struct.name));
 
                 boost::split(order.path, order.field, [](char c){return c == '.';});
+                CYBERWAY_ASSERT(order.path.size() <= abi_info::max_path_depth(), invalid_index_description_exception,
+                    "Path for index is too long in the index ${index}", ("index", root_struct.name));
 
                 auto dst_struct = &root_struct;
                 auto src_struct = &table_struct;
@@ -159,12 +164,12 @@ namespace cyberway { namespace chaindb {
                             index_cnt_res.first->second++;
                         } else {
                             src_struct = &get_struct(src_field.type);
-                            struct_name.append(1, '.').append(key);
+                            struct_name.append(1, ':').append(key);
                             auto itr = dst_struct_map.find(struct_name);
                             if (dst_struct_map.end() == itr) {
                                 dst_struct->fields.emplace_back(key, struct_name);
                                 itr = dst_struct_map.emplace(struct_name, struct_def(struct_name, "", {})).first;
-                                dst_structs.push_front(&itr->second);
+                                dst_structs.push_back(&itr->second);
                             }
                             dst_struct = &itr->second;
                         }
@@ -178,7 +183,8 @@ namespace cyberway { namespace chaindb {
                 struct_name = root_struct.name;
             }
 
-            for (auto struct_ptr: dst_structs) {
+            for (auto itr = dst_structs.rbegin(); dst_structs.rend() != itr; ++itr) {
+                auto struct_ptr = *itr;
                 serializer_.add_struct(std::move(*struct_ptr), max_abi_time_);
             }
         }

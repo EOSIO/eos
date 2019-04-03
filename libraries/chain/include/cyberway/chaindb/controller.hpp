@@ -170,8 +170,8 @@ namespace cyberway { namespace chaindb {
         primary_key_t data(const cursor_request&, const char*, size_t);
 
         void set_cache_converter(const table_request&, const cache_converter_interface&);
-        cache_item_ptr create_cache_item(const table_request&);
-        cache_item_ptr get_cache_item(const cursor_request&, const table_request&, primary_key_t);
+        cache_object_ptr create_cache_object(const table_request&);
+        cache_object_ptr get_cache_object(const cursor_request&, const table_request&, primary_key_t);
 
         primary_key_t available_pk(const table_request&);
 
@@ -181,9 +181,9 @@ namespace cyberway { namespace chaindb {
 
         int64_t insert(const table_request&, primary_key_t, variant, const ram_payer_info&);
 
-        int64_t insert(cache_item&, variant, const ram_payer_info&);
-        int64_t update(cache_item&, variant, const ram_payer_info&);
-        int64_t remove(cache_item&, const ram_payer_info&);
+        int64_t insert(cache_object&, variant, const ram_payer_info&);
+        int64_t update(cache_object&, variant, const ram_payer_info&);
+        int64_t remove(cache_object&, const ram_payer_info&);
 
         variant value_by_pk(const table_request& request, primary_key_t pk);
         variant value_at_cursor(const cursor_request& request);
