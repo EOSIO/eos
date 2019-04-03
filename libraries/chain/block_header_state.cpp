@@ -11,8 +11,7 @@ namespace eosio { namespace chain {
    }
 
    producer_key block_header_state::get_scheduled_producer( block_timestamp_type t )const {
-      auto index = t.slot % (active_schedule.producers.size() * config::producer_repetitions);
-      index /= config::producer_repetitions;
+      auto index = (t.slot - (scheduled_shuffle_slot + 1)) % active_schedule.producers.size();
       return active_schedule.producers[index];
    }
 
@@ -60,7 +59,7 @@ namespace eosio { namespace chain {
     result.blockroot_merkle.append( id );
 
     result.active_schedule                       = active_schedule;
-    result.promoting_block                       = promoting_block;
+    result.scheduled_shuffle_slot                = scheduled_shuffle_slot;
     result.pending_schedule                      = pending_schedule;
     result.dpos_proposed_irreversible_blocknum   = dpos_proposed_irreversible_blocknum;
     result.bft_irreversible_blocknum             = bft_irreversible_blocknum;
@@ -95,8 +94,8 @@ namespace eosio { namespace chain {
           dpos_irreversible_blocknum >= pending_schedule_lib_num )
       {
          active_schedule = move( pending_schedule );
-         shuffle(active_schedule.producers, when.slot);
-         promoting_block = when;
+         scheduled_shuffle_slot = when.slot;
+         shuffle(active_schedule.producers, scheduled_shuffle_slot);
 
          flat_map<account_name,uint32_t> new_producer_to_last_produced;
          for( const auto& pro : active_schedule.producers ) {
@@ -125,10 +124,14 @@ namespace eosio { namespace chain {
          return true;
       }
       else {
-          EOS_ASSERT( active_schedule.producers.size(), producer_schedule_exception, "SYSTEM: no active producers" );
-          EOS_ASSERT( when > promoting_block, producer_schedule_exception, "SYSTEM: wrong promoting_block value" );
-          if ((when.slot - promoting_block.slot) % (active_schedule.producers.size() * config::producer_repetitions) == 0) {
-             shuffle(active_schedule.producers, when.slot);
+          uint32_t prod_num = active_schedule.producers.size();
+          EOS_ASSERT(prod_num, producer_schedule_exception, "SYSTEM: no active producers");
+          EOS_ASSERT(when.slot > scheduled_shuffle_slot, producer_schedule_exception, "SYSTEM: wrong scheduled_shuffle_slot value");
+          auto next_scheduled_shuffle_slot = scheduled_shuffle_slot + prod_num;
+          if (when.slot >= next_scheduled_shuffle_slot) {
+              auto shuffle_displ = (when.slot - next_scheduled_shuffle_slot) % prod_num;
+              shuffle(active_schedule.producers.begin() + shuffle_displ, active_schedule.producers.end(), next_scheduled_shuffle_slot);
+              scheduled_shuffle_slot = when.slot - shuffle_displ; //when.slot >= next_scheduled_shuffle_slot >= prod_num > shuffle_displ
           }
       }
       return false;
