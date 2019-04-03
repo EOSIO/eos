@@ -1,12 +1,12 @@
 #pragma once
 #include <eosio/chain/types.hpp>
-#include <cyberway/chaindb/common.hpp>
+#include <cyberway/chaindb/controller.hpp>
 #include <fc/reflect/reflect.hpp>
 
 namespace cyberway { namespace genesis {
 
 using namespace eosio::chain;
-using chaindb::primary_key_t;
+using namespace chaindb;
 
 
 struct genesis_header {
@@ -31,14 +31,36 @@ struct table_header {
 struct sys_table_row {
     account_name ram_payer;
     bytes data;
+
+    table_request request(table_name t) {
+        return table_request{
+            .code = name(), //config::system_account_name,
+            .scope = name(),
+            .table = t
+        };
+    }
+    ram_payer_info payer() {
+        ram_payer_info r;
+        r.payer = ram_payer;
+        return r;
+    }
 };
 
 struct table_row: sys_table_row {
+    table_row() = default;
     table_row(sys_table_row base, primary_key_t pk, uint64_t scope): sys_table_row(base), pk(pk), scope(scope) {
     }
 
     primary_key_t pk;
     uint64_t scope;
+
+    table_request request(account_name a, table_name t) {
+        return table_request{
+            .code = a,
+            .scope = scope,
+            .table = t
+        };
+    }
 };
 
 

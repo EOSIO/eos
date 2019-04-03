@@ -26,7 +26,7 @@
 
 
 #include <cyberway/chaindb/controller.hpp>
-#include <cyberway/genesis/genesis_read.hpp>
+#include <cyberway/genesis/genesis_import.hpp>
 
 namespace eosio { namespace chain {
 
@@ -544,8 +544,8 @@ struct controller_impl {
 
     void read_genesis() {
         if (conf.read_genesis) {
-            cyberway::genesis::genesis_read reader(conf.genesis_file, self, conf.genesis);
-            reader.read();
+            cyberway::genesis::genesis_import reader(conf.genesis_file, self);
+            reader.import();
         }
     }
 
