@@ -797,7 +797,9 @@ struct controller_impl {
 
             try {
                 const auto& upo = db.get<upgrade_property_object>();
-                new_version = head->dpos_irreversible_blocknum >= upo.upgrade_target_block_num;
+                if (upo.upgrade_target_block_num > head->block_num) {
+                    new_version = head->dpos_irreversible_blocknum >= upo.upgrade_target_block_num;
+                }
             } catch( const boost::exception& e) {
                 wlog("get upo failed: ${e}, regenerating...", ("e", boost::diagnostic_information(e)));
                 db.create<upgrade_property_object>([](auto&){});
@@ -1252,19 +1254,20 @@ struct controller_impl {
       }
 
       auto new_version = false;
-      auto under_upgradation = false;
+      auto upgrading = false;
 
       try {
           const auto& upo = db.get<upgrade_property_object>();
-          new_version = head->dpos_irreversible_blocknum >= upo.upgrade_target_block_num;
-          under_upgradation = (head->block_num + 1 >= upo.upgrade_target_block_num) 
-                  && head->dpos_irreversible_blocknum <= upo.upgrade_target_block_num + 12;
+          ilog("upgrade target block num: ${n}", ("n", upo.upgrade_target_block_num));
+          if (upo.upgrade_target_block_num > head->block_num) {
+              new_version = head->dpos_irreversible_blocknum >= upo.upgrade_target_block_num;
+              upgrading = (head->block_num + 1 >= upo.upgrade_target_block_num)
+                                  && head->dpos_irreversible_blocknum <= upo.upgrade_target_block_num + 12;
+          }
       } catch( const boost::exception& e) {
           wlog("get upo failed: ${e}, regenerating...", ("e", boost::diagnostic_information(e)));
           db.create<upgrade_property_object>([](auto&){});
       }
-
-      ilog("upo ${n}, dpos ${l}", ("n", db.get<upgrade_property_object>().upgrade_target_block_num)("l", head->dpos_irreversible_blocknum));
 
 
       pending->_block_status = s;
@@ -1301,7 +1304,7 @@ struct controller_impl {
 
          if ( should_promote_pending_schedule )
             {
-               if (!under_upgradation) {
+               if (!upgrading) {
                    // Promote proposed schedule to pending schedule.
                    if (!replaying) {
                        ilog("promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
@@ -1463,7 +1466,9 @@ struct controller_impl {
 
       try {
           const auto& upo = db.get<upgrade_property_object>();
-          new_version = head->dpos_irreversible_blocknum >= upo.upgrade_target_block_num;
+          if (upo.upgrade_target_block_num > head->block_num) {
+              new_version = head->dpos_irreversible_blocknum >= upo.upgrade_target_block_num;
+          }
       } catch( const boost::exception& e) {
           wlog("get upo failed: ${e}, regenerating...", ("e", boost::diagnostic_information(e)));
           db.create<upgrade_property_object>([](auto&){});
@@ -1485,16 +1490,6 @@ struct controller_impl {
          block_state_ptr new_header_state = block_state_future.get();
          auto& b = new_header_state->block;
          emit( self.pre_accepted_block, b );
-
-         auto new_version = false;
-
-         try {
-             const auto& upo = db.get<upgrade_property_object>();
-             new_version = head->dpos_irreversible_blocknum >= upo.upgrade_target_block_num;
-         } catch( const boost::exception& e) {
-             wlog("get upo failed: ${e}, regenerating...", ("e", boost::diagnostic_information(e)));
-             db.create<upgrade_property_object>([](auto&){});
-         }
 
          fork_db.add( new_header_state, false);
 
@@ -1531,7 +1526,9 @@ struct controller_impl {
 
          try {
              const auto& upo = db.get<upgrade_property_object>();
-             new_version = head->dpos_irreversible_blocknum >= upo.upgrade_target_block_num;
+             if (upo.upgrade_target_block_num > head->block_num) {
+                 new_version = head->dpos_irreversible_blocknum >= upo.upgrade_target_block_num;
+             }
          } catch( const boost::exception& e) {
              wlog("get upo failed: ${e}, regenerating...", ("e", boost::diagnostic_information(e)));
              db.create<upgrade_property_object>([](auto&){});
@@ -1610,7 +1607,9 @@ struct controller_impl {
 
       try {
           const auto& upo = db.get<upgrade_property_object>();
-          new_version = head->dpos_irreversible_blocknum >= upo.upgrade_target_block_num;
+          if (upo.upgrade_target_block_num > head->block_num) {
+              new_version = head->dpos_irreversible_blocknum >= upo.upgrade_target_block_num;
+          }
       } catch( const boost::exception& e) {
           wlog("get upo failed: ${e}, regenerating...", ("e", boost::diagnostic_information(e)));
           db.create<upgrade_property_object>([](auto&){});

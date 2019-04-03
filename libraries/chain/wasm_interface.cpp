@@ -1843,6 +1843,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_guaranteed_minimum_resources,   void(int64_t,int64_t,int64_t)         )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
+   (set_upgrade_parameters_packed, void(int, int)                           )
 );
 
 REGISTER_INJECTED_INTRINSICS(transaction_context,

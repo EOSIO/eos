@@ -229,7 +229,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          try {
              const auto& upo = chain.get_upgrade_properties();
-             new_version = chain.last_irreversible_block_num() >= upo.upgrade_target_block_num;
+             if (upo.upgrade_target_block_num > chain.head_block_num()) {
+                 new_version = chain.last_irreversible_block_num() >= upo.upgrade_target_block_num;
+             }
          } catch( const boost::exception& e) {
              wlog("get upo failed: ${e}, regenerating...", ("e", boost::diagnostic_information(e)));
          }

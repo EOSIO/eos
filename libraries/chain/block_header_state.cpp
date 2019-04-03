@@ -180,7 +180,6 @@ namespace eosio { namespace chain {
 
     auto itr = producer_to_last_produced.find(h.producer);
     if( itr != producer_to_last_produced.end() ) {
-       ilog("itr: ${i}   header: ${h}", ("i", *itr)("h", h.confirmed));
        EOS_ASSERT( itr->second < result.block_num - h.confirmed, producer_double_confirm, "producer ${prod} double-confirming known range", ("prod", h.producer) );
     }
 

@@ -136,7 +136,9 @@ namespace eosio {
 
         try {
             const auto& upo = chain.get_upgrade_properties().upgrade_target_block_num;
-            new_version = chain.last_irreversible_block_num() >= upo;
+            if (upo > chain.head_block_num()) {
+                new_version = chain.last_irreversible_block_num() >= upo;
+            }
         } catch( const boost::exception& e) {
             wlog("get upo failed: ${e}, regenerating...", ("e", boost::diagnostic_information(e)));
         }
