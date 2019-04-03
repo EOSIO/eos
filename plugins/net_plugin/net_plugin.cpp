@@ -234,7 +234,7 @@ namespace eosio {
 
       std::mutex                            connector_check_timer_mtx; 
       unique_ptr<boost::asio::steady_timer> connector_check_timer;
-      int                                   connector_checks_in_flight{-1};
+      int                                   connector_checks_in_flight{0};
       std::mutex                            expire_timer_mtx;
       unique_ptr<boost::asio::steady_timer> expire_timer;
       std::mutex                            keepalive_timer_mtx;
