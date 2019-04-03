@@ -1021,13 +1021,13 @@ namespace eosio {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
          handshake_initializer::populate( c->last_handshake_sent );
          c->last_handshake_sent.generation = ++c->sent_handshake_count;
-         fc_dlog( logger, "Sending handshake generation ${g} to ${ep}, lib ${lib}, head ${head}",
-                  ("g", c->last_handshake_sent.generation)( "ep", c->peer_address() )
-                  ( "lib", c->last_handshake_sent.last_irreversible_block_num )
-                  ( "head", c->last_handshake_sent.head_num ) );
-         auto cpy = c->last_handshake_sent;
+         auto last_handshake_sent = c->last_handshake_sent;
          g_conn.unlock();
-         c->enqueue( cpy );
+         fc_dlog( logger, "Sending handshake generation ${g} to ${ep}, lib ${lib}, head ${head}",
+                  ("g", last_handshake_sent.generation)( "ep", c->peer_name() )
+                  ( "lib", last_handshake_sent.last_irreversible_block_num )
+                  ( "head", last_handshake_sent.head_num ) );
+         c->enqueue( last_handshake_sent );
       });
    }
 
