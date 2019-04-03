@@ -69,7 +69,10 @@ using io_work_t = boost::asio::executor_work_guard<boost::asio::io_context::exec
 {std::string("/v1/" #api_name "/" #call_name), \
    [this](string, string body, url_response_callback cb) mutable { \
       if (body.empty()) body = "{}"; \
-      auto result_handler = [cb, body](const fc::exception_ptr& e) {\
+       /*plugin processes many transactions, report only first to avoid http_plugin having to deal with multiple responses*/ \
+      auto times_called = std::make_shared<std::atomic<size_t>>(0);\
+      auto result_handler = [times_called{std::move(times_called)}, cb, body](const fc::exception_ptr& e) mutable {\
+         if( ++(*times_called) > 1 ) return;\
          if (e) {\
             try {\
                e->dynamic_rethrow_exception();\

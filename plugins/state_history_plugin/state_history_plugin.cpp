@@ -345,7 +345,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_applied_transaction(const transaction_trace_ptr& p) {
-      if (p->receipt) {
+      if (p->receipt && trace_log) {
          if (is_onblock(p))
             onblock_trace = p;
          else if (p->failed_dtrx_trace)
