@@ -14,14 +14,8 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
-if (UNIX)
-   if (APPLE)
-      execute_process(COMMAND xcrun --show-sdk-path
-                      OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
-                      OUTPUT_STRIP_TRAILING_WHITESPACE)
-      list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/llvm@4")
-      list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/gettext")
-   endif()
+if (UNIX AND APPLE)
+   list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/llvm@4" "/usr/local/opt/gettext")
 endif()
 
 include( GNUInstallDirs )
@@ -37,7 +31,7 @@ set( CXX_STANDARD_REQUIRED ON)
 
 set(VERSION_MAJOR 1)
 set(VERSION_MINOR 7)
-set(VERSION_PATCH 0)
+set(VERSION_PATCH 1)
 
 if(VERSION_SUFFIX)
     set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}-${VERSION_SUFFIX}")
@@ -109,17 +103,22 @@ IF( WIN32 )
   set(BOOST_ALL_DYN_LINK OFF) # force dynamic linking for all libraries
 ENDIF(WIN32)
 FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
-    thread
     date_time
     filesystem
     system
     program_options
-    serialization
     chrono
     unit_test_framework
-    context
-    locale
     iostreams)
+
+# Some new stdlibc++s will #error on <experimental/string_view>; a problem for boost pre-1.69
+if( APPLE AND UNIX )
+   add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
+endif()
+
+set(THREADS_PREFER_PTHREAD_FLAG 1)
+find_package(Threads)
+link_libraries(Threads::Threads)
 
 if( WIN32 )
 

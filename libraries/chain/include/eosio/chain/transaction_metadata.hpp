@@ -15,6 +15,10 @@ namespace eosio { namespace chain {
 
 class transaction_metadata;
 using transaction_metadata_ptr = std::shared_ptr<transaction_metadata>;
+using signing_keys_future_value_type = std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>>;
+using signing_keys_future_type = std::shared_future<signing_keys_future_value_type>;
+using recovery_keys_type = std::pair<fc::microseconds, const flat_set<public_key_type>&>;
+
 /**
  *  This data structure should store context-free cached data about a transaction such as
  *  packed/unpacked/compressed and recovered keys
@@ -24,10 +28,7 @@ class transaction_metadata {
       transaction_id_type                                        id;
       transaction_id_type                                        signed_id;
       packed_transaction_ptr                                     packed_trx;
-      fc::microseconds                                           sig_cpu_usage;
-      optional<pair<chain_id_type, flat_set<public_key_type>>>   signing_keys;
-      std::future<std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>>>
-                                                                 signing_keys_future;
+      signing_keys_future_type                                   signing_keys_future;
       bool                                                       accepted = false;
       bool                                                       implicit = false;
       bool                                                       scheduled = false;
@@ -50,10 +51,14 @@ class transaction_metadata {
          signed_id = digest_type::hash(*packed_trx);
       }
 
-      const flat_set<public_key_type>& recover_keys( const chain_id_type& chain_id );
+      // must be called from main application thread
+      static signing_keys_future_type
+      start_recover_keys( const transaction_metadata_ptr& mtrx, boost::asio::thread_pool& thread_pool,
+                          const chain_id_type& chain_id, fc::microseconds time_limit );
 
-      static void create_signing_keys_future( const transaction_metadata_ptr& mtrx, boost::asio::thread_pool& thread_pool,
-                                              const chain_id_type& chain_id, fc::microseconds time_limit );
+      // start_recover_keys must be called first
+      recovery_keys_type recover_keys( const chain_id_type& chain_id );
+
 
 };
 
