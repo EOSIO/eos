@@ -245,9 +245,42 @@ transaction_trace_ptr CallFunction(TESTER& test, T ac, const vector<char>& data,
    }
 }
 
+template <typename T>
+transaction_trace_ptr CallFunctionExpectFail(TESTER& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}) {
+   {
+      signed_transaction trx;
+
+      auto pl = vector<permission_level>{{scope[0], config::active_name}};
+      if (scope.size() > 1)
+         for (unsigned int i=1; i < scope.size(); i++)
+            pl.push_back({scope[i], config::active_name});
+
+      action act(pl, ac);
+      act.data = data;
+      act.authorization = {{N(testapi), config::active_name}};
+      trx.actions.push_back(act);
+
+      test.set_transaction_headers(trx, test.DEFAULT_EXPIRATION_DELTA);
+      auto sigs = trx.sign(test.get_private_key(scope[0], "active"), test.control->get_chain_id());
+
+      flat_set<public_key_type> keys;
+      trx.get_signature_keys(test.control->get_chain_id(), fc::time_point::maximum(), keys);
+
+      auto c = packed_transaction::none;
+
+      if( fc::raw::pack_size(trx) > 1000 ) {
+         c = packed_transaction::zlib;
+      }
+
+      auto res = test.control->push_transaction(std::make_shared<transaction_metadata>(trx,c), fc::time_point::maximum(), 100);
+      return res;
+   }
+}
+
 #define CALL_TEST_FUNCTION(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
 #define CALL_TEST_FUNCTION_SYSTEM(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {config::system_account_name} )
 #define CALL_TEST_FUNCTION_SCOPE(_TESTER, CLS, MTH, DATA, ACCOUNT) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, ACCOUNT)
+#define CALL_TEST_FUNCTION_SCOPE_EXPECT_FAIL(_TESTER, CLS, MTH, DATA, ACCOUNT) CallFunctionExpectFail(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, ACCOUNT)
 #define CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION(_TESTER, CLS, MTH, DATA, EXC, EXC_MESSAGE) \
 BOOST_CHECK_EXCEPTION( \
    CALL_TEST_FUNCTION( _TESTER, CLS, MTH, DATA), \
@@ -702,7 +735,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       auto ttrace = CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action", {} );
 
       BOOST_REQUIRE_EQUAL(ttrace->action_traces.size(), 2);
-      BOOST_CHECK_EQUAL(ttrace->action_traces[1].creator_action_ordinal.value, 1);
+      BOOST_CHECK_EQUAL((int)(ttrace->action_traces[1].creator_action_ordinal), 0);
       BOOST_CHECK_EQUAL(ttrace->action_traces[1].receiver, account_name("dummy"));
       BOOST_CHECK_EQUAL(ttrace->action_traces[1].act.account, account_name("dummy"));
       BOOST_CHECK_EQUAL(ttrace->action_traces[1].act.name, account_name("event1"));
@@ -2058,6 +2091,383 @@ BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
    produce_block();
 
    BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
+
+/*************************************************************************************
++ * action_ordinal_test test cases
++ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
+
+   produce_blocks(1);
+   create_account(N(testapi) );
+   set_code( N(testapi), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(bob) );
+   set_code( N(bob), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(charlie) );
+   set_code( N(charlie), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(david) );
+   set_code( N(david), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(erin) );
+   set_code( N(erin), contracts::test_api_wasm() );
+   produce_blocks(1);
+
+   transaction_trace_ptr txn_trace = CALL_TEST_FUNCTION_SCOPE( *this, "test_action", "test_action_ordinal1", 
+      {}, vector<account_name>{ N(testapi)});
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+
+   BOOST_REQUIRE_EQUAL( txn_trace != nullptr, true);
+   BOOST_REQUIRE_EQUAL( txn_trace->action_traces.size(), 11);
+
+   auto &atrace = txn_trace->action_traces;
+   BOOST_REQUIRE_EQUAL((int)atrace[0].action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[0].creator_action_ordinal, 0);
+   BOOST_REQUIRE_EQUAL((int)atrace[0].parent_action_ordinal, 0);
+   BOOST_REQUIRE_EQUAL(atrace[0].receipt.valid(), true);
+   int start_gseq = atrace[0].receipt->global_sequence;
+
+   BOOST_REQUIRE_EQUAL((int)atrace[1].action_ordinal,2);
+   BOOST_REQUIRE_EQUAL((int)atrace[1].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[1].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[1].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[1].receipt->global_sequence, start_gseq + 1);
+
+   BOOST_REQUIRE_EQUAL((int)atrace[2].action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL((int)atrace[2].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[2].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[2].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[2].receipt->global_sequence, start_gseq + 4);
+
+   BOOST_REQUIRE_EQUAL((int)atrace[3].action_ordinal, 4);
+   BOOST_REQUIRE_EQUAL((int)atrace[3].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[3].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[3].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[3].receipt->global_sequence, start_gseq + 8);
+
+   BOOST_REQUIRE_EQUAL((int)atrace[4].action_ordinal, 5);
+   BOOST_REQUIRE_EQUAL((int)atrace[4].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[4].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[4].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[4].receipt->global_sequence, start_gseq + 2);
+
+   BOOST_REQUIRE_EQUAL((int)atrace[5].action_ordinal, 6);
+   BOOST_REQUIRE_EQUAL((int)atrace[5].creator_action_ordinal, 2);
+   BOOST_REQUIRE_EQUAL((int)atrace[5].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[5].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[5].receipt->global_sequence, start_gseq + 9);
+
+   BOOST_REQUIRE_EQUAL((int)atrace[6].action_ordinal, 7);
+   BOOST_REQUIRE_EQUAL((int)atrace[6].creator_action_ordinal,2);
+   BOOST_REQUIRE_EQUAL((int)atrace[6].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[6].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[6].receipt->global_sequence, start_gseq + 3);
+
+   BOOST_REQUIRE_EQUAL((int)atrace[7].action_ordinal, 8);
+   BOOST_REQUIRE_EQUAL((int)atrace[7].creator_action_ordinal, 5);
+   BOOST_REQUIRE_EQUAL((int)atrace[7].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[7].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[7].receipt->global_sequence, start_gseq + 10);
+
+   BOOST_REQUIRE_EQUAL((int)atrace[8].action_ordinal, 9);
+   BOOST_REQUIRE_EQUAL((int)atrace[8].creator_action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL((int)atrace[8].parent_action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL(atrace[8].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[8].receipt->global_sequence, start_gseq + 5);
+
+   BOOST_REQUIRE_EQUAL((int)atrace[9].action_ordinal, 10);
+   BOOST_REQUIRE_EQUAL((int)atrace[9].creator_action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL((int)atrace[9].parent_action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL(atrace[9].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[9].receipt->global_sequence, start_gseq + 6);
+
+   BOOST_REQUIRE_EQUAL((int)atrace[10].action_ordinal, 11);
+   BOOST_REQUIRE_EQUAL((int)atrace[10].creator_action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL((int)atrace[10].parent_action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL(atrace[10].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[10].receipt->global_sequence, start_gseq + 7);
+} FC_LOG_AND_RETHROW() }
+
+
+/*************************************************************************************
++ * action_ordinal_failtest1 test cases
++ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest1, TESTER) { try {
+
+   produce_blocks(1);
+   create_account(N(testapi) );
+   set_code( N(testapi), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(bob) );
+   set_code( N(bob), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(charlie) );
+   set_code( N(charlie), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(david) );
+   set_code( N(david), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(erin) );
+   set_code( N(erin), contracts::test_api_wasm() );
+   produce_blocks(1);
+
+   create_account(N(fail1) ); // <- make first action fails in the middle
+   produce_blocks(1);
+
+   transaction_trace_ptr txn_trace = 
+      CALL_TEST_FUNCTION_SCOPE_EXPECT_FAIL( *this, "test_action", "test_action_ordinal1", 
+         {}, vector<account_name>{ N(testapi)});
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+
+   BOOST_REQUIRE_EQUAL( txn_trace != nullptr, true);
+   BOOST_REQUIRE_EQUAL( txn_trace->action_traces.size(), 3);
+
+   auto &atrace = txn_trace->action_traces;
+
+   // fails here after creating one notify action and one inline action 
+   BOOST_REQUIRE_EQUAL((int)atrace[0].action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[0].creator_action_ordinal, 0);
+   BOOST_REQUIRE_EQUAL((int)atrace[0].parent_action_ordinal, 0);
+   BOOST_REQUIRE_EQUAL(atrace[0].receipt.valid(), false);
+   BOOST_REQUIRE_EQUAL(atrace[0].except.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[0].except->code(), 3050003);
+
+   // not executed
+   BOOST_REQUIRE_EQUAL((int)atrace[1].action_ordinal, 2);
+   BOOST_REQUIRE_EQUAL((int)atrace[1].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[1].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[1].receipt.valid(), false);
+   BOOST_REQUIRE_EQUAL(atrace[1].except.valid(), false);
+
+   // not executed
+   BOOST_REQUIRE_EQUAL((int)atrace[2].action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL((int)atrace[2].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[2].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[2].receipt.valid(), false);
+   BOOST_REQUIRE_EQUAL(atrace[2].except.valid(), false);
+
+} FC_LOG_AND_RETHROW() }
+
+/*************************************************************************************
++ * action_ordinal_failtest2 test cases
++ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest2, TESTER) { try {
+
+   produce_blocks(1);
+   create_account(N(testapi) );
+   set_code( N(testapi), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(bob) );
+   set_code( N(bob), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(charlie) );
+   set_code( N(charlie), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(david) );
+   set_code( N(david), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(erin) );
+   set_code( N(erin), contracts::test_api_wasm() );
+   produce_blocks(1);
+
+   create_account(N(fail3) ); // <- make action 3 fails in the middle
+   produce_blocks(1);
+
+   transaction_trace_ptr txn_trace = 
+      CALL_TEST_FUNCTION_SCOPE_EXPECT_FAIL( *this, "test_action", "test_action_ordinal1", 
+         {}, vector<account_name>{ N(testapi)});
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+
+   BOOST_REQUIRE_EQUAL( txn_trace != nullptr, true);
+   BOOST_REQUIRE_EQUAL( txn_trace->action_traces.size(), 8);
+
+   auto &atrace = txn_trace->action_traces;
+
+   // executed
+   BOOST_REQUIRE_EQUAL((int)atrace[0].action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[0].creator_action_ordinal, 0);
+   BOOST_REQUIRE_EQUAL((int)atrace[0].parent_action_ordinal, 0);
+   BOOST_REQUIRE_EQUAL(atrace[0].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[0].except.valid(), false);
+   int start_gseq = atrace[0].receipt->global_sequence;
+
+   // executed
+   BOOST_REQUIRE_EQUAL((int)atrace[1].action_ordinal,2);
+   BOOST_REQUIRE_EQUAL((int)atrace[1].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[1].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[1].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[1].receipt->global_sequence, start_gseq + 1);
+
+   // not executed
+   BOOST_REQUIRE_EQUAL((int)atrace[2].action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL((int)atrace[2].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[2].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[2].receipt.valid(), false);
+   BOOST_REQUIRE_EQUAL(atrace[2].except.valid(), false);
+
+   // not executed
+   BOOST_REQUIRE_EQUAL((int)atrace[3].action_ordinal, 4);
+   BOOST_REQUIRE_EQUAL((int)atrace[3].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[3].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[3].receipt.valid(), false);
+   BOOST_REQUIRE_EQUAL(atrace[3].except.valid(), false);
+
+   // hey exception is here
+   BOOST_REQUIRE_EQUAL((int)atrace[4].action_ordinal, 5);
+   BOOST_REQUIRE_EQUAL((int)atrace[4].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[4].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[4].receipt.valid(), false);
+   BOOST_REQUIRE_EQUAL(atrace[4].except.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[4].except->code(), 3050003);
+
+   // not executed
+   BOOST_REQUIRE_EQUAL((int)atrace[5].action_ordinal, 6);
+   BOOST_REQUIRE_EQUAL((int)atrace[5].creator_action_ordinal, 2);
+   BOOST_REQUIRE_EQUAL((int)atrace[5].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[5].receipt.valid(), false);
+   BOOST_REQUIRE_EQUAL(atrace[5].except.valid(), false);
+
+   // not executed
+   BOOST_REQUIRE_EQUAL((int)atrace[6].action_ordinal, 7);
+   BOOST_REQUIRE_EQUAL((int)atrace[6].creator_action_ordinal,2);
+   BOOST_REQUIRE_EQUAL((int)atrace[6].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[6].receipt.valid(), false);
+   BOOST_REQUIRE_EQUAL(atrace[6].except.valid(), false);
+
+   // not executed
+   BOOST_REQUIRE_EQUAL((int)atrace[7].action_ordinal, 8);
+   BOOST_REQUIRE_EQUAL((int)atrace[7].creator_action_ordinal, 5);
+   BOOST_REQUIRE_EQUAL((int)atrace[7].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[7].receipt.valid(), false);
+   BOOST_REQUIRE_EQUAL(atrace[7].except.valid(), false);
+
+} FC_LOG_AND_RETHROW() }
+
+/*************************************************************************************
++ * action_ordinal_failtest3 test cases
++ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
+
+   produce_blocks(1);
+   create_account(N(testapi) );
+   set_code( N(testapi), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(bob) );
+   set_code( N(bob), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(charlie) );
+   set_code( N(charlie), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(david) );
+   set_code( N(david), contracts::test_api_wasm() );
+   produce_blocks(1);
+   create_account(N(erin) );
+   set_code( N(erin), contracts::test_api_wasm() );
+   produce_blocks(1);
+
+   create_account(N(failnine) ); // <- make action 9 fails in the middle
+   produce_blocks(1);
+
+   transaction_trace_ptr txn_trace = 
+      CALL_TEST_FUNCTION_SCOPE_EXPECT_FAIL( *this, "test_action", "test_action_ordinal1", 
+         {}, vector<account_name>{ N(testapi)});
+
+   for (auto &at : txn_trace->action_traces) {
+      std::cout << "\n\n";
+      std::cout << FC_LOG_MESSAGE(info, "${t}", ("t", at)).get_message();
+   }
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+
+   BOOST_REQUIRE_EQUAL( txn_trace != nullptr, true);
+   BOOST_REQUIRE_EQUAL( txn_trace->action_traces.size(), 11);
+
+   auto &atrace = txn_trace->action_traces;
+
+   // executed
+   BOOST_REQUIRE_EQUAL((int)atrace[0].action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[0].creator_action_ordinal, 0);
+   BOOST_REQUIRE_EQUAL((int)atrace[0].parent_action_ordinal, 0);
+   BOOST_REQUIRE_EQUAL(atrace[0].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[0].except.valid(), false);
+   int start_gseq = atrace[0].receipt->global_sequence;
+
+   // executed
+   BOOST_REQUIRE_EQUAL((int)atrace[1].action_ordinal,2);
+   BOOST_REQUIRE_EQUAL((int)atrace[1].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[1].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[1].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[1].receipt->global_sequence, start_gseq + 1);
+
+   // executed
+   BOOST_REQUIRE_EQUAL((int)atrace[2].action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL((int)atrace[2].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[2].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[2].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[2].receipt->global_sequence, start_gseq + 4);
+
+   // fails here
+   BOOST_REQUIRE_EQUAL((int)atrace[3].action_ordinal, 4);
+   BOOST_REQUIRE_EQUAL((int)atrace[3].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[3].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[3].receipt.valid(), false);
+   BOOST_REQUIRE_EQUAL(atrace[3].except.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[3].except->code(), 3050003);
+
+   // executed
+   BOOST_REQUIRE_EQUAL((int)atrace[4].action_ordinal, 5);
+   BOOST_REQUIRE_EQUAL((int)atrace[4].creator_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL((int)atrace[4].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[4].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[4].receipt->global_sequence, start_gseq + 2);
+
+   // not executed
+   BOOST_REQUIRE_EQUAL((int)atrace[5].action_ordinal, 6);
+   BOOST_REQUIRE_EQUAL((int)atrace[5].creator_action_ordinal, 2);
+   BOOST_REQUIRE_EQUAL((int)atrace[5].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[5].receipt.valid(), false);
+   BOOST_REQUIRE_EQUAL(atrace[5].except.valid(), false);
+
+   // executed
+   BOOST_REQUIRE_EQUAL((int)atrace[6].action_ordinal, 7);
+   BOOST_REQUIRE_EQUAL((int)atrace[6].creator_action_ordinal,2);
+   BOOST_REQUIRE_EQUAL((int)atrace[6].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[6].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[6].receipt->global_sequence, start_gseq + 3);
+
+   // not executed
+   BOOST_REQUIRE_EQUAL((int)atrace[7].action_ordinal, 8);
+   BOOST_REQUIRE_EQUAL((int)atrace[7].creator_action_ordinal, 5);
+   BOOST_REQUIRE_EQUAL((int)atrace[7].parent_action_ordinal, 1);
+   BOOST_REQUIRE_EQUAL(atrace[7].receipt.valid(), false);
+   BOOST_REQUIRE_EQUAL(atrace[7].except.valid(), false);
+
+   // executed
+   BOOST_REQUIRE_EQUAL((int)atrace[8].action_ordinal, 9);
+   BOOST_REQUIRE_EQUAL((int)atrace[8].creator_action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL((int)atrace[8].parent_action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL(atrace[8].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[8].receipt->global_sequence, start_gseq + 5);
+
+   // executed
+   BOOST_REQUIRE_EQUAL((int)atrace[9].action_ordinal, 10);
+   BOOST_REQUIRE_EQUAL((int)atrace[9].creator_action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL((int)atrace[9].parent_action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL(atrace[9].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[9].receipt->global_sequence, start_gseq + 6);
+
+   // executed
+   BOOST_REQUIRE_EQUAL((int)atrace[10].action_ordinal, 11);
+   BOOST_REQUIRE_EQUAL((int)atrace[10].creator_action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL((int)atrace[10].parent_action_ordinal, 3);
+   BOOST_REQUIRE_EQUAL(atrace[10].receipt.valid(), true);
+   BOOST_REQUIRE_EQUAL(atrace[10].receipt->global_sequence, start_gseq + 7);
+
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
