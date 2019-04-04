@@ -198,6 +198,8 @@ class privileged_api : public context_aware_api {
          uint32_t target_num;
          fc::raw::unpack(ds, target_num);
 
+         EOS_ASSERT( context.control.head_block_num() < target_num - 100, wasm_execution_error, "upgrade target block is too close");
+
          context.db.modify( context.control.get_upgrade_properties(),
                  [&]( auto& uprops ) {
              uprops.upgrade_target_block_num = target_num;
