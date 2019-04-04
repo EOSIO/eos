@@ -407,7 +407,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          const auto& id = trx->id;
          if( fc::time_point(trx->packed_trx->expiration()) < block_time ) {
-            send_response(std::static_pointer_cast<fc::exception>(std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", id)) )));
+            send_response(std::static_pointer_cast<fc::exception>(
+                  std::make_shared<expired_tx_exception>(
+                        FC_LOG_MESSAGE(error, "expired transaction ${id}, expiration ${e}, block time ${bt}",
+                                       ("id", id)("e", trx->packed_trx->expiration())("bt", block_time)) )));
             return;
          }
 
