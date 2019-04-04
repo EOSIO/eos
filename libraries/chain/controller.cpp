@@ -984,6 +984,8 @@ struct controller_impl {
          trx_context.squash();
          restore.cancel();
          return trace;
+      } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
+         throw;
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
       } catch( const fc::exception& e ) {
@@ -1118,6 +1120,8 @@ struct controller_impl {
          restore.cancel();
 
          return trace;
+      } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
+         throw;
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
       } catch( const fc::exception& e ) {

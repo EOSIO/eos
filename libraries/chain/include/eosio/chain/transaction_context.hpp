@@ -73,6 +73,8 @@ namespace eosio { namespace chain {
 
          void validate_cpu_usage_to_bill( int64_t u, bool check_minimum = true )const;
 
+         void disallow_transaction_extensions( const char* error_msg )const;
+
       /// Fields:
       public:
 
