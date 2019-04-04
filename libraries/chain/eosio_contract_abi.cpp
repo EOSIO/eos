@@ -179,10 +179,10 @@ abi_def eosio_contract_abi(abi_def eos_abi)
       "account_sequence_object", "", {
          {"id", "uint64"},
          {"name", "name"},
-         {"recv", "uint64"},
-         {"auth", "uint64"},
-         {"code", "uint64"},
-         {"abi", "uint64"}
+         {"recv_sequence", "uint64"},
+         {"auth_sequence", "uint64"},
+         {"code_sequence", "uint64"},
+         {"abi_sequence", "uint64"}
       }
    });
 
@@ -334,7 +334,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "permission_usage_object", "", {
          {"id", "uint64"},
-         {"last_used", "uint64"}
+         {"last_used", "time_point"}
       }
    });
 
@@ -345,18 +345,23 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    });
 
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
+      "shared_authority", "", {
+         {"threshold", "uint32"},
+         {"keys", "key_weight[]"},
+         {"accounts", "permission_level_weight[]"},
+         {"waits", "wait_weight[]"}}
+   });
+
+   eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "permission_object", "", {
          {"id", "uint64"},
          {"usage_id", "uint64"},
          {"parent", "uint64"},
          {"owner", "name"},
          {"name", "name"},
-         {"last_updated", "uint64"},
+         {"last_updated", "time_point"},
 
-         {"threshold", "uint32"},
-         {"keys", "key_weight[]"},
-         {"accounts", "permission_level_weight[]"},
-         {"waits", "wait_weight[]"}}
+         {"auth", "shared_authority"}}
    });
 
    eos_abi.tables.emplace_back( eosio::chain::table_def {
@@ -709,28 +714,5 @@ abi_def domain_contract_abi(abi_def abi) {
 
     return abi;
 }
-
-// this abi contains only tables needed for genesis
-abi_def token_contract_abi(abi_def abi) {
-    set_common_defs(abi);
-    abi.structs.emplace_back(struct_def{"account", "", {
-        {"balance", "asset"}}
-    });
-    abi.structs.emplace_back(struct_def{"currency_stats", "", {
-        {"supply", "asset"},
-        {"max_supply", "asset"},
-        {"issuer", "name"}}
-    });
-
-    abi.tables.emplace_back(table_def{"accounts", "account", {
-        {"primary", true, {{"balance.sym", "asc"}}}
-    }});
-    abi.tables.emplace_back(table_def{"stat", "currency_stats", {
-        {"primary", true, {{"supply.sym", "asc"}}}
-    }});
-
-    return abi;
-}
-
 
 } } /// eosio::chain

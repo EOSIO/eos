@@ -53,8 +53,7 @@ add_library( eosio_chain
              chaindb/ram_calculator.cpp
 
              domain_name.cpp
-             genesis/genesis_read.cpp
-             genesis/genesis_accounts.cpp
+             genesis/genesis_import.cpp
              ${CHAINDB_SRCS}
 
 #             get_config.cpp
