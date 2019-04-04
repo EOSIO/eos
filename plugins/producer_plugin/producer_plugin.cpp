@@ -225,14 +225,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          new_block_header.timestamp = new_block_header.timestamp.next();
          new_block_header.previous = bsp->id;
 
-         auto new_version = false;
-
-         try {
-             const auto& upo = chain.get_upgrade_properties().upgrade_target_block_num;
-             new_version = chain.last_irreversible_block_num() >= upo && upo > 0;
-         } catch( const boost::exception& e) {
-             wlog("get upo failed, regenerating...");
-         }
+         auto new_version = chain.is_upgraded();
 
          auto new_bs = bsp->generate_next(new_block_header.timestamp, new_version);
 

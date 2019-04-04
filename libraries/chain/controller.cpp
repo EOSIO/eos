@@ -777,6 +777,18 @@ struct controller_impl {
 
    // "bos end"
 
+   bool is_new_version() {
+       try {
+           const auto& upo = db.get<upgrade_property_object>().upgrade_target_block_num;
+//           dlog("upgrade target block num: ${n}", ("n", upo));
+           return  head->dpos_irreversible_blocknum >= upo && upo > 0;
+       } catch( const boost::exception& e) {
+           wlog("no upo found, regenerating...");
+           db.create<upgrade_property_object>([](auto&){});
+           return false;
+       }
+   }
+
    /**
     * @post regardless of the success of commit block there is no active pending block
     */
@@ -793,15 +805,7 @@ struct controller_impl {
          if (add_to_fork_db) {
             pending->_pending_block_state->validated = true;
 
-            auto new_version = false;
-
-            try {
-                const auto& upo = db.get<upgrade_property_object>().upgrade_target_block_num;
-                new_version = head->dpos_irreversible_blocknum >= upo && upo > 0;
-            } catch( const boost::exception& e) {
-                wlog("get upo failed, regenerating...");
-                db.create<upgrade_property_object>([](auto&){});
-            }
+            auto new_version = is_new_version();
 
             auto new_bsp = fork_db.add(pending->_pending_block_state, true);
             emit(self.accepted_block_header, pending->_pending_block_state);
@@ -1251,16 +1255,13 @@ struct controller_impl {
          pending.emplace(maybe_session());
       }
 
-      auto new_version = false;
+      auto new_version = is_new_version();
       auto upgrading = false;
 
       try {
           const auto& upo = db.get<upgrade_property_object>().upgrade_target_block_num;
-          ilog("upgrade target block num: ${n}", ("n", upo));
-          new_version = head->dpos_irreversible_blocknum >= upo && upo > 0;
           upgrading = (head->block_num + 1 >= upo) && head->dpos_irreversible_blocknum <= upo + 12;
       } catch( const boost::exception& e) {
-          wlog("get upo failed, regenerating...");
           db.create<upgrade_property_object>([](auto&){});
       }
 
@@ -1461,15 +1462,7 @@ struct controller_impl {
       auto prev = fork_db.get_block( b->previous );
       EOS_ASSERT( prev, unlinkable_block_exception, "unlinkable block ${id}", ("id", id)("previous", b->previous) );
 
-      auto new_version = false;
-
-      try {
-          const auto& upo = db.get<upgrade_property_object>().upgrade_target_block_num;
-          new_version = head->dpos_irreversible_blocknum >= upo && upo > 0;
-      } catch( const boost::exception& e) {
-          wlog("get upo failed, regenerating...");
-          db.create<upgrade_property_object>([](auto&){});
-      }
+      auto new_version = is_new_version();
 
       return async_thread_pool( thread_pool, [b, prev, new_version]() {
          const bool skip_validate_signee = false;
@@ -1519,15 +1512,7 @@ struct controller_impl {
          emit( self.pre_accepted_block, b );
          const bool skip_validate_signee = !conf.force_all_checks;
 
-         auto new_version = false;
-
-         try {
-             const auto& upo = db.get<upgrade_property_object>().upgrade_target_block_num;
-             new_version = head->dpos_irreversible_blocknum >= upo && upo > 0;
-         } catch( const boost::exception& e) {
-             wlog("get upo failed, regenerating...");
-             db.create<upgrade_property_object>([](auto&){});
-         }
+         auto new_version = is_new_version();
 
          auto new_header_state = fork_db.add( b, skip_validate_signee, new_version);
 
@@ -1598,15 +1583,7 @@ struct controller_impl {
 
    void maybe_switch_forks( controller::block_status s ) {
 
-      auto new_version = false;
-
-      try {
-          const auto& upo = db.get<upgrade_property_object>().upgrade_target_block_num;
-          new_version = head->dpos_irreversible_blocknum >= upo && upo > 0;
-      } catch( const boost::exception& e) {
-          wlog("get upo failed, regenerating...");
-          db.create<upgrade_property_object>([](auto&){});
-      }
+      auto new_version = is_new_version();
 
       if (new_version) {
           if (pbft_prepared) {
@@ -2468,8 +2445,8 @@ void controller::set_pbft_prepared(const block_id_type& id) const {
       my->pbft_prepared = bs;
       my->fork_db.mark_pbft_prepared_fork(bs);
    }
-   dlog( "fork_db head ${h}", ("h", fork_db().head()->id));
-   dlog( "prepared block id ${b}", ("b", id));
+//   dlog( "fork_db head ${h}", ("h", fork_db().head()->id));
+//   dlog( "prepared block id ${b}", ("b", id));
 }
 
 void controller::set_pbft_my_prepare(const block_id_type& id) const {
@@ -2479,8 +2456,8 @@ void controller::set_pbft_my_prepare(const block_id_type& id) const {
       my->my_prepare = bs;
       my->fork_db.mark_pbft_my_prepare_fork(bs);
    }
-   dlog( "fork_db head ${h}", ("h", fork_db().head()->id));
-   dlog( "my prepare block id ${b}", ("b", id));
+//   dlog( "fork_db head ${h}", ("h", fork_db().head()->id));
+//   dlog( "my prepare block id ${b}", ("b", id));
 }
 
 block_id_type controller::get_pbft_my_prepare() const {
@@ -2664,5 +2641,9 @@ void controller::set_lib() const {
 
 const upgrade_property_object& controller::get_upgrade_properties()const {
     return my->db.get<upgrade_property_object>();
+}
+
+bool controller::is_upgraded() const {
+    return my->is_new_version();
 }
 } } /// eosio::chain

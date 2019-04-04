@@ -33,9 +33,10 @@ namespace eosio {
         void checkpoint_timer_tick();
 
     private:
-        static bool is_replaying();
-        static bool is_syncing();
-        static bool pbft_ready();
+        bool upgraded = false;
+        bool is_replaying();
+        bool is_syncing();
+        bool pbft_ready();
     };
 
     pbft_plugin::pbft_plugin() : my(new pbft_plugin_impl()) {}
@@ -131,14 +132,21 @@ namespace eosio {
     bool pbft_plugin_impl::pbft_ready() {
         // only trigger pbft related logic if I am in sync and replayed.
 
-        auto new_version = false;
         auto& chain = app().get_plugin<chain_plugin>().chain();
+        auto new_version = chain.is_upgraded();
 
-        try {
-            const auto& upo = chain.get_upgrade_properties().upgrade_target_block_num;
-            new_version = chain.last_irreversible_block_num() >= upo && upo > 0;
-        } catch( const boost::exception& e) {
-            wlog("get upo failed, regenerating...");
+        if (new_version && !upgraded) {
+            wlog( "\n"
+                  "*********** PBFT ENABLED ***********\n"
+                  "*                                  *\n"
+                  "* --       The blockchain       -- *\n"
+                  "* -  has successfully switched   - *\n"
+                  "* -     into the new version     - *\n"
+                  "* -        Please enjoy a        - *\n"
+                  "* -      better performance!     - *\n"
+                  "*                                  *\n"
+                  "************************************\n" );
+            upgraded = true;
         }
 
         return (new_version && (!is_syncing() && !is_replaying()));
