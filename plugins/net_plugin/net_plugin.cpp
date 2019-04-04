@@ -318,7 +318,7 @@ namespace eosio {
       void start_monitors();
 
       void expire();
-      void connection_monitor(std::weak_ptr<connection> from_connection);
+      void connection_monitor(std::weak_ptr<connection> from_connection, bool reschedule);
       /** \name Peer Timestamps
        *  Time message handling
        *  @{
@@ -2798,7 +2798,7 @@ namespace eosio {
             int num_in_flight = --connector_checks_in_flight;
             g.unlock();
             if( !ec ) {
-               connection_monitor(from_connection);
+               connection_monitor(from_connection, num_in_flight == 0 );
             } else {
                if( num_in_flight == 0 ) {
                   fc_elog( logger, "Error from connection check monitor: ${m}", ("m", ec.message()));
@@ -2867,7 +2867,7 @@ namespace eosio {
    }
 
    // called from any thread
-   void net_plugin_impl::connection_monitor(std::weak_ptr<connection> from_connection) {
+   void net_plugin_impl::connection_monitor(std::weak_ptr<connection> from_connection, bool reschedule ) {
       auto max_time = fc::time_point::now();
       max_time += fc::milliseconds(max_cleanup_time_ms);
       auto from = from_connection.lock();
@@ -2880,7 +2880,9 @@ namespace eosio {
             connection_wptr wit = *it;
             g.unlock();
             fc_dlog( logger, "Exiting connection monitor early, ran out of time: ${t}", ("t", max_time - fc::time_point::now()) );
-            start_conn_timer( std::chrono::milliseconds( 1 ), wit ); // avoid exhausting
+            if( reschedule ) {
+               start_conn_timer( std::chrono::milliseconds( 1 ), wit ); // avoid exhausting
+            }
             return;
          }
          if( !(*it)->socket_is_open() && !(*it)->connecting) {
@@ -2898,7 +2900,9 @@ namespace eosio {
       }
       g.unlock();
       fc_dlog( logger, "connection monitor, removed ${n} connections", ("n", num_rm) );
-      start_conn_timer( connector_period, std::weak_ptr<connection>() );
+      if( reschedule ) {
+         start_conn_timer( connector_period, std::weak_ptr<connection>());
+      }
    }
 
    // called from application thread
