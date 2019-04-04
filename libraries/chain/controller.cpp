@@ -21,6 +21,7 @@
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
+#include <fc/log/logger_config.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 
@@ -132,7 +133,7 @@ struct controller_impl {
    optional<fc::microseconds>     subjective_cpu_leeway;
    bool                           trusted_producer_light_validation = false;
    uint32_t                       snapshot_head_block = 0;
-   boost::asio::thread_pool       thread_pool;
+   named_thread_pool              thread_pool;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -184,7 +185,7 @@ struct controller_impl {
     conf( cfg ),
     chain_id( cfg.genesis.compute_chain_id() ),
     read_mode( cfg.read_mode ),
-    thread_pool( cfg.thread_pool_size )
+    thread_pool( "chain", cfg.thread_pool_size )
    {
 
 #define SET_APP_HANDLER( receiver, contract, action) \
@@ -403,6 +404,7 @@ struct controller_impl {
    }
 
    ~controller_impl() {
+      thread_pool.stop();
       pending.reset();
    }
 
@@ -1195,7 +1197,7 @@ struct controller_impl {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( pt ) );
                if( !self.skip_auth_check() ) {
-                  transaction_metadata::start_recover_keys( mtrx, thread_pool, chain_id, microseconds::maximum() );
+                  transaction_metadata::start_recover_keys( mtrx, thread_pool.get_executor(), chain_id, microseconds::maximum() );
                }
                packed_transactions.emplace_back( std::move( mtrx ) );
             }
@@ -1273,7 +1275,7 @@ struct controller_impl {
       auto prev = fork_db.get_block( b->previous );
       EOS_ASSERT( prev, unlinkable_block_exception, "unlinkable block ${id}", ("id", id)("previous", b->previous) );
 
-      return async_thread_pool( thread_pool, [b, prev]() {
+      return async_thread_pool( thread_pool.get_executor(), [b, prev]() {
          const bool skip_validate_signee = false;
          return std::make_shared<block_state>( *prev, move( b ), skip_validate_signee );
       } );
@@ -1780,8 +1782,8 @@ void controller::abort_block() {
    my->abort_block();
 }
 
-boost::asio::thread_pool& controller::get_thread_pool() {
-   return my->thread_pool;
+boost::asio::io_context& controller::get_thread_pool() {
+   return my->thread_pool.get_executor();
 }
 
 std::future<block_state_ptr> controller::create_block_state_future( const signed_block_ptr& b ) {
