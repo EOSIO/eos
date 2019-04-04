@@ -375,19 +375,19 @@ steps:
     timeout: 60
 
   - command: | # macOS Mojave Package Builder
-      echo "--- :arrow_down: Downloading build directory"
-      buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build"
-      tar -zxf build.tar.gz
-      echo "+++ :microscope: Starting package build"
-      ln -s "$(pwd)" /data/job && cd /data/job/build/packages && bash generate_package.sh brew
-  label: ":darwin: Mojave Package Builder"
-  agents:
-    - "role=builder-v2-1"
-    - "os=mojave"
-  artifact_paths:
-    - "build/packages/*.tar.gz"
-    - "build/packages/*.rb"
-  timeout: 60
+        echo "--- :arrow_down: Downloading build directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build"
+        tar -zxf build.tar.gz
+        echo "+++ :microscope: Starting package build"
+        ln -s "$(pwd)" /data/job && cd /data/job/build/packages && bash generate_package.sh brew
+    label: ":darwin: Mojave Package Builder"
+    agents:
+      - "role=builder-v2-1"
+      - "os=mojave"
+    artifact_paths:
+      - "build/packages/*.tar.gz"
+      - "build/packages/*.rb"
+    timeout: 60
 
   - wait
 
