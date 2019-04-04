@@ -1855,6 +1855,7 @@ namespace eosio {
       ++endpoint_itr;
       c->connecting = true;
       c->pending_message_buffer.reset();
+      c->socket = std::make_shared<tcp::socket>( std::ref( *my_impl->server_ioc ));
       connection_wptr weak_conn = c;
       c->socket->async_connect( current_endpoint, boost::asio::bind_executor( c->strand,
             [weak_conn, endpoint_itr, this]( const boost::system::error_code& err ) {
