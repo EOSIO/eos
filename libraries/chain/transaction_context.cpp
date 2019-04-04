@@ -262,7 +262,7 @@ namespace bacc = boost::accumulators;
                  bill_to_accounts.insert( auth.actor );
              }
          }
-}
+      }
 
       for( const auto& acc : provided_accounts ) {
          bill_to_accounts.erase(acc);
@@ -695,8 +695,11 @@ namespace bacc = boost::accumulators;
     }
 
     bool transaction_context::available_resources_t::update_ram_usage(account_name account, int64_t delta) {
+        if (!delta) {
+            return false;
+        }
         auto balance_itr = balances.find(account);
-        if (balance_itr == balances.end() || delta == 0) {
+        if (balance_itr == balances.end()) {
             return false; 
         }
         auto price_itr = pricelist.find(resource_limits::ram_code);
