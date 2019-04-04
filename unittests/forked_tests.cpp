@@ -1,14 +1,20 @@
-#include <boost/test/unit_test.hpp>
-#include <eosio/testing/tester.hpp>
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #include <eosio/chain/abi_serializer.hpp>
-#include <eosio/chain/fork_database.hpp>
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/testing/tester.hpp>
 
-#include <eosio.token/eosio.token.wast.hpp>
-#include <eosio.token/eosio.token.abi.hpp>
+#include <eosio/chain/fork_database.hpp>
 
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
+
+#include <boost/test/unit_test.hpp>
+
+#include <contracts.hpp>
 
 using namespace eosio::chain;
 using namespace eosio::testing;
@@ -119,7 +125,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
       BOOST_TEST_CONTEXT("Testing Fork: " << i) {
          const auto& fork = forks.at(i);
          // push the fork to the original node
-         for (int fidx = 0; fidx < fork.blocks.size() - 1; fidx++) {
+         for (size_t fidx = 0; fidx < fork.blocks.size() - 1; fidx++) {
             const auto& b = fork.blocks.at(fidx);
             // push the block only if its not known already
             if (!bios.control->fetch_block_by_id(b->id())) {
@@ -158,8 +164,8 @@ BOOST_AUTO_TEST_CASE( forking ) try {
 
    auto r2 = c.create_accounts( {N(eosio.token)} );
    wdump((fc::json::to_pretty_string(r2)));
-   c.set_code( N(eosio.token), eosio_token_wast );
-   c.set_abi( N(eosio.token), eosio_token_abi );
+   c.set_code( N(eosio.token), contracts::eosio_token_wasm() );
+   c.set_abi( N(eosio.token), contracts::eosio_token_abi().data() );
    c.produce_blocks(10);
 
 
@@ -305,10 +311,10 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
    push_blocks(c, c2);
 
    // fork happen after block 61
-   BOOST_REQUIRE_EQUAL(61, c.control->head_block_num());
-   BOOST_REQUIRE_EQUAL(61, c2.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(61u, c.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(61u, c2.control->head_block_num());
 
-   int fork_num = c.control->head_block_num();
+   uint32_t fork_num = c.control->head_block_num();
 
    auto nextproducer = [](tester &c, int skip_interval) ->account_name {
       auto head_time = c.control->head_block_time();
@@ -332,17 +338,18 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
       else ++skip2;
    }
 
-   BOOST_REQUIRE_EQUAL(87, c.control->head_block_num());
-   BOOST_REQUIRE_EQUAL(73, c2.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(87u, c.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(73u, c2.control->head_block_num());
    
    // push fork from c2 => c
-   int p = fork_num;
+   size_t p = fork_num;
+
    while ( p < c2.control->head_block_num()) {
       auto fb = c2.control->fetch_block_by_number(++p);
       c.push_block(fb);
    }
 
-   BOOST_REQUIRE_EQUAL(73, c.control->head_block_num());
+   BOOST_REQUIRE_EQUAL(73u, c.control->head_block_num());
 
 } FC_LOG_AND_RETHROW() 
 

@@ -5,16 +5,25 @@ steps:
         docker-credential-gcr configure-docker && \
         echo "BUILDING BUILD IMAGE" && \
         cd Docker/builder && \
-        docker build -t eosio/builder:latest -t eosio/builder:$BUILDKITE_COMMIT . --build-arg branch=$BUILDKITE_COMMIT && \
+        docker build -t eosio/builder:latest -t eosio/builder:$BUILDKITE_COMMIT -t eosio/builder:$BUILDKITE_BRANCH . --build-arg branch=$BUILDKITE_COMMIT && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker tag eosio/builder:latest eosio/builder:$BUILDKITE_TAG || : && \
         docker tag eosio/builder:$BUILDKITE_COMMIT gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
+        docker tag eosio/builder:$BUILDKITE_BRANCH gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker tag eosio/builder:$BUILDKITE_TAG gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_TAG || : && \
         docker tag eosio/builder:latest gcr.io/b1-automation-dev/eosio/builder:latest && \
         echo "PUSHING DOCKER IMAGES" && \
         docker push gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
+        docker push gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker push gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_TAG || : && \
         docker push gcr.io/b1-automation-dev/eosio/builder:latest && \
         echo "TRASHING OLD IMAGES" && \
         docker rmi eosio/builder:$BUILDKITE_COMMIT && \
+        docker rmi eosio/builder:$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker rmi eosio/builder:$BUILDKITE_TAG || : && \
         docker rmi eosio/builder:latest && \
         docker rmi gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
+        docker rmi gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker rmi gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_TAG || : && \
         docker rmi gcr.io/b1-automation-dev/eosio/builder:latest
     label: "Docker build builder"
     agents:
@@ -30,16 +39,25 @@ steps:
         echo "BUILDING EOS IMAGE" && \
         docker pull gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
         cd Docker && \
-        docker build -t eosio/eos:latest -t eosio/eos:$BUILDKITE_COMMIT . --build-arg branch=$BUILDKITE_BRANCH && \
+        docker build -t eosio/eos:latest -t eosio/eos:$BUILDKITE_COMMIT -t eosio/eos:$BUILDKITE_BRANCH . --build-arg branch=$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker tag eosio/eos:latest eosio/eos:$BUILDKITE_TAG || : && \
         docker tag eosio/eos:$BUILDKITE_COMMIT gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_COMMIT && \
+        docker tag eosio/eos:$BUILDKITE_BRANCH gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker tag eosio/eos:$BUILDKITE_TAG gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_TAG || : && \
         docker tag eosio/eos:latest gcr.io/b1-automation-dev/eosio/eos:latest && \
         echo "PUSHING DOCKER IMAGES" && \
         docker push gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_COMMIT && \
+        docker push gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker push gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_TAG || : && \
         docker push gcr.io/b1-automation-dev/eosio/eos:latest && \
         echo "TRASHING OLD IMAGES" && \
         docker rmi eosio/eos:$BUILDKITE_COMMIT && \
+        docker rmi eosio/eos:$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker rmi eosio/eos:$BUILDKITE_TAG || : && \
         docker rmi eosio/eos:latest && \
         docker rmi gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_COMMIT && \
+        docker rmi gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker rmi gcr.io/b1-automation-dev/eosio/eos:$BUILDKITE_TAG || : && \
         docker rmi gcr.io/b1-automation-dev/eosio/eos:latest && \
         docker rmi gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT
     label: "Docker build eos"
@@ -54,16 +72,25 @@ steps:
         echo "BUILDING EOS DEV IMAGE" && \
         docker pull gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT && \
         cd Docker/dev && \
-        docker build -t eosio/eos-dev:latest -t eosio/eos-dev:$BUILDKITE_COMMIT . --build-arg branch=$BUILDKITE_BRANCH && \
+        docker build -t eosio/eos-dev:latest -t eosio/eos-dev:$BUILDKITE_COMMIT -t eosio/eos-dev:$BUILDKITE_BRANCH . --build-arg branch=$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker tag eosio/eos-dev:latest eosio/eos-dev:$BUILDKITE_TAG || : && \
         docker tag eosio/eos-dev:$BUILDKITE_COMMIT gcr.io/b1-automation-dev/eosio/eos-dev:$BUILDKITE_COMMIT && \
+        docker tag eosio/eos-dev:$BUILDKITE_BRANCH gcr.io/b1-automation-dev/eosio/eos-dev:$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker tag eosio/eos-dev:$BUILDKITE_TAG gcr.io/b1-automation-dev/eosio/eos-dev:$BUILDKITE_TAG || : && \
         docker tag eosio/eos-dev:latest gcr.io/b1-automation-dev/eosio/eos-dev:latest && \
         echo "PUSHING DOCKER IMAGES" && \
         docker push gcr.io/b1-automation-dev/eosio/eos-dev:$BUILDKITE_COMMIT && \
+        docker push gcr.io/b1-automation-dev/eosio/eos-dev:$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker push gcr.io/b1-automation-dev/eosio/eos-dev:$BUILDKITE_TAG || : && \
         docker push gcr.io/b1-automation-dev/eosio/eos-dev:latest && \
         echo "TRASHING OLD IMAGES" && \
         docker rmi eosio/eos-dev:$BUILDKITE_COMMIT && \
+        docker rmi eosio/eos-dev:$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker rmi eosio/eos-dev:$BUILDKITE_TAG || : && \
         docker rmi eosio/eos-dev:latest && \
         docker rmi gcr.io/b1-automation-dev/eosio/eos-dev:$BUILDKITE_COMMIT && \
+        docker rmi gcr.io/b1-automation-dev/eosio/eos-dev:$BUILDKITE_BRANCH && \
+        [[ "$BUILDKITE_TAG" != "" ]] && docker rmi gcr.io/b1-automation-dev/eosio/eos-dev:$BUILDKITE_TAG || : && \
         docker rmi gcr.io/b1-automation-dev/eosio/eos-dev:latest && \
         docker rmi gcr.io/b1-automation-dev/eosio/builder:$BUILDKITE_COMMIT
     label: "Docker build eos-dev"

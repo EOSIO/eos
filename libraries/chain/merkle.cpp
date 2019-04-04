@@ -39,7 +39,7 @@ digest_type merkle(vector<digest_type> ids) {
       if( ids.size() % 2 )
          ids.push_back(ids.back());
 
-      for (int i = 0; i < ids.size() / 2; i++) {
+      for (size_t i = 0; i < ids.size() / 2; i++) {
          ids[i] = digest_type::hash(make_canonical_pair(ids[2 * i], ids[(2 * i) + 1]));
       }
 

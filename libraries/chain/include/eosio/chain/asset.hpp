@@ -18,7 +18,7 @@ with amount = 10 and symbol(4,"CUR")
 
 */
 
-struct asset
+struct asset : fc::reflect_init
 {
    static constexpr int64_t max_amount = (1LL << 62) - 1;
 
