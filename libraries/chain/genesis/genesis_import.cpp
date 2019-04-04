@@ -96,6 +96,7 @@ struct genesis_import::impl final {
         }
         std::cout << "Done reading Genesis state." << std::endl;
         in.close();
+        db.clear_cache();
     }
 };
 
