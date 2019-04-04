@@ -29,7 +29,13 @@ for k in "${!BASE_MAP[@]}"; do
   echo "  timestamp on $BUILDKITE_BRANCH: $pr_ts"
   echo "  timestamp on $BUILDKITE_PULL_REQUEST_BASE_BRANCH: $base_ts"
   if (( $pr_ts < $base_ts)); then
-    echo "ERROR: $k is older on $BUILDKITE_BRANCH than $BUILDKITE_PULL_REQUEST_BASE_BRANCH"
-    exit 1
+    echo "$k is older on $BUILDKITE_BRANCH than $BUILDKITE_PULL_REQUEST_BASE_BRANCH; investigating..."
+
+    if for c in `git log $BUILDKITE_BRANCH ^$BUILDKITE_PULL_REQUEST_BASE_BRANCH --pretty=format:"%H"`; do git show --pretty="" --name-only $c; done | grep -q "^$k$"; then
+      echo "ERROR: $k has regressed"
+      exit 1
+    else
+      echo "$k was not in the diff; no regression detected"
+    fi
   fi
 done
