@@ -24,8 +24,8 @@
 #include <boost/signals2/connection.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/iostreams/device/mapped_file.hpp>
 
-#include <fc/io/fstream.hpp>
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 #include <signal.h>
@@ -809,16 +809,24 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
 
       // controller must have config at creation, and config must contain genesis hash
+      if (my->chain_config->genesis.genesis_data_hash != fc::sha256()) {
+         EOS_ASSERT(my->chain_config->read_genesis, plugin_config_exception,
+            "If `genesis_data_hash` value of genesis.json set, then genesis-data file must be provided");
+      }
       if (my->chain_config->read_genesis) {
          const auto& file = my->chain_config->genesis_file;
          EOS_ASSERT(fc::is_regular_file(file), plugin_config_exception,
             "Genesis state file '${f}' does not exist.", ("f", file.generic_string()));
-         string content;
-         fc::read_file_contents(file, content);
+         auto given_hash = my->chain_config->genesis.genesis_data_hash;
+         EOS_ASSERT(fc::sha256() != given_hash, plugin_config_exception,
+            "Can't check hash of genesis data file bacause `genesis_data_hash` value of genesis.json is not set");
+         boost::iostreams::mapped_file data;
+         data.open(file.generic_string(), boost::iostreams::mapped_file::readonly);
          fc::sha256::encoder enc;
-         enc.write(content.data(), content.size());
+         enc.write(data.const_data(), data.size());
          auto h = enc.result();
-         my->chain_config->genesis.genesis_hash = h;
+         EOS_ASSERT(h == given_hash, plugin_config_exception,
+            "Calculated hash of genesis state is not equal to value in genesis.json", ("calc",h)("given",given_hash));
          std::cout << "Genesis data HASH: " << h.str() << std::endl;
       }
       my->chain.emplace( *my->chain_config );

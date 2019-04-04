@@ -44,7 +44,9 @@ struct genesis_state {
 
    time_point                               initial_timestamp;
    public_key_type                          initial_key;
-   fc::sha256                               genesis_hash;      // hash of generic genesis file
+   fc::sha256                               genesis_data_hash;      // hash of generic genesis file
+   // TODO: event_engine_data_hash #453
+
 
    /**
     * Get the chain_id corresponding to this genesis state.
@@ -66,4 +68,4 @@ struct genesis_state {
 
 
 FC_REFLECT(eosio::chain::genesis_state,
-           (initial_timestamp)(initial_key)(genesis_hash)(initial_configuration))
+           (initial_timestamp)(initial_key)(genesis_data_hash)(initial_configuration))
