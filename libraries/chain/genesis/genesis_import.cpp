@@ -34,11 +34,8 @@ struct genesis_import::impl final {
     }
 
     void import_state() {
-        // TODO: checksum
-        EOS_ASSERT(fc::is_regular_file(_state_file), extract_genesis_exception,
-            "Genesis state file '${f}' does not exist.", ("f", _state_file.generic_string()));
+        // file existance already checked when calculated hash
         std::cout << "Reading state from " << _state_file << "..." << std::endl;
-
         bfs::ifstream in(_state_file);
         genesis_header h{"", 0, 0};
         in.read((char*)&h, sizeof(h));

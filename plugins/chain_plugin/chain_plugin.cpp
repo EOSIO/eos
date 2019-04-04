@@ -25,6 +25,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include <fc/io/fstream.hpp>
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 #include <signal.h>
@@ -807,8 +808,22 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->block_validation_mode = options.at("validation-mode").as<validation_mode>();
       }
 
+      // controller must have config at creation, and config must contain genesis hash
+      if (my->chain_config->read_genesis) {
+         const auto& file = my->chain_config->genesis_file;
+         EOS_ASSERT(fc::is_regular_file(file), plugin_config_exception,
+            "Genesis state file '${f}' does not exist.", ("f", file.generic_string()));
+         string content;
+         fc::read_file_contents(file, content);
+         fc::sha256::encoder enc;
+         enc.write(content.data(), content.size());
+         auto h = enc.result();
+         my->chain_config->genesis.genesis_hash = h;
+         std::cout << "Genesis data HASH: " << h.str() << std::endl;
+      }
       my->chain.emplace( *my->chain_config );
       my->chain_id.emplace( my->chain->get_chain_id());
+      std::cout << "chain_id: " << my->chain_id->str() << std::endl;
 
       // set up method providers
       my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider(
