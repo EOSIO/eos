@@ -632,7 +632,7 @@ namespace eosio {
 
       bool connected();
       bool current();
-      void close();
+      void close( bool reconnect = false );
    private:
       static void _close( connection* self, bool reconnect ); // for easy capture
    public:
@@ -905,9 +905,9 @@ namespace eosio {
       buffer_queue.clear_write_queue();
    }
 
-   void connection::close() {
-      strand.post( [self = shared_from_this()]() {
-         connection::_close( self.get(), true );
+   void connection::close( bool reconnect ) {
+      strand.post( [self = shared_from_this(), reconnect]() {
+         connection::_close( self.get(), reconnect );
       });
    }
 
@@ -2078,7 +2078,7 @@ namespace eosio {
                } else {
                   fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
                   c->connecting = false;
-                  c->close();
+                  c->close( false );
                }
             }
       } ) );
