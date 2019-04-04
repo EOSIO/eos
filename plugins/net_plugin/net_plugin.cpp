@@ -157,10 +157,10 @@ namespace eosio {
       void request_next_chunk( std::unique_lock<std::mutex> g_sync, const connection_ptr& conn = connection_ptr() );
       void start_sync( const connection_ptr& c, uint32_t target );
       void verify_catchup( const connection_ptr& c, uint32_t num, const block_id_type& id );
-      static void send_handshakes();
 
    public:
       explicit sync_manager( uint32_t span );
+      static void send_handshakes();
       bool syncing_with_peer() const { return sync_state == lib_catchup; }
       void sync_reset_lib_num( const connection_ptr& conn );
       void sync_reassign_fetch( const connection_ptr& c, go_away_reason reason );
@@ -1353,7 +1353,7 @@ namespace eosio {
 
       if( fork_head_block_num < sync_last_requested_num && sync_source && sync_source->current() ) {
          fc_ilog( logger, "ignoring request, head is ${h} last req = ${r} source is ${p}",
-                  ("h", fork_head_block_num)( "r", sync_last_requested_num )( "p", sync_source->peer_address() ) );
+                  ("h", fork_head_block_num)( "r", sync_last_requested_num )( "p", sync_source->peer_name() ) );
          return;
       }
 
@@ -2413,7 +2413,7 @@ namespace eosio {
          if( c->peer_address().empty() || c->last_handshake_recv.node_id == fc::sha256()) {
             g_conn.unlock();
             fc_dlog(logger, "checking for duplicate" );
-            std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
+            std::shared_lock<std::shared_timed_mutex> g_cnts( my_impl->connections_mtx );
             for(const auto& check : connections) {
                if(check == c)
                   continue;
@@ -2431,11 +2431,13 @@ namespace eosio {
                   if (msg.time + c_time <= check_time)
                      continue;
 
+                  g_cnts.unlock();
                   fc_dlog( logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
                   go_away_message gam(duplicate);
                   gam.node_id = node_id;
                   c->enqueue(gam);
                   c->no_retry = duplicate;
+                  sync_master->send_handshakes();
                   return;
                }
             }
