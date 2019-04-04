@@ -2377,11 +2377,6 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
       CALL_TEST_FUNCTION_SCOPE_EXPECT_FAIL( *this, "test_action", "test_action_ordinal1", 
          {}, vector<account_name>{ N(testapi)});
 
-   for (auto &at : txn_trace->action_traces) {
-      std::cout << "\n\n";
-      std::cout << FC_LOG_MESSAGE(info, "${t}", ("t", at)).get_message();
-   }
-
    BOOST_REQUIRE_EQUAL( validate(), true );
 
    BOOST_REQUIRE_EQUAL( txn_trace != nullptr, true);
