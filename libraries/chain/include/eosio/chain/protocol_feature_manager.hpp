@@ -17,6 +17,7 @@ enum class builtin_protocol_feature_t : uint32_t {
    preactivate_feature,
    only_link_to_existing_permission,
    replace_deferred,
+   no_duplicate_deferred_id,
    fix_linkauth_restriction,
    disallow_empty_producer_schedule
 };

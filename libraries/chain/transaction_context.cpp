@@ -166,7 +166,10 @@ namespace bacc = boost::accumulators;
       trace->block_time = c.pending_block_time();
       trace->producer_block_id = c.pending_producer_block_id();
       executed.reserve( trx.total_actions() );
-      EOS_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature, "we don't support any extensions yet" );
+      EOS_ASSERT( trx.transaction_extensions.size() == 0
+                     || control.is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ),
+                  unsupported_feature, "we don't support any extensions yet"
+      ); // This assert may not be necessary. Consider removing.
    }
 
    void transaction_context::init(uint64_t initial_net_usage)
@@ -278,6 +281,8 @@ namespace bacc = boost::accumulators;
 
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
    {
+      EOS_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature,
+                  "no transaction extensions supported yet for implicit transactions" );
       published = control.pending_block_time();
       init( initial_net_usage);
    }
@@ -286,6 +291,9 @@ namespace bacc = boost::accumulators;
                                                  uint64_t packed_trx_prunable_size,
                                                  bool skip_recording )
    {
+      EOS_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature,
+                  "no transaction extensions supported yet for input transactions" );
+
       const auto& cfg = control.get_global_properties().configuration;
 
       uint64_t discounted_size_for_pruned_data = packed_trx_prunable_size;
@@ -322,6 +330,10 @@ namespace bacc = boost::accumulators;
 
    void transaction_context::init_for_deferred_trx( fc::time_point p )
    {
+      EOS_ASSERT( (trx.expiration.sec_since_epoch() == 0) || (trx.transaction_extensions.size() == 0), unsupported_feature,
+                  "no transaction extensions supported yet for deferred transactions"
+      );
+
       published = p;
       trace->scheduled = true;
       apply_context_free = false;
