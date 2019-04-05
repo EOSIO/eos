@@ -26,6 +26,7 @@ systemAccounts = [
     'eosio.stake',
     'eosio.token',
     'eosio.vpay',
+    'eosio.rex'
 ]
 
 def jsonArg(a):
@@ -292,6 +293,7 @@ def stepCreateTokens():
     run(args.cleos + 'push action eosio.token issue \'["eosio", "%s", "memo"]\' -p eosio' % intToCurrency(totalAllocation))
     sleep(1)
 def stepSetSystemContract():
+    retry(args.cleos + 'set contract eosio.rex ' + args.contracts_dir + '/eosio.system/ eosio.system.wasm rex.results.abi ')
     retry(args.cleos + 'set contract eosio ' + args.contracts_dir + '/eosio.system/')
     sleep(1)
     run(args.cleos + 'push action eosio setpriv' + jsonArg(['eosio.msig', 1]) + '-p eosio@active')
