@@ -1486,15 +1486,19 @@ class Node(object):
         # Wait for the next block to be produced so the scheduled protocol feature is activated
         self.waitForHeadToAdvance()
 
-    # Return an array of feature digests to be preactivated
+    # Return an array of feature digests to be preactivated in a correct order respecting dependencies
     # Require producer_api_plugin
     def getAllBuiltinFeatureDigestsToPreactivate(self):
         protocolFeatures = []
-        protocolFeatureDict = self.getSupportedProtocolFeatureDict()
-        for k, v in protocolFeatureDict.items():
-            # Filter out "PREACTIVATE_FEATURE"
-            if k != "PREACTIVATE_FEATURE":
-                protocolFeatures.append(v["feature_digest"])
+        supportedProtocolFeatures = self.getSupportedProtocolFeatures()
+        for protocolFeature in supportedProtocolFeatures:
+            for spec in protocolFeature["specification"]:
+                if (spec["name"] == "builtin_feature_codename"):
+                    codename = spec["value"]
+                    # Filter out "PREACTIVATE_FEATURE"
+                    if codename != "PREACTIVATE_FEATURE":
+                        protocolFeatures.append(protocolFeature["feature_digest"])
+                    break
         return protocolFeatures
 
     # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
