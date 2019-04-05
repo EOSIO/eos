@@ -85,10 +85,13 @@ wcmd create --to-console -n ignition
 ecmd set contract eosio $bioscontractpath eosio.bios.wasm eosio.bios.abi
 
 # Preactivate all digests
+old_IFS=${IFS}
+IFS=";"
 for digest in $FEATURE_DIGESTS;
 do
 ecmd push action eosio preactivate "{\"feature_digest\":\"$digest\"}" -p eosio
 done
+IFS=${old_IFS}
 
 # Create required system accounts
 ecmd create key --to-console
