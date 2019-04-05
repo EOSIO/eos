@@ -2,6 +2,8 @@ cmake_minimum_required( VERSION 3.5 )
 
 project( EOSIO )
 
+cmake_policy(SET CMP0074 NEW)
+
 enable_testing()
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
