@@ -5,12 +5,11 @@ namespace eosiosystem {
 
       real_type R(supply.amount);
       real_type C(c.balance.amount+in.amount);
-      real_type F(c.weight/1000.0);
+      real_type F(c.weight);
       real_type T(in.amount);
       real_type ONE(1.0);
 
       real_type E = -R * (ONE - std::pow( ONE + T / C, F) );
-      //print( "E: ", E, "\n");
       int64_t issued = int64_t(E);
 
       supply.amount += issued;
@@ -24,7 +23,7 @@ namespace eosiosystem {
 
       real_type R(supply.amount - in.amount);
       real_type C(c.balance.amount);
-      real_type F(1000.0/c.weight);
+      real_type F(1.0/c.weight);
       real_type E(in.amount);
       real_type ONE(1.0);
 
@@ -36,7 +35,6 @@ namespace eosiosystem {
      // real_type T = C * std::expm1( F * std::log1p(E/R) );
       
       real_type T = C * (std::pow( ONE + E/R, F) - ONE);
-      //print( "T: ", T, "\n");
       int64_t out = int64_t(T);
 
       supply.amount -= in.amount;
@@ -45,7 +43,7 @@ namespace eosiosystem {
       return asset( out, c.balance.symbol );
    }
 
-   asset exchange_state::convert( asset from, symbol_type to ) {
+   asset exchange_state::convert( asset from, const symbol& to ) {
       auto sell_symbol  = from.symbol;
       auto ex_symbol    = supply.symbol;
       auto base_symbol  = base.balance.symbol;
