@@ -1,5 +1,7 @@
 #include <cyberway/chaindb/cache_map.hpp>
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chaindb/abi_info.hpp>
+#include <cyberway/chaindb/exception.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -28,11 +30,13 @@ namespace cyberway { namespace chaindb {
         bool operator()(const service_state& l, const cache_object& r) const {
             return (*this)(l, r.object().service);
         }
-    }; // struct cache_compare
+    }; // struct cache_object_compare
 
     bool operator<(const cache_object& l, const cache_object& r) {
         return cache_object_compare()(l, r);
     }
+
+    //---------------------------------------
 
     struct cache_service_key final {
         account_name code;
@@ -56,6 +60,38 @@ namespace cyberway { namespace chaindb {
         }
     }; // cache_service_key
 
+    //---------------------------------------
+
+    cache_index_value::cache_index_value(index_name i, data_t d, const cache_object& c)
+    : index(std::move(i)),
+      data(std::move(d)),
+      object(c) {
+    }
+
+    bool operator<(const cache_index_value& l, const cache_index_value& r) {
+        auto& ls = l.object.service();
+        auto& rs = r.object.service();
+
+        if (l.index < r.index  ) return true;
+        if (l.index > r.index  ) return false;
+
+        if (ls.table < rs.table) return true;
+        if (ls.table > rs.table) return false;
+
+        if (ls.code  < rs.code ) return true;
+        if (ls.code  > rs.code ) return false;
+
+        if (ls.scope < rs.scope) return true;
+        if (ls.scope > rs.scope) return false;
+
+        if (l.data.size() < r.data.size()) return true;
+        if (l.data.size() > r.data.size()) return false;
+
+        return (std::memcmp(l.data.data(), r.data.data(), l.data.size()) < 0);
+    }
+
+    //---------------------------------------
+
     struct cache_service_info final {
         int cache_object_cnt = 0;
         primary_key_t next_pk = unset_primary_key;
@@ -67,6 +103,8 @@ namespace cyberway { namespace chaindb {
         }
     }; // struct cache_service_info
 
+    //---------------------------------------
+
     struct table_cache_map final {
         table_cache_map(abi_map& map)
         : abi_map_(map) {
@@ -77,12 +115,44 @@ namespace cyberway { namespace chaindb {
         }
 
         cache_object* find(const service_state& key) {
-            auto itr = cache_tree_.find(key, cache_object_compare());
-            if (cache_tree_.end() != itr) {
+            auto itr = cache_object_tree_.find(key, cache_object_compare());
+            if (cache_object_tree_.end() != itr) {
                 return &(*itr);
             }
 
             return nullptr;
+        }
+
+        void build_cache_indicies(cache_object& cache, cache_indicies& indicies) {
+            auto& object  = cache.object();
+            auto& service = cache.service();
+
+            auto ctr = abi_map_.find(service.code);
+            if (abi_map_.end() == ctr) return;
+
+            auto& abi = ctr->second;
+            auto  ttr = abi.find_table(service.table);
+            if (!ttr) return;
+
+            indicies.reserve(ttr->indexes.size() - 1 /* skip primary */);
+            auto info = index_info(service.code, service.scope);
+            info.table = ttr;
+
+            for (auto& i: ttr->indexes) if (i.unique && i.name != names::primary_index) {
+                info.index = &i;
+
+                using data_t = cache_index_value::data_t;
+                auto  bytes =  abi.to_bytes(info, object.value);   // 1 Mb
+                auto  data  =  data_t(bytes.begin(), bytes.end()); // minize memory usage
+                indicies.emplace_back(i.name, std::move(data), cache);
+                CYBERWAY_ASSERT(cache_index_tree_.end() == cache_index_tree_.find(indicies.back()),
+                    driver_duplicate_exception, "ChainDB cache duplicate unique records in the index ${index}",
+                    ("index", get_full_index_name(info)));
+            }
+
+            for (auto& i: indicies) {
+                cache_index_tree_.insert(i);
+            }
         }
 
         cache_object_ptr emplace(object_value obj) {
@@ -97,7 +167,7 @@ namespace cyberway { namespace chaindb {
                 intrusive_ptr_add_ref(cache_ptr.get());
 
 
-                cache_tree_.insert(*cache_ptr.get());
+                cache_object_tree_.insert(*cache_ptr.get());
                 cache_service.cache_object_cnt++;
             } else {
                 // updating of an exist cache item
@@ -119,21 +189,28 @@ namespace cyberway { namespace chaindb {
 
             // TODO: cache size should be configurable
             if (lru_list_.size() > 100'000) {
-                auto& cache_itm = lru_list_.front();
-                cache_itm.mark_deleted();
+                auto& cache = lru_list_.front();
+                cache.mark_deleted();
             }
 
             return cache_ptr;
         }
 
-        void remove(cache_object& itm) {
-            // self decrementing of ref counter, see emplace()
-            auto cache_ptr   = cache_object_ptr(&itm, false);
-            auto tree_itr    = cache_tree_.iterator_to(itm);
-            auto list_itr    = lru_list_.iterator_to(itm);
-            auto service_itr = service_tree_.find(itm.object());
+        void remove_cache_indicies(cache_indicies indicies) {
+            for (auto& cache: indicies) {
+                auto itr = cache_index_tree_.iterator_to(cache);
+                cache_index_tree_.erase(itr);
+            }
+        }
 
-            cache_tree_.erase(tree_itr);
+        void remove_cache_object(cache_object& cache) {
+            // self decrementing of ref counter, see emplace()
+            auto cache_ptr   = cache_object_ptr(&cache, false);
+            auto tree_itr    = cache_object_tree_.iterator_to(cache);
+            auto list_itr    = lru_list_.iterator_to(cache);
+            auto service_itr = service_tree_.find(cache.object());
+
+            cache_object_tree_.erase(tree_itr);
             lru_list_.erase(list_itr);
 
             if (service_tree_.end() == service_itr) {
@@ -146,7 +223,7 @@ namespace cyberway { namespace chaindb {
             }
         }
 
-        void remove(const service_state& key) {
+        void remove_cache_object(const service_state& key) {
             auto ptr = find(key);
             if (ptr) {
                 ptr->mark_deleted();
@@ -180,7 +257,8 @@ namespace cyberway { namespace chaindb {
         }
 
         void clear() {
-            cache_tree_.clear();
+            cache_object_tree_.clear();
+            cache_index_tree_.clear();
             while (!lru_list_.empty()) {
                 // self decrementing of ref counter, see emplace()
                 auto cache_ptr = cache_object_ptr(&lru_list_.front(), false);
@@ -189,6 +267,7 @@ namespace cyberway { namespace chaindb {
 
             for (auto itr = service_tree_.begin(), etr = service_tree_.end(); etr != itr; ) {
                 itr->second.cache_object_cnt = 0;
+                itr->second.next_pk = unset_primary_key;
                 if (itr->second.empty()) {
                     itr = service_tree_.erase(itr);
                 } else {
@@ -198,14 +277,16 @@ namespace cyberway { namespace chaindb {
         }
 
     private:
-        using cache_tree_type   = boost::intrusive::set<cache_object>;
+        using cache_object_tree_type = boost::intrusive::set<cache_object>;
+        using cache_index_tree_type  = boost::intrusive::set<cache_index_value>;
         using lru_list_type     = boost::intrusive::list<cache_object, boost::intrusive::constant_time_size<true>>;
         using service_tree_type = std::map<cache_service_key, cache_service_info>;
 
-        abi_map&          abi_map_;
-        cache_tree_type   cache_tree_;
-        lru_list_type     lru_list_;
-        service_tree_type service_tree_;
+        abi_map&               abi_map_;
+        cache_object_tree_type cache_object_tree_;
+        cache_index_tree_type  cache_index_tree_;
+        lru_list_type          lru_list_;
+        service_tree_type      service_tree_;
 
         template <typename Table>
         cache_service_info& get_cache_service(const Table& table) {
@@ -229,13 +310,19 @@ namespace cyberway { namespace chaindb {
         assert(table_cache_map_);
 
         object_ = std::move(obj);
+
+        table_cache_map_->remove_cache_indicies(std::move(indicies_));
+        table_cache_map_->build_cache_indicies(*this, indicies_);
     }
 
     void cache_object::mark_deleted() {
         assert(table_cache_map_);
+
         auto& map = *table_cache_map_;
         table_cache_map_ = nullptr;
-        map.remove(*this);
+
+        map.remove_cache_indicies(std::move(indicies_));
+        map.remove_cache_object(*this);
     }
 
     //-----------------
@@ -273,7 +360,7 @@ namespace cyberway { namespace chaindb {
 
     void cache_map::remove(const table_info& table, const primary_key_t pk) const {
         assert(pk != unset_primary_key);
-        impl_->remove({table, pk});
+        impl_->remove_cache_object({table, pk});
     }
 
     void cache_map::set_revision(const object_value& obj, const revision_t rev) const {

@@ -35,18 +35,19 @@ namespace cyberway { namespace chaindb {
     struct table_cache_map;
 
     struct cache_index_value final: public boost::intrusive::set_base_hook<> {
-        const account_name      code;
-        const account_name      scope;
-        const table_name        table;
-        const index_name        index;
-        const std::vector<char> data;
-        const cache_object&     object;
+        using data_t = std::vector<char>;
 
-        cache_index_value() = default;
+        const index_name    index;
+        const data_t        data;
+        const cache_object& object;
+
+        cache_index_value(index_name, data_t, const cache_object&);
         cache_index_value(cache_index_value&&) = default;
 
         ~cache_index_value() = default;
     }; // struct cache_index_value
+
+    using cache_indicies = std::vector<cache_index_value>;
 
     class cache_object final:
         public boost::intrusive_ref_counter<cache_object>,
@@ -56,6 +57,7 @@ namespace cyberway { namespace chaindb {
         table_cache_map* table_cache_map_ = nullptr;
         object_value     object_;
         cache_data_ptr   data_;
+        cache_indicies   indicies_;
     public:
         cache_object(table_cache_map& map, object_value obj)
         : table_cache_map_(&map), object_(std::move(obj)) {
@@ -95,6 +97,10 @@ namespace cyberway { namespace chaindb {
 
         const object_value& object() const {
             return object_;
+        }
+
+        const service_state& service() const {
+            return object_.service;
         }
 
         bool has_data() const {
