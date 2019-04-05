@@ -984,7 +984,8 @@ namespace eosio {
       enqueue_sync_block();
 
       // still want to send transactions along during blk branch sync
-      syncing = false;
+      // todo: need diff variable for tranasaction sending
+      // todo: syncing = false;
    }
 
    void connection::blk_send( const block_id_type& blkid ) {
