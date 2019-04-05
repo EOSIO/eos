@@ -12,18 +12,18 @@ namespace detail {
       uint32_t                          block_num = 0;
       uint32_t                          dpos_proposed_irreversible_blocknum = 0;
       uint32_t                          dpos_irreversible_blocknum = 0;
-      producer_schedule_type            active_schedule;
+      producer_schedule_v1              active_schedule;
       incremental_merkle                blockroot_merkle;
       flat_map<account_name,uint32_t>   producer_to_last_produced;
       flat_map<account_name,uint32_t>   producer_to_last_implied_irb;
-      public_key_type                   block_signing_key;
+      block_signing_authority           block_signing_auth;
       vector<uint8_t>                   confirm_count;
    };
 
    struct schedule_info {
       uint32_t                          schedule_lib_num = 0; /// last irr block num
       digest_type                       schedule_hash;
-      producer_schedule_type            schedule;
+      producer_schedule_v1              schedule;
    };
 }
 
@@ -39,7 +39,7 @@ struct pending_block_header_state : public detail::block_header_state_common {
 
    signed_block_header make_block_header( const checksum256_type& transaction_mroot,
                                           const checksum256_type& action_mroot,
-                                          optional<producer_schedule_type>&& new_producers,
+                                          optional_producer_schedule&& new_producers,
                                           vector<digest_type>&& new_protocol_feature_activations )const;
 
    block_header_state  finish_next( const signed_block_header& h,
@@ -94,7 +94,7 @@ struct block_header_state : public detail::block_header_state_common {
    uint32_t             calc_dpos_last_irreversible( account_name producer_of_next_block )const;
    bool                 is_active_producer( account_name n )const;
 
-   producer_key         get_scheduled_producer( block_timestamp_type t )const;
+   producer_key_v1      get_scheduled_producer( block_timestamp_type t )const;
    const block_id_type& prev()const { return header.previous; }
    digest_type          sig_digest()const;
    void                 sign( const std::function<signature_type(const digest_type&)>& signer );
@@ -106,6 +106,8 @@ struct block_header_state : public detail::block_header_state_common {
 
 using block_header_state_ptr = std::shared_ptr<block_header_state>;
 
+bool block_signing_authority_satisfied( const block_signing_authority& block_signing_auth, const public_key_type& key );
+
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::detail::block_header_state_common,
@@ -116,7 +118,7 @@ FC_REFLECT( eosio::chain::detail::block_header_state_common,
             (blockroot_merkle)
             (producer_to_last_produced)
             (producer_to_last_implied_irb)
-            (block_signing_key)
+            (block_signing_auth)
             (confirm_count)
 )
 

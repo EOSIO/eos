@@ -83,7 +83,7 @@ namespace eosio { namespace chain {
        * irreversible and that it the new producer schedule takes effect this block.
        */
       uint32_t                          schedule_version = 0;
-      optional<producer_schedule_type>  new_producers;
+      optional_producer_schedule        new_producers;
       extensions_type                   header_extensions;
 
 

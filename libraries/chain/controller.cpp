@@ -1423,11 +1423,20 @@ struct controller_impl {
          )
          {
             // Promote proposed schedule to pending schedule.
+            uint32_t proposed_version = 0;
+            if( gpo.proposed_schedule.which() == 1 ) {
+               new_producers_version = gpo.proposed_schedule.get<producer_schedule_v0>().version;
+            } else {
+               new_producers_version = h.new_producers.get<producer_schedule_v1>().version;
+               // TODO: Add assertion that the appropriate protocol feature has been activated.
+            }
+
             if( !replay_head_time ) {
+               if( gpo.proposed_schedule.which() == 0 )
                ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
                      ("proposed_num", *gpo.proposed_schedule_block_num)("n", pbhs.block_num)
                      ("lib", pbhs.dpos_irreversible_blocknum)
-                     ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
+                     ("schedule", static_cast<producer_schedule_v1>(gpo.proposed_schedule) ) );
             }
 
             EOS_ASSERT( gpo.proposed_schedule.version == pbhs.active_schedule_version + 1,
@@ -1436,7 +1445,7 @@ struct controller_impl {
             pending->_block_stage.get<building_block>()._new_pending_producer_schedule = gpo.proposed_schedule;
             db.modify( gpo, [&]( auto& gp ) {
                gp.proposed_schedule_block_num = optional<block_num_type>();
-               gp.proposed_schedule.clear();
+               gp.proposed_schedule = no_producer_schedule{};
             });
          }
 
@@ -2717,7 +2726,7 @@ int64_t controller::set_proposed_producers( vector<producer_key> producers ) {
    return version;
 }
 
-const producer_schedule_type&    controller::active_producers()const {
+const producer_schedule_v1&    controller::active_producers()const {
    if( !(my->pending) )
       return  my->head->active_schedule;
 
@@ -2727,7 +2736,7 @@ const producer_schedule_type&    controller::active_producers()const {
    return my->pending->get_pending_block_header_state().active_schedule;
 }
 
-const producer_schedule_type&    controller::pending_producers()const {
+const producer_schedule_v1&    controller::pending_producers()const {
    if( !(my->pending) )
       return  my->head->pending_schedule.schedule;
 
@@ -2748,10 +2757,10 @@ const producer_schedule_type&    controller::pending_producers()const {
    return bb._pending_block_header_state.prev_pending_schedule.schedule;
 }
 
-optional<producer_schedule_type> controller::proposed_producers()const {
+optional<producer_schedule_v1> controller::proposed_producers()const {
    const auto& gpo = get_global_properties();
    if( !gpo.proposed_schedule_block_num.valid() )
-      return optional<producer_schedule_type>();
+      return optional<producer_schedule_v1>();
 
    return gpo.proposed_schedule;
 }

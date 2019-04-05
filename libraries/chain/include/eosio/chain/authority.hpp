@@ -57,6 +57,7 @@ namespace config {
 }
 
 struct authority {
+public:
    authority( public_key_type k, uint32_t delay_sec = 0 )
    :threshold(1),keys({{k,1}})
    {
@@ -79,11 +80,6 @@ struct authority {
    :threshold(t),keys(move(k)),accounts(move(p)),waits(move(w)){}
    authority(){}
 
-   uint32_t                          threshold = 0;
-   vector<key_weight>                keys;
-   vector<permission_level_weight>   accounts;
-   vector<wait_weight>               waits;
-
    friend bool operator == ( const authority& lhs, const authority& rhs ) {
       return tie( lhs.threshold, lhs.keys, lhs.accounts, lhs.waits ) == tie( rhs.threshold, rhs.keys, rhs.accounts, rhs.waits );
    }
@@ -91,10 +87,16 @@ struct authority {
    friend bool operator != ( const authority& lhs, const authority& rhs ) {
       return tie( lhs.threshold, lhs.keys, lhs.accounts, lhs.waits ) != tie( rhs.threshold, rhs.keys, rhs.accounts, rhs.waits );
    }
+
+public:
+   uint32_t                          threshold = 0;
+   vector<key_weight>                keys;
+   vector<permission_level_weight>   accounts;
+   vector<wait_weight>               waits;
 };
 
-
 struct shared_authority {
+public:
    shared_authority( chainbase::allocator<char> alloc )
    :keys(alloc),accounts(alloc),waits(alloc){}
 
@@ -105,11 +107,6 @@ struct shared_authority {
       waits = decltype(waits)(a.waits.begin(), a.waits.end(), waits.get_allocator());
       return *this;
    }
-
-   uint32_t                                   threshold = 0;
-   shared_vector<key_weight>                  keys;
-   shared_vector<permission_level_weight>     accounts;
-   shared_vector<wait_weight>                 waits;
 
    operator authority()const { return to_authority(); }
    authority to_authority()const {
@@ -135,6 +132,60 @@ struct shared_authority {
 
       return accounts_size + waits_size + keys_size;
    }
+
+public:
+   uint32_t                                   threshold = 0;
+   shared_vector<key_weight>                  keys;
+   shared_vector<permission_level_weight>     accounts;
+   shared_vector<wait_weight>                 waits;
+};
+
+struct block_signing_authority {
+public:
+   block_signing_authority( public_key_type k )
+   :threshold(1),keys({{k,1}})
+   {}
+
+   block_signing_authority() = default;
+
+   friend bool operator == ( const block_signing_authority& lhs, const block_signing_authority& rhs ) {
+      return tie( lhs.threshold, lhs.keys ) == tie( rhs.threshold, rhs.keys );
+   }
+
+   friend bool operator != ( const block_signing_authority& lhs, const block_signing_authority& rhs ) {
+      return !(lhs == rhs);
+   }
+
+public:
+   uint32_t                  threshold = 0;
+   vector<key_weight>        keys;
+};
+
+struct shared_block_signing_authority {
+public:
+   shared_block_signing_authority( chainbase::allocator<char> alloc )
+   :keys(alloc)
+   {}
+
+   shared_block_signing_authority& operator=(const block_signing_authority& a) {
+      threshold = a.threshold;
+      keys = decltype(keys)(a.keys.begin(), a.keys.end(), keys.get_allocator());
+      return *this;
+   }
+
+   operator block_signing_authority()const { return to_block_signing_authority(); }
+
+   block_signing_authority to_block_signing_authority()const {
+      block_signing_authority auth;
+      auth.threshold = threshold;
+      auth.keys.reserve(keys.size());
+      for( const auto& k : keys ) { auth.keys.emplace_back( k ); }
+      return auth;
+   }
+
+public:
+   uint32_t                  threshold = 0;
+   shared_vector<key_weight> keys;
 };
 
 namespace config {
@@ -149,7 +200,10 @@ namespace config {
  * be satisfied
  */
 template<typename Authority>
-inline bool validate( const Authority& auth ) {
+inline auto validate( const Authority& auth )
+-> std::enable_if_t< std::is_same<Authority, authority>::value
+                        || std::is_same<Authority, shared_authority>::value, bool >
+{
    decltype(auth.threshold) total_weight = 0;
 
    static_assert( std::is_same<decltype(auth.threshold), uint32_t>::value &&
@@ -168,7 +222,7 @@ inline bool validate( const Authority& auth ) {
    {
       const key_weight* prev = nullptr;
       for( const auto& k : auth.keys ) {
-         if( prev && !(prev->key < k.key) ) return false; // TODO: require keys to be sorted in ascending order rather than descending (requires modifying many tests)
+         if( prev && !(prev->key < k.key) ) return false;
          total_weight += k.weight;
          prev = &k;
       }
@@ -176,7 +230,7 @@ inline bool validate( const Authority& auth ) {
    {
       const permission_level_weight* prev = nullptr;
       for( const auto& a : auth.accounts ) {
-         if( prev && ( prev->permission >= a.permission ) ) return false; // TODO: require permission_levels to be sorted in ascending order rather than descending (requires modifying many tests)
+         if( prev && ( prev->permission >= a.permission ) ) return false;
          total_weight += a.weight;
          prev = &a;
       }
@@ -195,6 +249,39 @@ inline bool validate( const Authority& auth ) {
    return total_weight >= auth.threshold;
 }
 
+/**
+ * Makes sure all keys are unique and sorted and that authority can be satisfied
+ */
+template<typename Authority>
+inline auto validate( const Authority& auth )
+-> std::enable_if_t< std::is_same<Authority, block_signing_authority>::value
+                        || std::is_same<Authority, shared_block_signing_authority>::value, bool >
+{
+   decltype(auth.threshold) total_weight = 0;
+
+   static_assert( std::is_same<decltype(auth.threshold), uint32_t>::value &&
+                  std::is_same<weight_type, uint16_t>::value &&
+                  std::is_same<typename decltype(auth.keys)::value_type, key_weight>::value,
+                  "unexpected type for threshold and/or weight in authority" );
+
+   if( ( auth.keys.size() ) > (1 << 16) )
+      return false; // overflow protection (assumes weight_type is uint16_t and threshold is of type uint32_t)
+
+   if( auth.threshold == 0 )
+      return false;
+
+   {
+      const key_weight* prev = nullptr;
+      for( const auto& k : auth.keys ) {
+         if( prev && !(prev->key < k.key) ) return false;
+         total_weight += k.weight;
+         prev = &k;
+      }
+   }
+
+   return total_weight >= auth.threshold;
+}
+
 } } // namespace eosio::chain
 
 
@@ -203,3 +290,5 @@ FC_REFLECT(eosio::chain::key_weight, (key)(weight) )
 FC_REFLECT(eosio::chain::wait_weight, (wait_sec)(weight) )
 FC_REFLECT(eosio::chain::authority, (threshold)(keys)(accounts)(waits) )
 FC_REFLECT(eosio::chain::shared_authority, (threshold)(keys)(accounts)(waits) )
+FC_REFLECT(eosio::chain::block_signing_authority, (threshold)(keys) )
+FC_REFLECT(eosio::chain::shared_block_signing_authority, (threshold)(keys) )
