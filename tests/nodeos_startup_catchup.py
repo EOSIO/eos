@@ -7,6 +7,7 @@ from Cluster import Cluster
 from WalletMgr import WalletMgr
 from Node import BlockType
 from Node import Node
+import signal
 from TestHelper import AppArgs
 from TestHelper import TestHelper
 
@@ -167,6 +168,8 @@ try:
         Print("Verify catchup node is advancing to producer")
         # verify catchup node is advancing to producer
         catchupNode.waitForBlock(lastLibNum, timeout=(numBlocksToCatchup)/2, blockType=BlockType.lib)
+        catchupNode.kill(signal.SIGTERM)
+        catchupNode.popenProc=None
 
     testSuccessful=True
 
