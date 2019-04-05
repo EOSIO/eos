@@ -4,7 +4,7 @@
 
 namespace eosiosystem {
    using eosio::asset;
-   using eosio::symbol;
+   using eosio::symbol_type;
 
    typedef double real_type;
 
@@ -13,7 +13,7 @@ namespace eosiosystem {
     *  bancor exchange is entirely contained within this struct. There are no external
     *  side effects associated with using this API.
     */
-   struct [[eosio::table, eosio::contract("eosio.system")]] exchange_state {
+   struct exchange_state {
       asset    supply;
 
       struct connector {
@@ -26,15 +26,15 @@ namespace eosiosystem {
       connector base;
       connector quote;
 
-      uint64_t primary_key()const { return supply.symbol.raw(); }
+      uint64_t primary_key()const { return supply.symbol; }
 
       asset convert_to_exchange( connector& c, asset in );
       asset convert_from_exchange( connector& c, asset in );
-      asset convert( asset from, const symbol& to );
+      asset convert( asset from, symbol_type to );
 
       EOSLIB_SERIALIZE( exchange_state, (supply)(base)(quote) )
    };
 
-   typedef eosio::multi_index< "rammarket"_n, exchange_state > rammarket;
+   typedef eosio::multi_index<N(rammarket), exchange_state> rammarket;
 
 } /// namespace eosiosystem
