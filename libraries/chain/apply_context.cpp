@@ -319,7 +319,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
             fc::raw::pack( deferred_transaction_generation_context( trx_context.id, sender_id, receiver ) )
          );
       }
-      trx.expiration = {};
+      trx.expiration = time_point_sec();
       trx.ref_block_num = 0;
       trx.ref_block_prefix = 0;
    } else {

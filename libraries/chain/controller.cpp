@@ -955,7 +955,7 @@ struct controller_impl {
       etrx.actions.emplace_back( vector<permission_level>{{gtrx.sender, config::active_name}},
                                  onerror( gtrx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() ) );
       if( self.is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) ) {
-         etrx.expiration = {};
+         etrx.expiration = time_point_sec();
          etrx.ref_block_num = 0;
          etrx.ref_block_prefix = 0;
       } else {
@@ -2149,7 +2149,7 @@ struct controller_impl {
       signed_transaction trx;
       trx.actions.emplace_back(std::move(on_block_act));
       if( self.is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) ) {
-         trx.expiration = {};
+         trx.expiration = time_point_sec();
          trx.ref_block_num = 0;
          trx.ref_block_prefix = 0;
       } else {
