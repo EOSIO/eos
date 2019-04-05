@@ -158,20 +158,17 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
         
         auto block_time = control->head_block_time().time_since_epoch().to_seconds();
         auto& rlm = control->get_mutable_resource_limits_manager();
-        auto provider_cpu = rlm.get_account_limit_ex(block_time, N(provider), resource_limits::cpu_code);
-        auto provider_net = rlm.get_account_limit_ex(block_time, N(provider), resource_limits::net_code);
+        auto provider_stake = rlm.get_account_balance(block_time, N(provider), rlm.get_pricelist()).stake;
+        auto provider_used = rlm.get_account_usage(N(provider));
 
-        BOOST_CHECK_GT(provider_cpu.available, 0);
-        BOOST_CHECK_GT(provider_net.available, 0);
+        BOOST_CHECK_GT(provider_stake, 0);
         
-        auto user_cpu = rlm.get_account_limit_ex(block_time, N(user), resource_limits::cpu_code);
-        auto user_net = rlm.get_account_limit_ex(block_time, N(user), resource_limits::net_code);
+        auto user_stake = rlm.get_account_balance(block_time, N(user), rlm.get_pricelist()).stake;
+        auto user_used = rlm.get_account_usage(N(user));
 
-        BOOST_CHECK_EQUAL(user_cpu.available, 0);
-        BOOST_CHECK_EQUAL(user_net.available, 0);
+        BOOST_CHECK_EQUAL(user_stake, 0);
 
-        BOOST_CHECK_EQUAL(rlm.get_account_limit_ex(block_time, N(user2), resource_limits::cpu_code).available, 0);
-        BOOST_CHECK_EQUAL(rlm.get_account_limit_ex(block_time, N(user2), resource_limits::net_code).available, 0);
+        BOOST_CHECK_EQUAL(rlm.get_account_balance(block_time, N(user2), rlm.get_pricelist()).stake, 0);
 
         // Check that user can't send transaction due missing bandwidth
         signed_transaction trx;
@@ -197,18 +194,14 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
 
         BOOST_REQUIRE( !r->except_ptr );
 
-        auto provider_cpu2 = rlm.get_account_limit_ex(block_time, N(provider), resource_limits::cpu_code);
-        auto provider_net2 = rlm.get_account_limit_ex(block_time, N(provider), resource_limits::net_code);
-
-        auto user_cpu2 = rlm.get_account_limit_ex(block_time, N(user), resource_limits::cpu_code);
-        auto user_net2 = rlm.get_account_limit_ex(block_time, N(user), resource_limits::net_code);
-
-        BOOST_CHECK_EQUAL(user_cpu2.used, user_cpu.used);
-        BOOST_CHECK_EQUAL(user_net2.used, user_net.used);
-
-        BOOST_CHECK_GT(provider_cpu2.used, provider_cpu.used);
-        BOOST_CHECK_GT(provider_net2.used, provider_net.used);
-
+        auto provider_used2 = rlm.get_account_usage(N(provider));
+        auto user_used2 = rlm.get_account_usage(N(user));
+        BOOST_CHECK_EQUAL(user_used2[resource_limits::cpu_code], user_used[resource_limits::cpu_code]);
+        BOOST_CHECK_EQUAL(user_used2[resource_limits::net_code], user_used[resource_limits::net_code]);
+        
+        BOOST_CHECK_GT(provider_used2[resource_limits::cpu_code], provider_used[resource_limits::cpu_code]);
+        BOOST_CHECK_GT(provider_used2[resource_limits::net_code], provider_used[resource_limits::net_code]);
+        
         // Check that another actor need bandwidth to publish transaction
         trx.actions.push_back(get_action(name(config::system_account_name), N(reqauth),
                vector<permission_level>{{N(user2),name(config::active_name)}},

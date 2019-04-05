@@ -174,7 +174,7 @@ get_account_results chain_api_plugin_impl::get_account( const get_account_params
    result.net_limit = {};
    result.cpu_limit = {};
 
-   result.ram_usage = rm.get_account_ram_usage( result.account_name );
+   result.ram_usage = rm.get_account_usage( result.account_name )[chain::resource_limits::ram_code];
 
    auto table = d.get_table<chain::permission_object>();
    auto permissions = table.get_index<chain::by_owner>();

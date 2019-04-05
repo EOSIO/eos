@@ -21,6 +21,7 @@ add_library( eosio_chain
              controller.cpp
              authorization_manager.cpp
              resource_limits.cpp
+             stake.cpp
              block_log.cpp
              transaction_context.cpp
              eosio_contract.cpp
