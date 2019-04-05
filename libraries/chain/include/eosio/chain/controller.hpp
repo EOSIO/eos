@@ -140,7 +140,7 @@ namespace eosio { namespace chain {
          std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b );
          void push_block( std::future<block_state_ptr>& block_state_future );
 
-         boost::asio::thread_pool& get_thread_pool();
+         boost::asio::io_context& get_thread_pool();
 
          const chainbase::database& db()const;
 

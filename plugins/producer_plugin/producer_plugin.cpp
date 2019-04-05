@@ -8,9 +8,11 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
+#include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/snapshot.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/log/logger_config.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <fc/scoped_exit.hpp>
 
@@ -132,7 +134,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::map<chain::account_name, uint32_t>                   _producer_watermarks;
       pending_block_mode                                        _pending_block_mode;
       transaction_id_with_expiry_index                          _persistent_transactions;
-      fc::optional<boost::asio::thread_pool>                    _thread_pool;
+      fc::optional<named_thread_pool>                           _thread_pool;
 
       std::atomic<int32_t>                                      _max_transaction_time_ms; // modified by app thread, read by net_plugin thread pool
       fc::microseconds                                          _max_irreversible_block_age_us;
@@ -362,8 +364,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          app().post(priority::low, [trx, &chain, max_trx_cpu_usage, after_sig_recovery{std::move(after_sig_recovery)}]() mutable {
             // use chain thread pool for sig recovery
-            transaction_metadata::create_signing_keys_future( trx, chain.get_thread_pool(), chain.get_chain_id(),
-                                                              max_trx_cpu_usage, std::move( after_sig_recovery ) );
+            transaction_metadata::start_recover_keys( trx, chain.get_thread_pool(), chain.get_chain_id(),
+                  max_trx_cpu_usage, std::move( after_sig_recovery ) );
          });
       }
 
@@ -697,7 +699,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    auto thread_pool_size = options.at( "producer-threads" ).as<uint16_t>();
    EOS_ASSERT( thread_pool_size > 0, plugin_config_exception,
                "producer-threads ${num} must be greater than 0", ("num", thread_pool_size));
-   my->_thread_pool.emplace( thread_pool_size );
+   my->_thread_pool.emplace( "prod", thread_pool_size );
 
    if( options.count( "snapshots-dir" )) {
       auto sd = options.at( "snapshots-dir" ).as<bfs::path>();
@@ -794,7 +796,6 @@ void producer_plugin::plugin_shutdown() {
    }
 
    if( my->_thread_pool ) {
-      my->_thread_pool->join();
       my->_thread_pool->stop();
    }
    my->_accepted_block_connection.reset();

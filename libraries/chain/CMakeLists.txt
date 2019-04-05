@@ -44,9 +44,9 @@ add_library( eosio_chain
 #             global_property_object.cpp
 #
 #             contracts/chain_initializer.cpp
-
-
+        
              transaction_metadata.cpp
+             thread_utils.cpp
              ${HEADERS}
              )
 
