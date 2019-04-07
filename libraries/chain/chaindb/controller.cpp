@@ -180,52 +180,70 @@ namespace cyberway { namespace chaindb {
         }
 
         const cursor_info& lower_bound(const index_request& request, const char* key, const size_t size) const {
-            auto  index = get_index(request);
-            auto  value = index.abi->to_object(index, key, size);
+            auto  index  = get_index(request);
+            auto  value  = index.abi->to_object(index, key, size);
+            auto  cache  = cache_.find(index, key, size);
             auto& cursor = driver_.lower_bound(std::move(index), std::move(value));
-            return driver_.current(cursor);
+
+            if (cache) {
+                cursor.pk = cache->pk();
+            } else {
+                driver_.current(cursor);
+            }
+            return cursor;
+        }
+
+        const cursor_info& lower_bound(const index_request& request, const primary_key_t pk) const {
+            auto  index  = get_pk_index(request);
+            auto  value  = _detail::get_pk_value(index, pk);
+            auto  cache  = cache_.find(index, pk);
+            auto& cursor = driver_.lower_bound(std::move(index), std::move(value));
+
+            if (cache) {
+                cursor.pk = pk;
+            } else {
+                driver_.current(cursor);
+            }
+            return cursor;
+        }
+
+        // API request, it can't use cache
+        const cursor_info& lower_bound(const index_request& request, const variant& orders) const {
+            return driver_.current(driver_.lower_bound(get_index(request), orders));
         }
 
         const cursor_info& upper_bound(const index_request& request, const char* key, const size_t size) const {
-            auto  index = get_index(request);
-            auto  value = index.abi->to_object(index, key, size);
-            auto& cursor = driver_.upper_bound(std::move(index), std::move(value));
-            return driver_.current(cursor);
+            auto index = get_index(request);
+            auto value = index.abi->to_object(index, key, size);
+            return driver_.current(driver_.upper_bound(std::move(index), std::move(value)));
         }
 
-        const cursor_info& lower_bound(const index_request& request, const fc::variant& orders) const {
-            auto  index = get_index(request);
-            auto& cursor = driver_.lower_bound(std::move(index), orders);
-            return driver_.current(cursor);
+        const cursor_info& upper_bound(const index_request& request, const primary_key_t pk) const {
+            auto index = get_pk_index(request);
+            auto value = _detail::get_pk_value(index, pk);
+            return driver_.current(driver_.upper_bound(std::move(index), std::move(value)));
         }
 
-        const cursor_info& upper_bound(const index_request& request, const fc::variant& orders) const {
-            auto  index = get_index(request);
-            auto& cursor = driver_.upper_bound(std::move(index), orders);
-            return driver_.current(cursor);
+        const cursor_info& upper_bound(const index_request& request, const variant& orders) const {
+            return driver_.current(driver_.upper_bound(get_index(request), orders));
         }
 
         const cursor_info& locate_to(const index_request& request, const char* key, size_t size, primary_key_t pk) const {
-            auto  index = get_index(request);
-            auto  value = index.abi->to_object(index, key, size);
-            auto& cursor = driver_.locate_to(std::move(index), std::move(value), pk);
-            return driver_.current(cursor);
+            auto index = get_index(request);
+            auto value = index.abi->to_object(index, key, size);
+            return driver_.locate_to(std::move(index), std::move(value), pk);
         }
 
         const cursor_info& begin(const index_request& request) const {
-            auto  index = get_index(request);
-            auto& cursor = driver_.begin(std::move(index));
-            return driver_.current(cursor);
+            return driver_.current(driver_.begin(get_index(request)));
         }
 
         const cursor_info& end(const index_request& request) const {
-            auto index = get_index(request);
-            return driver_.end(std::move(index));
+            return driver_.end(get_index(request));
         }
 
         primary_key_t available_pk(const table_request& request) const {
-            auto table = get_table(request);
-            return driver_.available_pk(table);
+            return driver_.available_pk(get_table(request));
         }
 
         int32_t datasize(const cursor_request& request) const {
@@ -275,8 +293,9 @@ namespace cyberway { namespace chaindb {
         }
 
         const cursor_info& opt_find_by_pk(const table_request& request, primary_key_t pk) {
-            auto table = get_table(request);
-            return opt_find_by_pk(table, pk);
+            auto index = get_pk_index(request);
+            auto value = _detail::get_pk_value(index, pk);
+            return driver_.current(driver_.lower_bound(std::move(index), std::move(value)));
         }
 
         // From contracts
@@ -364,29 +383,23 @@ namespace cyberway { namespace chaindb {
         }
 
     private:
-        const cursor_info& opt_find_by_pk(const table_info& table, primary_key_t pk) {
-            index_info index(table);
-            index.index = &get_pk_index(table);
-            auto pk_key_value = _detail::get_pk_value(table, pk);
-            return driver_.current(driver_.lower_bound(index, std::move(pk_key_value)));
-        }
-
         table_info get_table(const cache_object& itm) const {
             auto& service = itm.object().service;
-            auto info = find_table<index_info>(service);
+            auto info = find_table<table_info>(service);
             CYBERWAY_ASSERT(info.table, unknown_table_exception,
                 "ABI table ${table} doesn't exists", ("table", get_full_table_name(service)));
 
-            return std::move(info);
+            return info;
         }
 
-        table_info get_table(const table_request& request) const {
-            auto info = find_table<index_info>(request);
+        template <typename Request>
+        table_info get_table(const Request& request) const {
+            auto info = find_table<table_info>(request);
             CYBERWAY_ASSERT(info.table, unknown_table_exception,
                 "ABI table ${code}.${table} doesn't exists",
                 ("code", get_code_name(request))("table", get_table_name(request.table)));
 
-            return std::move(info);
+            return info;
         }
 
         index_info get_index(const index_request& request) const {
@@ -397,6 +410,14 @@ namespace cyberway { namespace chaindb {
                 ("index", get_index_name(request.index)));
 
             return info;
+        }
+
+        template <typename Request>
+        index_info get_pk_index(const Request& request) const {
+            auto table = get_table(request);
+            auto index = index_info(table);
+            index.index = &chaindb::get_pk_index(table);
+            return index;
         }
 
         template <typename Info, typename Request>
@@ -680,22 +701,32 @@ namespace cyberway { namespace chaindb {
         impl_->driver_.apply_code_changes(code);
     }
 
-    find_info chaindb_controller::lower_bound(const index_request& request, const char* key, size_t size) {
+    find_info chaindb_controller::lower_bound(const index_request& request, const char* key, size_t size) const {
         const auto& info = impl_->lower_bound(request, key, size);
         return {info.id, info.pk};
     }
 
-    find_info chaindb_controller::upper_bound(const index_request& request, const char* key, size_t size) {
-        const auto& info = impl_->upper_bound(request, key, size);
+    find_info chaindb_controller::lower_bound(const index_request& request, const primary_key_t pk) const {
+        const auto& info = impl_->lower_bound(request, pk);
         return {info.id, info.pk};
     }
 
-    find_info chaindb_controller::lower_bound(const index_request& request, const fc::variant& orders) const {
+    find_info chaindb_controller::lower_bound(const index_request& request, const variant& orders) const {
         auto info = impl_->lower_bound(request, orders);
         return {info.id, info.pk};
     }
 
-     find_info chaindb_controller::upper_bound(const index_request& request, const fc::variant& orders) const {
+    find_info chaindb_controller::upper_bound(const index_request& request, const char* key, size_t size) const {
+        const auto& info = impl_->upper_bound(request, key, size);
+        return {info.id, info.pk};
+    }
+
+    find_info chaindb_controller::upper_bound(const index_request& request, const primary_key_t pk) const {
+        const auto& info = impl_->upper_bound(request, pk);
+        return {info.id, info.pk};
+    }
+
+    find_info chaindb_controller::upper_bound(const index_request& request, const variant& orders) const {
         auto info = impl_->lower_bound(request, orders);
         return {info.id, info.pk};
     }

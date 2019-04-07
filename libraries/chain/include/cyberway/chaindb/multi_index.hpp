@@ -98,25 +98,41 @@ void safe_allocate(const Value& value, const char* error_msg, Lambda&& callback)
     callback(alloc.data, alloc.size);
 }
 
-template<typename Key>
-find_info lower_bound(chaindb_controller& chaindb, const index_request& request, const Key& key) {
-    find_info info;
-    safe_allocate(key, "Invalid size of key on lower_bound", [&](auto& data, auto& size) {
-        pack_object(key, data, size);
-        info = chaindb.lower_bound(request, data, size);
-    });
-    return info;
-}
+template<bool IsPrimaryIndex> struct lower_bound final {
+    template<typename Key>
+    find_info operator()(chaindb_controller& chaindb, const index_request& request, const Key& key) const {
+        find_info info;
+        safe_allocate(key, "Invalid size of key on lower_bound", [&](auto& data, auto& size) {
+            pack_object(key, data, size);
+            info = chaindb.lower_bound(request, data, size);
+        });
+        return info;
+    }
+}; // struct lower_bound
 
-template<typename Key>
-find_info upper_bound(chaindb_controller& chaindb, const index_request& request, const Key& key) {
-    find_info info;
-    safe_allocate(key, "Invalid size of key on upper_bound", [&](auto& data, auto& size) {
-        pack_object(key, data, size);
-        info = chaindb.upper_bound(request, data, size);
-    });
-    return info;
-}
+template<> struct lower_bound<true /*IsPrimaryIndex*/> final {
+    find_info operator()(chaindb_controller& chaindb, const index_request& request, const primary_key_t pk) const {
+        return chaindb.lower_bound(request, pk);
+    }
+}; // struct lower_bound
+
+template<bool IsPrimaryIndex> struct upper_bound final {
+    template<typename Key>
+    find_info operator()(chaindb_controller& chaindb, const index_request& request, const Key& key) const {
+        find_info info;
+        safe_allocate(key, "Invalid size of key on upper_bound", [&](auto& data, auto& size) {
+            pack_object(key, data, size);
+            info = chaindb.upper_bound(request, data, size);
+        });
+        return info;
+    }
+}; // struct upper_bound
+
+template<> struct upper_bound<true /*IsPrimaryIndex*/> final {
+    find_info operator()(chaindb_controller& chaindb, const index_request& request, const primary_key_t pk) const {
+        return chaindb.upper_bound(request, pk);
+    }
+}; // struct upper_bound
 
 using boost::multi_index::const_mem_fun;
 
@@ -519,7 +535,6 @@ public:
         using iterator_extractor_type = iterator_extractor_impl<IndexName, Extractor>;
         using key_type = typename std::decay<decltype(Extractor()(static_cast<const T&>(*(const T*)nullptr)))>::type;
         using const_iterator = const_iterator_impl<IndexName>;
-        using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
         constexpr static table_name_t   table_name() { return code_extractor<TableName>::get_code(); }
         constexpr static index_name_t   index_name() { return code_extractor<IndexName>::get_code(); }
@@ -540,16 +555,9 @@ public:
         }
         const_iterator end() const  { return cend(); }
 
-        const_reverse_iterator crbegin() const { return const_reverse_iterator(cend()); }
-        const_reverse_iterator rbegin() const  { return crbegin(); }
-
-        const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
-        const_reverse_iterator rend() const  { return crend(); }
-
         template<typename Value>
         const_iterator find(const Value& value) const {
-            auto key = key_converter<key_type>::convert(value);
-            auto itr = lower_bound(key);
+            auto itr = lower_bound(value);
             auto etr = cend();
             if (itr == etr) return etr;
             if (!key_comparator<key_type>::compare_eq(iterator_extractor_type()(itr), value)) return etr;
@@ -563,13 +571,6 @@ public:
             return itr;
         }
 
-        const_iterator require_find(const key_type& key) const {
-            auto itr = lower_bound(key);
-            CYBERWAY_ASSERT(itr != cend() && key == iterator_extractor_type()(itr), chaindb_midx_find_exception,
-                "Unable to find key ${key} in the index ${index}", ("key", key)("index", get_index_name()));
-            return itr;
-        }
-
         const T& get(const key_type& key) const {
             auto itr = find(key);
             CYBERWAY_ASSERT(itr != cend(), chaindb_midx_find_exception,
@@ -578,7 +579,8 @@ public:
         }
 
         const_iterator lower_bound(const key_type& key) const {
-            auto info = chaindb::lower_bound(controller_, get_index_request(), key);
+            chaindb::lower_bound<std::is_same<IndexName, typename PrimaryIndex::tag>::value> finder;
+            auto info = finder(controller_, get_index_request(), key);
             return const_iterator(&controller_, info.cursor, info.pk);
         }
 
@@ -587,7 +589,8 @@ public:
             return lower_bound(key_converter<key_type>::convert(value));
         }
         const_iterator upper_bound(const key_type& key) const {
-            auto info = chaindb::upper_bound(controller_, get_index_request(), key);
+            chaindb::upper_bound<std::is_same<IndexName, typename PrimaryIndex::tag>::value> finder;
+            auto info = finder(controller_, get_index_request(), key);
             return const_iterator(&controller_, info.cursor, info.pk);
         }
 
@@ -611,22 +614,6 @@ public:
             // Bad realization, normal for tests,
             //   should NOT!!!! be used in the production code.
             return std::distance(begin(), end());
-        }
-
-        const_iterator iterator_to(const T& obj) const {
-            const auto& d = item_data::get_cache(obj);
-            CYBERWAY_ASSERT(d.is_valid_table(get_table_request()), chaindb_midx_logic_exception,
-                "Object ${obj} passed to iterator_to is not from the index ${index}",
-                ("obj", obj)("index", get_index_name()));
-
-            auto key = extractor_type()(obj);
-            auto pk = primary_key_extractor_type()(obj);
-            find_info info;
-            safe_allocate(key, "Invalid size of key on iterator_to", [&](auto& data, auto& size) {
-                pack_object(key, data, size);
-                info = controller_.find(get_index_request(), pk, data, size);
-            });
-            return const_iterator(&controller_, info.cursor, info.pk);
         }
 
         template<typename Lambda>
@@ -739,11 +726,6 @@ public:
     const_iterator cend() const  { return primary_idx_.cend(); }
     const_iterator end() const   { return cend(); }
 
-    const_reverse_iterator crbegin() const { return std::make_reverse_iterator(cend()); }
-    const_reverse_iterator rbegin() const  { return crbegin(); }
-
-    const_reverse_iterator crend() const { return std::make_reverse_iterator(cbegin()); }
-    const_reverse_iterator rend() const  { return crend(); }
 
     const_iterator lower_bound(primary_key_t pk) const {
         return primary_idx_.lower_bound(pk);
@@ -761,10 +743,6 @@ public:
         return primary_idx_.find(pk);
     }
 
-    const_iterator require_find(const primary_key_t pk = 0) const {
-        return primary_idx_.require_find(pk);
-    }
-
     template<typename IndexTag>
     auto get_index() const {
         namespace hana = boost::hana;
@@ -780,10 +758,6 @@ public:
 
     size_t size() const {
         return primary_idx_.size();
-    }
-
-    const_iterator iterator_to(const T& obj) const {
-        return primary_idx_.iterator_to(obj);
     }
 
     template<typename Lambda>

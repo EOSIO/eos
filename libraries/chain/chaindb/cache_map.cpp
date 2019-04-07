@@ -62,32 +62,61 @@ namespace cyberway { namespace chaindb {
 
     //---------------------------------------
 
+    struct cache_index_key final {
+        const index_info& info;
+        const char*       data;
+        const size_t      size;
+    }; // struct cache_index_key
+
     cache_index_value::cache_index_value(index_name i, data_t d, const cache_object& c)
     : index(std::move(i)),
       data(std::move(d)),
-      object(c) {
+      object(&c) {
     }
 
+    struct cache_index_compare {
+        const index_name&   index(const cache_index_value& v) const { return v.index;                   }
+        const index_name&   index(const cache_index_key& v  ) const { return v.info.index->name;        }
+
+        const table_name&   table(const cache_index_value& v) const { return v.object->service().table; }
+        const table_name&   table(const cache_index_key& v  ) const { return v.info.table->name;        }
+
+        const account_name& code (const cache_index_value& v) const { return v.object->service().code;  }
+        const account_name& code (const cache_index_key& v  ) const { return v.info.code;               }
+
+        const account_name& scope(const cache_index_value& v) const { return v.object->service().scope; }
+        const account_name& scope(const cache_index_key& v  ) const { return v.info.scope;              }
+
+        const size_t        size (const cache_index_value& v) const { return v.data.size();             }
+        const size_t        size (const cache_index_key& v  ) const { return v.size;                    }
+
+        const char*         data (const cache_index_value& v) const { return v.data.data();             }
+        const char*         data (const cache_index_key& v  ) const { return v.data;                    }
+
+        template<typename LeftKey, typename RightKey>
+        bool operator()(const LeftKey& l, const RightKey& r) const {
+            if (index(l) < index(r)) return true;
+            if (index(l) > index(r)) return false;
+
+            if (table(l) < table(r)) return true;
+            if (table(l) > table(r)) return false;
+
+            if (code(l)  < code(r) ) return true;
+            if (code(l)  > code(r) ) return false;
+
+            if (scope(l) < scope(r)) return true;
+            if (scope(l) > scope(r)) return false;
+
+            if (size(l)  < size(r) ) return true;
+            if (size(l)  > size(r) ) return false;
+
+            return (std::memcmp(data(l), data(r), size(l)) < 0);
+        }
+
+    }; // struct cache_index_compare
+
     bool operator<(const cache_index_value& l, const cache_index_value& r) {
-        auto& ls = l.object.service();
-        auto& rs = r.object.service();
-
-        if (l.index < r.index  ) return true;
-        if (l.index > r.index  ) return false;
-
-        if (ls.table < rs.table) return true;
-        if (ls.table > rs.table) return false;
-
-        if (ls.code  < rs.code ) return true;
-        if (ls.code  > rs.code ) return false;
-
-        if (ls.scope < rs.scope) return true;
-        if (ls.scope > rs.scope) return false;
-
-        if (l.data.size() < r.data.size()) return true;
-        if (l.data.size() > r.data.size()) return false;
-
-        return (std::memcmp(l.data.data(), r.data.data(), l.data.size()) < 0);
+        return cache_index_compare()(l, r);
     }
 
     //---------------------------------------
@@ -120,6 +149,14 @@ namespace cyberway { namespace chaindb {
                 return &(*itr);
             }
 
+            return nullptr;
+        }
+
+        cache_object* find(const cache_index_key& key) {
+            auto itr = cache_index_tree_.find(key, cache_index_compare());
+            if (cache_index_tree_.end() != itr) {
+                return const_cast<cache_object*>(itr->object);
+            }
             return nullptr;
         }
 
@@ -351,6 +388,10 @@ namespace cyberway { namespace chaindb {
 
     cache_object_ptr cache_map::find(const table_info& table, const primary_key_t pk) const {
         return cache_object_ptr(impl_->find({table, pk}));
+    }
+
+    cache_object_ptr cache_map::find(const index_info& info, const char* value, const size_t size) const {
+        return cache_object_ptr(impl_->find({info, value, size}));
     }
 
     cache_object_ptr cache_map::emplace(const table_info& table, object_value obj) const {

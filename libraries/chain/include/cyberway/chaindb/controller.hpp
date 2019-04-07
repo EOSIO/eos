@@ -149,11 +149,13 @@ namespace cyberway { namespace chaindb {
         int64_t revision() const;
         void set_revision(uint64_t revision);
 
-        find_info lower_bound(const index_request&, const char* key, size_t);
-        find_info upper_bound(const index_request&, const char* key, size_t);
+        find_info lower_bound(const index_request&, const char* key, size_t) const;
+        find_info lower_bound(const index_request&, primary_key_t) const;
+        find_info lower_bound(const index_request& request, const variant&) const;
 
-        find_info lower_bound(const index_request& request, const fc::variant& orders) const;
-        find_info upper_bound(const index_request& request, const fc::variant& orders) const;
+        find_info upper_bound(const index_request&, const char* key, size_t) const;
+        find_info upper_bound(const index_request&, primary_key_t) const;
+        find_info upper_bound(const index_request& request, const variant&) const;
 
         find_info locate_to(const index_request&, const char* key, size_t, primary_key_t);
 

@@ -80,7 +80,7 @@ namespace cyberway { namespace chaindb {
         using table_info::table_info;
 
         index_info(const table_info& src)
-            : table_info(src) {
+        : table_info(src) {
         }
     }; // struct index_info
 

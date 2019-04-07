@@ -37,19 +37,19 @@ namespace cyberway { namespace chaindb {
         virtual void apply_all_changes() = 0;
         virtual void apply_code_changes(const account_name& code) = 0;
 
-        virtual const cursor_info& lower_bound(index_info, variant key) = 0;
-        virtual const cursor_info& upper_bound(index_info, variant key) = 0;
-        virtual const cursor_info& locate_to(index_info, variant key, primary_key_t) = 0;
+        virtual cursor_info& lower_bound(index_info, variant key) = 0;
+        virtual cursor_info& upper_bound(index_info, variant key) = 0;
+        virtual cursor_info& locate_to(index_info, variant key, primary_key_t) = 0;
 
-        virtual const cursor_info& begin(index_info) = 0;
-        virtual const cursor_info& end(index_info) = 0;
+        virtual cursor_info& begin(index_info) = 0;
+        virtual cursor_info& end(index_info) = 0;
 
-        virtual const cursor_info& current(const cursor_info&) = 0;
-        virtual const cursor_info& current(const cursor_request&) = 0;
-        virtual const cursor_info& next(const cursor_request&) = 0;
-        virtual const cursor_info& next(const cursor_info&) = 0;
-        virtual const cursor_info& prev(const cursor_request&) = 0;
-        virtual const cursor_info& prev(const cursor_info&) = 0;
+        virtual cursor_info& current(const cursor_info&) = 0;
+        virtual cursor_info& current(const cursor_request&) = 0;
+        virtual cursor_info& next(const cursor_request&) = 0;
+        virtual cursor_info& next(const cursor_info&) = 0;
+        virtual cursor_info& prev(const cursor_request&) = 0;
+        virtual cursor_info& prev(const cursor_info&) = 0;
 
         virtual       object_value  object_by_pk(const table_info&, primary_key_t) = 0;
         virtual const object_value& object_at_cursor(const cursor_info&) = 0;

@@ -39,7 +39,7 @@ namespace cyberway { namespace chaindb {
 
         const index_name    index;
         const data_t        data;
-        const cache_object& object;
+        const cache_object* object = nullptr;
 
         cache_index_value(index_name, data_t, const cache_object&);
         cache_index_value(cache_index_value&&) = default;

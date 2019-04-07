@@ -913,67 +913,67 @@ namespace cyberway { namespace chaindb {
         impl_->apply_all_changes();
     }
 
-    const cursor_info& mongodb_driver::lower_bound(index_info index, variant key) {
+    cursor_info& mongodb_driver::lower_bound(index_info index, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
         cursor.open(direction::Forward, std::move(key), unset_primary_key);
         return cursor;
     }
 
-    const cursor_info& mongodb_driver::upper_bound(index_info index, variant key) {
+    cursor_info& mongodb_driver::upper_bound(index_info index, variant key) {
         auto& cursor = impl_->create_cursor(std::move(index));
         cursor.open(direction::Backward, std::move(key), unset_primary_key).next();
         return cursor;
     }
 
-    const cursor_info& mongodb_driver::locate_to(index_info index, variant key, primary_key_t pk) {
+    cursor_info& mongodb_driver::locate_to(index_info index, variant key, primary_key_t pk) {
         auto& cursor = impl_->create_cursor(std::move(index));
         cursor.open(direction::Forward, std::move(key), pk);
         return cursor;
     }
 
-    const cursor_info& mongodb_driver::begin(index_info index) {
+    cursor_info& mongodb_driver::begin(index_info index) {
         auto& cursor = impl_->create_cursor(std::move(index));
         cursor.open(direction::Forward, {}, unset_primary_key);
         return cursor;
     }
 
-    const cursor_info& mongodb_driver::end(index_info index) {
+    cursor_info& mongodb_driver::end(index_info index) {
         auto& cursor = impl_->create_cursor(std::move(index));
         cursor.open(direction::Backward, {}, end_primary_key);
         return cursor;
     }
 
-    const cursor_info& mongodb_driver::current(const cursor_info& info) {
+    cursor_info& mongodb_driver::current(const cursor_info& info) {
         auto& cursor = impl_->get_applied_cursor(info);
         cursor.current();
         return cursor;
     }
 
-    const cursor_info& mongodb_driver::current(const cursor_request& request) {
+    cursor_info& mongodb_driver::current(const cursor_request& request) {
         auto& cursor = impl_->get_applied_cursor(request);
         cursor.current();
         return cursor;
     }
 
-    const cursor_info& mongodb_driver::next(const cursor_request& request) {
+    cursor_info& mongodb_driver::next(const cursor_request& request) {
         auto& cursor = impl_->get_applied_cursor(request);
         cursor.next();
         return cursor;
     }
 
-    const cursor_info& mongodb_driver::next(const cursor_info& info) {
+    cursor_info& mongodb_driver::next(const cursor_info& info) {
         auto& cursor = impl_->get_applied_cursor(info);
         cursor.next();
         return cursor;
     }
 
-    const cursor_info& mongodb_driver::prev(const cursor_request& request) {
+    cursor_info& mongodb_driver::prev(const cursor_request& request) {
         auto& cursor = impl_->get_applied_cursor(request);
         cursor.prev();
         return cursor;
     }
 
-    const cursor_info& mongodb_driver::prev(const cursor_info& info) {
+    cursor_info& mongodb_driver::prev(const cursor_info& info) {
         auto& cursor = impl_->get_applied_cursor(info);
         cursor.prev();
         return cursor;
