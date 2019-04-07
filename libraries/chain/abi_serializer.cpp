@@ -97,10 +97,9 @@ namespace eosio { namespace chain {
       built_in_types.emplace("public_key",                pack_unpack<public_key_type>());
       built_in_types.emplace("signature",                 pack_unpack<signature_type>());
 
-      built_in_types.emplace("symbol",                    pack_unpack<symbol>());
+      built_in_types.emplace("symbol",                    pack_unpack<symbol_info>());
       built_in_types.emplace("symbol_code",               pack_unpack<symbol_code>());
-      built_in_types.emplace("asset",                     pack_unpack<asset>());
-      built_in_types.emplace("extended_asset",            pack_unpack<extended_asset>());
+      built_in_types.emplace("asset",                     pack_unpack<asset_info>());
    }
 
    void abi_serializer::disable_check_field_name() {

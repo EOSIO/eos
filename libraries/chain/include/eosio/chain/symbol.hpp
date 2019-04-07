@@ -147,11 +147,6 @@ namespace eosio {
             friend struct fc::reflector<symbol>;
       }; // class symbol
 
-      struct extended_symbol {
-         symbol       sym;
-         account_name contract;
-      };
-
       inline bool operator== (const symbol& lhs, const symbol& rhs)
       {
          return lhs.value() == rhs.value();
@@ -189,32 +184,43 @@ namespace eosio {
 } // namespace eosio
 
 FC_REFLECT(eosio::chain::symbol_info, (decs)(sym))
+FC_REFLECT(eosio::chain::symbol_code, (value))
+FC_REFLECT(eosio::chain::symbol, (m_value))
 
 namespace fc {
-   inline void to_variant(const eosio::chain::symbol& var, fc::variant& vo) {
-      eosio::chain::symbol_info info(var);
-      fc::to_variant(info, vo);
-   }
-   inline void from_variant(const fc::variant& var, eosio::chain::symbol& vo) {
-      if (var.is_object()) {
-         eosio::chain::symbol_info info;
-         fc::from_variant(var, info);
-         vo = info;
+   namespace raw {
+      template<typename Stream> void pack(Stream& s, const eosio::chain::symbol_info& vo) {
+         pack(s, static_cast<eosio::chain::symbol>(vo));
+      }
+
+      template<typename Stream> void unpack(Stream& s, eosio::chain::symbol_info& vo) {
+         eosio::chain::symbol temp;
+         unpack(s, temp);
+         vo = eosio::chain::symbol_info(temp);
+      }
+   } // namespace raw
+
+   inline void from_variant(const variant& var, eosio::chain::symbol_info& vo) {
+      using namespace eosio::chain;
+      if (var.get_type() == variant::type_id::string_type) {
+         vo = symbol::from_string(var.get_string());
       } else {
-         vo = eosio::chain::symbol::from_string(var.get_string());
+         reflector<symbol_info>::visit(from_variant_visitor<symbol_info>(var.get_object(), vo));
       }
    }
-}
-
-namespace fc {
+   inline void to_variant(const eosio::chain::symbol& var, fc::variant& vo) {
+      vo = variant(var.to_string());
+   }
+   inline void from_variant(const fc::variant& var, eosio::chain::symbol& vo) {
+      eosio::chain::symbol_info info;
+      from_variant(var, info);
+      vo = info;
+   }
    inline void to_variant(const eosio::chain::symbol_code& var, fc::variant& vo) {
       vo = eosio::chain::symbol(var.value << 8).name();
    }
    inline void from_variant(const fc::variant& var, eosio::chain::symbol_code& vo) {
       vo = eosio::chain::symbol(0, var.get_string().c_str()).to_symbol_code();
    }
-}
+} // namespace fc
 
-FC_REFLECT(eosio::chain::symbol_code, (value))
-FC_REFLECT(eosio::chain::symbol, (m_value))
-FC_REFLECT(eosio::chain::extended_symbol, (sym)(contract))

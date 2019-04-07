@@ -95,13 +95,6 @@ private:
 
 };
 
-struct extended_asset  {
-  extended_asset(){}
-  extended_asset( asset a, name n ):quantity(a),contract(n){}
-  asset quantity;
-  name contract;
-};
-
 struct asset_info final {
     share_type  amount;
     uint8_t     decs;
@@ -126,22 +119,35 @@ bool  operator <= (const asset& a, const asset& b);
 }} // namespace eosio::chain
 
 FC_REFLECT(eosio::chain::asset_info, (amount)(decs)(sym))
+FC_REFLECT(eosio::chain::asset, (amount)(sym))
 
 namespace fc {
-inline void to_variant(const eosio::chain::asset& var, fc::variant& vo) {
-   eosio::chain::asset_info info(var);
-   fc::to_variant(info, vo);
-}
-inline void from_variant(const fc::variant& var, eosio::chain::asset& vo) {
-   if (var.get_type() == fc::variant::type_id::object_type) {
-      eosio::chain::asset_info info;
-      fc::from_variant(var, info);
-      vo = info;
-   } else {
-      vo = eosio::chain::asset::from_string(var.get_string());
-   }
-}
-}
+   namespace raw {
+      template<typename Stream> void pack(Stream& s, const eosio::chain::asset_info& vo) {
+         pack(s, static_cast<eosio::chain::asset>(vo));
+      }
 
-FC_REFLECT(eosio::chain::asset, (amount)(sym))
-FC_REFLECT(eosio::chain::extended_asset, (quantity)(contract) )
+      template<typename Stream> void unpack(Stream& s, eosio::chain::asset_info& vo) {
+         eosio::chain::asset temp;
+         unpack(s, temp);
+         vo = eosio::chain::asset_info(temp);
+      }
+   } // namespace raw
+
+   inline void from_variant(const variant& var, eosio::chain::asset_info& vo) {
+      using namespace eosio::chain;
+      if (var.get_type() == variant::type_id::string_type) {
+         vo = asset::from_string(var.get_string());
+      } else {
+         reflector<asset_info>::visit(from_variant_visitor<asset_info>(var.get_object(), vo));
+      }
+   }
+   inline void to_variant(const eosio::chain::asset& var, variant& vo) {
+      vo = variant(var.to_string());
+   }
+   inline void from_variant(const fc::variant& var, eosio::chain::asset& vo) {
+      eosio::chain::asset_info info;
+      from_variant(var, info);
+      vo = info;
+   }
+} //namespace fc
