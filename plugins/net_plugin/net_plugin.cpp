@@ -3258,20 +3258,6 @@ namespace eosio {
       try {
          fc_ilog( logger, "shutdown.." );
          {
-            std::lock_guard<std::mutex> g( my->connector_check_timer_mtx );
-            if( my->connector_check_timer )
-               my->connector_check_timer->cancel();
-         }{
-            std::lock_guard<std::mutex> g( my->expire_timer_mtx );
-            if( my->expire_timer )
-               my->expire_timer->cancel();
-         }{
-            std::lock_guard<std::mutex> g( my->keepalive_timer_mtx );
-            if( my->keepalive_timer )
-               my->keepalive_timer->cancel();
-         }
-
-         {
             fc_ilog( logger, "close ${s} connections", ("s", my->connections.size()) );
             std::unique_lock<std::shared_timed_mutex> g( my->connections_mtx );
             for( auto& con : my->connections ) {
@@ -3284,6 +3270,7 @@ namespace eosio {
          if( my->thread_pool ) {
             my->thread_pool->stop();
          }
+         app().post( 0, [me = my](){} ); // keep my pointer alive until queue is drained
          fc_ilog( logger, "exit shutdown" );
       }
       FC_CAPTURE_AND_RETHROW()
