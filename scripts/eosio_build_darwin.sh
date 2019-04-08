@@ -164,7 +164,7 @@ printf "\\n"
 
 export CPATH="$(python-config --includes | awk '{print $1}' | cut -dI -f2):$CPATH" # Boost has trouble finding pyconfig.h
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
-BOOSTVERSION=$( grep "#define BOOST_VERSION" "$HOME/opt/boost/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
+BOOSTVERSION=$( grep "#define BOOST_VERSION" "$BOOST_ROOT/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
 if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
 	printf "Installing Boost library...\\n"
 	curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
@@ -216,7 +216,7 @@ if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 	&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 	&& mkdir -p cmake-build \
 	&& cd cmake-build \
-	&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME -DENABLE_BSON=ON -DENABLE_SSL=DARWIN -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
+	&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=DARWIN -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
 	&& make -j"${JOBS}" \
 	&& make install \
 	&& cd ../.. \
@@ -228,12 +228,12 @@ else
 fi
 if [ $? -ne 0 ]; then exit -1; fi
 printf "Checking MongoDB C++ driver installation...\\n"
-if [ "$(grep "Version:" $HOME/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ]; then
+if [ "$(grep "Version:" $PREFIX/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ]; then
 	printf "Installing MongoDB C++ driver...\\n"
 	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
 	&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
-	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
+	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX .. \
 	&& make -j"${JOBS}" VERBOSE=1 \
 	&& make install \
 	&& cd ../.. \
