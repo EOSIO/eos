@@ -64,6 +64,12 @@ extern "C" {
       WASM_TEST_HANDLER   ( test_action, test_publication_time      );
       WASM_TEST_HANDLER   ( test_action, test_assert_code           );
       WASM_TEST_HANDLER_EX( test_action, test_ram_billing_in_notify );
+      WASM_TEST_HANDLER_EX( test_action, test_action_ordinal1       );
+      WASM_TEST_HANDLER_EX( test_action, test_action_ordinal2       );
+      WASM_TEST_HANDLER_EX( test_action, test_action_ordinal3       );
+      WASM_TEST_HANDLER_EX( test_action, test_action_ordinal4       );
+      WASM_TEST_HANDLER_EX( test_action, test_action_ordinal_foo    );
+      WASM_TEST_HANDLER_EX( test_action, test_action_ordinal_bar    );
 
       // test named actions
       // We enforce action name matches action data type name, so name mangling will not work for these tests.
