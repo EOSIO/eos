@@ -1243,7 +1243,7 @@ class Node(object):
         self.killed=True
         return True
 
-    def interruptAndVerifyExitStatus(self, timeout=15):
+    def interruptAndVerifyExitStatus(self, timeout=60):
         if Utils.Debug: Utils.Print("terminating node: %s" % (self.cmd))
         assert self.popenProc is not None, "node: \"%s\" does not have a popenProc, this may be because it is only set after a relaunch." % (self.cmd)
         self.popenProc.send_signal(signal.SIGINT)
