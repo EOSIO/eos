@@ -76,7 +76,12 @@ namespace eosio { namespace chain {
          void undo();
          void validate_bw_usage();
 
-         inline void add_net_usage( uint64_t u ) { net_usage += u; check_net_usage(); }
+         inline void add_net_usage( uint64_t u ) {
+            net_usage += u;
+            check_net_usage();
+            available_resources.add_net_usage(u);
+            available_resources.check_cpu_usage((fc::time_point::now() - pseudo_start).count());
+         }
          inline void add_cpu_usage( uint64_t u ) { billed_cpu_time_us += u;}
 
          uint64_t get_net_usage() const {return net_usage;}
@@ -85,15 +90,13 @@ namespace eosio { namespace chain {
          void check_net_usage()const;
 
          void checktime()const;
-         
-         void check_available_resources(fc::time_point now)const;
 
          void pause_billing_timer();
          void resume_billing_timer();
          int64_t get_billed_cpu_time( fc::time_point now )const;
          uint32_t update_billed_cpu_time( fc::time_point now );
 
-         int64_t get_supremum(symbol_code resource_code)const;
+         int64_t get_min_cpu_limit()const;
 
          uint64_t get_provided_net_limit(account_name account) const;
 
@@ -188,18 +191,25 @@ namespace eosio { namespace chain {
          std::map<contract_for_user, account_name> ram_providers_;
          
         class available_resources_t {
-            resource_limits::pricelist pricelist;
-            std::map<account_name, resource_limits::account_balance> balances;
-            uint64_t min_stake = UINT64_MAX;
+            struct limit {
+                uint64_t ram = UINT64_MAX;
+                uint64_t cpu = UINT64_MAX;
+            };
+            resource_limits::ratio cpu_price;
+            resource_limits::ratio net_price;
+            resource_limits::ratio ram_price;
+            
+            std::map<account_name, limit> limits;
+            uint64_t min_cpu = UINT64_MAX;
         public:
             void init(resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now);
-            
-            bool update_ram_usage(account_name account, int64_t usage_delta);
-            void check(const std::vector<std::pair<symbol_code, uint64_t> >&)const;
-            int64_t get_supremum(symbol_code resource_code)const;
+            bool update_ram_usage(account_name account, int64_t delta);
+            void add_net_usage(int64_t delta);
+            void check_cpu_usage(int64_t usage) const;
+            uint64_t get_min_cpu_limit()const { return min_cpu; };
         };
          
-         available_resources_t available_resources;
-        };
+        available_resources_t available_resources;
+    };
 
 } }

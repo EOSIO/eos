@@ -200,7 +200,7 @@ namespace bacc = boost::accumulators;
    {
       EOS_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
-
+      
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
 
@@ -272,7 +272,7 @@ namespace bacc = boost::accumulators;
 
       eager_net_limit = net_limit;
       
-      //TODO:? net/cpu leeway 
+      //TODO:? net/cpu leeway
       
       billing_timer_duration_limit = _deadline - start;
 
@@ -409,6 +409,7 @@ namespace bacc = boost::accumulators;
        net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
 
        eager_net_limit = net_limit;
+       
        check_net_usage();
 
        auto now = fc::time_point::now();
@@ -430,13 +431,6 @@ namespace bacc = boost::accumulators;
       // if (undo_session) undo_session->undo();
       if (chaindb_undo_session) chaindb_undo_session->undo();
    }
-   
-   void transaction_context::check_available_resources(fc::time_point now)const {
-      available_resources.check({
-         {resource_limits::cpu_code, static_cast<uint64_t>(get_billed_cpu_time(now))}, 
-         {resource_limits::net_code, net_usage}
-      });
-   }
 
    void transaction_context::check_net_usage()const {
       if (!control.skip_trx_checks()) {
@@ -451,11 +445,11 @@ namespace bacc = boost::accumulators;
                           ("net_usage", net_usage)("net_limit", eager_net_limit) );
             }
          }
-         check_available_resources(fc::time_point::now());
       }
    }
 
    void transaction_context::checktime()const {
+       
       if(BOOST_LIKELY(_deadline_timer.expired == false))
          return;
       auto now = fc::time_point::now();
@@ -479,7 +473,7 @@ namespace bacc = boost::accumulators;
          }
          EOS_ASSERT( false,  transaction_exception, "unexpected deadline exception code" );
       }
-      check_available_resources(now);
+      available_resources.check_cpu_usage((now - pseudo_start).count());
    }
 
    void transaction_context::pause_billing_timer() {
@@ -536,7 +530,7 @@ namespace bacc = boost::accumulators;
 
    void transaction_context::add_ram_usage( account_name account, int64_t ram_delta ) {
       if (available_resources.update_ram_usage(account, ram_delta)) {
-         check_available_resources(fc::time_point::now());
+         available_resources.check_cpu_usage((fc::time_point::now() - pseudo_start).count());
       }
       auto& rl = control.get_mutable_resource_limits_manager();
       rl.add_pending_ram_usage( account, ram_delta );
@@ -684,13 +678,20 @@ namespace bacc = boost::accumulators;
    }
    
     void transaction_context::available_resources_t::init(resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now) {
-        EOS_ASSERT(pricelist.empty(), transaction_exception, "SYSTEM: pricelist already initialized");
-        pricelist = rl.get_pricelist();
+        auto pricelist = rl.get_pricelist();
+        cpu_price = pricelist.at(resource_limits::cpu_code);
+        net_price = pricelist.at(resource_limits::net_code);
+        ram_price = pricelist.at(resource_limits::ram_code);
         rl.update_account_usage(accounts, block_timestamp_type(now).slot);
+        min_cpu = UINT64_MAX;
         for (const auto& a : accounts) {
-            auto& balance = balances[a];
-            balance = rl.get_account_balance(now.sec_since_epoch(), a, pricelist);
-            min_stake = std::min(balance.stake, min_stake);
+            auto balance = rl.get_account_balance(now.sec_since_epoch(), a, pricelist);
+            auto& lim = limits[a];
+            lim.ram = balance.ram;
+            if (cpu_price.numerator && balance.stake < UINT64_MAX) {
+                lim.cpu = safe_prop(balance.stake, cpu_price.denominator, cpu_price.numerator);
+            }
+            min_cpu = std::min(lim.cpu, min_cpu);
         }
     }
 
@@ -698,67 +699,70 @@ namespace bacc = boost::accumulators;
         if (!delta) {
             return false;
         }
-        auto balance_itr = balances.find(account);
-        if (balance_itr == balances.end()) {
+        auto lim_itr = limits.find(account);
+        if (lim_itr == limits.end()) {
             return false; 
         }
-        auto price_itr = pricelist.find(resource_limits::ram_code);
-        EOS_ASSERT(price_itr != pricelist.end(), transaction_exception, "SYSTEM: ram resource does not exist");
-        auto& balance = balance_itr->second;
+        auto& lim = lim_itr->second;
         uint64_t delta_abs = std::abs(delta);
-        auto cost = safe_prop(delta_abs, price_itr->second.numerator, price_itr->second.denominator);
-        bool need_to_update_min = (balance.stake == min_stake) && (delta < 0);
+                
+        auto cost = safe_prop(delta_abs, ram_price.numerator, ram_price.denominator);
+        auto cpu = cost ? (cpu_price.numerator ? safe_prop(cost, cpu_price.denominator, cpu_price.numerator) : UINT64_MAX) : 0;
+
+        bool need_to_update_min = (lim.cpu == min_cpu) && (delta < 0);
         if (delta > 0) {
-            EOS_ASSERT(balance.ram >= delta_abs, ram_usage_exceeded, 
+            EOS_ASSERT(lim.ram >= delta_abs, ram_usage_exceeded, 
                 "account ${a} has insufficient staked tokens: balance.ram = ${b}, delta = ${d}", 
-                ("a", account)("b", balance.ram)("d", delta));
-            EOS_ASSERT(balance.stake >= cost, resource_exhausted_exception, 
-                "account ${a} has insufficient staked tokens: unspent balance = ${b}, cost = ${c}", 
-                ("a", account)("b", balance.stake)("c", cost));
-            balance.ram = balance.ram - delta_abs;
-            balance.stake = balance.stake - cost;
+                ("a", account)("b", lim.ram)("d", delta));
+            EOS_ASSERT(lim.cpu >= cpu, resource_exhausted_exception, 
+                "account ${a} has insufficient staked tokens: unspent cpu = ${b}, cost = ${c}, cpu equivalent = ${e}", 
+                ("a", account)("b", lim.cpu)("c", cost)("e", cpu));
+            lim.ram -= delta_abs;
+            lim.cpu -= cpu;
         }
         else {
-            balance.ram =   (UINT64_MAX - balance.ram)   > delta_abs ? balance.ram   + delta_abs : UINT64_MAX;
-            balance.stake = (UINT64_MAX - balance.stake) > cost      ? balance.stake + cost      : UINT64_MAX;
+            lim.ram = (UINT64_MAX - lim.ram) > delta_abs ? lim.ram + delta_abs : UINT64_MAX;
+            lim.cpu = (UINT64_MAX - lim.cpu) > cpu       ? lim.cpu + cpu       : UINT64_MAX;
         }
-        auto prev_min_stake = min_stake;
+        auto prev_min_cpu = min_cpu;
         if (need_to_update_min) {
-            min_stake = UINT64_MAX;
-            for (const auto& b : balances) {
-                min_stake = std::min(min_stake, b.second.stake);
+            min_cpu = UINT64_MAX;
+            for (const auto& b : limits) {
+                min_cpu = std::min(min_cpu, b.second.cpu);
             }
         }
         else {
-            min_stake = std::min(balance.stake, min_stake);
+            min_cpu = std::min(lim.cpu, min_cpu);
         }
-        return min_stake < prev_min_stake;
+        return min_cpu < prev_min_cpu;
     }
     
-    void transaction_context::available_resources_t::check(const std::vector<std::pair<symbol_code, uint64_t> >& usage)const {
-        uint64_t cost = 0;
-        for (auto& u : usage) {
-            auto price_itr = pricelist.find(u.first);
-            EOS_ASSERT(price_itr != pricelist.end(), transaction_exception, "SYSTEM: resource does not exist");
-            auto add = safe_prop(u.second, price_itr->second.numerator, price_itr->second.denominator);
-            cost = (UINT64_MAX - cost) > add ? cost + add : UINT64_MAX;
+    void transaction_context::available_resources_t::add_net_usage(int64_t delta) {
+        EOS_ASSERT(delta >= 0, transaction_exception, "SYSTEM: available_resources_t::add_net_usage, usage_delta < 0");
+        if (!delta || !cpu_price.numerator) {
+            return;
         }
-        EOS_ASSERT(cost <= min_stake, resource_exhausted_exception, 
-            "transaction costs too much (${cost}); balance ${balance}", ("cost", cost)("balance", min_stake));
-    }
-    int64_t transaction_context::available_resources_t::get_supremum(symbol_code resource_code)const {
-        auto price_itr = pricelist.find(resource_code);
-        EOS_ASSERT(price_itr != pricelist.end(), transaction_exception, "SYSTEM: resource does not exist");
-        auto ret = std::numeric_limits<int64_t>::max();
-        if (price_itr->second.numerator) {
-            auto ret_unsigned = safe_prop(min_stake, price_itr->second.denominator, price_itr->second.numerator);
-            EOS_ASSERT(ret_unsigned <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), transaction_exception, 
-                "SYSTEM: transaction_context::available_resources_t::get_supremum, int overflow");
-            ret = static_cast<int64_t>(ret_unsigned);
+        
+        auto cost = safe_prop(static_cast<uint64_t>(delta), net_price.numerator, net_price.denominator);
+        auto cpu = safe_prop(cost, cpu_price.denominator, cpu_price.numerator);
+
+        EOS_ASSERT(min_cpu >= cpu, resource_exhausted_exception, 
+            "transaction costs too much; unspent cpu = ${b}, cost cpu equivalent = ${e}", ("b", min_cpu)("e", cpu));
+        min_cpu = UINT64_MAX;
+        for (auto& b : limits) {
+            EOS_ASSERT(b.second.cpu >= cpu, transaction_exception, "SYSTEM: incorrect cpu limit");
+            b.second.cpu -= cpu;
+            min_cpu = std::min(min_cpu, b.second.cpu);
         }
-        return ret;
     }
-    int64_t transaction_context::get_supremum(symbol_code resource_code)const {
-        return available_resources.get_supremum(resource_code);
+    
+    void transaction_context::available_resources_t::check_cpu_usage(int64_t usage)const {
+        EOS_ASSERT(min_cpu >= usage, resource_exhausted_exception, 
+            "transaction costs too much; unspent cpu = ${b}, usage = ${u}", ("b", min_cpu)("u", usage));
+    }
+
+    int64_t transaction_context::get_min_cpu_limit()const {
+        auto ret_unsigned = available_resources.get_min_cpu_limit();
+        return ret_unsigned > static_cast<uint64_t>(INT64_MAX) ? INT64_MAX : static_cast<int64_t>(ret_unsigned);
     }
 } } /// eosio::chain

@@ -270,8 +270,7 @@ pricelist resource_limits_manager::get_pricelist() const {
 
 account_balance resource_limits_manager::get_account_balance(int64_t now, const account_name& account, const pricelist& prices) {
 
-    static constexpr auto max_int64 = std::numeric_limits<int64_t>::max();
-    static constexpr account_balance no_limits{max_int64, max_int64};
+    static constexpr account_balance no_limits{UINT64_MAX, UINT64_MAX};
     symbol_code token_code { symbol(CORE_SYMBOL).to_symbol_code() };
     
     const stake_param_object* param = nullptr;

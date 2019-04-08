@@ -961,7 +961,7 @@ struct controller_impl {
          if( !explicit_billed_cpu_time ) {
             auto& rl = self.get_mutable_resource_limits_manager();
             rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
-            int64_t account_cpu_limit = trx_context.get_supremum(resource_limits::cpu_code);
+            int64_t account_cpu_limit = trx_context.get_min_cpu_limit();
 
             cpu_time_to_bill_us = static_cast<uint32_t>( std::min( std::min( static_cast<int64_t>(cpu_time_to_bill_us),
                                                                              account_cpu_limit                          ),
