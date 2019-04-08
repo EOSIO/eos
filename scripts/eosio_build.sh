@@ -74,7 +74,7 @@ EOT
 }
 
 if [ $# -ne 0 ]; then
-   while getopts ":cdo:s:ahy" opt; do
+   while getopts ":cdo:s:p:b:hy" opt; do
       case "${opt}" in
          o )
             options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
