@@ -264,12 +264,12 @@ void test_action::test_action_ordinal1(uint64_t receiver, uint64_t code, uint64_
    uint64_t _self = receiver;
    if (receiver == "testapi"_n.value) {
       print("exec 1");
-      eosio::require_recipient( "bob"_n ); //-> exec2
+      eosio::require_recipient( "bob"_n ); //-> exec 2 which would then cause execution of 4, 10
 
       eosio::action act1({name(_self), "active"_n}, name(_self), 
                          name(WASM_TEST_ACTION("test_action", "test_action_ordinal2")),
                          std::tuple<>());
-      act1.send(); // -> exec 5, 6, 7
+      act1.send(); // -> exec 5 which would then cause execution of 6, 7, 8
 
       if (is_account("fail1"_n)) {
          eosio_assert(false, "fail at point 1");
@@ -280,14 +280,14 @@ void test_action::test_action_ordinal1(uint64_t receiver, uint64_t code, uint64_
                          std::tuple<>());
       act2.send(); // -> exec 9
 
-      eosio::require_recipient( "charlie"_n ); // -> exec 3
+      eosio::require_recipient( "charlie"_n ); // -> exec 3 which would then cause execution of 11
 
    } else if (receiver == "bob"_n.value) {
       print("exec 2");
       eosio::action act1({name(_self), "active"_n}, name(_self), 
                          name(WASM_TEST_ACTION("test_action", "test_action_ordinal_foo")),
                          std::tuple<>());
-      act1.send();
+      act1.send(); // -> exec 10
 
       eosio::require_recipient( "david"_n );  // -> exec 4
    } else if (receiver == "charlie"_n.value) {
@@ -311,8 +311,8 @@ void test_action::test_action_ordinal2(uint64_t receiver, uint64_t code, uint64_
    uint64_t _self = receiver;
    if (receiver == "testapi"_n.value) {
       print("exec 5");
-      eosio::require_recipient( "david"_n );
-      eosio::require_recipient( "erin"_n );
+      eosio::require_recipient( "david"_n ); // -> exec 6
+      eosio::require_recipient( "erin"_n ); // -> exec 7
 
       eosio::action act1({name(_self), "active"_n}, name(_self), 
                          name(WASM_TEST_ACTION("test_action", "test_action_ordinal4")),

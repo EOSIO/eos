@@ -454,7 +454,8 @@ namespace eosio { namespace testing {
 
    transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx,
                                                         fc::time_point deadline,
-                                                        uint32_t billed_cpu_time_us
+                                                        uint32_t billed_cpu_time_us,
+                                                        bool no_throw
                                                       )
    { try {
       if( !control->is_building_block() )
@@ -466,6 +467,7 @@ namespace eosio { namespace testing {
       }
 
       auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx,c), deadline, billed_cpu_time_us );
+      if (no_throw) return r;
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
       return r;
