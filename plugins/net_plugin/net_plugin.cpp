@@ -203,7 +203,7 @@ namespace eosio {
       void expire_txns( uint32_t lib_num );
    };
 
-   class net_plugin_impl {
+   class net_plugin_impl : public std::enable_shared_from_this<net_plugin_impl> {
    public:
       unique_ptr<tcp::acceptor>        acceptor;
       tcp::endpoint                    listen_endpoint;
@@ -246,6 +246,7 @@ namespace eosio {
       boost::asio::steady_timer::duration   resp_expected_period;
       boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
       int                                   max_cleanup_time_ms = 0;
+      std::atomic<bool>                     in_shutdown{false};
 
       const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
 
@@ -2791,19 +2792,21 @@ namespace eosio {
 
    // called from any thread
    void net_plugin_impl::start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection) {
+      if( in_shutdown ) return;
       std::lock_guard<std::mutex> g( connector_check_timer_mtx );
       ++connector_checks_in_flight;
       connector_check_timer->expires_from_now( du );
-      connector_check_timer->async_wait( [this, from_connection](boost::system::error_code ec) {
-            std::unique_lock<std::mutex> g( connector_check_timer_mtx );
-            int num_in_flight = --connector_checks_in_flight;
+      connector_check_timer->async_wait( [my = shared_from_this(), from_connection](boost::system::error_code ec) {
+            std::unique_lock<std::mutex> g( my->connector_check_timer_mtx );
+            int num_in_flight = --my->connector_checks_in_flight;
             g.unlock();
             if( !ec ) {
-               connection_monitor(from_connection, num_in_flight == 0 );
+               my->connection_monitor(from_connection, num_in_flight == 0 );
             } else {
                if( num_in_flight == 0 ) {
+                  if( my->in_shutdown ) return;
                   fc_elog( logger, "Error from connection check monitor: ${m}", ("m", ec.message()));
-                  start_conn_timer( connector_period, std::weak_ptr<connection>() );
+                  my->start_conn_timer( my->connector_period, std::weak_ptr<connection>() );
                }
             }
       });
@@ -2811,29 +2814,33 @@ namespace eosio {
 
    // thread safe
    void net_plugin_impl::start_expire_timer() {
+      if( in_shutdown ) return;
       std::lock_guard<std::mutex> g( expire_timer_mtx );
       expire_timer->expires_from_now( txn_exp_period);
-      expire_timer->async_wait( [this]( boost::system::error_code ec ) {
+      expire_timer->async_wait( [my = shared_from_this()]( boost::system::error_code ec ) {
          if( !ec ) {
-            expire();
+            my->expire();
          } else {
+            if( my->in_shutdown ) return;
             fc_elog( logger, "Error from transaction check monitor: ${m}", ("m", ec.message()) );
-            start_expire_timer();
+            my->start_expire_timer();
          }
       } );
    }
 
    // thread safe
    void net_plugin_impl::ticker() {
+      if( in_shutdown ) return;
       std::lock_guard<std::mutex> g( keepalive_timer_mtx );
       keepalive_timer->expires_from_now(keepalive_interval);
-      keepalive_timer->async_wait( [this]( boost::system::error_code ec ) {
-            ticker();
+      keepalive_timer->async_wait( [my = shared_from_this()]( boost::system::error_code ec ) {
+            my->ticker();
             if( ec ) {
+               if( my->in_shutdown ) return;
                fc_wlog( logger, "Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()) );
             }
-            std::shared_lock<std::shared_timed_mutex> g( connections_mtx );
-            for( auto& c : connections ) {
+            std::shared_lock<std::shared_timed_mutex> g( my->connections_mtx );
+            for( auto& c : my->connections ) {
                if( c->socket_is_open() ) {
                   c->strand.post( [c]() {
                      c->send_time();
@@ -3257,6 +3264,21 @@ namespace eosio {
    void net_plugin::plugin_shutdown() {
       try {
          fc_ilog( logger, "shutdown.." );
+         my->in_shutdown = true;
+         {
+            std::lock_guard<std::mutex> g( my->connector_check_timer_mtx );
+            if( my->connector_check_timer )
+               my->connector_check_timer->cancel();
+         }{
+            std::lock_guard<std::mutex> g( my->expire_timer_mtx );
+            if( my->expire_timer )
+               my->expire_timer->cancel();
+         }{
+            std::lock_guard<std::mutex> g( my->keepalive_timer_mtx );
+            if( my->keepalive_timer )
+               my->keepalive_timer->cancel();
+         }
+
          {
             fc_ilog( logger, "close ${s} connections", ("s", my->connections.size()) );
             std::unique_lock<std::shared_timed_mutex> g( my->connections_mtx );
