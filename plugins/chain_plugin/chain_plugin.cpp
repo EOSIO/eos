@@ -1881,7 +1881,6 @@ void read_write::push_block(read_write::push_block_params&& params, next_functio
 }
 
 void read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
-
    try {
       auto pretty_input = std::make_shared<packed_transaction>();
       auto resolver = make_resolver(this, abi_serializer_max_time);
@@ -1901,6 +1900,45 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
                fc::variant output;
                try {
                   output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer_max_time );
+
+                  // Create map of (parent_action_ordinal, global_sequence) with action trace
+                  std::map< std::pair<uint32_t, uint64_t>, fc::mutable_variant_object > act_traces_map;
+                  for (auto& act_trace: output["action_traces"].get_array()) {
+                     if (act_trace["receipt"].is_null() && act_trace["except"].is_null()) continue;
+                     auto parent_action_ordinal = act_trace["parent_action_ordinal"].as<fc::unsigned_int>().value;
+                     auto global_sequence = act_trace["receipt"].is_null() ?
+                                                std::numeric_limits<uint64_t>::max() :
+                                                act_trace["receipt"]["global_sequence"].as<uint64_t>();
+                     act_traces_map.emplace( std::make_pair( parent_action_ordinal, global_sequence ), act_trace );
+                  }
+
+                  std::function<vector<fc::variant>(uint32_t)> convert_act_trace_to_tree_struct = [&](uint32_t parent_action_ordinal) {
+                     vector<fc::variant> restructured_act_traces;
+                     auto it = act_traces_map.lower_bound( std::make_pair(parent_action_ordinal, 0) );
+                     for (; it != act_traces_map.end(); it++) {
+                        if (it->first.first != parent_action_ordinal) break;
+                        auto& act_trace_mvo = it->second;
+
+                        auto action_ordinal = act_trace_mvo["action_ordinal"].as<fc::unsigned_int>().value;
+                        act_trace_mvo["inline_traces"] = convert_act_trace_to_tree_struct(action_ordinal);
+                        if (act_trace_mvo["receipt"].is_null()) {
+                           act_trace_mvo["receipt"] = fc::mutable_variant_object()("abi_sequence", 0)
+                                                                                  ("act_digest", digest_type::hash(trx_trace_ptr->action_traces[action_ordinal-1].act))
+                                                                                  ("auth_sequence", flat_map<account_name,uint64_t>())
+                                                                                  ("code_sequence", 0)
+                                                                                  ("global_sequence", 0)
+                                                                                  ("receiver", act_trace_mvo["receiver"])
+                                                                                  ("recv_sequence", 0);
+                        }
+                        restructured_act_traces.push_back( std::move(act_trace_mvo) );
+                     }
+                     return restructured_act_traces;
+                  };
+
+                  fc::mutable_variant_object output_mvo(output);
+                  output_mvo["action_traces"] = convert_act_trace_to_tree_struct(0);
+
+                  output = output_mvo;
                } catch( chain::abi_exception& ) {
                   output = *trx_trace_ptr;
                }
@@ -1910,8 +1948,6 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
             } CATCH_AND_CALL(next);
          }
       });
-
-
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
    } CATCH_AND_CALL(next);
@@ -1946,7 +1982,43 @@ void read_write::push_transactions(const read_write::push_transactions_params& p
       result->reserve(params.size());
 
       push_recurse(this, 0, params_copy, result, next);
+   } catch ( boost::interprocess::bad_alloc& ) {
+      chain_plugin::handle_db_exhaustion();
+   } CATCH_AND_CALL(next);
+}
 
+void read_write::send_transaction(const read_write::send_transaction_params& params, next_function<read_write::send_transaction_results> next) {
+
+   try {
+      auto pretty_input = std::make_shared<packed_transaction>();
+      auto resolver = make_resolver(this, abi_serializer_max_time);
+      transaction_metadata_ptr ptrx;
+      try {
+         abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
+         ptrx = std::make_shared<transaction_metadata>( pretty_input );
+      } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
+
+      app().get_method<incoming::methods::transaction_async>()(ptrx, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void{
+         if (result.contains<fc::exception_ptr>()) {
+            next(result.get<fc::exception_ptr>());
+         } else {
+            auto trx_trace_ptr = result.get<transaction_trace_ptr>();
+
+            try {
+               fc::variant output;
+               try {
+                  output = db.to_variant_with_abi( *trx_trace_ptr, abi_serializer_max_time );
+               } catch( chain::abi_exception& ) {
+                  output = *trx_trace_ptr;
+               }
+
+               const chain::transaction_id_type& id = trx_trace_ptr->id;
+               next(read_write::send_transaction_results{id, output});
+            } CATCH_AND_CALL(next);
+         }
+      });
+   } catch ( boost::interprocess::bad_alloc& ) {
+      chain_plugin::handle_db_exhaustion();
    } CATCH_AND_CALL(next);
 }
 
