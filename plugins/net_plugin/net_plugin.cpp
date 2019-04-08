@@ -2012,12 +2012,13 @@ namespace eosio {
             }
             if( !conn->read_delay_timer ) return;
             conn->read_delay_timer->expires_from_now( def_read_delay_for_full_write_queue );
-            conn->read_delay_timer->async_wait(
-                  app().get_priority_queue().wrap( priority::low, [this, weak_conn]( boost::system::error_code ) {
-               auto conn = weak_conn.lock();
-               if( !conn ) return;
-               start_read_message( conn );
-            } ) );
+            conn->read_delay_timer->async_wait( [this, weak_conn]( boost::system::error_code ec ) {
+               app().post( priority::low, [this, weak_conn]() {
+                  auto conn = weak_conn.lock();
+                  if( !conn ) return;
+                  start_read_message( conn );
+               } );
+            } );
             return;
          }
 
