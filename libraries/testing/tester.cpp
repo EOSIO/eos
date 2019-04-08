@@ -154,7 +154,7 @@ namespace eosio { namespace testing {
       return b;
    }
 
-   signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs, uint32_t skip_flag) {
+   signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs) {
       auto head = control->head_block_state();
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;

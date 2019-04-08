@@ -52,29 +52,18 @@ add_test(NAME plugin_test COMMAND plugin_test --report_level=detailed --color_ou
 
 add_test(NAME nodeos_sanity_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_sanity_test PROPERTY LABELS nonparallelizable_tests)
-
-#
-# TODO: DO NOT MERGE, temp disable of some tests
-#
-
-# add_test(NAME nodeos_sanity_bnet_test COMMAND tests/nodeos_run_test.py -v --sanity-test --clean-run --p2p-plugin bnet --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-# set_property(TEST nodeos_sanity_bnet_test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME nodeos_run_test COMMAND tests/nodeos_run_test.py -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_run_test PROPERTY LABELS nonparallelizable_tests)
-# add_test(NAME nodeos_run_bnet_test COMMAND tests/nodeos_run_test.py -v --clean-run --p2p-plugin bnet --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-# set_property(TEST nodeos_run_bnet_test PROPERTY LABELS nonparallelizable_tests)
 
 add_test(NAME p2p_dawn515_test COMMAND tests/p2p_tests/dawn_515/test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST p2p_dawn515_test PROPERTY LABELS nonparallelizable_tests)
 if(BUILD_MONGO_DB_PLUGIN)
-#  add_test(NAME nodeos_run_test-mongodb COMMAND tests/nodeos_run_test.py --mongodb -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-#  set_property(TEST nodeos_run_test-mongodb PROPERTY LABELS nonparallelizable_tests)
+  add_test(NAME nodeos_run_test-mongodb COMMAND tests/nodeos_run_test.py --mongodb -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_property(TEST nodeos_run_test-mongodb PROPERTY LABELS nonparallelizable_tests)
 endif()
 
 add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactions-test.py -d 2 -p 4 -n 6 -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST distributed-transactions-test PROPERTY LABELS nonparallelizable_tests)
-# add_test(NAME distributed-transactions-bnet-test COMMAND tests/distributed-transactions-test.py -d 2 -p 1 -n 4 --p2p-plugin bnet -v --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-# set_property(TEST distributed-transactions-bnet-test PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME restart-scenarios-test-resync COMMAND tests/restart-scenarios-test.py -c resync -p4 -v --clean-run --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST restart-scenarios-test-resync PROPERTY LABELS nonparallelizable_tests)
 add_test(NAME restart-scenarios-test-hard_replay COMMAND tests/restart-scenarios-test.py -c hardReplay -p4 -v --clean-run --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -129,7 +118,7 @@ if(ENABLE_COVERAGE_TESTING)
   endif() # NOT GENHTML_PATH
 
   # no spaces allowed within tests list
-  set(ctest_tests 'plugin_test|p2p_dawn515_test|nodeos_run_test|bnet_nodeos_run_test|distributed-transactions-test|restart-scenarios-test_resync')
+  set(ctest_tests 'plugin_test|p2p_dawn515_test|nodeos_run_test|distributed-transactions-test|restart-scenarios-test_resync')
   set(ctest_exclude_tests 'nodeos_run_remote_test|nodeos_run_test-mongodb|distributed-transactions-remote-test|restart-scenarios-test_replay')
 
   # Setup target

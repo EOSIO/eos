@@ -1673,20 +1673,35 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
   case LM_LOCAL:
   case LM_REMOTE : {
     bfs::path source = "last_run.json";
-    fc::json::from_file(source).as<last_run_def>(last_run);
-    for (auto &info : last_run.running_nodes) {
-      if (mode == LM_ALL || (info.remote && mode == LM_REMOTE) ||
-          (!info.remote && mode == LM_LOCAL)) {
-        if (info.pid_file.length()) {
-          string pid;
-          fc::json::from_file(info.pid_file).as<string>(pid);
-          string kill_cmd = "kill " + sig_opt + " " + pid;
-          boost::process::system (kill_cmd);
-        }
-        else {
-          boost::process::system (info.kill_cmd);
-        }
-      }
+    try {
+       fc::json::from_file( source ).as<last_run_def>( last_run );
+       for( auto& info : last_run.running_nodes ) {
+          if( mode == LM_ALL || (info.remote && mode == LM_REMOTE) ||
+              (!info.remote && mode == LM_LOCAL) ) {
+             try {
+                if( info.pid_file.length() ) {
+                   string pid;
+                   fc::json::from_file( info.pid_file ).as<string>( pid );
+                   string kill_cmd = "kill " + sig_opt + " " + pid;
+                   boost::process::system( kill_cmd );
+                } else {
+                   boost::process::system( info.kill_cmd );
+                }
+             } catch( fc::exception& fce ) {
+                cerr << "unable to kill fc::exception=" << fce.to_detail_string() << endl;
+             } catch( std::exception& stde ) {
+                cerr << "unable to kill std::exception=" << stde.what() << endl;
+             } catch( ... ) {
+                cerr << "Unable to kill" << endl;
+             }
+          }
+       }
+    } catch( fc::exception& fce ) {
+       cerr << "unable to open " << source << " fc::exception=" << fce.to_detail_string() << endl;
+    } catch( std::exception& stde ) {
+       cerr << "unable to open " << source << " std::exception=" << stde.what() << endl;
+    } catch( ... ) {
+       cerr << "Unable to open " << source << endl;
     }
   }
   }

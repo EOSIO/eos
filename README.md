@@ -63,7 +63,7 @@ $ sudo yum install ./eosio-1.7.0-rc1.el7.x86_64.rpm
 ```
 #### Centos RPM Package Uninstall
 ```sh
-$ sudo yum remove eosio.cdt
+$ sudo yum remove eosio
 ```
 #### Fedora RPM Package Install
 ```sh
