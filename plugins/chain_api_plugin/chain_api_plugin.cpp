@@ -107,8 +107,7 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RW_CALL_ASYNC(push_block, chain_apis::read_write::push_block_results, 202),
       CHAIN_RW_CALL_ASYNC(push_transaction, chain_apis::read_write::push_transaction_results, 202),
       CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202),
-      CHAIN_RW_CALL_ASYNC(send_transaction, chain_apis::read_write::send_transaction_results, 202),
-      CHAIN_RW_CALL_ASYNC(send_transactions, chain_apis::read_write::send_transactions_results, 202)
+      CHAIN_RW_CALL_ASYNC(send_transaction, chain_apis::read_write::send_transaction_results, 202)
    });
 }
 

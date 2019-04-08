@@ -604,10 +604,6 @@ public:
    using send_transaction_results = push_transaction_results;
    void send_transaction(const send_transaction_params& params, chain::plugin_interface::next_function<send_transaction_results> next);
 
-   using send_transactions_params  = vector<send_transaction_params>;
-   using send_transactions_results = vector<send_transaction_results>;
-   void send_transactions(const send_transactions_params& params, chain::plugin_interface::next_function<send_transactions_results> next);
-
    friend resolver_factory<read_write>;
 };
 
