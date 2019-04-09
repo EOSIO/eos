@@ -162,15 +162,18 @@ BOOST_AUTO_TEST_CASE( forking ) try {
               ("maximum_supply", core_from_string("10000000.0000"))
       );
 
-   wdump((fc::json::to_pretty_string(cr)));
-
    cr = c.push_action( N(eosio.token), N(issue), config::system_account_name, mutable_variant_object()
-              ("to",       "dan" )
+              ("to",       "eosio" )
               ("quantity", core_from_string("100.0000"))
               ("memo", "")
       );
 
-   wdump((fc::json::to_pretty_string(cr)));
+   cr = c.push_action( N(eosio.token), N(transfer), config::system_account_name, mutable_variant_object()
+              ("from",     "eosio")
+              ("to",       "dan" )
+              ("quantity", core_from_string("100.0000"))
+              ("memo", "")
+      );
 
 
    tester c2;
