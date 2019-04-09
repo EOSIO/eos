@@ -16,6 +16,7 @@
 
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/stake.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/thread_utils.hpp>
 
@@ -26,7 +27,7 @@
 
 
 #include <cyberway/chaindb/controller.hpp>
-#include <cyberway/genesis/genesis_read.hpp>
+#include <cyberway/genesis/genesis_import.hpp>
 
 namespace eosio { namespace chain {
 
@@ -500,6 +501,7 @@ struct controller_impl {
 
       authorization.add_indices();
       resource_limits.add_indices();
+      stake::stake_index_set::add_indices(chaindb);
    }
 
 // TODO: removed by CyberWay
@@ -544,8 +546,8 @@ struct controller_impl {
 
     void read_genesis() {
         if (conf.read_genesis) {
-            cyberway::genesis::genesis_read reader(conf.genesis_file, self, conf.genesis);
-            reader.read();
+            cyberway::genesis::genesis_import reader(conf.genesis_file, self);
+            reader.import();
         }
     }
 
@@ -585,18 +587,10 @@ struct controller_impl {
             a.set_abi(eosio_contract_abi());
          } else if (name == config::domain_account_name) {
             a.set_abi(domain_contract_abi());
-         } else if (name == config::token_account_name) {
-            a.set_abi(token_contract_abi());
          }
       });
       chaindb.emplace<account_sequence_object>([&](auto & a) {
         a.name = name;
-      });
-      // to test domain names table, create records in it; TODO: remove
-      chaindb.emplace<domain_object>([&](auto& a) {
-         a.owner = name;
-         a.creation_date = conf.genesis.initial_timestamp;
-         a.name = string(name);
       });
 
       const auto& owner_permission  = authorization.create_permission({}, name, config::owner_name, 0,
@@ -644,7 +638,6 @@ struct controller_impl {
       create_native_account(config::domain_account_name, system_auth, system_auth);
       create_native_account(config::govern_account_name, system_auth, system_auth, true);
       create_native_account(config::stake_account_name, system_auth, system_auth, true);
-      // create_native_account(config::token_account_name, system_auth, system_auth);
 
       auto empty_authority = authority(1, {}, {});
       auto active_producers_authority = authority(1, {}, {});
@@ -899,10 +892,10 @@ struct controller_impl {
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       trace = trx_context.trace;
       try {
-         auto bandwith_request_result = get_provided_bandwith(dtrx.actions, deadline);
-         trx_context.set_provided_bandwith(std::move(bandwith_request_result.bandwith));
-         trx_context.add_cpu_usage(bandwith_request_result.used_cpu);
-         trx_context.add_net_usage(bandwith_request_result.used_net);
+         //auto bandwith_request_result = get_provided_bandwith(dtrx.actions, deadline);
+         //trx_context.set_provided_bandwith(std::move(bandwith_request_result.bandwith));
+         //trx_context.add_cpu_usage(bandwith_request_result.used_cpu);
+         //trx_context.add_net_usage(bandwith_request_result.used_net);
 
          trx_context.init_for_deferred_trx( gtrx.published );
          trx_context.exec();
@@ -968,17 +961,14 @@ struct controller_impl {
          if( !explicit_billed_cpu_time ) {
             auto& rl = self.get_mutable_resource_limits_manager();
             rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
-            int64_t account_cpu_limit = 0;
-            std::tie(std::ignore, account_cpu_limit) = trx_context.max_bandwidth_billed_accounts_can_pay();
+            int64_t account_cpu_limit = trx_context.get_min_cpu_limit();
 
             cpu_time_to_bill_us = static_cast<uint32_t>( std::min( std::min( static_cast<int64_t>(cpu_time_to_bill_us),
                                                                              account_cpu_limit                          ),
                                                                    trx_context.initial_objective_duration_limit.count()    ) );
          }
 
-         resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0,
-                                                block_timestamp_type(self.pending_block_time()).slot, 
-                                                self.pending_block_time().sec_since_epoch() ); // Should never fail
+         resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0, self.pending_block_time() ); // Should never fail
 
          trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
 
@@ -1046,11 +1036,11 @@ struct controller_impl {
          trx_context.billed_cpu_time_us = billed_cpu_time_us;
          trace = trx_context.trace;
          try {
-            auto bandwith_request_result = get_provided_bandwith(trn.actions, deadline);
+            //auto bandwith_request_result = get_provided_bandwith(trn.actions, deadline);
 
-            trx_context.set_provided_bandwith(std::move(bandwith_request_result.bandwith));
-            trx_context.add_cpu_usage(bandwith_request_result.used_cpu);
-            trx_context.add_net_usage(bandwith_request_result.used_net);
+            //trx_context.set_provided_bandwith(std::move(bandwith_request_result.bandwith));
+            //trx_context.add_cpu_usage(bandwith_request_result.used_cpu);
+            //trx_context.add_net_usage(bandwith_request_result.used_net);
 
             if( trx->implicit ) {
                trx_context.init_for_implicit_trx();

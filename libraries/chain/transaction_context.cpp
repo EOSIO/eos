@@ -22,6 +22,7 @@
 #include <chrono>
 
 namespace eosio { namespace chain {
+using namespace int_arithmetic;
 
 namespace bacc = boost::accumulators;
 
@@ -199,7 +200,7 @@ namespace bacc = boost::accumulators;
    {
       EOS_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
-
+      
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
 
@@ -245,7 +246,7 @@ namespace bacc = boost::accumulators;
 
       // Record accounts to be billed for network and CPU usage
       flat_set<account_name> provided_accounts;
-
+      
       for( const auto& act : trx.actions ) {
          if (act.account == config::system_account_name && act.name == config::provide_bw_action) {
             auto args = act.data_as<providebw>();
@@ -263,35 +264,16 @@ namespace bacc = boost::accumulators;
          }
       }
 
-      validate_ram_usage.reserve(bill_to_accounts.size());
-
       for( const auto& acc : provided_accounts ) {
          bill_to_accounts.erase(acc);
       }
-
-      // Update usage values of accounts to reflect new time
-      rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot );
-
-      // Calculate the highest network usage and CPU time that all of the billed accounts can afford to be billed
-      int64_t account_net_limit = 0;
-      int64_t account_cpu_limit = 0;
-      std::tie(account_net_limit, account_cpu_limit) = max_bandwidth_billed_accounts_can_pay();
+      
+      available_resources.init(rl, bill_to_accounts, control.pending_block_time());
 
       eager_net_limit = net_limit;
-
-      // Possible lower eager_net_limit to what the billed accounts can pay plus some (objective) leeway
-      auto new_eager_net_limit = std::min( eager_net_limit, static_cast<uint64_t>(account_net_limit + cfg.net_usage_leeway) );
-      if( new_eager_net_limit < eager_net_limit ) {
-         eager_net_limit = new_eager_net_limit;
-         net_limit_due_to_block = false;
-      }
-
-      // Possibly limit deadline if the duration accounts can be billed for (+ a subjective leeway) does not exceed current delta
-      if( (fc::microseconds(account_cpu_limit) + leeway) <= (_deadline - start) ) {
-         _deadline = start + fc::microseconds(account_cpu_limit) + leeway;
-         billing_timer_exception_code = leeway_deadline_exception::code_value;
-      }
-
+      
+      //TODO:? net/cpu leeway
+      
       billing_timer_duration_limit = _deadline - start;
 
       // Check if deadline is limited by caller-set deadline (only change deadline if billed_cpu_time_us is not set)
@@ -407,7 +389,7 @@ namespace bacc = boost::accumulators;
         validate_bw_usage();
 
         control.get_mutable_resource_limits_manager().add_transaction_usage( bill_to_accounts, static_cast<uint64_t>(billed_cpu_time_us), net_usage,
-                                block_timestamp_type(control.pending_block_time()).slot ); // Should never fail
+                                control.pending_block_time()); // Should never fail
    }
 
    void transaction_context::validate_bw_usage() {
@@ -424,26 +406,10 @@ namespace bacc = boost::accumulators;
        int64_t block_time = control.pending_block_time().sec_since_epoch();
        auto& rl = control.get_mutable_resource_limits_manager();
 
-       // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
-       int64_t account_net_limit = 0;
-       int64_t account_cpu_limit = 0;
-       std::tie(account_net_limit, account_cpu_limit) = max_bandwidth_billed_accounts_can_pay(true);
-
-       // Possibly lower net_limit to what the billed accounts can pay
-       if( static_cast<uint64_t>(account_net_limit) <= net_limit ) {
-          net_limit = static_cast<uint64_t>(account_net_limit);
-          net_limit_due_to_block = false;
-       }
-
-       // Possibly lower objective_duration_limit to what the billed accounts can pay
-       if( account_cpu_limit <= objective_duration_limit.count() ) {
-          objective_duration_limit = fc::microseconds(account_cpu_limit);
-          billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
-       }
-
        net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
 
        eager_net_limit = net_limit;
+       
        check_net_usage();
 
        auto now = fc::time_point::now();
@@ -483,6 +449,7 @@ namespace bacc = boost::accumulators;
    }
 
    void transaction_context::checktime()const {
+       
       if(BOOST_LIKELY(_deadline_timer.expired == false))
          return;
       auto now = fc::time_point::now();
@@ -506,6 +473,7 @@ namespace bacc = boost::accumulators;
          }
          EOS_ASSERT( false,  transaction_exception, "unexpected deadline exception code" );
       }
+      available_resources.check_cpu_usage((now - pseudo_start).count());
    }
 
    void transaction_context::pause_billing_timer() {
@@ -513,6 +481,7 @@ namespace bacc = boost::accumulators;
 
       auto now = fc::time_point::now();
       billed_time = now - pseudo_start;
+      
       deadline_exception_code = deadline_exception::code_value; // Other timeout exceptions cannot be thrown while billable timer is paused.
       pseudo_start = fc::time_point();
       _deadline_timer.stop();
@@ -560,111 +529,24 @@ namespace bacc = boost::accumulators;
    }
 
    void transaction_context::add_ram_usage( account_name account, int64_t ram_delta ) {
+      if (available_resources.update_ram_usage(account, ram_delta)) {
+         available_resources.check_cpu_usage((fc::time_point::now() - pseudo_start).count());
+      }
       auto& rl = control.get_mutable_resource_limits_manager();
       rl.add_pending_ram_usage( account, ram_delta );
-      if( ram_delta > 0 ) {
-         validate_ram_usage.insert( account );
+   }
+   
+   int64_t transaction_context::get_billed_cpu_time(fc::time_point now)const {
+      if (explicit_billed_cpu_time){
+         return billed_cpu_time_us;
       }
+      const auto& cfg = control.get_global_properties().configuration;
+      return std::max((now - pseudo_start).count(), static_cast<int64_t>(cfg.min_transaction_cpu_usage));
    }
 
    uint32_t transaction_context::update_billed_cpu_time( fc::time_point now ) {
-      if( explicit_billed_cpu_time ) return static_cast<uint32_t>(billed_cpu_time_us);
-
-      const auto& cfg = control.get_global_properties().configuration;
-      billed_cpu_time_us = std::max( (now - pseudo_start).count(), static_cast<int64_t>(cfg.min_transaction_cpu_usage) );
-
+      billed_cpu_time_us = get_billed_cpu_time(now);
       return static_cast<uint32_t>(billed_cpu_time_us);
-   }
-
-   std::tuple<int64_t, int64_t> transaction_context::max_bandwidth_billed_accounts_can_pay(bool check_staked_virtual_balance) {
-      // Assumes rl.update_account_usage( bill_to_accounts, block_timestamp_type(control.pending_block_time()).slot ) was already called prior
-
-      // Calculate the new highest network usage and CPU time that all of the billed accounts can afford to be billed
-      auto& rl = control.get_mutable_resource_limits_manager();
-      const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
-      int64_t account_net_limit = large_number_no_overflow;
-      int64_t account_cpu_limit = large_number_no_overflow;
-      int64_t block_time = control.pending_block_time().sec_since_epoch();
-      
-      std::map<account_name, int64_t> providers_virtual_balances;
-      if (check_staked_virtual_balance) {
-          for (const auto& a : bill_to_accounts) {
-             const auto provided_bw_it = provided_bandwith_.find(a);
-             if (provided_bw_it != provided_bandwith_.end()) {
-                providers_virtual_balances[provided_bw_it->second.get_provider()] = 0;
-             }
-          }
-      }
-      
-      for( const auto& a : bill_to_accounts ) {
-         // CYBERWAY: there is no greylists, so it's always elastic
-          auto ram_limit_ex = rl.get_account_limit_ex(block_time, a, resource_limits::ram_code);
-             EOS_ASSERT(ram_limit_ex.available < 0 ||
-                validate_ram_usage.find(a) == validate_ram_usage.end() || ram_limit_ex.used <= ram_limit_ex.max, 
-                ram_usage_exceeded,
-                "account ${account} has insufficient ram; needs ${needs} bytes has ${available} bytes",
-                ("account", a)("needs",ram_limit_ex.used)("available",ram_limit_ex.max)
-             );
-         
-         const auto provided_bw_it = provided_bandwith_.find(a);
-         const auto is_bw_provided = provided_bw_it != provided_bandwith_.end() && provided_bw_it->second.is_confirmed();
-         
-         int64_t net_limit = 0;
-         int64_t cpu_limit = 0;
-         if (is_bw_provided) {
-             net_limit = provided_bw_it->second.get_net_limit();
-             cpu_limit = provided_bw_it->second.get_cpu_limit();
-             if (check_staked_virtual_balance && ram_limit_ex.available >= 0 && ram_limit_ex.staked_virtual_balance < 0) {
-                 providers_virtual_balances[provided_bw_it->second.get_provider()] += ram_limit_ex.staked_virtual_balance;
-             }
-         }
-         else {
-
-             auto net_limit_ex = rl.get_account_limit_ex(block_time, a, resource_limits::net_code);
-             auto cpu_limit_ex = rl.get_account_limit_ex(block_time, a, resource_limits::cpu_code);
-             net_limit = net_limit_ex.available;
-             cpu_limit = cpu_limit_ex.available;
-             
-             if (check_staked_virtual_balance) {
-                int64_t staked_virtual_balance = 
-                    ram_limit_ex.staked_virtual_balance + 
-                    net_limit_ex.staked_virtual_balance + 
-                    cpu_limit_ex.staked_virtual_balance;
-                 EOS_ASSERT(ram_limit_ex.available < 0 || staked_virtual_balance >= 0, ram_usage_exceeded,
-                    "account ${account} has insufficient ram; current staked virtual balance is ${staked_virtual_balance}: ram = ${ram}, net = ${net}, cpu = ${cpu}",
-                    ("account", a)("staked_virtual_balance",staked_virtual_balance)
-                    ("ram", ram_limit_ex.staked_virtual_balance)
-                    ("net", net_limit_ex.staked_virtual_balance)
-                    ("cpu", cpu_limit_ex.staked_virtual_balance)
-                 );
-                 
-                 auto virtual_balance_itr = providers_virtual_balances.find(a);
-                 if (virtual_balance_itr != providers_virtual_balances.end()) {
-                    if (ram_limit_ex.available < 0) // no limit
-                       virtual_balance_itr->second = large_number_no_overflow;
-                    else 
-                       virtual_balance_itr->second += staked_virtual_balance;
-                 }
-             }
-         }
-         
-         if( net_limit >= 0 ) {
-            account_net_limit = std::min( account_net_limit, net_limit );
-         }
-         if( cpu_limit >= 0 ) {
-            account_cpu_limit = std::min( account_cpu_limit, cpu_limit );
-         }
-      }
-      if (check_staked_virtual_balance) {
-          for (auto& provider_virtual_balance : providers_virtual_balances) {
-             EOS_ASSERT(provider_virtual_balance.second >= 0, ram_usage_exceeded,
-                "provider ${account} has insufficient staked tokens; current staked virtual balance is ${staked_virtual_balance}",
-                ("account", provider_virtual_balance.first)("staked_virtual_balance",provider_virtual_balance.second)
-             );
-          }
-      }
-
-      return std::make_tuple(account_net_limit, account_cpu_limit);
    }
 
    uint64_t transaction_context::get_provided_net_limit(account_name account) const {
@@ -794,5 +676,93 @@ namespace bacc = boost::accumulators;
 
        return contract_provider == ram_providers_.end() ? user : contract_provider->second;
    }
+   
+    void transaction_context::available_resources_t::init(resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now) {
+        auto pricelist = rl.get_pricelist();
+        cpu_price = pricelist.at(resource_limits::cpu_code);
+        net_price = pricelist.at(resource_limits::net_code);
+        ram_price = pricelist.at(resource_limits::ram_code);
+        rl.update_account_usage(accounts, block_timestamp_type(now).slot);
+        min_cpu = UINT64_MAX;
+        for (const auto& a : accounts) {
+            auto balance = rl.get_account_balance(now.sec_since_epoch(), a, pricelist);
+            auto& lim = limits[a];
+            lim.ram = balance.ram;
+            if (cpu_price.numerator && balance.stake < UINT64_MAX) {
+                lim.cpu = safe_prop(balance.stake, cpu_price.denominator, cpu_price.numerator);
+            }
+            min_cpu = std::min(lim.cpu, min_cpu);
+        }
+    }
 
+    bool transaction_context::available_resources_t::update_ram_usage(account_name account, int64_t delta) {
+        if (!delta) {
+            return false;
+        }
+        auto lim_itr = limits.find(account);
+        if (lim_itr == limits.end()) {
+            return false; 
+        }
+        auto& lim = lim_itr->second;
+        uint64_t delta_abs = std::abs(delta);
+                
+        auto cost = safe_prop(delta_abs, ram_price.numerator, ram_price.denominator);
+        auto cpu = cost ? (cpu_price.numerator ? safe_prop(cost, cpu_price.denominator, cpu_price.numerator) : UINT64_MAX) : 0;
+
+        bool need_to_update_min = (lim.cpu == min_cpu) && (delta < 0);
+        if (delta > 0) {
+            EOS_ASSERT(lim.ram >= delta_abs, ram_usage_exceeded, 
+                "account ${a} has insufficient staked tokens: balance.ram = ${b}, delta = ${d}", 
+                ("a", account)("b", lim.ram)("d", delta));
+            EOS_ASSERT(lim.cpu >= cpu, resource_exhausted_exception, 
+                "account ${a} has insufficient staked tokens: unspent cpu = ${b}, cost = ${c}, cpu equivalent = ${e}", 
+                ("a", account)("b", lim.cpu)("c", cost)("e", cpu));
+            lim.ram -= delta_abs;
+            lim.cpu -= cpu;
+        }
+        else {
+            lim.ram = (UINT64_MAX - lim.ram) > delta_abs ? lim.ram + delta_abs : UINT64_MAX;
+            lim.cpu = (UINT64_MAX - lim.cpu) > cpu       ? lim.cpu + cpu       : UINT64_MAX;
+        }
+        auto prev_min_cpu = min_cpu;
+        if (need_to_update_min) {
+            min_cpu = UINT64_MAX;
+            for (const auto& b : limits) {
+                min_cpu = std::min(min_cpu, b.second.cpu);
+            }
+        }
+        else {
+            min_cpu = std::min(lim.cpu, min_cpu);
+        }
+        return min_cpu < prev_min_cpu;
+    }
+    
+    void transaction_context::available_resources_t::add_net_usage(int64_t delta) {
+        EOS_ASSERT(delta >= 0, transaction_exception, "SYSTEM: available_resources_t::add_net_usage, usage_delta < 0");
+        if (!delta || !cpu_price.numerator) {
+            return;
+        }
+        
+        auto cost = safe_prop(static_cast<uint64_t>(delta), net_price.numerator, net_price.denominator);
+        auto cpu = safe_prop(cost, cpu_price.denominator, cpu_price.numerator);
+
+        EOS_ASSERT(min_cpu >= cpu, resource_exhausted_exception, 
+            "transaction costs too much; unspent cpu = ${b}, cost cpu equivalent = ${e}", ("b", min_cpu)("e", cpu));
+        min_cpu = UINT64_MAX;
+        for (auto& b : limits) {
+            EOS_ASSERT(b.second.cpu >= cpu, transaction_exception, "SYSTEM: incorrect cpu limit");
+            b.second.cpu -= cpu;
+            min_cpu = std::min(min_cpu, b.second.cpu);
+        }
+    }
+    
+    void transaction_context::available_resources_t::check_cpu_usage(int64_t usage)const {
+        EOS_ASSERT(min_cpu >= usage, resource_exhausted_exception, 
+            "transaction costs too much; unspent cpu = ${b}, usage = ${u}", ("b", min_cpu)("u", usage));
+    }
+
+    int64_t transaction_context::get_min_cpu_limit()const {
+        auto ret_unsigned = available_resources.get_min_cpu_limit();
+        return ret_unsigned > static_cast<uint64_t>(INT64_MAX) ? INT64_MAX : static_cast<int64_t>(ret_unsigned);
+    }
 } } /// eosio::chain

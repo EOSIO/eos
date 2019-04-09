@@ -69,6 +69,7 @@ namespace cyberway { namespace chaindb {
         void clear() {
             for (auto& table: index_) {
                 const_cast<table_cache_object&>(table).map.clear();
+                const_cast<table_cache_object&>(table).next_pk = unset_primary_key;
             }
         }
 

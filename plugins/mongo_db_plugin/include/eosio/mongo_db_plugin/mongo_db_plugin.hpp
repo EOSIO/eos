@@ -10,6 +10,9 @@
 
 namespace eosio {
 
+using namespace chain;
+using namespace appbase;
+
 using mongo_db_plugin_impl_ptr = std::shared_ptr<class mongo_db_plugin_impl>;
 
 /**

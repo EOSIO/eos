@@ -11,6 +11,8 @@
 
 #include <fstream>
 
+using namespace eosio::chain;
+
 namespace eosio {
    static appbase::abstract_plugin& _event_engine_plugin = app().register_plugin<event_engine_plugin>();
 

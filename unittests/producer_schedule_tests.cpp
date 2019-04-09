@@ -17,8 +17,8 @@ using mvo = fc::mutable_variant_object;
 BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
 
    // Calculate expected producer given the schedule and slot number
-   account_name get_expected_producer(const vector<producer_key>& schedule, const uint64_t slot) {
-      const auto& index = (slot % (schedule.size() * config::producer_repetitions)) / config::producer_repetitions;
+   account_name get_expected_producer(const vector<producer_key>& schedule, const uint64_t slot, uint32_t scheduled_shuffle_slot) {
+      auto index = (slot - (scheduled_shuffle_slot + 1)) % schedule.size();
       return schedule.at(index).producer_name;
    }
 
@@ -233,7 +233,7 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
 
    b = produce_blocks( config::producer_repetitions );
-   BOOST_CHECK_EQUAL( control->pending_block_state()->promoting_block.slot, b->timestamp.slot );
+   BOOST_CHECK_EQUAL( control->pending_block_state()->scheduled_shuffle_slot, b->timestamp.slot );
    shuffle( sch1, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
 
@@ -263,12 +263,13 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    b = produce_block();
    b = wait_irreversible_block( b->block_num() );
    BOOST_CHECK_EQUAL( control->active_producers().version, 2 );
-   BOOST_CHECK_EQUAL( control->pending_block_state()->promoting_block.slot, b->timestamp.slot );
+   BOOST_CHECK_EQUAL( control->pending_block_state()->scheduled_shuffle_slot, b->timestamp.slot );
    shuffle( sch2, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
 
    b = produce_block();
-   BOOST_CHECK_EQUAL( control->head_block_producer(), get_expected_producer( sch2, b->timestamp.slot ) );
+   BOOST_CHECK_EQUAL( control->head_block_producer(), 
+      get_expected_producer( sch2, b->timestamp.slot, control->pending_block_state()->scheduled_shuffle_slot ) );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()
@@ -302,7 +303,7 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
    b = produce_blocks( config::producer_repetitions ); // One BP shift LIB
    BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
    b = produce_blocks( config::producer_repetitions ); // One BP shift LIB
-   BOOST_CHECK_EQUAL( control->pending_block_state()->promoting_block.slot, b->timestamp.slot );
+   BOOST_CHECK_EQUAL( control->pending_block_state()->scheduled_shuffle_slot, b->timestamp.slot );
    shuffle( sch1, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
 
@@ -328,12 +329,13 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
    b = produce_block();
    b = wait_irreversible_block( b->block_num() );
    BOOST_CHECK_EQUAL( control->active_producers().version, 2 );
-   BOOST_CHECK_EQUAL( control->pending_block_state()->promoting_block.slot, b->timestamp.slot );
+   BOOST_CHECK_EQUAL( control->pending_block_state()->scheduled_shuffle_slot, b->timestamp.slot );
    shuffle( sch2, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
 
    b = produce_block( );
-   BOOST_CHECK_EQUAL( control->head_block_producer(), get_expected_producer( sch2, b->timestamp.slot ) );
+   BOOST_CHECK_EQUAL( control->head_block_producer(), 
+      get_expected_producer( sch2, b->timestamp.slot, control->pending_block_state()->scheduled_shuffle_slot ) );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 
@@ -370,7 +372,7 @@ BOOST_FIXTURE_TEST_CASE( empty_producer_schedule_has_no_effect, tester ) try {
    BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
 
    b = produce_blocks( config::producer_repetitions );
-   BOOST_CHECK_EQUAL( control->pending_block_state()->promoting_block.slot, b->timestamp.slot );
+   BOOST_CHECK_EQUAL( control->pending_block_state()->scheduled_shuffle_slot, b->timestamp.slot );
    shuffle( sch1, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
 
@@ -420,12 +422,64 @@ BOOST_FIXTURE_TEST_CASE( empty_producer_schedule_has_no_effect, tester ) try {
    // Produce enough blocks to promote the pending schedule to active
    b = wait_irreversible_block( b->block_num() );
    BOOST_CHECK_EQUAL( control->active_producers().version, 2 );
-   BOOST_CHECK_EQUAL( control->pending_block_state()->promoting_block.slot, b->timestamp.slot );
+   BOOST_CHECK_EQUAL( control->pending_block_state()->scheduled_shuffle_slot, b->timestamp.slot );
    shuffle( sch2, b->timestamp.slot );
    BOOST_CHECK_EQUAL( true, compare_schedules( sch2, control->active_producers() ) );
 
    b = produce_block( );
-   BOOST_CHECK_EQUAL( control->head_block_producer(), get_expected_producer( sch2, b->timestamp.slot ) );
+   BOOST_CHECK_EQUAL( control->head_block_producer(), 
+      get_expected_producer( sch2, b->timestamp.slot, control->pending_block_state()->scheduled_shuffle_slot ) );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( shuffler_missed_the_block, tester ) try {
+   BOOST_TEST_MESSAGE("shuffler_missed_the_block");
+   
+   create_accounts( {N(alice),N(bob),N(carol)} );
+   auto b = produce_block();
+
+   auto res = set_producers( {N(alice),N(bob),N(carol)} );
+   vector<producer_key> sch1 = {
+                                 {N(alice), get_public_key(N(alice), "active")},
+                                 {N(bob),   get_public_key(N(bob),   "active")},
+                                 {N(carol), get_public_key(N(carol), "active")}
+                               };
+   BOOST_TEST_MESSAGE("-- set producer schedule to [alice,bob,carol]");
+   BOOST_CHECK_EQUAL( true, control->proposed_producers().valid() );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, *control->proposed_producers() ) );
+   BOOST_CHECK_EQUAL( control->pending_producers().version, 0 );
+
+   b = produce_blocks(2); // first one promotes the proposed schedule to pending, second one promotes the pending schedule to active
+   BOOST_CHECK_EQUAL( control->active_producers().version, 1 );
+   auto scheduled_shuffle_slot = b->timestamp.slot + 1;
+   BOOST_CHECK_EQUAL( control->pending_block_state()->scheduled_shuffle_slot, scheduled_shuffle_slot );
+   shuffle( sch1, scheduled_shuffle_slot );
+   BOOST_CHECK_EQUAL( true, compare_schedules( sch1, control->active_producers() ) );
+   produce_block();
+   
+   auto scheduled_shuffler_idx = sch1.size() - 1;
+   auto actual_shuffler_idx = scheduled_shuffler_idx + 1;
+   for (size_t i = 0; i < sch1.size() * 2; i++) {
+      auto prod_idx = i % sch1.size();
+      if (i != scheduled_shuffler_idx) {
+         b = produce_block(fc::microseconds(i != (scheduled_shuffler_idx + 1) ? config::block_interval_us : config::block_interval_us * 2));
+         BOOST_TEST_MESSAGE("-- " << sch1[prod_idx].producer_name << " produced a block");
+         BOOST_CHECK_EQUAL(sch1[prod_idx].producer_name, b->producer);
+      }
+      else {
+         BOOST_TEST_MESSAGE("-- " << sch1[prod_idx].producer_name << " missed a block");
+      }
+      
+      if (i == actual_shuffler_idx) {
+         scheduled_shuffle_slot += sch1.size();
+         shuffle(sch1.begin() + 1, sch1.end(), scheduled_shuffle_slot );
+         BOOST_CHECK_EQUAL(true, compare_schedules(sch1, control->active_producers()));
+      } 
+   }
+   scheduled_shuffle_slot += sch1.size();
+   shuffle(sch1, scheduled_shuffle_slot);
+   BOOST_CHECK_EQUAL(true, compare_schedules(sch1, control->active_producers()));
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()

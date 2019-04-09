@@ -6,9 +6,9 @@
 
 namespace eosio { namespace chain {
 
-template<typename T>
-void shuffle(std::vector<T>& items, uint32_t seed) {
-    auto s = items.size();
+template<typename RandomAccessIterator>
+void shuffle(RandomAccessIterator first, RandomAccessIterator last, uint32_t seed) {
+    auto s = std::distance(first, last);
     if (1 >= s) return;
 
     auto hi = static_cast<uint64_t>(seed) << 32;
@@ -23,8 +23,13 @@ void shuffle(std::vector<T>& items, uint32_t seed) {
 
         uint32_t jmax = s - i;
         uint32_t j = i + k % jmax;
-        std::swap(items[i], items[j]);
+        std::swap(*(first + i), *(first + j));
     }
+}
+
+template<typename T>
+void shuffle(std::vector<T>& items, uint32_t seed) {
+    shuffle(items.begin(), items.end(), seed);
 }
 
 }} // namespace eosio::chain

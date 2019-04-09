@@ -21,6 +21,7 @@ add_library( eosio_chain
              controller.cpp
              authorization_manager.cpp
              resource_limits.cpp
+             stake.cpp
              block_log.cpp
              transaction_context.cpp
              eosio_contract.cpp
@@ -53,8 +54,7 @@ add_library( eosio_chain
              chaindb/ram_calculator.cpp
 
              domain_name.cpp
-             genesis/genesis_read.cpp
-             genesis/genesis_accounts.cpp
+             genesis/genesis_import.cpp
              ${CHAINDB_SRCS}
 
 #             get_config.cpp

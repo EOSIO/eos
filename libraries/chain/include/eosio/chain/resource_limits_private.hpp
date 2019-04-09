@@ -7,6 +7,7 @@
 
 
 namespace eosio { namespace chain { namespace resource_limits {
+using namespace int_arithmetic;
 
    namespace impl {
       template<typename T>
@@ -20,43 +21,8 @@ namespace eosio { namespace chain { namespace resource_limits {
          return (value * r.numerator) / r.denominator;
       }
 
-      template<typename UnsignedIntType>
-      constexpr UnsignedIntType integer_divide_ceil(UnsignedIntType num, UnsignedIntType den ) {
-         return (num / den) + ((num % den) > 0 ? 1 : 0);
-      }
 
 
-      template<typename LesserIntType, typename GreaterIntType>
-      constexpr bool is_valid_downgrade_cast =
-         std::is_integral<LesserIntType>::value &&  // remove overloads where type is not integral
-         std::is_integral<GreaterIntType>::value && // remove overloads where type is not integral
-         (std::numeric_limits<LesserIntType>::max() <= std::numeric_limits<GreaterIntType>::max()); // remove overloads which are upgrades not downgrades
-
-      /**
-       * Specialization for Signedness matching integer types
-       */
-      template<typename LesserIntType, typename GreaterIntType>
-      constexpr auto downgrade_cast(GreaterIntType val) ->
-         std::enable_if_t<is_valid_downgrade_cast<LesserIntType,GreaterIntType> && std::is_signed<LesserIntType>::value == std::is_signed<GreaterIntType>::value, LesserIntType>
-      {
-         const GreaterIntType max = std::numeric_limits<LesserIntType>::max();
-         const GreaterIntType min = std::numeric_limits<LesserIntType>::min();
-         EOS_ASSERT( val >= min && val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, valid range is [${min}, ${max}]", ("v", val)("min", min)("max",max) );
-         return LesserIntType(val);
-      };
-
-      /**
-       * Specialization for Signedness mismatching integer types
-       */
-      template<typename LesserIntType, typename GreaterIntType>
-      constexpr auto downgrade_cast(GreaterIntType val) ->
-         std::enable_if_t<is_valid_downgrade_cast<LesserIntType,GreaterIntType> && std::is_signed<LesserIntType>::value != std::is_signed<GreaterIntType>::value, LesserIntType>
-      {
-         const GreaterIntType max = std::numeric_limits<LesserIntType>::max();
-         const GreaterIntType min = 0;
-         EOS_ASSERT( val >= min && val <= max, rate_limiting_state_inconsistent, "Casting a higher bit integer value ${v} to a lower bit integer value which cannot contain the value, valid range is [${min}, ${max}]", ("v", val)("min", min)("max",max) );
-         return LesserIntType(val);
-      };
 
       /**
        *  This class accumulates and exponential moving average based on inputs
@@ -185,12 +151,15 @@ namespace eosio { namespace chain { namespace resource_limits {
        * Track the average cpu usage for blocks
        */
       usage_accumulator average_block_cpu_usage;
+      
+      uint64_t ram_usage = 0ULL;
 
       void update_virtual_net_limit( const resource_limits_config_object& cfg );
       void update_virtual_cpu_limit( const resource_limits_config_object& cfg );
 
       uint64_t pending_net_usage = 0ULL;
       uint64_t pending_cpu_usage = 0ULL;
+      uint64_t pending_ram_usage = 0ULL;
 
       /**
        * The virtual number of bytes that would be consumed over blocksize_average_window_ms
@@ -239,4 +208,4 @@ FC_REFLECT(eosio::chain::resource_limits::usage_accumulator, (last_ordinal)(valu
 
 FC_REFLECT(eosio::chain::resource_limits::resource_usage_object, (id)(owner)(net_usage)(cpu_usage)(ram_usage))
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (id)(cpu_limit_parameters)(net_limit_parameters)(account_cpu_usage_average_window)(account_net_usage_average_window))
-FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)(average_block_net_usage)(average_block_cpu_usage)(pending_net_usage)(pending_cpu_usage)(virtual_net_limit)(virtual_cpu_limit)(virtual_ram_limit))
+FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)(average_block_net_usage)(average_block_cpu_usage)(ram_usage)(pending_net_usage)(pending_cpu_usage)(pending_ram_usage)(virtual_net_limit)(virtual_cpu_limit)(virtual_ram_limit))

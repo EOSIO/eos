@@ -1,6 +1,7 @@
 #pragma once
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/trace.hpp>
+#include "resource_limits.hpp"
 #include <signal.h>
 
 namespace eosio { namespace chain {
@@ -29,8 +30,7 @@ namespace eosio { namespace chain {
        bool confirmed_ = false;
        account_name provider_;
    };
-
-
+   
    struct bandwith_request_result {
        std::map<account_name, provided_bandwith> bandwith;
        uint64_t used_net;
@@ -76,7 +76,12 @@ namespace eosio { namespace chain {
          void undo();
          void validate_bw_usage();
 
-         inline void add_net_usage( uint64_t u ) { net_usage += u; check_net_usage(); }
+         inline void add_net_usage( uint64_t u ) {
+            net_usage += u;
+            check_net_usage();
+            available_resources.add_net_usage(u);
+            available_resources.check_cpu_usage((fc::time_point::now() - pseudo_start).count());
+         }
          inline void add_cpu_usage( uint64_t u ) { billed_cpu_time_us += u;}
 
          uint64_t get_net_usage() const {return net_usage;}
@@ -88,10 +93,10 @@ namespace eosio { namespace chain {
 
          void pause_billing_timer();
          void resume_billing_timer();
-
+         int64_t get_billed_cpu_time( fc::time_point now )const;
          uint32_t update_billed_cpu_time( fc::time_point now );
 
-         std::tuple<int64_t, int64_t> max_bandwidth_billed_accounts_can_pay(bool check_staked_virtual_balance = false);
+         int64_t get_min_cpu_limit()const;
 
          uint64_t get_provided_net_limit(account_name account) const;
 
@@ -147,7 +152,6 @@ namespace eosio { namespace chain {
 
          vector<action_receipt>        executed;
          flat_set<account_name>        bill_to_accounts;
-         flat_set<account_name>        validate_ram_usage;
 
          /// the maximum number of virtual CPU instructions of the transaction that can be safely billed to the billable accounts
          uint64_t                      initial_max_billable_cpu = 0;
@@ -155,7 +159,7 @@ namespace eosio { namespace chain {
          fc::microseconds              delay;
          bool                          is_input           = false;
          bool                          apply_context_free = true;
-
+         
          fc::time_point                deadline = fc::time_point::maximum();
          fc::microseconds              leeway = fc::microseconds(3000);
          int64_t                       billed_cpu_time_us = 0;
@@ -163,7 +167,6 @@ namespace eosio { namespace chain {
 
       private:
          bool                          is_initialized = false;
-
 
          uint64_t                      net_limit = 0;
          bool                          net_limit_due_to_block = true;
@@ -186,6 +189,27 @@ namespace eosio { namespace chain {
          using contract_for_user = std::pair<account_name, account_name>;
 
          std::map<contract_for_user, account_name> ram_providers_;
+         
+        class available_resources_t {
+            struct limit {
+                uint64_t ram = UINT64_MAX;
+                uint64_t cpu = UINT64_MAX;
+            };
+            resource_limits::ratio cpu_price;
+            resource_limits::ratio net_price;
+            resource_limits::ratio ram_price;
+            
+            std::map<account_name, limit> limits;
+            uint64_t min_cpu = UINT64_MAX;
+        public:
+            void init(resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now);
+            bool update_ram_usage(account_name account, int64_t delta);
+            void add_net_usage(int64_t delta);
+            void check_cpu_usage(int64_t usage) const;
+            uint64_t get_min_cpu_limit()const { return min_cpu; };
+        };
+         
+        available_resources_t available_resources;
     };
 
 } }

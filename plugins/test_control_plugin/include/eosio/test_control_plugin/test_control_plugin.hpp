@@ -12,6 +12,8 @@ namespace fc { class variant; }
 
 namespace eosio {
    using namespace appbase;
+   using namespace chain;
+
    typedef std::shared_ptr<class test_control_plugin_impl> test_control_ptr;
 
 namespace test_control_apis {
