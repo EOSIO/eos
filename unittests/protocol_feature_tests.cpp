@@ -607,4 +607,101 @@ BOOST_AUTO_TEST_CASE( disallow_empty_producer_schedule_test ) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( only_bill_to_first_authorizer ) { try {
+   tester chain( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& tester_account = N(tester);
+   const auto& tester_account2 = N(tester2);
+
+   chain.produce_blocks();
+   chain.create_account(tester_account);
+   chain.create_account(tester_account2);
+
+   resource_limits_manager& mgr = chain.control->get_mutable_resource_limits_manager();
+   mgr.set_account_limits( tester_account, 10000, 1000, 1000 );
+   mgr.set_account_limits( tester_account2, 10000, 1000, 1000 );
+   mgr.process_account_limit_updates();
+
+   chain.produce_blocks();
+
+   {
+      action act;
+      act.account = tester_account;
+      act.name = N(null);
+      act.authorization = vector<permission_level>{
+            {tester_account, config::active_name}, 
+            {tester_account2, config::active_name}};
+
+      signed_transaction trx;
+      trx.actions.emplace_back(std::move(act));
+      chain.set_transaction_headers(trx);
+
+      trx.sign(get_private_key(tester_account, "active"), chain.control->get_chain_id());
+      trx.sign(get_private_key(tester_account2, "active"), chain.control->get_chain_id());
+
+
+      auto tester_cpu_limit0  = mgr.get_account_cpu_limit_ex(tester_account);
+      auto tester2_cpu_limit0 = mgr.get_account_cpu_limit_ex(tester_account2);
+      auto tester_net_limit0  = mgr.get_account_net_limit_ex(tester_account);
+      auto tester2_net_limit0 = mgr.get_account_net_limit_ex(tester_account2);
+
+      chain.push_transaction(trx);
+
+      auto tester_cpu_limit1  = mgr.get_account_cpu_limit_ex(tester_account);
+      auto tester2_cpu_limit1 = mgr.get_account_cpu_limit_ex(tester_account2);
+      auto tester_net_limit1  = mgr.get_account_net_limit_ex(tester_account);
+      auto tester2_net_limit1 = mgr.get_account_net_limit_ex(tester_account2);
+
+      BOOST_CHECK(tester_cpu_limit1.used > tester_cpu_limit0.used);
+      BOOST_CHECK(tester2_cpu_limit1.used > tester2_cpu_limit0.used);
+      BOOST_CHECK(tester_net_limit1.used > tester_net_limit0.used);
+      BOOST_CHECK(tester2_net_limit1.used > tester2_net_limit0.used);
+
+      BOOST_CHECK_EQUAL(tester_cpu_limit1.used - tester_cpu_limit0.used, tester2_cpu_limit1.used - tester2_cpu_limit0.used);
+      BOOST_CHECK_EQUAL(tester_net_limit1.used - tester_net_limit0.used, tester2_net_limit1.used - tester2_net_limit0.used);
+   }
+
+   const auto& pfm = chain.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_bill_first_authorizer );
+   BOOST_REQUIRE( d );
+
+   chain.preactivate_protocol_features( {*d} );
+   chain.produce_blocks();
+
+   {
+      action act;
+      act.account = tester_account;
+      act.name = N(null2);
+      act.authorization = vector<permission_level>{
+            {tester_account, config::active_name}, 
+            {tester_account2, config::active_name}};
+
+      signed_transaction trx;
+      trx.actions.emplace_back(std::move(act));
+      chain.set_transaction_headers(trx);
+
+      trx.sign(get_private_key(tester_account, "active"), chain.control->get_chain_id());
+      trx.sign(get_private_key(tester_account2, "active"), chain.control->get_chain_id());
+
+      auto tester_cpu_limit0  = mgr.get_account_cpu_limit_ex(tester_account);
+      auto tester2_cpu_limit0 = mgr.get_account_cpu_limit_ex(tester_account2);
+      auto tester_net_limit0  = mgr.get_account_net_limit_ex(tester_account);
+      auto tester2_net_limit0 = mgr.get_account_net_limit_ex(tester_account2);
+
+      chain.push_transaction(trx);
+
+      auto tester_cpu_limit1  = mgr.get_account_cpu_limit_ex(tester_account);
+      auto tester2_cpu_limit1 = mgr.get_account_cpu_limit_ex(tester_account2);
+      auto tester_net_limit1  = mgr.get_account_net_limit_ex(tester_account);
+      auto tester2_net_limit1 = mgr.get_account_net_limit_ex(tester_account2);
+
+      BOOST_CHECK(tester_cpu_limit1.used > tester_cpu_limit0.used);
+      BOOST_CHECK(tester2_cpu_limit1.used == tester2_cpu_limit0.used);
+      BOOST_CHECK(tester_net_limit1.used > tester_net_limit0.used);
+      BOOST_CHECK(tester2_net_limit1.used == tester2_net_limit0.used);
+   }
+
+} FC_LOG_AND_RETHROW() }
+
+
 BOOST_AUTO_TEST_SUITE_END()
