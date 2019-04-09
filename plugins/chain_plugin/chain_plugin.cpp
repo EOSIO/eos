@@ -1235,7 +1235,7 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
       for( unsigned int count = 0; cur_time <= end_time && count < p.limit && itr != end_itr; ++itr, cur_time = fc::time_point::now() ) {
          if( p.table && itr->table != p.table ) continue;
 
-         result.rows.push_back( {itr->code, itr->scope, itr->table, itr->payer, itr->count} );
+         result.rows.push_back( {itr->code, itr->scope, itr->scope.value, itr->table, itr->payer, itr->count} );
 
          ++count;
       }

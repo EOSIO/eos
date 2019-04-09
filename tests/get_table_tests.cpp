@@ -78,13 +78,17 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
    if (result.rows.size() >= 4) {
       BOOST_REQUIRE_EQUAL(name(N(eosio.token)), result.rows[0].code);
       BOOST_REQUIRE_EQUAL(name(N(inita)), result.rows[0].scope);
+      BOOST_REQUIRE_EQUAL(name(N(inita)).value, result.rows[0].scope_value);
       BOOST_REQUIRE_EQUAL(name(N(accounts)), result.rows[0].table);
       BOOST_REQUIRE_EQUAL(name(N(eosio)), result.rows[0].payer);
       BOOST_REQUIRE_EQUAL(1u, result.rows[0].count);
 
       BOOST_REQUIRE_EQUAL(name(N(initb)), result.rows[1].scope);
+      BOOST_REQUIRE_EQUAL(name(N(initb)).value, result.rows[1].scope_value);
       BOOST_REQUIRE_EQUAL(name(N(initc)), result.rows[2].scope);
+      BOOST_REQUIRE_EQUAL(name(N(initc)).value, result.rows[2].scope_value);
       BOOST_REQUIRE_EQUAL(name(N(initd)), result.rows[3].scope);
+      BOOST_REQUIRE_EQUAL(name(N(initd)).value, result.rows[3].scope_value);
    }
 
    param.lower_bound = "initb";
@@ -94,7 +98,9 @@ BOOST_FIXTURE_TEST_CASE( get_scope_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL("", result.more);
    if (result.rows.size() >= 2) {
       BOOST_REQUIRE_EQUAL(name(N(initb)), result.rows[0].scope);
+      BOOST_REQUIRE_EQUAL(name(N(initb)).value, result.rows[0].scope_value);
       BOOST_REQUIRE_EQUAL(name(N(initc)), result.rows[1].scope);
+      BOOST_REQUIRE_EQUAL(name(N(initc)).value, result.rows[1].scope_value);
    }
 
    param.limit = 1;

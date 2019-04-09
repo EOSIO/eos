@@ -294,6 +294,7 @@ public:
    struct get_table_by_scope_result_row {
       name        code;
       name        scope;
+      uint64_t    scope_value;
       name        table;
       name        payer;
       uint32_t    count;
