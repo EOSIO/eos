@@ -402,6 +402,7 @@ namespace eosio {
    constexpr boost::asio::chrono::milliseconds def_read_delay_for_full_write_queue{100};
    constexpr auto     def_max_reads_in_flight = 1000;
    constexpr auto     def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
+   constexpr auto     def_max_consecutive_rejected_blocks = 3; // num of rejected blocks before disconnect
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_max_nodes_per_host = 1;
    constexpr auto     def_conn_retry_wait = 30;
@@ -591,6 +592,7 @@ namespace eosio {
       std::atomic<bool>       connecting{false};
       std::atomic<bool>       syncing{false};
       uint16_t                protocol_version  = 0;
+      uint16_t                consecutive_rejected_blocks = 0;
    private:
       const string            peer_addr;
       string                  remote_endpoint_ip;     // not updated after start
@@ -633,7 +635,7 @@ namespace eosio {
 
       bool connected();
       bool current();
-      void close( bool reconnect = false );
+      void close( bool reconnect = true );
    private:
       static void _close( connection* self, bool reconnect ); // for easy capture
    public:
@@ -920,7 +922,7 @@ namespace eosio {
       self->flush_queues();
       self->connecting = false;
       self->syncing = false;
-
+      self->consecutive_rejected_blocks = 0;
       std::unique_lock<std::mutex> g_conn( self->conn_mtx );
       bool has_last_req = !!self->last_req;
       g_conn.unlock();
@@ -1635,19 +1637,22 @@ namespace eosio {
    void sync_manager::rejected_block( const connection_ptr& c, uint32_t blk_num ) {
       std::unique_lock<std::mutex> g( sync_mtx );
       if( sync_state != in_sync ) {
-         fc_wlog( logger, "block ${bn} not accepted from ${p}, closing connection", ("bn",blk_num)("p",c->peer_address()) );
-         sync_last_requested_num = 0;
-         sync_source.reset();
-         //todo: set_state( in_sync );
-         g.unlock();
-         c->close();
-         send_handshakes();
+         if( ++c->consecutive_rejected_blocks > def_max_consecutive_rejected_blocks ) {
+            fc_wlog( logger, "block ${bn} not accepted from ${p}, closing connection", ("bn", blk_num)( "p", c->peer_name() ) );
+            sync_last_requested_num = 0;
+            sync_source.reset();
+            //todo: set_state( in_sync );
+            g.unlock();
+            c->close();
+            send_handshakes();
+         }
       }
    }
 
    // called from connection strand
    void sync_manager::sync_recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num) {
       fc_dlog( logger, "got block ${bn} from ${p}", ("bn", blk_num)( "p", c->peer_name() ) );
+      c->consecutive_rejected_blocks = 0;
       std::unique_lock<std::mutex> g_sync( sync_mtx );
       stages state = sync_state;
       fc_dlog( logger, "state ${s}", ("s", stage_str( state )) );
@@ -3284,7 +3289,7 @@ namespace eosio {
             std::unique_lock<std::shared_timed_mutex> g( my->connections_mtx );
             for( auto& con : my->connections ) {
                fc_dlog( logger, "close: ${p}", ("p", con->peer_name()) );
-               con->close();
+               con->close( false );
             }
             my->connections.clear();
          }
