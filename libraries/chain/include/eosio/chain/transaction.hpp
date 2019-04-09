@@ -66,7 +66,8 @@ namespace eosio { namespace chain {
                                                      bool allow_duplicate_keys = false) const;
 
       uint32_t total_actions()const { return context_free_actions.size() + actions.size(); }
-      account_name first_authorizor()const {
+      
+      account_name first_authorizer()const {
          for( const auto& a : actions ) {
             for( const auto& u : a.authorization )
                return u.actor;

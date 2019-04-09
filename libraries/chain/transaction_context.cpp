@@ -218,9 +218,13 @@ namespace bacc = boost::accumulators;
          validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
 
       // Record accounts to be billed for network and CPU usage
-      for( const auto& act : trx.actions ) {
-         for( const auto& auth : act.authorization ) {
-            bill_to_accounts.insert( auth.actor );
+      if( control.is_builtin_activated(builtin_protocol_feature_t::only_bill_first_authorizer) ) {
+         bill_to_accounts.insert( trx.first_authorizer() );
+      } else {
+         for( const auto& act : trx.actions ) {
+            for( const auto& auth : act.authorization ) {
+               bill_to_accounts.insert( auth.actor );
+            }
          }
       }
       validate_ram_usage.reserve( bill_to_accounts.size() );
@@ -583,7 +587,7 @@ namespace bacc = boost::accumulators;
                          + static_cast<uint64_t>(config::transaction_id_net_usage) ); // Will exit early if net usage cannot be payed.
       }
 
-      auto first_auth = trx.first_authorizor();
+      auto first_auth = trx.first_authorizer();
 
       uint32_t trx_size = 0;
       const auto& cgto = control.mutable_db().create<generated_transaction_object>( [&]( auto& gto ) {
